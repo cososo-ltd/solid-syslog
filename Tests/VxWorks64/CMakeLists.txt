@@ -124,6 +124,7 @@ vxworks64_add_test(SolidSyslogVxWorks64DatagramTest
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64DatagramStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64AddressStatic.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
         ${VXWORKS64_FAKES}/VxWorks64NetFake.c
     LIBRARIES
         ConfigLockFake
@@ -137,6 +138,7 @@ vxworks64_add_test(SolidSyslogVxWorks64TcpStreamTest
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64TcpStreamStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64AddressStatic.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
         ${VXWORKS64_FAKES}/VxWorks64NetFake.c
     LIBRARIES
         ConfigLockFake
@@ -216,6 +218,7 @@ vxworks64_add_test(BddTargetVxWorks64Test
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64TcpStream.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64TcpStreamStatic.c
         ${VXWORKS64_FAKES}/VxWorks64IntFake.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
         ${VXWORKS64_FAKES}/VxWorks64NetFake.c
         ${VXWORKS64_FAKES}/VxWorks64SemFake.c
         ${VXWORKS64_FAKES}/VxWorks64TaskFake.c

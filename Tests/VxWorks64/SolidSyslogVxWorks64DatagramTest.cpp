@@ -22,6 +22,7 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
+#include "VxWorks64IoFake.h"
 #include "VxWorks64NetFake.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -48,6 +49,7 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
     void setup() override
     {
         VxWorks64NetFake_Reset();
+        VxWorks64IoFake_Reset();
         datagram = SolidSyslogVxWorks64Datagram_Create();
         address  = SolidSyslogVxWorks64Address_Create();
         struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(address);
@@ -184,8 +186,8 @@ TEST(SolidSyslogVxWorks64Datagram, CloseClosesTheSocketOpenMade)
 
     SolidSyslogDatagram_Close(datagram);
 
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
-    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
 }
 
 // The Datagram contract: Close is idempotent and safe on an unopened datagram,
@@ -194,7 +196,7 @@ TEST(SolidSyslogVxWorks64Datagram, CloseOnAnUnopenedDatagramClosesNothing)
 {
     SolidSyslogDatagram_Close(datagram);
 
-    CALLED_FAKE(VxWorks64NetFake_Close, NEVER);
+    CALLED_FAKE(VxWorks64IoFake_Close, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, CloseTwiceClosesOnce)
@@ -204,7 +206,7 @@ TEST(SolidSyslogVxWorks64Datagram, CloseTwiceClosesOnce)
     SolidSyslogDatagram_Close(datagram);
     SolidSyslogDatagram_Close(datagram);
 
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
@@ -214,7 +216,7 @@ TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
     SolidSyslogVxWorks64Datagram_Destroy(datagram);
     datagram = nullptr;
 
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToAfterDestroySendsNothing)

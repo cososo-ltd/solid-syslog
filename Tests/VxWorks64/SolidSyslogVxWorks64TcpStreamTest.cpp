@@ -25,6 +25,7 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64TcpStream.h"
 #include "SolidSyslogVxWorks64TcpStreamErrors.h"
+#include "VxWorks64IoFake.h"
 #include "VxWorks64NetFake.h"
 
 namespace
@@ -50,6 +51,7 @@ TEST_GROUP(SolidSyslogVxWorks64TcpStream)
     void setup() override
     {
         VxWorks64NetFake_Reset();
+        VxWorks64IoFake_Reset();
         FakeGetConnectTimeoutMs_ReturnValue = 0U;
         FakeGetConnectTimeoutMs_LastContext = nullptr;
         stream  = SolidSyslogVxWorks64TcpStream_Create(nullptr);
@@ -195,8 +197,8 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenClosesTheSocketWhenTheConnectFails)
 {
     VxWorks64NetFake_FailConnectWithErrno(ECONNREFUSED);
     SolidSyslogStream_Open(stream, address);
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
-    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectTimedOutWhenTheBoundExpires)
@@ -312,8 +314,8 @@ TEST(SolidSyslogVxWorks64TcpStream, SendClosesTheConnectionWhenTheRecordDoesNotG
 {
     VxWorks64NetFake_LimitSendTo(2);
     (void) OpenAndSend();
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
-    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, SendFirstPeeksWithoutWaitingToSeeWhetherThePeerHasClosed)
@@ -355,7 +357,7 @@ TEST(SolidSyslogVxWorks64TcpStream, SendClosesTheConnectionOnceThePeerHasClosed)
 {
     VxWorks64NetFake_RecvDelivers(nullptr, 0);
     (void) OpenAndSend();
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, SendRefusesARecordLongerThanTheStackCanBeToldOf)
@@ -422,8 +424,8 @@ TEST(SolidSyslogVxWorks64TcpStream, ReadClosesTheConnectionWhenItReportsATeardow
     char buffer[16];
     VxWorks64NetFake_RecvDelivers(nullptr, 0);
     (void) OpenAndRead(buffer, sizeof(buffer));
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
-    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, ReadOffersTheStackNoMoreThanItCanBeToldOf)
@@ -437,8 +439,8 @@ TEST(SolidSyslogVxWorks64TcpStream, CloseClosesTheConnectedSocket)
 {
     SolidSyslogStream_Open(stream, address);
     SolidSyslogStream_Close(stream);
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
-    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64NetFake_LastClosedFd());
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, CloseTwiceClosesTheSocketOnce)
@@ -446,20 +448,20 @@ TEST(SolidSyslogVxWorks64TcpStream, CloseTwiceClosesTheSocketOnce)
     SolidSyslogStream_Open(stream, address);
     SolidSyslogStream_Close(stream);
     SolidSyslogStream_Close(stream);
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, CloseOnAStreamThatNeverOpenedClosesNothing)
 {
     SolidSyslogStream_Close(stream);
-    CALLED_FAKE(VxWorks64NetFake_Close, NEVER);
+    CALLED_FAKE(VxWorks64IoFake_Close, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenOnAnOpenStreamClosesTheSocketItHeld)
 {
     SolidSyslogStream_Open(stream, address);
     SolidSyslogStream_Open(stream, address);
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, VersionStaysZeroBecauseNothingAboutTheStreamChangesAtRuntime)
@@ -472,7 +474,7 @@ TEST(SolidSyslogVxWorks64TcpStream, DestroyClosesAnOpenSocket)
     SolidSyslogStream_Open(stream, address);
     SolidSyslogVxWorks64TcpStream_Destroy(stream);
     stream = nullptr;
-    CALLED_FAKE(VxWorks64NetFake_Close, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, SendAfterDestroyTouchesNoSocket)
