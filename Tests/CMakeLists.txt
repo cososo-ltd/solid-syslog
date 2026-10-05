@@ -317,22 +317,12 @@ foreach(cmsisrtos_test_target IN ITEMS
     endif()
 endforeach()
 
-foreach(vxworks64_test_target IN ITEMS
-    SolidSyslogVxWorks64MutexTest
-    SolidSyslogVxWorks64AtomicCounterTest
-    SolidSyslogVxWorks64AddressTest
-    SolidSyslogVxWorks64ResolverTest
-    SolidSyslogVxWorks64DatagramTest
-    SolidSyslogVxWorks64TcpStreamTest
-    SolidSyslogVxWorks64ClockTest
-    SolidSyslogVxWorks64SysUpTimeTest
-    SolidSyslogVxWorks64HostnameTest
-    SolidSyslogVxWorks64SleepTest
-    BddTargetVxWorks64Test
-)
-    if(TARGET ${vxworks64_test_target})
-        register_junit_test(${vxworks64_test_target})
-    endif()
+# The VxWorks 6.4 tests need no list: vxworks64_add_test records each one as it
+# is defined, and this completes the registration the junit target was not yet
+# there to take.
+get_property(vxworks64_test_targets GLOBAL PROPERTY SOLIDSYSLOG_VXWORKS64_JUNIT_TESTS)
+foreach(vxworks64_test_target IN LISTS vxworks64_test_targets)
+    register_junit_test(${vxworks64_test_target})
 endforeach()
 
 foreach(fatfs_test_target IN ITEMS
