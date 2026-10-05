@@ -188,6 +188,17 @@ else()
     set(BDD_TARGET_VXWORKS64_TEMP_FILE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileStandard.c)
 endif()
 
+vxworks64_add_test(SolidSyslogVxWorks64FileTest
+    SOURCES
+        SolidSyslogVxWorks64FileTest.cpp
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64FileStatic.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
+    LIBRARIES
+        ConfigLockFake
+        ErrorHandlerFake
+)
+
 # The BDD target compiles here against the same fakes, so a change that breaks
 # it fails on the host as well as in the target build.
 vxworks64_add_test(BddTargetVxWorks64Test
