@@ -62,8 +62,13 @@ diagnostics.
 
 On that image, the UDP transport and the resolver have delivered a message,
 resolved from a dotted address, through QEMU's user network to a syslog-ng
-collector on another machine. The mutex is not yet exercised on the target: the
-BDD target will be the first to run it.
+collector on another machine. The BDD target runs the mutex, guarding the buffer
+its console and service tasks share.
+
+With dosFs on the image's IDE disk, the file has carried the BDD store
+scenarios: records stored while the collector was down were sent once it
+returned, and records still in the store when QEMU was stopped mid-run were
+replayed after it started again.
 
 ## Security behaviour and obligations
 
