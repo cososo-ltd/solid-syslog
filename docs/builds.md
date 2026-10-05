@@ -236,7 +236,8 @@ See [BDD testing](bdd.md) for architecture details and the `BDD_TARGET` /
 ## JUnit XML output
 
 The `junit` target runs the tests and writes a JUnit-format XML file to the build directory.
-Used by the VS Code test explorer and the CI pipeline.
+The VxWorks 6.4 tests write theirs to `vxworks64/` beneath it, so CI reports them as a group
+of their own. Used by the VS Code test explorer and the CI pipeline.
 
 ```bash
 cmake --build --preset <preset> --target junit

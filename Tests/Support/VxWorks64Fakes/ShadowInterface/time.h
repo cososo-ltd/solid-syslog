@@ -1,17 +1,9 @@
 /* A test stand-in for the VxWorks 6.4 time header.
  *
  * Supplies the subset of time.h that Platform/VxWorks64 calls, with the
- * prototypes of the public API reference.
- *
- * Unlike the other stand-ins, it renames each function with a macro. A host
- * has its own time.h and its own clock_gettime, which the test framework and
- * the sanitizer runtimes call; substituting the function at link time, as the
- * socket calls are, would hand them the fake too. The rename keeps the fake to
- * the sources compiled against this header, and the pack itself compiles
- * against the real header unchanged.
- *
- * It shadows the host's time.h, so it is on the include path of those C
- * sources only, never a test executable's.
+ * prototypes of the public API reference. It shadows the host's time.h, and
+ * renames each function to the clock fake's, as README.md in this directory
+ * describes.
  */
 #ifndef TIME_H
 #define TIME_H

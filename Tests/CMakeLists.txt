@@ -281,16 +281,24 @@ add_custom_target(junit
 # executables' definition in Tests/FreeRtos/CMakeLists.txt — a missing target
 # is silently skipped, so jobs running outside a FreeRTOS-aware container
 # just run SolidSyslogTests as before.
+#
+# An optional second argument names a subdirectory of the build dir for the
+# XML, so CI can report a group of tests as a block of its own.
 function(register_junit_test test_target)
+    set(junit_dir ${CMAKE_BINARY_DIR})
+    if(ARGC GREATER 1)
+        set(junit_dir ${CMAKE_BINARY_DIR}/${ARGV1})
+    endif()
     add_custom_command(TARGET junit POST_BUILD
         COMMAND ${CMAKE_COMMAND}
             -DEXECUTABLE=$<TARGET_FILE:${test_target}>
-            -DDIR=${CMAKE_BINARY_DIR}
+            -DDIR=${junit_dir}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
         COMMENT "Running ${test_target} with JUnit XML output"
         VERBATIM
     )
     add_dependencies(junit ${test_target})
+    set_property(GLOBAL APPEND PROPERTY SOLIDSYSLOG_JUNIT_TESTS ${test_target})
 endfunction()
 
 foreach(freertos_test_target IN ITEMS
@@ -317,18 +325,12 @@ foreach(cmsisrtos_test_target IN ITEMS
     endif()
 endforeach()
 
-foreach(vxworks64_test_target IN ITEMS
-    SolidSyslogVxWorks64MutexTest
-    SolidSyslogVxWorks64AtomicCounterTest
-    SolidSyslogVxWorks64AddressTest
-    SolidSyslogVxWorks64ResolverTest
-    SolidSyslogVxWorks64DatagramTest
-    SolidSyslogVxWorks64TcpStreamTest
-    BddTargetVxWorks64Test
-)
-    if(TARGET ${vxworks64_test_target})
-        register_junit_test(${vxworks64_test_target})
-    endif()
+# The VxWorks 6.4 tests need no list: vxworks64_add_test records each one as it
+# is defined, and this completes the registration the junit target was not yet
+# there to take. Their XML goes in vxworks64/, which CI reports as its own block.
+get_property(vxworks64_test_targets GLOBAL PROPERTY SOLIDSYSLOG_VXWORKS64_JUNIT_TESTS)
+foreach(vxworks64_test_target IN LISTS vxworks64_test_targets)
+    register_junit_test(${vxworks64_test_target} vxworks64)
 endforeach()
 
 foreach(fatfs_test_target IN ITEMS
@@ -397,6 +399,40 @@ foreach(lwip_test_target IN ITEMS
         register_junit_test(${lwip_test_target})
     endif()
 endforeach()
+
+# A test executable runs in CI only if the junit target runs it: CI builds
+# --target junit, so one left off it is never even compiled. Fail the configure
+# rather than let a test go quiet. SolidSyslogTests is junit's own command, and
+# CI runs BddTargetTests in a step of its own.
+function(collect_test_executables directory result)
+    get_property(targets DIRECTORY ${directory} PROPERTY BUILDSYSTEM_TARGETS)
+    set(executables "")
+    foreach(target IN LISTS targets)
+        get_target_property(type ${target} TYPE)
+        if(type STREQUAL "EXECUTABLE")
+            list(APPEND executables ${target})
+        endif()
+    endforeach()
+    get_property(subdirectories DIRECTORY ${directory} PROPERTY SUBDIRECTORIES)
+    foreach(subdirectory IN LISTS subdirectories)
+        collect_test_executables(${subdirectory} nested)
+        list(APPEND executables ${nested})
+    endforeach()
+    set(${result} ${executables} PARENT_SCOPE)
+endfunction()
+
+collect_test_executables(${CMAKE_CURRENT_SOURCE_DIR} unregistered_tests)
+# Compared against what register_junit_test ran, not junit's dependencies: a
+# dependency alone builds a test without running it.
+get_property(junit_tests GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TESTS)
+list(REMOVE_ITEM unregistered_tests ${PROJECT_NAME}Tests BddTargetTests ${junit_tests})
+if(unregistered_tests)
+    list(JOIN unregistered_tests ", " unregistered_list)
+    message(FATAL_ERROR
+        "Test executables not registered for junit, so CI would never run them: "
+        "${unregistered_list}. Define a VxWorks 6.4 test with vxworks64_add_test; add "
+        "any other to its pack's register_junit_test list in Tests/CMakeLists.txt.")
+endif()
 
 # Code coverage report using lcov/genhtml.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
