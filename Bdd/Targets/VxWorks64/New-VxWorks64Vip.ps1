@@ -112,13 +112,6 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'setstring', $projectFile, 'ADDIF_ADDR', '10.0.2.15')
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile, 'ADDIF_MASK', '0xffffff00')
 
-# Boot flag 0x400 puts ED&R in its debug policy: a fatal error in a kernel task
-# stops that task and prints the exception, where the deployed policy reboots the
-# target without a word. A test target has to show its faults. The rest of the
-# line is the BSP's default, whose addresses are never used, as above.
-Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'setstring', $projectFile, 'DEFAULT_BOOT_LINE',
-    'lnPci(0,0)host:/usr/vw/config/malta4kc/vxWorks h=90.0.0.3 e=90.0.0.50 u=target f=0x400')
-
 # Give every build specification the SolidSyslog headers - Core's and the
 # VxWorks64 pack's - and the library. The headers need the C99 <stdint.h> and
 # <stdbool.h> the kernel tree lacks, from the pack's Compat directory, placed

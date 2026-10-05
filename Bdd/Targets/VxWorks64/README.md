@@ -181,11 +181,9 @@ The creation script also adds the network the target sends over: the IPv4 stack
 with UDP, TCP, sockets and select, the host table, routing, and the END driver
 for QEMU's PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
 are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user network instead,
-as `10.0.2.15/24`. The boot line also sets flag `0x400`, which puts ED&R in its
-debug policy: a fatal error in a task stops the task and prints the exception
-on the console, rather than rebooting the target without a word. The target
-adds a default route through QEMU's gateway, `10.0.2.2`, at start-up, and the
-harness names the collector with `set host` and `set port` over the console.
+as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
+`10.0.2.2`, at start-up, and the harness names the collector with `set host`
+and `set port` over the console.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
