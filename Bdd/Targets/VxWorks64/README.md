@@ -185,6 +185,12 @@ as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
 `10.0.2.2`, at start-up, and the harness names the collector with `set host`
 and `set port` over the console.
 
+At start-up the target also puts ED&R in its debug policy and reports the
+policy that took: a fatal error in a task then stops the task and prints the
+exception, where the deployed policy reboots the target without a word. The
+boot line's `0x400` flag cannot select it on this image, which takes its boot
+line from the board's NVRAM and reads the flag before parsing the line.
+
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
 library and for the project's own sources alike.
