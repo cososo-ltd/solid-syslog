@@ -281,11 +281,18 @@ add_custom_target(junit
 # executables' definition in Tests/FreeRtos/CMakeLists.txt — a missing target
 # is silently skipped, so jobs running outside a FreeRTOS-aware container
 # just run SolidSyslogTests as before.
+#
+# An optional second argument names a subdirectory of the build dir for the
+# XML, so CI can report a group of tests as a block of its own.
 function(register_junit_test test_target)
+    set(junit_dir ${CMAKE_BINARY_DIR})
+    if(ARGC GREATER 1)
+        set(junit_dir ${CMAKE_BINARY_DIR}/${ARGV1})
+    endif()
     add_custom_command(TARGET junit POST_BUILD
         COMMAND ${CMAKE_COMMAND}
             -DEXECUTABLE=$<TARGET_FILE:${test_target}>
-            -DDIR=${CMAKE_BINARY_DIR}
+            -DDIR=${junit_dir}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
         COMMENT "Running ${test_target} with JUnit XML output"
         VERBATIM
@@ -319,10 +326,10 @@ endforeach()
 
 # The VxWorks 6.4 tests need no list: vxworks64_add_test records each one as it
 # is defined, and this completes the registration the junit target was not yet
-# there to take.
+# there to take. Their XML goes in vxworks64/, which CI reports as its own block.
 get_property(vxworks64_test_targets GLOBAL PROPERTY SOLIDSYSLOG_VXWORKS64_JUNIT_TESTS)
 foreach(vxworks64_test_target IN LISTS vxworks64_test_targets)
-    register_junit_test(${vxworks64_test_target})
+    register_junit_test(${vxworks64_test_target} vxworks64)
 endforeach()
 
 foreach(fatfs_test_target IN ITEMS

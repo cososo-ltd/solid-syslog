@@ -1,6 +1,7 @@
 # Runs the test executable with verbose JUnit XML output.
 # The XML is written regardless of pass/fail, then the exit code is propagated
 # so cmake --build --target junit fails when tests fail.
+file(MAKE_DIRECTORY ${DIR})
 execute_process(
     COMMAND ${EXECUTABLE} -v -ojunit
     WORKING_DIRECTORY ${DIR}
