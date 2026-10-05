@@ -3,10 +3,8 @@
 `Platform/VxWorks64/` wraps the VxWorks 6.4 kernel API for kernel (VIP) builds.
 It is written against the publicly documented API and verified on 6.4; it may
 serve as a model for other VxWorks releases, but nothing here has run on one.
-Storage comes from a separate platform; the
-[capability matrix](../index.md) shows which fill it.
 
-Fills the Datagram, Stream (TCP), Resolver, Mutex and AtomicCounter
+Fills the Datagram, Stream (TCP), Resolver, File, Mutex and AtomicCounter
 [roles](../../roles/index.md), plus the address handle the transports read back
 to send. It also supplies the clock, hostname, sleep and sysUpTime callbacks. There is no
 process-id callback: a kernel task belongs to no process, so PROCID is left
@@ -26,7 +24,9 @@ host library for the transports and the resolver, and mutual-exclusion
 semaphores for the mutex. The clock calls
 `clock_gettime` and `gmtime_r`, which the image must include; uptime
 calls `tick64Get` and `sysClkRateGet`; the hostname calls `gethostname`; and
-sleep calls `taskDelay`. Real-time processes (RTPs) are not supported.
+sleep calls `taskDelay`. The file calls `open`, `read`, `write`, `lseek`,
+`ioctl`, `remove` and `close`, and needs the store's directory on a volume the
+image has already mounted. Real-time processes (RTPs) are not supported.
 
 The sources are C99. They need nothing from the compiler beyond that, and use no
 toolchain-specific extensions. The flags a VIP generates select C89, so with
@@ -180,6 +180,21 @@ The counter increments with interrupts locked, which excludes every other
 writer, tasks and interrupt service routines alike, only because VxWorks 6.4
 runs on one CPU. Interrupts stay locked only for the read, the compare and the
 store.
+
+### A write counts once the file system has synced it
+
+The file reports a write as done only when `write` took every byte and
+`FIOSYNC` on the file then succeeded; anything less is a failed write. It
+follows the sync with `FIOCOMMITFS`, which commits a transactional file
+system's transaction, as HRFS keeps one. dosFs has no transaction to commit, so
+the answer to that call does not decide the write.
+
+### Mounting and formatting are yours
+
+The file opens the paths the block device gives it, under a volume the image
+has already mounted, and never mounts or formats one itself. Bring the volume
+up before the store is created; with no volume there, the file cannot open
+the store's files.
 
 ### Log from a task, not an interrupt
 

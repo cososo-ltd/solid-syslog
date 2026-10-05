@@ -28,7 +28,7 @@ Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick rec
 |---|---|
 | `@udp` / `@tcp` / `@tls` / `@mtls` | Transport-specific scenario; CI jobs filter by these. |
 | `@buffered` | Needs a buffered wiring (CircularBuffer / PosixMessageQueueBuffer / service thread) beyond single-task PassthroughBuffer. Carried by all three targets. |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Carried by all three targets. |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Run on every target. |
 | `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. The authoritative entry names the runners that supply it. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
 | `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. |

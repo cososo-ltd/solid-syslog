@@ -285,7 +285,7 @@ set(SOLIDSYSLOG_PLATFORM_REGISTRY
     "PlusTcp|SOLIDSYSLOG_PLUSTCP|${HAVE_FREERTOS_PLUS_TCP_PATH}|upstream|Platform/PlusTcp|network"
     "FreeRtos|SOLIDSYSLOG_FREERTOS|${HAVE_FREERTOS_KERNEL_PATH}|upstream|Platform/FreeRtos|mutex uptime"
     "CmsisRtos|SOLIDSYSLOG_CMSISRTOS|TRUE|upstream|Platform/CmsisRtos|mutex uptime"
-    "VxWorks64|SOLIDSYSLOG_VXWORKS64|TRUE|upstream|Platform/VxWorks64|network mutex"
+    "VxWorks64|SOLIDSYSLOG_VXWORKS64|TRUE|upstream|Platform/VxWorks64|network file mutex"
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
     "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
     "LittleFs|SOLIDSYSLOG_LITTLEFS|${HAVE_LITTLEFS_PATH}|upstream|Platform/LittleFs|file"

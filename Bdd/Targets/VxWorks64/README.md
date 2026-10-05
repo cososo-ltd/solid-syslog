@@ -134,6 +134,7 @@ waiting does not stop the job: the runner carries on with it.
 | `boot-check "marker=<text>"` | Checklist step 3, waiting for that text |
 | `qemu-start` | Boots the image, its console connecting to port 8766 here |
 | `qemu-stop` | Stops the QEMU that `qemu-start` began |
+| `store-reset` | Removes the store disk image, so the next boot has a blank disk |
 | `status` | Reports the clone's commit, and whether QEMU is running |
 
 `python Runner\job_service.py console`, started before `qemu-start`, shows
@@ -158,11 +159,24 @@ creation script sets the project's build macros with
   `Platform/VxWorks64/Compat`.
 - `LIBS` names the BDD target's archive, then the library, ahead of
   `$(VX_OS_LIBS)`.
-- With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own
-  `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`. The
-  macro reaches Wind River's sources and the ones `vxprj` generates - the BSP,
-  `romStart.c`, `prjConfig.c` and `linkSyms.c` - so the project's own sources
-  keep the warning.
+- With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606,1741`. Wind River's own
+  `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`, and the
+  BSP's `sysBusPci.c` raises `dcc:1741` by defining `USB` again after the ATA
+  driver's header has. The macro reaches Wind River's sources and the ones
+  `vxprj` generates - the BSP, `romStart.c`, `prjConfig.c` and `linkSyms.c` -
+  so the project's own sources keep both warnings.
+
+The creation script also adds the disk the file store lives on: the ATA driver
+for the Malta board's PIIX4 IDE controller, the extended block device layer, the
+file system monitor with rawFs, and dosFs with its formatter and cache. QEMU
+gives the target `build\vxworks64\store-disk.img` as its primary IDE disk,
+`/ata0a`, creating it blank when it is absent and keeping it across a restart,
+which is what lets the power-cycle scenario replay its records. The target
+formats a blank disk the first time it builds its store, and the run removes the
+image, through the runner's `store-reset` job, before each store scenario. The
+BSP has to acknowledge the IDE interrupt at the board's interrupt controller
+once the driver has serviced it; a BSP that does not leaves the boot silent
+with a disk attached.
 
 The creation script also adds the network the target sends over: the IPv4 stack
 with UDP, TCP, sockets and select, the host table, routing, and the END driver
