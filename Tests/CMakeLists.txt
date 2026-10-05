@@ -392,6 +392,38 @@ foreach(lwip_test_target IN ITEMS
     endif()
 endforeach()
 
+# A test executable runs in CI only if the junit target runs it: CI builds
+# --target junit, so one left off it is never even compiled. Fail the configure
+# rather than let a test go quiet. SolidSyslogTests is junit's own command, and
+# CI runs BddTargetTests in a step of its own.
+function(collect_test_executables directory result)
+    get_property(targets DIRECTORY ${directory} PROPERTY BUILDSYSTEM_TARGETS)
+    set(executables "")
+    foreach(target IN LISTS targets)
+        get_target_property(type ${target} TYPE)
+        if(type STREQUAL "EXECUTABLE")
+            list(APPEND executables ${target})
+        endif()
+    endforeach()
+    get_property(subdirectories DIRECTORY ${directory} PROPERTY SUBDIRECTORIES)
+    foreach(subdirectory IN LISTS subdirectories)
+        collect_test_executables(${subdirectory} nested)
+        list(APPEND executables ${nested})
+    endforeach()
+    set(${result} ${executables} PARENT_SCOPE)
+endfunction()
+
+collect_test_executables(${CMAKE_CURRENT_SOURCE_DIR} unregistered_tests)
+get_target_property(junit_tests junit MANUALLY_ADDED_DEPENDENCIES)
+list(REMOVE_ITEM unregistered_tests ${PROJECT_NAME}Tests BddTargetTests ${junit_tests})
+if(unregistered_tests)
+    list(JOIN unregistered_tests ", " unregistered_list)
+    message(FATAL_ERROR
+        "Test executables not registered for junit, so CI would never build or run them: "
+        "${unregistered_list}. Define a VxWorks 6.4 test with vxworks64_add_test; add "
+        "any other to its pack's register_junit_test list in Tests/CMakeLists.txt.")
+endif()
+
 # Code coverage report using lcov/genhtml.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
 # lcov and genhtml must be installed (available in both container images).
