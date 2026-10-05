@@ -45,10 +45,12 @@ _VXWORKS64_CONSOLE_PORT = 8766
 # Boot takes seconds; the runner collects the start job on its next poll.
 _VXWORKS64_CONNECT_TIMEOUT_SECONDS = 120
 _VXWORKS64_JOB_TIMEOUT_SECONDS = 300
-# Console input arriving in a burst, far faster than a serial line could carry
-# it, reboots the QEMU target; a gap after each line keeps to a serial line's
-# pace. 20 ms was enough in trials; this leaves a margin.
-_VXWORKS64_LINE_GAP_SECONDS = 0.05
+# The QEMU target loses console input that arrives faster than it takes it, or
+# resets, so the console types as a person would: each line after the target's
+# prompt for the last, and at 9600 baud, whose bursts of one host tick (about 14
+# bytes) fit the UART's 16-byte receive FIFO.
+_VXWORKS64_CONSOLE_BAUD = 9600
+_VXWORKS64_PROMPT = b"SolidSyslog> "
 _VXWORKS64_BUILD_TIMEOUT_SECONDS = 1800
 
 
@@ -204,7 +206,8 @@ def _spawn_vxworks64():
             lambda: run_vxworks64_job("qemu-start"),
             lambda: run_vxworks64_job("qemu-stop"),
             _VXWORKS64_CONNECT_TIMEOUT_SECONDS,
-            _VXWORKS64_LINE_GAP_SECONDS,
+            _VXWORKS64_CONSOLE_BAUD,
+            prompt=_VXWORKS64_PROMPT,
         )
 
 

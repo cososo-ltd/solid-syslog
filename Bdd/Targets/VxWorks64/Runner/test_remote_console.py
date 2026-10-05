@@ -8,6 +8,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 import unittest
 
@@ -37,18 +38,54 @@ class RemoteConsoleTest(unittest.TestCase):
         self.target.settimeout(5)
         self.assertEqual(b"send 1\n", self.target.recv(4096))
 
-    def test_each_line_written_is_followed_by_the_line_gap(self):
+    # A byte on a serial line is ten bits: a start bit, eight data bits, a stop bit.
+    def test_input_takes_the_time_a_serial_line_at_the_baud_rate_would(self):
+        console, _, sleeps = self.paced_console(38400)
+
+        console.stdin.write("set host x\nset port 5514\n")
+
+        self.assertAlmostEqual(25 * 10 / 38400, sum(sleeps))
+
+    # Bytes between two sleeps leave in one burst, so none is longer than the line
+    # would carry in one tick of the host's sleep.
+    def test_no_burst_is_longer_than_the_line_carries_in_a_tick(self):
+        console, _, sleeps = self.paced_console(38400)
+
+        console.stdin.write("set msg " + "X" * 375 + "\n")
+
+        self.assertAlmostEqual(384 * 10 / 38400, sum(sleeps))
+        for sleep in sleeps:
+            self.assertLessEqual(sleep, remote_console.HOST_TICK_SECONDS)
+
+    def test_paced_input_reaches_the_target_whole(self):
+        console, target, _ = self.paced_console(38400)
+        line = "set msg " + "X" * 375 + "\n"
+
+        console.stdin.write(line)
+
+        target.settimeout(5)
+        received = b""
+        while len(received) < len(line):
+            received += target.recv(4096)
+        self.assertEqual(line.encode(), received)
+
+    def test_with_no_baud_rate_input_is_not_paced(self):
+        sleeps = []
+        console = remote_console.RemoteConsole(self.connection, lambda: None, sleep=sleeps.append)
+
+        console.stdin.write("set host x\n")
+
+        self.assertEqual([], sleeps)
+
+    # A console of its own, paced at baud, with its target end and the sleeps it asked for.
+    def paced_console(self, baud):
         sleeps = []
         listener = socket.create_server(("127.0.0.1", 0))
         self.addCleanup(listener.close)
         target = socket.create_connection(listener.getsockname())
         self.addCleanup(target.close)
         connection, _ = listener.accept()
-        console = remote_console.RemoteConsole(connection, lambda: None, 0.05, sleeps.append)
-
-        console.stdin.write("set host x\nset port 5514\n")
-
-        self.assertEqual([0.05, 0.05], sleeps)
+        return remote_console.RemoteConsole(connection, lambda: None, baud, sleeps.append), target, sleeps
 
     def test_it_is_running_while_the_target_is_connected(self):
         self.assertIsNone(self.console.poll())
@@ -128,6 +165,92 @@ class RemoteConsoleTest(unittest.TestCase):
         return self.console.poll()
 
 
+class PromptTest(unittest.TestCase):
+    """Given its prompt, the console types the next line only once the target
+    has shown the prompt after the last - as a person at the terminal would."""
+
+    PROMPT = b"SolidSyslog> "
+
+    def setUp(self):
+        listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(listener.close)
+        self.target = socket.create_connection(listener.getsockname())
+        self.addCleanup(self.target.close)
+        self.target.settimeout(5)
+        connection, _ = listener.accept()
+        self.console = remote_console.RemoteConsole(
+            connection, lambda: None, prompt=self.PROMPT, prompt_timeout_seconds=5
+        )
+
+    def test_the_first_line_goes_at_once(self):
+        self.console.stdin.write("set a\n")
+
+        self.assertEqual(b"set a\n", self.target.recv(4096))
+
+    def test_a_line_waits_for_the_prompt_after_the_one_before(self):
+        self.console.stdin.write("set a\n")
+        self.target.recv(4096)
+
+        writer = self.write_in_background("set b\n")
+
+        self.assertFalse(self.arrives_within(0.3))
+        self.target.sendall(b"set a=1\r\n" + self.PROMPT)
+        self.assertEqual(b"set b\n", self.target.recv(4096))
+        writer.join(5)
+
+    def test_lines_written_together_still_wait_for_each_prompt(self):
+        writer = self.write_in_background("set a\nset b\n")
+
+        self.assertEqual(b"set a\n", self.target.recv(4096))
+        self.assertFalse(self.arrives_within(0.3))
+        self.target.sendall(self.PROMPT)
+        self.assertEqual(b"set b\n", self.target.recv(4096))
+        writer.join(5)
+
+    def test_a_prompt_split_across_reads_still_counts(self):
+        self.console.stdin.write("set a\n")
+        self.target.recv(4096)
+        writer = self.write_in_background("set b\n")
+
+        self.target.sendall(self.PROMPT[:5])
+        time.sleep(0.1)
+        self.target.sendall(self.PROMPT[5:])
+
+        self.assertEqual(b"set b\n", self.target.recv(4096))
+        writer.join(5)
+
+    def test_a_line_goes_anyway_when_the_prompt_never_comes(self):
+        listener = socket.create_server(("127.0.0.1", 0))
+        self.addCleanup(listener.close)
+        target = socket.create_connection(listener.getsockname())
+        self.addCleanup(target.close)
+        target.settimeout(5)
+        connection, _ = listener.accept()
+        console = remote_console.RemoteConsole(
+            connection, lambda: None, prompt=self.PROMPT, prompt_timeout_seconds=0.2
+        )
+        console.stdin.write("set a\n")
+        target.recv(4096)
+
+        console.stdin.write("set b\n")
+
+        self.assertEqual(b"set b\n", target.recv(4096))
+
+    def write_in_background(self, text):
+        writer = threading.Thread(target=self.console.stdin.write, args=(text,), daemon=True)
+        writer.start()
+        return writer
+
+    def arrives_within(self, seconds):
+        self.target.settimeout(seconds)
+        try:
+            return bool(self.target.recv(4096))
+        except TimeoutError:
+            return False
+        finally:
+            self.target.settimeout(5)
+
+
 class OpenTest(unittest.TestCase):
     def setUp(self):
         self.listener = socket.create_server(("127.0.0.1", 0))
@@ -144,15 +267,15 @@ class OpenTest(unittest.TestCase):
 
         self.assertEqual(b"booting", os.read(console.stdout.fileno(), 7))
 
-    def test_opening_gives_the_console_the_line_gap(self):
+    def test_opening_gives_the_console_the_baud_rate(self):
         sleeps = []
         console = remote_console.open_remote_target(
-            self.listener, self.start_a_target_that_connects, lambda: None, None, 0.05, sleeps.append
+            self.listener, self.start_a_target_that_connects, lambda: None, None, 38400, sleeps.append
         )
 
         console.stdin.write("set host x\n")
 
-        self.assertEqual([0.05], sleeps)
+        self.assertAlmostEqual(11 * 10 / 38400, sum(sleeps))
 
     def test_a_target_that_never_connects_times_out_and_is_stopped(self):
         stops = []
