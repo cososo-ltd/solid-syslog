@@ -324,6 +324,10 @@ foreach(vxworks64_test_target IN ITEMS
     SolidSyslogVxWorks64ResolverTest
     SolidSyslogVxWorks64DatagramTest
     SolidSyslogVxWorks64TcpStreamTest
+    SolidSyslogVxWorks64ClockTest
+    SolidSyslogVxWorks64SysUpTimeTest
+    SolidSyslogVxWorks64HostnameTest
+    SolidSyslogVxWorks64SleepTest
     BddTargetVxWorks64Test
 )
     if(TARGET ${vxworks64_test_target})
