@@ -608,28 +608,33 @@ Site categories that trigger this rule:
    and doubles per-send pool pressure).
 
    **(c)** `Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c`,
-   `SolidSyslogVxWorks64Resolver.c` and `SolidSyslogVxWorks64TcpStream.c`:
+   `SolidSyslogVxWorks64Resolver.c`, `SolidSyslogVxWorks64TcpStream.c` and
+   `SolidSyslogVxWorks64File.c`:
 
    ```c
    int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
    uint32_t found = (uint32_t) inet_addr((char*) host);
    found = (uint32_t) hostGetByName((char*) host);
    STATUS status = connectWithTimeout(self->Fd, (struct sockaddr*) sin, (int) sizeof(*sin), &timeout);
+   int written = write(self->Fd, (char*) buf, count);
    ```
 
    The public VxWorks 6.x API reference declares the buffer and address of
-   `sendto`, the string of `inet_addr` and `hostGetByName`, and the address of
-   `connectWithTimeout`, without `const`, though each only reads them. The
-   Datagram, Resolver and Stream contracts pass these as `const`, so the
+   `sendto`, the string of `inet_addr` and `hostGetByName`, the address of
+   `connectWithTimeout`, and the buffer of the kernel `write`, without `const`,
+   though each only reads them. The Datagram, Resolver, Stream and File
+   contracts pass these as `const`, so the
    qualifier is stripped at the call. Alternatives considered and rejected:
    copying the payload to a non-const buffer (a copy per send, defeating
    zero-copy), copying the host into a local non-const buffer (removes the two
    resolver sites at the cost of 256 bytes of stack per resolve), and copying
    the address into a local non-const `sockaddr_in` (removes the
    `connectWithTimeout` site at the cost of 16 bytes per connect). Neither copy
-   reaches `sendto`, so the deviation is needed regardless. The 6.4 headers
-   were checked on 2026-10-03, under S41.03, for the first three, and on
-   2026-10-05, under S41.11, for `connectWithTimeout`: none takes `const`, so
+   reaches `sendto`, so the deviation is needed regardless; copying the record
+   into a non-const buffer before `write` is rejected for the same per-write
+   cost. The 6.4 headers were checked on 2026-10-03, under S41.03, for the
+   first three, on 2026-10-05, under S41.11, for `connectWithTimeout`, and on
+   2026-10-05, under S41.12, for the kernel `write`: none takes `const`, so
    the sub-case stands as written.
 
 ### Scope
@@ -646,7 +651,7 @@ Site categories that trigger this rule:
   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, the lwIP
   `pbuf->payload` field cast in
   `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`, and the `sendto`,
-  `inet_addr`, `hostGetByName` and `connectWithTimeout` casts in
+  `inet_addr`, `hostGetByName`, `connectWithTimeout` and `write` casts in
   `Platform/VxWorks64/Source/`.
 
 ### Rationale
@@ -687,6 +692,10 @@ Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recor
 VxWorks64 TCP stream `connectWithTimeout` site added 2026-10-05, approved by the
 project owner, David Cozens. Recorded under
 [S41.11](https://github.com/cososo-ltd/solid-syslog/issues/958).
+
+VxWorks64 file `write` site added 2026-10-05, approved by the project owner,
+David Cozens. Recorded under
+[S41.12](https://github.com/cososo-ltd/solid-syslog/issues/959).
 
 ---
 
@@ -1170,8 +1179,9 @@ Stream implementation, and `SolidSyslogDatagram_SendTo` takes `const void*`
 likewise. Some third-party C libraries type their byte buffers as a character
 pointer rather than `void*`: mbedTLS uses `const unsigned char*` /
 `unsigned char*`, and the Winsock socket calls use `const char*` / `char*`
-where their POSIX counterparts use `void*`, as does the VxWorks 6.x `sendto`,
-which the public API reference declares taking `char*`. The implementation
+where their POSIX counterparts use `void*`, as do the VxWorks 6.x `sendto`,
+which the public API reference declares taking `char*`, and the VxWorks 6.4
+kernel `read` and `write`, both declared taking `char*`. The implementation
 cast bridging the two is unavoidable at the API boundary:
 
 ```c
@@ -1193,6 +1203,8 @@ Rule 11.5 fires on each such adapter cast.
   `VxWorks64Datagram_SendTo`, `char*`.
 - `Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c` -
   `VxWorks64TcpStream_Send` and `VxWorks64TcpStream_Read`, `char*`.
+- `Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c` -
+  `VxWorks64File_Read` and `VxWorks64File_Write`, `char*`.
 
 A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
 third-party C API will meet the same boundary, but is not covered by this
@@ -1245,6 +1257,9 @@ Cozens. Recorded under [S41.03](https://github.com/cososo-ltd/solid-syslog/issue
 
 VxWorks64 TCP stream sites added 2026-10-05, approved by the project owner,
 David Cozens. Recorded under [S41.11](https://github.com/cososo-ltd/solid-syslog/issues/958).
+
+VxWorks64 file sites added 2026-10-05, approved by the project owner, David
+Cozens. Recorded under [S41.12](https://github.com/cososo-ltd/solid-syslog/issues/959).
 
 ---
 
