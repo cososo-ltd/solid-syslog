@@ -6,6 +6,7 @@ as they do a local target's pipes.
 """
 
 import os
+import re
 import subprocess
 import threading
 import time
@@ -64,13 +65,41 @@ class RemoteConsole:
     # console ends when the target disconnects - stopping QEMU resets it - and
     # closing the pipe then gives the reader its end of file.
     def _copy_output(self):
+        exit_status = _ExitMarker()
         data = _receive(self._connection)
         while data:
             os.write(self._write_end, data)
+            if exit_status.seen_in(data):
+                self._stop()
             data = _receive(self._connection)
         os.close(self._write_end)
         self._connection.close()
-        self.returncode = 0
+        self.returncode = exit_status.code
+
+
+# The target cannot hand QEMU an exit status, so a target that ends the run
+# prints one as "[EXIT n]" and the console stops it. Output arrives in pieces of
+# any size, so the end of each piece is kept to find a marker split across two.
+class _ExitMarker:
+    _PATTERN = re.compile(rb"\[EXIT (\d+)\]")
+    _LONGEST = 16
+
+    def __init__(self):
+        self.code = 0
+        self._found = False
+        self._tail = b""
+
+    def seen_in(self, data):
+        newly_found = False
+        if not self._found:
+            text = self._tail + data
+            match = self._PATTERN.search(text)
+            if match:
+                self.code = int(match.group(1))
+                self._found = True
+                newly_found = True
+            self._tail = text[-self._LONGEST:]
+        return newly_found
 
 
 def _receive(connection):

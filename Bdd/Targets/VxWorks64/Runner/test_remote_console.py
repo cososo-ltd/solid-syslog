@@ -65,6 +65,33 @@ class RemoteConsoleTest(unittest.TestCase):
 
         self.assertEqual(0, self.poll_until_exited())
 
+    # A target cannot hand QEMU an exit status, so it prints one instead.
+    def test_an_exit_marker_from_the_target_becomes_its_exit_code(self):
+        self.target.sendall(b"store full\r\n[EXIT 2]\r\n")
+        self.target.close()
+
+        self.assertEqual(2, self.poll_until_exited())
+
+    def test_an_exit_marker_stops_the_target(self):
+        self.target.sendall(b"[EXIT 2]\r\n")
+        self.target.close()
+        self.poll_until_exited()
+
+        self.assertEqual(["stopped"], self.stops)
+
+    def test_an_exit_marker_split_across_reads_is_still_seen(self):
+        self.target.sendall(b"[EXI")
+        time.sleep(0.1)
+        self.target.sendall(b"T 2]\r\n")
+        self.target.close()
+
+        self.assertEqual(2, self.poll_until_exited())
+
+    def test_the_exit_marker_still_reaches_stdout(self):
+        self.target.sendall(b"[EXIT 2]")
+
+        self.assertEqual(b"[EXIT 2]", os.read(self.console.stdout.fileno(), 8))
+
     def test_killing_it_stops_the_target(self):
         self.console.kill()
 
