@@ -607,25 +607,30 @@ Site categories that trigger this rule:
    the buffer to PBUF_RAM (defeats the zero-copy point of PBUF_REF
    and doubles per-send pool pressure).
 
-   **(c)** `Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c` and
-   `SolidSyslogVxWorks64Resolver.c`:
+   **(c)** `Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c`,
+   `SolidSyslogVxWorks64Resolver.c` and `SolidSyslogVxWorks64TcpStream.c`:
 
    ```c
    int sent = sendto(self->Fd, (char*) buffer, (int) size, 0, (struct sockaddr*) sin, (int) sizeof(*sin));
    uint32_t found = (uint32_t) inet_addr((char*) host);
    found = (uint32_t) hostGetByName((char*) host);
+   STATUS status = connectWithTimeout(self->Fd, (struct sockaddr*) sin, (int) sizeof(*sin), &timeout);
    ```
 
    The public VxWorks 6.x API reference declares the buffer and address of
-   `sendto`, and the string of `inet_addr` and `hostGetByName`, without
-   `const`, though each only reads them. The Datagram and Resolver contracts
-   pass these as `const`, so the qualifier is stripped at the call.
-   Alternatives considered and rejected: copying the payload to a non-const
-   buffer (a copy per send, defeating zero-copy), and copying the host into a
-   local non-const buffer (removes the two resolver sites at the cost of 256
-   bytes of stack per resolve, but leaves `sendto`, so the deviation is needed
-   regardless). The 6.4 headers were checked on 2026-10-03, under S41.03:
-   none of the three takes `const`, so the sub-case stands as written.
+   `sendto`, the string of `inet_addr` and `hostGetByName`, and the address of
+   `connectWithTimeout`, without `const`, though each only reads them. The
+   Datagram, Resolver and Stream contracts pass these as `const`, so the
+   qualifier is stripped at the call. Alternatives considered and rejected:
+   copying the payload to a non-const buffer (a copy per send, defeating
+   zero-copy), copying the host into a local non-const buffer (removes the two
+   resolver sites at the cost of 256 bytes of stack per resolve), and copying
+   the address into a local non-const `sockaddr_in` (removes the
+   `connectWithTimeout` site at the cost of 16 bytes per connect). Neither copy
+   reaches `sendto`, so the deviation is needed regardless. The 6.4 headers
+   were checked on 2026-10-03, under S41.03, for the first three, and on
+   2026-10-05, under S41.11, for `connectWithTimeout`: none takes `const`, so
+   the sub-case stands as written.
 
 ### Scope
 
@@ -641,7 +646,8 @@ Site categories that trigger this rule:
   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, the lwIP
   `pbuf->payload` field cast in
   `Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c`, and the `sendto`,
-  `inet_addr` and `hostGetByName` casts in `Platform/VxWorks64/Source/`.
+  `inet_addr`, `hostGetByName` and `connectWithTimeout` casts in
+  `Platform/VxWorks64/Source/`.
 
 ### Rationale
 
@@ -677,6 +683,10 @@ boundary.
 
 Raised 2026-05-14, approved 2026-05-15 by the project owner, David Cozens. Recorded under
 [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367).
+
+VxWorks64 TCP stream `connectWithTimeout` site added 2026-10-05, approved by the
+project owner, David Cozens. Recorded under
+[S41.11](https://github.com/cososo-ltd/solid-syslog/issues/958).
 
 ---
 
@@ -1181,6 +1191,8 @@ Rule 11.5 fires on each such adapter cast.
   `WinsockDatagram_SendTo`, `char*`.
 - `Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c` -
   `VxWorks64Datagram_SendTo`, `char*`.
+- `Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c` -
+  `VxWorks64TcpStream_Send` and `VxWorks64TcpStream_Read`, `char*`.
 
 A future Stream, Datagram, hash or MAC implementation wrapping a byte-typed
 third-party C API will meet the same boundary, but is not covered by this
@@ -1230,6 +1242,9 @@ Raised and approved 2026-05-23 by the project owner, David Cozens. Recorded unde
 
 VxWorks64 datagram site added 2026-09-30, approved by the project owner, David
 Cozens. Recorded under [S41.03](https://github.com/cososo-ltd/solid-syslog/issues/933).
+
+VxWorks64 TCP stream sites added 2026-10-05, approved by the project owner,
+David Cozens. Recorded under [S41.11](https://github.com/cososo-ltd/solid-syslog/issues/958).
 
 ---
 
