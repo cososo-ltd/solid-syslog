@@ -4,8 +4,9 @@
 
 /** @file
  *  The C99 <stdint.h> for VxWorks 6.4 kernel builds, whose header tree has
- *  none. solidsyslog-vxworks64.mk puts this directory on the library's include
- *  path; code that includes SolidSyslog headers needs it on its own.
+ *  none. solidsyslog-vxworks64.mk puts this directory first on the library's
+ *  include path; the VxWorks 6.4 platform page says where application code
+ *  that includes SolidSyslog headers puts it, if anywhere.
  *
  *  The kernel's own type header already defines the exact-width types - int32_t
  *  as long - so they are taken from there, and a translation unit that also

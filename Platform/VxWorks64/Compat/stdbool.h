@@ -4,8 +4,9 @@
 
 /** @file
  *  The C99 <stdbool.h> for VxWorks 6.4 kernel builds, whose header tree has
- *  none. solidsyslog-vxworks64.mk puts this directory on the library's include
- *  path; code that includes SolidSyslog headers needs it on its own.
+ *  none. solidsyslog-vxworks64.mk puts this directory first on the library's
+ *  include path; the VxWorks 6.4 platform page says where application code
+ *  that includes SolidSyslog headers puts it, if anywhere.
  *
  *  Compiled as C99 - the library always is - bool is _Bool. Compiled as C89,
  *  as a kernel project's own sources usually are, bool is unsigned char: the
