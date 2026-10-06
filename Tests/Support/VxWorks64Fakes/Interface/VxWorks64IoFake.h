@@ -84,6 +84,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Make ioctl answer ERROR for this function code, and OK for the rest. */
     void VxWorks64IoFake_FailIoctl(int function);
 
+    /** As VxWorks64IoFake_FailIoctl, and set errno to this value as it fails. */
+    void VxWorks64IoFake_FailIoctlWithErrno(int function, int errnoValue);
+
     unsigned VxWorks64IoFake_IoctlCallCount(void);
 
     /** The descriptor, function and argument of the call-th ioctl since the

@@ -1,6 +1,8 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
+#include <cerrno>
+
 using namespace CososoTesting;
 
 #include "ConfigLockFake.h"
@@ -297,10 +299,18 @@ TEST(SolidSyslogVxWorks64File, WriteDoesNotCommitWhenSyncFails)
 
 TEST(SolidSyslogVxWorks64File, WriteReturnsTrueWhenTheFileSystemHasNoCommitToMake)
 {
-    VxWorks64IoFake_FailIoctl(VX_FIOCOMMITFS);
+    VxWorks64IoFake_FailIoctlWithErrno(VX_FIOCOMMITFS, ENOTSUP);
     SolidSyslogFile_Open(file, TEST_PATH);
 
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
+}
+
+TEST(SolidSyslogVxWorks64File, WriteReturnsFalseWhenTheCommitFails)
+{
+    VxWorks64IoFake_FailIoctlWithErrno(VX_FIOCOMMITFS, EIO);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    CHECK_FALSE(SolidSyslogFile_Write(file, "hello", 5));
 }
 
 TEST(SolidSyslogVxWorks64File, SeekToSeeksTheOpenDescriptor)
