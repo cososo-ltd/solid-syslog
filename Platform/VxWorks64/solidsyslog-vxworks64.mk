@@ -3,7 +3,7 @@
 # Builds Core, plus any platforms named in SOLIDSYSLOG_PLATFORMS, into one static
 # library with the Wind River toolchain a project already uses. It names no CPU:
 # everything about the target arrives from the project that runs it - normally
-# solidsyslog.makefile, which a VIP or DKM picks up from its own directory. What
+# through solidsyslog.makefile for a VIP, or solidsyslog-dkm.makefile for a DKM. What
 # it adds is C99: the dialect, because the flags a project generates select an
 # older one, and the C99 library headers the kernel header tree lacks, from
 # Compat/ beside this file.
