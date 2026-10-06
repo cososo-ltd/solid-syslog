@@ -81,10 +81,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     int VxWorks64IoFake_LastLseekWhence(void);
 
-    /** Make ioctl answer ERROR for this function code, and OK for the rest. */
+    /** Make ioctl answer ERROR for this function code, with errno EIO, and OK
+     *  for the rest. Every failure sets errno, so one left by an earlier call
+     *  never stands in for it. */
     void VxWorks64IoFake_FailIoctl(int function);
 
-    /** As VxWorks64IoFake_FailIoctl, and set errno to this value as it fails. */
+    /** As VxWorks64IoFake_FailIoctl, failing with this errno instead. */
     void VxWorks64IoFake_FailIoctlWithErrno(int function, int errnoValue);
 
     unsigned VxWorks64IoFake_IoctlCallCount(void);

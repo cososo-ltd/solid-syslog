@@ -313,6 +313,15 @@ TEST(SolidSyslogVxWorks64File, WriteReturnsFalseWhenTheCommitFails)
     CHECK_FALSE(SolidSyslogFile_Write(file, "hello", 5));
 }
 
+TEST(SolidSyslogVxWorks64File, WriteReturnsFalseWhenTheCommitFailsAfterAnEarlierCallLeftNotSupported)
+{
+    VxWorks64IoFake_FailIoctl(VX_FIOCOMMITFS);
+    SolidSyslogFile_Open(file, TEST_PATH);
+    errno = ENOTSUP;
+
+    CHECK_FALSE(SolidSyslogFile_Write(file, "hello", 5));
+}
+
 TEST(SolidSyslogVxWorks64File, SeekToSeeksTheOpenDescriptor)
 {
     SolidSyslogFile_Open(file, TEST_PATH);
