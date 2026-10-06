@@ -5,9 +5,9 @@
 # then exports the library and its public headers through Workbench's ADDED_*
 # extension variables.
 #
-# The library is built under external_build, which the project builds before its
-# own targets. Under make -j that order is not guaranteed, because the
-# project's targets do not depend on external_build.
+# The library is built under external_build, and the DKM's link target,
+# PROJECT_TARGET, depends on it too, so the link waits for the library under
+# make -j as well.
 
 SOLIDSYSLOG_VXWORKS64_DKM_MAKEFILE := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 SOLIDSYSLOG_DIR ?= $(dir $(SOLIDSYSLOG_VXWORKS64_DKM_MAKEFILE))../..
@@ -48,21 +48,29 @@ export ADDED_LIBS += -lsolidsyslog
 # quoting in the project's flags has to survive a shell.
 export SOLIDSYSLOG_TARGET_CFLAGS SOLIDSYSLOG_BUILD_DIR SOLIDSYSLOG_PLATFORMS
 
-.PHONY: solidsyslog_build_dir_check solidsyslog_library
+.PHONY: solidsyslog_config_check solidsyslog_library
 
 external_build :: solidsyslog_library
 
-solidsyslog_build_dir_check:
+$(PROJECT_TARGET): solidsyslog_library
+
+# Defined but empty passes the checks above, so each value is checked again here,
+# when it is used and whatever defined it has been read.
+solidsyslog_config_check:
+	$(if $(strip $(SOLIDSYSLOG_CC)),,$(error SOLIDSYSLOG_CC is empty - pass the DKM compiler command))
+	$(if $(strip $(SOLIDSYSLOG_AR)),,$(error SOLIDSYSLOG_AR is empty - pass the DKM archiver command))
+	$(if $(strip $(SOLIDSYSLOG_TARGET_CFLAGS)),,$(error SOLIDSYSLOG_TARGET_CFLAGS is empty - pass the DKM target flags))
+	$(if $(strip $(SOLIDSYSLOG_BUILD_DIR)),,$(error SOLIDSYSLOG_BUILD_DIR is empty - leave it unset for the default or name a directory))
 	$(if $(SOLIDSYSLOG_DKM_BUILD_DIR_UNSAFE),$(error PRJ_ROOT_DIR and BUILD_SPEC and MODE_DIR are not all set - include this from a Workbench DKM build or set SOLIDSYSLOG_BUILD_DIR))
 
 # The lower-level makefile uses the conventional CC and AR names.  The DKM
 # adapter supplies their values under SolidSyslog-specific names so they do not
 # leak into the product project; map just those command names for the sub-make.
 # Quoted, so a command that carries its own arguments arrives whole.
-solidsyslog_library: solidsyslog_build_dir_check
+solidsyslog_library: solidsyslog_config_check
 	$(MAKE) -f $(SOLIDSYSLOG_DIR)/Platform/VxWorks64/solidsyslog-vxworks64.mk \
 		CC="$(SOLIDSYSLOG_CC)" AR="$(SOLIDSYSLOG_AR)" TOOL_FAMILY="$(TOOL_FAMILY)"
 
-external_clean :: solidsyslog_build_dir_check
+external_clean :: solidsyslog_config_check
 	$(MAKE) -f $(SOLIDSYSLOG_DIR)/Platform/VxWorks64/solidsyslog-vxworks64.mk \
 		CC="$(SOLIDSYSLOG_CC)" AR="$(SOLIDSYSLOG_AR)" TOOL_FAMILY="$(TOOL_FAMILY)" clean
