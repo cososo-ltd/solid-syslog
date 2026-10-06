@@ -124,6 +124,7 @@ vxworks64_add_test(SolidSyslogVxWorks64DatagramTest
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64DatagramStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64AddressStatic.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
         ${VXWORKS64_FAKES}/VxWorks64NetFake.c
     LIBRARIES
         ConfigLockFake
@@ -137,6 +138,7 @@ vxworks64_add_test(SolidSyslogVxWorks64TcpStreamTest
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64TcpStreamStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64AddressStatic.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
         ${VXWORKS64_FAKES}/VxWorks64NetFake.c
     LIBRARIES
         ConfigLockFake
@@ -186,6 +188,29 @@ else()
     set(BDD_TARGET_VXWORKS64_TEMP_FILE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileStandard.c)
 endif()
 
+vxworks64_add_test(SolidSyslogVxWorks64FileTest
+    SOURCES
+        SolidSyslogVxWorks64FileTest.cpp
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64FileStatic.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
+    LIBRARIES
+        ConfigLockFake
+        ErrorHandlerFake
+)
+
+# The store's sys/stat.h stand-in shadows the host's, so only the store and its
+# fake see it.
+vxworks64_add_test(BddTargetVxWorks64StoreTest
+    SOURCES
+        BddTargetVxWorks64StoreTest.cpp
+    SHADOWED
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Store.c
+        ${VXWORKS64_FAKES}/VxWorks64FsFake.c
+    INCLUDES
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64
+)
+
 # The BDD target compiles here against the same fakes, so a change that breaks
 # it fails on the host as well as in the target build.
 vxworks64_add_test(BddTargetVxWorks64Test
@@ -198,8 +223,10 @@ vxworks64_add_test(BddTargetVxWorks64Test
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
-        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetServiceThread.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64FileStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Hostname.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64AddressStatic.c
@@ -216,13 +243,16 @@ vxworks64_add_test(BddTargetVxWorks64Test
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64TcpStream.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64TcpStreamStatic.c
         ${VXWORKS64_FAKES}/VxWorks64IntFake.c
+        ${VXWORKS64_FAKES}/VxWorks64IoFake.c
         ${VXWORKS64_FAKES}/VxWorks64NetFake.c
         ${VXWORKS64_FAKES}/VxWorks64SemFake.c
         ${VXWORKS64_FAKES}/VxWorks64TaskFake.c
         ${BDD_TARGET_VXWORKS64_TEMP_FILE}
     SHADOWED
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Clock.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Store.c
         ${VXWORKS64_CLOCK_SOURCES}
+        ${VXWORKS64_FAKES}/VxWorks64FsFake.c
     INCLUDES
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64

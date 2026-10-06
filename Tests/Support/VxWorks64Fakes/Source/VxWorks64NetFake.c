@@ -10,7 +10,6 @@
 #include <sys/times.h>
 
 #include "hostLib.h"
-#include "ioLib.h"
 #include "inetLib.h"
 #include "sockLib.h"
 
@@ -84,8 +83,6 @@ static int VxWorks64NetFake_RecvFd = -1;
 static const char* VxWorks64NetFake_RecvBuf = NULL;
 static int VxWorks64NetFake_RecvLen = 0;
 static int VxWorks64NetFake_RecvFlags = -1;
-static unsigned VxWorks64NetFake_CloseCount = 0U;
-static int VxWorks64NetFake_ClosedFd = -1;
 
 void VxWorks64NetFake_Reset(void)
 {
@@ -137,8 +134,6 @@ void VxWorks64NetFake_Reset(void)
     VxWorks64NetFake_RecvBuf = NULL;
     VxWorks64NetFake_RecvLen = 0;
     VxWorks64NetFake_RecvFlags = -1;
-    VxWorks64NetFake_CloseCount = 0U;
-    VxWorks64NetFake_ClosedFd = -1;
 }
 
 void VxWorks64NetFake_SetInetAddrReturn(unsigned long value)
@@ -290,16 +285,6 @@ const struct sockaddr* VxWorks64NetFake_LastSendtoTo(void)
 int VxWorks64NetFake_LastSendtoToLen(void)
 {
     return VxWorks64NetFake_SendtoToLen;
-}
-
-unsigned VxWorks64NetFake_CloseCallCount(void)
-{
-    return VxWorks64NetFake_CloseCount;
-}
-
-int VxWorks64NetFake_LastClosedFd(void)
-{
-    return VxWorks64NetFake_ClosedFd;
 }
 
 int socket(int domain, int type, int protocol)
@@ -565,11 +550,4 @@ int recv(int s, char* buf, int bufLen, int flags)
         }
     }
     return result;
-}
-
-STATUS close(int fd)
-{
-    VxWorks64NetFake_CloseCount++;
-    VxWorks64NetFake_ClosedFd = fd;
-    return OK;
 }

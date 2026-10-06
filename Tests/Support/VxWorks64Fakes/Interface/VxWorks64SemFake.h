@@ -25,6 +25,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** The id semMCreate last handed back. */
     SEM_ID VxWorks64SemFake_LastCreatedId(void);
 
+    /** The id the call-th semMCreate since the last reset handed back, counting
+     *  from 0; NULL for a call not made. Each call hands back its own id. */
+    SEM_ID VxWorks64SemFake_CreatedId(unsigned call);
+
     SEM_ID VxWorks64SemFake_LastTakenId(void);
 
     int VxWorks64SemFake_LastTakeTimeout(void);

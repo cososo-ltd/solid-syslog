@@ -12,6 +12,14 @@ function Get-DefaultProjectDirectory
     Join-Path $script:RepositoryRoot "build\vxworks64\$Tool"
     }
 
+# The disk image QEMU gives the target as its IDE disk, where the file store
+# lives. Outside the projects, so rebuilding one leaves it alone; the runner's
+# store-reset job removes it, and the next QEMU start creates it blank.
+function Get-StoreDiskPath
+    {
+    Join-Path $script:RepositoryRoot 'build\vxworks64\store-disk.img'
+    }
+
 function Get-ProjectFile
     {
     param([Parameter(Mandatory)] [string] $ProjectDirectory)

@@ -141,10 +141,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     int VxWorks64NetFake_LastRecvFlags(void);
 
-    unsigned VxWorks64NetFake_CloseCallCount(void);
-
-    int VxWorks64NetFake_LastClosedFd(void);
-
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64NETFAKE_H */

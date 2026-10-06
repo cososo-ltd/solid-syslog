@@ -23,13 +23,14 @@ include $(SOLIDSYSLOG_DIR)/Platform/VxWorks64/solidsyslog-vxworks64.mk
 
 BDD_TARGET_SRCS := $(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64/BddTargetVxWorks64Clock.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64/BddTargetVxWorks64Store.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetCustomSd.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetErrorText.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetInteractive.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetIps.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetLanguage.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetMessageSettings.c \
-	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetServiceThread.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetStoreSettings.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetSwitchConfig.c
 BDD_TARGET_INCLUDES := -I$(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64 -I$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common
 BDD_TARGET_LIB  := $(BDD_TARGET_BUILD_DIR)/libsolidsyslogbdd.a

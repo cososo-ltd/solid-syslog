@@ -9,6 +9,7 @@
 #define VXWORKS_H
 
 typedef int STATUS;
+typedef int BOOL;
 typedef unsigned long long UINT64;
 
 /* An entry point, as taskSpawn takes one, which a caller casts its entry
@@ -19,6 +20,8 @@ typedef int (*FUNCPTR)(void);
 
 /* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
 #define OK 0
+#define FALSE 0
+#define TRUE 1
 #define ERROR (-1)
 #define WAIT_FOREVER (-1)
 /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */

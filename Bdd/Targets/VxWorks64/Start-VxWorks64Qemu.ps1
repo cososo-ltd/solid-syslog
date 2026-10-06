@@ -4,7 +4,11 @@ Boots the SolidSyslog VxWorks 6.4 BDD target's ROM image in QEMU (Malta).
 
 .DESCRIPTION
 Starts one Malta 4Kc guest with a PCnet adapter on QEMU's user-mode network,
-which lets the guest reach the host and beyond through NAT.
+which lets the guest reach the host and beyond through NAT, and the store disk
+image as its primary IDE disk. A disk that is not there is created blank, and
+the target formats it the first time it builds its file store; one that is
+there keeps what the last run stored, which is what lets the store outlive a
+power cycle.
 
 With -WaitFor, the console goes to a log file; the script waits for that text,
 stops QEMU, and fails if it does not appear in time. That is the boot check.
@@ -22,6 +26,7 @@ param(
     [ValidateSet('sfdiab', 'sfgnu')]
     [string] $Tool = 'sfdiab',
     [string] $RomPath,
+    [string] $DiskPath,
     [Parameter(Mandatory, ParameterSetName = 'BootCheck')]
     [string] $WaitFor,
     [Parameter(ParameterSetName = 'BootCheck')]
@@ -38,6 +43,17 @@ $ErrorActionPreference = 'Stop'
 if (-not $RomPath)
     {
     $RomPath = Join-Path (Get-DefaultProjectDirectory -Tool $Tool) 'default_rom\vxWorks_rom.bin'
+    }
+if (-not $DiskPath)
+    {
+    $DiskPath = Get-StoreDiskPath
+    }
+if (-not (Test-Path -LiteralPath $DiskPath -PathType Leaf))
+    {
+    $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $DiskPath)
+    $disk = [System.IO.File]::Create($DiskPath)
+    try { $disk.SetLength(16MB) }
+    finally { $disk.Dispose() }
     }
 foreach ($file in @($QemuPath, $RomPath))
     {
@@ -65,7 +81,9 @@ $arguments = @(
     '-no-reboot',
     '-netdev', 'user,id=net0,ipv6=off',
     # The BSP routes the onboard Ethernet interrupt for PCI device 11.
-    '-device', 'pcnet,netdev=net0,addr=0xb,rombar=0'
+    '-device', 'pcnet,netdev=net0,addr=0xb,rombar=0',
+    # The primary master on the board's PIIX4 IDE controller: /ata0a.
+    '-drive', "file=$(ConvertTo-QemuPath $DiskPath),if=ide,index=0,format=raw"
 )
 
 if ($PSCmdlet.ParameterSetName -eq 'Serial')

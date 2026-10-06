@@ -1,7 +1,7 @@
 # VxWorks 6.4 setup
 
-Wiring the UDP and TCP transports, the mutex, the atomic counter, and the clock,
-hostname, uptime and sleep callbacks. [VxWorks 6.4](index.md) covers what they
+Wiring the UDP and TCP transports, the file store, the mutex, the atomic
+counter, and the clock, hostname, uptime and sleep callbacks. [VxWorks 6.4](index.md) covers what they
 fill and what they leave to you.
 
 ## What to link
@@ -76,12 +76,30 @@ Hand all three to `SolidSyslogStreamSender_Create`; one address, one resolver
 and one stream serve one sender. Only the stream takes a configuration, and
 then only to tune its connect deadline.
 
+## Giving store-and-forward a file
+
+```c
+#include "SolidSyslogFileBlockDevice.h"
+#include "SolidSyslogVxWorks64File.h"
+
+struct SolidSyslogFile* file = SolidSyslogVxWorks64File_Create();
+
+/* Block files /ata0a/STORE00.log and on, up to 64 KiB each. */
+struct SolidSyslogBlockDevice* device = SolidSyslogFileBlockDevice_Create(file, "/ata0a/STORE", 65536);
+```
+
+Hand the device to `SolidSyslogBlockStore_Create`. The file takes no
+configuration; one file serves one block device. The prefix names a volume the
+image has already mounted - here dosFs on the primary IDE disk - and the names
+the block device adds to it fit dosFs's 8.3 limit. Mount, and if need be format,
+the volume before the store is created: the file does neither.
+
 ## When a pool runs out
 
 Drawing past the pool sizes in
 [Adding it to your build](../../build-integration.md#tunables) reports
-`CRITICAL`. The resolver, the datagram and the stream then hand back their Null
-objects. The address hands back one shared, writable fallback instead, so every
+`CRITICAL`. The resolver, the datagram, the stream and the file then hand back
+their Null objects. The address hands back one shared, writable fallback instead, so every
 sender drawn beyond the pool shares that storage and races on it; raising
 `SOLIDSYSLOG_ADDRESS_POOL_SIZE` removes the race.
 

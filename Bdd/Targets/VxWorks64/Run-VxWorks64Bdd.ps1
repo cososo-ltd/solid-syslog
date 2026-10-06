@@ -24,9 +24,11 @@ own default, so nothing else may hold it: a container publishing it, such as the
 devcontainer's syslog-ng, has to be stopped for the run. No other collector may
 be running either, because both would write Bdd/output/received.jsonl.
 
-The tag filter is this target's list of what it cannot do yet: the file store
-(@store), TLS (@tls), and anything tagged @vxworks64wip, which a scenario
-leaves as the story that gives the target the capability lands.
+The tag filter is this target's list of what it cannot do: TLS (@tls) and the
+at-rest policies that need a TLS library (@hmac, @aesgcm), which this platform
+does not carry, and anything tagged @vxworks64wip, which a scenario leaves as
+the story that gives the target the capability lands. Each store scenario
+starts on a blank disk: the runner's store-reset job removes the last one.
 
 -SkipBuild reuses the image already built on the build machine. -Paths runs
 only the features given, as behave takes them, under the same tag filter.
@@ -44,7 +46,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'VxWorks64Tools.ps1')
 
-$tags = '(@udp or @tcp) and not @store and not @tls and not @wip and not @no_rtc and not @vxworks64wip'
+$tags = '(@udp or @tcp) and not @tls and not @hmac and not @aesgcm and not @wip and not @no_rtc and not @vxworks64wip'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 

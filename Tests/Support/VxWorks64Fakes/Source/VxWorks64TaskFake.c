@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 
+#include "edrLib.h"
 #include "errnoLib.h"
 #include "routeLib.h"
 #include "sysLib.h"
@@ -15,6 +16,7 @@ static bool VxWorks64TaskFake_SpawnsFail = false;
 static unsigned VxWorks64TaskFake_Delays = 0U;
 static int VxWorks64TaskFake_DelayTicks = 0;
 static UINT64 VxWorks64TaskFake_Ticks = 0U;
+static BOOL VxWorks64TaskFake_EdrDebug = FALSE;
 
 void VxWorks64TaskFake_Reset(void)
 {
@@ -23,6 +25,22 @@ void VxWorks64TaskFake_Reset(void)
     VxWorks64TaskFake_Delays = 0U;
     VxWorks64TaskFake_DelayTicks = 0;
     VxWorks64TaskFake_Ticks = 0U;
+    VxWorks64TaskFake_EdrDebug = FALSE;
+}
+
+int VxWorks64TaskFake_EdrDebugMode(void)
+{
+    return VxWorks64TaskFake_EdrDebug;
+}
+
+BOOL edrSystemDebugModeGet(void)
+{
+    return VxWorks64TaskFake_EdrDebug;
+}
+
+void edrSystemDebugModeSet(BOOL mode)
+{
+    VxWorks64TaskFake_EdrDebug = mode;
 }
 
 void VxWorks64TaskFake_FailSpawns(void)

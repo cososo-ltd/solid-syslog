@@ -20,6 +20,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** What tick64Get answers. sysClkRateGet answers 60, the VxWorks default. */
     void VxWorks64TaskFake_SetTicks(unsigned long long ticks);
 
+    /** Whether ED&R is in its debug policy: off until edrSystemDebugModeSet. */
+    int VxWorks64TaskFake_EdrDebugMode(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* VXWORKS64TASKFAKE_H */

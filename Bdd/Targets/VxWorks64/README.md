@@ -134,6 +134,7 @@ waiting does not stop the job: the runner carries on with it.
 | `boot-check "marker=<text>"` | Checklist step 3, waiting for that text |
 | `qemu-start` | Boots the image, its console connecting to port 8766 here |
 | `qemu-stop` | Stops the QEMU that `qemu-start` began |
+| `store-reset` | Removes the store disk image, so the next boot has a blank disk |
 | `status` | Reports the clone's commit, and whether QEMU is running |
 
 `python Runner\job_service.py console`, started before `qemu-start`, shows
@@ -164,6 +165,18 @@ creation script sets the project's build macros with
   `romStart.c`, `prjConfig.c` and `linkSyms.c` - so the project's own sources
   keep the warning.
 
+The creation script also adds the disk the file store lives on: the ATA driver
+for the Malta board's PIIX4 IDE controller, the extended block device layer, the
+file system monitor with rawFs, and dosFs with its formatter and cache. QEMU
+gives the target `build\vxworks64\store-disk.img` as its primary IDE disk,
+`/ata0a`, creating it blank when it is absent and keeping it across a restart,
+which is what lets the power-cycle scenario replay its records. The target
+formats a blank disk the first time it builds its store, and the run removes the
+image, through the runner's `store-reset` job, before each store scenario. The
+BSP has to acknowledge the IDE interrupt at the board's interrupt controller
+once the driver has serviced it; a BSP that does not leaves the boot silent
+with a disk attached.
+
 The creation script also adds the network the target sends over: the IPv4 stack
 with UDP, TCP, sockets and select, the host table, routing, and the END driver
 for QEMU's PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
@@ -171,6 +184,12 @@ are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user network instead,
 as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
 `10.0.2.2`, at start-up, and the harness names the collector with `set host`
 and `set port` over the console.
+
+At start-up the target also puts ED&R in its debug policy and reports the
+policy that took: a fatal error in a task then stops the task and prints the
+exception, where the deployed policy reboots the target without a word. The
+boot line's `0x400` flag cannot select it on this image, which takes its boot
+line from the board's NVRAM and reads the flag before parsing the line.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the

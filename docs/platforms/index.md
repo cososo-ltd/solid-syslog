@@ -17,7 +17,7 @@ vtable.
 | [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | | ● | ● |
 | [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | | ● | |
 | [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | | ● | |
-| [VxWorks 6.4](vxworks64/index.md) | VxWorks 6.4 kernel API | ● | | | | | ● | ● |
+| [VxWorks 6.4](vxworks64/index.md) | VxWorks 6.4 kernel API | ● | | | ● | | ● | ● |
 | [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | | |
 | [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | | |
 | [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | | |
