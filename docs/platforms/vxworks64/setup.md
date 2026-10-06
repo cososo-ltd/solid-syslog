@@ -90,8 +90,9 @@ struct SolidSyslogBlockDevice* device = SolidSyslogFileBlockDevice_Create(file, 
 
 Hand the device to `SolidSyslogBlockStore_Create`. The file takes no
 configuration; one file serves one block device. The prefix names a volume the
-image has already mounted - here dosFs on the primary IDE disk - and the names
-the block device adds to it fit dosFs's 8.3 limit. Mount, and if need be format,
+image has already mounted - here dosFs or HRFS on the primary IDE disk - and
+the names the block device adds to it fit dosFs's 8.3 limit, which HRFS does
+not impose. Mount, and if need be format,
 the volume before the store is created: the file does neither.
 
 ## When a pool runs out
