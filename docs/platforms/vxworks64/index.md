@@ -192,7 +192,9 @@ The file reports a write as done only when `write` took every byte and
 `FIOSYNC` on the file then succeeded; anything less is a failed write. It
 follows the sync with `FIOCOMMITFS`, which commits a transactional file
 system's transaction, as HRFS keeps one. dosFs has no transaction to commit, so
-the answer to that call does not decide the write.
+the answer to that call does not decide the write - and so, on HRFS, a commit
+that fails goes unreported, and the write still counts as done. Durability has
+been exercised on dosFs only.
 
 ### Mounting and formatting are yours
 

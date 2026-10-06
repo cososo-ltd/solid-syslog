@@ -118,8 +118,8 @@ static bool VxWorks64File_Write(struct SolidSyslogFile* base, const void* buf, s
 }
 
 /* FIOSYNC synchronises what the file system holds for this file with the
- * device. FIOCOMMITFS then commits a transactional file system's (HRFS)
- * transaction; dosFs has none, so its answer does not decide the commit. */
+ * device. FIOCOMMITFS then commits a transactional file system's (HRFS) one;
+ * dosFs has none, so its answer is not checked - an HRFS failure goes unseen. */
 static inline bool VxWorks64File_Commit(int fd)
 {
     bool synced = ioctl(fd, FIOSYNC, 0) != ERROR;
