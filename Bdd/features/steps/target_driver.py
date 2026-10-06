@@ -287,7 +287,8 @@ def apply_extra_args(context, process, extra_args):
     # The remote target's collector is this machine, at the address the target
     # reached it - which only the console knows - and on the port the run gave
     # the collector. The target has no battery-backed clock, so it takes this
-    # machine's time, in UTC seconds, before it logs anything.
+    # machine's time, in UTC seconds, before it logs anything. The file system
+    # its store disk holds is the run's, sent before any `set store file`.
     if target == "vxworks64":
         process.stdin.write(f"set time {int(time.time())}\n")
         process.stdin.write(f"set host {process.collector_address}\n")
@@ -295,6 +296,10 @@ def apply_extra_args(context, process, extra_args):
         collector_port = os.environ.get("VXWORKS64_COLLECTOR_PORT")
         if collector_port:
             process.stdin.write(f"set port {collector_port}\n")
+            written += 1
+        file_system = os.environ.get("VXWORKS64_FILE_SYSTEM")
+        if file_system:
+            process.stdin.write(f"set filesystem {file_system}\n")
             written += 1
     if (not extra_args) or (target not in _SET_LINE_TARGETS):
         process.stdin.flush()

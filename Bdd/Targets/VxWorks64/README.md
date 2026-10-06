@@ -64,8 +64,10 @@ pass, fail or not run.
 2. `Build-VxWorks64Vip.ps1 -Clean` ends with `Diagnostics: none`.
 3. `Start-VxWorks64Qemu.ps1 -WaitFor 'SolidSyslog VxWorks 6.4 BDD target: Core ran'`
    reports `PASS`.
-4. `Run-VxWorks64Bdd.ps1` passes: every scenario its tag filter selects passes
-   against the commit (see [Running the BDD scenarios](#running-the-bdd-scenarios)).
+4. `Run-VxWorks64Bdd.ps1` passes on each file system the store can live on:
+   every scenario its tag filter selects passes against the commit, once with
+   `-FileSystem hrfs` and once with `-FileSystem dosfs` (see
+   [Running the BDD scenarios](#running-the-bdd-scenarios)).
 
 ## Running the BDD scenarios
 
@@ -83,9 +85,11 @@ It needs the job service and the runner set up as in
 [Driving it from another machine](#driving-it-from-another-machine), and
 nothing else on the development machine holding UDP or TCP 5514. A container that
 publishes the port - the devcontainer's syslog-ng does - has to be stopped for
-the run, and the script names it and refuses if one is up. `-SkipBuild` reuses
-the image already built; `-Paths` runs the features given, under the same tag
-filter. The filter, in the script, is this target's list of what it cannot do
+the run, and the script names it and refuses if one is up. `-FileSystem`
+chooses what the store's disk holds, `hrfs` by default or `dosfs`: the image
+carries both, and the target formats a blank disk with the one chosen and
+refuses a disk that holds the other. `-SkipBuild` reuses the image already
+built; `-Paths` runs the features given, under the same tag filter. The filter, in the script, is this target's list of what it cannot do
 yet: [`docs/bdd.md`](../../../docs/bdd.md#feature-tags) says what each
 `@vxworks64wip` scenario waits for.
 
@@ -167,11 +171,12 @@ creation script sets the project's build macros with
 
 The creation script also adds the disk the file store lives on: the ATA driver
 for the Malta board's PIIX4 IDE controller, the extended block device layer, the
-file system monitor with rawFs, and dosFs with its formatter and cache. QEMU
-gives the target `build\vxworks64\store-disk.img` as its primary IDE disk,
-`/ata0a`, creating it blank when it is absent and keeping it across a restart,
-which is what lets the power-cycle scenario replay its records. The target
-formats a blank disk the first time it builds its store, and the run removes the
+file system monitor with rawFs, dosFs with its formatter and cache, and HRFS
+with its formatter. QEMU gives the target `build\vxworks64\store-disk.img` as
+its primary IDE disk, `/ata0a`, creating it blank when it is absent and keeping
+it across a restart, which is what lets the power-cycle scenario replay its
+records. The target formats a blank disk the first time it builds its store,
+with the file system `set filesystem` chose, and the run removes the
 image, through the runner's `store-reset` job, before each store scenario. The
 BSP has to acknowledge the IDE interrupt at the board's interrupt controller
 once the driver has serviced it; a BSP that does not leaves the boot silent

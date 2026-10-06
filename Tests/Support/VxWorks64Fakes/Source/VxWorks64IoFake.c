@@ -2,6 +2,7 @@
 
 #include "VxWorks64IoFake.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -77,6 +78,7 @@ static int VxWorks64IoFake_LseekFd = -1;
 static long VxWorks64IoFake_LseekOffset = -1;
 static int VxWorks64IoFake_LseekWhence = -1;
 static int VxWorks64IoFake_FailingIoctl = VXWORKS64IOFAKE_NONE;
+static int VxWorks64IoFake_FailingIoctlErrno = EIO;
 static unsigned VxWorks64IoFake_Ioctls = 0U;
 static struct VxWorks64IoFake_IoctlCall VxWorks64IoFake_IoctlLog[VXWORKS64IOFAKE_IOCTL_LOG_SIZE];
 static bool VxWorks64IoFake_RemovesFail = false;
@@ -189,6 +191,7 @@ void VxWorks64IoFake_Reset(void)
     VxWorks64IoFake_LseekOffset = -1;
     VxWorks64IoFake_LseekWhence = -1;
     VxWorks64IoFake_FailingIoctl = VXWORKS64IOFAKE_NONE;
+    VxWorks64IoFake_FailingIoctlErrno = EIO;
     VxWorks64IoFake_Ioctls = 0U;
     VxWorks64IoFake_RemovesFail = false;
     VxWorks64IoFake_Removes = 0U;
@@ -330,7 +333,13 @@ int VxWorks64IoFake_LastLseekWhence(void)
 
 void VxWorks64IoFake_FailIoctl(int function)
 {
+    VxWorks64IoFake_FailIoctlWithErrno(function, EIO);
+}
+
+void VxWorks64IoFake_FailIoctlWithErrno(int function, int errnoValue)
+{
     VxWorks64IoFake_FailingIoctl = function;
+    VxWorks64IoFake_FailingIoctlErrno = errnoValue;
 }
 
 unsigned VxWorks64IoFake_IoctlCallCount(void)
@@ -512,6 +521,10 @@ int ioctl(int fd, int function, int arg)
         {
             file->Size = (size_t) arg;
         }
+    }
+    if (fails)
+    {
+        errno = VxWorks64IoFake_FailingIoctlErrno;
     }
     return fails ? ERROR : OK;
 }

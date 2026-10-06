@@ -87,6 +87,7 @@ static int BddTargetVxWorks64_ServiceTask(void);
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static bool BddTargetVxWorks64_SetByName(const char* name, const char* value);
 static bool BddTargetVxWorks64_SetTime(const char* value);
+static bool BddTargetVxWorks64_SetFileSystem(const char* value);
 static bool BddTargetVxWorks64_SetStore(const char* value);
 static bool BddTargetVxWorks64_ReadyTheDisk(void);
 static bool BddTargetVxWorks64_CarriesThePolicy(void);
@@ -131,6 +132,8 @@ static bool storeIsFile;
 static struct SolidSyslogFile* storeFile;
 static struct SolidSyslogBlockDevice* storeBlockDevice;
 static struct SolidSyslogSecurityPolicy* storePolicy;
+/* What the store's disk is formatted with, or must already hold. */
+static enum BddTargetVxWorks64FileSystem storeFileSystem;
 /* Held while the logger is serviced or replaced. SolidSyslog is a one-slot
  * pool, so a replaced logger occupies the slot the console task was handed;
  * the lock keeps the service task out while it is rebuilt. */
@@ -260,6 +263,7 @@ static void BddTargetVxWorks64_BuildPipeline(void)
 
     store = SolidSyslogNullStore_Get();
     storeIsFile = false;
+    storeFileSystem = BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS;
     BddTargetMessageSettings_Reset(DEFAULT_HOST);
     BddTargetStoreSettings_Reset();
     sender = BddTargetVxWorks64_CreateSenders();
@@ -393,8 +397,8 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
     consoleEnded = true;
 }
 
-/* `set time` and `set transport` are this target's; every other setting is the
- * shared one. */
+/* `set time`, `set transport`, `set filesystem` and `set store` are this
+ * target's; every other setting is the shared one. */
 static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
 {
     bool taken = false;
@@ -407,6 +411,10 @@ static bool BddTargetVxWorks64_SetByName(const char* name, const char* value)
     {
         BddTargetSwitchConfig_SetByName(value);
         taken = true;
+    }
+    else if (strcmp(name, "filesystem") == 0)
+    {
+        taken = BddTargetVxWorks64_SetFileSystem(value);
     }
     else if (strcmp(name, "store") == 0)
     {
@@ -433,6 +441,26 @@ static bool BddTargetVxWorks64_SetTime(const char* value)
     return taken;
 }
 
+/* `set filesystem dosfs` or `hrfs` chooses what `set store file` formats a
+ * blank disk with, and what it accepts on one already formatted. */
+static bool BddTargetVxWorks64_SetFileSystem(const char* value)
+{
+    bool taken = true;
+    if (strcmp(value, "dosfs") == 0)
+    {
+        storeFileSystem = BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS;
+    }
+    else if (strcmp(value, "hrfs") == 0)
+    {
+        storeFileSystem = BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS;
+    }
+    else
+    {
+        taken = false;
+    }
+    return taken;
+}
+
 /* `set store null` keeps the NullStore the target boots with; `set store file`
  * moves the logger onto the file store on the target's disk. */
 static bool BddTargetVxWorks64_SetStore(const char* value)
@@ -449,12 +477,20 @@ static bool BddTargetVxWorks64_SetStore(const char* value)
     return taken;
 }
 
-/* The kernel's own reason, so a disk that will not mount or format can be told
- * apart from a store the harness refused. */
+/* Why the disk is not ready - the kernel's own reason for a format that failed -
+ * so it can be told apart from a store the harness refused. */
 static bool BddTargetVxWorks64_ReadyTheDisk(void)
 {
-    bool ready = BddTargetVxWorks64Store_Mount();
-    if (!ready)
+    enum BddTargetVxWorks64StoreMountResult result = BddTargetVxWorks64Store_Mount(storeFileSystem);
+    if (result == BDD_TARGET_VXWORKS64_STORE_OTHER_FILE_SYSTEM)
+    {
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "store disk is not %s\n",
+            (storeFileSystem == BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS) ? "hrfs" : "dosfs"
+        );
+    }
+    else if (result == BDD_TARGET_VXWORKS64_STORE_FORMAT_FAILED)
     {
         (void) fprintf(
             BddTargetVxWorks64_Reports(),
@@ -462,7 +498,11 @@ static bool BddTargetVxWorks64_ReadyTheDisk(void)
             (unsigned) errnoGet()
         );
     }
-    return ready;
+    else
+    {
+        /* Mounted. */
+    }
+    return result == BDD_TARGET_VXWORKS64_STORE_MOUNTED;
 }
 
 /* No TLS library comes with this platform, so the policies that need one are

@@ -65,8 +65,8 @@ resolved from a dotted address, through QEMU's user network to a syslog-ng
 collector on another machine. The BDD target runs the mutex, guarding the buffer
 its console and service tasks share.
 
-With dosFs on the image's IDE disk, the file has carried the BDD store
-scenarios: records stored while the collector was down were sent once it
+With dosFs, and again with HRFS, on the image's IDE disk, the file has carried
+the BDD store scenarios: records stored while the collector was down were sent once it
 returned, and records still in the store when QEMU was stopped mid-run were
 replayed after it started again.
 
@@ -188,13 +188,24 @@ store.
 
 ### A write counts once the file system has synced it
 
-The file reports a write as done only when `write` took every byte and
-`FIOSYNC` on the file then succeeded; anything less is a failed write. It
-follows the sync with `FIOCOMMITFS`, which commits a transactional file
-system's transaction, as HRFS keeps one. dosFs has no transaction to commit, so
-the answer to that call does not decide the write - and so, on HRFS, a commit
-that fails goes unreported, and the write still counts as done. Durability has
-been exercised on dosFs only.
+The file reports a write as done only when `write` took every byte, `FIOSYNC`
+on the file then succeeded, and `FIOCOMMITFS` either succeeded or answered
+`ENOTSUP`; anything less is a failed write. What the commit means depends on
+the volume:
+
+- On HRFS, every write commits its own transaction before it returns, and
+  `FIOSYNC` has nothing left to do. HRFS passes `FIOCOMMITFS` down to the block
+  device, and the ATA driver answers `ENOTSUP`, which counts as nothing to
+  commit.
+- On dosFs, `FIOSYNC` writes the file's cached data to the disk. dosFs turns
+  `FIOCOMMITFS` into a commit request to the block device beneath it: the ATA
+  disk has no transaction and answers OK.
+- On dosFs over the transactional block layer (`INCLUDE_XBD_TRANS`),
+  `FIOCOMMITFS` commits that layer's transaction, and a commit that fails is a
+  failed write. That layer has not been exercised.
+
+Durability has been exercised on dosFs and on HRFS, each on the image's IDE
+disk.
 
 ### A path that will not open counts as deleted
 

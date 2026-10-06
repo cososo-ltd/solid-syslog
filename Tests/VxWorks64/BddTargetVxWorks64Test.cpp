@@ -343,6 +343,86 @@ TEST(BddTargetVxWorks64, SetStoreFileReadiesTheDisk)
     CALLED_FAKE(VxWorks64FsFake_Stat, ONCE);
 }
 
+TEST(BddTargetVxWorks64, SetStoreFileFormatsABlankDiskWithHrfsUnlessToldOtherwise)
+{
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set store file\nquit\n");
+
+    CALLED_FAKE(VxWorks64FsFake_HrfsFormat, ONCE);
+    CALLED_FAKE(VxWorks64FsFake_DosFsVolFormat, NEVER);
+}
+
+TEST(BddTargetVxWorks64, SetFileSystemDosFsFormatsABlankDiskWithDosFs)
+{
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set filesystem dosfs\nset store file\nquit\n");
+
+    CALLED_FAKE(VxWorks64FsFake_DosFsVolFormat, ONCE);
+    CALLED_FAKE(VxWorks64FsFake_HrfsFormat, NEVER);
+}
+
+TEST(BddTargetVxWorks64, SetFileSystemHrfsFormatsABlankDiskWithHrfs)
+{
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set filesystem dosfs\nset filesystem hrfs\nset store file\nquit\n");
+
+    CALLED_FAKE(VxWorks64FsFake_HrfsFormat, ONCE);
+    CALLED_FAKE(VxWorks64FsFake_DosFsVolFormat, NEVER);
+}
+
+TEST(BddTargetVxWorks64, SetFileSystemRefusesOneTheImageDoesNotCarry)
+{
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set filesystem dosfs\nset filesystem nfs\nset store file\nquit\n");
+
+    CALLED_FAKE(VxWorks64FsFake_DosFsVolFormat, ONCE);
+}
+
+TEST(BddTargetVxWorks64, SetStoreFileReportsADiskThatHoldsTheOtherFileSystem)
+{
+    VxWorks64FsFake_FormatTheVolumeAsDosFs();
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set store file\nquit\n");
+
+    STRCMP_CONTAINS("store disk is not hrfs", Reported().c_str());
+}
+
+TEST(BddTargetVxWorks64, SetStoreFileNamesDosFsWhenTheDiskHoldsHrfs)
+{
+    VxWorks64FsFake_FormatTheVolumeAsHrfs();
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set filesystem dosfs\nset store file\nquit\n");
+
+    STRCMP_CONTAINS("store disk is not dosfs", Reported().c_str());
+}
+
+TEST(BddTargetVxWorks64, SetStoreFileIsRefusedWhenTheDiskHoldsTheOtherFileSystem)
+{
+    VxWorks64FsFake_FormatTheVolumeAsDosFs();
+
+    StoreOneMessage("");
+
+    CALLED_FAKE(VxWorks64IoFake_Open, NEVER);
+}
+
+TEST(BddTargetVxWorks64, ABootForgetsTheFileSystemOfTheLastBoot)
+{
+    BddTargetVxWorks64_Init();
+    RunConsoleWith("set filesystem dosfs\nquit\n");
+    BddTargetVxWorks64_Teardown();
+    BddTargetVxWorks64_Init();
+
+    RunConsoleWith("set store file\nquit\n");
+
+    CALLED_FAKE(VxWorks64FsFake_HrfsFormat, ONCE);
+}
+
 TEST(BddTargetVxWorks64, SetStoreFileKeepsMessagesInFilesOnTheDisk)
 {
     StoreOneMessage("");

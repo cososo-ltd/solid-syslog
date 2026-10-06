@@ -4,6 +4,7 @@
 
 #include "SolidSyslogVxWorks64File.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -118,16 +119,21 @@ static bool VxWorks64File_Write(struct SolidSyslogFile* base, const void* buf, s
 }
 
 /* FIOSYNC synchronises what the file system holds for this file with the
- * device. FIOCOMMITFS then commits a transactional file system's (HRFS) one;
- * dosFs has none, so its answer is not checked - an HRFS failure goes unseen. */
+ * device. FIOCOMMITFS then commits a transactional block device's transaction,
+ * which dosFs can sit on; a device with none answers ENOTSUP, as HRFS passes
+ * the request down to one, and that counts as committed. */
 static inline bool VxWorks64File_Commit(int fd)
 {
-    bool synced = ioctl(fd, FIOSYNC, 0) != ERROR;
-    if (synced)
+    bool committed = ioctl(fd, FIOSYNC, 0) != ERROR;
+    if (committed)
     {
-        (void) ioctl(fd, FIOCOMMITFS, 0);
+        int status = ioctl(fd, FIOCOMMITFS, 0);
+        /* Read errno straight after the call that set it, with nothing between
+         * (MISRA 22.10). */
+        int commitErrno = (status == ERROR) ? errno : 0;
+        committed = (status != ERROR) || (commitErrno == ENOTSUP);
     }
-    return synced;
+    return committed;
 }
 
 static void VxWorks64File_SeekTo(struct SolidSyslogFile* base, size_t offset)
