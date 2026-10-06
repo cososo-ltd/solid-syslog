@@ -196,6 +196,16 @@ the answer to that call does not decide the write - and so, on HRFS, a commit
 that fails goes unreported, and the write still counts as done. Durability has
 been exercised on dosFs only.
 
+### A path that will not open counts as deleted
+
+Delete reports success when `remove` succeeds, and also when it fails but the
+path then will not open, which is how an already-absent path shows. A volume
+that has become unavailable shows the same way, so a block file still on it
+counts as deleted: the store forgets the block, and finds it again at its next
+start-up. Nothing is reported either way.
+[#965](https://github.com/cososo-ltd/solid-syslog/issues/965) tracks telling
+the two apart and reporting a delete that fails.
+
 ### Mounting and formatting are yours
 
 The file opens the paths the block device gives it, under a volume the image
