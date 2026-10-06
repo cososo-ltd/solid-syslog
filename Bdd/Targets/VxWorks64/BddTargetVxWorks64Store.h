@@ -11,8 +11,15 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* Readies the disk the file store lives on: dosFs, formatted on first use. */
-    bool BddTargetVxWorks64Store_Mount(void);
+    /* The file systems the image carries, either of which the store can live on. */
+    enum BddTargetVxWorks64FileSystem
+    {
+        BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS,
+        BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS
+    };
+
+    /* Readies the disk the file store lives on, formatted on first use. */
+    bool BddTargetVxWorks64Store_Mount(enum BddTargetVxWorks64FileSystem fileSystem);
 
 SOLIDSYSLOG_EXTERN_C_END
 

@@ -8,13 +8,17 @@
 #define DOSFSLIB_H
 
 #define dosFsVolFormat VxWorks64FsFake_DosFsVolFormat
+#define dosFsVolDescGet VxWorks64FsFake_DosFsVolDescGet
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+    typedef struct DOS_VOLUME_DESC* DOS_VOLUME_DESC_ID;
+
     STATUS dosFsVolFormat(char* path, int opt, FUNCPTR pPromptFunc);
+    DOS_VOLUME_DESC_ID dosFsVolDescGet(void* pDevNameOrPVolDesc, u_char** ppTail);
 
 #ifdef __cplusplus
 }

@@ -453,7 +453,7 @@ static bool BddTargetVxWorks64_SetStore(const char* value)
  * apart from a store the harness refused. */
 static bool BddTargetVxWorks64_ReadyTheDisk(void)
 {
-    bool ready = BddTargetVxWorks64Store_Mount();
+    bool ready = BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS);
     if (!ready)
     {
         (void) fprintf(

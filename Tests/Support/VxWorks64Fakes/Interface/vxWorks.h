@@ -10,7 +10,9 @@
 
 typedef int STATUS;
 typedef int BOOL;
+typedef unsigned int UINT32;
 typedef unsigned long long UINT64;
+typedef unsigned char u_char;
 
 /* An entry point, as taskSpawn takes one, which a caller casts its entry
  * function to. The real header leaves the parameter list unspecified; the
