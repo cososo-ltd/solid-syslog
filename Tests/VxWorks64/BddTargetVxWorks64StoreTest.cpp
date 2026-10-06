@@ -29,7 +29,10 @@ TEST(BddTargetVxWorks64Store, MountOfADosFsVolumeSucceedsWhenDosFsIsChosen)
 {
     VxWorks64FsFake_FormatTheVolumeAsDosFs();
 
-    CHECK_TRUE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_MOUNTED,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS)
+    );
 }
 
 TEST(BddTargetVxWorks64Store, MountLeavesADosFsVolumeAloneWhenDosFsIsChosen)
@@ -59,14 +62,20 @@ TEST(BddTargetVxWorks64Store, MountFormatsDosFsWithTheDefaultOptionsAndNoPrompt)
 
 TEST(BddTargetVxWorks64Store, MountOfABlankVolumeSucceedsOnceFormatted)
 {
-    CHECK_TRUE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_MOUNTED,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS)
+    );
 }
 
 TEST(BddTargetVxWorks64Store, MountFailsWhenTheDosFsFormatFails)
 {
     VxWorks64FsFake_FailFormats();
 
-    CHECK_FALSE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_FORMAT_FAILED,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS)
+    );
 }
 
 TEST(BddTargetVxWorks64Store, MountFormatsAVolumeWhoseRootIsNotADirectory)
@@ -98,14 +107,20 @@ TEST(BddTargetVxWorks64Store, MountFailsWhenTheHrfsFormatFails)
 {
     VxWorks64FsFake_FailFormats();
 
-    CHECK_FALSE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_FORMAT_FAILED,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS)
+    );
 }
 
 TEST(BddTargetVxWorks64Store, MountLeavesAnHrfsVolumeAloneWhenHrfsIsChosen)
 {
     VxWorks64FsFake_FormatTheVolumeAsHrfs();
 
-    CHECK_TRUE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_MOUNTED,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS)
+    );
     CALLED_FAKE(VxWorks64FsFake_HrfsFormat, NEVER);
 }
 
@@ -113,14 +128,20 @@ TEST(BddTargetVxWorks64Store, MountRefusesADosFsVolumeWhenHrfsIsChosen)
 {
     VxWorks64FsFake_FormatTheVolumeAsDosFs();
 
-    CHECK_FALSE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_OTHER_FILE_SYSTEM,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS)
+    );
 }
 
 TEST(BddTargetVxWorks64Store, MountRefusesAnHrfsVolumeWhenDosFsIsChosen)
 {
     VxWorks64FsFake_FormatTheVolumeAsHrfs();
 
-    CHECK_FALSE(BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS));
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_OTHER_FILE_SYSTEM,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_DOSFS)
+    );
 }
 
 TEST(BddTargetVxWorks64Store, MountDoesNotReformatAVolumeOfTheOtherKind)
@@ -142,4 +163,12 @@ TEST(BddTargetVxWorks64Store, MountAsksDosFsWhetherItOwnsTheVolume)
     CALLED_FAKE(VxWorks64FsFake_DosFsVolDescGet, ONCE);
     STRCMP_EQUAL("/ata0a", VxWorks64FsFake_LastVolDescGetName());
     CHECK_TRUE(VxWorks64FsFake_LastVolDescGetHadNoTail());
+}
+
+TEST(BddTargetVxWorks64Store, MountOfABlankVolumeSucceedsOnceFormattedWithHrfs)
+{
+    LONGS_EQUAL(
+        BDD_TARGET_VXWORKS64_STORE_MOUNTED,
+        BddTargetVxWorks64Store_Mount(BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS)
+    );
 }

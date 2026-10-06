@@ -34,18 +34,25 @@ static bool BddTargetVxWorks64Store_Format(enum BddTargetVxWorks64FileSystem fil
 /* A blank disk is formatted with the file system chosen, and is then that file
  * system at once; one already formatted keeps what it holds, which is what
  * lets the store outlive a power cycle - but only if it is the one chosen. */
-bool BddTargetVxWorks64Store_Mount(enum BddTargetVxWorks64FileSystem fileSystem)
+enum BddTargetVxWorks64StoreMountResult BddTargetVxWorks64Store_Mount(enum BddTargetVxWorks64FileSystem fileSystem)
 {
-    bool ready = false;
+    enum BddTargetVxWorks64StoreMountResult result = BDD_TARGET_VXWORKS64_STORE_MOUNTED;
     if (BddTargetVxWorks64Store_IsFormatted())
     {
-        ready = BddTargetVxWorks64Store_Holds(fileSystem);
+        if (!BddTargetVxWorks64Store_Holds(fileSystem))
+        {
+            result = BDD_TARGET_VXWORKS64_STORE_OTHER_FILE_SYSTEM;
+        }
+    }
+    else if (!BddTargetVxWorks64Store_Format(fileSystem))
+    {
+        result = BDD_TARGET_VXWORKS64_STORE_FORMAT_FAILED;
     }
     else
     {
-        ready = BddTargetVxWorks64Store_Format(fileSystem);
+        /* Formatted, and so mounted. */
     }
-    return ready;
+    return result;
 }
 
 /* The file system monitor puts rawFs on a disk it cannot recognise, and rawFs

@@ -18,8 +18,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         BDD_TARGET_VXWORKS64_FILE_SYSTEM_HRFS
     };
 
+    enum BddTargetVxWorks64StoreMountResult
+    {
+        BDD_TARGET_VXWORKS64_STORE_MOUNTED,
+        BDD_TARGET_VXWORKS64_STORE_FORMAT_FAILED,
+        /* Formatted already, but not with the file system asked for. */
+        BDD_TARGET_VXWORKS64_STORE_OTHER_FILE_SYSTEM
+    };
+
     /* Readies the disk the file store lives on, formatted on first use. */
-    bool BddTargetVxWorks64Store_Mount(enum BddTargetVxWorks64FileSystem fileSystem);
+    enum BddTargetVxWorks64StoreMountResult BddTargetVxWorks64Store_Mount(enum BddTargetVxWorks64FileSystem fileSystem);
 
 SOLIDSYSLOG_EXTERN_C_END
 
