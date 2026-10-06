@@ -30,16 +30,21 @@ does not carry, and anything tagged @vxworks64wip, which a scenario leaves as
 the story that gives the target the capability lands. Each store scenario
 starts on a blank disk: the runner's store-reset job removes the last one.
 
+-FileSystem chooses what the store's disk holds: hrfs, the default, or dosfs.
+The image carries both, and the target formats a blank disk with the one chosen.
+
 -SkipBuild reuses the image already built on the build machine. -Paths runs
 only the features given, as behave takes them, under the same tag filter.
 
 .EXAMPLE
 .\Run-VxWorks64Bdd.ps1
 .\Run-VxWorks64Bdd.ps1 -SkipBuild -Paths Bdd/features/prival.feature
+.\Run-VxWorks64Bdd.ps1 -SkipBuild -FileSystem dosfs
 #>
 [CmdletBinding()]
 param(
     [switch] $SkipBuild,
+    [ValidateSet('hrfs', 'dosfs')] [string] $FileSystem = 'hrfs',
     [string[]] $Paths = @('Bdd/features')
 )
 
@@ -87,7 +92,8 @@ $env:RECEIVED_LOG = 'Bdd/output/received.jsonl'
 $env:VXWORKS64_COLLECTOR_PORT = "$collectorPort"
 $env:OTELCOL_CONFIG = 'Bdd\otel\config.vxworks64.yaml'
 $env:OTELCOL_TCP_PORTS = "$collectorPort"
-$env:VXWORKS64_SKIP_BUILD = if ($SkipBuild) { '1' } else { '' }
+$env:VXWORKS64_FILE_SYSTEM = $FileSystem
+$env:VXWORKS64_SKIP_BUILD =if ($SkipBuild) { '1' } else { '' }
 
 Push-Location $script:RepositoryRoot
 $collector = $null
