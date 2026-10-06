@@ -20,7 +20,8 @@ SOLIDSYSLOG_PLATFORMS ?= VxWorks64
 # drive, which clean would remove; an explicit SOLIDSYSLOG_BUILD_DIR needs none.
 SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR = $(PRJ_ROOT_DIR)/solidsyslog/$(BUILD_SPEC)/$(MODE_DIR)
 SOLIDSYSLOG_BUILD_DIR ?= $(SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR)
-SOLIDSYSLOG_DKM_WORKBENCH_SET = $(and $(strip $(PRJ_ROOT_DIR)),$(strip $(BUILD_SPEC)),$(strip $(MODE_DIR)))
+# Wind River VxWorks 6.4 ships GNU Make 3.80, which has no $(and ...) function.
+SOLIDSYSLOG_DKM_WORKBENCH_SET = $(if $(strip $(PRJ_ROOT_DIR)),$(if $(strip $(BUILD_SPEC)),$(if $(strip $(MODE_DIR)),set)))
 SOLIDSYSLOG_DKM_BUILD_DIR_UNSAFE = $(if $(filter $(SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR),$(SOLIDSYSLOG_BUILD_DIR)),$(if $(SOLIDSYSLOG_DKM_WORKBENCH_SET),,unsafe))
 
 # Workbench publishes the target, debug, include and preprocessor settings,

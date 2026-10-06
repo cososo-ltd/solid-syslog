@@ -63,8 +63,10 @@ endif
 
 include $(SOLIDSYSLOG_DIR)/solidsyslog.mk
 
-# The C99 library headers the kernel header tree lacks. Last, so they only fill
-# gaps: any header the project's own include path provides is taken from there.
+# Put the C99 compatibility headers before the project's include directories:
+# the VxWorks 6.4 DKM header path otherwise selects an incomplete stdint.h.
+# This ordering is private to the library; do not export Compat to DKM sources,
+# whose existing headers may provide their own incompatible integer typedefs.
 SOLIDSYSLOG_C99_INCLUDES := -I$(SOLIDSYSLOG_DIR)/Platform/VxWorks64/Compat
 
 SOLIDSYSLOG_LIB := $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a
@@ -93,9 +95,9 @@ $(SOLIDSYSLOG_LIB): $(SOLIDSYSLOG_OBJS)
 
 $(SOLIDSYSLOG_BUILD_DIR)/%.o: %.c
 	mkdir -p $(@D)
-	$(CC) $(SOLIDSYSLOG_TARGET_CFLAGS) $(SOLIDSYSLOG_DIALECT_CFLAGS) \
+	$(CC) $(SOLIDSYSLOG_C99_INCLUDES) $(SOLIDSYSLOG_TARGET_CFLAGS) $(SOLIDSYSLOG_DIALECT_CFLAGS) \
 		$(SOLIDSYSLOG_OBJ_CFLAGS) $(SOLIDSYSLOG_DEPEND_CFLAGS) $(SOLIDSYSLOG_OBJ_INCLUDES) \
-		$(SOLIDSYSLOG_C99_INCLUDES) -c $< -o $@
+		-c $< -o $@
 
 clean:
 	rm -rf $(SOLIDSYSLOG_BUILD_DIR)
