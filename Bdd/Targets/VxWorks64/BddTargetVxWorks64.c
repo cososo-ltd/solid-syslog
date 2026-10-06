@@ -74,6 +74,7 @@ enum
 static FILE* BddTargetVxWorks64_Reports(void);
 static void BddTargetVxWorks64_ReportError(void* context, const struct SolidSyslogErrorEvent* event);
 static void BddTargetVxWorks64_ShowFaults(void);
+static void BddTargetVxWorks64_CreateLoggerLock(void);
 static void BddTargetVxWorks64_RunCore(void);
 static void BddTargetVxWorks64_BringUpNetwork(void);
 static void BddTargetVxWorks64_ReportStep(const char* step, STATUS status);
@@ -148,7 +149,7 @@ void BddTargetVxWorks64_Init(void)
     SolidSyslog_SetErrorHandler(BddTargetVxWorks64_ReportError, NULL);
     BddTargetVxWorks64_BringUpNetwork();
     BddTargetVxWorks64_BuildPipeline();
-    loggerLock = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
+    BddTargetVxWorks64_CreateLoggerLock();
     consoleEnded = false;
     BddTargetVxWorks64_SpawnTasks();
 }
@@ -165,6 +166,21 @@ static void BddTargetVxWorks64_ShowFaults(void)
         BDD_TARGET_TAG "ED&R debug policy %s\n",
         edrSystemDebugModeGet() ? "on" : "off"
     );
+}
+
+/* Without the lock the service task would run against a logger being replaced,
+ * so a kernel that cannot make it is reported, as a task that will not start is. */
+static void BddTargetVxWorks64_CreateLoggerLock(void)
+{
+    loggerLock = semMCreate(SEM_Q_PRIORITY | SEM_INVERSION_SAFE | SEM_DELETE_SAFE);
+    if (loggerLock == NULL)
+    {
+        (void) fprintf(
+            BddTargetVxWorks64_Reports(),
+            BDD_TARGET_TAG "logger lock not created, errno 0x%x\n",
+            (unsigned) errnoGet()
+        );
+    }
 }
 
 /* Reports what the library reports, in the form the steps read from every QEMU

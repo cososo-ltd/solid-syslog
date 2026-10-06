@@ -450,3 +450,12 @@ TEST(BddTargetVxWorks64, InitReportsTheEdAndRPolicyItEndedUpWith)
 
     STRCMP_CONTAINS("ED&R debug policy on", Reported().c_str());
 }
+
+TEST(BddTargetVxWorks64, ALoggerLockTheKernelCannotCreateIsReported)
+{
+    VxWorks64SemFake_SetSemMCreateFails(true);
+
+    BddTargetVxWorks64_Init();
+
+    STRCMP_CONTAINS("logger lock not created, errno 0x0", Reported().c_str());
+}
