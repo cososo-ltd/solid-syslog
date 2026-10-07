@@ -1,4 +1,5 @@
-# SolidSyslog glue for a VxWorks 6.4 Workbench project - a VIP or a DKM.
+# SolidSyslog glue for a VxWorks 6.4 Workbench VIP. A DKM uses
+# solidsyslog-dkm.makefile instead.
 #
 # Copy this file into the project directory: the project's generated Makefile
 # includes every *.makefile it finds there. Point SOLIDSYSLOG_DIR at the

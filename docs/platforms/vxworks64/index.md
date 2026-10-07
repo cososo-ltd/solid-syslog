@@ -35,9 +35,11 @@ which adds the C99 dialect and states each diagnostic it turns off, and why.
 
 The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
 SolidSyslog headers include. The pack supplies both, for 32-bit targets, in
-`Platform/VxWorks64/Compat/`. Put that directory last on the include path, so it
-only fills the gap - for the library, and for every application file that
-includes a SolidSyslog header.
+`Platform/VxWorks64/Compat/`. The library's own build puts that directory first,
+ahead of the project's include path, which in a DKM can hold an incomplete
+`<stdint.h>`. In a VIP, application files that include a SolidSyslog header
+take it last, so it only fills the gap. A DKM's own sources do not take it at
+all: their headers may define integer types of their own that would conflict.
 
 The pack's public headers include no VxWorks header; the semaphore and every
 other kernel type stay inside its sources. An application file that includes
