@@ -5,21 +5,24 @@
 # then exports the library and its public headers through Workbench's ADDED_*
 # extension variables.
 #
-# The library is built under external_build, and the DKM's link target,
-# PROJECT_TARGET, depends on it too, so the link waits for the library under
-# make -j as well.
+# The library is built under external_build, and the DKM's link targets,
+# PROJECT_TARGETS, depend on the archive itself. The sub-make runs on every
+# build and rewrites the archive only when a library source or header has
+# changed, so a DKM relinks when the library changes and not otherwise.
 
 SOLIDSYSLOG_VXWORKS64_DKM_MAKEFILE := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 SOLIDSYSLOG_DIR ?= $(dir $(SOLIDSYSLOG_VXWORKS64_DKM_MAKEFILE))../..
 
 SOLIDSYSLOG_PLATFORMS ?= VxWorks64
 
-# The library is built per build spec and mode, under the project. Workbench may
-# define these after including this file, so they are read only when a recipe
-# runs. Without them the default would name a directory at the root of the
-# drive, which clean would remove; an explicit SOLIDSYSLOG_BUILD_DIR needs none.
+# The library is built per build spec and mode, under the project. Workbench's
+# generated Makefile defines these before including this file, as the archive
+# rule below needs: a rule's target and prerequisites are read with the file.
+# Without them the default would name a directory at the root of the drive,
+# which clean would remove; an explicit SOLIDSYSLOG_BUILD_DIR needs none.
 SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR = $(PRJ_ROOT_DIR)/solidsyslog/$(BUILD_SPEC)/$(MODE_DIR)
 SOLIDSYSLOG_BUILD_DIR ?= $(SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR)
+SOLIDSYSLOG_LIB = $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a
 # Wind River VxWorks 6.4 ships GNU Make 3.80, which has no $(and ...) function.
 SOLIDSYSLOG_DKM_WORKBENCH_SET = $(if $(strip $(PRJ_ROOT_DIR)),$(if $(strip $(BUILD_SPEC)),$(if $(strip $(MODE_DIR)),set)))
 SOLIDSYSLOG_DKM_BUILD_DIR_UNSAFE = $(if $(filter $(SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR),$(SOLIDSYSLOG_BUILD_DIR)),$(if $(SOLIDSYSLOG_DKM_WORKBENCH_SET),,unsafe))
@@ -52,7 +55,7 @@ export SOLIDSYSLOG_TARGET_CFLAGS SOLIDSYSLOG_BUILD_DIR SOLIDSYSLOG_PLATFORMS
 
 external_build :: solidsyslog_library
 
-$(PROJECT_TARGET): solidsyslog_library
+$(PROJECT_TARGETS): $(SOLIDSYSLOG_LIB)
 
 # Defined but empty passes the checks above, so each value is checked again here,
 # when it is used and whatever defined it has been read.
@@ -63,11 +66,18 @@ solidsyslog_config_check:
 	$(if $(strip $(SOLIDSYSLOG_BUILD_DIR)),,$(error SOLIDSYSLOG_BUILD_DIR is empty - leave it unset for the default or name a directory))
 	$(if $(SOLIDSYSLOG_DKM_BUILD_DIR_UNSAFE),$(error PRJ_ROOT_DIR and BUILD_SPEC and MODE_DIR are not all set - include this from a Workbench DKM build or set SOLIDSYSLOG_BUILD_DIR))
 
+# Workbench's external-build entry point.
+solidsyslog_library: $(SOLIDSYSLOG_LIB)
+
+# The phony config check makes the sub-make run on every build; its dependency
+# files decide whether the archive actually changes. The archive is a real file,
+# never phony and never touched here, so its timestamp is the library's own.
+#
 # The lower-level makefile uses the conventional CC and AR names.  The DKM
 # adapter supplies their values under SolidSyslog-specific names so they do not
 # leak into the product project; map just those command names for the sub-make.
 # Quoted, so a command that carries its own arguments arrives whole.
-solidsyslog_library: solidsyslog_config_check
+$(SOLIDSYSLOG_LIB): solidsyslog_config_check
 	$(MAKE) -f $(SOLIDSYSLOG_DIR)/Platform/VxWorks64/solidsyslog-vxworks64.mk \
 		CC="$(SOLIDSYSLOG_CC)" AR="$(SOLIDSYSLOG_AR)" TOOL_FAMILY="$(TOOL_FAMILY)"
 
