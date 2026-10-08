@@ -6,6 +6,10 @@
 
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
+#include "SolidSyslogBlockStorePrivate.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogStoreCategories.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -350,6 +354,16 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
         bool disposedAfterRotate = false;
         SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
         *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+    }
+    else
+    {
+        /* Only a device failure gets here: a full store that keeps what it has
+         * never rotates. */
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
+        );
     }
 
     return acquired;

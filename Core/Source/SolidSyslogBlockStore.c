@@ -14,6 +14,7 @@
 #include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStoreDefinition.h"
 
 const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore"};
@@ -59,6 +60,16 @@ void SolidSyslogBlockStore_Initialise(
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
     {
         BlockStore_ResumeFromExistingBlock(self);
+    }
+    else
+    {
+        /* The store stands: the block device opens lazily, so the next write
+         * tries again, and reports if that fails too. */
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_STORE_OPEN_FAILED,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
+        );
     }
 }
 
@@ -140,6 +151,14 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
             written = true;
+        }
+        else
+        {
+            BlockStore_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+                SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED
+            );
         }
     }
 

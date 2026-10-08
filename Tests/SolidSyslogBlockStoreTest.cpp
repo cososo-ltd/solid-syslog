@@ -16,6 +16,7 @@
 #include "SolidSyslogStore.h"
 #include "SolidSyslogTunables.h"
 #include "ErrorHandlerFake.h"
+#include "SolidSyslogStoreCategories.h"
 #include "FileFake.h"
 #include "TestUtils.h"
 
@@ -687,6 +688,50 @@ TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
     CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
 }
 
+TEST(SolidSyslogBlockStoreErrors, OpenFailureReportsTheStoreDidNotOpen)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_OPEN_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreErrors, AppendFailureReportsTheWriteFailed)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreErrors, ACreateAndWriteThatSucceedReportNothing)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    ErrorHandlerFake_Install(nullptr);
+
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
 {
@@ -1335,6 +1380,35 @@ TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
     FileFake_FailNextOpen(file); /* next Acquire on rotation will fail */
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureReportsTheWriteFailed)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* fills block 00 */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    WriteMaxMsg();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* both blocks full */
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 TEST(SolidSyslogBlockStoreRotation, RotationRetriesAfterTransientAcquireFailure)
