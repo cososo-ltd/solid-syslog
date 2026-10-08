@@ -72,6 +72,7 @@ static bool VxWorks64Resolver_Resolve(
     if (resolved == true)
     {
         struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
+        sin->sin_len = (unsigned char) sizeof(*sin);
         sin->sin_family = AF_INET;
         sin->sin_port = htons(port);
         sin->sin_addr.s_addr = found;

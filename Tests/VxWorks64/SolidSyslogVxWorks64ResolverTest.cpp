@@ -82,6 +82,15 @@ TEST(SolidSyslogVxWorks64Resolver, PopulatesAddressFamily)
     LONGS_EQUAL(AF_INET, Resolved()->sin_family);
 }
 
+TEST(SolidSyslogVxWorks64Resolver, PopulatesAddressLength)
+{
+    VxWorks64NetFake_SetInetAddrReturn(0x0100007FUL);
+
+    Resolve("127.0.0.1");
+
+    LONGS_EQUAL(sizeof(struct sockaddr_in), Resolved()->sin_len);
+}
+
 TEST(SolidSyslogVxWorks64Resolver, PopulatesTheAddressInetAddrParsed)
 {
     VxWorks64NetFake_SetInetAddrReturn(0x0100007FUL);
