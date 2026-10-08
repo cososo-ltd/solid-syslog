@@ -29,7 +29,7 @@ misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddress.c:17
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:27
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:34
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.h:39
-misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:77
+misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:88
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:119
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:110
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
@@ -91,7 +91,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c:4
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64AddressStatic.c:62
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:66
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:109
-misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:71
+misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:76
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:74
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:137
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:55
@@ -126,7 +126,7 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/SolidSyslogBlockSequence.c:498
+misra-c2012-11.8:Core/Source/SolidSyslogBlockSequence.c:512
 misra-c2012-11.8:Core/Source/SolidSyslog.c:75
 misra-c2012-11.8:Core/Source/SolidSyslog.c:76
 misra-c2012-11.8:Core/Source/SolidSyslog.c:77
@@ -149,7 +149,7 @@ misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:117
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:66
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:69
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:195
-misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:113
+misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:158
 
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>
 # See docs/misra-deviations.md#d007
@@ -165,8 +165,7 @@ misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:12
 # D.009 — Rules 2.4 / 5.7: anonymous enum used as named-constant container
 # See docs/misra-deviations.md#d009
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:12
-misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:17
-misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:111
+misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:117
 misra-c2012-2.4:Core/Source/SolidSyslogRecordStore.c:18
 misra-c2012-2.4:Core/Source/SolidSyslogStreamSender.c:29
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:21
@@ -193,13 +192,13 @@ misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:37
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c:17
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c:15
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64SysUpTime.c:15
-misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:26
+misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:28
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:10
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:34
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockResolver.c:45
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:109
-misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:17
-misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:114
+misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:20
+misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:117
 misra-c2012-5.7:Core/Source/SolidSyslogRecordStore.c:18
 misra-c2012-5.7:Core/Source/SolidSyslogRecordStorePrivate.h:18
 misra-c2012-5.7:Core/Source/SolidSyslogFileBlockDevice.c:27
@@ -250,8 +249,8 @@ misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:457
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:117
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:289
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:338
-misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:100
-misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:113
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:136
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:158
 
 # D.015 — Rule 8.9: rollover state at file scope so a test can clear it
 # See docs/misra-deviations.md#d015
