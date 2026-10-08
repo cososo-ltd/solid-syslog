@@ -7,7 +7,6 @@
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
-#include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogStoreCategories.h"
 
@@ -359,10 +358,11 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
     {
         /* Only a device failure gets here: a full store that keeps what it has
          * never rotates. */
-        BlockStore_Report(
+        SolidSyslog_Error(
             SOLIDSYSLOG_SEVERITY_ERROR,
+            &SolidSyslogBlockStoreErrorSource,
             SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-            SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
+            (int32_t) SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
         );
     }
 

@@ -42,7 +42,10 @@ void ErrorHandlerFake_Install(void* context)
     lastContext = NULL;
     for (int index = 0; index < ERRORHANDLERFAKE_KEPT_EVENTS; index++)
     {
-        keptEvents[index] = (struct SolidSyslogErrorEvent) {SOLIDSYSLOG_SEVERITY_DEBUG, NULL, 0U, 0};
+        keptEvents[index].Severity = SOLIDSYSLOG_SEVERITY_DEBUG;
+        keptEvents[index].Source = NULL;
+        keptEvents[index].Category = 0U;
+        keptEvents[index].Detail = 0;
     }
     SolidSyslog_SetErrorHandler(Handle, context);
 }
