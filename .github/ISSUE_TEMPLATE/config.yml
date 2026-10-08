@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Question or usage help
+    url: https://github.com/cososo-ltd/solid-syslog/discussions/categories/q-a
+    about: Ask integration and configuration questions in Discussions Q&A.
   - name: Security vulnerability (can't use GitHub?)
     url: https://cososo.co.uk/security/report
     about: Private web form if you can't use GitHub's "Report a vulnerability" button above. See SECURITY.md.
