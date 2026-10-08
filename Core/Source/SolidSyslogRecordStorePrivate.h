@@ -39,7 +39,15 @@ void SolidSyslogRecordStore_Destroy(struct SolidSyslogRecordStore* recordStore);
 
 size_t SolidSyslogRecordStore_RecordSize(const struct SolidSyslogRecordStore* recordStore, uint16_t dataLength);
 
-bool SolidSyslogRecordStore_Append(
+/* What Append did: the policy may refuse to seal before the device is asked. */
+enum SolidSyslogRecordStoreAppendResult
+{
+    SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED,
+    SOLIDSYSLOG_RECORD_STORE_APPEND_SEAL_FAILED,
+    SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED
+};
+
+enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,

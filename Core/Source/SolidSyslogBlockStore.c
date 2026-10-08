@@ -14,6 +14,7 @@
 #include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStoreDefinition.h"
 
 const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore"};
@@ -59,6 +60,16 @@ void SolidSyslogBlockStore_Initialise(
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
     {
         BlockStore_ResumeFromExistingBlock(self);
+    }
+    else
+    {
+        /* The store stands: the block device opens lazily, so the next write
+         * tries again, and reports if that fails too. */
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_STORE_OPEN_FAILED,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
+        );
     }
 }
 
@@ -111,6 +122,7 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
 }
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
+static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
@@ -130,20 +142,37 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
         }
 
-        if (SolidSyslogRecordStore_Append(
-                self->RecordStore,
-                SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
-                SolidSyslogBlockSequence_WriteSequence(self->BlockSequence),
-                data,
-                size
-            ))
+        enum SolidSyslogRecordStoreAppendResult appended = SolidSyslogRecordStore_Append(
+            self->RecordStore,
+            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+            SolidSyslogBlockSequence_WriteSequence(self->BlockSequence),
+            data,
+            size
+        );
+        written = appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED;
+
+        if (written)
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
-            written = true;
+        }
+        else
+        {
+            BlockStore_ReportRecordNotKept(appended);
         }
     }
 
     return written;
+}
+
+/* The policy reports why it would not seal; the device, when it reports, why
+ * it would not take the record. Either way the record is lost, which is what
+ * this says. */
+static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended)
+{
+    enum SolidSyslogBlockStoreErrors code = (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SEAL_FAILED)
+                                                ? SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+                                                : SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED;
+    BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, code);
 }
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)

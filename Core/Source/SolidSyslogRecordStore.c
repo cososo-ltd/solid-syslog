@@ -120,7 +120,7 @@ static inline bool RecordStore_AssembleRecord(
     size_t size
 );
 
-bool SolidSyslogRecordStore_Append(
+enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
@@ -128,17 +128,18 @@ bool SolidSyslogRecordStore_Append(
     size_t dataSize
 )
 {
-    bool appended = false;
+    enum SolidSyslogRecordStoreAppendResult result = SOLIDSYSLOG_RECORD_STORE_APPEND_SEAL_FAILED;
     if (RecordStore_AssembleRecord(recordStore, data, dataSize))
     {
-        appended = SolidSyslogBlockDevice_Append(
+        bool appended = SolidSyslogBlockDevice_Append(
             blockDevice,
             blockIndex,
             recordStore->Buffer,
             SolidSyslogRecordStore_RecordSize(recordStore, (uint16_t) dataSize)
         );
+        result = appended ? SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED : SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED;
     }
-    return appended;
+    return result;
 }
 
 static inline bool RecordStore_AssembleRecord(struct SolidSyslogRecordStore* recordStore, const void* data, size_t size)

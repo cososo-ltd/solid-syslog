@@ -21,6 +21,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL,
+        /* Raised under SolidSyslogStoreCategories.h. The block device beneath,
+           or the security policy for SEAL_FAILED, reports the cause. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
