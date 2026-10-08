@@ -149,7 +149,7 @@ misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:117
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:66
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:69
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:195
-misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:158
+misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:159
 
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>
 # See docs/misra-deviations.md#d007
@@ -249,8 +249,8 @@ misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:457
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:117
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:289
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:338
-misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:136
-misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:158
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:137
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:159
 
 # D.015 — Rule 8.9: rollover state at file scope so a test can clear it
 # See docs/misra-deviations.md#d015
