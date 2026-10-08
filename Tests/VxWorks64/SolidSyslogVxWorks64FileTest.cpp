@@ -43,6 +43,26 @@ static const int OWNER_READ_WRITE = 0x180;
         }                                                                              \
     }
 
+// Asserts the call raised exactly the File fault naming this operation, then
+// the errno behind it.
+#define CHECK_FAILURE_REPORTED_WITH_ERRNO(code, nativeErrno) \
+    { \
+        CALLED_FAKE(ErrorHandlerFake_Handle, TWICE); \
+        CHECK_ERROR_EVENT_AT( \
+            0, SOLIDSYSLOG_SEVERITY_ERROR, &SolidSyslogVxWorks64FileErrorSource, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code \
+        ); \
+        CHECK_ERROR_EVENT_AT( \
+            1, SOLIDSYSLOG_SEVERITY_ERROR, &SolidSyslogVxWorks64FileErrorSource, SOLIDSYSLOG_CAT_NATIVE_ERROR, nativeErrno \
+        ); \
+    }
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// no errno behind it.
+#define CHECK_FAILURE_REPORTED_ALONE(code) \
+    CHECK_ERROR_REPORTED_ONCE( \
+        SOLIDSYSLOG_SEVERITY_ERROR, &SolidSyslogVxWorks64FileErrorSource, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code \
+    )
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64File)
 {
@@ -111,23 +131,7 @@ TEST(SolidSyslogVxWorks64File, FileStaysClosedWhenOpenFails)
     CHECK_FALSE(SolidSyslogFile_IsOpen(file));
 }
 
-TEST(SolidSyslogVxWorks64File, OpenThatFailsReportsTheFailedOpen)
-{
-    ErrorHandlerFake_Install(nullptr);
-    VxWorks64IoFake_FailOpens();
-
-    SolidSyslogFile_Open(file, TEST_PATH);
-
-    CHECK_ERROR_EVENT_AT(
-        0,
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogVxWorks64FileErrorSource,
-        SOLIDSYSLOG_CAT_FILE_IO_FAILED,
-        SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED
-    );
-}
-
-TEST(SolidSyslogVxWorks64File, OpenThatFailsReportsTheErrnoItFailedWith)
+TEST(SolidSyslogVxWorks64File, OpenThatFailsReportsTheFailedOpenAndItsErrno)
 {
     ErrorHandlerFake_Install(nullptr);
     VxWorks64IoFake_FailOpens();
@@ -135,14 +139,7 @@ TEST(SolidSyslogVxWorks64File, OpenThatFailsReportsTheErrnoItFailedWith)
 
     SolidSyslogFile_Open(file, TEST_PATH);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-    CHECK_ERROR_EVENT_AT(
-        1,
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogVxWorks64FileErrorSource,
-        SOLIDSYSLOG_CAT_NATIVE_ERROR,
-        ENOENT
-    );
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, ENOENT);
 }
 
 TEST(SolidSyslogVxWorks64File, CloseClosesTheDescriptorOpenReturned)
@@ -355,6 +352,72 @@ TEST(SolidSyslogVxWorks64File, WriteReturnsFalseWhenTheCommitFailsAfterAnEarlier
     errno = ENOTSUP;
 
     CHECK_FALSE(SolidSyslogFile_Write(file, "hello", 5));
+}
+
+TEST(SolidSyslogVxWorks64File, WriteThatFailsReportsTheFailedWriteAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_WriteAccepts(ERROR_RESULT);
+    VxWorks64IoFake_FailWithErrno(ENOSPC);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, ENOSPC);
+}
+
+TEST(SolidSyslogVxWorks64File, AShortWriteReportsTheFailedWriteAlone)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_WriteAccepts(3);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CHECK_FAILURE_REPORTED_ALONE(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED);
+}
+
+TEST(SolidSyslogVxWorks64File, SyncThatFailsReportsTheFailedSyncAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailIoctlWithErrno(VX_FIOSYNC, EIO);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SYNC_FAILED, EIO);
+}
+
+TEST(SolidSyslogVxWorks64File, CommitThatFailsReportsTheFailedCommitAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailIoctlWithErrno(VX_FIOCOMMITFS, EINVAL);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_COMMIT_FAILED, EINVAL);
+}
+
+TEST(SolidSyslogVxWorks64File, ACommitTheFileSystemHasNoNeedOfReportsNothing)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailIoctlWithErrno(VX_FIOCOMMITFS, ENOTSUP);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64File, AWriteThatIsCommittedReportsNothing)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64File, SeekToSeeksTheOpenDescriptor)

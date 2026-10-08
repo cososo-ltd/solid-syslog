@@ -43,6 +43,8 @@ static bool VxWorks64File_Delete(struct SolidSyslogFile* base, const char* path)
 static inline struct SolidSyslogVxWorks64File* VxWorks64File_SelfFromBase(struct SolidSyslogFile* base);
 static inline bool VxWorks64File_IsWholeTransfer(int transferred, size_t count);
 static inline bool VxWorks64File_Commit(int fd);
+static inline bool VxWorks64File_Sync(int fd);
+static inline bool VxWorks64File_CommitFileSystem(int fd);
 static inline void VxWorks64File_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
 
 void SolidSyslogVxWorks64File_Initialise(struct SolidSyslogFile* base)
@@ -136,10 +138,18 @@ static bool VxWorks64File_Write(struct SolidSyslogFile* base, const void* buf, s
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
     /* The kernel's write takes a char*, though it only reads the buffer. */
-    bool committed = VxWorks64File_IsWholeTransfer(write(self->Fd, (char*) buf, count), count);
+    int written = write(self->Fd, (char*) buf, count);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). A short write sets none. */
+    int writeErrno = (written == ERROR) ? errno : 0;
+    bool committed = VxWorks64File_IsWholeTransfer(written, count);
     if (committed)
     {
         committed = VxWorks64File_Commit(self->Fd);
+    }
+    else
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, writeErrno);
     }
     return committed;
 }
@@ -150,14 +160,38 @@ static bool VxWorks64File_Write(struct SolidSyslogFile* base, const void* buf, s
  * the request down to one, and that counts as committed. */
 static inline bool VxWorks64File_Commit(int fd)
 {
-    bool committed = ioctl(fd, FIOSYNC, 0) != ERROR;
+    bool committed = VxWorks64File_Sync(fd);
     if (committed)
     {
-        int status = ioctl(fd, FIOCOMMITFS, 0);
-        /* Read errno straight after the call that set it, with nothing between
-         * (MISRA 22.10). */
-        int commitErrno = (status == ERROR) ? errno : 0;
-        committed = (status != ERROR) || (commitErrno == ENOTSUP);
+        committed = VxWorks64File_CommitFileSystem(fd);
+    }
+    return committed;
+}
+
+static inline bool VxWorks64File_Sync(int fd)
+{
+    int status = ioctl(fd, FIOSYNC, 0);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int syncErrno = (status == ERROR) ? errno : 0;
+    bool synced = status != ERROR;
+    if (!synced)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SYNC_FAILED, syncErrno);
+    }
+    return synced;
+}
+
+static inline bool VxWorks64File_CommitFileSystem(int fd)
+{
+    int status = ioctl(fd, FIOCOMMITFS, 0);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int commitErrno = (status == ERROR) ? errno : 0;
+    bool committed = (status != ERROR) || (commitErrno == ENOTSUP);
+    if (!committed)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_COMMIT_FAILED, commitErrno);
     }
     return committed;
 }
