@@ -111,8 +111,16 @@ static void VxWorks64File_Close(struct SolidSyslogFile* base)
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
     if (VxWorks64File_IsOpen(base))
     {
-        (void) close(self->Fd);
+        int status = close(self->Fd);
+        /* Read errno straight after the call that set it, with nothing between
+         * (MISRA 22.10). */
+        int closeErrno = (status == ERROR) ? errno : 0;
+        /* The descriptor is released whether or not the close could flush. */
         self->Fd = ERROR;
+        if (status == ERROR)
+        {
+            VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, closeErrno);
+        }
     }
 }
 
@@ -125,7 +133,16 @@ static bool VxWorks64File_IsOpen(struct SolidSyslogFile* base)
 static bool VxWorks64File_Read(struct SolidSyslogFile* base, void* buf, size_t count)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
-    return VxWorks64File_IsWholeTransfer(read(self->Fd, (char*) buf, count), count);
+    int transferred = read(self->Fd, (char*) buf, count);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). A short read sets none, and is the store's to judge: a
+     * block cut short by a crash ends that way. */
+    int readErrno = (transferred == ERROR) ? errno : 0;
+    if (transferred == ERROR)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, readErrno);
+    }
+    return VxWorks64File_IsWholeTransfer(transferred, count);
 }
 
 /* The kernel's read and write answer an int: ERROR, or how many bytes moved. */
@@ -199,20 +216,41 @@ static inline bool VxWorks64File_CommitFileSystem(int fd)
 static void VxWorks64File_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
-    (void) lseek(self->Fd, (off_t) offset, SEEK_SET);
+    off_t position = lseek(self->Fd, (off_t) offset, SEEK_SET);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int seekErrno = (position == ERROR) ? errno : 0;
+    if (position == ERROR)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, seekErrno);
+    }
 }
 
 static size_t VxWorks64File_Size(struct SolidSyslogFile* base)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
     off_t end = lseek(self->Fd, 0, SEEK_END);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int sizeErrno = (end == ERROR) ? errno : 0;
+    if (end == ERROR)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, sizeErrno);
+    }
     return (end >= 0) ? (size_t) end : 0U;
 }
 
 static void VxWorks64File_Truncate(struct SolidSyslogFile* base)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
-    (void) ioctl(self->Fd, FIOTRUNC, 0);
+    int status = ioctl(self->Fd, FIOTRUNC, 0);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int truncateErrno = (status == ERROR) ? errno : 0;
+    if (status == ERROR)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, truncateErrno);
+    }
 }
 
 /* The kernel offers no access(); a path exists if it opens. */

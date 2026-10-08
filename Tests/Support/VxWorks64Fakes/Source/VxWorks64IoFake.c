@@ -83,6 +83,7 @@ static int VxWorks64IoFake_FailureErrno = EIO;
 static unsigned VxWorks64IoFake_Ioctls = 0U;
 static struct VxWorks64IoFake_IoctlCall VxWorks64IoFake_IoctlLog[VXWORKS64IOFAKE_IOCTL_LOG_SIZE];
 static bool VxWorks64IoFake_RemovesFail = false;
+static bool VxWorks64IoFake_ClosesFail = false;
 static unsigned VxWorks64IoFake_Removes = 0U;
 static char VxWorks64IoFake_RemoveName[VXWORKS64IOFAKE_NAME_SIZE];
 static char VxWorks64IoFake_WrittenBytes[VXWORKS64IOFAKE_WRITTEN_SIZE];
@@ -196,6 +197,7 @@ void VxWorks64IoFake_Reset(void)
     VxWorks64IoFake_FailureErrno = EIO;
     VxWorks64IoFake_Ioctls = 0U;
     VxWorks64IoFake_RemovesFail = false;
+    VxWorks64IoFake_ClosesFail = false;
     VxWorks64IoFake_Removes = 0U;
     VxWorks64IoFake_RemoveName[0] = '\0';
     VxWorks64IoFake_WrittenCount = 0U;
@@ -389,6 +391,11 @@ unsigned VxWorks64IoFake_CloseCallCount(void)
     return VxWorks64IoFake_Closes;
 }
 
+void VxWorks64IoFake_FailCloses(void)
+{
+    VxWorks64IoFake_ClosesFail = true;
+}
+
 int VxWorks64IoFake_LastClosedFd(void)
 {
     return VxWorks64IoFake_ClosedFd;
@@ -569,5 +576,9 @@ STATUS close(int fd)
     {
         descriptor->InUse = false;
     }
-    return OK;
+    if (VxWorks64IoFake_ClosesFail)
+    {
+        errno = VxWorks64IoFake_FailureErrno;
+    }
+    return VxWorks64IoFake_ClosesFail ? ERROR : OK;
 }

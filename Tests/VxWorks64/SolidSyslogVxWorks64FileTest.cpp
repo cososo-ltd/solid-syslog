@@ -480,6 +480,101 @@ TEST(SolidSyslogVxWorks64File, TruncateTruncatesTheOpenDescriptorToNothing)
     LONGS_EQUAL(0, VxWorks64IoFake_IoctlArg(0));
 }
 
+TEST(SolidSyslogVxWorks64File, ReadThatFailsReportsTheFailedReadAndItsErrno)
+{
+    char buffer[5] = {};
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailReads();
+    VxWorks64IoFake_FailWithErrno(EIO);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Read(file, buffer, sizeof(buffer));
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, EIO);
+}
+
+TEST(SolidSyslogVxWorks64File, AShortReadReportsNothing)
+{
+    char buffer[5] = {};
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_ReadDelivers("hel", 3);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Read(file, buffer, sizeof(buffer));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64File, SeekToThatFailsReportsTheFailedSeekAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailLseeks();
+    VxWorks64IoFake_FailWithErrno(EINVAL);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_SeekTo(file, 42);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, EINVAL);
+}
+
+TEST(SolidSyslogVxWorks64File, SizeThatFailsReportsTheFailedSizeAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailLseeks();
+    VxWorks64IoFake_FailWithErrno(EINVAL);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Size(file);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, EINVAL);
+}
+
+TEST(SolidSyslogVxWorks64File, TruncateThatFailsReportsTheFailedTruncateAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailIoctlWithErrno(VX_FIOTRUNC, EROFS);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, EROFS);
+}
+
+TEST(SolidSyslogVxWorks64File, CloseThatFailsReportsTheFailedCloseAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailCloses();
+    VxWorks64IoFake_FailWithErrno(EIO);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Close(file);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, EIO);
+}
+
+TEST(SolidSyslogVxWorks64File, CloseThatFailsStillLeavesTheFileClosed)
+{
+    VxWorks64IoFake_FailCloses();
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_Close(file);
+
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogVxWorks64File, SeekSizeAndTruncateThatSucceedReportNothing)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    SolidSyslogFile_SeekTo(file, 0);
+    SolidSyslogFile_Size(file);
+    SolidSyslogFile_Truncate(file);
+    SolidSyslogFile_Close(file);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
 TEST(SolidSyslogVxWorks64File, ExistsProbesThePathReadOnly)
 {
     SolidSyslogFile_Exists(file, TEST_PATH);
