@@ -95,10 +95,14 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
 
         # The body is read before any reply: closing a connection with a body
         # still unread makes Windows abort it, and the client sees that instead
-        # of the reply. One over the limit is refused unread, token or not.
+        # of the reply. One over the limit, or of no valid length, is refused
+        # unread, token or not.
         def _dispatch(self, method):
-            length = int(self.headers.get("Content-Length", 0))
-            if length > max_body_bytes:
+            length = _content_length(self.headers.get("Content-Length", "0"))
+            if length is None:
+                self.close_connection = True
+                self._reply(400)
+            elif length > max_body_bytes:
                 self.close_connection = True
                 self._reply(413)
             else:
@@ -204,6 +208,11 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
         context.load_cert_chain(*certificate)
         server.socket = context.wrap_socket(server.socket, server_side=True)
     return server
+
+
+# The header's length in bytes, or None if it is not a decimal count.
+def _content_length(header):
+    return int(header) if header.isdecimal() else None
 
 
 # The body as a JSON object, or None if it is not one.

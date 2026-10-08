@@ -121,6 +121,19 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("GET", "/jobs/next", "not-the-token")
         self.assertEqual(401, status)
 
+    def raw_status(self, content_length):
+        port = self.server.server_address[1]
+        with socket.create_connection(("127.0.0.1", port), timeout=5) as connection:
+            connection.sendall(f"POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Length: {content_length}\r\n"
+                               f"X-Runner-Token: {self.TOKEN}\r\n\r\n".encode())
+            return int(connection.recv(64).split()[1])
+
+    def test_a_negative_content_length_is_a_bad_request(self):
+        self.assertEqual(400, self.raw_status("-1"))
+
+    def test_a_non_numeric_content_length_is_a_bad_request(self):
+        self.assertEqual(400, self.raw_status("lots"))
+
     def test_next_with_no_job_waiting_is_no_content(self):
         status, _ = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(204, status)
