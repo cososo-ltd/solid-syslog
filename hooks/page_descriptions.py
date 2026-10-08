@@ -90,12 +90,12 @@ DESCRIPTIONS = {
         "and putting the mutex under a buffer shared across tasks."
     ),
     "platforms/vxworks64/index.md": (
-        "The VxWorks 6.4 adapter pack for kernel (VIP) builds: UDP transport, "
-        "an IPv4 resolver, and a mutex over the kernel's semaphore."
+        "The VxWorks 6.4 adapter pack for kernel (VIP) builds, filling the "
+        "Resolver, Datagram, Stream, File, Mutex and AtomicCounter roles."
     ),
     "platforms/vxworks64/setup.md": (
         "Wire the VxWorks 6.4 adapters: building the library inside the "
-        "project, a UDP sender, and the mutex under a shared buffer."
+        "project, the senders, the file store, the mutex and the callbacks."
     ),
     "platforms/freertos/index.md": (
         "The FreeRTOS adapter pack: kernel primitives filling the Mutex role and "

@@ -56,9 +56,8 @@ Each script describes its parameters: `Get-Help .\<script>.ps1 -Detailed`.
 
 ## Target checklist
 
-No CI lane can build or run this target, so every pull request that touches the
-VxWorks 6.4 platform records a run of these steps against its commit: each one as
-pass, fail or not run.
+Run by hand against the commit under review, each step recorded as pass, fail
+or not run.
 
 1. `New-VxWorks64Vip.ps1 -Force` completes.
 2. `Build-VxWorks64Vip.ps1 -Clean` ends with `Diagnostics: none`.
@@ -68,30 +67,23 @@ pass, fail or not run.
    every scenario its tag filter selects passes against the commit, once with
    `-FileSystem hrfs` and once with `-FileSystem dosfs` (see
    [Running the BDD scenarios](#running-the-bdd-scenarios)).
+5. In Windows PowerShell 5.1,
+   `Invoke-Pester -Script Runner\VxWorks64Runner.Tests.ps1` reports no
+   failures.
 
 ## Running the BDD scenarios
 
 `Run-VxWorks64Bdd.ps1` runs the Behave scenarios against this target from the
-development machine. Behave runs there, natively; the runner checks out and
-builds the commit under test, which must therefore have been pushed, and then
-boots the target once for each scenario, with its console connecting back. The
-oracle is the OpenTelemetry Collector the Windows runner uses
-(`Bdd/otel/Install-OtelCollector.ps1`), which the script starts for the run
-with `Bdd/otel/config.vxworks64.yaml`, listening for the target's syslog on UDP
-and TCP 5514. A scenario that stops the collector to make an outage starts it
-again from the same config.
+development machine. `Get-Help .\Run-VxWorks64Bdd.ps1 -Detailed` describes what
+it does, its tag filter and its parameters. It needs:
 
-It needs the job service and the runner set up as in
-[Driving it from another machine](#driving-it-from-another-machine), and
-nothing else on the development machine holding UDP or TCP 5514. A container that
-publishes the port - the devcontainer's syslog-ng does - has to be stopped for
-the run, and the script names it and refuses if one is up. `-FileSystem`
-chooses what the store's disk holds, `hrfs` by default or `dosfs`: the image
-carries both, and the target formats a blank disk with the one chosen and
-refuses a disk that holds the other. `-SkipBuild` reuses the image already
-built; `-Paths` runs the features given, under the same tag filter. The filter, in the script, is this target's list of what it cannot do
-yet: [`docs/bdd.md`](../../../docs/bdd.md#feature-tags) says what each
-`@vxworks64wip` scenario waits for.
+- the commit under test pushed, because the runner checks it out;
+- the job service and the runner set up as in
+  [Driving it from another machine](#driving-it-from-another-machine);
+- the OpenTelemetry Collector (`Bdd/otel/Install-OtelCollector.ps1`);
+- nothing else on the development machine holding UDP or TCP 5514. A container
+  that publishes the port, as the devcontainer's syslog-ng does, has to be
+  stopped for the run; the script names it and refuses if one is up.
 
 ## Driving it from another machine
 
@@ -108,8 +100,8 @@ for Windows provides:
    certificate's thumbprint. None of them goes into the repository.
 2. Allow inbound connections from the local network: TCP 8765 for the job
    service, TCP 8766 for the target's console, and UDP and TCP 5514 for syslog
-   sent by the target. `LocalSubnet` follows the network, so an address changing on
-   either machine needs no new rule. In an administrator PowerShell:
+   sent by the target. `LocalSubnet` follows the network, so an address changing
+   on either machine needs no new rule. In an administrator PowerShell:
 
    ```powershell
    New-NetFirewallRule -DisplayName 'SolidSyslog runner' -Direction Inbound -Protocol TCP -LocalPort 8765,8766 -RemoteAddress LocalSubnet -Action Allow
@@ -126,10 +118,9 @@ On the build machine, in its clone:
    and leave it running. Ctrl+C stops it.
 
 Then, on the development machine, `python Runner\job_service.py submit <job>`
-queues a job, prints its log as it runs, and exits 0 only if it succeeded. It
-stops waiting after 120 seconds, which suits every job but `build`; give that
-longer with `--timeout`, for example `submit --timeout 1200 build`. Stopping
-waiting does not stop the job: the runner carries on with it.
+queues a job and follows its log; `submit --help` gives its options.
+`build` needs a longer `--timeout` than the default, for example
+`submit --timeout 1200 build`.
 
 | Job | What the runner does |
 |---|---|
@@ -151,22 +142,23 @@ that could be read as an option or quoting, and works only in its own clone.
 The console and syslog are plaintext, and reach the development machine only
 through the firewall rules above.
 
+The token lets its holder run any commit reachable from `origin` on the build
+machine, so run the runner under an account that is not an administrator. The
+console port (8766) and the syslog port (5514) accept any peer; where you can,
+restrict their firewall rules to the build machine's address rather than the
+local subnet.
+
 ## How SolidSyslog gets into the image
 
-The build script runs `Platform/VxWorks64/solidsyslog.makefile` against the
-project's own Makefile, so the library is compiled with the build
-specification's compiler and flags into `solidsyslog\` in the project. The
-creation script sets the project's build macros with
-`vxprj buildmacro set`:
+The scripts build and link the library as
+[VxWorks 6.4 setup](../../../docs/platforms/vxworks64/setup.md#what-to-link)
+describes. The BDD target adds:
 
-- `CFLAGS` gains `Core/Interface`, `Platform/VxWorks64/Interface` and
-  `Platform/VxWorks64/Compat`.
-- `LIBS` names the BDD target's archive, then the library, ahead of
-  `$(VX_OS_LIBS)`.
-- With Diab, `PROJECT_BSP_FLAGS_EXTRA` gains `-ei1606`. Wind River's own
+- its own archive, named in `LIBS` ahead of the library;
+- with Diab, `-ei1606` in `PROJECT_BSP_FLAGS_EXTRA`. Wind River's own
   `pciIntLib.c`, which the BSP's `sysLib.c` includes, raises `dcc:1606`. The
-  macro reaches Wind River's sources and the ones `vxprj` generates - the BSP,
-  `romStart.c`, `prjConfig.c` and `linkSyms.c` - so the project's own sources
+  macro reaches Wind River's sources and the ones `vxprj` generates (the BSP,
+  `romStart.c`, `prjConfig.c` and `linkSyms.c`), so the project's own sources
   keep the warning.
 
 The creation script also adds the disk the file store lives on: the ATA driver
@@ -174,28 +166,24 @@ for the Malta board's PIIX4 IDE controller, the extended block device layer, the
 file system monitor with rawFs, dosFs with its formatter and cache, and HRFS
 with its formatter. QEMU gives the target `build\vxworks64\store-disk.img` as
 its primary IDE disk, `/ata0a`, creating it blank when it is absent and keeping
-it across a restart, which is what lets the power-cycle scenario replay its
-records. The target formats a blank disk the first time it builds its store,
-with the file system `set filesystem` chose, and the run removes the
-image, through the runner's `store-reset` job, before each store scenario. The
+it across a restart, so the power-cycle scenario can replay its records. The
+target formats a blank disk the first time it builds its store, with the file
+system `set filesystem` chose, and the run removes the image, through the
+runner's `store-reset` job, before each store scenario. The
 BSP has to acknowledge the IDE interrupt at the board's interrupt controller
 once the driver has serviced it; a BSP that does not leaves the boot silent
 with a disk attached.
 
 The creation script also adds the network the target sends over: the IPv4 stack
 with UDP, TCP, sockets and select, the host table, routing, and the END driver
-for QEMU's PCnet adapter. QEMU loads the ROM image directly, so the boot line's addresses
-are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user network instead,
-as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
+for QEMU's PCnet adapter. QEMU loads the ROM image directly, so the boot line's
+addresses are never used; `INCLUDE_ADDIF` puts the adapter on QEMU's user
+network instead, as `10.0.2.15/24`. The target adds a default route through QEMU's gateway,
 `10.0.2.2`, at start-up, and the harness names the collector with `set host`
 and `set port` over the console.
 
 At start-up the target also puts ED&R in its debug policy and reports the
 policy that took: a fatal error in a task then stops the task and prints the
-exception, where the deployed policy reboots the target without a word. The
+exception, where the deployed policy reboots the target silently. The
 boot line's `0x400` flag cannot select it on this image, which takes its boot
 line from the board's NVRAM and reads the flag before parsing the line.
-
-The kernel header tree has no `<stdint.h>` or `<stdbool.h>`, which the
-SolidSyslog headers include. `Platform/VxWorks64/Compat` supplies both, for the
-library and for the project's own sources alike.

@@ -6,9 +6,9 @@ serve as a model for other VxWorks releases, but nothing here has run on one.
 
 Fills the Datagram, Stream (TCP), Resolver, File, Mutex and AtomicCounter
 [roles](../../roles/index.md), plus the address handle the transports read back
-to send. It also supplies the clock, hostname, sleep and sysUpTime callbacks. There is no
-process-id callback: a kernel task belongs to no process, so PROCID is left
-unset and sent as the nil value.
+to send. It also supplies the clock, hostname, sleep and sysUpTime callbacks.
+There is no process-id callback: a kernel task belongs to no process, so PROCID
+is left unset and sent as the nil value.
 
 ## What it ships
 
@@ -21,12 +21,13 @@ calls `inet_addr` and `hostGetByName`; the mutex calls `semMCreate`, `semTake`,
 `semGive` and `semDelete`; and the atomic counter calls `intLock` and
 `intUnlock`. The image needs the network stack, with TCP for the stream, and the
 host library for the transports and the resolver, and mutual-exclusion
-semaphores for the mutex. The clock calls
-`clock_gettime` and `gmtime_r`, which the image must include; uptime
-calls `tick64Get` and `sysClkRateGet`; the hostname calls `gethostname`; and
-sleep calls `taskDelay`. The file calls `open`, `read`, `write`, `lseek`,
-`ioctl`, `remove` and `close`, and needs the store's directory on a volume the
-image has already mounted. Real-time processes (RTPs) are not supported.
+semaphores for the mutex. The clock calls `clock_gettime` and `gmtime_r`,
+which the image must include; uptime calls `tick64Get` and `sysClkRateGet`; the
+hostname calls `gethostname`; and sleep calls `taskDelay`. The file calls
+`open`, `read`, `write`, `lseek`, `ioctl`, `remove` and `close`, on a volume
+the image mounts (see
+[Mounting and formatting are yours](#mounting-and-formatting-are-yours)).
+Real-time processes (RTPs) are not supported.
 
 The sources are C99. They need nothing from the compiler beyond that, and use no
 toolchain-specific extensions. The flags a VIP generates select C89, so with
@@ -53,8 +54,8 @@ pack calls, declared from the public API reference. That lets them build in an
 ordinary host preset with no Wind River installation present, and the same
 host build compiles the pack at strict C99.
 
-Target runs are outside CI - the toolchain and the kernel are licensed - so
-this section records them as they are made.
+The toolchain and the kernel are licensed, so target runs are outside CI; this
+section records them as they are made.
 
 The whole pack has been built for VxWorks 6.4 on MIPS32 with Diab, and booted
 under QEMU's Malta machine. The library compiles with the image's own flags,
@@ -68,9 +69,9 @@ collector on another machine. The BDD target runs the mutex, guarding the buffer
 its console and service tasks share.
 
 With dosFs, and again with HRFS, on the image's IDE disk, the file has carried
-the BDD store scenarios: records stored while the collector was down were sent once it
-returned, and records still in the store when QEMU was stopped mid-run were
-replayed after it started again.
+the BDD store scenarios: records stored while the collector was down were sent
+once it returned, and records still in the store when QEMU was stopped mid-run
+were replayed after it started again.
 
 ## Security behaviour and obligations
 
@@ -89,14 +90,11 @@ and the sender tries again on its next pass. Its send and read pass
 fails and closes the stream, and a read with nothing waiting returns 0 and keeps
 the connection.
 
-A send first checks whether the peer has closed its end. A connection stays
-writable after a peer closes, so without that check the stack would take a
-record nothing can deliver and the record would be gone; instead the send
-fails, the stream closes itself, and your store replays the record on the next
-connection. The check sees only a close the stack has already learned of: a
-peer that closes while the record is being sent can still lose that record,
-because syslog over TCP has no acknowledgement to say it arrived. A record the
-stack takes only part of fails and is replayed in the same way.
+A send first peeks at the socket to learn whether the peer has closed its end,
+as the [Stream](../../api/structSolidSyslogStream.md) contract requires. The
+peek sees only a close the stack has already learned of: a peer that closes
+while the record is being sent can still lose that record, because syslog over
+TCP has no acknowledgement to say it arrived.
 
 A connect that fails is reported under the stream's own error source, with the
 detail naming which step failed. The stack refusing a socket option is
@@ -113,14 +111,12 @@ the stream closes itself so the sender reconnects.
 
 ### Resolution is by literal, then by host library
 
-A dotted IPv4 literal is taken as it stands. Anything else goes to
-`hostGetByName`, which consults the image's host table and, where the image
-includes it, the DNS client - so a lookup by name may block while the query is
-outstanding. A failed lookup fails that send, and the sender resolves again on
-its next one.
+The [resolver](../../api/SolidSyslogVxWorks64Resolver_8h.md) may block on a
+lookup by name while a DNS query is outstanding. A failed lookup fails that
+send, and the sender resolves again on its next one.
 
-Both calls answer all ones for a host they cannot resolve, so
-`255.255.255.255` cannot be used as a collector address.
+`inet_addr` and `hostGetByName` answer all ones for a host they cannot
+resolve, so `255.255.255.255` cannot be used as a collector address.
 
 ### A record is trimmed to fit, never fragmented
 
@@ -138,11 +134,10 @@ sender has to trim.
 
 ### The clock is only as right as whatever set it
 
-The clock reads `CLOCK_REALTIME` and reports it in UTC; the library never sets
-it. On a board without a battery-backed clock it runs from wherever the kernel
-started it until something sets it, and every record sent before then carries
-that time. If the clock cannot be read the record is sent with no timestamp at
-all.
+The library never sets the clock the
+[timestamp callback](../../api/SolidSyslogVxWorks64Clock_8h.md) reads. Every
+record sent before something sets it carries whatever time the kernel started
+from. If the clock cannot be read the record is sent with no timestamp at all.
 
 ### Time quality is yours to report
 
@@ -153,40 +148,26 @@ structured data.
 
 ### Host identity is only as good as the kernel's
 
-The hostname is what `gethostname` reports, up to `MAXHOSTNAMELEN` characters.
-It identifies the record's origin exactly as far as whatever set it can be
-trusted, and the library performs no independent check.
-
-### The mutex guards a buffer shared between tasks
-
-The circular buffer uses it when the task calling `Log` is not the task calling
-`Service`. Where both run on one task, the Null mutex is the correct choice and
-costs nothing.
+The [hostname](../../api/SolidSyslogVxWorks64Hostname_8h.md) is what
+`gethostname` reports. The library does not verify it.
 
 ### The kernel allocates the semaphore
 
-`semMCreate` takes the semaphore from the kernel's memory; the library holds
-only the id it returns, in a slot of its own static pool. If the kernel cannot
-allocate it, that is reported as a `CRITICAL` at create time and the mutex falls
-back to the Null object, whose Lock and Unlock are no-ops - so a buffer shared
-across tasks would be left unguarded. Size the image's memory so that it cannot
-happen.
-
-### Priority inheritance and deletion safety are both on
+The [mutex](../../api/SolidSyslogVxWorks64Mutex_8h.md) takes its semaphore from
+the kernel's memory. If the kernel cannot allocate it, the mutex falls back to
+the Null object, and a buffer shared across tasks is left unguarded. Size the
+image's memory so that it cannot happen.
 
 The semaphore is created with `SEM_Q_PRIORITY | SEM_INVERSION_SAFE |
-SEM_DELETE_SAFE`. Inversion safety means a low-priority task holding the lock
-inherits the priority of a higher-priority task waiting on it, rather than
-being preempted indefinitely. Deletion safety means a task holding the lock
-cannot be deleted until it releases it; without it, deleting that task would
-leave the lock held and every task that logs would block.
+SEM_DELETE_SAFE`, so a task holding the lock inherits the priority of a
+higher-priority task waiting on it, and cannot be deleted until it releases it.
 
 ### The atomic counter assumes a single CPU
 
-The counter increments with interrupts locked, which excludes every other
-writer, tasks and interrupt service routines alike, only because VxWorks 6.4
-runs on one CPU. Interrupts stay locked only for the read, the compare and the
-store.
+The [counter](../../api/SolidSyslogVxWorks64AtomicCounter_8h.md) locks
+interrupts to increment, which excludes every other writer only because
+VxWorks 6.4 runs on one CPU. Interrupts stay locked only for the read, the
+compare and the store.
 
 ### A write counts once the file system has synced it
 
@@ -207,25 +188,26 @@ the volume:
   failed write. That layer has not been exercised.
 
 Durability has been exercised on dosFs and on HRFS, each on the image's IDE
-disk.
+disk, and the `FIOCOMMITFS` answers above were measured there only. On any
+other block driver, confirm that a write succeeds: a driver that answers
+`FIOCOMMITFS` with an error other than `ENOTSUP` makes every write fail,
+reported as `SOLIDSYSLOG_CAT_FILE_IO_FAILED`.
 
 ### A failed file call is reported, with its errno
 
 Each call the file makes on an open file, and the open itself, is reported
-when it fails: under the file's own error source, in the
-`SOLIDSYSLOG_CAT_FILE_IO_FAILED` category at `ERROR`, with a
-`SolidSyslogFileErrors` code naming what failed - the open, a read, the
-`write`, `FIOSYNC`, `FIOCOMMITFS`, a seek, the size, `FIOTRUNC` or the close.
+under the file's own error source when it fails, as
+[`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
+with a code naming the call. Where the call set `errno`, the
+[`SOLIDSYSLOG_CAT_NATIVE_ERROR`](../../api/SolidSyslogErrorCategory_8h.md)
+event that follows carries it: the VxWorks module number in the upper 16 bits
+and the code in the lower, as the shell's `printErrno` decodes it. A short
+`write` sets no `errno`, so it raises the fault alone.
+[Error severity](../../error-severity.md) gives the level of each.
 
-When the call set `errno`, a `SOLIDSYSLOG_CAT_NATIVE_ERROR` event follows
-straight after, from the same source at the same severity, and its detail is
-that `errno`: the VxWorks module number in the upper 16 bits and the code in
-the lower, as the shell's `printErrno` decodes it. A short `write` sets none,
-so it raises the fault alone.
-
-Three answers are not failures and raise nothing: a short read, which the
-store judges for itself; `FIOCOMMITFS` answering `ENOTSUP`; and a path that
-will not open when the file is only asked whether it exists.
+These answers are not failures and raise nothing: a short read, which the store
+judges for itself; `FIOCOMMITFS` answering `ENOTSUP`; and a path that will not
+open when the file is only asked whether it exists.
 
 ### A path that will not open counts as deleted
 

@@ -34,7 +34,7 @@ Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick rec
 | `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. |
 | `@rtc` | Scenario assumes the device has an RTC and synchronised wall-clock time. Run on Linux/Windows (which have both) and VxWorks 6.4 (whose harness sets the clock at startup). Skipped on the FreeRTOS and CMSIS-RTOS2 targets, which model a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the FreeRTOS and CMSIS-RTOS2 targets. Skipped on Linux/Windows and VxWorks 6.4. The NILVALUE TIMESTAMP itself is not asserted via the oracle — syslog-ng silently substitutes receipt time for `${ISODATE}` / `${S_ISODATE}` when the wire timestamp is NILVALUE — so that case is covered by formatter unit tests. |
-| `@vxworks64wip` | Skipped on the VxWorks 6.4 target until the capability the scenario needs lands; the authoritative entry says what each one waits for. |
+| `@vxworks64wip` | Skipped on the VxWorks 6.4 target until the capability the scenario needs lands. |
 | `@wip` | Globally skipped on every runner. Not currently in use on any scenario. |
 
 ## Running locally
@@ -104,9 +104,9 @@ oracle on the shared loopback.
 
 ### VxWorks 6.4 (QEMU on a build machine)
 
-Run `Bdd\Targets\VxWorks64\Run-VxWorks64Bdd.ps1` on the development machine. What it
-needs, and what it does, is in [its README](Targets/VxWorks64/README.md#running-the-bdd-scenarios).
-No CI lane runs this target.
+Run `Bdd\Targets\VxWorks64\Run-VxWorks64Bdd.ps1` on the development machine.
+What it needs, and what it does, is in
+[its README](Targets/VxWorks64/README.md#running-the-bdd-scenarios).
 
 ## Running in CI
 

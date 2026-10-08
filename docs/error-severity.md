@@ -79,10 +79,10 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault, or a record too large for a circular buffer; not split. |
 | `RESOLVER_RESOLVE_FAILED` - transient | `WARNING` | DNS may resolve on a later attempt. |
 | `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | the lookup answered in a family the transports cannot send to. Permanent for that destination, so waiting does not clear it; a human changes the destination or the stack's build. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
-| `NATIVE_ERROR` | the fault's | follows a fault from the same Source and carries the platform's own code for it, so it takes the severity of the fault it qualifies: a handler filtering by severity keeps or drops the pair together. |
-| `FILE_IO_FAILED` | `ERROR` | a file system call failed: read-only media, a full volume, a failing device. It needs a human and waiting does not clear it. Single-sourced via `SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY`. |
-| `STORE_WRITE_FAILED` | `ERROR` | the record was not kept: the store's device failed, or its security policy would not seal the record, which the policy reports itself. A record the discard policy turns away is not a failure and raises nothing. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
-| `STORE_OPEN_FAILED` | `WARNING` | the store could not open its device at create, but stands and tries again on the next write, which reports `STORE_WRITE_FAILED` if the device is still failing. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
+| `NATIVE_ERROR` | the fault's | qualifies the fault raised just before it, so a handler filtering by severity keeps or drops the pair together. |
+| `FILE_IO_FAILED` | `ERROR` | read-only media, a full volume or a failing device needs a human, and waiting does not clear it. Single-sourced via `SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY`. |
+| `STORE_WRITE_FAILED` | `ERROR` | a record is lost, and the device or the policy at fault needs a human. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
+| `STORE_OPEN_FAILED` | `WARNING` | the store stands and tries the device again on the next write, which reports `STORE_WRITE_FAILED` if it is still failing. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
 | `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage: recoverable, store-and-forward covers it. |
 | `SENDER_DELIVERY_RESTORED` | `NOTICE` | recovery. |
 
@@ -94,8 +94,8 @@ cannot drift site-by-site again. `STREAM_CONNECT_FAILED` gets the same treatment
 same reason even though it is a split: every TCP backend raises the same shared detail
 codes from `SolidSyslogTcpStreamErrors.h`, so a literal per site would restate one policy
 once per backend. `FILE_IO_FAILED` has one for the same reason: its codes in
-`SolidSyslogFileErrors.h` are shared by every File backend. Two macros for two levels is not the `BAD_CONFIG` footgun below, which
-is one macro standing for levels that differ. `BAD_CONFIG` is split: the fatal subset uses a macro, the
+`SolidSyslogFileErrors.h` are shared by every File backend. Each of these
+macros stands for one level. `BAD_CONFIG` is split: the fatal subset uses a macro, the
 degraded subset keeps an explicit `WARNING` literal (the two are genuinely different
 severities, so a single macro would be a footgun). Tests assert the concrete expected level
 as a literal, never the macro, so a wrong policy value is caught.

@@ -426,12 +426,8 @@ a fixed list of steps run by hand, outside CI, against the commit under review.
 - CI still gates everything it can reach: host builds, unit tests against the platform's
   fakes, and static analysis. The checklist covers only what CI cannot reach.
 
-Where the target can run the BDD scenarios — today the VxWorks 6.4 target, from a
-development machine through its runner — the checklist's run of them is that evidence:
-the commit, and the scenarios passed, failed and skipped by its tag filter.
-
-A green CI run on such a PR therefore says nothing about the target; the recorded
-checklist does.
+Where the target can run the BDD scenarios, the checklist's run of them is that
+evidence: the commit, and the scenarios passed, failed and skipped by its tag filter.
 
 ---
 
