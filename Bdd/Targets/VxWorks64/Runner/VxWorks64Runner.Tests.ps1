@@ -73,7 +73,7 @@ Describe 'Invoke-RunnerJob' {
 
     It 'refuses an argument value that could be read as an option or quoting, and runs nothing' {
         $checkout = @{ 'checkout' = @{ Arguments = @('ref'); Run = { param($Arguments) $script:called = $true } } }
-        foreach ($value in @('--upload-pack=evil', 'main"; del *', "main'", 'main;x', ''))
+        foreach ($value in @('--upload-pack=evil', 'main"; del *', "main'", 'main;x', '', "main`n"))
             {
             $script:called = $false
             $result = Invoke-RunnerJob -Job @{ type = 'checkout'; args = @{ ref = $value } } -Actions $checkout

@@ -82,9 +82,9 @@ function ConvertTo-BatchArgument
     {
     param([Parameter(Mandatory)] [AllowEmptyString()] [string] $Argument)
 
-    if ($Argument.Contains('"'))
+    if ($Argument -match '["\r\n]')
         {
-        throw "An argument contains a double quote, which cannot be passed safely: $Argument"
+        throw "An argument contains a double quote or a line break, which cannot be passed safely: $Argument"
         }
     $escaped = $Argument.Replace('%', '%%%%')
     if ($escaped -eq '' -or $escaped -match '[\s&|<>^(),;=]')

@@ -73,7 +73,7 @@ function Test-RunnerArgumentValue
     {
     param([AllowEmptyString()] [string] $Value)
 
-    $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*$'
+    $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*\z'
     }
 
 # In C#, because the TLS validation callback that uses it runs on threads
