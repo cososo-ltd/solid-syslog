@@ -430,6 +430,31 @@ class CertificateTest(unittest.TestCase):
             thread.join()
             server.server_close()
 
+    @unittest.skipIf(os.name == "nt", "file modes are POSIX")
+    def test_initialise_makes_the_token_readable_by_its_owner_only(self):
+        home = os.path.join(self.directory, "home")
+        job_service.initialise(home)
+        self.assertEqual(0o600, os.stat(os.path.join(home, "token")).st_mode & 0o777)
+
+    def test_an_idle_connection_does_not_stop_the_service_answering(self):
+        server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,
+                                         (self.certificate, self.key), idle_seconds=0.5)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            with socket.create_connection(("127.0.0.1", server.server_address[1])):
+                client = ssl.create_default_context()
+                client.check_hostname = False
+                client.verify_mode = ssl.CERT_NONE
+                request = urllib.request.Request(f"https://127.0.0.1:{server.server_address[1]}/jobs/next")
+                request.add_header("X-Runner-Token", "test-token")
+                with urllib.request.urlopen(request, context=client, timeout=5) as response:
+                    self.assertEqual(204, response.status)
+        finally:
+            server.shutdown()
+            thread.join()
+            server.server_close()
+
     def test_run_job_verifies_the_service_against_its_certificate(self):
         queue = job_service.JobQueue()
         server = job_service.make_server(queue, "test-token", "127.0.0.1", 0, (self.certificate, self.key))

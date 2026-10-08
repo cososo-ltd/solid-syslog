@@ -85,8 +85,10 @@ class JobQueue:
 
 
 # A log chunk is a few seconds of build output, far below the default limit.
-def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024):
+def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024, idle_seconds=30):
     class Handler(http.server.BaseHTTPRequestHandler):
+        timeout = idle_seconds
+
         def do_GET(self):
             self._dispatch("GET")
 
@@ -206,8 +208,21 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
     if certificate is not None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(*certificate)
-        server.socket = context.wrap_socket(server.socket, server_side=True)
+        server.get_request = lambda: _accept_tls(server.socket, context, idle_seconds)
     return server
+
+
+# The handshake is bounded, so a peer that connects and sends nothing holds
+# the single-threaded service for idle_seconds at most. A failed handshake
+# raises OSError, which the server drops the connection on.
+def _accept_tls(listener, context, idle_seconds):
+    connection, address = listener.accept()
+    connection.settimeout(idle_seconds)
+    try:
+        return context.wrap_socket(connection, server_side=True), address
+    except OSError:
+        connection.close()
+        raise
 
 
 # The header's length in bytes, or None if it is not a decimal count.
@@ -278,8 +293,9 @@ def initialise(home):
     openssl = shutil.which("openssl")
     if openssl is None:
         raise RuntimeError("openssl was not found on the PATH - Git for Windows provides one")
-    os.makedirs(home, exist_ok=True)
-    with open(os.path.join(home, "token"), "x", encoding="ascii") as token:
+    os.makedirs(home, mode=0o700, exist_ok=True)
+    descriptor = os.open(os.path.join(home, "token"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with open(descriptor, "w", encoding="ascii") as token:
         token.write(secrets.token_urlsafe(32))
     subprocess.run(
         [openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
