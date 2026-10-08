@@ -13,13 +13,15 @@
 #include "SolidSyslogErrorCategory.h"
 
 /**
- * Portable Store-role error categories. They say what a failing device cost
- * the store; the device or file beneath it reports the call that failed.
+ * Portable Store-role error categories. They say what a fault cost the store;
+ * whatever was at fault - the device or file beneath it, or the security
+ * policy - reports the cause itself.
  */
 
-/** The store could not keep a record, because its device failed. The record
- *  is not retained. A record the discard policy turns away is not a failure
- *  and raises nothing. */
+/** The store could not keep a record: its device failed, or its security
+ *  policy would not seal the record. event->Detail says which. The record is
+ *  not retained. A record the discard policy turns away is not a failure and
+ *  raises nothing. */
 #define SOLIDSYSLOG_CAT_STORE_WRITE_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 1U))
 
 /** The store could not open its device when it was created. It stands, and

@@ -1449,6 +1449,7 @@ enum
 };
 
 static int SpySealRecordCallCount;
+static bool spySealSucceeds;
 static uint8_t sealContentData[CONTENT_REGION_MAX];
 static uint16_t sealContentLength;
 static uint16_t sealHeaderLength;
@@ -1460,7 +1461,7 @@ static bool SpySealRecord(struct SolidSyslogSecurityPolicy* self, const struct S
     sealContentLength = record->ContentLength;
     sealHeaderLength = record->HeaderLength;
     memcpy(sealContentData, record->Content, record->ContentLength);
-    return true;
+    return spySealSucceeds;
 }
 
 static int SpyOpenRecordCallCount;
@@ -1493,6 +1494,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
     {
         setupBlockDeviceFakes();
         SpySealRecordCallCount  = 0;
+        spySealSucceeds = true;
         sealContentLength  = 0;
         sealHeaderLength  = 0;
         memset(sealContentData, 0, sizeof(sealContentData));
@@ -1520,6 +1522,21 @@ TEST(SolidSyslogBlockStoreIntegrity, WriteCallsSealRecord)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     CALLED_FUNCTION(SpySealRecord, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ASealThePolicyRefusesReportsTheRecordWasNotKept)
+{
+    ErrorHandlerFake_Install(nullptr);
+    spySealSucceeds = false;
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+    );
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, SealRecordReceivesContentRegionAndHeaderSplit)
