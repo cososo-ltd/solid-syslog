@@ -1033,7 +1033,7 @@ def step_check_example_pid(context):
     RFC 5424 §6.2.6 (NILVALUE permitted "when no value is provided"). Each
     runner emits the most honest value it has: Linux/Windows the spawned
     example's PID; FreeRTOS and VxWorks NILVALUE because their targets have
-    no process model. The library emits NILVALUE when getProcessId is NULL — falls
+    no process model. The library emits NILVALUE when getProcessId is NULL: it falls
     through NilStringFunction → empty field → FormatStringField writes "-"
     (Core/Source/SolidSyslog.c)."""
     if context.target in NO_PROCESS_MODEL_TARGETS:

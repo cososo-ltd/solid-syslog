@@ -43,10 +43,7 @@
 /*
  * A failed file system call gets a macro for the same reason: the
  * SolidSyslogFileErrors codes raised under it are shared by every File
- * backend. A volume
- * that will not open, write or sync needs a human - read-only media, a full
- * disk, a failing device - and waiting does not clear it. The native-code
- * event that follows such a fault carries the fault's severity, not its own.
+ * backend. See docs/error-severity.md.
  */
 #define SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
 

@@ -17,9 +17,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
-    /** Create takes no config; an exhausted pool falls back to the shared
-     *  NullDatagram, whose SendTo reports SENT so undeliverables are dropped
-     *  rather than backing up the Store. */
+    /** Create takes no config; an exhausted pool falls back to
+     *  SolidSyslogNullDatagram. */
     struct SolidSyslogDatagram* SolidSyslogVxWorks64Datagram_Create(void);
     /** Release the pool slot. */
     void SolidSyslogVxWorks64Datagram_Destroy(struct SolidSyslogDatagram * base);

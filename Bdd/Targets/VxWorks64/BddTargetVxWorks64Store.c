@@ -31,9 +31,8 @@ static bool BddTargetVxWorks64Store_IsFormatted(void);
 static bool BddTargetVxWorks64Store_Holds(enum BddTargetVxWorks64FileSystem fileSystem);
 static bool BddTargetVxWorks64Store_Format(enum BddTargetVxWorks64FileSystem fileSystem);
 
-/* A blank disk is formatted with the file system chosen, and is then that file
- * system at once; one already formatted keeps what it holds, which is what
- * lets the store outlive a power cycle - but only if it is the one chosen. */
+/* A blank disk is formatted with the file system chosen. A formatted disk keeps
+ * its contents, and is refused if it holds another file system. */
 enum BddTargetVxWorks64StoreMountResult BddTargetVxWorks64Store_Mount(enum BddTargetVxWorks64FileSystem fileSystem)
 {
     enum BddTargetVxWorks64StoreMountResult result = BDD_TARGET_VXWORKS64_STORE_MOUNTED;
@@ -64,9 +63,8 @@ static bool BddTargetVxWorks64Store_IsFormatted(void)
     return answers && ((status.st_mode & S_IFMT) == S_IFDIR);
 }
 
-/* dosFs answers for the volumes it owns. HRFS has no lookup by path, so a
- * formatted volume dosFs does not own is HRFS - true only because the image
- * carries no third file system that formats. */
+/* HRFS has no lookup by path, so a formatted volume dosFs does not own is
+ * taken as HRFS; the image carries no other formattable file system. */
 static bool BddTargetVxWorks64Store_Holds(enum BddTargetVxWorks64FileSystem fileSystem)
 {
     bool isDosFs = dosFsVolDescGet(volume, NULL) != NULL;

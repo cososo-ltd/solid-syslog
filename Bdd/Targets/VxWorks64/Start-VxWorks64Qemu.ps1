@@ -7,8 +7,7 @@ Starts one Malta 4Kc guest with a PCnet adapter on QEMU's user-mode network,
 which lets the guest reach the host and beyond through NAT, and the store disk
 image as its primary IDE disk. A disk that is not there is created blank, and
 the target formats it the first time it builds its file store; one that is
-there keeps what the last run stored, which is what lets the store outlive a
-power cycle.
+there keeps what the last run stored, so the store outlives a power cycle.
 
 With -WaitFor, the console goes to a log file; the script waits for that text,
 stops QEMU, and fails if it does not appear in time. That is the boot check.

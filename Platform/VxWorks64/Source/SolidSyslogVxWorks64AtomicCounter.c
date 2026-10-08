@@ -46,17 +46,13 @@ static void VxWorks64AtomicCounter_Init(struct SolidSyslogVxWorks64AtomicCounter
 
 void SolidSyslogVxWorks64AtomicCounter_Cleanup(struct SolidSyslogAtomicCounter* base)
 {
-    /* Overwrite the abstract base with the shared NullAtomicCounter vtable so
-     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    /* Use-after-destroy lands on the NullAtomicCounter vtable. */
     *base = *SolidSyslogNullAtomicCounter_Get();
 }
 
 static uint32_t VxWorks64AtomicCounter_Increment(struct SolidSyslogAtomicCounter* base)
 {
     struct SolidSyslogVxWorks64AtomicCounter* self = VxWorks64AtomicCounter_SelfFromBase(base);
-    /* VxWorks 6.4 runs on a single CPU, so with interrupts locked no task can
-     * preempt and no interrupt service routine can run between the read and
-     * the write. */
     int lockKey = intLock();
     self->Value = (self->Value >= SOLIDSYSLOG_SEQUENCE_ID_MAX) ? 1U : (self->Value + 1U);
     uint32_t next = self->Value;

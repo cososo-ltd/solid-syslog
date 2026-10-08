@@ -165,7 +165,7 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
                 queue.finish(job_id, result["outcome"], result["summary"])
                 self._reply(204)
 
-        # The runner polls for work every few seconds; an empty poll is not news.
+        # The runner polls for work every few seconds; empty polls are not logged.
         def log_request(self, code="-", size="-"):
             if not ((code == 204) and (self.path == "/jobs/next")):
                 super().log_request(code, size)
@@ -287,8 +287,8 @@ def job_arguments(words):
 
 
 # Creates the service's token, and the self-signed certificate and key it
-# serves, once. The runner pins the certificate by thumbprint, so the name in it
-# matters to nobody and the address it is reached at may change.
+# serves, once. The runner pins the certificate by thumbprint, so its name and
+# the address it is reached at are not checked.
 def initialise(home):
     openssl = shutil.which("openssl")
     if openssl is None:

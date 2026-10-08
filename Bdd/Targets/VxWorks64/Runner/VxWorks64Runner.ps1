@@ -134,8 +134,8 @@ function ConvertFrom-RunnerJobJson
     }
 
 # Sends a finished job's result, given as @{ Id; Body }. Gives it back if the
-# send failed, so it can be sent again: a result lost here would leave the job
-# running on the service for good.
+# send failed, so it can be sent again; a lost result leaves the job running on
+# the service.
 function Send-RunnerResult
     {
     param(

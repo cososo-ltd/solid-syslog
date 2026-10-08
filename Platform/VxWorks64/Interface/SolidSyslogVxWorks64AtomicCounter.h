@@ -7,8 +7,7 @@
  *  sequenceId. Increment runs with interrupts locked (intLock), so it is safe
  *  to call from tasks and from interrupt service routines alike. That holds
  *  because VxWorks 6.4 runs on a single CPU: locking interrupts excludes every
- *  other writer. The sequence is wrap-aware in [1, 2^31 - 1] and skips zero on
- *  wrap, so a returned value is never 0. */
+ *  other writer. */
 #ifndef SOLIDSYSLOGVXWORKS64ATOMICCOUNTER_H
 #define SOLIDSYSLOGVXWORKS64ATOMICCOUNTER_H
 
@@ -18,9 +17,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogAtomicCounter;
 
-    /** Create takes no config; an exhausted pool falls back to the shared
-     *  NullAtomicCounter, whose Increment returns 1 unconditionally, and is
-     *  reported through the error handler. */
+    /** Create takes no config; an exhausted pool falls back to
+     *  SolidSyslogNullAtomicCounter. */
     struct SolidSyslogAtomicCounter* SolidSyslogVxWorks64AtomicCounter_Create(void);
     /** Release the pool slot; the counter's state is discarded. */
     void SolidSyslogVxWorks64AtomicCounter_Destroy(struct SolidSyslogAtomicCounter * base);

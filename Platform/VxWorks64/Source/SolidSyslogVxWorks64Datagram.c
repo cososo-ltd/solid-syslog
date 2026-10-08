@@ -74,9 +74,7 @@ static inline bool VxWorks64Datagram_HasSocket(const struct SolidSyslogVxWorks64
 void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 {
     VxWorks64Datagram_Close(base);
-    /* Overwrite the abstract base with the shared NullDatagram vtable so
-     * use-after-destroy is a safe no-op rather than a send on a closed
-     * socket. */
+    /* Use-after-destroy lands on the NullDatagram vtable. */
     *base = *SolidSyslogNullDatagram_Get();
 }
 
@@ -94,8 +92,8 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     const struct SolidSyslogAddress* addr
 )
 {
-    /* The stack has no don't-fragment option, so a record it would fragment
-     * is refused here instead, and the sender trims it to fit. */
+    /* The stack has no don't-fragment option, so an oversize record is refused
+     * here. */
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
     if (size <= VxWorks64Datagram_MaxPayload(base))
     {
@@ -136,8 +134,8 @@ static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(
 
 static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
-    /* The stack offers no path-MTU query for UDP, so the conservative figure
-     * the Datagram contract asks for is the only honest one. */
+    /* No path-MTU query exists for UDP, so this returns the contract's
+     * unknown-path figure. */
     (void) base;
     return SolidSyslogUdpPayload_UnknownPath(false);
 }

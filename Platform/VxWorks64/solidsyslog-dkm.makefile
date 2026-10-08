@@ -27,11 +27,9 @@ SOLIDSYSLOG_LIB = $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a
 SOLIDSYSLOG_DKM_WORKBENCH_SET = $(if $(strip $(PRJ_ROOT_DIR)),$(if $(strip $(BUILD_SPEC)),$(if $(strip $(MODE_DIR)),set)))
 SOLIDSYSLOG_DKM_BUILD_DIR_UNSAFE = $(if $(filter $(SOLIDSYSLOG_DKM_DEFAULT_BUILD_DIR),$(SOLIDSYSLOG_BUILD_DIR)),$(if $(SOLIDSYSLOG_DKM_WORKBENCH_SET),,unsafe))
 
-# Workbench publishes the target, debug, include and preprocessor settings,
-# but its generated VxWorks 6.4 DKM Makefile does not publish the compiler or
-# archiver command: it spells them directly in each recipe.  The small product
-# adapter which includes this file therefore supplies these three variables.
-# Keeping the tool invocation there makes this reusable by a GNU DKM too.
+# The generated VxWorks 6.4 DKM Makefile spells the compiler and archiver in
+# each recipe rather than publishing them, so the makefile that includes this
+# one supplies these variables.
 ifeq ($(origin SOLIDSYSLOG_CC),undefined)
 $(error SOLIDSYSLOG_CC is not set - pass the DKM compiler command)
 endif
@@ -73,10 +71,9 @@ solidsyslog_library: $(SOLIDSYSLOG_LIB)
 # files decide whether the archive actually changes. The archive is a real file,
 # never phony and never touched here, so its timestamp is the library's own.
 #
-# The lower-level makefile uses the conventional CC and AR names.  The DKM
-# adapter supplies their values under SolidSyslog-specific names so they do not
-# leak into the product project; map just those command names for the sub-make.
-# Quoted, so a command that carries its own arguments arrives whole.
+# The sub-make takes CC and AR; they are passed under SolidSyslog names so they
+# do not reach the DKM project. Quoted, so a command that carries its own
+# arguments arrives whole.
 $(SOLIDSYSLOG_LIB): solidsyslog_config_check
 	$(MAKE) -f $(SOLIDSYSLOG_DIR)/Platform/VxWorks64/solidsyslog-vxworks64.mk \
 		CC="$(SOLIDSYSLOG_CC)" AR="$(SOLIDSYSLOG_AR)" TOOL_FAMILY="$(TOOL_FAMILY)"

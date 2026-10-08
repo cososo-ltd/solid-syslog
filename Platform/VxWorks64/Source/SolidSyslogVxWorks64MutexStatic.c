@@ -38,9 +38,7 @@ struct SolidSyslogMutex* SolidSyslogVxWorks64Mutex_Create(void)
         }
         else
         {
-            /* The kernel refused to make the semaphore, so the slot goes
-             * straight back: the caller is handed the shared NullMutex and
-             * holds nothing that names this slot. */
+            /* The slot goes back; the caller holds the NullMutex. */
             (void) SolidSyslogPoolAllocator_FreeIfInUse(
                 &VxWorks64Mutex_Allocator,
                 index,

@@ -157,10 +157,8 @@ void BddTargetVxWorks64_Init(void)
     BddTargetVxWorks64_SpawnTasks();
 }
 
-/* A test target has to show its faults. In ED&R's deployed policy a fatal error
- * in a task reboots the target without a word; in its debug policy the task
- * stops and the exception is printed. The boot line's flag cannot select it on
- * this image, so it is set here, and the policy that took is reported. */
+/* Select ED&R's debug policy so a fatal task error is printed rather than
+ * rebooting the target. The boot line cannot select it on this image. */
 static void BddTargetVxWorks64_ShowFaults(void)
 {
     edrSystemDebugModeSet(TRUE);
@@ -563,7 +561,6 @@ static void BddTargetVxWorks64_OnThresholdCrossed(void* context)
     (void) fprintf(BddTargetVxWorks64_Reports(), "[THRESHOLD-CROSSED]\n");
 }
 
-/* The NullStore is shared and has nothing to release. */
 static void BddTargetVxWorks64_DestroyStore(void)
 {
     if (storeIsFile)

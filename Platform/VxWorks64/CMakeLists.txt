@@ -1,13 +1,9 @@
-# VxWorks 6.4 adapter pack. An INTERFACE library rather than a precompiled one:
-# the VxWorks headers come from the consumer's Wind River installation rather
-# than from us or from the system, so these sources compile in the CONSUMER's
-# target against the headers their kernel ships. Linking SolidSyslog::VxWorks64
-# is enough - the pack carries its sources.
+# VxWorks 6.4 adapter pack. An INTERFACE library: the VxWorks headers come from
+# the consumer's Wind River installation, so these sources compile in the
+# consumer's target. Linking SolidSyslog::VxWorks64 brings the sources.
 #
-# Our own tests need no Wind River installation: Tests/Support/VxWorks64Fakes
-# supplies the API subset outright and the suite builds in the ordinary debug
-# preset. That is why the registry row defaults it on rather than keying it to
-# a path.
+# The unit tests need no Wind River installation: Tests/Support/VxWorks64Fakes
+# supplies the API subset, so the pack is on by default.
 
 add_library(SolidSyslogVxWorks64 INTERFACE)
 

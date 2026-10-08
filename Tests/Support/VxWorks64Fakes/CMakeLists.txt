@@ -3,9 +3,7 @@
 # The headers carry the names and prototypes of the public API reference and
 # nothing else; no Wind River header or library is held in this repository.
 #
-# The price is that the stand-in can drift from the real API. Target builds are
-# what close that: there the same sources compile against the headers VxWorks
-# ships.
+# The stand-in can drift from the real API; target builds catch that.
 #
 # Sources are listed by the test executables that need them rather than built
 # into a library here, matching CmsisRtosFakes; CMake only requires this file to

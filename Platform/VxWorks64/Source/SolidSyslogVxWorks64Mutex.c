@@ -37,9 +37,7 @@ bool SolidSyslogVxWorks64Mutex_Initialise(struct SolidSyslogMutex* base)
     }
     else
     {
-        /* The kernel could not allocate the semaphore, which on a sized image
-         * is a configuration fault. Say so; the caller is handed the
-         * NullMutex. */
+        /* On a sized image, a refused semaphore is a configuration fault. */
         VxWorks64Mutex_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
@@ -66,9 +64,7 @@ void SolidSyslogVxWorks64Mutex_Cleanup(struct SolidSyslogMutex* base)
     {
         (void) semDelete(self->Id);
     }
-    /* Overwrite the abstract base with the shared NullMutex vtable so
-     * use-after-destroy is a safe no-op rather than a call on a deleted
-     * semaphore. */
+    /* Use-after-destroy lands on the NullMutex vtable. */
     *base = *SolidSyslogNullMutex_Get();
 }
 

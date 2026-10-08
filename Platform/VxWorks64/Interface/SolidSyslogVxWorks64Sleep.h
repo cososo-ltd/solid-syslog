@@ -12,10 +12,12 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Sleeps for @p milliseconds via taskDelay, rounded up to whole system
-     *  clock ticks. Zero or a negative value yields without sleeping. It is for
-     *  the short waits a caller makes between its own bounded attempts, such as
-     *  the TLS handshake's: a sleep of up to one minute converts to ticks
-     *  without overflow at any tick rate below 35 MHz, and a longer one is outside this
+     *  clock ticks. taskDelay(n) returns at the nth tick boundary, so the wait
+     *  can be up to one tick short of the request. Zero or a negative value is
+     *  taskDelay(0): a yield to tasks of the same priority. It is for the short
+     *  waits a caller makes between its own bounded attempts, such as the TLS
+     *  handshake's: a sleep of up to one minute converts to ticks without
+     *  overflow at any tick rate below 35 MHz, and a longer one is outside this
      *  contract. It neither performs nor bounds retries. */
     void SolidSyslogVxWorks64_Sleep(int milliseconds);
 
