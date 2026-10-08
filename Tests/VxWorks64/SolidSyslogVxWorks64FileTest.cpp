@@ -46,21 +46,32 @@ static const int OWNER_READ_WRITE = 0x180;
 // Asserts the call raised exactly the File fault naming this operation, then
 // the errno behind it.
 #define CHECK_FAILURE_REPORTED_WITH_ERRNO(code, nativeErrno) \
-    { \
-        CALLED_FAKE(ErrorHandlerFake_Handle, TWICE); \
-        CHECK_ERROR_EVENT_AT( \
-            0, SOLIDSYSLOG_SEVERITY_ERROR, &SolidSyslogVxWorks64FileErrorSource, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code \
-        ); \
-        CHECK_ERROR_EVENT_AT( \
-            1, SOLIDSYSLOG_SEVERITY_ERROR, &SolidSyslogVxWorks64FileErrorSource, SOLIDSYSLOG_CAT_NATIVE_ERROR, nativeErrno \
-        ); \
+    {                                                        \
+        CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);         \
+        CHECK_ERROR_EVENT_AT(                                \
+            0,                                               \
+            SOLIDSYSLOG_SEVERITY_ERROR,                      \
+            &SolidSyslogVxWorks64FileErrorSource,            \
+            SOLIDSYSLOG_CAT_FILE_IO_FAILED,                  \
+            code                                             \
+        );                                                   \
+        CHECK_ERROR_EVENT_AT(                                \
+            1,                                               \
+            SOLIDSYSLOG_SEVERITY_ERROR,                      \
+            &SolidSyslogVxWorks64FileErrorSource,            \
+            SOLIDSYSLOG_CAT_NATIVE_ERROR,                    \
+            nativeErrno                                      \
+        );                                                   \
     }
 
 // Asserts the call raised exactly the File fault naming this operation, with
 // no errno behind it.
-#define CHECK_FAILURE_REPORTED_ALONE(code) \
-    CHECK_ERROR_REPORTED_ONCE( \
-        SOLIDSYSLOG_SEVERITY_ERROR, &SolidSyslogVxWorks64FileErrorSource, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code \
+#define CHECK_FAILURE_REPORTED_ALONE(code)    \
+    CHECK_ERROR_REPORTED_ONCE(                \
+        SOLIDSYSLOG_SEVERITY_ERROR,           \
+        &SolidSyslogVxWorks64FileErrorSource, \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,       \
+        code                                  \
     )
 
 // clang-format off

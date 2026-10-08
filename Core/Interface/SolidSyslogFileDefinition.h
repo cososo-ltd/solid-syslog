@@ -38,7 +38,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  durable across power loss, so an implementation must flush).
          *  @retval false the full @p count was not written and committed. */
         bool (*Write)(struct SolidSyslogFile* base, const void* buf, size_t count);
-        /** Position for the next Read/Write, absolute from the start. Errors are silent. */
+        /** Position for the next Read/Write, absolute from the start. Returns no
+         *  result; a backend that reports failures does so through the error
+         *  handler. */
         void (*SeekTo)(struct SolidSyslogFile* base, size_t offset);
         size_t (*Size)(struct SolidSyslogFile* base); /**< Current length in bytes; 0 on error. */
         void (*Truncate)(struct SolidSyslogFile* base); /**< Discard all content, leaving the file open at length 0. */

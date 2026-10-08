@@ -41,8 +41,9 @@
 #define SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
 
 /*
- * A failed file system call gets a macro for the same reason: every File
- * backend raises the shared SolidSyslogFileErrors codes under it. A volume
+ * A failed file system call gets a macro for the same reason: the
+ * SolidSyslogFileErrors codes raised under it are shared by every File
+ * backend. A volume
  * that will not open, write or sync needs a human - read-only media, a full
  * disk, a failing device - and waiting does not clear it. The native-code
  * event that follows such a fault carries the fault's severity, not its own.

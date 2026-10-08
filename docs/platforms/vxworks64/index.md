@@ -209,6 +209,24 @@ the volume:
 Durability has been exercised on dosFs and on HRFS, each on the image's IDE
 disk.
 
+### A failed file call is reported, with its errno
+
+Each call the file makes on an open file, and the open itself, is reported
+when it fails: under the file's own error source, in the
+`SOLIDSYSLOG_CAT_FILE_IO_FAILED` category at `ERROR`, with a
+`SolidSyslogFileErrors` code naming what failed - the open, a read, the
+`write`, `FIOSYNC`, `FIOCOMMITFS`, a seek, the size, `FIOTRUNC` or the close.
+
+When the call set `errno`, a `SOLIDSYSLOG_CAT_NATIVE_ERROR` event follows
+straight after, from the same source at the same severity, and its detail is
+that `errno`: the VxWorks module number in the upper 16 bits and the code in
+the lower, as the shell's `printErrno` decodes it. A short `write` sets none,
+so it raises the fault alone.
+
+Three answers are not failures and raise nothing: a short read, which the
+store judges for itself; `FIOCOMMITFS` answering `ENOTSUP`; and a path that
+will not open when the file is only asked whether it exists.
+
 ### A path that will not open counts as deleted
 
 Delete reports success when `remove` succeeds, and also when it fails but the
@@ -224,7 +242,7 @@ the two apart and reporting a delete that fails.
 The file opens the paths the block device gives it, under a volume the image
 has already mounted, and never mounts or formats one itself. Bring the volume
 up before the store is created; with no volume there, the file cannot open
-the store's files.
+the store's files, and reports each open that fails.
 
 ### Log from a task, not an interrupt
 
