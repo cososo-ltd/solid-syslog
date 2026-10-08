@@ -1,8 +1,10 @@
 #include "BddTargetErrorText.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "CppUTest/TestHarness.h"
@@ -72,6 +74,26 @@ TEST(BddTargetErrorText, OpenSslStreamInitFailedCategoryMapsToText)
 TEST(BddTargetErrorText, OpenSslStreamHandshakeFailedCategoryMapsToText)
 {
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, "TLS handshake failed");
+}
+
+TEST(BddTargetErrorText, NativeErrorCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_NATIVE_ERROR, "native error");
+}
+
+TEST(BddTargetErrorText, FileIoFailedCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_FILE_IO_FAILED, "file I/O failed");
+}
+
+TEST(BddTargetErrorText, StoreWriteFailedCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, "store write failed");
+}
+
+TEST(BddTargetErrorText, StoreOpenFailedCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_OPEN_FAILED, "store open failed");
 }
 
 TEST(BddTargetErrorText, UnrecognisedCategoryMapsToUnknown)
