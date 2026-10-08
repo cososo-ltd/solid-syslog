@@ -79,6 +79,7 @@ static long VxWorks64IoFake_LseekOffset = -1;
 static int VxWorks64IoFake_LseekWhence = -1;
 static int VxWorks64IoFake_FailingIoctl = VXWORKS64IOFAKE_NONE;
 static int VxWorks64IoFake_FailingIoctlErrno = EIO;
+static int VxWorks64IoFake_FailureErrno = EIO;
 static unsigned VxWorks64IoFake_Ioctls = 0U;
 static struct VxWorks64IoFake_IoctlCall VxWorks64IoFake_IoctlLog[VXWORKS64IOFAKE_IOCTL_LOG_SIZE];
 static bool VxWorks64IoFake_RemovesFail = false;
@@ -192,6 +193,7 @@ void VxWorks64IoFake_Reset(void)
     VxWorks64IoFake_LseekWhence = -1;
     VxWorks64IoFake_FailingIoctl = VXWORKS64IOFAKE_NONE;
     VxWorks64IoFake_FailingIoctlErrno = EIO;
+    VxWorks64IoFake_FailureErrno = EIO;
     VxWorks64IoFake_Ioctls = 0U;
     VxWorks64IoFake_RemovesFail = false;
     VxWorks64IoFake_Removes = 0U;
@@ -212,6 +214,11 @@ void VxWorks64IoFake_PutFile(const char* name)
 int VxWorks64IoFake_Fd(void)
 {
     return VxWorks64IoFake_LastFd;
+}
+
+void VxWorks64IoFake_FailWithErrno(int errnoValue)
+{
+    VxWorks64IoFake_FailureErrno = errnoValue;
 }
 
 void VxWorks64IoFake_FailOpens(void)
@@ -411,6 +418,10 @@ int open(const char* name, int flags, int mode)
     {
         VxWorks64IoFake_LastFd = fd;
     }
+    else
+    {
+        errno = VxWorks64IoFake_FailureErrno;
+    }
     return fd;
 }
 
@@ -424,6 +435,7 @@ int read(int fd, char* buffer, size_t maxbytes)
     VxWorks64IoFake_ReadMaxBytes = (int) maxbytes;
     if (VxWorks64IoFake_ReadsFail)
     {
+        errno = VxWorks64IoFake_FailureErrno;
         result = ERROR;
     }
     else if ((VxWorks64IoFake_ReadData != NULL) || (descriptor == NULL))
@@ -475,6 +487,10 @@ int write(int fd, char* buffer, size_t nbytes)
         }
         result = (int) count;
     }
+    if (result == ERROR)
+    {
+        errno = VxWorks64IoFake_FailureErrno;
+    }
     return result;
 }
 
@@ -494,6 +510,7 @@ off_t lseek(int fd, off_t offset, int whence)
     VxWorks64IoFake_LseekWhence = whence;
     if (VxWorks64IoFake_LseeksFail)
     {
+        errno = VxWorks64IoFake_FailureErrno;
         result = ERROR;
     }
     else if ((descriptor != NULL) && (result >= 0))

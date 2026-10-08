@@ -50,6 +50,16 @@ enum
         LONGS_EQUAL((expectedDetail), ErrorHandlerFake_LastDetail());                         \
     }
 
+/* The same, for the index-th of several events the call under test raised,
+ * counting from 0. */
+#define CHECK_ERROR_EVENT_AT(index, expectedSeverity, expectedSource, expectedCategory, expectedDetail) \
+    {                                                                                                   \
+        LONGS_EQUAL((expectedSeverity), ErrorHandlerFake_SeverityAt(index));                            \
+        POINTERS_EQUAL((expectedSource), ErrorHandlerFake_SourceAt(index));                             \
+        UNSIGNED_LONGS_EQUAL((expectedCategory), ErrorHandlerFake_CategoryAt(index));                   \
+        LONGS_EQUAL((expectedDetail), ErrorHandlerFake_DetailAt(index));                                \
+    }
+
 /* The same, for the common case where the event is the only one the call under
  * test raised. Kept separate from CHECK_ERROR_EVENT so a site asserting the last
  * of several events cannot pin the count by accident. */

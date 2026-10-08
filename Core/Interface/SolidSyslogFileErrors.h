@@ -28,6 +28,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
            filesystem, or needs no caller-supplied storage, never raises these. */
         SOLIDSYSLOG_FILE_ERROR_NULL_FILESYSTEM,
         SOLIDSYSLOG_FILE_ERROR_BUFFER_TOO_SMALL,
+        /* A file system call that failed, raised under SOLIDSYSLOG_CAT_FILE_IO_FAILED. */
+        SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED,
         SOLIDSYSLOG_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

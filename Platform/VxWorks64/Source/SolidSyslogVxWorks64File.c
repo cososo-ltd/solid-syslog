@@ -13,6 +13,8 @@
 #include "ioLib.h"
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogVxWorks64FileErrors.h"
@@ -41,6 +43,7 @@ static bool VxWorks64File_Delete(struct SolidSyslogFile* base, const char* path)
 static inline struct SolidSyslogVxWorks64File* VxWorks64File_SelfFromBase(struct SolidSyslogFile* base);
 static inline bool VxWorks64File_IsWholeTransfer(int transferred, size_t count);
 static inline bool VxWorks64File_Commit(int fd);
+static inline void VxWorks64File_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
 
 void SolidSyslogVxWorks64File_Initialise(struct SolidSyslogFile* base)
 {
@@ -75,7 +78,30 @@ static bool VxWorks64File_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
     self->Fd = open(path, O_RDWR | O_CREAT, VXWORKS64FILE_OWNER_READ_WRITE);
-    return self->Fd != ERROR;
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int openErrno = (self->Fd == ERROR) ? errno : 0;
+    bool opened = self->Fd != ERROR;
+    if (!opened)
+    {
+        VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, openErrno);
+    }
+    return opened;
+}
+
+/* The fault, then the errno behind it when the call left one. */
+static inline void VxWorks64File_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno)
+{
+    VxWorks64File_Report(SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code);
+    if (nativeErrno != 0)
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY,
+            &SolidSyslogVxWorks64FileErrorSource,
+            SOLIDSYSLOG_CAT_NATIVE_ERROR,
+            (int32_t) nativeErrno
+        );
+    }
 }
 
 static void VxWorks64File_Close(struct SolidSyslogFile* base)

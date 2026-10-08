@@ -30,6 +30,13 @@
 #define SOLIDSYSLOG_CAT_POOL_EXHAUSTED ((uint16_t) 0x0003U)
 #define SOLIDSYSLOG_CAT_UNKNOWN_DESTROY ((uint16_t) 0x0004U)
 
+/** The platform's own code for the fault raised just before this event by the
+ *  same Source, at the same severity. Detail is that code - errno, an FRESULT,
+ *  an lfs_* error... - and means something only together with Source; the
+ *  platform's page says which. Raised only when the platform gave a code, and
+ *  never on its own. */
+#define SOLIDSYSLOG_CAT_NATIVE_ERROR ((uint16_t) 0x0005U)
+
 /**
  * Per-role base ranges. A role occupies [BASE, BASE + 0xFF]. A base is listed
  * here only once a role family carries a role-specific category; roles that
@@ -43,5 +50,6 @@
 #define SOLIDSYSLOG_CAT_TLS_STREAM_BASE ((uint16_t) 0x0400U)
 #define SOLIDSYSLOG_CAT_SECURITY_POLICY_BASE ((uint16_t) 0x0500U)
 #define SOLIDSYSLOG_CAT_BUFFER_BASE ((uint16_t) 0x0600U)
+#define SOLIDSYSLOG_CAT_FILE_BASE ((uint16_t) 0x0700U)
 
 #endif /* SOLIDSYSLOGERRORCATEGORY_H */

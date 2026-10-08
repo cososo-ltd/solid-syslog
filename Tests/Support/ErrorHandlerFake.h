@@ -18,6 +18,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int32_t ErrorHandlerFake_LastDetail(void);
     const void* ErrorHandlerFake_LastContext(void);
 
+    /* The index-th event since Install, counting from 0, for a call under test
+     * that raises more than one. An index past what was kept answers the
+     * values Install reset to. */
+    enum SolidSyslogSeverity ErrorHandlerFake_SeverityAt(int index);
+    const struct SolidSyslogErrorSource* ErrorHandlerFake_SourceAt(int index);
+    uint16_t ErrorHandlerFake_CategoryAt(int index);
+    int32_t ErrorHandlerFake_DetailAt(int index);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* ERRORHANDLERFAKE_H */

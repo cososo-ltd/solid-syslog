@@ -19,6 +19,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Empties the disk and forgets every scripted answer. */
     void VxWorks64IoFake_Reset(void);
 
+    /** The errno that open, read, write and lseek set when they answer ERROR;
+     *  EIO until told otherwise. Every failure sets it, so one left by an
+     *  earlier call never stands in for it. */
+    void VxWorks64IoFake_FailWithErrno(int errnoValue);
+
     /** Puts an empty file on the disk, as though written by an earlier boot. */
     void VxWorks64IoFake_PutFile(const char* name);
 

@@ -9,6 +9,7 @@ using namespace CososoTesting;
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogFileErrors.h"
 #include "SolidSyslogPrival.h"
@@ -108,6 +109,40 @@ TEST(SolidSyslogVxWorks64File, FileStaysClosedWhenOpenFails)
     SolidSyslogFile_Open(file, TEST_PATH);
 
     CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogVxWorks64File, OpenThatFailsReportsTheFailedOpen)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailOpens();
+
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    CHECK_ERROR_EVENT_AT(
+        0,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogVxWorks64FileErrorSource,
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+        SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED
+    );
+}
+
+TEST(SolidSyslogVxWorks64File, OpenThatFailsReportsTheErrnoItFailedWith)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64IoFake_FailOpens();
+    VxWorks64IoFake_FailWithErrno(ENOENT);
+
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT_AT(
+        1,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogVxWorks64FileErrorSource,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        ENOENT
+    );
 }
 
 TEST(SolidSyslogVxWorks64File, CloseClosesTheDescriptorOpenReturned)
