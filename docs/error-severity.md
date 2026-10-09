@@ -77,7 +77,7 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `SECURITY_POLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
 | `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault, or a record too large for a circular buffer; not split. |
 | `RESOLVER_RESOLVE_FAILED` - transient | `WARNING` | DNS may resolve on a later attempt. |
-| `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | the lookup answered in a family the transports cannot send to. Permanent for that destination: it clears only when the destination or the stack's build changes. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
+| `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | the lookup answered in a family the transports cannot send to. Permanent for that destination: it clears when the destination changes to one that resolves in a family the transports send to. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `NATIVE_ERROR` | the fault's | carries the platform's own code for the fault its Source raised just before it, at that fault's severity, so a handler filtering by severity keeps or drops the pair together. |
 | `FILE_IO_FAILED` | `ERROR` | a file system call failed - read-only media, a full volume, a failing device - and the operation that made it failed with it. Single-sourced via `SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY`. |
 | `STORE_WRITE_FAILED` | `ERROR` | the record being written is lost: the device would not take it, or the security policy would not seal it. Each later write tries both again. A record the discard policy turns away raises nothing. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
