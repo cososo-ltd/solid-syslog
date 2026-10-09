@@ -82,7 +82,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 | lwIP (Sockets API) | `build-freertos-host-tdd-plustcp` against fakes; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
 | FreeRTOS kernel | `build-freertos-host-tdd-plustcp` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
 | CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
-| VxWorks 6.4 | Unit tests at strict C99 against fakes in every host lane that builds `Tests/`; target runs are outside CI |
+| VxWorks 6.4 | Unit tests at strict C99 against fakes in every host lane that builds `Tests/`. Target runs are outside CI: the toolchain and kernel are licensed, so the target checklist in `Bdd/Targets/VxWorks64/README.md` covers them |
 | ChaN FatFs | Built and analysed in the lwIP lanes; store-and-forward scenarios run in `bdd-freertos-qemu-lwip` |
 | FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-qemu-plustcp` |
 | LittleFS | `build-freertos-host-tdd-plustcp` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |

@@ -134,11 +134,8 @@ try
     }
 finally
     {
-    # By name rather than by the process started above: a scenario that made an
-    # outage replaced it with one of its own. A run needs sole use of the
-    # collector - the outage step itself stops every collector by name, and a
-    # second one could not bind the port or share the output files - so none
-    # was allowed at the start, and every collector now is this run's.
+    # By name: an outage scenario replaces the collector started above. No
+    # collector was running at the start, so every one now is this run's.
     Get-Process -Name 'otelcol-contrib' -ErrorAction SilentlyContinue | Stop-Process -Force
     Pop-Location
     }

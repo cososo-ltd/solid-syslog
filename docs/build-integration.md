@@ -98,7 +98,7 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 | `PlusTcp` | network | FreeRTOS-Plus-TCP |
 | `FreeRtos` | mutex, uptime | FreeRTOS kernel |
 | `CmsisRtos` | mutex, uptime | CMSIS-RTOS2 API |
-| `VxWorks64` | network, mutex | VxWorks 6.4 kernel API |
+| `VxWorks64` | network, file, mutex, clock, uptime, atomics | VxWorks 6.4 kernel API |
 | `FatFs` | file | ChaN FatFs |
 | `PlusFat` | file | FreeRTOS-Plus-FAT |
 | `LittleFs` | file | LittleFS |
@@ -138,8 +138,8 @@ The variable takes three kinds of answer:
 
 `MbedTls`, `LwipRaw`, `LwipSocket`, `PlusTcp`, `FreeRtos`, `CmsisRtos`,
 `VxWorks64`, `FatFs`, `PlusFat` and `LittleFs` are never selected for you: you
-name them or you do not get them. Setting `LWIP_PATH` or `FREERTOS_KERNEL_PATH` in your environment
-does not change what your build contains.
+name them or you do not get them. Setting `LWIP_PATH` or `FREERTOS_KERNEL_PATH`
+in your environment does not change what your build contains.
 
 <!-- /platforms -->
 

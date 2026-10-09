@@ -1,4 +1,4 @@
-# OpenTelemetry Collector Contrib config — the VxWorks 6.4 BDD oracle.
+# OpenTelemetry Collector Contrib config - the VxWorks 6.4 BDD oracle.
 #
 # The target runs under QEMU on the build machine, so its syslog crosses the
 # network to this collector: UDP and TCP on every interface, both on the port in

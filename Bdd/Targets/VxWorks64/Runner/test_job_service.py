@@ -121,6 +121,22 @@ class JobServiceTest(unittest.TestCase):
         status, _ = self.request("GET", "/jobs/next", "not-the-token")
         self.assertEqual(401, status)
 
+    def raw_status(self, content_length):
+        port = self.server.server_address[1]
+        with socket.create_connection(("127.0.0.1", port), timeout=5) as connection:
+            connection.sendall(f"POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Length: {content_length}\r\n"
+                               f"X-Runner-Token: {self.TOKEN}\r\n\r\n".encode())
+            return int(connection.makefile("rb").readline().split()[1])
+
+    def test_a_negative_content_length_is_a_bad_request(self):
+        self.assertEqual(400, self.raw_status("-1"))
+
+    def test_a_non_numeric_content_length_is_a_bad_request(self):
+        self.assertEqual(400, self.raw_status("lots"))
+
+    def test_a_content_length_too_long_to_convert_is_a_bad_request(self):
+        self.assertEqual(400, self.raw_status("9" * 5000))
+
     def test_next_with_no_job_waiting_is_no_content(self):
         status, _ = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(204, status)
@@ -412,6 +428,38 @@ class CertificateTest(unittest.TestCase):
             request.add_header("X-Runner-Token", "test-token")
             with urllib.request.urlopen(request, context=client) as response:
                 self.assertEqual(204, response.status)
+        finally:
+            server.shutdown()
+            thread.join()
+            server.server_close()
+
+    @unittest.skipIf(os.name == "nt", "file modes are POSIX")
+    def test_initialise_makes_the_token_readable_by_its_owner_only(self):
+        home = os.path.join(self.directory, "home")
+        job_service.initialise(home)
+        self.assertEqual(0o600, os.stat(os.path.join(home, "token")).st_mode & 0o777)
+
+    @unittest.skipIf(os.name == "nt", "file modes are POSIX")
+    def test_initialise_makes_an_existing_home_its_owners_only(self):
+        home = os.path.join(self.directory, "home")
+        os.mkdir(home, 0o755)
+        job_service.initialise(home)
+        self.assertEqual(0o700, os.stat(home).st_mode & 0o777)
+
+    def test_a_peer_that_never_handshakes_holds_the_service_for_seconds_only(self):
+        server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,
+                                         (self.certificate, self.key))
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            with socket.create_connection(("127.0.0.1", server.server_address[1])):
+                client = ssl.create_default_context()
+                client.check_hostname = False
+                client.verify_mode = ssl.CERT_NONE
+                request = urllib.request.Request(f"https://127.0.0.1:{server.server_address[1]}/jobs/next")
+                request.add_header("X-Runner-Token", "test-token")
+                with urllib.request.urlopen(request, context=client, timeout=10) as response:
+                    self.assertEqual(204, response.status)
         finally:
             server.shutdown()
             thread.join()

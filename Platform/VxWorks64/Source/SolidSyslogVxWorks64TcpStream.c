@@ -96,8 +96,7 @@ static inline bool VxWorks64TcpStream_ConfigProvidesGetter(const struct SolidSys
     return (config != NULL) && (config->GetConnectTimeoutMs != NULL);
 }
 
-/* Null Object substituted when the integrator installs no getter - the bounded
- * connect then has one code path whether or not runtime tuning was wired. */
+/* Substituted when no getter is installed, so the connect has one code path. */
 static uint32_t VxWorks64TcpStream_NullConnectTimeoutGetter(void* context)
 {
     (void) context;
@@ -112,9 +111,7 @@ static inline struct SolidSyslogVxWorks64TcpStream* VxWorks64TcpStream_SelfFromB
 void SolidSyslogVxWorks64TcpStream_Cleanup(struct SolidSyslogStream* base)
 {
     VxWorks64TcpStream_CloseSocket(VxWorks64TcpStream_SelfFromBase(base));
-    /* Overwrite the abstract base with the shared NullStream vtable so
-     * use-after-destroy is a safe no-op rather than a call on a closed
-     * socket. */
+    /* Use-after-destroy lands on the NullStream vtable. */
     *base = *SolidSyslogNullStream_Get();
 }
 
@@ -123,8 +120,7 @@ static bool VxWorks64TcpStream_Open(struct SolidSyslogStream* base, const struct
     struct SolidSyslogVxWorks64TcpStream* self = VxWorks64TcpStream_SelfFromBase(base);
     const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
     bool connected = false;
-    /* Opening what is already open would otherwise lose the descriptor it
-     * holds, and the stack's descriptor table is finite. */
+    /* Reopening must not leak the descriptor already held. */
     VxWorks64TcpStream_CloseSocket(self);
     self->Fd = socket(AF_INET, SOCK_STREAM, 0);
     if (VxWorks64TcpStream_IsSocketValid(self->Fd))
@@ -155,9 +151,7 @@ static inline bool VxWorks64TcpStream_IsSocketValid(int fd)
     return fd >= 0;
 }
 
-/* Every connect failure is one category with the detail naming which step
- * failed, so a portable handler reacts to "no connection" without knowing the
- * stack. */
+/* One category for every connect failure; the detail names the step. */
 static void VxWorks64TcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
@@ -166,8 +160,8 @@ static void VxWorks64TcpStream_ReportConnectFailure(
     VxWorks64TcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
-/* A socket the connect did not finish with is of no use to anyone, and a pool
- * class that keeps one leaks it until Destroy. */
+/* A failed connect closes its socket, which would otherwise be held until
+ * Destroy. */
 static bool VxWorks64TcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogVxWorks64TcpStream* self,
     const struct sockaddr_in* sin
@@ -185,9 +179,8 @@ static bool VxWorks64TcpStream_ConnectOrCloseOnFailure(
     return connected;
 }
 
-/* connectWithTimeout bounds the attempt itself and reports the bound expiring as
- * EINPROGRESS, so the service pass is never held longer than the getter allows.
- * An attempt still under way when it returns dies with the socket. */
+/* connectWithTimeout reports the bound expiring as EINPROGRESS. An attempt
+ * still under way when it returns dies with the socket. */
 static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* self, const struct sockaddr_in* sin)
 {
     struct timeval timeout = VxWorks64TcpStream_ResolveConnectTimeout(self);
@@ -225,9 +218,8 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
     return connected;
 }
 
-/* Read on every attempt, so a runtime-tunable value takes effect on the next
- * reconnect. Any 32-bit count of milliseconds fits: its seconds stay below
- * 4294968, well inside the range C99 guarantees a long. */
+/* Any 32-bit count of milliseconds fits: its seconds stay below 4294968,
+ * inside the range C99 guarantees a long. */
 static struct timeval VxWorks64TcpStream_ResolveConnectTimeout(struct SolidSyslogVxWorks64TcpStream* self)
 {
     uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
@@ -239,23 +231,16 @@ static struct timeval VxWorks64TcpStream_ResolveConnectTimeout(struct SolidSyslo
     return timeout;
 }
 
-/* Remote means something was transmitted and the destination or the network
- * answered, or failed to: a reset came back, or a sent SYN drew nothing. Every
- * other failure is local - the stack had no route or memory to start the
- * attempt - and nothing left this device, which is what CONNECT_NOT_STARTED
- * says. */
+/* Remote: a SYN was sent and drew a reset or nothing. Any other failure is
+ * local, and nothing left this device. */
 static inline bool VxWorks64TcpStream_IsRemoteConnectError(int connectErrno)
 {
     return (connectErrno == ECONNREFUSED) || (connectErrno == ETIMEDOUT);
 }
 
-/* Latency first: a syslog record is small and waiting to coalesce it with the
- * next one only delays delivery. Keepalive then surfaces a peer that went away
- * during an idle period, rather than on the next record. Its timing is set for
- * the whole stack rather than per socket, so it is the integrator's to tune.
- * Both are set once the connection stands, because a refused option says the
- * connection is less robust than intended, which is only true once there is a
- * connection; a failed connect reports that instead. */
+/* NODELAY stops a small record waiting to coalesce; keepalive detects a peer
+ * lost while idle. Set after connecting, so a refusal is reported only on a
+ * connection that stands. */
 static void VxWorks64TcpStream_ApplySocketOptions(int fd)
 {
     int enable = 1;
@@ -268,9 +253,7 @@ static void VxWorks64TcpStream_ApplySocketOptions(int fd)
     }
 }
 
-/* One event per attempt however many options the stack declined: the
- * connection stands either way, and the engineer's next step is the same
- * whichever one it was. */
+/* One event per attempt, however many options were refused. */
 static void VxWorks64TcpStream_ReportOptionRefused(void)
 {
     VxWorks64TcpStream_Report(
@@ -296,31 +279,23 @@ static bool VxWorks64TcpStream_Send(struct SolidSyslogStream* base, const void* 
     return ok;
 }
 
-/* The stack takes a record's length as an int, so a longer one cannot be
- * described to it at all, let alone sent whole. */
+/* The stack takes a record's length as an int. */
 static inline bool VxWorks64TcpStream_FitsTheStack(size_t size)
 {
     return size <= (size_t) INT_MAX;
 }
 
-/* A peer that has closed its end leaves the connection writable, so send would
- * take the record and the connection would die with it still in flight - and
- * the Stream contract has the record gone from the caller's hands the moment
- * Send returns true. Ask first, so a half-closed connection fails the send and
- * store-and-forward replays the record instead of losing it. Nothing waiting is
- * the healthy answer on an idle connection; a byte waiting is too. */
+/* A peer's FIN leaves the socket writable, so peek first: send would accept a
+ * record that cannot arrive. */
 static bool VxWorks64TcpStream_PeerIsStillThere(struct SolidSyslogVxWorks64TcpStream* self)
 {
     char discard = 0;
     int peeked = recv(self->Fd, &discard, (int) sizeof(discard), MSG_PEEK | MSG_DONTWAIT);
-    /* Read errno straight after the call that set it, with nothing between
-     * (MISRA 22.10). */
     int peekErrno = (peeked == ERROR) ? errno : 0;
     return (peeked > 0) || ((peeked == ERROR) && VxWorks64TcpStream_WouldBlock(peekErrno));
 }
 
-/* The stack's two "nothing to do yet" codes are distinct values in VxWorks
- * 6.4, and neither says the connection is gone. */
+/* EWOULDBLOCK and EAGAIN are distinct values in VxWorks 6.4. */
 static inline bool VxWorks64TcpStream_WouldBlock(int err)
 {
     return (err == EWOULDBLOCK) || (err == EAGAIN);
@@ -336,8 +311,6 @@ static SolidSyslogSsize VxWorks64TcpStream_Read(struct SolidSyslogStream* base, 
 {
     struct SolidSyslogVxWorks64TcpStream* self = VxWorks64TcpStream_SelfFromBase(base);
     int received = recv(self->Fd, (char*) buffer, VxWorks64TcpStream_ClampToTheStack(size), MSG_DONTWAIT);
-    /* Read errno straight after the call that set it, with nothing between
-     * (MISRA 22.10). */
     int recvErrno = (received == ERROR) ? errno : 0;
     SolidSyslogSsize result = -1;
     if (received > 0)
@@ -357,8 +330,7 @@ static SolidSyslogSsize VxWorks64TcpStream_Read(struct SolidSyslogStream* base, 
     return result;
 }
 
-/* The stack takes a buffer's length as an int; offering it less of a larger
- * buffer is always safe. */
+/* The stack takes a buffer's length as an int. */
 static inline int VxWorks64TcpStream_ClampToTheStack(size_t size)
 {
     return VxWorks64TcpStream_FitsTheStack(size) ? (int) size : INT_MAX;
@@ -369,9 +341,8 @@ static void VxWorks64TcpStream_Close(struct SolidSyslogStream* base)
     VxWorks64TcpStream_CloseSocket(VxWorks64TcpStream_SelfFromBase(base));
 }
 
-/* Nothing about a plain TCP socket's own configuration moves at runtime. The
- * destination travels on the sender's endpoint version, which it polls
- * independently of this. */
+/* No runtime-tunable configuration; the destination is versioned by the
+ * sender's endpoint. */
 static uint32_t VxWorks64TcpStream_Version(struct SolidSyslogStream* base)
 {
     (void) base;

@@ -85,8 +85,11 @@ class JobQueue:
 
 
 # A log chunk is a few seconds of build output, far below the default limit.
-def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024):
+def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024, idle_seconds=30,
+                handshake_seconds=5):
     class Handler(http.server.BaseHTTPRequestHandler):
+        timeout = idle_seconds
+
         def do_GET(self):
             self._dispatch("GET")
 
@@ -95,10 +98,14 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
 
         # The body is read before any reply: closing a connection with a body
         # still unread makes Windows abort it, and the client sees that instead
-        # of the reply. One over the limit is refused unread, token or not.
+        # of the reply. One over the limit, or of no valid length, is refused
+        # unread, token or not.
         def _dispatch(self, method):
-            length = int(self.headers.get("Content-Length", 0))
-            if length > max_body_bytes:
+            length = _content_length(self.headers.get("Content-Length", "0"))
+            if length is None:
+                self.close_connection = True
+                self._reply(400)
+            elif length > max_body_bytes:
                 self.close_connection = True
                 self._reply(413)
             else:
@@ -159,7 +166,7 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
                 queue.finish(job_id, result["outcome"], result["summary"])
                 self._reply(204)
 
-        # The runner polls for work every few seconds; an empty poll is not news.
+        # The runner polls for work every few seconds; empty polls are not logged.
         def log_request(self, code="-", size="-"):
             if not ((code == 204) and (self.path == "/jobs/next")):
                 super().log_request(code, size)
@@ -202,8 +209,28 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
     if certificate is not None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(*certificate)
-        server.socket = context.wrap_socket(server.socket, server_side=True)
+        server.get_request = lambda: _accept_tls(server.socket, context, handshake_seconds)
     return server
+
+
+# The handshake is bounded, and far more tightly than a request's idle reads:
+# a real client completes it in milliseconds, so a peer that connects and sends
+# nothing holds the single-threaded service for handshake_seconds at most. A
+# failed handshake raises OSError, which the server drops the connection on.
+def _accept_tls(listener, context, handshake_seconds):
+    connection, address = listener.accept()
+    connection.settimeout(handshake_seconds)
+    try:
+        return context.wrap_socket(connection, server_side=True), address
+    except OSError:
+        connection.close()
+        raise
+
+
+# The header's length in bytes, or None if it is not a decimal count. Twelve
+# digits is far past the body limit, and keeps int() inside its digit limit.
+def _content_length(header):
+    return int(header) if (len(header) <= 12) and header.isdecimal() else None
 
 
 # The body as a JSON object, or None if it is not one.
@@ -263,14 +290,18 @@ def job_arguments(words):
 
 
 # Creates the service's token, and the self-signed certificate and key it
-# serves, once. The runner pins the certificate by thumbprint, so the name in it
-# matters to nobody and the address it is reached at may change.
+# serves, once. The runner pins the certificate by thumbprint, so its name and
+# the address it is reached at are not checked.
 def initialise(home):
     openssl = shutil.which("openssl")
     if openssl is None:
         raise RuntimeError("openssl was not found on the PATH - Git for Windows provides one")
-    os.makedirs(home, exist_ok=True)
-    with open(os.path.join(home, "token"), "x", encoding="ascii") as token:
+    os.makedirs(home, mode=0o700, exist_ok=True)
+    # makedirs leaves a home that already exists as it was. OpenSSL writes the
+    # key owner-only itself. On Windows the profile's ACL protects both.
+    os.chmod(home, 0o700)
+    descriptor = os.open(os.path.join(home, "token"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with open(descriptor, "w", encoding="ascii") as token:
         token.write(secrets.token_urlsafe(32))
     subprocess.run(
         [openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",

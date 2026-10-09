@@ -63,10 +63,8 @@ endif
 
 include $(SOLIDSYSLOG_DIR)/solidsyslog.mk
 
-# Put the C99 compatibility headers before the project's include directories:
-# the VxWorks 6.4 DKM header path otherwise selects an incomplete stdint.h.
-# This ordering is private to the library; do not export Compat to DKM sources,
-# whose existing headers may provide their own incompatible integer typedefs.
+# Compat precedes the project's includes for the library only; it is not
+# exported to DKM sources.
 SOLIDSYSLOG_C99_INCLUDES := -I$(SOLIDSYSLOG_DIR)/Platform/VxWorks64/Compat
 
 SOLIDSYSLOG_LIB := $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a

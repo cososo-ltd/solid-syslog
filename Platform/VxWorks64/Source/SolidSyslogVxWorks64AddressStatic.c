@@ -30,12 +30,8 @@ static struct SolidSyslogPoolAllocator VxWorks64Address_Allocator = {
 
 struct SolidSyslogAddress* SolidSyslogVxWorks64Address_Create(void)
 {
-    /* TU-private fallback returned when the pool is exhausted. Sized as
-     * a real SolidSyslogVxWorks64Address so a Resolver overwrite at the
-     * exhausted-fallback call site is bounded - same sockaddr_in storage
-     * as any pooled slot. Not a per-Sender slot: multi-overflow integrators
-     * share this storage and race on it. Bumping SOLIDSYSLOG_ADDRESS_POOL_SIZE
-     * removes the race. */
+    /* The shared exhaustion fallback the header describes, sized as a pooled
+     * slot so a Resolver write to it stays bounded. */
     static struct SolidSyslogVxWorks64Address fallback;
 
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&VxWorks64Address_Allocator);

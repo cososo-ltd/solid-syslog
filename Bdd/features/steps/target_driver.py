@@ -284,11 +284,8 @@ def apply_extra_args(context, process, extra_args):
     """
     target = getattr(context, "target", "linux")
     written = 0
-    # The remote target's collector is this machine, at the address the target
-    # reached it - which only the console knows - and on the port the run gave
-    # the collector. The target has no battery-backed clock, so it takes this
-    # machine's time, in UTC seconds, before it logs anything. The file system
-    # its store disk holds is the run's, sent before any `set store file`.
+    # The target has no battery-backed clock, so it takes this machine's UTC
+    # time, the collector's address and port, and the run's file system first.
     if target == "vxworks64":
         process.stdin.write(f"set time {int(time.time())}\n")
         process.stdin.write(f"set host {process.collector_address}\n")

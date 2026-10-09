@@ -71,8 +71,8 @@ static inline bool MessageSettings_TryUpdateString(char* storage, size_t storage
     return fits;
 }
 
-/* The two parameters are BddTargetInteractiveSetHandler's, so that the prompt's
-   `set NAME VALUE` can reach this at all; the shape is not ours to change. */
+/* The signature is BddTargetInteractiveSetHandler's, through which the prompt's
+   `set NAME VALUE` arrives. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
 {
@@ -107,7 +107,7 @@ bool BddTargetMessageSettings_SetByName(const char* name, const char* value)
     }
     else
     {
-        /* Not ours - taken stays false so the caller can offer it elsewhere. */
+        /* Unknown name: taken stays false so the caller can offer it elsewhere. */
     }
     return taken;
 }

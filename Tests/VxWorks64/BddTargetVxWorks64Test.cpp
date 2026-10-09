@@ -515,8 +515,8 @@ TEST(BddTargetVxWorks64, AStoreDiskThatCannotBeReadiedIsReportedWithItsErrno)
     STRCMP_CONTAINS("store disk not ready, errno 0x0", Reported().c_str());
 }
 
-// A test target has to show its faults: in ED&R's deployed policy a fatal task
-// error reboots it without a word.
+// Select ED&R's debug policy so a fatal task error is printed rather than
+// rebooting the target.
 TEST(BddTargetVxWorks64, InitPutsEdAndRInItsDebugPolicy)
 {
     BddTargetVxWorks64_Init();

@@ -400,10 +400,9 @@ foreach(lwip_test_target IN ITEMS
     endif()
 endforeach()
 
-# A test executable runs in CI only if the junit target runs it: CI builds
-# --target junit, so one left off it is never even compiled. Fail the configure
-# rather than let a test go quiet. SolidSyslogTests is junit's own command, and
-# CI runs BddTargetTests in a step of its own.
+# CI builds only --target junit; fail the configure if a test executable is not
+# registered with it. SolidSyslogTests is junit's own command, and CI runs
+# BddTargetTests in a step of its own.
 function(collect_test_executables directory result)
     get_property(targets DIRECTORY ${directory} PROPERTY BUILDSYSTEM_TARGETS)
     set(executables "")

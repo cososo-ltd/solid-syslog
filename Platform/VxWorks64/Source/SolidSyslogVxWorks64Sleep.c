@@ -16,8 +16,6 @@ enum
     MILLISECONDS_PER_SECOND = 1000
 };
 
-/* Rounded up, so a short sleep still waits a tick rather than none. A sleep of
- * no time, or less, is taskDelay(0): a yield to tasks of the same priority. */
 void SolidSyslogVxWorks64_Sleep(int milliseconds)
 {
     int64_t ticks = 0;

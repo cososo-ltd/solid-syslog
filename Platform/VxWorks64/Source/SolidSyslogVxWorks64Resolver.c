@@ -44,9 +44,7 @@ void SolidSyslogVxWorks64Resolver_Initialise(struct SolidSyslogResolver* base)
 
 void SolidSyslogVxWorks64Resolver_Cleanup(struct SolidSyslogResolver* base)
 {
-    /* Overwrite the abstract base with the shared NullResolver vtable so
-     * use-after-destroy is a safe no-op rather than a lookup through a
-     * released slot. */
+    /* Use-after-destroy lands on the NullResolver vtable. */
     *base = *SolidSyslogNullResolver_Get();
 }
 
@@ -60,9 +58,7 @@ static bool VxWorks64Resolver_Resolve(
 {
     (void) base;
     (void) transport;
-    /* inetLib and hostLib take a non-const string they only read (D.006), and
-     * each answers ERROR - all ones as an address - for a host it cannot
-     * resolve. */
+    /* inetLib and hostLib take a non-const string they only read (D.006). */
     uint32_t found = (uint32_t) inet_addr((char*) host);
     if (VxWorks64Resolver_IsUnresolved(found) == true)
     {
@@ -72,6 +68,7 @@ static bool VxWorks64Resolver_Resolve(
     if (resolved == true)
     {
         struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(result);
+        sin->sin_len = (unsigned char) sizeof(*sin);
         sin->sin_family = AF_INET;
         sin->sin_port = htons(port);
         sin->sin_addr.s_addr = found;

@@ -76,7 +76,7 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'component', 'add', $projectFile
 # consults, routing for the default route the target adds, the END driver for
 # QEMU's PCnet adapter (lnPci), and the boot-line components that attach the
 # device the boot line names. One at a time, so a component the default project
-# already has is simply kept.
+# already has is kept.
 foreach ($component in @(
         'INCLUDE_NETWORK', 'INCLUDE_IPV4', 'INCLUDE_UDPV4', 'INCLUDE_TCPV4', 'INCLUDE_BSD_SOCKET',
         'INCLUDE_SOCKLIB', 'INCLUDE_SELECT',
@@ -114,12 +114,11 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'setstring', $projectFile, 'ADDIF_ADDR', '10.0.2.15')
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile, 'ADDIF_MASK', '0xffffff00')
 
-# Give every build specification the SolidSyslog headers - Core's and the
-# VxWorks64 pack's - and the library. The headers need the C99 <stdint.h> and
-# <stdbool.h> the kernel tree lacks, from the pack's Compat directory, placed
-# last so it only fills gaps. The BDD target's archive goes first, then the
-# library it calls, then the OS libraries both call into. buildmacro acts on the
-# current build specification, so each is selected in turn.
+# Give every build specification the SolidSyslog headers and the library.
+# Compat goes last, so it only fills the C99 headers the kernel tree lacks.
+# The BDD target's archive goes first, then the library it calls, then the OS
+# libraries both call into. buildmacro acts on the current build specification,
+# so each is selected in turn.
 $includes = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Compat'))

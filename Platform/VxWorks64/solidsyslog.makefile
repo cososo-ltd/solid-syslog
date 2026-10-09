@@ -1,14 +1,10 @@
 # SolidSyslog glue for a VxWorks 6.4 Workbench VIP. A DKM uses
-# solidsyslog-dkm.makefile instead.
+# solidsyslog-dkm.makefile instead. docs/platforms/vxworks64/setup.md describes
+# the wiring.
 #
-# Copy this file into the project directory: the project's generated Makefile
-# includes every *.makefile it finds there. Point SOLIDSYSLOG_DIR at the
-# SolidSyslog checkout, in the environment or on the line below.
-#
-# Before the project's own build, it builds libsolidsyslog.a through
-# solidsyslog-vxworks64.mk with the project's compiler, archiver and target
-# flags, and gives the project the library and its headers through
-# ADDED_INCLUDES, ADDED_LIBPATH and ADDED_LIBS.
+# solidsyslog_library builds libsolidsyslog.a through solidsyslog-vxworks64.mk
+# with the project's compiler, archiver and target flags. ADDED_INCLUDES,
+# ADDED_LIBPATH and ADDED_LIBS name the library and its headers.
 #
 #   SOLIDSYSLOG_DIR            the SolidSyslog checkout (required)
 #   SOLIDSYSLOG_PLATFORMS      platforms to build beside Core (default: none)

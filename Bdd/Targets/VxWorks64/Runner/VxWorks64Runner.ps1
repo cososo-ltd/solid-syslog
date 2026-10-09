@@ -73,7 +73,7 @@ function Test-RunnerArgumentValue
     {
     param([AllowEmptyString()] [string] $Value)
 
-    $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*$'
+    $Value -cmatch '^[A-Za-z0-9][A-Za-z0-9._/:@ -]*\z'
     }
 
 # In C#, because the TLS validation callback that uses it runs on threads
@@ -134,8 +134,8 @@ function ConvertFrom-RunnerJobJson
     }
 
 # Sends a finished job's result, given as @{ Id; Body }. Gives it back if the
-# send failed, so it can be sent again: a result lost here would leave the job
-# running on the service for good.
+# send failed, so it can be sent again; a lost result leaves the job running on
+# the service.
 function Send-RunnerResult
     {
     param(

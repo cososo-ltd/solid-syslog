@@ -122,8 +122,7 @@ TEST_GROUP(SolidSyslogVxWorks64MutexRefused)
         mutex = SolidSyslogVxWorks64Mutex_Create();
     }
 
-    // No teardown: a refused create holds no slot, and the handle it returns is
-    // the shared NullMutex, which is nobody's to destroy.
+    // No teardown: a refused create holds no slot.
 };
 
 // clang-format on
@@ -147,9 +146,8 @@ TEST(SolidSyslogVxWorks64MutexRefused, LockAndUnlockAreNoOps)
     CALLED_FAKE(VxWorks64SemFake_SemGive, NEVER);
 }
 
-// The consequence of releasing the slot, and the reason it matters: a kernel
-// that cannot allocate one semaphore will refuse the next too. Hold the slot and
-// a retrying caller empties the pool instead of failing the same way twice.
+// A kernel that cannot allocate one semaphore will refuse the next too; a held
+// slot would let a retrying caller empty the pool.
 TEST(SolidSyslogVxWorks64MutexRefused, LeavesThePoolAvailable)
 {
     VxWorks64SemFake_SetSemMCreateFails(false);

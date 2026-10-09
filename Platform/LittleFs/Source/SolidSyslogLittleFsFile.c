@@ -156,7 +156,7 @@ static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, si
 static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
-    /* The contract says seek errors are silent. */
+    /* This backend does not report seek failures. */
     (void) lfs_file_seek(self->Filesystem, &self->Handle, (lfs_soff_t) offset, LFS_SEEK_SET);
 }
 

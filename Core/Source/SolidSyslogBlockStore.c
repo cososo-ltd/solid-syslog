@@ -165,8 +165,8 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
 }
 
 /* The policy reports why it would not seal; the device, when it reports, why
- * it would not take the record. Either way the record is lost, which is what
- * this says. */
+ * it would not take the record. Either way the record is lost, which this
+ * reports. */
 static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended)
 {
     enum SolidSyslogBlockStoreErrors code = (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SEAL_FAILED)

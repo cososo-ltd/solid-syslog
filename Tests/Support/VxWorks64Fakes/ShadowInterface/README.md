@@ -1,7 +1,7 @@
 # VxWorks 6.4 stand-ins that shadow host headers
 
-Some VxWorks 6.4 headers share their name with a host header - `time.h` and
-`sys/stat.h` today - but declare a different API. The stand-ins for those live
+Some VxWorks 6.4 headers, such as `time.h` and `sys/stat.h`, share their name
+with a host header but declare a different API. The stand-ins for those live
 here rather than in `../Interface`, because on the include path of a test
 executable they would replace the host's header for the test framework and the
 C library too.
