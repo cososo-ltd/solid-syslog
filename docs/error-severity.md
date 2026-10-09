@@ -80,8 +80,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `RESOLVER_RESOLVE_FAILED` - transient | `WARNING` | DNS may resolve on a later attempt. |
 | `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | the lookup answered in a family the transports cannot send to. Permanent for that destination, so waiting does not clear it; a human changes the destination or the stack's build. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `NATIVE_ERROR` | the fault's | carries the platform's own code for the fault its Source raised just before it, at that fault's severity, so a handler filtering by severity keeps or drops the pair together. |
-| `FILE_IO_FAILED` | `ERROR` | read-only media, a full volume or a failing device needs a human, and waiting does not clear it. Single-sourced via `SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY`. |
-| `STORE_WRITE_FAILED` | `ERROR` | a record is lost, and the device or the policy at fault needs a human. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
+| `FILE_IO_FAILED` | `ERROR` | a file system call failed - read-only media, a full volume, a failing device - and the operation that made it failed with it. Single-sourced via `SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY`. |
+| `STORE_WRITE_FAILED` | `ERROR` | the record being written is lost: the device would not take it, or the security policy would not seal it. Each later write tries both again. A record the discard policy turns away raises nothing. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `STORE_OPEN_FAILED` | `WARNING` | the store stands and tries the device again on the next write, which reports `STORE_WRITE_FAILED` if it is still failing. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
 | `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage: recoverable, store-and-forward covers it. |
 | `SENDER_DELIVERY_RESTORED` | `NOTICE` | recovery. |
