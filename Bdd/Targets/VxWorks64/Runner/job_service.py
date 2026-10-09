@@ -225,9 +225,10 @@ def _accept_tls(listener, context, idle_seconds):
         raise
 
 
-# The header's length in bytes, or None if it is not a decimal count.
+# The header's length in bytes, or None if it is not a decimal count. Twelve
+# digits is far past the body limit, and keeps int() inside its digit limit.
 def _content_length(header):
-    return int(header) if header.isdecimal() else None
+    return int(header) if (len(header) <= 12) and header.isdecimal() else None
 
 
 # The body as a JSON object, or None if it is not one.

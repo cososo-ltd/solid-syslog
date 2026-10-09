@@ -134,6 +134,9 @@ class JobServiceTest(unittest.TestCase):
     def test_a_non_numeric_content_length_is_a_bad_request(self):
         self.assertEqual(400, self.raw_status("lots"))
 
+    def test_a_content_length_too_long_to_convert_is_a_bad_request(self):
+        self.assertEqual(400, self.raw_status("9" * 5000))
+
     def test_next_with_no_job_waiting_is_no_content(self):
         status, _ = self.request("GET", "/jobs/next", self.TOKEN)
         self.assertEqual(204, status)
