@@ -27,6 +27,7 @@ read.
 #define LWIP_UDP        1   /* the datagram */
 #define LWIP_TCP        1   /* the stream */
 #define LWIP_SOCKET_SELECT 1 /* the stream's bounded connect; on by default */
+#define ARP_QUEUEING    1   /* keeps a burst sent while ARP resolves */
 ```
 
 `errno` has to reach the adapters as well, because they read it after a refused
