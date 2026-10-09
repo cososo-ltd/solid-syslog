@@ -134,6 +134,11 @@ class RemoteConsoleTest(unittest.TestCase):
 
         self.assertEqual(["stopped"], self.stops)
 
+    def test_waiting_after_killing_it_returns_though_the_disconnect_never_arrives(self):
+        self.console.kill()
+
+        self.console.wait(timeout=5)
+
     def test_waiting_returns_the_exit_code_once_the_target_disconnects(self):
         self.target.close()
 

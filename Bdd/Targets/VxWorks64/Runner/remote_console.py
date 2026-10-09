@@ -7,6 +7,7 @@ as they do a local target's pipes.
 
 import os
 import re
+import socket
 import subprocess
 import threading
 import time
@@ -64,8 +65,16 @@ class RemoteConsole:
     def poll(self):
         return self.returncode
 
+    # Stopping QEMU resets the connection, but a reset lost on the way would
+    # leave the output copier waiting for good, so the console ends it here:
+    # shutdown wakes its receive on Linux, and close does on Windows.
     def kill(self):
         self._stop()
+        try:
+            self._connection.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        self._connection.close()
 
     def wait(self, timeout=None):
         self._copier.join(timeout)
@@ -150,7 +159,7 @@ class _PromptCount:
 def _receive(connection):
     try:
         return connection.recv(4096)
-    except ConnectionResetError:
+    except OSError:
         return b""
 
 
