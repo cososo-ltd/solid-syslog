@@ -7,7 +7,9 @@ of contribution the project accepts today, and how to get involved.
 
 - **Bug reports** — use the issue templates.
 - **Feature requests** — use the issue templates.
-- **Questions and discussion** — open an issue; see [SUPPORT.md](SUPPORT.md).
+- **Questions and discussion** — use
+  [Discussions](https://github.com/cososo-ltd/solid-syslog/discussions); see
+  [SUPPORT.md](SUPPORT.md).
 - **Security reports** — follow [SECURITY.md](SECURITY.md) (please do **not**
   file security issues publicly).
 
