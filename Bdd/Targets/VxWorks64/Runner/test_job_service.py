@@ -126,7 +126,7 @@ class JobServiceTest(unittest.TestCase):
         with socket.create_connection(("127.0.0.1", port), timeout=5) as connection:
             connection.sendall(f"POST /jobs HTTP/1.1\r\nHost: x\r\nContent-Length: {content_length}\r\n"
                                f"X-Runner-Token: {self.TOKEN}\r\n\r\n".encode())
-            return int(connection.recv(64).split()[1])
+            return int(connection.makefile("rb").readline().split()[1])
 
     def test_a_negative_content_length_is_a_bad_request(self):
         self.assertEqual(400, self.raw_status("-1"))
@@ -438,6 +438,13 @@ class CertificateTest(unittest.TestCase):
         home = os.path.join(self.directory, "home")
         job_service.initialise(home)
         self.assertEqual(0o600, os.stat(os.path.join(home, "token")).st_mode & 0o777)
+
+    @unittest.skipIf(os.name == "nt", "file modes are POSIX")
+    def test_initialise_makes_an_existing_home_its_owners_only(self):
+        home = os.path.join(self.directory, "home")
+        os.mkdir(home, 0o755)
+        job_service.initialise(home)
+        self.assertEqual(0o700, os.stat(home).st_mode & 0o777)
 
     def test_an_idle_connection_does_not_stop_the_service_answering(self):
         server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,

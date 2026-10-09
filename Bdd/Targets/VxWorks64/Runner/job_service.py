@@ -295,6 +295,9 @@ def initialise(home):
     if openssl is None:
         raise RuntimeError("openssl was not found on the PATH - Git for Windows provides one")
     os.makedirs(home, mode=0o700, exist_ok=True)
+    # makedirs leaves a home that already exists as it was. OpenSSL writes the
+    # key owner-only itself. On Windows the profile's ACL protects both.
+    os.chmod(home, 0o700)
     descriptor = os.open(os.path.join(home, "token"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with open(descriptor, "w", encoding="ascii") as token:
         token.write(secrets.token_urlsafe(32))
