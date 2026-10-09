@@ -9,9 +9,23 @@ counter, and the clock, hostname, uptime and sleep callbacks.
 The adapter compiles inside your build, against the headers your kernel
 ships; [Adding it to your build](../../build-integration.md#what-you-link) says
 why. The library is built as `libsolidsyslog.a` with your project's own
-compiler and flags, by running `Platform/VxWorks64/solidsyslog.makefile`
-against the project's Makefile. This is the route verified with a VxWorks Image
-Project (VIP) created by `vxprj`.
+compiler and flags, by glue that differs with the kind of project:
+
+| | VxWorks Image Project (VIP) | Downloadable kernel module (DKM) |
+|---|---|---|
+| Glue | `Platform/VxWorks64/solidsyslog.makefile`, run with the project's Makefile | `Platform/VxWorks64/solidsyslog-dkm.makefile`, included from a managed-build extension makefile |
+| Library written to | `solidsyslog/` in the project | `solidsyslog/<BUILD_SPEC>/<MODE_DIR>` in the project |
+| Headers reach your sources through | `CFLAGS`, set with `vxprj buildmacro`, with `Compat` last | `ADDED_INCLUDES`, without `Compat` |
+| The kernel image also needs | nothing more | the compiler intrinsics component for the DKM's toolchain |
+
+### In a VIP
+
+```text
+vxprj creates the project
+  -> solidsyslog_library, once per build specification
+  -> CFLAGS and LIBS set with vxprj buildmacro, once per build specification
+  -> the project builds
+```
 
 Build the library from the project directory, for each build specification you
 use. `SOLIDSYSLOG_DIR` points at the SolidSyslog checkout, and
@@ -41,10 +55,67 @@ Then give the project the headers and the library, with
 and what `Compat` supplies. `Bdd/Targets/VxWorks64/New-VxWorks64Vip.ps1` and
 `Build-VxWorks64Vip.ps1` carry out every step above for the BDD target.
 
-A downloadable kernel module (DKM) build of the library also needs the kernel
-image to include the compiler intrinsics component for the DKM's toolchain,
-`INCLUDE_GNU_INTRINSICS` or `INCLUDE_DIAB_INTRINSICS`, because the uptime and
-sleep callbacks use 64-bit division.
+### In a DKM
+
+```text
+the DKM project's generated Makefile
+  -> a managed-build extension makefile includes solidsyslog-dkm.makefile
+  -> external_build runs solidsyslog-vxworks64.mk
+  -> solidsyslog/<BUILD_SPEC>/<MODE_DIR>/libsolidsyslog.a
+  -> PROJECT_TARGETS wait for that archive
+  -> ADDED_INCLUDES, ADDED_LIBPATH and ADDED_LIBS reach the DKM's compile and link
+```
+
+Include `Platform/VxWorks64/solidsyslog-dkm.makefile` from a managed-build
+extension makefile in the DKM project. Workbench's generated Makefile defines
+`PRJ_ROOT_DIR`, `BUILD_SPEC`, `MODE_DIR`, `PROJECT_TARGETS` and `TOOL_FAMILY`
+before it includes the extension, and the glue reads all five.
+
+The generated Makefile writes its compiler and archiver into each recipe rather
+than naming them in variables, so the extension supplies three values the glue
+cannot find for itself:
+
+```make
+# Copy each value from the DKM project's own build: not a host compiler, and
+# not a VIP's flags.
+SOLIDSYSLOG_CC := <the DKM's compiler command>
+SOLIDSYSLOG_AR := <the DKM's archiver command>
+# The DKM's CPU, define and include flags, without its dialect flag: the
+# library adds its own C99 dialect.
+SOLIDSYSLOG_TARGET_CFLAGS := <the DKM's target flags>
+
+include <checkout>/Platform/VxWorks64/solidsyslog-dkm.makefile
+```
+
+The glue stops the build, naming the variable, if any of the three is missing
+or empty.
+
+What the glue then does on each build:
+
+- It runs the library's own build, which rewrites the archive only when a
+  library source or header has changed. The module's link targets depend on
+  the archive, so the module relinks when the library changes and not
+  otherwise, and under `make -j` it links only once the archive exists.
+- `ADDED_INCLUDES` gains `Core/Interface` and the `Interface` directory of each
+  platform in `SOLIDSYSLOG_PLATFORMS`, and `ADDED_LIBPATH` and `ADDED_LIBS`
+  add the library. `SOLIDSYSLOG_PLATFORMS` defaults to `VxWorks64`; setting it
+  replaces that default, so name `VxWorks64` among the others.
+- Cleaning the project cleans the library's build too.
+
+Do not add `Platform/VxWorks64/Compat` to the DKM's own include path. The
+library's build takes it first, but the DKM's sources must not:
+[VxWorks 6.4](index.md#requirements) says why.
+
+`SOLIDSYSLOG_DIR` defaults to the checkout the glue sits in. Set
+`SOLIDSYSLOG_BUILD_DIR` only to run the glue outside a Workbench build: without
+`PRJ_ROOT_DIR`, `BUILD_SPEC` and `MODE_DIR` the default would name a directory
+at the root of the drive, so the glue refuses to build or clean until you name
+one.
+
+The kernel image the module loads into needs the compiler intrinsics component
+for the DKM's toolchain, `INCLUDE_DIAB_INTRINSICS` or `INCLUDE_GNU_INTRINSICS`.
+The uptime and sleep callbacks divide 64-bit values, and a module takes the
+helpers that do that from the kernel when it loads.
 
 ## Drawing the UDP pieces
 

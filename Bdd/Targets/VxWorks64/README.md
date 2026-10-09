@@ -59,6 +59,11 @@ Each script describes its parameters: `Get-Help .\<script>.ps1 -Detailed`.
 Run by hand against the commit under review, each step recorded as pass, fail
 or not run.
 
+Steps 6 to 11 need a Workbench DKM project wired as
+[VxWorks 6.4 setup](../../../docs/platforms/vxworks64/setup.md#in-a-dkm)
+describes, building from a checkout of the same commit. The repository holds no
+such project.
+
 1. `New-VxWorks64Vip.ps1 -Force` completes.
 2. `Build-VxWorks64Vip.ps1 -Clean` ends with `Diagnostics: none`.
 3. `Start-VxWorks64Qemu.ps1 -WaitFor 'SolidSyslog VxWorks 6.4 BDD target: Core ran'`
@@ -70,6 +75,19 @@ or not run.
 5. In Windows PowerShell 5.1,
    `Invoke-Pester -Script Runner\VxWorks64Runner.Tests.ps1` reports no
    failures.
+
+6. A build from clean writes `libsolidsyslog.a` and links the module.
+7. A second build, with nothing changed, rewrites neither the archive nor the
+   module.
+8. After a change to one library source, a build rewrites the archive and
+   relinks the module.
+9. A build from clean with `make -j` links the module after the archive is
+   written.
+10. The module loads into a kernel image that includes the toolchain's
+    intrinsics component, `INCLUDE_DIAB_INTRINSICS` or
+    `INCLUDE_GNU_INTRINSICS`, and the component name is the one setup gives.
+11. Loading the module into an image without that component is refused; record
+    the loader's message with the run.
 
 ## Running the BDD scenarios
 

@@ -63,6 +63,9 @@ which include `-Xlint`, plus the C99 dialect it adds; so built, the pack, Core
 and an application file including every public header compile with no
 diagnostics.
 
+The library has also been built into a Workbench DKM project through
+`Platform/VxWorks64/solidsyslog-dkm.makefile`, from clean.
+
 On that image, the UDP transport and the resolver have delivered a message,
 resolved from a dotted address, through QEMU's user network to a syslog-ng
 collector on another machine. The BDD target runs the mutex, guarding the buffer
