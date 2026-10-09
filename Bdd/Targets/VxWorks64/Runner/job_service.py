@@ -85,7 +85,8 @@ class JobQueue:
 
 
 # A log chunk is a few seconds of build output, far below the default limit.
-def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024, idle_seconds=30):
+def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1024 * 1024, idle_seconds=30,
+                handshake_seconds=5):
     class Handler(http.server.BaseHTTPRequestHandler):
         timeout = idle_seconds
 
@@ -208,16 +209,17 @@ def make_server(queue, token, host, port, certificate=None, max_body_bytes=4 * 1
     if certificate is not None:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(*certificate)
-        server.get_request = lambda: _accept_tls(server.socket, context, idle_seconds)
+        server.get_request = lambda: _accept_tls(server.socket, context, handshake_seconds)
     return server
 
 
-# The handshake is bounded, so a peer that connects and sends nothing holds
-# the single-threaded service for idle_seconds at most. A failed handshake
-# raises OSError, which the server drops the connection on.
-def _accept_tls(listener, context, idle_seconds):
+# The handshake is bounded, and far more tightly than a request's idle reads:
+# a real client completes it in milliseconds, so a peer that connects and sends
+# nothing holds the single-threaded service for handshake_seconds at most. A
+# failed handshake raises OSError, which the server drops the connection on.
+def _accept_tls(listener, context, handshake_seconds):
     connection, address = listener.accept()
-    connection.settimeout(idle_seconds)
+    connection.settimeout(handshake_seconds)
     try:
         return context.wrap_socket(connection, server_side=True), address
     except OSError:

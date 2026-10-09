@@ -446,9 +446,9 @@ class CertificateTest(unittest.TestCase):
         job_service.initialise(home)
         self.assertEqual(0o700, os.stat(home).st_mode & 0o777)
 
-    def test_an_idle_connection_does_not_stop_the_service_answering(self):
+    def test_a_peer_that_never_handshakes_holds_the_service_for_seconds_only(self):
         server = job_service.make_server(job_service.JobQueue(), "test-token", "127.0.0.1", 0,
-                                         (self.certificate, self.key), idle_seconds=0.5)
+                                         (self.certificate, self.key))
         thread = threading.Thread(target=server.serve_forever)
         thread.start()
         try:
@@ -458,7 +458,7 @@ class CertificateTest(unittest.TestCase):
                 client.verify_mode = ssl.CERT_NONE
                 request = urllib.request.Request(f"https://127.0.0.1:{server.server_address[1]}/jobs/next")
                 request.add_header("X-Runner-Token", "test-token")
-                with urllib.request.urlopen(request, context=client, timeout=5) as response:
+                with urllib.request.urlopen(request, context=client, timeout=10) as response:
                     self.assertEqual(204, response.status)
         finally:
             server.shutdown()
