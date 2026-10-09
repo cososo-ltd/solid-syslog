@@ -133,15 +133,15 @@ etc.) without rewriting feature tags.
 | --- | --- |
 | `@udp` | Needs UDP transport |
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
-| `@tls` | Needs TLS transport (RFC 5425, server-auth) |
+| `@tls` | Needs TLS transport (RFC 5425, server-auth). Excluded on VxWorks 6.4, which carries no TLS. |
 | `@mtls` | Needs mutual TLS (client cert + key) |
 | `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. Every target binary carries a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
 | `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), and VxWorks 6.4 over `SolidSyslogVxWorks64File`. |
 | `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux, Windows and VxWorks 6.4, whose harness sets the target's clock at startup; excluded on the FreeRTOS and CMSIS-RTOS2 targets, which model a no-RTC product per RFC 5424 §6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the FreeRTOS and CMSIS-RTOS2 targets; excluded on Linux, Windows and VxWorks 6.4. The complementary pair of `@rtc`. |
 | `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes - used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the QEMU targets run at the default, so the gate skips the feature there. Its oversize scenario separately carries `@freertoswip`. |
-| `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`. |
-| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy. |
+| `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`, and excluded on VxWorks 6.4, which carries no TLS library to provide the policy. |
+| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy, and on VxWorks 6.4, which carries no TLS library to provide it. |
 | `@tls13` | Scenario asserts the handshake against a server that refuses everything below TLS 1.3, so delivery alone proves the version negotiated. |
 
 Rollout markers are also used (temporary; remove once the scenario passes):
