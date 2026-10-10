@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.3.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.2.0...v0.3.0) (2026-10-10)
+
+
+### Features
+
+* S41.01 Core builds for VxWorks 6.4 and boots in QEMU Malta ([#937](https://github.com/cososo-ltd/solid-syslog/issues/937)) ([02115ab](https://github.com/cososo-ltd/solid-syslog/commit/02115abbddde9084a14fce35d0b662553a7cb8ce))
+* S41.02 VxWorks 6.4 pack skeleton and mutex ([#932](https://github.com/cososo-ltd/solid-syslog/issues/932)) ([2bcd6c8](https://github.com/cososo-ltd/solid-syslog/commit/2bcd6c818bb066e1eb72747f8d2c389b6a5230d3))
+* S41.03 VxWorks 6.4 UDP datagram and IPv4 resolver ([#939](https://github.com/cososo-ltd/solid-syslog/issues/939)) ([ca677f0](https://github.com/cososo-ltd/solid-syslog/commit/ca677f0489dcebda627eb2fde8a209b25e168df8))
+* S41.07 remote runner for the VxWorks 6.4 QEMU target ([#940](https://github.com/cososo-ltd/solid-syslog/issues/940)) ([f5399cb](https://github.com/cososo-ltd/solid-syslog/commit/f5399cb235550aad035d60f2c51eee63c4a7f29a))
+* S41.09 VxWorks 6.4 atomic counter ([#960](https://github.com/cososo-ltd/solid-syslog/issues/960)) ([23ee76e](https://github.com/cososo-ltd/solid-syslog/commit/23ee76e51aa6ff7e5327b98e912ca152284d2794))
+* S41.10 VxWorks 6.4 clock, uptime, hostname and sleep ([#956](https://github.com/cososo-ltd/solid-syslog/issues/956)) ([f27408d](https://github.com/cososo-ltd/solid-syslog/commit/f27408d10cbf998d17736358045cc47f0c51d5f8))
+* S41.11 VxWorks 6.4 TCP stream ([#961](https://github.com/cososo-ltd/solid-syslog/issues/961)) ([67a86c3](https://github.com/cososo-ltd/solid-syslog/commit/67a86c3e4913a94289f68b7309fbff667f3713ca))
+* S41.12 VxWorks 6.4 file, for the store ([#968](https://github.com/cososo-ltd/solid-syslog/issues/968)) ([b45e937](https://github.com/cososo-ltd/solid-syslog/commit/b45e937b2aebbdd6f99121ad9f8825cc8680b72f))
+* S41.14 VxWorks 6.4 store on HRFS as well as dosFs ([#970](https://github.com/cososo-ltd/solid-syslog/issues/970)) ([195d3e7](https://github.com/cososo-ltd/solid-syslog/commit/195d3e79319794a669fefe2d6f1285ef931bbfe9))
+* S41.15 VxWorks 6.4 file and store report the file system call that failed ([#976](https://github.com/cososo-ltd/solid-syslog/issues/976)) ([87da5fb](https://github.com/cososo-ltd/solid-syslog/commit/87da5fb396e7ece92b639febe1a9b331c0aae1bc))
+* S41.16 VxWorks 6.4 datagram returns SENT only once the next hop is resolved ([#988](https://github.com/cososo-ltd/solid-syslog/issues/988)) ([4d15707](https://github.com/cososo-ltd/solid-syslog/commit/4d15707a27fe2ecc55997446bab06b370455decd))
+* VxWorks 6.4 platform support ([6819c2b](https://github.com/cososo-ltd/solid-syslog/commit/6819c2b4f7f5752822424624bdb18eac1c3292bf))
+
+
+### Bug Fixes
+
+* VxWorks 6.4 review sweep - resolver, runner hardening, and comments and docs said once ([#981](https://github.com/cososo-ltd/solid-syslog/issues/981)) ([bd687bc](https://github.com/cososo-ltd/solid-syslog/commit/bd687bc3918b525c1f5efb26eed82e585cce9614))
+
 ## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-28)
 
 The TLS release. 0.2.0 lets a device authorise its collector by certificate
