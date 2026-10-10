@@ -178,18 +178,18 @@ TEST(SolidSyslogVxWorks64Datagram, SendToResolvesTheDestinationsLinkAddress)
     STRCMP_EQUAL("10.0.0.10", VxWorks64ArpFake_LastTarget());
 }
 
-TEST(SolidSyslogVxWorks64Datagram, SendToTriesTheResolutionTwiceSoItWaitsOnceForAReply)
+TEST(SolidSyslogVxWorks64Datagram, SendToChecksForTheReplyEveryTick)
 {
     (void) OpenAndSend();
 
-    LONGS_EQUAL(2, VxWorks64ArpFake_LastNumTries());
+    LONGS_EQUAL(1, VxWorks64ArpFake_LastNumTicks());
 }
 
-TEST(SolidSyslogVxWorks64Datagram, SendToWaitsATenthOfASecondForTheReply)
+TEST(SolidSyslogVxWorks64Datagram, SendToKeepsCheckingForATenthOfASecond)
 {
     (void) OpenAndSend();
 
-    LONGS_EQUAL(6, VxWorks64ArpFake_LastNumTicks());
+    LONGS_EQUAL(7, VxWorks64ArpFake_LastNumTries());
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToReportsFailedWhenTheNextHopDoesNotResolve)
@@ -262,7 +262,7 @@ TEST(SolidSyslogVxWorks64Datagram, OnceAResolutionSucceedsAgainTheNextWaits)
 
     (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
 
-    LONGS_EQUAL(2, VxWorks64ArpFake_LastNumTries());
+    LONGS_EQUAL(7, VxWorks64ArpFake_LastNumTries());
 }
 
 TEST(SolidSyslogVxWorks64Datagram, AFailureAfterARecoveryIsReportedAgain)

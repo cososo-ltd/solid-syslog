@@ -130,10 +130,10 @@ all. A burst sent before the reply arrives, such as the records logged at
 start-up, would be lost with nothing reported. So before each send the datagram
 asks `arpResolve` for the collector, as the
 [Datagram](../../api/structSolidSyslogDatagram.md) contract requires. A cached
-entry answers at once. Otherwise the datagram waits up to
-`SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS` (100 ms by default) for the reply, and
-fails the send if none arrives; with a store the record is kept for the next
-pass.
+entry answers at once. Otherwise the datagram checks for the reply every
+system clock tick, for up to `SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS` (100 ms by
+default), so it sends within a tick of the reply arriving. If no reply arrives
+it fails the send; with a store the record is kept for the next pass.
 
 The wait falls on the task that calls `SolidSyslog_Service`, or on the logging
 task with an inline wiring. A resolution that fails is reported once, as

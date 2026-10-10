@@ -38,9 +38,10 @@ enum
     /* arpResolve fills an Ethernet address, six bytes, through 16-bit
      * accesses. */
     VXWORKS64_DATAGRAM_LINK_ADDRESS_HALFWORDS = 3,
-    /* Two tries make one wait for a reply between them; arpResolve does not
-     * wait after its last, so one try sends a request and does not wait. */
-    VXWORKS64_DATAGRAM_RESOLVE_TRIES_WAITING = 2,
+    /* arpResolve sleeps its whole interval between tries and does not wake for
+     * the reply, so it is asked to check every tick. It does not wait after its
+     * last try, so one try sends a request and does not wait. */
+    VXWORKS64_DATAGRAM_RESOLVE_INTERVAL_TICKS = 1,
     VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING = 1,
     VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND = 1000
 };
@@ -68,6 +69,7 @@ static inline bool VxWorks64Datagram_ResolveNextHop(
     struct SolidSyslogVxWorks64Datagram* self,
     const struct SolidSyslogAddress* addr
 );
+static inline int VxWorks64Datagram_TriesWaiting(void);
 static inline int VxWorks64Datagram_TicksFor(int milliseconds);
 static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno);
 static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveErrno);
@@ -175,8 +177,8 @@ static inline bool VxWorks64Datagram_AskForTheLinkAddress(
     STATUS status = arpResolve(
         nextHop,
         (char*) linkAddress,
-        self->ResolveFailing ? VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING : VXWORKS64_DATAGRAM_RESOLVE_TRIES_WAITING,
-        VxWorks64Datagram_TicksFor((int) SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS)
+        self->ResolveFailing ? VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING : VxWorks64Datagram_TriesWaiting(),
+        VXWORKS64_DATAGRAM_RESOLVE_INTERVAL_TICKS
     );
     int resolveErrno = (status == ERROR) ? errno : 0;
     bool offTheSubnet = VxWorks64Datagram_IsOffTheSubnet(status, resolveErrno);
@@ -192,6 +194,12 @@ static inline bool VxWorks64Datagram_AskForTheLinkAddress(
     }
     self->ResolveFailing = !resolved;
     return resolved;
+}
+
+/* One try more than the wait has ticks: a check after each tick of the wait. */
+static inline int VxWorks64Datagram_TriesWaiting(void)
+{
+    return VxWorks64Datagram_TicksFor((int) SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS) + 1;
 }
 
 /* Rounded up, so a wait shorter than a tick is a tick rather than none. */
