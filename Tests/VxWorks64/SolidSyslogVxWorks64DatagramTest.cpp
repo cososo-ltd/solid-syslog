@@ -265,6 +265,29 @@ TEST(SolidSyslogVxWorks64Datagram, OnceAResolutionSucceedsAgainTheNextWaits)
     LONGS_EQUAL(7, VxWorks64ArpFake_LastNumTries());
 }
 
+TEST(SolidSyslogVxWorks64Datagram, ANewDestinationWaitsAfterAnotherFailedToResolve)
+{
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+    (void) OpenAndSend();
+    SolidSyslogVxWorks64Address_AsSockaddrIn(address)->sin_addr.s_addr = htonl(0x0A00000BU);
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    LONGS_EQUAL(7, VxWorks64ArpFake_LastNumTries());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, ANewDestinationThatFailsIsReportedAfterAnotherFailed)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+    (void) OpenAndSend();
+    SolidSyslogVxWorks64Address_AsSockaddrIn(address)->sin_addr.s_addr = htonl(0x0A00000BU);
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, 4);
+}
+
 TEST(SolidSyslogVxWorks64Datagram, AFailureAfterARecoveryIsReportedAgain)
 {
     ErrorHandlerFake_Install(nullptr);

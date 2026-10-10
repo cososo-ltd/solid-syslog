@@ -70,6 +70,10 @@ static inline bool VxWorks64Datagram_ResolveNextHop(
     const struct SolidSyslogAddress* addr
 );
 static inline int VxWorks64Datagram_TriesWaiting(void);
+static inline bool VxWorks64Datagram_IsStillFailing(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+);
 static inline int VxWorks64Datagram_TicksFor(int milliseconds);
 static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno);
 static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveErrno);
@@ -91,6 +95,7 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
     self->Base.Close = VxWorks64Datagram_Close;
     self->Fd = VXWORKS64_DATAGRAM_NO_SOCKET;
     self->ResolveFailing = false;
+    self->FailedDestination = 0U;
     self->HasOffSubnetDestination = false;
     self->OffSubnetDestination = 0U;
 }
@@ -177,7 +182,8 @@ static inline bool VxWorks64Datagram_AskForTheLinkAddress(
     STATUS status = arpResolve(
         nextHop,
         (char*) linkAddress,
-        self->ResolveFailing ? VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING : VxWorks64Datagram_TriesWaiting(),
+        VxWorks64Datagram_IsStillFailing(self, sin) ? VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING
+                                                    : VxWorks64Datagram_TriesWaiting(),
         VXWORKS64_DATAGRAM_RESOLVE_INTERVAL_TICKS
     );
     int resolveErrno = (status == ERROR) ? errno : 0;
@@ -188,12 +194,21 @@ static inline bool VxWorks64Datagram_AskForTheLinkAddress(
         self->OffSubnetDestination = sin->sin_addr.s_addr;
     }
     bool resolved = (status == OK) || offTheSubnet;
-    if (!resolved && !self->ResolveFailing)
+    if (!resolved && !VxWorks64Datagram_IsStillFailing(self, sin))
     {
         VxWorks64Datagram_ReportUnresolved(resolveErrno);
     }
     self->ResolveFailing = !resolved;
+    self->FailedDestination = sin->sin_addr.s_addr;
     return resolved;
+}
+
+static inline bool VxWorks64Datagram_IsStillFailing(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+)
+{
+    return self->ResolveFailing && (self->FailedDestination == sin->sin_addr.s_addr);
 }
 
 /* One try more than the wait has ticks: a check after each tick of the wait. */

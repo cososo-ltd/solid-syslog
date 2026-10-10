@@ -18,8 +18,11 @@ struct SolidSyslogVxWorks64Datagram
 {
     struct SolidSyslogDatagram Base;
     int Fd;
-    /* The last resolution failed: report a failure only on the way in. */
+    /* The last resolution failed, for FailedDestination (network byte order):
+     * while it keeps failing for that destination it is not waited for or
+     * reported again. */
     bool ResolveFailing;
+    uint32_t FailedDestination;
     /* The destination arpResolve last answered as off the subnet, in network
      * byte order; asked about again only once the destination changes. */
     bool HasOffSubnetDestination;
