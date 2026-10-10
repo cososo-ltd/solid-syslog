@@ -47,7 +47,7 @@ else()
         ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
-    add_test(NAME SolidSyslogPlusTcpDatagramTest COMMAND SolidSyslogPlusTcpDatagramTest)
+    solidsyslog_add_test(SolidSyslogPlusTcpDatagramTest)
 
     add_executable(SolidSyslogPlusTcpTcpStreamTest
         SolidSyslogPlusTcpTcpStreamTest.cpp
@@ -82,7 +82,7 @@ else()
         ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
-    add_test(NAME SolidSyslogPlusTcpTcpStreamTest COMMAND SolidSyslogPlusTcpTcpStreamTest)
+    solidsyslog_add_test(SolidSyslogPlusTcpTcpStreamTest)
 
     add_executable(SolidSyslogPlusTcpResolverTest
         SolidSyslogPlusTcpResolverTest.cpp
@@ -116,7 +116,7 @@ else()
         ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
-    add_test(NAME SolidSyslogPlusTcpResolverTest COMMAND SolidSyslogPlusTcpResolverTest)
+    solidsyslog_add_test(SolidSyslogPlusTcpResolverTest)
 
     add_executable(SolidSyslogPlusTcpAddressTest
         SolidSyslogPlusTcpAddressTest.cpp
@@ -146,7 +146,7 @@ else()
         ${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}/source/include
     )
 
-    add_test(NAME SolidSyslogPlusTcpAddressTest COMMAND SolidSyslogPlusTcpAddressTest)
+    solidsyslog_add_test(SolidSyslogPlusTcpAddressTest)
 endif()
 
 # SolidSyslogFreeRtosMutex — kernel-only adapter wrapping a FreeRTOS static
@@ -177,7 +177,7 @@ target_include_directories(SolidSyslogFreeRtosMutexTest PRIVATE
     ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
 )
 
-add_test(NAME SolidSyslogFreeRtosMutexTest COMMAND SolidSyslogFreeRtosMutexTest)
+solidsyslog_add_test(SolidSyslogFreeRtosMutexTest)
 
 # SolidSyslogFreeRtosSysUpTime — kernel-only adapter; needs FREERTOS_KERNEL_PATH
 # but not Plus-TCP. Sits outside the Plus-TCP guard for the same reason the
@@ -204,7 +204,7 @@ target_include_directories(SolidSyslogFreeRtosSysUpTimeTest PRIVATE
     ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
 )
 
-add_test(NAME SolidSyslogFreeRtosSysUpTimeTest COMMAND SolidSyslogFreeRtosSysUpTimeTest)
+solidsyslog_add_test(SolidSyslogFreeRtosSysUpTimeTest)
 
 # The same adapter at 1000 Hz, the FreeRTOS default. At 100 Hz a tick is a
 # hundredth, so the counter wrap and the RFC 3418 wrap coincide and the
@@ -234,7 +234,7 @@ target_include_directories(SolidSyslogFreeRtosSysUpTimeRolloverTest PRIVATE
     ${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}/include
 )
 
-add_test(NAME SolidSyslogFreeRtosSysUpTimeRolloverTest COMMAND SolidSyslogFreeRtosSysUpTimeRolloverTest)
+solidsyslog_add_test(SolidSyslogFreeRtosSysUpTimeRolloverTest)
 
 # CMSDK UART driver host tests — recompiles the driver source from the
 # Bdd/Targets/FreeRtos/Common board glue against an in-memory fake register
@@ -258,4 +258,4 @@ target_include_directories(CmsdkUartTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Tests/Support
 )
 
-add_test(NAME CmsdkUartTest COMMAND CmsdkUartTest)
+solidsyslog_add_test(CmsdkUartTest)

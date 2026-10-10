@@ -43,7 +43,7 @@ set_target_properties(SolidSyslogMbedTlsStreamPoolTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogMbedTlsStreamPoolTest COMMAND SolidSyslogMbedTlsStreamPoolTest)
+solidsyslog_add_test(SolidSyslogMbedTlsStreamPoolTest)
 
 # Slice-2 onward: vtable behaviour driven against MbedTlsFake (link-time
 # interposition of libmbedtls — separate binary from the integration test).
@@ -78,7 +78,7 @@ set_target_properties(SolidSyslogMbedTlsStreamTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogMbedTlsStreamTest COMMAND SolidSyslogMbedTlsStreamTest)
+solidsyslog_add_test(SolidSyslogMbedTlsStreamTest)
 
 # SolidSyslogMbedTlsHmacSha256Policy — keyed at-rest integrity policy.
 # Slice 3 (lifecycle / pool / bad-config) has no mbedTLS dependency: the
@@ -116,7 +116,7 @@ set_target_properties(SolidSyslogMbedTlsHmacSha256PolicyTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogMbedTlsHmacSha256PolicyTest COMMAND SolidSyslogMbedTlsHmacSha256PolicyTest)
+solidsyslog_add_test(SolidSyslogMbedTlsHmacSha256PolicyTest)
 
 # SolidSyslogMbedTlsAesGcmPolicy — keyed at-rest AEAD (confidentiality +
 # integrity). Driven against the MbedTlsFake GCM capture double + CTR-DRBG nonce
@@ -154,7 +154,7 @@ set_target_properties(SolidSyslogMbedTlsAesGcmPolicyTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogMbedTlsAesGcmPolicyTest COMMAND SolidSyslogMbedTlsAesGcmPolicyTest)
+solidsyslog_add_test(SolidSyslogMbedTlsAesGcmPolicyTest)
 
 # SolidSyslogMbedTlsNullCredentials — the credentials role's Null object.
 # Links no mbedTLS at all: the vtable forward-declares mbedtls_ssl_config and
@@ -178,7 +178,7 @@ target_include_directories(SolidSyslogMbedTlsNullCredentialsTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Tests
 )
 
-add_test(NAME SolidSyslogMbedTlsNullCredentialsTest COMMAND SolidSyslogMbedTlsNullCredentialsTest)
+solidsyslog_add_test(SolidSyslogMbedTlsNullCredentialsTest)
 
 # SolidSyslogMbedTlsHandleCredentials — the credentials backend that carries
 # caller-built, caller-owned mbedTLS handles. Driven against MbedTlsFake, which
@@ -215,4 +215,4 @@ set_target_properties(SolidSyslogMbedTlsHandleCredentialsTest PROPERTIES
     CXX_CPPCHECK ""
 )
 
-add_test(NAME SolidSyslogMbedTlsHandleCredentialsTest COMMAND SolidSyslogMbedTlsHandleCredentialsTest)
+solidsyslog_add_test(SolidSyslogMbedTlsHandleCredentialsTest)

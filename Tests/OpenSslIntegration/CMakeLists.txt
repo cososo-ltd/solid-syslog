@@ -42,4 +42,4 @@ target_include_directories(OpenSslIntegrationTests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_test(NAME OpenSslIntegrationTests COMMAND OpenSslIntegrationTests)
+solidsyslog_add_test(OpenSslIntegrationTests)

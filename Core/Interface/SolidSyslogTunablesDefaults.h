@@ -537,8 +537,7 @@
 
 /**
  * Role pool: AtomicCounter. Number of atomic-counter instances each compiled
- * implementation's static pool can hold at once. Each instance carries a
- * single counter word (the sequenceId counter).
+ * implementation's static pool can hold at once.
  *
  * Default 1 - RFC 5424 sequenceIds are scoped per SolidSyslog instance, and
  * almost all integrators run a single SolidSyslog instance per process. Bump
@@ -555,9 +554,8 @@
 #endif
 
 /**
- * Role pool: TLS stream. Number of TLS stream instances each compiled crypto
- * vendor's static pool can hold at once. Each instance carries the vendor's
- * session/context handles and the integrator's TLS config.
+ * Role pool: TLS stream. Number of TLS stream instances each compiled
+ * implementation's static pool can hold at once.
  *
  * Default 1 - TLS senders are scoped per destination and almost all
  * integrators wire a single TLS sender per process. Bump via
@@ -575,8 +573,8 @@
 #endif
 
 /**
- * Role pool: TLS credentials. Number of credentials instances the library's
- * internal static pool can simultaneously hold.
+ * Role pool: TLS credentials. Number of credentials instances each compiled
+ * implementation's static pool can hold at once.
  *
  * Default 1 - one source per TLS stream is the ordinary wiring. Bump it
  * alongside SOLIDSYSLOG_TLS_STREAM_POOL_SIZE where several streams draw on
@@ -594,10 +592,7 @@
 
 /**
  * Role pool: HMAC-SHA256 SecurityPolicy. Number of keyed HMAC policy
- * instances each compiled crypto vendor's static pool can hold at once.
- * Each instance carries the integrator's key-accessor callback
- * (SolidSyslogKeyFunction) and its context - the policy fetches the key on
- * demand and never stores it.
+ * instances each compiled implementation's static pool can hold at once.
  *
  * Default 1 - a single at-rest store with one integrity policy is the common
  * case. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one store with
@@ -615,10 +610,7 @@
 
 /**
  * Role pool: AES-256-GCM SecurityPolicy. Number of keyed AEAD policy instances
- * the library's internal static pool can simultaneously hold. Each instance
- * carries the integrator's key-accessor callback (SolidSyslogKeyFunction) and
- * its context - the policy fetches the 32-byte key on demand and never stores
- * it.
+ * each compiled implementation's static pool can hold at once.
  *
  * Default 1 - a single at-rest store with one confidentiality policy is the
  * common case. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than one store
@@ -654,16 +646,14 @@
 #endif
 
 /**
- * Number of SolidSyslog{Posix,Winsock,FreeRtos}Address instances the
- * library's internal static pool can simultaneously hold. Each instance
- * carries one platform sockaddr (struct sockaddr_in on POSIX/Windows,
- * struct freertos_sockaddr on FreeRTOS) - ~16 bytes per slot.
+ * Role pool: Address. Number of address instances each compiled
+ * implementation's static pool can hold at once.
  *
  * Default 3 - matches the canonical BDD multi-transport wiring
  * (UDP + plain-TCP + TLS-stream, one Address per Sender) so common
  * integrators are spared an override. Same trade-off as
  * SOLIDSYSLOG_TCP_STREAM_POOL_SIZE / _STREAM_SENDER_POOL_SIZE:
- * single-transport integrators pay ~32 bytes of unused slots per platform;
+ * single-transport integrators pay for two unused slots;
  * multi-transport integrators get the canonical wiring out of the box.
  * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if more than three concurrent
  * senders are needed.
@@ -774,7 +764,7 @@
 
 /**
  * Default bounded TLS handshake deadline applied by every TLS Stream backend
- * (OpenSSL, Mbed TLS) when the integrator does not install a
+ * when the integrator does not install a
  * SolidSyslogTlsHandshakeTimeoutFunction on the config struct. 5 s covers a
  * full TLS 1.2 / 1.3 exchange on a healthy LAN with cert validation; raise
  * it for WAN deployments or constrained MCUs that handshake slowly.

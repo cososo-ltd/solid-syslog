@@ -11,10 +11,14 @@ Thanks for using SolidSyslog. Here is where to get help.
 
 ## Questions, help, and bugs
 
-- **Found a bug or want a feature?** Open an issue using the templates — a
-  clear, reproducible report is the fastest route to a fix.
-- **Have a usage question?** Open an issue; there is no separate forum or chat.
-- Please search existing issues first — someone may already have asked.
+- **Have a usage or integration question?** Ask in
+  [Discussions Q&A](https://github.com/cososo-ltd/solid-syslog/discussions/categories/q-a).
+  Ideas and show-and-tell posts are welcome in
+  [Discussions](https://github.com/cososo-ltd/solid-syslog/discussions) too.
+- **Found a bug or want a concrete feature?** Open an issue using the templates —
+  a clear, reproducible report is the fastest route to a fix.
+- Please search existing discussions and issues first — someone may already have
+  asked.
 
 ## Security issues
 

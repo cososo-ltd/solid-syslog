@@ -226,13 +226,18 @@ def vocabulary(rows):
     return terms
 
 
+def from_root(path):
+    """A path from the repository root, in the forward-slash form ALLOWED is keyed by."""
+    return os.path.relpath(path, ROOT).replace(os.sep, "/")
+
+
 def scanned(directory, slug):
     """Everything that speaks for one platform: its own tree, and its pages."""
     for base in (os.path.join(ROOT, directory), os.path.join(ROOT, "docs", "platforms", slug)):
         for path, _, names in os.walk(base):
             for name in sorted(names):
                 if name.endswith(SCANNED_SUFFIXES):
-                    yield os.path.relpath(os.path.join(path, name), ROOT)
+                    yield from_root(os.path.join(path, name))
 
 
 DESCRIPTIONS = os.path.join("hooks", "page_descriptions.py")
@@ -287,7 +292,7 @@ def naming_faults(rows, terms):
                     named = "/".join(sorted(owners))
                     faults.append(
                         f"{token}: {relative}:{number} names {named} "
-                        f'("{term}") — a platform describes only itself'
+                        f'("{term}") - a platform describes only itself'
                     )
     return faults
 
@@ -380,7 +385,7 @@ def role_faults():
         # asserted, so a thirteenth role would leave it quietly wrong.
         for spelt in re.findall(ROLE_COUNT_IN_PROSE, text):
             faults.append(
-                f"{listing} states the number of roles in prose ('{spelt}') — "
+                f"{listing} states the number of roles in prose ('{spelt}') - "
                 "the listing above is what keeps the set honest, so leave the count out"
             )
     return faults
@@ -401,7 +406,7 @@ def prefix_faults(rows):
             if not any(header.startswith(f"SolidSyslog{prefix}") for prefix in accepted):
                 wanted = " or ".join(f"SolidSyslog{prefix}" for prefix in accepted)
                 faults.append(
-                    f"{token}: {directory}/Interface/{header} does not begin {wanted} — "
+                    f"{token}: {directory}/Interface/{header} does not begin {wanted} - "
                     "a platform's classes carry its registry token"
                 )
     return faults
@@ -433,7 +438,7 @@ def markdown_pages():
     for path, _, names in os.walk(os.path.join(ROOT, "docs")):
         for name in sorted(names):
             if name.endswith(".md"):
-                yield os.path.relpath(os.path.join(path, name), ROOT)
+                yield from_root(os.path.join(path, name))
 
 
 def marker_pairs(text):
@@ -576,7 +581,7 @@ def check():
 
     for token, _ in rows:
         if token not in ALIASES:
-            faults.append(f"{token}: no ALIASES entry — add its prose spellings, or [] if the token is the only one")
+            faults.append(f"{token}: no ALIASES entry - add its prose spellings, or [] if the token is the only one")
 
     for token, directory in rows:
         slug = token.lower()
@@ -621,10 +626,10 @@ if __name__ == "__main__":
         )
         sys.exit(1)
     for path, term, reason in ALLOWED:
-        print(f"allowed: {path} may say {term} — {reason}")
+        print(f"allowed: {path} may say {term} - {reason}")
     for token, prefixes in sorted(CLASS_PREFIXES.items()):
         spellings = ", ".join(f"SolidSyslog{prefix}*" for prefix in prefixes)
-        print(f"allowed: {token} may also declare {spellings} — a second upstream, agreed when it was taken on")
+        print(f"allowed: {token} may also declare {spellings} - a second upstream, agreed when it was taken on")
     print(
         f"docs match the code: {len(registered())} platforms, all documented, none naming "
         f"another and each declaring only classes that carry its token; "

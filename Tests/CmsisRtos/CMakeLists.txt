@@ -29,7 +29,7 @@ target_include_directories(SolidSyslogCmsisRtosMutexTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Tests/Support/CmsisRtosFakes/Interface
 )
 
-add_test(NAME SolidSyslogCmsisRtosMutexTest COMMAND SolidSyslogCmsisRtosMutexTest)
+solidsyslog_add_test(SolidSyslogCmsisRtosMutexTest)
 
 # The helper whitebox-includes SolidSyslogCmsisRtosSysUpTime.c rather than the
 # adapter being compiled alongside it, so the rollover state it keeps at file
@@ -54,4 +54,4 @@ target_include_directories(SolidSyslogCmsisRtosSysUpTimeTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Tests/Support/CmsisRtosFakes/Interface
 )
 
-add_test(NAME SolidSyslogCmsisRtosSysUpTimeTest COMMAND SolidSyslogCmsisRtosSysUpTimeTest)
+solidsyslog_add_test(SolidSyslogCmsisRtosSysUpTimeTest)

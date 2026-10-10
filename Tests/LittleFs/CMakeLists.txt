@@ -40,4 +40,4 @@ target_include_directories(SolidSyslogLittleFsFileTest SYSTEM PRIVATE
     ${SOLIDSYSLOG_LITTLEFS_PATH}
 )
 
-add_test(NAME SolidSyslogLittleFsFileTest COMMAND SolidSyslogLittleFsFileTest)
+solidsyslog_add_test(SolidSyslogLittleFsFileTest)

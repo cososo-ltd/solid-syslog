@@ -1,3 +1,13 @@
+# Gives a test executable its ctest entry and enrols it for the `junit` target in
+# one call, so neither can be added without the other. `junit` can only take a
+# POST_BUILD command from this directory, which defines it, so the target is
+# recorded here and registered beside `junit` below. Call it from the file that
+# defines the executable, after add_executable.
+function(solidsyslog_add_test test_target)
+    add_test(NAME ${test_target} COMMAND ${test_target})
+    set_property(GLOBAL APPEND PROPERTY SOLIDSYSLOG_JUNIT_TEST_TARGETS ${test_target})
+endfunction()
+
 if(SOLIDSYSLOG_POSIX OR SOLIDSYSLOG_WINSOCK)
     add_subdirectory(Support)
 endif()
@@ -272,18 +282,12 @@ add_custom_target(junit
     COMMENT "Running tests with JUnit XML output"
 )
 
-# Each registered executable runs through run_junit.cmake as a POST_BUILD step
-# on the `junit` custom target, so its cpputest_<group>.xml lands in the build
-# dir alongside SolidSyslogTests' output. CI's junit-* upload-artifact then
-# picks them all up for the Quality Summary panel. The `if(TARGET ...)` guard
-# keeps the list authoritative without duplicating the FREERTOS_KERNEL_PATH /
-# FREERTOS_PLUS_TCP_PATH env-var guards that already gate the test
-# executables' definition in Tests/FreeRtos/CMakeLists.txt — a missing target
-# is silently skipped, so jobs running outside a FreeRTOS-aware container
-# just run SolidSyslogTests as before.
-#
-# An optional second argument names a subdirectory of the build dir for the
-# XML, so CI can report a group of tests as a block of its own.
+# Each executable enrolled by solidsyslog_add_test runs through run_junit.cmake
+# as a POST_BUILD step on the `junit` custom target, so its cpputest_<group>.xml
+# lands in the build dir alongside SolidSyslogTests' output. CI's junit-*
+# upload-artifact then picks them all up for the Quality Summary panel. Only
+# executables a configuration actually defines are enrolled, so a job running
+# outside a FreeRTOS-aware container just runs SolidSyslogTests as before.
 function(register_junit_test test_target)
     set(junit_dir ${CMAKE_BINARY_DIR})
     if(ARGC GREATER 1)
@@ -301,103 +305,17 @@ function(register_junit_test test_target)
     set_property(GLOBAL APPEND PROPERTY SOLIDSYSLOG_JUNIT_TESTS ${test_target})
 endfunction()
 
-foreach(freertos_test_target IN ITEMS
-    SolidSyslogFreeRtosMutexTest
-    SolidSyslogFreeRtosSysUpTimeTest
-    SolidSyslogFreeRtosSysUpTimeRolloverTest
-    CmsdkUartTest
-    SolidSyslogPlusTcpAddressTest
-    SolidSyslogPlusTcpDatagramTest
-    SolidSyslogPlusTcpTcpStreamTest
-    SolidSyslogPlusTcpResolverTest
-)
-    if(TARGET ${freertos_test_target})
-        register_junit_test(${freertos_test_target})
-    endif()
-endforeach()
-
-foreach(cmsisrtos_test_target IN ITEMS
-    SolidSyslogCmsisRtosMutexTest
-    SolidSyslogCmsisRtosSysUpTimeTest
-)
-    if(TARGET ${cmsisrtos_test_target})
-        register_junit_test(${cmsisrtos_test_target})
-    endif()
-endforeach()
-
-# The VxWorks 6.4 tests need no list: vxworks64_add_test records each one as it
-# is defined, and this completes the registration the junit target was not yet
-# there to take. Their XML goes in vxworks64/, which CI reports as its own block.
+# The VxWorks 6.4 tests enrol through vxworks64_add_test rather than
+# solidsyslog_add_test, so their XML can go in vxworks64/, which CI reports as
+# a block of its own.
 get_property(vxworks64_test_targets GLOBAL PROPERTY SOLIDSYSLOG_VXWORKS64_JUNIT_TESTS)
 foreach(vxworks64_test_target IN LISTS vxworks64_test_targets)
     register_junit_test(${vxworks64_test_target} vxworks64)
 endforeach()
 
-foreach(fatfs_test_target IN ITEMS
-    SolidSyslogFatFsFileTest
-)
-    if(TARGET ${fatfs_test_target})
-        register_junit_test(${fatfs_test_target})
-    endif()
-endforeach()
-
-foreach(littlefs_test_target IN ITEMS
-    SolidSyslogLittleFsFileTest
-    LittleFsIntegrationTests
-)
-    if(TARGET ${littlefs_test_target})
-        register_junit_test(${littlefs_test_target})
-    endif()
-endforeach()
-
-foreach(plusfat_test_target IN ITEMS
-    SolidSyslogPlusFatFileTest
-)
-    if(TARGET ${plusfat_test_target})
-        register_junit_test(${plusfat_test_target})
-    endif()
-endforeach()
-
-foreach(mbedtls_test_target IN ITEMS
-    SolidSyslogMbedTlsStreamPoolTest
-    SolidSyslogMbedTlsStreamTest
-    SolidSyslogMbedTlsHmacSha256PolicyTest
-    SolidSyslogMbedTlsAesGcmPolicyTest
-    SolidSyslogMbedTlsNullCredentialsTest
-    SolidSyslogMbedTlsHandleCredentialsTest
-    MbedTlsIntegrationTests
-)
-    if(TARGET ${mbedtls_test_target})
-        register_junit_test(${mbedtls_test_target})
-    endif()
-endforeach()
-
-foreach(openssl_test_target IN ITEMS
-    OpenSslIntegrationTests
-)
-    if(TARGET ${openssl_test_target})
-        register_junit_test(${openssl_test_target})
-    endif()
-endforeach()
-
-foreach(lwip_test_target IN ITEMS
-    SolidSyslogLwipSocketAddressTest
-    SolidSyslogLwipSocketResolverTest
-    SolidSyslogLwipSocketDatagramTest
-    SolidSyslogLwipSocketTcpStreamTest
-    SolidSyslogLwipSocketTcpKeepaliveAllTest
-    SolidSyslogLwipSocketTcpKeepaliveIdleOnlyTest
-    SolidSyslogLwipRawAddressTest
-    SolidSyslogLwipRawResolverTest
-    SolidSyslogLwipRawDnsResolverTest
-    SolidSyslogLwipRawDatagramTest
-    SolidSyslogLwipRawTcpStreamTest
-    SolidSyslogLwipRawTcpKeepaliveTest
-    SolidSyslogLwipRawMarshalTest
-)
-    if(TARGET ${lwip_test_target})
-        register_junit_test(${lwip_test_target})
-    endif()
+get_property(junit_test_targets GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TEST_TARGETS)
+foreach(junit_test_target IN LISTS junit_test_targets)
+    register_junit_test(${junit_test_target})
 endforeach()
 
 # CI builds only --target junit; fail the configure if a test executable is not

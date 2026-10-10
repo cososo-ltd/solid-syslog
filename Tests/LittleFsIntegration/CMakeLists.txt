@@ -64,4 +64,4 @@ target_include_directories(LittleFsIntegrationTests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_test(NAME LittleFsIntegrationTests COMMAND LittleFsIntegrationTests)
+solidsyslog_add_test(LittleFsIntegrationTests)

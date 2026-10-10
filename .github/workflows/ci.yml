@@ -957,8 +957,8 @@ jobs:
           retention-days: 7
       # The offline bundle attached to each release. Built and checked on every
       # run, not only on a release, so the packaging cannot rot unnoticed between
-      # them - the release workflow does the same from the tag and then signs the
-      # result, which leaves attaching it as the only release-only step.
+      # them - the release workflow does the same from the tag, and only signing
+      # and attaching the result are left to the release.
       # Packaging runs inside the container because the container owns the files
       # it just built; writing the manifest from the runner would be denied.
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
@@ -967,6 +967,10 @@ jobs:
           SOLIDSYSLOG_DOCS_IMAGE: ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:9ab3d41807a941f3d5a7077fb7288d0ffe2a926729ce13a4fc889cc8b6630d43
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
           SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
+          # The same provenance as the site above, so the rehearsal's footer names
+          # this build rather than reading as a local one. Double-quoted for the
+          # same reason.
+          SOLIDSYSLOG_DOCS_ORIGIN: "${{ github.event.pull_request.number && format('pull request #{0}', github.event.pull_request.number) || github.ref_name }}"
           # Pinned here too, so this rehearsal builds the bundle the way the
           # release does. The published site above keeps the default of main.
           SOLIDSYSLOG_DOCS_REF: ${{ github.sha }}
@@ -975,6 +979,7 @@ jobs:
             -e SOLIDSYSLOG_DOCS_IMAGE \
             -e SOLIDSYSLOG_DOCS_VERSION \
             -e SOLIDSYSLOG_DOCS_COMMIT \
+            -e SOLIDSYSLOG_DOCS_ORIGIN \
             -e SOLIDSYSLOG_DOCS_REF \
             "$SOLIDSYSLOG_DOCS_IMAGE" \
             sh -c 'mkdocs build -f /docs/mkdocs-offline.yml -d /docs/build/bundle --strict \

@@ -200,6 +200,19 @@ SHELL = re.compile(r"^\s*(?:-\s+)?(?:run|command|entrypoint):\s*\S")
 LEADING = "([{<\"'`,;:"
 TRAILING = ".,;:!?)]}>\"'`"
 
+# A build file names most of its paths through a variable, which NOT_A_PATH
+# below would discard whole. Where the value follows from where the file sits,
+# the variable is replaced before the word is judged. The source-tree variables
+# are the repository root. CMAKE_CURRENT_SOURCE_DIR is the directory of the
+# CMakeLists.txt naming it - but not inside a function or macro, where it is the
+# caller's, nor in an included .cmake file, where it is the includer's. This
+# cannot know either, so it is not replaced there. Only build files: a page
+# quoting a CMake example means an integrator's tree, not this one.
+ROOT_VARIABLES = ("CMAKE_SOURCE_DIR", "SolidSyslog_SOURCE_DIR")
+CMAKE_VARIABLE_PREFIX = re.compile(r"\$\{([A-Za-z0-9_]+)\}/")
+CMAKE_BODY_OPEN = re.compile(r"^\s*(?:function|macro)\s*\(", re.IGNORECASE)
+CMAKE_BODY_CLOSE = re.compile(r"^\s*end(?:function|macro)\s*\(", re.IGNORECASE)
+
 # What disqualifies a word before its shape is considered: a URL or an address,
 # a glob or a placeholder, a shell or CMake variable, or a character no path in
 # this repository uses. Each names something other than one file here.
@@ -268,6 +281,64 @@ def scanned():
     )
 
 
+def is_build_file(relative):
+    return os.path.basename(relative) in SCANNED_NAMES or relative.endswith(".cmake")
+
+
+@functools.lru_cache(maxsize=None)
+def known_variables(relative):
+    """For each line of a file, the variables a path on it can be resolved
+    through, each mapped to the repo-relative directory it stands for. Empty
+    for a file that is not a build file. Per line, because a function or macro
+    body changes what CMAKE_CURRENT_SOURCE_DIR means."""
+    lines = read(relative).splitlines()
+    if not is_build_file(relative):
+        return [{} for _ in lines]
+    in_directory = {name: "" for name in ROOT_VARIABLES}
+    if os.path.basename(relative) in SCANNED_NAMES:
+        in_directory["CMAKE_CURRENT_SOURCE_DIR"] = os.path.dirname(relative)
+    in_body = {name: "" for name in ROOT_VARIABLES}
+    per_line = []
+    inside = False
+    for line in lines:
+        inside = inside or CMAKE_BODY_OPEN.match(line) is not None
+        per_line.append(in_body if inside else in_directory)
+        if CMAKE_BODY_CLOSE.match(line):
+            inside = False
+    return per_line
+
+
+def without_variables(text, known):
+    """The text with every known variable prefix replaced by the directory it
+    stands for. A prefix this cannot resolve is left, and NOT_A_PATH then drops
+    the word - which unresolved_variables() reports rather than leaving silent."""
+
+    def replace(match):
+        if match.group(1) not in known:
+            return match.group(0)
+        directory = known[match.group(1)]
+        return f"{directory}/" if directory else "./"
+
+    return CMAKE_VARIABLE_PREFIX.sub(replace, text)
+
+
+def unresolved_variables():
+    """How often each variable this cannot resolve prefixes a path in a build
+    file. Those paths are not asserted; counting them keeps that visible. Most
+    name an upstream tree or a build output, neither of which is in this
+    repository."""
+    counts = {}
+    for relative in scanned():
+        if not is_build_file(relative):
+            continue
+        lines = read(relative).splitlines()
+        for line, known in zip(lines, known_variables(relative)):
+            for match in CMAKE_VARIABLE_PREFIX.finditer(line):
+                if match.group(1) not in known:
+                    counts[match.group(1)] = counts.get(match.group(1), 0) + 1
+    return counts
+
+
 def candidates(relative, line, verbatim):
     """The text on one line that may hold a reference.
 
@@ -283,14 +354,18 @@ def candidates(relative, line, verbatim):
     return [line]
 
 
-def words(text):
+def words(text, options=False):
     """The path-shaped words of some candidate text, unpunctuated.
 
     A word is split on `:` after it has been judged, so a Compose mount
     (`../Bdd/output:/var/log`) yields both sides and a URL yields neither.
+    With `options`, a word that assigns an option (`--mapping_file=cmake/x.imp`)
+    is judged by its value, which is the only part that can be a path.
     """
     for word in text.split():
         word = word.lstrip(LEADING).rstrip(TRAILING)
+        if options:
+            word = word.split("=", 1)[-1]
         if word and not NOT_A_PATH.search(word):
             for part in word.split(":"):
                 yield part
@@ -311,14 +386,14 @@ def names_a_file(token):
     return token.endswith("/") or ("." in tail and tail not in (".", ".."))
 
 
-def paths_in(relative, line, verbatim, roots):
+def paths_in(relative, line, verbatim, roots, known):
     """Every token on this line that is a reference to a path in this repository.
 
     An anchor or a query names a place within the target rather than a different
     target, so both are cut before the path is resolved.
     """
     for text in candidates(relative, line, verbatim):
-        for word in words(text):
+        for word in words(without_variables(text, known), options=is_build_file(relative)):
             token = word.split("#")[0].split("?")[0]
             if "/" not in token or not names_a_file(token):
                 continue
@@ -382,7 +457,7 @@ def cmake_targets(text):
     return {found.group(1) for found in matched if found}
 
 
-def symbols_in(relative, line, verbatim, roots):
+def symbols_in(relative, line, verbatim, roots, known):
     """Every token on this line that claims a symbol of this library exists.
 
     Mined from code spans and fenced blocks, and deliberately not from link
@@ -456,6 +531,7 @@ def references(kind):
     for relative in scanned():
         verbatim = not relative.endswith(".md")
         block = None
+        known = known_variables(relative)
         for number, line in enumerate(read(relative).splitlines(), 1):
             if relative.endswith(".md"):
                 if FENCE.match(line):
@@ -465,7 +541,7 @@ def references(kind):
                 block = inside_block(line, block)
                 if block is not None or SHELL.match(line):
                     continue
-            for token in kind.extract(relative, line, verbatim, roots):
+            for token in kind.extract(relative, line, verbatim, roots, known[number - 1]):
                 found.setdefault((relative, token), number)
     return found
 
@@ -519,6 +595,12 @@ if __name__ == "__main__":
     for path, token, reason in ALLOWED:
         named = "anything" if token == WHOLE_FILE else token
         print(f"allowed: {path} may name {named} — {reason}")
+    unresolved = unresolved_variables()
+    print(
+        f"not asserted: {sum(unresolved.values())} build-file paths written through a variable "
+        "this cannot resolve - "
+        + ", ".join(f"{name} ({count})" for name, count in sorted(unresolved.items()))
+    )
     print(
         f"every path named by {len(scanned())} documents and build files exists, "
         f"and every symbol named under {DOCUMENTED} resolves to one of "
