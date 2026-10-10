@@ -1,5 +1,5 @@
 {
-    "junitTestExplorer.pathForResultFiles": "${workspaceFolder}/build/debug/cpputest_*.xml",
+    "junitTestExplorer.pathForResultFiles": "${workspaceFolder}/build/debug/**/cpputest_*.xml",
 
     "files.eol": "\n",
     "files.trimTrailingWhitespace": true,

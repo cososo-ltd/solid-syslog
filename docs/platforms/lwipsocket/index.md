@@ -28,6 +28,10 @@ no-op. `LWIP_SOCKET_SELECT` defaults to on, and the stream's bounded connect is
 what needs it, so a build that turns it off links everything here except the
 stream.
 
+Set `ARP_QUEUEING=1` as well. Without it lwIP holds only the latest packet for
+an address it is still resolving, so the datagram loses every earlier record in
+a burst sent before the reply arrives - typically the first records after boot.
+
 Your port must also make `errno` and its codes available, because the transports
 read it to tell one refusal from another. lwIP offers three ways to say where it
 comes from - `LWIP_PROVIDE_ERRNO` for lwIP's own definitions,

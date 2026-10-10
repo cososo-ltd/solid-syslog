@@ -422,6 +422,23 @@ it applies again the moment a feature or platform epic starts.
 
 Merging is the maintainer's decision, not a state a check can declare.
 
+### A target CI cannot reach is accepted by a checklist
+
+Some platforms run only where a licensed toolchain or a particular machine is, so no CI
+lane can build or run them. Such a platform is accepted by a **target checklist** instead:
+a fixed list of steps run by hand, outside CI, against the commit under review.
+
+- The checklist lives with the target, in its `Bdd/Targets/<Target>/README.md`. One list
+  per platform, not one per story.
+- Every story PR that touches the platform records the run: the commit, each step as pass
+  or fail, and anything that did not pass. A step that was not run is recorded as not run,
+  never as passed.
+- CI still gates everything it can reach: host builds, unit tests against the platform's
+  fakes, and static analysis. The checklist covers only what CI cannot reach.
+
+Where the target can run the BDD scenarios, the checklist's run of them is that
+evidence: the commit, and the scenarios passed, failed and skipped by its tag filter.
+
 ---
 
 ## CMake Presets

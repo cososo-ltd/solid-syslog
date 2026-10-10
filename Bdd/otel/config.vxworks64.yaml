@@ -1,0 +1,61 @@
+# OpenTelemetry Collector Contrib config - the VxWorks 6.4 BDD oracle.
+#
+# The target runs under QEMU on the build machine, so its syslog crosses the
+# network to this collector: UDP and TCP on every interface, both on the port in
+# VXWORKS64_COLLECTOR_PORT, which Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1 sets
+# and also gives the target. Records are written to the same files, in the same
+# form, as Bdd/otel/config.yaml writes them, so the same steps read them.
+#
+# No TLS, because the target has none. The health check is how the run script
+# knows the collector is ready: a UDP listener cannot be probed by connecting
+# to it.
+
+receivers:
+  syslog/udp:
+    udp:
+      listen_address: "0.0.0.0:${env:VXWORKS64_COLLECTOR_PORT}"
+    protocol: rfc5424
+  syslog/tcp:
+    tcp:
+      listen_address: "0.0.0.0:${env:VXWORKS64_COLLECTOR_PORT}"
+    protocol: rfc5424
+    # The library frames TCP messages with RFC 6587 octet counting; without
+    # this the rfc5424 parser is handed the length prefix and rejects it.
+    enable_octet_counting: true
+
+extensions:
+  health_check:
+    endpoint: "127.0.0.1:13133"
+
+exporters:
+  file:
+    path: "Bdd/output/received.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+  file/udp:
+    path: "Bdd/output/received_udp.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+  file/tcp:
+    path: "Bdd/output/received_tcp.jsonl"
+    rotation:
+      max_megabytes: 10
+      max_backups: 1
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    logs:
+      receivers: [syslog/udp, syslog/tcp]
+      exporters: [file]
+    logs/udp:
+      receivers: [syslog/udp]
+      exporters: [file/udp]
+    logs/tcp:
+      receivers: [syslog/tcp]
+      exporters: [file/tcp]

@@ -46,6 +46,7 @@ without renaming what's already there.
 | `consumer-smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
+| `test-vxworks64-runner` | - | Python `unittest` over the VxWorks 6.4 runner's job service: its queue, token, routes and TLS. The runner's Pester tests need Windows PowerShell 5.1 and run locally, recorded in the PR |
 | `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`, runs the documentation consistency, reference and issue-link checks and the hook tests, and rehearses the offline bundle; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
 | `actionlint` | - | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
 | `docs-links` | - | Checks the documentation's external links with lychee. Its own workflow (`docs-links.yml`); advisory on pull requests, failing on its weekly schedule |
@@ -81,6 +82,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 | lwIP (Sockets API) | `build-freertos-host-tdd-plustcp` against fakes; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
 | FreeRTOS kernel | `build-freertos-host-tdd-plustcp` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
 | CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
+| VxWorks 6.4 | Unit tests at strict C99 against fakes in every host lane that builds `Tests/`. Target runs are outside CI: the toolchain and kernel are licensed, so the target checklist in `Bdd/Targets/VxWorks64/README.md` covers them |
 | ChaN FatFs | Built and analysed in the lwIP lanes; store-and-forward scenarios run in `bdd-freertos-qemu-lwip` |
 | FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-qemu-plustcp` |
 | LittleFS | `build-freertos-host-tdd-plustcp` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |

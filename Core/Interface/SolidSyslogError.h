@@ -33,12 +33,26 @@
  * every TCP backend raises the same shared detail codes - a literal per emit
  * site would restate one policy in four places. LOCAL is the device's own
  * shortfall: no endpoint, or a stack that would not start the attempt, which
- * needs a human and will not clear by waiting. REMOTE is the destination not
+ * waiting does not clear. REMOTE is the destination not
  * answering, which the next Service pass retries and which the Sender already
  * summarises at WARNING.
  */
 #define SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
 #define SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
+
+/*
+ * A failed file system call gets a macro for the same reason: the
+ * SolidSyslogFileErrors codes raised under it are shared by every File
+ * backend. See docs/error-severity.md.
+ */
+#define SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
+
+/*
+ * A next hop that does not resolve gets a macro for the same reason: the
+ * SolidSyslogDatagramErrors code raised under it is shared by every Datagram
+ * backend. See docs/error-severity.md.
+ */
+#define SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 

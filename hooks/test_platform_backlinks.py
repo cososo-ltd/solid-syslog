@@ -237,7 +237,7 @@ class Registry(unittest.TestCase):
         platform is added - and rotted once already."""
         _, slugs, _labels, _manifest = h._index(CONFIG)
         with open(os.path.join(ROOT, "CMakeLists.txt"), encoding="utf-8") as cmake:
-            declared = re.findall(r'^\s*"([A-Za-z]+)\|SOLIDSYSLOG_', cmake.read(), re.M)
+            declared = re.findall(r'^\s*"([A-Za-z0-9]+)\|SOLIDSYSLOG_', cmake.read(), re.M)
         self.assertEqual(sorted(slugs), sorted(token.lower() for token in declared))
 
 

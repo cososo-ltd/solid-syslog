@@ -23,7 +23,7 @@ from environment import (
     otel_kill_oracle,
     otel_start_oracle,
 )
-from target_driver import apply_extra_args, spawn_example_process, stop_example_process
+from target_driver import apply_extra_args, assert_binary_present, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
 from tls_reports import reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
@@ -83,6 +83,14 @@ from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE
 # highest-preference value the device can supply is its static IP. Mirrors
 # TEST_IP_ADDRESS in Example/FreeRtos/SingleTask/main.c — keep them in sync.
 EXAMPLE_FREERTOS_STATIC_IP = "10.0.2.15"
+
+# The name the VxWorks 6.4 target gives itself with sethostname at boot (rung 3,
+# "hostname"). Mirrors BddTargetVxWorks64_BringUpNetwork - keep them in sync.
+VXWORKS64_HOSTNAME = "SolidSyslogVxWorks64"
+
+# Targets with no process model, which send PROCID as NILVALUE (RFC 5424
+# §6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
+NO_PROCESS_MODEL_TARGETS = ("freertos", "vxworks64")
 
 
 def clean_store_files():
@@ -274,15 +282,12 @@ def parse_otel_jsonl_line(line):
     hostname = _otel_attribute(attrs, "hostname")
     if hostname is not None:
         fields["HOSTNAME"] = hostname
-    appname = _otel_attribute(attrs, "appname")
-    if appname is not None:
-        fields["APP_NAME"] = appname
-    proc_id = _otel_attribute(attrs, "proc_id")
-    if proc_id is not None:
-        fields["PROCID"] = proc_id
-    msg_id = _otel_attribute(attrs, "msg_id")
-    if msg_id is not None:
-        fields["MSGID"] = msg_id
+    # The receiver omits a header field the wire carries as NILVALUE ("-"),
+    # where syslog-ng's template renders it empty; recording it as "" gives the
+    # steps one shape from either oracle.
+    for attribute, field in (("appname", "APP_NAME"), ("proc_id", "PROCID"), ("msg_id", "MSGID")):
+        value = _otel_attribute(attrs, attribute)
+        fields[field] = "" if value is None else value
     msg = _otel_attribute(attrs, "message")
     if msg is not None:
         fields["MSG"] = _strip_msg_bom(msg)
@@ -494,9 +499,7 @@ def run_example(context, extra_args=None, expected_messages=1, command="send"):
     sending `quit`.
     """
     binary = context.example_binary
-    assert os.path.exists(binary), (
-        f"BDD target binary not found at {binary} — build with cmake first"
-    )
+    assert_binary_present(context)
 
     process = spawn_example_process(context, extra_args=extra_args, binary=binary)
     # On the context as well as in hand, so a step that runs after this one can
@@ -631,10 +634,7 @@ def start_bdd_target_process(context, extra_args):
     the UART (FreeRTOS) after the prompt is up. Adding a new embedded
     platform reuses both helpers without touching this function.
     """
-    binary = context.example_binary
-    assert os.path.exists(binary), (
-        f"BDD target binary not found at {binary} — build with cmake first"
-    )
+    assert_binary_present(context)
 
     context.interactive_process = spawn_example_process(
         context, extra_args=extra_args
@@ -1014,9 +1014,12 @@ def step_check_system_hostname(context):
     hostname → dynamic IP → NILVALUE; each runner emits the highest-
     preference value it can supply. Linux/Windows: gethostname() (rung 3,
     "hostname"). FreeRTOS reference: the configured static IPv4 (rung 2)
-    because no FQDN, no integrator hostname, no DHCP."""
+    because no FQDN, no integrator hostname, no DHCP. VxWorks 6.4: the name
+    the target sets for itself (rung 3)."""
     if context.target == "freertos":
         expected = EXAMPLE_FREERTOS_STATIC_IP
+    elif context.target == "vxworks64":
+        expected = VXWORKS64_HOSTNAME
     else:
         expected = socket.gethostname()
     assert context.fields["HOSTNAME"] == expected, (
@@ -1029,16 +1032,18 @@ def step_check_example_pid(context):
     """Asserts the wire PROCID matches what the originator can supply per
     RFC 5424 §6.2.6 (NILVALUE permitted "when no value is provided"). Each
     runner emits the most honest value it has: Linux/Windows the spawned
-    example's PID; FreeRTOS NILVALUE because there is no process model on
-    QEMU. The library emits NILVALUE when getProcessId is NULL — falls
+    example's PID; FreeRTOS and VxWorks NILVALUE because their targets have
+    no process model. The library emits NILVALUE when getProcessId is NULL: it falls
     through NilStringFunction → empty field → FormatStringField writes "-"
     (Core/Source/SolidSyslog.c)."""
-    if context.target == "freertos":
+    if context.target in NO_PROCESS_MODEL_TARGETS:
         # Explicit presence-then-value check: parse_syslog_ng_line's
         # PROCID=(\S*) captures wire NILVALUE as "" while leaving the key
         # absent if syslog-ng never emitted PROCID at all (template gap /
         # malformed message). Collapsing "absent" into "empty" via .get()
-        # would let template breakage register as a NILVALUE pass.
+        # would let template breakage register as a NILVALUE pass. That holds
+        # for syslog-ng only: the OpenTelemetry receiver omits a NILVALUE field
+        # and a dropped one alike, and parse_otel_jsonl_line records both as "".
         assert "PROCID" in context.fields, (
             "Expected PROCID field present in oracle output (NILVALUE captured as empty)"
         )

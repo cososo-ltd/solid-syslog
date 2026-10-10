@@ -53,8 +53,8 @@ platform present.
 
 Reference adapters ship for POSIX, Windows, C11 atomics, OpenSSL, Mbed TLS,
 lwIP's Raw API and its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel,
-CMSIS-RTOS2, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS, and an integrator may
-supply their own instead. None of them is a component of SolidSyslog. Each is
+CMSIS-RTOS2, VxWorks 6.4, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS, and an
+integrator may supply their own instead. None of them is a component of SolidSyslog. Each is
 software the integrator chooses, versions, links and licenses, and which of them
 a build contains is that same selection - not something this library can state
 on its behalf.

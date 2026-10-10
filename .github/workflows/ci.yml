@@ -42,7 +42,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (GCC)
-          path: build/debug/cpputest_*.xml
+          path: build/debug/cpputest_*.xml,build/debug/vxworks64/cpputest_*.xml
           reporter: java-junit
 
       - name: Upload JUnit XML
@@ -50,7 +50,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-build-linux-gcc
-          path: build/debug/cpputest_*.xml
+          path: |
+            build/debug/cpputest_*.xml
+            build/debug/vxworks64/cpputest_*.xml
           retention-days: 1
 
   integration-linux-openssl:
@@ -292,7 +294,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (Tunable Override)
-          path: build/tunable-override-debug/cpputest_*.xml
+          path: build/tunable-override-debug/cpputest_*.xml,build/tunable-override-debug/vxworks64/cpputest_*.xml
           reporter: java-junit
 
       - name: Upload JUnit XML
@@ -300,7 +302,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-build-linux-tunable-override
-          path: build/tunable-override-debug/cpputest_*.xml
+          path: |
+            build/tunable-override-debug/cpputest_*.xml
+            build/tunable-override-debug/vxworks64/cpputest_*.xml
           retention-days: 1
 
       - name: Upload BDD target binaries
@@ -351,7 +355,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (Clang)
-          path: build/clang-debug/cpputest_*.xml
+          path: build/clang-debug/cpputest_*.xml,build/clang-debug/vxworks64/cpputest_*.xml
           reporter: java-junit
 
       - name: Upload JUnit XML
@@ -359,7 +363,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-build-linux-clang
-          path: build/clang-debug/cpputest_*.xml
+          path: |
+            build/clang-debug/cpputest_*.xml
+            build/clang-debug/vxworks64/cpputest_*.xml
           retention-days: 1
 
   # Proves the public claim that Core compiles as C99, then checks the POSIX and
@@ -446,7 +452,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (Sanitize)
-          path: build/sanitize/cpputest_*.xml
+          path: build/sanitize/cpputest_*.xml,build/sanitize/vxworks64/cpputest_*.xml
           reporter: java-junit
 
       - name: Upload JUnit XML
@@ -454,7 +460,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-sanitize-linux-gcc
-          path: build/sanitize/cpputest_*.xml
+          path: |
+            build/sanitize/cpputest_*.xml
+            build/sanitize/vxworks64/cpputest_*.xml
           retention-days: 1
 
   coverage-linux-gcc:
@@ -812,6 +820,20 @@ jobs:
       - name: Check licence headers
         run: python3 scripts/check_spdx_headers.py
 
+  # The job service that lets the development machine drive the VxWorks 6.4
+  # target on the build machine: its queue, token, routes and TLS. The host's
+  # openssl makes the certificates its TLS tests need. The runner's own Pester
+  # tests need Windows PowerShell 5.1 and run locally.
+  test-vxworks64-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the job service
+        run: python3 -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
+
   analyze-markdown:
     runs-on: ubuntu-latest
     steps:
@@ -1059,6 +1081,7 @@ jobs:
           -IPlatform/MbedTls/Interface
           -IPlatform/FreeRtos/Interface
           -IPlatform/CmsisRtos/Interface
+          -IPlatform/VxWorks64/Interface
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
           -IPlatform/LwipSocket/Interface
@@ -1074,6 +1097,7 @@ jobs:
           Platform/MbedTls/Source/
           Platform/FreeRtos/Source/
           Platform/CmsisRtos/Source/
+          Platform/VxWorks64/Source/
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
           Platform/LwipSocket/Source/
@@ -1095,6 +1119,10 @@ jobs:
       # Pragmatic levels (Core/Source/ + Platform/*/Source/). Findings
       # fail CI (--error-exitcode=1); suppressions live in
       # misra_suppressions.txt with rationales in docs/misra-deviations.md.
+      # No vendor headers are on the path, so a vendor constant that sizes an
+      # array is defined here at the value the vendor documents
+      # (MAXHOSTNAMELEN and INET_ADDR_LEN, VxWorks 6.4); unexpanded, it reads
+      # as a VLA (18.8).
       # ----------------------------------------------------------------
 
       - name: Run cppcheck-misra
@@ -1119,6 +1147,8 @@ jobs:
           -DTICK_TYPE_WIDTH_32_BITS=1
           -DTICK_TYPE_WIDTH_64_BITS=2
           -DconfigTICK_TYPE_WIDTH_IN_BITS=1
+          -DMAXHOSTNAMELEN=256
+          -DINET_ADDR_LEN=18
           -ICore/Interface
           -IPlatform/StdAtomic/Interface
           -IPlatform/Posix/Interface
@@ -1127,6 +1157,7 @@ jobs:
           -IPlatform/MbedTls/Interface
           -IPlatform/FreeRtos/Interface
           -IPlatform/CmsisRtos/Interface
+          -IPlatform/VxWorks64/Interface
           -IPlatform/PlusTcp/Interface
           -IPlatform/LwipRaw/Interface
           -IPlatform/LwipSocket/Interface
@@ -1141,6 +1172,7 @@ jobs:
           Platform/MbedTls/Source/
           Platform/FreeRtos/Source/
           Platform/CmsisRtos/Source/
+          Platform/VxWorks64/Source/
           Platform/PlusTcp/Source/
           Platform/LwipRaw/Source/
           Platform/LwipSocket/Source/
@@ -1171,6 +1203,8 @@ jobs:
             -DTICK_TYPE_WIDTH_32_BITS=1 \
             -DTICK_TYPE_WIDTH_64_BITS=2 \
             -DconfigTICK_TYPE_WIDTH_IN_BITS=1 \
+            -DMAXHOSTNAMELEN=256 \
+            -DINET_ADDR_LEN=18 \
             -ICore/Interface \
             -IPlatform/StdAtomic/Interface \
             -IPlatform/Posix/Interface \
@@ -1179,6 +1213,7 @@ jobs:
             -IPlatform/MbedTls/Interface \
             -IPlatform/FreeRtos/Interface \
             -IPlatform/CmsisRtos/Interface \
+            -IPlatform/VxWorks64/Interface \
             -IPlatform/PlusTcp/Interface \
             -IPlatform/LwipRaw/Interface \
             -IPlatform/LwipSocket/Interface \
@@ -1194,6 +1229,7 @@ jobs:
             Platform/MbedTls/Source/ \
             Platform/FreeRtos/Source/ \
             Platform/CmsisRtos/Source/ \
+            Platform/VxWorks64/Source/ \
             Platform/PlusTcp/Source/ \
             Platform/LwipRaw/Source/ \
             Platform/LwipSocket/Source/ \
@@ -1271,7 +1307,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (MSVC)
-          path: build/msvc-debug/cpputest_*.xml
+          path: build/msvc-debug/cpputest_*.xml,build/msvc-debug/vxworks64/cpputest_*.xml
           reporter: java-junit
 
       - name: Upload JUnit XML
@@ -1279,7 +1315,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-build-windows-msvc
-          path: build/msvc-debug/cpputest_*.xml
+          path: |
+            build/msvc-debug/cpputest_*.xml
+            build/msvc-debug/vxworks64/cpputest_*.xml
           retention-days: 1
 
       - name: Upload Windows BDD target binary
@@ -1517,7 +1555,7 @@ jobs:
         if: success() || failure()
         with:
           name: Test Results (FreeRTOS host)
-          path: build/debug/cpputest_*.xml
+          path: build/debug/cpputest_*.xml,build/debug/vxworks64/cpputest_*.xml
           reporter: java-junit
 
       - name: Upload JUnit XML
@@ -1525,7 +1563,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: junit-build-freertos-host-tdd-plustcp
-          path: build/debug/cpputest_*.xml
+          path: |
+            build/debug/cpputest_*.xml
+            build/debug/vxworks64/cpputest_*.xml
           retention-days: 1
 
   build-freertos-target-plustcp:
@@ -2184,6 +2224,11 @@ jobs:
                     "id": "junit",
                     "name": "build-linux-tunable-override",
                     "pattern": "**/junit-build-linux-tunable-override/cpputest_*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "vxworks64-host",
+                    "pattern": "**/junit-*/vxworks64/cpputest_*.xml"
                   }
                 ]
               },

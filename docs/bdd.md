@@ -51,6 +51,7 @@ fault-finding tips.
 | FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
+| VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via
 `subprocess.run`. Both services share the workspace mount, so `Bdd/output/received.log`
@@ -132,27 +133,29 @@ etc.) without rewriting feature tags.
 | --- | --- |
 | `@udp` | Needs UDP transport |
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
-| `@tls` | Needs TLS transport (RFC 5425, server-auth) |
+| `@tls` | Needs TLS transport (RFC 5425, server-auth). Excluded on VxWorks 6.4, which carries no TLS. |
 | `@mtls` | Needs mutual TLS (client cert + key) |
 | `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. Every target binary carries a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, and the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2). |
-| `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux and Windows; excluded on the QEMU targets, which model a no-RTC product per RFC 5424 §6.2.3.1. |
-| `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the QEMU targets; excluded on Linux and Windows. The complementary pair of `@rtc`. |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), and VxWorks 6.4 over `SolidSyslogVxWorks64File`. |
+| `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux, Windows and VxWorks 6.4, whose harness sets the target's clock at startup; excluded on the FreeRTOS and CMSIS-RTOS2 targets, which model a no-RTC product per RFC 5424 §6.2.3.1. |
+| `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the FreeRTOS and CMSIS-RTOS2 targets; excluded on Linux, Windows and VxWorks 6.4. The complementary pair of `@rtc`. |
 | `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes - used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the QEMU targets run at the default, so the gate skips the feature there. Its oversize scenario separately carries `@freertoswip`. |
-| `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`. |
-| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy. |
+| `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`, and excluded on VxWorks 6.4, which carries no TLS library to provide the policy. |
+| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy, and on VxWorks 6.4, which carries no TLS library to provide it. |
 | `@tls13` | Scenario asserts the handshake against a server that refuses everything below TLS 1.3, so delivery alone proves the version negotiated. |
 
-Three rollout markers are also used (temporary; remove once the scenario passes):
+Rollout markers are also used (temporary; remove once the scenario passes):
 
 | Tag | Meaning |
 | --- | --- |
 | `@wip` | Skip everywhere - work in progress. Not currently in use on any scenario. |
 | `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
 | `@freertoswip` | Skip on the QEMU targets only - scenario currently fails or errors on them and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Currently on one scenario in `udp_mtu.feature` (paired with `@requires_message_size_1500`). |
+| `@vxworks64wip` | Skip on the VxWorks 6.4 target only - the scenario needs a capability that target does not have yet, and loses the tag when the story that adds it lands. |
 
 Which runner excludes which tags is set on each Behave service's `command` in
-`ci/docker-compose.bdd.yml`, and on the Windows step in `.github/workflows/ci.yml`. Read
+`ci/docker-compose.bdd.yml`, on the Windows step in `.github/workflows/ci.yml`, and
+in `Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`. Read
 the filters there rather than from a copy here: a runner is added or a tag retired by
 editing those files, and a table restating them is wrong the moment one changes.
 
@@ -163,7 +166,7 @@ Step definitions read the active oracle from `ORACLE_FORMAT`:
 | Oracle | `ORACLE_FORMAT` | `RECEIVED_LOG` default | Runs on |
 | --- | --- | --- | --- |
 | syslog-ng (key=value text) | `syslog-ng` | `Bdd/output/received.log` | Linux container |
-| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native |
+| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native, and the VxWorks 6.4 run from the development machine |
 
 `parse_oracle_line` dispatches to the right parser; both produce the same flat field dict
 (`PRIORITY`, `TIMESTAMP`, `HOSTNAME`, `APP_NAME`, `PROCID`, `STRUCTURED_DATA`, ...) so the

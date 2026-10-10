@@ -1,9 +1,12 @@
 #include "BddTargetErrorText.h"
 
 #include "SolidSyslogBufferCategories.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTlsStreamCategories.h"
 
@@ -23,6 +26,9 @@ const char* BddTargetErrorText_Category(uint16_t category)
             break;
         case SOLIDSYSLOG_CAT_UNKNOWN_DESTROY:
             result = "unknown destroy";
+            break;
+        case SOLIDSYSLOG_CAT_NATIVE_ERROR:
+            result = "native error";
             break;
         case SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED:
             result = "buffer backend failed";
@@ -47,6 +53,18 @@ const char* BddTargetErrorText_Category(uint16_t category)
             break;
         case SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED:
             result = "TLS handshake failed";
+            break;
+        case SOLIDSYSLOG_CAT_FILE_IO_FAILED:
+            result = "file I/O failed";
+            break;
+        case SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED:
+            result = "next hop unresolved";
+            break;
+        case SOLIDSYSLOG_CAT_STORE_WRITE_FAILED:
+            result = "store write failed";
+            break;
+        case SOLIDSYSLOG_CAT_STORE_OPEN_FAILED:
+            result = "store open failed";
             break;
         default:
             break;

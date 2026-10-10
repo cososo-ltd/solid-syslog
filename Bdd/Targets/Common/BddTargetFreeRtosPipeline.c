@@ -17,6 +17,7 @@
 #include "BddTargetLanguage.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
+#include "BddTargetMessageSettings.h"
 #include "BddTargetTlsSender.h"
 #include "CmsdkUart.h"
 
@@ -50,31 +51,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Unprivileged mirror of SOLIDSYSLOG_UDP_DEFAULT_PORT (514) for BDD listeners. */
-#define BDD_TARGET_UDP_PORT 5514U
-
 /* The injected platform seam - set once via BddTargetFreeRtosPipeline_SetConfig
  * before the tasks run. */
 static const struct BddTargetFreeRtosPipelineConfig* g_config = NULL;
-
-/* Mutable walking-skeleton state. Defaults populated at boot; the interactive
- * `set <name> <value>` command rewrites these in-place via OnSet. Storage sizes
- * match RFC 5424 maxima where applicable (APP-NAME 48, MSGID 32) plus null
- * terminator; MSG matches SOLIDSYSLOG_MAX_MESSAGE_SIZE; host fits an IPv4
- * dotted-quad or the short DNS alias. */
-static char appName[49] = "SolidSyslogBddTarget";
-static char messageId[33] = "example";
-static char msg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = "Hello from FreeRTOS";
-static char host[16] = "";
-static uint16_t port = (uint16_t) BDD_TARGET_UDP_PORT;
-static uint32_t endpointVersion = 0U;
-
-static struct SolidSyslogMessage testMessage = {
-    .Facility = SOLIDSYSLOG_FACILITY_LOCAL0,
-    .Severity = SOLIDSYSLOG_SEVERITY_INFORMATIONAL,
-    .MessageId = messageId,
-    .Msg = msg,
-};
 
 /* CircularBuffer + a mutex from the OS seam for cross-task emission. 8
  * max-sized messages
@@ -164,7 +143,6 @@ enum
     SERVICE_STOP_TIMEOUT_MS = 1000,
 };
 
-static bool TryUpdateString(char* storage, size_t storageSize, const char* value);
 static bool TryParseUInt(const char* value, unsigned long* out);
 static bool OnSet(const char* name, const char* value);
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void);
@@ -176,7 +154,6 @@ static void OnStoreFull(void* context);
 static size_t GetCapacityThreshold(void* context);
 static void OnThresholdCrossed(void* context);
 static void TeardownAll(void);
-static void GetAppName(struct SolidSyslogHeaderField* field, void* context);
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event);
 
@@ -211,12 +188,6 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
     g_config = config;
 }
 
-static void GetAppName(struct SolidSyslogHeaderField* field, void* context)
-{
-    (void) context;
-    SolidSyslogHeaderField_PrintUsAscii(field, appName, strlen(appName));
-}
-
 /* No RTC and no time-sync on these reference targets - RFC 5424 §6.2.3.1
  * mandates NILVALUE TIMESTAMP, and the timeQuality SD reports tzKnown=0,
  * isSynced=0. SolidSyslogConfig.Clock=NULL drops through to the library's
@@ -230,15 +201,12 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 
 void BddTargetFreeRtosPipeline_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context)
 {
-    (void) context;
-    SolidSyslogEndpointHost_String(endpoint->Host, host, strlen(host));
-    endpoint->Port = port;
+    BddTargetMessageSettings_GetEndpoint(endpoint, context);
 }
 
 uint32_t BddTargetFreeRtosPipeline_GetEndpointVersion(void* context)
 {
-    (void) context;
-    return endpointVersion;
+    return BddTargetMessageSettings_GetEndpointVersion(context);
 }
 
 static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event)
@@ -269,53 +237,9 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
 
 static bool OnSet(const char* name, const char* value)
 {
-    if (strcmp(name, "appname") == 0)
+    /* The message and destination settings are shared with every BDD target. */
+    if (BddTargetMessageSettings_SetByName(name, value))
     {
-        return TryUpdateString(appName, sizeof(appName), value);
-    }
-    if (strcmp(name, "msgid") == 0)
-    {
-        return TryUpdateString(messageId, sizeof(messageId), value);
-    }
-    if (strcmp(name, "msg") == 0)
-    {
-        return TryUpdateString(msg, sizeof(msg), value);
-    }
-    if (strcmp(name, "host") == 0)
-    {
-        return TryUpdateString(host, sizeof(host), value);
-    }
-    if (strcmp(name, "port") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed) || parsed == 0U || parsed > UINT16_MAX)
-        {
-            return false;
-        }
-        port = (uint16_t) parsed;
-        endpointVersion++;
-        return true;
-    }
-    if (strcmp(name, "facility") == 0)
-    {
-        /* Forward the parsed value unchanged so the library is the single
-         * authority on what's valid (out-of-range encodes as PRIVAL 43). */
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        testMessage.Facility = (enum SolidSyslogFacility) parsed;
-        return true;
-    }
-    if (strcmp(name, "severity") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        testMessage.Severity = (enum SolidSyslogSeverity) parsed;
         return true;
     }
     if (strcmp(name, "transport") == 0)
@@ -456,18 +380,6 @@ static bool OnSet(const char* name, const char* value)
         return (strcmp(value, "0") == 0) || (strcmp(value, "1") == 0);
     }
     return BddTargetTlsConfig_SetByName(name, value);
-}
-
-static bool TryUpdateString(char* storage, size_t storageSize, const char* value)
-{
-    size_t length = strlen(value);
-    if ((length == 0U) || (length >= storageSize))
-    {
-        return false;
-    }
-    memcpy(storage, value, length);
-    storage[length] = '\0';
-    return true;
 }
 
 static bool TryParseUInt(const char* value, unsigned long* out)
@@ -740,11 +652,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     (void) argument;
 
     /* Seed the destination host with the platform default before any `set host`. */
-    size_t hostLength = strlen(g_config->DefaultHost);
-    if (hostLength < sizeof(host))
-    {
-        memcpy(host, g_config->DefaultHost, hostLength + 1U);
-    }
+    BddTargetMessageSettings_Reset(g_config->DefaultHost);
 
     /* Platform brings up its network and hands back a ready-to-use sender with
      * the default transport already selected. */
@@ -789,7 +697,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .Sender = sender,
         .Clock = NULL,
         .GetHostname = g_config->GetHostname,
-        .GetAppName = GetAppName,
+        .GetAppName = BddTargetMessageSettings_GetAppName,
         /* PROCID - RFC 5424 §6.2.6 NILVALUE: no process model on these targets. */
         .GetProcessId = NULL,
         .Store = currentStore,
@@ -800,7 +708,13 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
 
-    BddTargetInteractive_Run(solidSyslog, &testMessage, stdin, BddTargetSwitchConfig_SetByName, OnSet);
+    BddTargetInteractive_Run(
+        solidSyslog,
+        BddTargetMessageSettings_Message(),
+        stdin,
+        BddTargetSwitchConfig_SetByName,
+        OnSet
+    );
 
     /* Peak stack headroom report on `quit`. A Service task that never started
      * reports zero rather than being asked about. */

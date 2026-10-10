@@ -20,7 +20,8 @@
 #   SOLIDSYSLOG_INCLUDES        include set for the platform sources, and for
 #                               consumer code calling the library
 
-SOLIDSYSLOG_MK_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+# Not $(lastword): it arrived in GNU Make 3.81, and VxWorks 6.4 ships 3.80.
+SOLIDSYSLOG_MK_DIR := $(patsubst %/,%,$(dir $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))))
 SOLIDSYSLOG_DIR    ?= $(SOLIDSYSLOG_MK_DIR)
 
 # A platform that does not exist would match no files and build cleanly, minus

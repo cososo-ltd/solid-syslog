@@ -20,8 +20,38 @@ spawn already did it), or translated into `set NAME VALUE` lines over
 the UART on FreeRTOS.
 """
 
+import io
 import os
+import socket
+import ssl
 import subprocess
+import sys
+import time
+
+# Targets that run where Behave runs, from a binary built here. A remote target
+# is built and run on another machine, through the VxWorks 6.4 runner.
+_LOCAL_TARGETS = ("linux", "windows", "freertos")
+
+# Targets configured by `set NAME VALUE` lines after the prompt, rather than by
+# argv.
+_SET_LINE_TARGETS = ("freertos", "vxworks64")
+
+_VXWORKS64_RUNNER_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "Targets", "VxWorks64", "Runner"
+)
+_VXWORKS64_RUNNER_HOME = os.path.join(os.path.expanduser("~"), ".solidsyslog-runner")
+_VXWORKS64_SERVICE_URL = "https://127.0.0.1:8765"
+_VXWORKS64_CONSOLE_PORT = 8766
+# Boot takes seconds; the runner collects the start job on its next poll.
+_VXWORKS64_CONNECT_TIMEOUT_SECONDS = 120
+_VXWORKS64_JOB_TIMEOUT_SECONDS = 300
+# The QEMU target loses console input that arrives faster than it takes it, or
+# resets, so the console types as a person would: each line after the target's
+# prompt for the last, and at 9600 baud, whose bursts of one host tick (about 14
+# bytes) fit the UART's 16-byte receive FIFO.
+_VXWORKS64_CONSOLE_BAUD = 9600
+_VXWORKS64_PROMPT = b"SolidSyslog> "
+_VXWORKS64_BUILD_TIMEOUT_SECONDS = 1800
 
 
 # Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
@@ -111,6 +141,76 @@ _QEMU_BASE_ARGS = [
 ]
 
 
+def assert_binary_present(context):
+    """A local target's binary has to be built before the run; a remote one is
+    built on its own machine."""
+    if getattr(context, "target", "linux") in _LOCAL_TARGETS:
+        binary = context.example_binary
+        assert os.path.exists(binary), (
+            f"BDD target binary not found at {binary} — build with cmake first"
+        )
+
+
+def _import_from_vxworks64_runner(module_name):
+    if _VXWORKS64_RUNNER_DIR not in sys.path:
+        sys.path.insert(0, _VXWORKS64_RUNNER_DIR)
+    return __import__(module_name)
+
+
+def run_vxworks64_job(job_type, args=None, timeout_seconds=_VXWORKS64_JOB_TIMEOUT_SECONDS):
+    """Runs a job on the VxWorks 6.4 runner through the job service on this
+    machine, and returns its summary. Raises if the job did not succeed."""
+    job_service = _import_from_vxworks64_runner("job_service")
+    with open(os.path.join(_VXWORKS64_RUNNER_HOME, "token"), encoding="ascii") as token_file:
+        token = token_file.read().strip()
+    tls = ssl.create_default_context(cafile=os.path.join(_VXWORKS64_RUNNER_HOME, "certificate.pem"))
+    # The certificate is pinned by its own file, not by a name.
+    tls.check_hostname = False
+    log = io.StringIO()
+    outcome, summary = job_service.run_job(
+        _VXWORKS64_SERVICE_URL, token, job_type, args or {}, log,
+        context=tls, timeout_seconds=timeout_seconds,
+    )
+    if outcome != "succeeded":
+        raise RuntimeError(f"VxWorks 6.4 runner job {job_type} {outcome}: {summary}\n{log.getvalue()}")
+    return summary
+
+
+def reset_vxworks64_store():
+    """Gives the next VxWorks 6.4 boot a blank store disk. QEMU keeps the disk
+    across a restart, which power_cycle_replay needs, so a scenario that leaves
+    records there would hand them to the next."""
+    run_vxworks64_job("store-reset")
+
+
+def prepare_vxworks64_target():
+    """Builds the commit under test on the build machine, once per run. The
+    runner checks out from origin, so the commit has to have been pushed.
+    VXWORKS64_SKIP_BUILD=1 reuses the image already built there."""
+    if os.environ.get("VXWORKS64_SKIP_BUILD") == "1":
+        print(f"VxWorks 6.4: {run_vxworks64_job('status')}", file=sys.stderr, flush=True)
+        return
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+    ).stdout.strip()
+    print(f"VxWorks 6.4: {run_vxworks64_job('checkout', {'ref': commit})}", file=sys.stderr, flush=True)
+    summary = run_vxworks64_job("build", timeout_seconds=_VXWORKS64_BUILD_TIMEOUT_SECONDS)
+    print(f"VxWorks 6.4: {summary.splitlines()[0]}", file=sys.stderr, flush=True)
+
+
+def _spawn_vxworks64():
+    remote_console = _import_from_vxworks64_runner("remote_console")
+    with socket.create_server(("0.0.0.0", _VXWORKS64_CONSOLE_PORT)) as listener:
+        return remote_console.open_remote_target(
+            listener,
+            lambda: run_vxworks64_job("qemu-start"),
+            lambda: run_vxworks64_job("qemu-stop"),
+            _VXWORKS64_CONNECT_TIMEOUT_SECONDS,
+            _VXWORKS64_CONSOLE_BAUD,
+            prompt=_VXWORKS64_PROMPT,
+        )
+
+
 def spawn_example_process(context, extra_args=None, binary=None):
     """Spawn the example-under-test for the active target.
 
@@ -131,6 +231,8 @@ def spawn_example_process(context, extra_args=None, binary=None):
     (S08.04) — so callers don't override the default in normal use.
     """
     target = getattr(context, "target", "linux")
+    if target == "vxworks64":
+        return _spawn_vxworks64()
     if binary is None:
         binary = context.example_binary
 
@@ -180,11 +282,25 @@ def apply_extra_args(context, process, extra_args):
     has to consume that many before any later step can read a reply of its own
     - without it every reply after this is one command behind.
     """
-    if not extra_args:
-        return 0
     target = getattr(context, "target", "linux")
-    if target != "freertos":
-        return 0
+    written = 0
+    # The target has no battery-backed clock, so it takes this machine's UTC
+    # time, the collector's address and port, and the run's file system first.
+    if target == "vxworks64":
+        process.stdin.write(f"set time {int(time.time())}\n")
+        process.stdin.write(f"set host {process.collector_address}\n")
+        written = 2
+        collector_port = os.environ.get("VXWORKS64_COLLECTOR_PORT")
+        if collector_port:
+            process.stdin.write(f"set port {collector_port}\n")
+            written += 1
+        file_system = os.environ.get("VXWORKS64_FILE_SYSTEM")
+        if file_system:
+            process.stdin.write(f"set filesystem {file_system}\n")
+            written += 1
+    if (not extra_args) or (target not in _SET_LINE_TARGETS):
+        process.stdin.flush()
+        return written
 
     # Walk extra_args sequentially; bare flags from _FREERTOS_BARE_FLAG_VALUE
     # don't consume the next arg, key/value flags do. Collect into a list
@@ -227,7 +343,7 @@ def apply_extra_args(context, process, extra_args):
         name = _FREERTOS_SET_TRANSLATION[flag]
         process.stdin.write(f"set {name} {value}\n")
     process.stdin.flush()
-    return len(pairs)
+    return written + len(pairs)
 
 
 def stop_example_process(process, target, timeout=10):
@@ -241,7 +357,7 @@ def stop_example_process(process, target, timeout=10):
     received the frame, so the QEMU exit code carries no useful
     signal — return None for that path so callers don't assert on it.
     """
-    if target == "freertos":
+    if target in _SET_LINE_TARGETS:
         process.kill()
         process.wait(timeout=timeout)
         return None

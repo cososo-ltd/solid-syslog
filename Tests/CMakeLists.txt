@@ -43,6 +43,13 @@ if(SOLIDSYSLOG_CMSISRTOS)
     add_subdirectory(CmsisRtos)
 endif()
 
+# VxWorks64 is fake-backed the same way: the fakes supply the VxWorks headers
+# outright, so these build wherever the rest of the suite does.
+if(SOLIDSYSLOG_VXWORKS64)
+    add_subdirectory(Support/VxWorks64Fakes)
+    add_subdirectory(VxWorks64)
+endif()
+
 if(SOLIDSYSLOG_FATFS)
     add_subdirectory(Support/FatFsFakes)
     add_subdirectory(FatFs)
@@ -282,21 +289,67 @@ add_custom_target(junit
 # executables a configuration actually defines are enrolled, so a job running
 # outside a FreeRTOS-aware container just runs SolidSyslogTests as before.
 function(register_junit_test test_target)
+    set(junit_dir ${CMAKE_BINARY_DIR})
+    if(ARGC GREATER 1)
+        set(junit_dir ${CMAKE_BINARY_DIR}/${ARGV1})
+    endif()
     add_custom_command(TARGET junit POST_BUILD
         COMMAND ${CMAKE_COMMAND}
             -DEXECUTABLE=$<TARGET_FILE:${test_target}>
-            -DDIR=${CMAKE_BINARY_DIR}
+            -DDIR=${junit_dir}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
         COMMENT "Running ${test_target} with JUnit XML output"
         VERBATIM
     )
     add_dependencies(junit ${test_target})
+    set_property(GLOBAL APPEND PROPERTY SOLIDSYSLOG_JUNIT_TESTS ${test_target})
 endfunction()
+
+# The VxWorks 6.4 tests enrol through vxworks64_add_test rather than
+# solidsyslog_add_test, so their XML can go in vxworks64/, which CI reports as
+# a block of its own.
+get_property(vxworks64_test_targets GLOBAL PROPERTY SOLIDSYSLOG_VXWORKS64_JUNIT_TESTS)
+foreach(vxworks64_test_target IN LISTS vxworks64_test_targets)
+    register_junit_test(${vxworks64_test_target} vxworks64)
+endforeach()
 
 get_property(junit_test_targets GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TEST_TARGETS)
 foreach(junit_test_target IN LISTS junit_test_targets)
     register_junit_test(${junit_test_target})
 endforeach()
+
+# CI builds only --target junit; fail the configure if a test executable is not
+# registered with it. SolidSyslogTests is junit's own command, and CI runs
+# BddTargetTests in a step of its own.
+function(collect_test_executables directory result)
+    get_property(targets DIRECTORY ${directory} PROPERTY BUILDSYSTEM_TARGETS)
+    set(executables "")
+    foreach(target IN LISTS targets)
+        get_target_property(type ${target} TYPE)
+        if(type STREQUAL "EXECUTABLE")
+            list(APPEND executables ${target})
+        endif()
+    endforeach()
+    get_property(subdirectories DIRECTORY ${directory} PROPERTY SUBDIRECTORIES)
+    foreach(subdirectory IN LISTS subdirectories)
+        collect_test_executables(${subdirectory} nested)
+        list(APPEND executables ${nested})
+    endforeach()
+    set(${result} ${executables} PARENT_SCOPE)
+endfunction()
+
+collect_test_executables(${CMAKE_CURRENT_SOURCE_DIR} unregistered_tests)
+# Compared against what register_junit_test ran, not junit's dependencies: a
+# dependency alone builds a test without running it.
+get_property(junit_tests GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TESTS)
+list(REMOVE_ITEM unregistered_tests ${PROJECT_NAME}Tests BddTargetTests ${junit_tests})
+if(unregistered_tests)
+    list(JOIN unregistered_tests ", " unregistered_list)
+    message(FATAL_ERROR
+        "Test executables not registered for junit, so CI would never run them: "
+        "${unregistered_list}. Define a VxWorks 6.4 test with vxworks64_add_test; add "
+        "any other to its pack's register_junit_test list in Tests/CMakeLists.txt.")
+endif()
 
 # Code coverage report using lcov/genhtml.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
