@@ -38,7 +38,7 @@ jobs:
         run: cd build/debug && ./Tests/Bdd/Targets/BddTargetTests -ojunit -k BddTargetTests
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (GCC)
@@ -83,7 +83,7 @@ jobs:
         run: cd build/debug && ./Tests/OpenSslIntegration/OpenSslIntegrationTests -v -ojunit -k OpenSslIntegrationTests
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (OpenSSL Integration)
@@ -128,7 +128,7 @@ jobs:
         run: cd build/debug && ./Tests/LittleFsIntegration/LittleFsIntegrationTests -v -ojunit -k LittleFsIntegrationTests
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (LittleFS Integration)
@@ -173,7 +173,7 @@ jobs:
         run: cd build/debug && ./Tests/MbedTlsIntegration/MbedTlsIntegrationTests -v -ojunit -k MbedTlsIntegrationTests
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (mbedTLS Integration)
@@ -248,7 +248,7 @@ jobs:
           ./OpenSslIntegrationTests.exe -v -ojunit -k OpenSslIntegrationTests
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (OpenSSL Integration Windows)
@@ -290,7 +290,7 @@ jobs:
         run: cmake --build --preset tunable-override-debug --target junit SolidSyslogBddTarget
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (Tunable Override)
@@ -351,7 +351,7 @@ jobs:
         run: cmake --build --preset clang-debug --target junit
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (Clang)
@@ -448,7 +448,7 @@ jobs:
         run: cmake --build --preset sanitize --target junit
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (Sanitize)
@@ -1303,7 +1303,7 @@ jobs:
         run: cmake --build --preset msvc-tunable-override --target SolidSyslogBddTarget
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (MSVC)
@@ -1442,7 +1442,7 @@ jobs:
           Bdd/features/
 
       - name: BDD Test Report (Windows)
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (BDD Windows)
@@ -1500,7 +1500,7 @@ jobs:
           behave-linux syslog-ng-linux
 
       - name: BDD Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (BDD)
@@ -1551,7 +1551,7 @@ jobs:
         run: cd build/debug && ./Tests/Bdd/Targets/BddTargetTests -ojunit -k BddTargetTests
 
       - name: Test Report
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (FreeRTOS host)
@@ -1748,7 +1748,7 @@ jobs:
           behave-freertos syslog-ng-freertos
 
       - name: BDD Test Report (FreeRTOS)
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (BDD FreeRTOS)
@@ -1806,7 +1806,7 @@ jobs:
           behave-freertos-lwip syslog-ng-freertos-lwip
 
       - name: BDD Test Report (FreeRTOS+lwIP)
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (BDD FreeRTOS+lwIP)
@@ -1868,7 +1868,7 @@ jobs:
           behave-cmsis-lwip syslog-ng-cmsis-lwip
 
       - name: BDD Test Report (CmsisLwip)
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: success() || failure()
         with:
           name: Test Results (BDD CmsisLwip)
