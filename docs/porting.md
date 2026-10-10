@@ -231,8 +231,7 @@ A gated adapter must also honour these:
 - The adapter stays in its platform's umbrella target, so a consumer globbing the
   pack directory is correct in any configuration.
 - Add the macro to the `-D` list in the `cppcheck` steps of
-  `.github/workflows/ci.yml` and to `CPPCHECK_CMD` in
-  `scripts/misra_renumber.py`. Without it cppcheck analyses the `#else` branch
+  `.github/workflows/ci.yml`. Without it cppcheck analyses the `#else` branch
   and the adapter goes unchecked.
 
 **Never ship two behaviours from one file.** `#if FEATURE` / `#else` selecting
