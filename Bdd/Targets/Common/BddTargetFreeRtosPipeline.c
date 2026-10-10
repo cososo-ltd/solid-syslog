@@ -188,7 +188,7 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
     g_config = config;
 }
 
-/* No RTC and no time-sync on these reference targets - RFC 5424 §6.2.3.1
+/* No RTC and no time-sync on these reference targets - RFC 5424 section 6.2.3.1
  * mandates NILVALUE TIMESTAMP, and the timeQuality SD reports tzKnown=0,
  * isSynced=0. SolidSyslogConfig.Clock=NULL drops through to the library's
  * NilClock. */
@@ -698,7 +698,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .Clock = NULL,
         .GetHostname = g_config->GetHostname,
         .GetAppName = BddTargetMessageSettings_GetAppName,
-        /* PROCID - RFC 5424 §6.2.6 NILVALUE: no process model on these targets. */
+        /* PROCID - RFC 5424 section 6.2.6 NILVALUE: no process model on these targets. */
         .GetProcessId = NULL,
         .Store = currentStore,
         .Sd = sdList,

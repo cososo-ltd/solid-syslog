@@ -197,7 +197,7 @@ static bool GatewayIsResolved(void)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 §6.2.4 rung 2 (static IP) - read back from the netif so a future
+    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif so a future
      * DHCP slice satisfies the same rung without touching this callback. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;

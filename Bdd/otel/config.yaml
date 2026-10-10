@@ -23,7 +23,7 @@ receivers:
     tcp:
       listen_address: "127.0.0.1:5514"
     protocol: rfc5424
-    # The library frames TCP messages with RFC 6587 §3.4.1 octet-counting
+    # The library frames TCP messages with RFC 6587 section 3.4.1 octet-counting
     # (`<len> <space> <message>`); without this flag the syslog receiver
     # passes the raw frame to the rfc5424 parser, which rejects the digits
     # before `<`. Mirrors what syslog-ng does by default on the Linux side.

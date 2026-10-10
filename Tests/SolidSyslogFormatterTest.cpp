@@ -216,8 +216,8 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesSmallestContinuationByte)
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongTwoByteEncodingPerByte)
 {
-    /* \xC1\x81 - overlong 2-byte form of U+0041. Per RFC 3629 §10 and Unicode
-     * §3.9, each invalid byte becomes its own U+FFFD substitution. */
+    /* \xC1\x81 - overlong 2-byte form of U+0041. Per RFC 3629 section 10 and Unicode
+     * section 3.9, each invalid byte becomes its own U+FFFD substitution. */
     formatBoundedString("\xC1\x81", 2);
 
     CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD");
@@ -225,7 +225,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongTwoByteEncodingPerByte)
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongLeadC0)
 {
-    /* \xC0 - the other overlong 2-byte lead forbidden by RFC 3629 §4. */
+    /* \xC0 - the other overlong 2-byte lead forbidden by RFC 3629 section 4. */
     formatBoundedString("\xC0", 1);
 
     CHECK_FORMATTED("\xEF\xBF\xBD");
@@ -323,7 +323,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongThreeByteEncodingAtSubra
 TEST(SolidSyslogFormatter, BoundedStringReplacesUtf16SurrogateEncodingPerByte)
 {
     /* \xED\xA0\x80 - UTF-8 encoding of U+D800, a UTF-16 high surrogate.
-     * RFC 3629 §3 forbids encoding surrogates; the ED lead requires a
+     * RFC 3629 section 3 forbids encoding surrogates; the ED lead requires a
      * continuation in 80-9F, not A0-BF. */
     formatBoundedString("\xED\xA0\x80", 3);
 
@@ -390,7 +390,7 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesFourByteEncodingBeyondUnicodeRan
 TEST(SolidSyslogFormatter, BoundedStringReplacesF5AsFourByteLead)
 {
     /* \xF5 is not a valid 4-byte lead - any codepoint with a F5 lead would
-     * exceed U+10FFFF. RFC 3629 §3 restricts 4-byte leads to F0-F4. */
+     * exceed U+10FFFF. RFC 3629 section 3 restricts 4-byte leads to F0-F4. */
     formatBoundedString("\xF5\x80\x80\x80", 4);
 
     CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD");
@@ -423,7 +423,7 @@ TEST(SolidSyslogFormatter, BoundedStringTruncatesAtMaxLength)
 TEST(SolidSyslogFormatter, BoundedStringReplacesStragglingTwoByteLeadWhenSourceTruncated)
 {
     /* maxLength caps source at 1 byte, but \xC2 followed by \x80 in memory
-     * would be a valid 2-byte codepoint. Per Unicode §3.9, a lead that
+     * would be a valid 2-byte codepoint. Per Unicode section 3.9, a lead that
      * can't complete a codepoint within the input bound becomes a single
      * U+FFFD; the continuation beyond the cap is never consumed. */
     formatBoundedString("\xC2\x80", 1);

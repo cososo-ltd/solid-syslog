@@ -21,10 +21,10 @@ and silicon fails.
 
 The peripheral is the `cmsdk_apb_uart` block from Arm's Cortex-M System
 Design Kit (CMSDK), specified in the *Cortex-M System Design Kit Technical
-Reference Manual* (ARM DDI 0479C/D), §4.3 *APB UART*. The MPS2 AN385 FPGA
+Reference Manual* (ARM DDI 0479C/D), section 4.3 *APB UART*. The MPS2 AN385 FPGA
 image instantiates five copies in the CMSDK APB subsystem (UART0–UART4);
 see *Application Note AN385: Cortex-M3 SMM on V2M-MPS2* (ARM DAI 0385D),
-§3.7 "CMSDK APB subsystem".
+section 3.7 "CMSDK APB subsystem".
 
 Both the silicon RTL and QEMU implement the same programmer's model. The
 mismatches are in **timing, side-effects, and what happens between the bus
@@ -32,7 +32,7 @@ access and the wire** — covered per-register below.
 
 ### 1.2 Base addresses on `mps2-an385`
 
-From AN385 §3.7 Table 3-4 ("APB Memory Map"), corroborated by QEMU's
+From AN385 section 3.7 Table 3-4 ("APB Memory Map"), corroborated by QEMU's
 `hw/arm/mps2.c` machine model:
 
 | UART  | Base       | RX IRQ | TX IRQ | Combined-overrun IRQ |
@@ -197,7 +197,7 @@ with bit 2 set *also* clears STATE.TXOVERRUN.
 **For the polled, single-producer driver in slice 2** — which always
 checks `!TXFULL` before writing DATA — TXOVERRUN cannot arise. The
 overrun handling matters only if multiple tasks share the UART without
-a mutex (see §5) or if something writes DATA from an ISR concurrently
+a mutex (see section 5) or if something writes DATA from an ISR concurrently
 with task-level putchar.
 
 ### 2.4 May BAUDDIV be 0 / below 16?
@@ -379,8 +379,8 @@ The last two are slice-3+ concerns (RX path).
 
 ## References
 
-- **Arm DDI 0479C/D** — *Cortex-M System Design Kit Technical Reference Manual*, §4.3 *APB UART*. Programmer's model, register layout, reset values.
-- **Arm DAI 0385D** — *Application Note AN385: Cortex-M3 SMM on V2M-MPS2*, §3.7 *CMSDK APB subsystem*. UART base addresses on `mps2-an385`.
+- **Arm DDI 0479C/D** — *Cortex-M System Design Kit Technical Reference Manual*, section 4.3 *APB UART*. Programmer's model, register layout, reset values.
+- **Arm DAI 0385D** — *Application Note AN385: Cortex-M3 SMM on V2M-MPS2*, section 3.7 *CMSDK APB subsystem*. UART base addresses on `mps2-an385`.
 - **QEMU `hw/char/cmsdk-apb-uart.c`** — modelled semantics (W1C handling, edge-triggered TX, chardev backpressure that hides RX_OVRE under stdio, BAUDDIV<16 ignored).
 - **QEMU `hw/arm/mps2.c`** — UART base address and IRQ assignment table for the AN385 board model.
 - **Zephyr `drivers/serial/uart_cmsdk_apb.c`** — canonical poll-out idiom; the edge-triggered-TX comment.

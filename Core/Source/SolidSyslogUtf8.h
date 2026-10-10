@@ -11,7 +11,7 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* Byte-level UTF-8 lead and continuation classifiers per RFC 3629 §4.
+    /* Byte-level UTF-8 lead and continuation classifiers per RFC 3629 section 4.
      * These cover the disjoint top-bit patterns only - overlong / surrogate /
      * above-Unicode validity is composed on top by callers that need it. */
 

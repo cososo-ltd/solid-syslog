@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  Certificate fingerprints in the RFC 5425 §4.2.2 form, and the peer
+ *  Certificate fingerprints in the RFC 5425 section 4.2.2 form, and the peer
  *  authorisation a TLS stream performs with them. No TLS library type appears
  *  here: a stream supplies the digest of the peer's certificate through a
  *  callback, and Core owns the parse and the comparison, so every TLS pack
@@ -19,7 +19,7 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /** The hash algorithms a fingerprint label may name. RFC 5425 §4.2.2 makes
+    /** The hash algorithms a fingerprint label may name. RFC 5425 section 4.2.2 makes
      *  SHA-1 mandatory; SHA-256 is the one to configure. */
     enum SolidSyslogTlsHashAlgorithm
     {
@@ -41,7 +41,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t Length;
     };
 
-    /** Parses @p text in the RFC 5425 §4.2.2 form - an IANA hash label, a
+    /** Parses @p text in the RFC 5425 section 4.2.2 form - an IANA hash label, a
      *  colon, then the digest as colon-separated hex pairs, the pairs in
      *  either case - into @p out. The label itself is lower case, as the IANA
      *  registry spells it. Returns false, leaving @p out unspecified, where

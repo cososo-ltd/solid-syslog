@@ -620,8 +620,8 @@ ellipsis takes no leading comma: `first, second...`, not `first, second, ...`.
 
 Three exceptions stand, each authorised rather than assumed:
 
-- `µ` in a unit, and `§` in an RFC citation. Both read better as themselves and
-  neither is ambiguous.
+- `µ` in a unit. It reads better as itself and is not ambiguous. An RFC citation
+  writes "section", as in `RFC 5424 section 6.2.3.1`.
 - A character that *is* the subject of its comment. The UTF-8 tests name U+00E9, the
   euro sign and an emoji to explain the byte sequences they encode; replacing them
   would delete the point.

@@ -10,7 +10,7 @@ enum
     IPV4_HEADER_BYTES = 20U,
     IPV6_HEADER_BYTES = 40U,
     UDP_HEADER_BYTES = 8U,
-    /* RFC 5426 §3.2: the message sizes a receiver of each family must accept,
+    /* RFC 5426 section 3.2: the message sizes a receiver of each family must accept,
      * and the sizes it names as the safest assumption for a sender that does
      * not know the path MTU. Each leaves room for options or extension headers
      * inside the family's minimum MTU - 576 for IPv4, 1280 for IPv6. */

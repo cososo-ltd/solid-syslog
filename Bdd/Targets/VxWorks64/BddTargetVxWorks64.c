@@ -340,7 +340,7 @@ static struct SolidSyslogSender* BddTargetVxWorks64_CreateSenders(void)
 
 /* The harness sets the clock, in UTC, with `set time` before it sends anything,
  * so the time is in a known zone and synchronised to the host's (RFC 5424
- * §7.1). How closely is not measured, so syncAccuracy is left out. */
+ * section 7.1). How closely is not measured, so syncAccuracy is left out. */
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
     timeQuality->TzKnown = true;

@@ -216,7 +216,7 @@ struct SolidSyslogConfig config = {
 
 Two details are worth getting right. Zero the timestamp struct before filling it, so a
 clock that cannot answer fails the library's validation and is emitted as the nil value
-rather than as a wrong time. And where a device has no resolvable name, RFC 5424 §6.2.4
+rather than as a wrong time. And where a device has no resolvable name, RFC 5424 section 6.2.4
 allows its address in the HOSTNAME field instead.
 
 PROCID stays nil here - a bare-metal image has no process to identify - and so does
@@ -263,7 +263,7 @@ entirely rather than written as `-`.
 
 The example uses `SolidSyslogStdAtomicCounter`. If your toolchain has no atomics you
 must supply your own counter, observing the initialisation and roll-over constraints RFC
-5424 §7.3.1 places on the field: it starts at one and never reports zero. If you log
+5424 section 7.3.1 places on the field: it starts at one and never reports zero. If you log
 from more than one task, that counter must increment atomically.
 
 The counter comes from C11 atomics, so add its platform to the list from stage 1.
@@ -440,7 +440,7 @@ struct SolidSyslogOriginSdConfig originConfig = {
 
 A relay or NAT between the device and the collector rewrites the address the collector
 observes. `ip` is what the device says about itself, and that survives the hop. The
-PARAM is repeatable per RFC 5424 §7.2, so the library asks for a count and then one
+PARAM is repeatable per RFC 5424 section 7.2, so the library asks for a count and then one
 value per index rather than taking a single string.
 
 **When you need it.** If anything sits between the device and the collector - a relay,
@@ -797,8 +797,8 @@ The message cap comes first, because the ring, the store's record buffer and the
 formatter frame on both task stacks all follow it. The worst case measured on the example
 is 379 octets - four SD-ELEMENTs with both counters at full 32-bit width and both
 addresses at fifteen characters, plus a short message - so 400 leaves room for longer
-messages on that device. Anything longer is truncated rather than dropped. RFC 5424 §6.1
-says a receiver should accept 2048 octets; over UDP, RFC 5426 §3.2 guarantees only 480.
+messages on that device. Anything longer is truncated rather than dropped. RFC 5424 section 6.1
+says a receiver should accept 2048 octets; over UDP, RFC 5426 section 3.2 guarantees only 480.
 
 The pools follow. Their defaults suit a device running several transports at once; this
 one runs a single sender, over a single stream, to a single destination. Then the ring,

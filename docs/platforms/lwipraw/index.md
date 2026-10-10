@@ -87,7 +87,7 @@ boundary and sends again.
 
 - **`IP_FRAG=1`**, lwIP's default: lwIP attempts to fragment the datagram and
   submits the fragments to your interface. Submission is reported as success, so
-  the record is not trimmed - this is the case RFC 5426 §3.2 warns about, where
+  the record is not trimmed - this is the case RFC 5426 section 3.2 warns about, where
   a lost fragment costs the whole record and some collectors and middleboxes
   drop fragments outright.
 - **`IP_FRAG=0`**: lwIP compiles the length check out of its send path

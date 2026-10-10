@@ -354,7 +354,7 @@ TEST(SolidSyslogMessageFormatter, AllFieldsAtMaxLengthProducesValidMessage)
     CHECK_PROCID(maxProcessId.c_str());
 }
 
-// RFC 5424 §6: SD then SP (outer framing) then BOM (first byte of MSG-UTF8).
+// RFC 5424 section 6: SD then SP (outer framing) then BOM (first byte of MSG-UTF8).
 TEST(SolidSyslogMessageFormatter, MsgFieldIsSpaceThenBomThenBody)
 {
     message.Msg = "hello";

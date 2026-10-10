@@ -92,7 +92,7 @@ TEST(AtomicCounterContract, IncrementAtMaxWrapsToOne)
 {
     struct SolidSyslogAtomicCounter* counter = TestAtomicCounter_Create();
 
-    /* RFC 5424 §7.3.1: sequenceId values are in [1, 2^31 - 1] and wrap to 1, not 0. */
+    /* RFC 5424 section 7.3.1: sequenceId values are in [1, 2^31 - 1] and wrap to 1, not 0. */
     TestAtomicCounter_Init(counter, (uint32_t) INT32_MAX);
 
     LONGS_EQUAL(1, TestAtomicCounter_Increment(counter));

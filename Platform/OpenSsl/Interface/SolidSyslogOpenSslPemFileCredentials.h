@@ -39,7 +39,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  credential. */
         const char* ClientKeyPath;
         /** Fingerprints of certificates the peer may present, any one of which
-         *  authorises it. Each is the RFC 5425 §4.2.2 form: the IANA hash
+         *  authorises it. Each is the RFC 5425 section 4.2.2 form: the IANA hash
          *  name, a colon, then the digest of the DER certificate as
          *  colon-separated hexadecimal bytes in either case, e.g.
          *  `sha-256:E1:2D:...`. `sha-256` and `sha-1` are accepted; a `sha-1`

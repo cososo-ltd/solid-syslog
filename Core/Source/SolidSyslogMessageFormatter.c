@@ -241,7 +241,7 @@ static inline void MessageFormatter_FormatMsg(struct SolidSyslogFormatter* forma
 {
     /* Guard msg before SkipLeadingBom dereferences it, then guard the
      * post-strip body so a caller-supplied BOM-only string emits no
-     * dangling SP-BOM (RFC 5424 §6.4 - the BOM belongs to a non-empty MSG). */
+     * dangling SP-BOM (RFC 5424 section 6.4 - the BOM belongs to a non-empty MSG). */
     if (MessageFormatter_StringIsValid(msg))
     {
         const char* body = MessageFormatter_SkipLeadingBom(msg);
@@ -255,7 +255,7 @@ static inline void MessageFormatter_FormatMsg(struct SolidSyslogFormatter* forma
     }
 }
 
-/* MSG body MUST start with the UTF-8 BOM per RFC 5424 §6.4. We always
+/* MSG body MUST start with the UTF-8 BOM per RFC 5424 section 6.4. We always
  * emit the BOM ourselves; if the caller already prefixed one, strip it
  * so the wire frame contains exactly one. */
 static inline const char* MessageFormatter_SkipLeadingBom(const char* msg)

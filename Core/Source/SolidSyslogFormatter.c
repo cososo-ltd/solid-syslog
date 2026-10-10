@@ -24,7 +24,7 @@ SOLIDSYSLOG_STATIC_ASSERT(
 static const char NON_PRINTABLE_SUBSTITUTE = '?';
 
 /* UTF-8 replacement character U+FFFD, emitted in place of each invalid
- * byte per Unicode §3.9 best practice for per-byte maximal subpart. */
+ * byte per Unicode section 3.9 best practice for per-byte maximal subpart. */
 static const char REPLACEMENT_CHARACTER[] = {'\xEF', '\xBF', '\xBD'};
 
 /* Mutable state threaded through the EscapedString writer helpers.
@@ -109,7 +109,7 @@ void SolidSyslogFormatter_AsciiCharacter(struct SolidSyslogFormatter* formatter,
 void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter* formatter)
 {
     /* UTF-8 byte order mark U+FEFF, required at the start of a UTF-8 MSG
-     * by RFC 5424 §6.4. */
+     * by RFC 5424 section 6.4. */
     static const char UTF8_BOM[] = {'\xEF', '\xBB', '\xBF'};
     Formatter_WriteBytes(formatter, UTF8_BOM, sizeof(UTF8_BOM));
     Formatter_NullTerminate(formatter);
@@ -117,7 +117,7 @@ void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter* formatter)
 
 void SolidSyslogFormatter_NilValue(struct SolidSyslogFormatter* formatter)
 {
-    /* RFC 5424 §6 NILVALUE - a single '-' standing in for an absent field. */
+    /* RFC 5424 section 6 NILVALUE - a single '-' standing in for an absent field. */
     SolidSyslogFormatter_AsciiCharacter(formatter, '-');
 }
 
@@ -141,7 +141,7 @@ static inline bool Formatter_HasCapacity(const struct SolidSyslogFormatter* form
 }
 
 /*
- * UTF-8 validation per RFC 3629 §4 and Unicode §3.9.
+ * UTF-8 validation per RFC 3629 section 4 and Unicode section 3.9.
  *
  *   1-byte  0xxxxxxx                                   U+0000  - U+007F
  *   2-byte  110xxxxx 10xxxxxx                          U+0080  - U+07FF    lead C2-DF
