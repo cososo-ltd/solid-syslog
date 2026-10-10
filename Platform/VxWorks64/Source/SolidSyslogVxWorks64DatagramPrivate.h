@@ -18,6 +18,8 @@ struct SolidSyslogVxWorks64Datagram
 {
     struct SolidSyslogDatagram Base;
     int Fd;
+    /* The last resolution failed: report a failure only on the way in. */
+    bool ResolveFailing;
 };
 
 void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base);

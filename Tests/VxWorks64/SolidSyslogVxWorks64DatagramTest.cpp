@@ -13,6 +13,7 @@ using namespace CososoTesting;
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
@@ -203,6 +204,77 @@ TEST(SolidSyslogVxWorks64Datagram, SendToSendsNothingWhenTheNextHopDoesNotResolv
     (void) OpenAndSend();
 
     CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, AFailedResolutionReportsTheUnresolvedNextHopAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+
+    (void) OpenAndSend();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT_AT(
+        0,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
+    );
+    CHECK_ERROR_EVENT_AT(
+        1,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        EHOSTUNREACH
+    );
+}
+
+TEST(SolidSyslogVxWorks64Datagram, AFailureStraightAfterAnotherIsNotReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+    (void) OpenAndSend();
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, AfterAFailedResolutionTheNextTriesOnceWithoutWaiting)
+{
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+    (void) OpenAndSend();
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    LONGS_EQUAL(1, VxWorks64ArpFake_LastNumTries());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, OnceAResolutionSucceedsAgainTheNextWaits)
+{
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+    (void) OpenAndSend();
+    VxWorks64ArpFake_FailWithErrno(0);
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    LONGS_EQUAL(2, VxWorks64ArpFake_LastNumTries());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, AFailureAfterARecoveryIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+    (void) OpenAndSend();
+    VxWorks64ArpFake_FailWithErrno(0);
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, 4);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
