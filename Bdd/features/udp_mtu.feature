@@ -17,7 +17,6 @@ Feature: UDP datagram path-MTU clipping
     Then the received message is byte-identical to the sent message
 
   @windows_wip
-  @freertoswip
   Scenario: Oversize UTF-8 message is clipped at a codepoint boundary
     Given the syslog oracle is running
     When the BDD target sends an oversize UTF-8 message
