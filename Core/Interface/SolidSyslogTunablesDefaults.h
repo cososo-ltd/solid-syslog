@@ -721,6 +721,34 @@
 #endif
 
 /**
+ * How long a Datagram waits for the next hop's link address to resolve before
+ * it hands a record to a stack that would otherwise hold or drop it. Used by
+ * the Datagram backends that confirm the next hop before sending; each says so
+ * on its platform page.
+ *
+ * The wait is paid by the task that calls SolidSyslog_Service, or by the task
+ * that logs on an inline wiring, and only when the next hop is not already
+ * resolved: typically the first record after start-up or after the stack's
+ * entry has expired. A wait that ends unresolved returns FAILED; with a store
+ * the record is kept for the next pass, without one it is lost and reported.
+ * After a failed resolution a backend does not wait again until one
+ * succeeds, so an unreachable next hop costs one wait, not one per record.
+ *
+ * Default 100 ms - an ARP reply on a local network arrives in well under a
+ * millisecond, so this allows for a slow peer without holding the servicing
+ * task for long. There is deliberately no runtime getter.
+ *
+ * Floor: 1 ms. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS
+#define SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS 100U
+#endif
+
+#if SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS < 1
+#error "SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS must be >= 1"
+#endif
+
+/**
  * Idle period a TCP connection may sit silent before the first keepalive probe
  * is sent. This and the two tunables below are applied by every TCP Stream
  * backend that can set keepalive on its own connection; a backend whose stack

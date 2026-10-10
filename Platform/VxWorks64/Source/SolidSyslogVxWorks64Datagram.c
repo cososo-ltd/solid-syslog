@@ -24,6 +24,7 @@
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
@@ -41,7 +42,6 @@ enum
      * wait after its last, so one try sends a request and does not wait. */
     VXWORKS64_DATAGRAM_RESOLVE_TRIES_WAITING = 2,
     VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING = 1,
-    VXWORKS64_DATAGRAM_RESOLVE_WAIT_MS = 100,
     VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND = 1000
 };
 
@@ -176,7 +176,7 @@ static inline bool VxWorks64Datagram_AskForTheLinkAddress(
         nextHop,
         (char*) linkAddress,
         self->ResolveFailing ? VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING : VXWORKS64_DATAGRAM_RESOLVE_TRIES_WAITING,
-        VxWorks64Datagram_TicksFor(VXWORKS64_DATAGRAM_RESOLVE_WAIT_MS)
+        VxWorks64Datagram_TicksFor((int) SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS)
     );
     int resolveErrno = (status == ERROR) ? errno : 0;
     bool offTheSubnet = VxWorks64Datagram_IsOffTheSubnet(status, resolveErrno);

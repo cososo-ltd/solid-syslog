@@ -69,6 +69,7 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - local | `ERROR` | the device could not obtain an endpoint, or its stack declined to start the attempt, so no packet was sent. Waiting does not clear it. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - remote | `WARNING` | the destination did not answer, or answered with something other than a connection. The next Service pass retries. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY`. |
+| `DATAGRAM_NEXT_HOP_UNRESOLVED` | `WARNING` | the next hop did not answer address resolution within the wait, so the record was not handed to the stack. It clears when the next hop answers, and the next send tries again. Raised once per run of failures. Single-sourced via `SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY`. |
 | `STREAM_OPTION_REFUSED` | `WARNING` | the connection opened, but the stack declined a socket option set on it, so it is less robust than intended. Delivery continues, which is why this is not `ERROR`. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
 | `TLS_STREAM_HANDSHAKE_FAILED` - rejected | `ERROR` | cert / protocol: the attempt fails the same way until the peer or the certificate changes. |
 | `TLS_STREAM_HANDSHAKE_FAILED` - timeout | `WARNING` | transient: may clear on the next reconnect. |

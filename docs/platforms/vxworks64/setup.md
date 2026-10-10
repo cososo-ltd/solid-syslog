@@ -133,6 +133,22 @@ None of them takes a configuration. Hand all three to
 `SolidSyslogUdpSender_Create`; one address, one resolver and one datagram serve
 one sender.
 
+The datagram waits for a collector on the target's own subnet to resolve
+before it sends; `SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS` bounds the wait. For a
+collector on another subnet it cannot, as
+[A record waits for its next hop to resolve](index.md#a-record-waits-for-its-next-hop-to-resolve)
+explains. Resolve the gateway once at start-up, before the first
+`SolidSyslog_Service`, so the records logged before then are not lost:
+
+```c
+#include <arpLib.h>
+#include <sysLib.h>
+
+static char gateway[] = "192.0.2.1"; /* your gateway */
+unsigned short linkAddress[3];       /* an Ethernet address, 16-bit aligned */
+(void) arpResolve(gateway, (char*) linkAddress, 2, sysClkRateGet() / 10);
+```
+
 ## Drawing the TCP pieces
 
 ```c
