@@ -70,6 +70,15 @@ static inline bool VxWorks64Datagram_ResolveNextHop(
 );
 static inline int VxWorks64Datagram_TicksFor(int milliseconds);
 static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno);
+static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveErrno);
+static inline bool VxWorks64Datagram_IsKnownOffTheSubnet(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+);
+static inline bool VxWorks64Datagram_AskForTheLinkAddress(
+    struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+);
 
 void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
 {
@@ -80,6 +89,8 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
     self->Base.Close = VxWorks64Datagram_Close;
     self->Fd = VXWORKS64_DATAGRAM_NO_SOCKET;
     self->ResolveFailing = false;
+    self->HasOffSubnetDestination = false;
+    self->OffSubnetDestination = 0U;
 }
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -136,9 +147,31 @@ static inline bool VxWorks64Datagram_ResolveNextHop(
     const struct SolidSyslogAddress* addr
 )
 {
+    const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
+    bool clear = VxWorks64Datagram_IsKnownOffTheSubnet(self, sin);
+    if (!clear)
+    {
+        clear = VxWorks64Datagram_AskForTheLinkAddress(self, sin);
+    }
+    return clear;
+}
+
+static inline bool VxWorks64Datagram_IsKnownOffTheSubnet(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+)
+{
+    return self->HasOffSubnetDestination && (self->OffSubnetDestination == sin->sin_addr.s_addr);
+}
+
+static inline bool VxWorks64Datagram_AskForTheLinkAddress(
+    struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+)
+{
     char nextHop[INET_ADDR_LEN];
     unsigned short linkAddress[VXWORKS64_DATAGRAM_LINK_ADDRESS_HALFWORDS];
-    inet_ntoa_b(SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr)->sin_addr, nextHop);
+    inet_ntoa_b(sin->sin_addr, nextHop);
     STATUS status = arpResolve(
         nextHop,
         (char*) linkAddress,
@@ -146,7 +179,13 @@ static inline bool VxWorks64Datagram_ResolveNextHop(
         VxWorks64Datagram_TicksFor(VXWORKS64_DATAGRAM_RESOLVE_WAIT_MS)
     );
     int resolveErrno = (status == ERROR) ? errno : 0;
-    bool resolved = status == OK;
+    bool offTheSubnet = VxWorks64Datagram_IsOffTheSubnet(status, resolveErrno);
+    if (offTheSubnet)
+    {
+        self->HasOffSubnetDestination = true;
+        self->OffSubnetDestination = sin->sin_addr.s_addr;
+    }
+    bool resolved = (status == OK) || offTheSubnet;
     if (!resolved && !self->ResolveFailing)
     {
         VxWorks64Datagram_ReportUnresolved(resolveErrno);
@@ -162,6 +201,14 @@ static inline int VxWorks64Datagram_TicksFor(int milliseconds)
         (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + (VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND - 1)) /
         VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND;
     return (int) ticks;
+}
+
+/* arpResolve answers only for the subnet: a routed destination's next hop is
+ * the gateway, which it does not look up. Such a destination is sent to as it
+ * stands. */
+static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveErrno)
+{
+    return (status == ERROR) && (resolveErrno == S_arpLib_INVALID_HOST);
 }
 
 static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno)

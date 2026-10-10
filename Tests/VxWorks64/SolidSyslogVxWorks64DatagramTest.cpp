@@ -9,6 +9,8 @@ using namespace CososoTesting;
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "arpLib.h"
+
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogAddress.h"
@@ -275,6 +277,44 @@ TEST(SolidSyslogVxWorks64Datagram, AFailureAfterARecoveryIsReportedAgain)
     (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, 4);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, ADestinationOffTheSubnetIsSentTo)
+{
+    VxWorks64ArpFake_FailWithErrno(S_arpLib_INVALID_HOST);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, ADestinationOffTheSubnetIsNotReported)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64ArpFake_FailWithErrno(S_arpLib_INVALID_HOST);
+
+    (void) OpenAndSend();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, ADestinationOffTheSubnetIsNotAskedAboutAgain)
+{
+    VxWorks64ArpFake_FailWithErrno(S_arpLib_INVALID_HOST);
+    (void) OpenAndSend();
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    CALLED_FAKE(VxWorks64ArpFake_ArpResolve, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, ANewDestinationIsAskedAboutAfterOneOffTheSubnet)
+{
+    VxWorks64ArpFake_FailWithErrno(S_arpLib_INVALID_HOST);
+    (void) OpenAndSend();
+    SolidSyslogVxWorks64Address_AsSockaddrIn(address)->sin_addr.s_addr = htonl(0x0A00000BU);
+
+    (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
+
+    CALLED_FAKE(VxWorks64ArpFake_ArpResolve, TWICE);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
