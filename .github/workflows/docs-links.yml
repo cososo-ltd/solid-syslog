@@ -18,8 +18,7 @@ name: Docs Links
 
 on:
   pull_request:
-    # See ci.yml: feature/vxworks-6.4 is the E41 integration branch.
-    branches: [ main, feature/vxworks-6.4 ]
+    branches: [ main ]
     paths:
       - 'docs/**'
       - '*.md'

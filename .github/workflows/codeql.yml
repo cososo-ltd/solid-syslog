@@ -12,10 +12,9 @@ name: CodeQL
 
 on:
   push:
-    # See ci.yml: feature/vxworks-6.4 is the E41 integration branch.
-    branches: [ main, feature/vxworks-6.4 ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, feature/vxworks-6.4 ]
+    branches: [ main ]
   schedule:
     # Weekly, so new queries shipped by GitHub are applied to unchanged code.
     - cron: '17 3 * * 1'

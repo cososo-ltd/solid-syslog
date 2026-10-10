@@ -2,12 +2,9 @@ name: CI
 
 on:
   push:
-    # feature/vxworks-6.4 is the E41 integration branch: PRs merge into it
-    # rather than main, so CI has to follow it or nothing below is checked.
-    # Both lists drop back to main alone when that branch merges.
-    branches: [ main, feature/vxworks-6.4 ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, feature/vxworks-6.4 ]
+    branches: [ main ]
 
 permissions:
   contents: read
