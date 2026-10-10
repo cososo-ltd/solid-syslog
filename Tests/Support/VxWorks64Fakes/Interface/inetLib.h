@@ -6,12 +6,21 @@
 #ifndef INETLIB_H
 #define INETLIB_H
 
+#include <netinet/in.h>
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
+/* A #define because it is one in the real header. The suppression lives here
+ * for the reason semLib.h gives. */
+/* NOLINTBEGIN(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+#define INET_ADDR_LEN 18
+    /* NOLINTEND(cppcoreguidelines-macro-to-enum,modernize-macro-to-enum) */
+
     unsigned long inet_addr(char* inetString);
+    void inet_ntoa_b(struct in_addr inetAddress, char* pString);
 
 #ifdef __cplusplus
 }

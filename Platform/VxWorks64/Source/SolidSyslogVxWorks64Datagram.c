@@ -7,14 +7,18 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "vxWorks.h"
 
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "arpLib.h"
+#include "inetLib.h"
 #include "ioLib.h"
 #include "sockLib.h"
+#include "sysLib.h"
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
@@ -28,7 +32,15 @@ const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {"
 
 enum
 {
-    VXWORKS64_DATAGRAM_NO_SOCKET = -1
+    VXWORKS64_DATAGRAM_NO_SOCKET = -1,
+    /* arpResolve fills an Ethernet address, six bytes, through 16-bit
+     * accesses. */
+    VXWORKS64_DATAGRAM_LINK_ADDRESS_HALFWORDS = 3,
+    /* Two tries make one wait for a reply between them; arpResolve does not
+     * wait after its last. */
+    VXWORKS64_DATAGRAM_RESOLVE_TRIES = 2,
+    VXWORKS64_DATAGRAM_RESOLVE_WAIT_MS = 100,
+    VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND = 1000
 };
 
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base);
@@ -50,6 +62,8 @@ static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(
     size_t size,
     const struct SolidSyslogAddress* addr
 );
+static inline bool VxWorks64Datagram_ResolveNextHop(const struct SolidSyslogAddress* addr);
+static inline int VxWorks64Datagram_TicksFor(int milliseconds);
 
 void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
 {
@@ -97,9 +111,39 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
     if (size <= VxWorks64Datagram_MaxPayload(base))
     {
-        result = VxWorks64Datagram_SendToStack(VxWorks64Datagram_SelfFromBase(base), buffer, size, addr);
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+        if (VxWorks64Datagram_ResolveNextHop(addr))
+        {
+            result = VxWorks64Datagram_SendToStack(VxWorks64Datagram_SelfFromBase(base), buffer, size, addr);
+        }
     }
     return result;
+}
+
+/* The stack holds at most one datagram for a next hop it is still resolving,
+ * replacing it with each later one, yet sendto accepts them all. A record is
+ * handed over only once its next hop is resolved. */
+static inline bool VxWorks64Datagram_ResolveNextHop(const struct SolidSyslogAddress* addr)
+{
+    char nextHop[INET_ADDR_LEN];
+    unsigned short linkAddress[VXWORKS64_DATAGRAM_LINK_ADDRESS_HALFWORDS];
+    inet_ntoa_b(SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr)->sin_addr, nextHop);
+    STATUS status = arpResolve(
+        nextHop,
+        (char*) linkAddress,
+        VXWORKS64_DATAGRAM_RESOLVE_TRIES,
+        VxWorks64Datagram_TicksFor(VXWORKS64_DATAGRAM_RESOLVE_WAIT_MS)
+    );
+    return status == OK;
+}
+
+/* Rounded up, so a wait shorter than a tick is a tick rather than none. */
+static inline int VxWorks64Datagram_TicksFor(int milliseconds)
+{
+    int64_t ticks =
+        (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + (VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND - 1)) /
+        VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND;
+    return (int) ticks;
 }
 
 static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(

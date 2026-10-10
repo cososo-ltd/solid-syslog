@@ -22,6 +22,7 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
+#include "VxWorks64ArpFake.h"
 #include "VxWorks64IoFake.h"
 #include "VxWorks64NetFake.h"
 
@@ -50,6 +51,7 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
     {
         VxWorks64NetFake_Reset();
         VxWorks64IoFake_Reset();
+        VxWorks64ArpFake_Reset();
         datagram = SolidSyslogVxWorks64Datagram_Create();
         address  = SolidSyslogVxWorks64Address_Create();
         struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(address);
@@ -164,6 +166,43 @@ TEST(SolidSyslogVxWorks64Datagram, SendToSendsARecordOfExactlyMaxPayload)
 {
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, OpenAndSendRecordOf(SolidSyslogDatagram_MaxPayload(datagram)));
     CALLED_FAKE(VxWorks64NetFake_Sendto, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToResolvesTheDestinationsLinkAddress)
+{
+    (void) OpenAndSend();
+
+    STRCMP_EQUAL("10.0.0.10", VxWorks64ArpFake_LastTarget());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToTriesTheResolutionTwiceSoItWaitsOnceForAReply)
+{
+    (void) OpenAndSend();
+
+    LONGS_EQUAL(2, VxWorks64ArpFake_LastNumTries());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToWaitsATenthOfASecondForTheReply)
+{
+    (void) OpenAndSend();
+
+    LONGS_EQUAL(6, VxWorks64ArpFake_LastNumTicks());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToReportsFailedWhenTheNextHopDoesNotResolve)
+{
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, OpenAndSend());
+}
+
+TEST(SolidSyslogVxWorks64Datagram, SendToSendsNothingWhenTheNextHopDoesNotResolve)
+{
+    VxWorks64ArpFake_FailWithErrno(EHOSTUNREACH);
+
+    (void) OpenAndSend();
+
+    CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
