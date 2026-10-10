@@ -30,6 +30,7 @@
 #include "SolidSyslogCrc16.h"
 #include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogDatagramErrors.h"
 #include "SolidSyslogEndpoint.h"

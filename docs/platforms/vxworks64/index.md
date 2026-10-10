@@ -15,8 +15,9 @@ is left unset and sent as the nil value.
 ## Requirements
 
 A VxWorks 6.4 kernel image and the VxWorks headers on your include path. The
-datagram calls `socket`, `sendto` and `close`; the TCP stream calls `socket`,
-`connectWithTimeout`, `setsockopt`, `send`, `recv` and `close`; the resolver
+datagram calls `socket`, `inet_ntoa_b`, `arpResolve`, `sendto` and `close`;
+the TCP stream calls `socket`, `connectWithTimeout`, `setsockopt`, `send`,
+`recv` and `close`; the resolver
 calls `inet_addr` and `hostGetByName`; the mutex calls `semMCreate`, `semTake`,
 `semGive` and `semDelete`; and the atomic counter calls `intLock` and
 `intUnlock`. The image needs the network stack, with TCP for the stream, and the
@@ -120,6 +121,38 @@ send, and the sender resolves again on its next one.
 
 `inet_addr` and `hostGetByName` answer all ones for a host they cannot
 resolve, so `255.255.255.255` cannot be used as a collector address.
+
+### A record waits for its next hop to resolve
+
+While the stack resolves a next hop's link address it holds at most one
+datagram for it, replacing it with each later one, and `sendto` accepts them
+all. A burst sent before the reply arrives, such as the records logged at
+start-up, would be lost with nothing reported. So before each send the datagram
+asks `arpResolve` for the collector, as the
+[Datagram](../../api/structSolidSyslogDatagram.md) contract requires. A cached
+entry answers at once. Otherwise the datagram checks for the reply every
+system clock tick, for up to `SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS` (100 ms by
+default), so it sends within a tick of the reply arriving. If no reply arrives
+it fails the send; with a store the record is kept for the next pass.
+
+The wait falls on the task that calls `SolidSyslog_Service`, or on the logging
+task with an inline wiring. A resolution that fails is reported once, as
+`SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` followed by its `errno` as
+`SOLIDSYSLOG_CAT_NATIVE_ERROR`. Until a resolution succeeds again, sends do not
+wait and are not reported again, so an unreachable collector costs one wait
+rather than one per record.
+
+For a collector off the subnet, `arpResolve` answers that the host is not on
+the local network and does not look up the gateway. The datagram then sends as
+it stands, without asking again until the destination changes, so a burst sent
+while the gateway's entry is unresolved can still be lost. That is a divergence
+from the contract, open as
+[#987](https://github.com/cososo-ltd/solid-syslog/issues/987); calling
+`arpResolve` for the gateway once at start-up warms the entry.
+
+The TCP stream does not confirm the next hop. A connection that does not open
+within its bound fails the send, which is reported, rather than losing records
+silently; the sender connects again on its next pass.
 
 ### A record is trimmed to fit, never fragmented
 

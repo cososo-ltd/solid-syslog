@@ -7,18 +7,24 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "vxWorks.h"
 
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "arpLib.h"
+#include "inetLib.h"
 #include "ioLib.h"
 #include "sockLib.h"
+#include "sysLib.h"
 
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullDatagram.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
@@ -28,7 +34,16 @@ const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {"
 
 enum
 {
-    VXWORKS64_DATAGRAM_NO_SOCKET = -1
+    VXWORKS64_DATAGRAM_NO_SOCKET = -1,
+    /* arpResolve fills an Ethernet address, six bytes, through 16-bit
+     * accesses. */
+    VXWORKS64_DATAGRAM_LINK_ADDRESS_HALFWORDS = 3,
+    /* arpResolve sleeps its whole interval between tries and does not wake for
+     * the reply, so it is asked to check every tick. It does not wait after its
+     * last try, so one try sends a request and does not wait. */
+    VXWORKS64_DATAGRAM_RESOLVE_INTERVAL_TICKS = 1,
+    VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING = 1,
+    VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND = 1000
 };
 
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base);
@@ -50,6 +65,26 @@ static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(
     size_t size,
     const struct SolidSyslogAddress* addr
 );
+static inline bool VxWorks64Datagram_ResolveNextHop(
+    struct SolidSyslogVxWorks64Datagram* self,
+    const struct SolidSyslogAddress* addr
+);
+static inline int VxWorks64Datagram_TriesWaiting(void);
+static inline bool VxWorks64Datagram_IsStillFailing(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+);
+static inline int VxWorks64Datagram_TicksFor(int milliseconds);
+static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno);
+static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveErrno);
+static inline bool VxWorks64Datagram_IsKnownOffTheSubnet(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+);
+static inline bool VxWorks64Datagram_AskForTheLinkAddress(
+    struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+);
 
 void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
 {
@@ -59,6 +94,10 @@ void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
     self->Base.MaxPayload = VxWorks64Datagram_MaxPayload;
     self->Base.Close = VxWorks64Datagram_Close;
     self->Fd = VXWORKS64_DATAGRAM_NO_SOCKET;
+    self->ResolveFailing = false;
+    self->FailedDestination = 0U;
+    self->HasOffSubnetDestination = false;
+    self->OffSubnetDestination = 0U;
 }
 
 static inline struct SolidSyslogVxWorks64Datagram* VxWorks64Datagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -97,9 +136,118 @@ static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(
     enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
     if (size <= VxWorks64Datagram_MaxPayload(base))
     {
-        result = VxWorks64Datagram_SendToStack(VxWorks64Datagram_SelfFromBase(base), buffer, size, addr);
+        struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
+        result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+        if (VxWorks64Datagram_ResolveNextHop(self, addr))
+        {
+            result = VxWorks64Datagram_SendToStack(self, buffer, size, addr);
+        }
     }
     return result;
+}
+
+/* The stack holds at most one datagram for a next hop it is still resolving,
+ * replacing it with each later one, yet sendto accepts them all. A record is
+ * handed over only once its next hop is resolved. */
+static inline bool VxWorks64Datagram_ResolveNextHop(
+    struct SolidSyslogVxWorks64Datagram* self,
+    const struct SolidSyslogAddress* addr
+)
+{
+    const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
+    bool clear = VxWorks64Datagram_IsKnownOffTheSubnet(self, sin);
+    if (!clear)
+    {
+        clear = VxWorks64Datagram_AskForTheLinkAddress(self, sin);
+    }
+    return clear;
+}
+
+static inline bool VxWorks64Datagram_IsKnownOffTheSubnet(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+)
+{
+    return self->HasOffSubnetDestination && (self->OffSubnetDestination == sin->sin_addr.s_addr);
+}
+
+static inline bool VxWorks64Datagram_AskForTheLinkAddress(
+    struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+)
+{
+    char nextHop[INET_ADDR_LEN];
+    unsigned short linkAddress[VXWORKS64_DATAGRAM_LINK_ADDRESS_HALFWORDS];
+    inet_ntoa_b(sin->sin_addr, nextHop);
+    STATUS status = arpResolve(
+        nextHop,
+        (char*) linkAddress,
+        VxWorks64Datagram_IsStillFailing(self, sin) ? VXWORKS64_DATAGRAM_RESOLVE_TRIES_NOT_WAITING
+                                                    : VxWorks64Datagram_TriesWaiting(),
+        VXWORKS64_DATAGRAM_RESOLVE_INTERVAL_TICKS
+    );
+    int resolveErrno = (status == ERROR) ? errno : 0;
+    bool offTheSubnet = VxWorks64Datagram_IsOffTheSubnet(status, resolveErrno);
+    if (offTheSubnet)
+    {
+        self->HasOffSubnetDestination = true;
+        self->OffSubnetDestination = sin->sin_addr.s_addr;
+    }
+    bool resolved = (status == OK) || offTheSubnet;
+    if (!resolved && !VxWorks64Datagram_IsStillFailing(self, sin))
+    {
+        VxWorks64Datagram_ReportUnresolved(resolveErrno);
+    }
+    self->ResolveFailing = !resolved;
+    self->FailedDestination = sin->sin_addr.s_addr;
+    return resolved;
+}
+
+static inline bool VxWorks64Datagram_IsStillFailing(
+    const struct SolidSyslogVxWorks64Datagram* self,
+    const struct sockaddr_in* sin
+)
+{
+    return self->ResolveFailing && (self->FailedDestination == sin->sin_addr.s_addr);
+}
+
+/* One try more than the wait has ticks: a check after each tick of the wait. */
+static inline int VxWorks64Datagram_TriesWaiting(void)
+{
+    return VxWorks64Datagram_TicksFor((int) SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS) + 1;
+}
+
+/* Rounded up, so a wait shorter than a tick is a tick rather than none. */
+static inline int VxWorks64Datagram_TicksFor(int milliseconds)
+{
+    int64_t ticks =
+        (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + (VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND - 1)) /
+        VXWORKS64_DATAGRAM_MILLISECONDS_PER_SECOND;
+    return (int) ticks;
+}
+
+/* arpResolve answers only for the subnet: a routed destination's next hop is
+ * the gateway, which it does not look up. Such a destination is sent to as it
+ * stands. */
+static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveErrno)
+{
+    return (status == ERROR) && (resolveErrno == S_arpLib_INVALID_HOST);
+}
+
+static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno)
+{
+    SolidSyslog_Error(
+        SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
+    );
+    SolidSyslog_Error(
+        SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        (int32_t) resolveErrno
+    );
 }
 
 static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(

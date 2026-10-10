@@ -1,5 +1,6 @@
 #include "BddTargetErrorText.h"
 #include "SolidSyslogBufferCategories.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileCategories.h"
 #include "SolidSyslogResolverCategories.h"
@@ -84,6 +85,11 @@ TEST(BddTargetErrorText, NativeErrorCategoryMapsToText)
 TEST(BddTargetErrorText, FileIoFailedCategoryMapsToText)
 {
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_FILE_IO_FAILED, "file I/O failed");
+}
+
+TEST(BddTargetErrorText, NextHopUnresolvedCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED, "next hop unresolved");
 }
 
 TEST(BddTargetErrorText, StoreWriteFailedCategoryMapsToText)

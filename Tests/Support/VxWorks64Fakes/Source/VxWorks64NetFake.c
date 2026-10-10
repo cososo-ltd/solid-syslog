@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/times.h>
@@ -159,6 +160,14 @@ unsigned VxWorks64NetFake_HostGetByNameCallCount(void)
 const char* VxWorks64NetFake_LastHostGetByNameName(void)
 {
     return VxWorks64NetFake_HostGetByNameName;
+}
+
+// The address is in network byte order, so its bytes in memory are the octets
+// in the order they are written.
+void inet_ntoa_b(struct in_addr inetAddress, char* pString)
+{
+    const unsigned char* octets = (const unsigned char*) &inetAddress.s_addr;
+    (void) snprintf(pString, INET_ADDR_LEN, "%u.%u.%u.%u", octets[0], octets[1], octets[2], octets[3]);
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API

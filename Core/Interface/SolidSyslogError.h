@@ -47,6 +47,13 @@
  */
 #define SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
 
+/*
+ * A next hop that does not resolve gets a macro for the same reason: the
+ * SolidSyslogDatagramErrors code raised under it is shared by every Datagram
+ * backend. See docs/error-severity.md.
+ */
+#define SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY SOLIDSYSLOG_SEVERITY_WARNING
+
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The identity of an error-emitting class. There is one extern instance per

@@ -43,6 +43,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  - **SENT means the record has been handed to the network**, and licenses
      *    the caller to drop it. Do not return SENT for a datagram still queued
      *    behind something that may fail.
+     *  - **Confirm the next hop is resolved before returning SENT**, where the
+     *    stack can hold or drop a datagram while it resolves the next hop's
+     *    link address. Wait for it within a bound, and return FAILED if it is
+     *    still unresolved. Loss in transit is outside this contract: UDP
+     *    cannot detect it (RFC 5426 section 4.1).
      *  - **Open and Close are the whole lifecycle.** Close is idempotent and safe
      *    on an unopened datagram, because the caller's failure paths call it. */
     struct SolidSyslogDatagram
