@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-build-linux-gcc
           path: |
@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-openssl
           path: build/debug/cpputest_*.xml
@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-littlefs
           path: build/debug/cpputest_*.xml
@@ -182,7 +182,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-mbedtls
           path: build/debug/cpputest_*.xml
@@ -257,7 +257,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-windows-openssl
           path: build/msvc-debug/Tests/OpenSslIntegration/Debug/cpputest_*.xml
@@ -299,7 +299,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-build-linux-tunable-override
           path: |
@@ -308,7 +308,7 @@ jobs:
           retention-days: 1
 
       - name: Upload BDD target binaries
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-targets
           path: |
@@ -320,7 +320,7 @@ jobs:
       # bdd-linux-syslog-ng downloads this into Bdd/features/steps/ so behave
       # can `import solidsyslog_tunables` (the file is gitignored, not in checkout).
       - name: Upload BDD Python tunables (Linux)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bdd-tunables-linux
           path: Bdd/features/steps/solidsyslog_tunables.py
@@ -360,7 +360,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-build-linux-clang
           path: |
@@ -457,7 +457,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-sanitize-linux-gcc
           path: |
@@ -535,7 +535,7 @@ jobs:
       # when you want to read it.
       - name: Upload coverage report artifact
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-report-linux-gcc
           path: build/coverage/coverage_report/
@@ -565,7 +565,7 @@ jobs:
 
       - name: Upload clang-tidy output
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: clang-tidy-report
           path: build/tidy/clang-tidy-output.txt
@@ -601,7 +601,7 @@ jobs:
 
       - name: Upload iwyu output
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: iwyu-report
           path: build/iwyu/iwyu-output.txt
@@ -636,7 +636,7 @@ jobs:
 
       - name: Upload clang-tidy output
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: clang-tidy-report-freertos-plustcp
           path: build/tidy/clang-tidy-output.txt
@@ -674,7 +674,7 @@ jobs:
 
       - name: Upload iwyu output
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: iwyu-report-freertos-plustcp
           path: build/iwyu/iwyu-output.txt
@@ -710,7 +710,7 @@ jobs:
 
       - name: Upload clang-tidy output
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: clang-tidy-report-freertos-lwip
           path: build/tidy/clang-tidy-output.txt
@@ -745,7 +745,7 @@ jobs:
 
       - name: Upload iwyu output
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: iwyu-report-freertos-lwip
           path: build/iwyu/iwyu-output.txt
@@ -947,7 +947,7 @@ jobs:
             mkdocs build --strict
 
       - name: Upload site artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docs-site
           path: site/
@@ -993,7 +993,7 @@ jobs:
         run: python3 scripts/check_offline_bundle.py build/bundle
 
       - name: Upload offline bundle artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docs-offline-bundle
           path: build/solid-syslog-docs-*.zip
@@ -1108,7 +1108,7 @@ jobs:
 
       - name: Upload cppcheck report
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cppcheck-report
           path: build/cppcheck/cppcheck-report.xml
@@ -1240,7 +1240,7 @@ jobs:
 
       - name: Upload cppcheck-misra report
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cppcheck-misra-report
           path: build/cppcheck-misra/cppcheck-misra-report.xml
@@ -1312,7 +1312,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-build-windows-msvc
           path: |
@@ -1321,7 +1321,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Windows BDD target binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-windows
           path: build/msvc-tunable-override/Bdd/Targets/Debug/SolidSyslogBddTarget.exe
@@ -1329,7 +1329,7 @@ jobs:
           compression-level: 0
 
       - name: Upload BDD Python tunables (Windows)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bdd-tunables-windows
           path: Bdd/features/steps/solidsyslog_tunables.py
@@ -1451,7 +1451,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-windows-otel
           path: Bdd/junit/TESTS-*.xml
@@ -1509,7 +1509,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-linux-syslog-ng
           path: Bdd/junit/TESTS-*.xml
@@ -1560,7 +1560,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-build-freertos-host-tdd-plustcp
           path: |
@@ -1592,7 +1592,7 @@ jobs:
         run: cmake --build --preset freertos-cross --target SolidSyslogBddTarget
 
       - name: Upload FreeRTOS BDD target ELF
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-freertos
           path: build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
@@ -1600,7 +1600,7 @@ jobs:
           compression-level: 0
 
       - name: Upload BDD Python tunables (FreeRTOS)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bdd-tunables-freertos
           path: Bdd/features/steps/solidsyslog_tunables.py
@@ -1645,7 +1645,7 @@ jobs:
           echo "OK: no PlusTcp / FreeRTOS-Plus-TCP symbols in the lwIP BDD target ELF"
 
       - name: Upload FreeRTOS+lwIP BDD target ELF
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-freertos-lwip
           path: build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
@@ -1656,7 +1656,7 @@ jobs:
       # lane consumes this so environment.py's runtime tag gates track the lwIP
       # target's SOLIDSYSLOG_MAX_MESSAGE_SIZE.
       - name: Upload BDD Python tunables (FreeRTOS+lwIP)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bdd-tunables-freertos-lwip
           path: Bdd/features/steps/solidsyslog_tunables.py
@@ -1699,7 +1699,7 @@ jobs:
           echo "OK: no PlusTcp / FreeRTOS-Plus-TCP symbols in the CmsisLwip BDD target ELF"
 
       - name: Upload CmsisLwip BDD target ELF
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-cmsis-lwip
           path: build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
@@ -1707,7 +1707,7 @@ jobs:
           compression-level: 0
 
       - name: Upload BDD Python tunables (CmsisLwip)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bdd-tunables-cmsis-lwip
           path: Bdd/features/steps/solidsyslog_tunables.py
@@ -1757,7 +1757,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-freertos-qemu-plustcp
           path: Bdd/junit/TESTS-*.xml
@@ -1815,7 +1815,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-freertos-qemu-lwip
           path: Bdd/junit/TESTS-*.xml
@@ -1877,7 +1877,7 @@ jobs:
 
       - name: Upload JUnit XML
         if: success() || failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-cmsis-qemu-lwip
           path: Bdd/junit/TESTS-*.xml
