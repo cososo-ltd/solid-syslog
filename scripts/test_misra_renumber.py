@@ -62,6 +62,16 @@ class EntriesTest(unittest.TestCase):
         self.assertEqual([], misra_renumber.entries(text))
 
 
+class LineAtTest(unittest.TestCase):
+    def test_a_form_feed_does_not_start_a_new_line(self):
+        self.assertEqual("third", misra_renumber.line_at("first\fstill first\nsecond\nthird\n", 3))
+
+
+class MainTest(unittest.TestCase):
+    def test_a_base_git_cannot_resolve_exits_3(self):
+        self.assertEqual(3, misra_renumber.main(["--base", "no-such-ref-for-this-test"]))
+
+
 class RewriteTest(unittest.TestCase):
     def test_only_the_updated_entries_change(self):
         text = "# comment\nmisra-c2012-11.3:A.c:66\nmisra-c2012-11.5:A.c:115\n"

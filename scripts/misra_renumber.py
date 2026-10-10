@@ -21,6 +21,7 @@ Exit code:
     1  updates proposed - re-run with --apply
     2  entries needing attention, listed; the others are still proposed or
        applied
+    3  git could not answer, for example a base that does not resolve
 
 Only entries that already existed at the base are moved. An entry added on the
 branch already names its new line, and an entry moved by an earlier run no
@@ -45,7 +46,9 @@ HUNK = re.compile(r"^@@ -(?P<old>\d+)(?:,(?P<oldcount>\d+))? \+(?P<new>\d+)(?:,(
 
 
 def git(*args):
-    return subprocess.run(["git", *args], cwd=REPO_ROOT, check=True, capture_output=True, text=True).stdout
+    return subprocess.run(
+        ["git", *args], cwd=REPO_ROOT, check=True, capture_output=True, text=True, encoding="utf-8"
+    ).stdout
 
 
 def default_base():
@@ -92,8 +95,10 @@ def entries(text):
     return result
 
 
+# Split where git counts lines, at newlines only: splitlines() would also
+# split at a form feed and similar characters git does not count.
 def line_at(text, number):
-    lines = text.splitlines()
+    lines = text.split("\n")
     return lines[number - 1] if 0 < number <= len(lines) else None
 
 
@@ -148,10 +153,14 @@ def main(argv=None):
     parser.add_argument("--base", help="the ref to diff against (default: merge base with origin/main)")
     options = parser.parse_args(argv)
 
-    base = options.base or default_base()
     suppressions_path = REPO_ROOT / SUPPRESSIONS
     current = suppressions_path.read_text(encoding="utf-8")
-    updates, attention = plan(base, current)
+    try:
+        base = options.base or default_base()
+        updates, attention = plan(base, current)
+    except subprocess.CalledProcessError as error:
+        print(f"git {' '.join(error.cmd[1:])} failed: {error.stderr.strip()}", file=sys.stderr)
+        return 3
 
     for (rule, path, line), new_line in sorted(updates.items()):
         print(f"  {rule}:{path}:{line} -> {new_line}")
