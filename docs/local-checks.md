@@ -48,16 +48,20 @@ Tier B is mostly MISRA-line-drift cleanup, so scope it to what changed:
 ### MISRA - fix line-number drift
 
 When edits shift production lines, `misra_suppressions.txt` entries go
-stale. Fix in one step:
+stale. The script moves each one by the lines the branch's diff added and
+removed above it. It runs no analysis, so it takes seconds in any shell with
+git and Python:
 
 ```bash
-# In any container that has cppcheck (all of them do):
-scripts/misra_renumber.py            # show proposed renumbers
-scripts/misra_renumber.py --apply    # write back updated suppressions
+scripts/misra_renumber.py                # show proposed renumbers
+scripts/misra_renumber.py --apply        # write them back
+scripts/misra_renumber.py --base <ref>   # a branch cut from somewhere
+                                         # other than main
 ```
 
-The script bails on genuine new findings (mismatched counts per
-rule+file); those need manual review. See the script's docstring.
+It lists any entry whose suppressed line was itself edited or removed, and
+leaves it alone. Those, and any genuinely new finding, are CI's MISRA lane to
+report; update the suppression from its output. See the script's docstring.
 
 ### Manifests - regenerate after changing the sources
 

@@ -899,6 +899,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/check_issue_links.py
 
+      # The MISRA renumber script's line arithmetic: a wrong shift would move a
+      # suppression onto the wrong line, and the MISRA lane would fail on it.
+      - name: Test the MISRA renumber script
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
       # Guard the build hooks against regression — the source-link rewrite's
       # Markdown parsing, and the meta-description map's nav validation.
       # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
