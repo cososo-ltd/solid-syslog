@@ -236,6 +236,16 @@ under an epic. Raise an issue only when the work needs to be remembered rather t
 now — it is deferred, it is committed to a release, or it needs agreement before it
 starts. A chore or docs issue raised that way needs no epic.
 
+There is no catch-all epic. When a story has no feature or platform epic to sit under:
+
+- **Two or more stories that share a purpose get an epic of their own**, however small,
+  numbered as any other. Its stories then number, group and roll up as usual.
+- **A genuine one-off is an unnumbered issue** titled in Conventional Commits form, as a
+  chore is. Having no parent, it stays off the board, so it is outside the WIP limit's
+  view; say so if it is being worked on.
+- **A question that needs agreement before it is a story** is an unnumbered issue too,
+  phrased as the question.
+
 ### New-story checklist
 
 For every new story:
