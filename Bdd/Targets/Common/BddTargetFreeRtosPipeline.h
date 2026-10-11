@@ -72,7 +72,7 @@ void BddTargetFreeRtosPipeline_InitConsole(uint32_t uartBaseAddress);
 /* Shared bounded-spin sleep (SolidSyslogSleepFunction-shaped). The lwIP target
  * passes this into its resolver / TCP-stream config; both targets reuse it for
  * the CMSDK UART yield. */
-void BddTargetFreeRtosPipeline_Sleep(int milliseconds);
+void BddTargetFreeRtosPipeline_Sleep(uint32_t milliseconds);
 
 /* ARM Semihosting SYS_EXIT - terminates QEMU with the given status. Used
  * internally by the `shutdown` / halt paths; exposed so a target's main() can

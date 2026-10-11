@@ -63,7 +63,7 @@ static const uint16_t TEST_PORT = 514;
 namespace
 {
 unsigned FakeSleep_CallCount = 0U;
-int FakeSleep_LastMs = 0;
+uint32_t FakeSleep_LastMs = 0;
 
 void FakeSleep_Reset()
 {
@@ -71,7 +71,7 @@ void FakeSleep_Reset()
     FakeSleep_LastMs = 0;
 }
 
-extern "C" void FakeSleep(int milliseconds)
+extern "C" void FakeSleep(uint32_t milliseconds)
 {
     FakeSleep_CallCount++;
     FakeSleep_LastMs = milliseconds;
@@ -490,7 +490,7 @@ TEST(SolidSyslogLwipRawTcpStream, OpenSleepsBetweenPollsDuringTimeoutPath)
 
     /* timeout / poll periods -> exactly that many sleeps before giving up. */
     LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS / SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS, FakeSleep_CallCount);
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS, FakeSleep_LastMs);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_TCP_CONNECT_POLL_MS, FakeSleep_LastMs);
 }
 
 TEST(SolidSyslogLwipRawTcpStream, OpenHappyPathDoesNotSleep)

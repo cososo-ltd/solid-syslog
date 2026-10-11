@@ -37,7 +37,7 @@ static struct SolidSyslogPoolAllocator PosixMessageQueueBuffer_Allocator = {
 };
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- distinct semantic meaning; struct wrapper would over-engineer
-struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMessageSize, long maxMessages)
+struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMessageSize, size_t maxMessages)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixMessageQueueBuffer_Allocator);
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();

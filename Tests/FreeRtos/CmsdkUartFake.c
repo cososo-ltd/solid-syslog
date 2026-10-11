@@ -116,7 +116,7 @@ static void Fake_Write32(uintptr_t address, uint32_t value)
     }
 }
 
-static void Fake_Sleep(int milliseconds)
+static void Fake_Sleep(uint32_t milliseconds)
 {
     (void) milliseconds;
     fake.sleepCallCount++;

@@ -581,6 +581,15 @@ Deliberate deviations from the MISRA rule set are recorded in
 - cppcheck runs with `--error-exitcode=1`. Inline suppressions (`// cppcheck-suppress`) must include
   a comment explaining why.
 
+### Integer types in the public API
+
+A public signature - every header under `Core/Interface/` and `Platform/*/Interface/` -
+takes its integers from `<stdint.h>`, so a value's range does not depend on the target's
+ABI. `int`, `long` and `short`, signed or unsigned, do not appear. `size_t` stays for
+sizes, lengths and counts of things in memory, and `bool` stays; both are standard C99
+with a meaning no ABI changes. The one exception is a type a vendor API imposes, passed
+through as it stands, and its doc comment says so.
+
 ### Acting on review findings
 
 A finding from any reviewer - CodeRabbit, CI, a person - is declined on exactly

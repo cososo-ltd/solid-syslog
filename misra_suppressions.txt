@@ -154,7 +154,7 @@ misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:154
 # D.007 — Rule 21.10: transitive <wchar.h> via <time.h>
 # See docs/misra-deviations.md#d007
 misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixClock.c:8
-misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixSleep.c:7
+misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixSleep.c:8
 misra-c2012-21.10:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:7
 misra-c2012-21.10:Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c:12
 
@@ -193,7 +193,7 @@ misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Clock.c:17
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64Sleep.c:15
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64SysUpTime.c:15
 misra-c2012-5.7:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:28
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:10
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSleep.c:11
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:34
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockResolver.c:45
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:109

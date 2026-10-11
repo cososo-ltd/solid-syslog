@@ -43,7 +43,7 @@ static const char* const TEST_HOST = "syslog-ng";
 static const uint16_t TEST_PORT = 514;
 
 unsigned FakeSleep_CallCount = 0U;
-int FakeSleep_LastMs = 0;
+uint32_t FakeSleep_LastMs = 0;
 
 // When armed, FakeSleep fires the pending dns_found_callback the first time it
 // is called with a callback outstanding - the host stand-in for the tcpip
@@ -62,7 +62,7 @@ void FakeSleep_Reset()
     ip_addr_set_zero(&FakeSleep_FireIp);
 }
 
-extern "C" void FakeSleep(int milliseconds)
+extern "C" void FakeSleep(uint32_t milliseconds)
 {
     FakeSleep_CallCount++;
     FakeSleep_LastMs = milliseconds;
@@ -234,7 +234,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveSpinsUntilAsyncCallbackFires)
 
     // Fired on the first sleep, so exactly one poll happened before completion.
     LONGS_EQUAL(1, FakeSleep_CallCount);
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS, FakeSleep_LastMs);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS, FakeSleep_LastMs);
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, SynchronousHitTakesExactlyOneMarshalHop)
@@ -297,7 +297,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveSleepsUntilDeadlineOnTimeout)
     Resolve();
 
     LONGS_EQUAL(SOLIDSYSLOG_DNS_RESOLVE_TIMEOUT_MS / SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS, FakeSleep_CallCount);
-    LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS, FakeSleep_LastMs);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_LWIP_RAW_DNS_RESOLVE_POLL_MS, FakeSleep_LastMs);
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolveReportsWarningOnTimeout)

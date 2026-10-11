@@ -30,7 +30,7 @@ constexpr const char* TEST_SERVER_HOSTNAME = "syslog.example.com";
 constexpr const char* TEST_CA_SUBJECT = "CN=Test Root CA";
 constexpr const char* TEST_SERVER_SUBJECT = "CN=syslog.example.com";
 
-void NoOpSleep(int milliseconds)
+void NoOpSleep(uint32_t milliseconds)
 {
     (void) milliseconds;
 }

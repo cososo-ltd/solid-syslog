@@ -3,7 +3,7 @@
 
 using namespace CososoTesting;
 
-#include <climits>
+#include <cstdint>
 
 #include "SolidSyslogVxWorks64Sleep.h"
 #include "VxWorks64TaskFake.h"
@@ -42,18 +42,11 @@ TEST(SolidSyslogVxWorks64Sleep, APartTickRoundsUpToAWholeOne)
 
 TEST(SolidSyslogVxWorks64Sleep, TicksAreReckonedInSixtyFourBits)
 {
-    // INT_MAX ms at 60 Hz is 128849018.82 ticks, rounded up; reckoned in int
-    // the product would overflow.
-    SolidSyslogVxWorks64_Sleep(INT_MAX);
+    // UINT32_MAX ms at 60 Hz is 257698037.7 ticks, rounded up; reckoned in 32
+    // bits the product would overflow.
+    SolidSyslogVxWorks64_Sleep(UINT32_MAX);
 
-    CHECK_DELAYED_FOR(128849019);
-}
-
-TEST(SolidSyslogVxWorks64Sleep, ANegativeSleepOnlyYields)
-{
-    SolidSyslogVxWorks64_Sleep(-100);
-
-    CHECK_DELAYED_FOR(0);
+    CHECK_DELAYED_FOR(257698038);
 }
 
 TEST(SolidSyslogVxWorks64Sleep, AZeroSleepYieldsForNoTicks)

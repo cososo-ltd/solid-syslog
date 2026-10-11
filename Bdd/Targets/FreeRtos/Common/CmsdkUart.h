@@ -10,7 +10,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     typedef uint32_t (*CmsdkUartRead32Function)(uintptr_t address);
     typedef void (*CmsdkUartWrite32Function)(uintptr_t address, uint32_t value);
-    typedef void (*CmsdkUartSleepFunction)(int milliseconds);
+    typedef void (*CmsdkUartSleepFunction)(uint32_t milliseconds);
 
     typedef struct
     {
