@@ -15,3 +15,12 @@ Feature: Store and forward during sender outage
     And the syslog oracle resumes accepting TCP connections
     Then the syslog oracle receives 6 messages
     And the messages have contiguous sequenceIds
+
+  @host_store
+  Scenario: Messages delivered after the store freezes
+    Given the syslog oracle is running
+    And the block store is enabled on a path that cannot be opened
+    And the BDD target is running with transport tcp
+    When the client sends 3 messages
+    Then the syslog oracle receives 3 messages
+    And the target reports that the store froze

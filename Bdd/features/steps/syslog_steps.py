@@ -25,7 +25,8 @@ from environment import (
 )
 from target_driver import apply_extra_args, assert_binary_present, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
-from tls_reports import reported_details
+from syslog_severities import severity_value
+from tls_reports import reported_details, reported_store_freezes
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
@@ -667,6 +668,18 @@ def step_block_store_enabled(context):
         os.remove(STORE_FILE_PATH)
 
 
+@given("the block store is enabled on a path that cannot be opened")
+def step_block_store_enabled_on_unopenable_path(context):
+    # A directory where the first block file goes. The resume scan takes it for
+    # an existing block, and the first append cannot open it, which freezes the
+    # store. The freeze is an ERROR, which ends a hosted target by default, so
+    # the scenario says it expects one.
+    context.store_type = "file"
+    clean_store_files()
+    os.makedirs(STORE_PATH_PREFIX + "00.log")
+    context.tls_settings = getattr(context, "tls_settings", []) + [("errors-fatal", "0")]
+
+
 @given("the security policy is {policy}")
 def step_security_policy(context, policy):
     # Selects the at-rest integrity policy for the block store (S17.02). On
@@ -1260,6 +1273,22 @@ def step_check_sequential_ids(context, count):
         assert match.group(1) == str(i), (
             f"Message {i}: expected sequenceId {i}, got {match.group(1)}"
         )
+
+
+@then("the target reports that the store froze")
+def step_target_reports_store_froze(context):
+    # Reported at the first append, before the oracle has the messages; the
+    # loop only covers the stderr reader catching up.
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
+    freezes = reported_store_freezes(context.interactive_process)
+    while (not freezes) and (time.monotonic() < deadline):
+        time.sleep(0.1)
+        freezes = reported_store_freezes(context.interactive_process)
+
+    severities = [severity for severity, _detail in freezes]
+    assert severities == [severity_value("ERROR")], (
+        f"Expected one frozen-store report at ERROR, got {freezes}"
+    )
 
 
 @when("the client sends {count:d} messages")

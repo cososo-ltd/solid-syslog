@@ -293,8 +293,12 @@ def after_scenario(context, scenario):
         os.remove(STORE_FILE_PATH)
     except FileNotFoundError:
         pass
+    # A scenario spoiling the store's path leaves a directory where a block goes.
     for path in glob.glob(STORE_PATH_PREFIX + "*.log"):
-        os.remove(path)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
     try:
         os.remove(THRESHOLD_MARKER_PATH)
     except FileNotFoundError:

@@ -62,3 +62,14 @@ def reported_delivery_faults(process):
 def reported_details(process):
     """Every TLS-stream detail code the target has reported so far."""
     return [detail for _, detail in reported_reports(process)]
+
+
+_STORE_FROZEN = re.compile(r"severity=(\d+) \[BlockStore cat=\d+ detail=(-?\d+)\] store frozen")
+
+
+def reported_store_freezes(process):
+    """Every frozen-store report the block store has made, as (severity, detail)."""
+    return [
+        (int(severity), int(detail))
+        for severity, detail in _STORE_FROZEN.findall(target_output(process))
+    ]
