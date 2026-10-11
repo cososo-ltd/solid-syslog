@@ -425,3 +425,16 @@ TEST(BlockSequenceRotation, AnEarlierReadBlockIsMeasuredOnce)
         std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) { return call.type == CallType::Size; })
     );
 }
+
+TEST(BlockSequenceRotation, TheFirstFailureIsTheOneKept)
+{
+    fakeDevice.failNextSize = true;
+    ForceRotation(); /* measuring block 0, now behind the write block, fails */
+    SolidSyslogBlockSequence_SetReadCursor(sequence, SIMULATED_RECORD_SIZE);
+    fakeDevice.failNextDispose = true;
+    bool readBlockChanged = false;
+
+    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged); /* disposing it fails too */
+
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}

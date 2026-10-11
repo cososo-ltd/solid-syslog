@@ -136,8 +136,11 @@ static inline void BlockSequence_NoteDeviceFailure(
     enum SolidSyslogBlockStoreErrors failedOperation
 )
 {
-    blockSequence->DeviceFailed = true;
-    blockSequence->FailedOperation = failedOperation;
+    if (!blockSequence->DeviceFailed)
+    {
+        blockSequence->DeviceFailed = true;
+        blockSequence->FailedOperation = failedOperation;
+    }
 }
 
 enum
