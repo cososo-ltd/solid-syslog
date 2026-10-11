@@ -1420,27 +1420,27 @@ TEST(SolidSyslogBlockStoreRotation, MaxBlocksAtUpperLimit)
 {
     enum
     {
-        MAX_BLOCKS = 99
+        MAX_BLOCKS = 98
     };
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, MAX_BLOCKS);
 
-    /* Fill all 99 blocks */
+    /* Fill all 98 blocks */
     for (int i = 0; i < MAX_BLOCKS; i++)
     {
         WriteMaxMsg();
     }
 
-    /* All 99 blocks should exist (00-98) */
+    /* All 98 blocks should exist (00-97) */
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
-    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
-    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store99.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store97.log"));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
 
-    /* One more write - should discard block 00 and create block 99 */
+    /* One more write - should discard block 00 and create block 98 */
     WriteMaxMsg();
 
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
-    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store99.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
 }
 
 TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerBlockDrainAcrossRotation)

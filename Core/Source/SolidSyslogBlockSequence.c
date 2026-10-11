@@ -17,8 +17,10 @@ struct SolidSyslogBlockDevice;
 enum
 {
     MIN_MAX_BLOCKS = 2U,
-    MAX_MAX_BLOCKS = 99U,
-    SEQUENCE_MODULUS = 100U
+    SEQUENCE_MODULUS = 100U,
+    /* Two short of the sequence space: a failed eviction leaves one block over
+     * the ceiling, and a resume still needs an absent number to find the run. */
+    MAX_MAX_BLOCKS = SEQUENCE_MODULUS - 2U
 };
 
 static inline uint8_t BlockSequence_NextSequence(uint8_t current)

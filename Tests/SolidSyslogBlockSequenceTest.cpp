@@ -179,6 +179,13 @@ TEST_GROUP(BlockSequenceScan)
 
 // clang-format on
 
+TEST(BlockSequenceScan, MaxBlocksStopsShortOfEverySequenceNumber)
+{
+    /* Configured at 99. A failed eviction leaves one block over the ceiling, and
+     * a resume needs an absent sequence number to find where the run starts. */
+    LONGS_EQUAL(98 * 1000, SolidSyslogBlockSequence_TotalBytes(sequence));
+}
+
 TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
 {
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
