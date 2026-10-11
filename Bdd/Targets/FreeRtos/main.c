@@ -238,7 +238,7 @@ static void SetEthernetIrqPriority(void)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 §6.2.4 rung 2 (static IP address). Read back from the IP stack so
+    /* RFC 5424 section 6.2.4 rung 2 (static IP address). Read back from the IP stack so
      * a future DHCP / hostname slice satisfies the same rung without re-touching
      * this callback. */
     uint32_t ipAddress = 0U;

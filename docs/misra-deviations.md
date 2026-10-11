@@ -87,7 +87,7 @@ platform packs are a best-effort drift check rather than a guarantee - see
 that only a later edition compiles, that entry names the applicable edition and
 cites both.
 
-Paragraph numbering differs between editions - §6.7.2.1 renumbered when C11
+Paragraph numbering differs between editions - section 6.7.2.1 renumbered when C11
 added anonymous structure and union members - so a C11 paragraph number read
 against a C99 copy lands on the wrong sentence. That is why the edition is fixed
 here rather than left to the reader.
@@ -107,7 +107,7 @@ here rather than left to the reader.
 SolidSyslog requires external identifiers to be distinct within their first
 63 characters rather than their first 31.
 
-Thirty-one is the floor the C language sets: C99 §5.2.4.1 guarantees
+Thirty-one is the floor the C language sets: C99 section 5.2.4.1 guarantees
 only 31 significant characters in an external identifier, so a conforming
 compiler is permitted to treat two identifiers that agree that far as the same
 identifier. The project asserts a longer guarantee than the language requires,
@@ -157,7 +157,7 @@ preserves both.
 63 was chosen rather than "unlimited" so the project still names a
 concrete number that every targeted toolchain comfortably exceeds. It
 also matches C99's separate 63-character minimum for internal
-identifiers (§5.2.4.1) - a single number applies project-wide.
+identifiers (section 5.2.4.1) - a single number applies project-wide.
 
 ### Risk and mitigation
 
@@ -330,7 +330,7 @@ opaque-type design).
   succeed against the type the wrapper passed in.
 - **Validity of the conversion, sub-cases (a) and (c)** - These do not
   rest on an alignment argument at all. The public base struct is the
-  first member of the concrete struct, and §6.7.2.1 ¶13 guarantees that
+  first member of the concrete struct, and section 6.7.2.1 ¶13 guarantees that
   a pointer to a structure object, suitably converted, points to its
   initial member and back again. The address is the same address by
   definition, so no alignment question arises. Sub-case (c) is the same
@@ -488,7 +488,7 @@ declares a storage buffer of arbitrary size (with a minimum enforced by
 bookkeeping fields at the start, payload bytes filling the rest.
 
 The flexible array member is C99's standard mechanism for exactly this
-shape (§6.7.2.1 ¶16). The alternatives all regress:
+shape (section 6.7.2.1 ¶16). The alternatives all regress:
 
 | Alternative | Why rejected |
 |-------------|--------------|
@@ -544,7 +544,7 @@ Site categories that trigger this rule:
    }
    ```
 
-   §6.5.2.3 ¶4 governs this, and it has to be read whole. The result of
+   section 6.5.2.3 ¶4 governs this, and it has to be read whole. The result of
    `->` is the named member's type; and where the left operand is a
    pointer to a qualified type, the result carries the so-qualified
    version of that type. That second clause looks at first like it works
@@ -863,7 +863,7 @@ header and source scope:
 enum
 {
     SOLIDSYSLOG_UDP_DEFAULT_PORT = 514, /* RFC 5426 */
-    SOLIDSYSLOG_TCP_DEFAULT_PORT = 601, /* RFC 6587 §3.2 */
+    SOLIDSYSLOG_TCP_DEFAULT_PORT = 601, /* RFC 6587 section 3.2 */
 };
 ```
 
@@ -1224,7 +1224,7 @@ The alternatives all regress:
 | Inline `cppcheck-suppress misra-c2012-11.5` at each site | **Project preference.** Deviations are recorded structurally in this document so the rationale is centrally auditable rather than scattered across call sites. |
 
 The cast is well-defined: a character type may alias any object type
-(§6.5 ¶7), so reinterpreting a `void*` byte buffer as `char*` or
+(section 6.5 ¶7), so reinterpreting a `void*` byte buffer as `char*` or
 `unsigned char*` and back is a no-op at the abstract-machine level.
 
 ### Risk and mitigation

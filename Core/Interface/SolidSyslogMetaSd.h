@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  A StructuredData source for the RFC 5424 §7.3 "meta" SD-ELEMENT (IANA SD-ID,
+ *  A StructuredData source for the RFC 5424 section 7.3 "meta" SD-ELEMENT (IANA SD-ID,
  *  so no enterprise-number suffix), emitted on every message the owning logger
  *  formats. It always carries sequenceId, taken from one Increment of the
  *  injected AtomicCounter per message, and optionally sysUpTime and language.
@@ -28,7 +28,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  backwards mid-range. Feeds the meta element's sysUpTime PARAM. */
     typedef uint32_t (*SolidSyslogSysUpTimeFunction)(void);
 
-    /** Wiring for the "meta" SD-ELEMENT (RFC 5424 §7.3). Whatever is provided
+    /** Wiring for the "meta" SD-ELEMENT (RFC 5424 section 7.3). Whatever is provided
      *  must outlive the created SD; the config is read only during Create. */
     struct SolidSyslogMetaSdConfig
     {

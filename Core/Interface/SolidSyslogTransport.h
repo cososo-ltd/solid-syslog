@@ -14,8 +14,8 @@
 enum
 {
     SOLIDSYSLOG_UDP_DEFAULT_PORT = 514, /**< RFC 5426. */
-    SOLIDSYSLOG_TCP_DEFAULT_PORT = 601, /**< IANA syslog-conn; RFC 6587 §3.3 standardises no port. */
-    SOLIDSYSLOG_TLS_DEFAULT_PORT = 6514 /**< RFC 5425 §4.1 / IANA syslog-tls. */
+    SOLIDSYSLOG_TCP_DEFAULT_PORT = 601, /**< IANA syslog-conn; RFC 6587 section 3.3 standardises no port. */
+    SOLIDSYSLOG_TLS_DEFAULT_PORT = 6514 /**< RFC 5425 section 4.1 / IANA syslog-tls. */
 };
 
 enum SolidSyslogTransport

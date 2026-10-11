@@ -31,7 +31,7 @@ stream rather than replacing it.
 
 Once the socket is connected the datagram asks the kernel for the path MTU and
 reports what is left after the IPv4 and UDP headers. Before that, or where the
-kernel does not answer, it reports 480 octets. That is the size RFC 5426 §3.2
+kernel does not answer, it reports 480 octets. That is the size RFC 5426 section 3.2
 calls the safest assumption for IPv4 - every destination this adapter can
 reach - and the conservative answer the
 [Datagram](../../api/structSolidSyslogDatagram.md) contract asks for.

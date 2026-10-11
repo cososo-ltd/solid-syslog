@@ -83,7 +83,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** @optional X.509 profile every certificate in the peer's chain is held
          *  to: which signature hashes it may carry, which public-key algorithms and
          *  curves, and the minimum RSA key size. That is the part of the BCP 195
-         *  §4.5 cryptographic floor this stream does not pin for itself. NULL
+         *  section 4.5 cryptographic floor this stream does not pin for itself. NULL
          *  leaves whatever profile the Mbed TLS being linked names as its default,
          *  so the floor is inherited; supplying one states it instead. Applied
          *  before the credentials source installs, so a backend that sets a profile

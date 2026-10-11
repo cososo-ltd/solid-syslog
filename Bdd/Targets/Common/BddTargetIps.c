@@ -12,7 +12,7 @@ enum
    is opinionated and left to integrators.
 
    The example wires a single IP. The library happily emits multiple `ip="..."`
-   per RFC 5424 §7.2 (proven by SolidSyslogOriginSdTest's
+   per RFC 5424 section 7.2 (proven by SolidSyslogOriginSdTest's
    FormatIncludesMultipleIpsFromCallback) but syslog-ng's ${SDATA} macro
    exposes the parsed-and-deduplicated view, so a multi-IP example would not
    roundtrip cleanly through the syslog-ng BDD oracle. */

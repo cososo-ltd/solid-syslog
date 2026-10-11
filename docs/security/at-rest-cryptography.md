@@ -56,7 +56,7 @@ trailer is `nonce (12) ‖ tag (16)`.
 
 ### Nonce envelope (not a concern at syslog volumes)
 
-GCM with random nonces is bounded by NIST SP 800-38D §8.3 to 2³² invocations per
+GCM with random nonces is bounded by NIST SP 800-38D section 8.3 to 2³² invocations per
 key (the birthday-collision ceiling). For at-rest security-event logging
 this is a non-issue: at a sustained one event per second, counting every source
 that shares the key, that envelope is roughly 136 years, orders of magnitude

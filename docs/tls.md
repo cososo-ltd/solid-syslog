@@ -47,9 +47,9 @@ property of this library. The floor is TLS 1.2.
 
 No ceiling is required, and setting one would be wrong. RFC 9662, which updates
 RFC 5425, asks that TLS 1.3 be supported and preferred where it is implemented;
-BCP 195 §3.1.1 says the same for TLS generally.
+BCP 195 section 3.1.1 says the same for TLS generally.
 
-The cryptographic floor is BCP 195 §4.5: RSA and finite-field Diffie-Hellman of
+The cryptographic floor is BCP 195 section 4.5: RSA and finite-field Diffie-Hellman of
 2048 bits, elliptic curves of 224 bits, and no SHA-1 or MD5 signatures. A
 `Stream` pins what the library it wraps lets it pin, and naming a cipher policy
 cannot lower it. How that holds differs by library, because the two are one
@@ -78,32 +78,32 @@ configuration it cannot work without*.
 anchors the integrator supplies. There is no fallback to a system trust store:
 an embedded target may not have one, and on a host that store is a far larger
 trust base than a device reporting to one collector needs. Validity dates are
-part of this check: RFC 5280 §6.1 makes the validity period an input to path
+part of this check: RFC 5280 section 6.1 makes the validity period an input to path
 validation, so a certificate outside its dates does not chain.
 
 **A pinned certificate fingerprint.** Covered below. A certificate matched by
-fingerprint needs no chain: RFC 5425 §4.2.1 states that such a certificate "can
+fingerprint needs no chain: RFC 5425 section 4.2.1 states that such a certificate "can
 be self-signed, and no certification path validation is needed".
 
 Where both are configured, the peer must satisfy both. That is this contract's
-choice, not a requirement of RFC 5425: §6.1 recommends that both endpoints be
-authenticated and authorised by one of §5.1 or §5.2, rather than that the two
+choice, not a requirement of RFC 5425: section 6.1 recommends that both endpoints be
+authenticated and authorised by one of section 5.1 or section 5.2, rather than that the two
 be combined. Requiring both is the safer reading of a configuration that
 supplies both.
 
 ### Accept a peer authorised by certificate fingerprint
 
-RFC 5425 §5.1 requires that a peer can be authorised by its certificate
+RFC 5425 section 5.1 requires that a peer can be authorised by its certificate
 fingerprint, not only by a chain and a name. A fingerprint pins one
 certificate, which suits a closed network with no PKI.
 
-The form is RFC 5425 §4.2.2: an IANA hash label, a colon, then the hash of the
-DER-encoded certificate as colon-separated hex pairs. §4.2.2 publishes the pairs
+The form is RFC 5425 section 4.2.2: an IANA hash label, a colon, then the hash of the
+DER-encoded certificate as colon-separated hex pairs. section 4.2.2 publishes the pairs
 in upper case; a `Stream` accepts the pairs in either case, because a pin reaches
 a device through an engineer transcribing it. The label is matched exactly, in
 lower case: `SHA-256:` does not parse. Labels are from the IANA
 [Hash Function Textual Names](https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml)
-registry, hyphenated: `sha-256` and `sha-1`. Both are accepted. §4.2.2 makes
+registry, hyphenated: `sha-256` and `sha-1`. Both are accepted. section 4.2.2 makes
 SHA-1 mandatory to support; `sha-256` is the one to configure where the
 collector offers a choice, and a `sha-1` pin is reported on every connection
 that uses one.
@@ -126,7 +126,7 @@ stands behind its certificate.
 **Pinning makes the collector's expiry a fleet-wide event.** Every device pinned
 to a certificate stops at the same `notAfter`, and a device that missed the pin
 update stays stopped. Where the deployment controls its own CA, RFC 5280
-§4.1.2.5 provides for a certificate with no well-defined expiry,
+section 4.1.2.5 provides for a certificate with no well-defined expiry,
 `99991231235959Z`, and gives an embedded device as its example. Otherwise pin
 the next certificate alongside the current one before the renewal. A configured
 store turns a missed renewal into delayed delivery, up to the point the store
@@ -138,7 +138,7 @@ The integrator declares the peer identity they expect. A `Stream` verifies it
 when one is declared, accepts an explicit decision not to check a name, and
 reports when nothing was declared - because that last case is a peer that is
 chain-verified but otherwise unidentified, which an attacker holding any
-certificate from a trusted CA can exploit. BCP 195 §7.1: without the name
+certificate from a trusted CA can exploit. BCP 195 section 7.1: without the name
 check, TLS proves the certificate is valid and that the peer holds its key, but
 not that the intended endpoint was reached.
 
@@ -150,16 +150,16 @@ How a name is matched:
 
 - A DNS name is matched against the certificate's `dNSName` entries. Where the
   certificate carries no `dNSName`, the Common Name may be used, as RFC 5425
-  §5.2 recommends. RFC 9525 §4.1 forbids the Common Name; a deployment that
+  section 5.2 recommends. RFC 9525 section 4.1 forbids the Common Name; a deployment that
   wants that stricter rule issues collector certificates with a `dNSName`, which
   is then the only thing matched.
-- A wildcard matches only as the whole of the left-most label, as RFC 5425 §5.2
-  and RFC 9525 §6.3 require.
+- A wildcard matches only as the whole of the left-most label, as RFC 5425 section 5.2
+  and RFC 9525 section 6.3 require.
 - An address literal is matched against the certificate's `iPAddress` entries.
   Whether the library also matches it against a DNS name spelling the same
   digits is on each platform page.
 - The declared name is also sent as the server name indication, including an
-  address literal, which RFC 6066 §3 does not permit there. A collector that
+  address literal, which RFC 6066 section 3 does not permit there. A collector that
   refuses such an indication needs a DNS name.
 
 The states a declaration can take are documented on each platform's profile
@@ -232,7 +232,7 @@ library retains it for the session.
 
 Bounding that window is the integrator's. A deployment that wants the material
 resident for minutes rather than months moves the configuration version on its
-own schedule. The same lever serves RFC 5425 §4.4's requirement that a sender
+own schedule. The same lever serves RFC 5425 section 4.4's requirement that a sender
 close a connection it does not expect to carry more messages. Where the key
 must not be in application memory at all, a source backed by a secure element
 never hands it over.
@@ -266,11 +266,11 @@ own above the floor. The appropriate policy depends on the build present on the
 target and on the profile the deployment is held to, and neither is knowable
 here.
 
-For a deployment with no policy of its own, RFC 9662 §4 asks that
-`TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` be offered, and BCP 195 §4.2 recommends
+For a deployment with no policy of its own, RFC 9662 section 4 asks that
+`TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` be offered, and BCP 195 section 4.2 recommends
 the same shape - ECDHE with AES-GCM - for TLS 1.2. Forward-secret suites are
-preferred, and the others are not forbidden: BCP 195 §4.1 says they SHOULD NOT
-be negotiated, RFC 9662 §4 still permits the 2009 mandatory suite, and a
+preferred, and the others are not forbidden: BCP 195 section 4.1 says they SHOULD NOT
+be negotiated, RFC 9662 section 4 still permits the 2009 mandatory suite, and a
 deployment that must exclude static key exchange states a policy that does.
 
 Since no ceiling is set, the version negotiated may be later than the floor, so
@@ -290,20 +290,20 @@ the stream's version.
 A resumed session carries the security parameters of the session it resumes,
 so a `Stream` that resumes must check those parameters against what the current
 configuration requires and complete a full handshake where they fall short.
-RFC 5425 §4.2.3 recommends that check; this contract requires it.
+RFC 5425 section 4.2.3 recommends that check; this contract requires it.
 
 A `Stream` that never resumes meets this by construction, and it must not be
 possible to start resuming without revisiting the check.
 
 ### Do not send early data
 
-RFC 9662 §6 forbids TLS 1.3 early data for syslog: a record sent before the
+RFC 9662 section 6 forbids TLS 1.3 early data for syslog: a record sent before the
 handshake completes can be replayed. A `Stream` never sends it.
 
 ### Do not renegotiate
 
 A TLS 1.2 peer that does not acknowledge secure renegotiation is refused at
-the handshake, as BCP 195 §3.5 requires. A request from the peer to renegotiate
+the handshake, as BCP 195 section 3.5 requires. A request from the peer to renegotiate
 an established connection is declined.
 
 ### Do not require revocation checking
@@ -313,7 +313,7 @@ no route to a certificate revocation list or an OCSP responder, and a control
 that depends on reaching one fails closed exactly when the network is under
 attack. An integrator who needs it configures it in their own TLS library.
 
-This is a deliberate deviation from BCP 195 §7.5, which requires a strategy to
+This is a deliberate deviation from BCP 195 section 7.5, which requires a strategy to
 distrust revoked certificates. The obligation moves rather than disappears: an
 assessment that needs it met should record where, rather than assume this
 library meets it.
@@ -332,7 +332,7 @@ That requires an injected sleep, which is why every TLS `Stream` asks for one.
 
 Closing sends the TLS close notification before the connection goes away, so
 the collector can distinguish an orderly shutdown from a truncated session.
-RFC 5425 §4.4 requires it.
+RFC 5425 section 4.4 requires it.
 
 It is attempted once and does not delay the close. The transport is
 non-blocking, so a send buffer with no room for the alert drops it, and a
@@ -425,9 +425,9 @@ page says what the library needs.
 ### What falls to the device
 
 RFC 5425 places obligations on the syslog sender as a whole that this library
-does not meet and does not claim to: §4.2.1 requires a means to generate a key
-pair and a self-signed certificate, §4.2.2 requires the certificate's
-fingerprint to be available through a management interface, and §4.2.1
+does not meet and does not claim to: section 4.2.1 requires a means to generate a key
+pair and a self-signed certificate, section 4.2.2 requires the certificate's
+fingerprint to be available through a management interface, and section 4.2.1
 recommends recording the peer's end-entity certificate. The library exposes no
 API for any of them, and no API that reads back the certificate a connection
 was authorised on. An assessment against RFC 5425 records where the device

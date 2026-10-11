@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  A StructuredData source for the RFC 5424 §7.2 "origin" SD-ELEMENT (IANA
+ *  A StructuredData source for the RFC 5424 section 7.2 "origin" SD-ELEMENT (IANA
  *  SD-ID, so no enterprise-number suffix), emitted on every message the owning
  *  logger formats. It can carry software, swVersion, enterpriseId, and any
  *  number of repeated ip PARAMs. Every field is independently optional: a NULL
@@ -31,7 +31,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  is passed through unchanged. */
     typedef void (*SolidSyslogOriginIpAtFunction)(struct SolidSyslogSdValue* value, void* context, size_t index);
 
-    /** Wiring for the "origin" SD-ELEMENT (RFC 5424 §7.2). Every field is
+    /** Wiring for the "origin" SD-ELEMENT (RFC 5424 section 7.2). Every field is
      *  independently optional: a NULL string omits its PARAM, and the ip PARAMs
      *  are emitted only when both GetIpCount and GetIpAt are non-NULL. The
      *  string pointers are borrowed, not copied, and read at Format time, so
@@ -40,16 +40,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogOriginSdConfig
     {
         /** NULL omits the software PARAM. Truncated to this library's 48 decoded-byte
-         *  bound; RFC 5424 §7.2.3 allows 48 characters, so multi-byte UTF-8 truncates
-         *  earlier, never later. §7.2.3 asks that it name the generating software
+         *  bound; RFC 5424 section 7.2.3 allows 48 characters, so multi-byte UTF-8 truncates
+         *  earlier, never later. section 7.2.3 asks that it name the generating software
          *  rather than repeat APP-NAME. */
         const char* Software;
         /** The version of the software Software names - your product's, not this
          *  library's. NULL omits the swVersion PARAM. Truncated to this library's 32
-         *  decoded-byte bound, on the same terms as Software above; RFC 5424 §7.2.4
+         *  decoded-byte bound, on the same terms as Software above; RFC 5424 section 7.2.4
          *  allows 32 characters. */
         const char* SwVersion;
-        /** NULL omits the enterpriseId PARAM. RFC 5424 §7.2.2 asks for your
+        /** NULL omits the enterpriseId PARAM. RFC 5424 section 7.2.2 asks for your
          *  IANA-registered private enterprise number on its own - "32473", or
          *  "32473.1.2" if you use sub-identifiers below it - rather than the
          *  1.3.6.1.4.1 arc the number already sits under. Registering one is the

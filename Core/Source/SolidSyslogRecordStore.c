@@ -502,7 +502,7 @@ static bool RecordStore_AdvancePastSentRecord(
  * scan keeps walking the block. The alternative - stop scanning, refuse
  * to advance - would jam the logger on one bad byte and skip every record
  * that follows in the same block. The single skipped record surfaces
- * downstream as a sequenceId gap (RFC 5424 §6.3.1), which the receiver
+ * downstream as a sequenceId gap (RFC 5424 section 6.3.1), which the receiver
  * can detect; an integrator-supplied error reporter will surface
  * persistent media errors directly when that path lands. */
 static inline bool RecordStore_IsRecordSent(

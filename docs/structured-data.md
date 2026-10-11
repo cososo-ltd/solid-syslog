@@ -12,7 +12,7 @@ is for adding your own element (an access-control event, a device reading, a con
 change) with the library's safe authoring API.
 
 You write only the *content*. The library owns the *framing*: the brackets, the `SD-ID`
-spelling, the `PARAM-NAME="..."` punctuation, and the RFC 5424 §6.3.3 value escaping. A
+spelling, the `PARAM-NAME="..."` punctuation, and the RFC 5424 section 6.3.3 value escaping. A
 custom element therefore cannot produce malformed structured data, and a value can never
 break out of its quotes; whatever bytes you hand it stay inside the `"..."`.
 
@@ -27,7 +27,7 @@ Authoring uses two opaque, stack-transient writers; you never touch a raw buffer
 | Type | You get it from | What it does |
 |---|---|---|
 | `SolidSyslogSdElement` | handed to your `Format` callback | Opens/closes one element: `SolidSyslogSdElement_Begin(name, enterprise)`, `SolidSyslogSdElement_Param(name)`, `SolidSyslogSdElement_End`. Owns the `SD-ID` and `PARAM-NAME` syntax. |
-| `SolidSyslogSdValue` | `SolidSyslogSdElement_Param(...)` returns one | Writes one `PARAM` value: `SolidSyslogSdValue_String`, `SolidSyslogSdValue_BoundedString`, `SolidSyslogSdValue_Uint32`. Applies the §6.3.3 escaping. |
+| `SolidSyslogSdValue` | `SolidSyslogSdElement_Param(...)` returns one | Writes one `PARAM` value: `SolidSyslogSdValue_String`, `SolidSyslogSdValue_BoundedString`, `SolidSyslogSdValue_Uint32`. Applies the section 6.3.3 escaping. |
 
 A value producer is only ever handed a `SolidSyslogSdValue*`; it physically cannot open a
 parameter or reach the framing.
@@ -94,7 +94,7 @@ logger.
 Register for a PEN through IANA before shipping a private `SD-ID`; until then `32473` is the
 correct placeholder.
 
-Keep your `SD-ID` and `PARAM-NAME`s within RFC 5424 §6.3.2: printable US-ASCII excluding
+Keep your `SD-ID` and `PARAM-NAME`s within RFC 5424 section 6.3.2: printable US-ASCII excluding
 `=`, `]`, `"`, and space. You write these as compile-time constants, so this is yours to get
 right. The library bounds each name to 32 bytes and a `NULL` name suppresses the element (or
 skips that parameter), but an otherwise-valid name is emitted as written.
@@ -142,7 +142,7 @@ Write values with `SolidSyslogSdValue`:
   un-escaping decoder extracts, not the on-wire bytes.
 - `SolidSyslogSdValue_Uint32(value, number)`: decimal digits.
 
-The library applies the RFC 5424 §6.3.3 escaping for you (`"`, `\`, and `]` are
+The library applies the RFC 5424 section 6.3.3 escaping for you (`"`, `\`, and `]` are
 backslash-escaped) and substitutes ill-formed UTF-8 with U+FFFD; you pass the raw value
 and a receiver that un-escapes gets well-formed text back. Output is bounded by the
 message buffer, so a value can never overrun it.
@@ -152,6 +152,6 @@ message buffer, so a value can never overrun it.
 | The library owns | You own |
 |---|---|
 | Brackets, `SD-ID`, `PARAM-NAME="..."` punctuation | The element and parameter *names* |
-| §6.3.3 value escaping + UTF-8 validation | The parameter *values* |
-| Name length bound + `NULL`-name suppression | Valid name characters (§6.3.2) |
+| section 6.3.3 value escaping + UTF-8 validation | The parameter *values* |
+| Name length bound + `NULL`-name suppression | Valid name characters (section 6.3.2) |
 | Buffer bounding | Registering the SD (`Config.Sd[]` or `LogWithSd`), and its storage/lifetime |

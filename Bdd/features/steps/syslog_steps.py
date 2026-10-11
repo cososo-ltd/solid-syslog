@@ -78,7 +78,7 @@ SYSLOG_NG_UDP_ONLY_CONF = "Bdd/syslog-ng/syslog-ng-udp-only.conf"
 # smaller value.
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE
 
-# RFC 5424 §6.2.4 IP fallback for the FreeRTOS reference example. With no
+# RFC 5424 section 6.2.4 IP fallback for the FreeRTOS reference example. With no
 # FQDN (no DNS resolver), no integrator-supplied hostname, and no DHCP, the
 # highest-preference value the device can supply is its static IP. Mirrors
 # TEST_IP_ADDRESS in Example/FreeRtos/SingleTask/main.c — keep them in sync.
@@ -89,7 +89,7 @@ EXAMPLE_FREERTOS_STATIC_IP = "10.0.2.15"
 VXWORKS64_HOSTNAME = "SolidSyslogVxWorks64"
 
 # Targets with no process model, which send PROCID as NILVALUE (RFC 5424
-# §6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
+# section 6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
 NO_PROCESS_MODEL_TARGETS = ("freertos", "vxworks64")
 
 
@@ -183,7 +183,7 @@ UTF8_BOM_CHAR = "\ufeff"
 
 
 def _strip_msg_bom(msg):
-    """The library emits the RFC 5424 §6.4 UTF-8 BOM at the start of every MSG.
+    """The library emits the RFC 5424 section 6.4 UTF-8 BOM at the start of every MSG.
     It's a transport-layer prefix, not part of the body the
     test author cares about, so strip it on the receive side so that
     MSG-content assertions can compare the body bytes directly."""
@@ -199,7 +199,7 @@ def parse_syslog_ng_line(line):
         fields[match.group(1)] = match.group(2)
 
     # PROCID may be empty (= sign with no value) when the wire was the RFC 5424
-    # §6.2.6 NILVALUE: syslog-ng's ${PID} macro substitutes an empty string,
+    # section 6.2.6 NILVALUE: syslog-ng's ${PID} macro substitutes an empty string,
     # which the general (\w+)=(\S+) regex above silently drops. Re-capture
     # explicitly with \S* so "field absent" and "field empty" stay distinct
     # downstream — NILVALUE assertions need the empty-string in fields.
@@ -1009,8 +1009,8 @@ def step_check_timestamp_within(context, seconds):
 
 @then("the syslog oracle receives a message with the system hostname")
 def step_check_system_hostname(context):
-    """Asserts the wire HOSTNAME is what RFC 5424 §6.2.4 says it should be
-    for this target. The §6.2.4 preference order is FQDN → static IP →
+    """Asserts the wire HOSTNAME is what RFC 5424 section 6.2.4 says it should be
+    for this target. The section 6.2.4 preference order is FQDN → static IP →
     hostname → dynamic IP → NILVALUE; each runner emits the highest-
     preference value it can supply. Linux/Windows: gethostname() (rung 3,
     "hostname"). FreeRTOS reference: the configured static IPv4 (rung 2)
@@ -1030,7 +1030,7 @@ def step_check_system_hostname(context):
 @then("the syslog oracle receives a message with the process ID of the BDD target")
 def step_check_example_pid(context):
     """Asserts the wire PROCID matches what the originator can supply per
-    RFC 5424 §6.2.6 (NILVALUE permitted "when no value is provided"). Each
+    RFC 5424 section 6.2.6 (NILVALUE permitted "when no value is provided"). Each
     runner emits the most honest value it has: Linux/Windows the spawned
     example's PID; FreeRTOS and VxWorks NILVALUE because their targets have
     no process model. The library emits NILVALUE when getProcessId is NULL: it falls
@@ -1176,7 +1176,7 @@ def step_check_sw_version(context, value):
 @then('the structured data contains enterpriseId "{value}"')
 def step_check_enterprise_id(context, value):
     sd = context.fields.get("STRUCTURED_DATA", "")
-    # SD-PARAM-VALUE escapes ", \ and ] with a backslash (RFC 5424 §6.3.3),
+    # SD-PARAM-VALUE escapes ", \ and ] with a backslash (RFC 5424 section 6.3.3),
     # so the matcher must accept escape sequences inside the value rather
     # than terminating at the first inner quote.
     match = re.search(r'enterpriseId="((?:\\.|[^"])*)"', sd)
@@ -1202,7 +1202,7 @@ def step_check_ip(context, value):
 @then('the structured data contains language "{value}"')
 def step_check_language(context, value):
     sd = context.fields.get("STRUCTURED_DATA", "")
-    # SD-PARAM-VALUE escapes ", \ and ] with a backslash (RFC 5424 §6.3.3),
+    # SD-PARAM-VALUE escapes ", \ and ] with a backslash (RFC 5424 section 6.3.3),
     # so the matcher must accept escape sequences inside the value rather
     # than terminating at the first inner quote.
     match = re.search(r'language="((?:\\.|[^"])*)"', sd)
@@ -1218,7 +1218,7 @@ def step_check_language(context, value):
 @then('the structured data contains detail "{value}"')
 def step_check_detail(context, value):
     sd = context.fields.get("STRUCTURED_DATA", "")
-    # Escape-aware like the language matcher (RFC 5424 §6.3.3), so the assertion
+    # Escape-aware like the language matcher (RFC 5424 section 6.3.3), so the assertion
     # holds whether the oracle re-renders the value escaped or decoded.
     match = re.search(r'detail="((?:\\.|[^"])*)"', sd)
     assert match, (

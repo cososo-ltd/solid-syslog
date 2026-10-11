@@ -14,7 +14,7 @@ upgrade*.
 
 ### What's in this release
 
-- **Fingerprint pinning (RFC 5425 §5.1).** A collector can be authorised by the
+- **Fingerprint pinning (RFC 5425 section 5.1).** A collector can be authorised by the
   fingerprint of its certificate, with no CA involved, so a closed site with no
   PKI can run TLS. More than one pin can be held at once, so a collector's
   certificate renewal can be crossed without stopping delivery. A CA chain can be required
@@ -90,12 +90,12 @@ cost you:
 | RFC 6587 | 8 | 7 | 0 | 0 | 1 |
 
 RFC 5425 is now met throughout.
-- **§5.1**, authorising a peer by certificate fingerprint, moves from Not Met to
+- **section 5.1**, authorising a peer by certificate fingerprint, moves from Not Met to
   Supported.
-- **§4.2.3** moves from Partial to Supported now that the cipher policy binds the
+- **section 4.2.3** moves from Partial to Supported now that the cipher policy binds the
   connection, and gains a row for session resumption.
 
-RFC 5426 has one row fewer because its two §3.2 rows are now one. No clause
+RFC 5426 has one row fewer because its two section 3.2 rows are now one. No clause
 changed status. RFC 5424 and RFC 6587 are unchanged.
 
 The maintainer's assessment, not a certification. Each status describes the
@@ -275,7 +275,7 @@ TLS divergences from the contract in
 - [#719](https://github.com/cososo-ltd/solid-syslog/issues/719) - the Mbed TLS
   stream does not validate the mutual-TLS key against its certificate
 - [#753](https://github.com/cososo-ltd/solid-syslog/issues/753) - a peer cannot
-  yet be authorised by certificate fingerprint (RFC 5425 §5.1)
+  yet be authorised by certificate fingerprint (RFC 5425 section 5.1)
 
 Transport:
 

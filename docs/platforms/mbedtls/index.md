@@ -157,7 +157,7 @@ An expected identity given as an address literal is matched against an
 `iPAddress` entry, as the contract requires, but Mbed TLS also matches it
 against a DNS name or Common Name spelling the same digits and offers no way to
 refuse that. A certificate carrying the address only as text therefore passes
-here. RFC 9525 §6.2 requires the exact `iPAddress` match alone.
+here. RFC 9525 section 6.2 requires the exact `iPAddress` match alone.
 
 Of the cryptographic floor, this pack pins the protocol version at TLS 1.2, the
 finite-field Diffie-Hellman group at 2048 bits, and refuses a peer that will not
