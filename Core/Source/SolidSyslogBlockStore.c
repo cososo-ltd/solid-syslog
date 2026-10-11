@@ -125,14 +125,14 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
 }
 
 /* A device that has failed once is not trusted with audit records again. The
- * store takes on the NullStore vtable, as Cleanup does, so it never calls the
+ * store takes on the NullStore vtable through Cleanup, so it never calls the
  * device again: what it held stays on the media for the next start, and
  * Service sends new records directly because the store is now transient. The
  * slot is still in use, so Destroy releases it as usual. */
 static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation)
 {
     BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_FROZEN, failedOperation);
-    self->Base = *SolidSyslogNullStore_Get();
+    SolidSyslogBlockStore_Cleanup(&self->Base);
 }
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
