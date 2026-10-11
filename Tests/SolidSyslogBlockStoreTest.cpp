@@ -26,6 +26,14 @@ static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA = "hello";
 static const size_t TEST_DATA_LEN = 5;
 
+#define CHECK_STORE_FROZEN(failedOperation) \
+    CHECK_ERROR_REPORTED_ONCE(              \
+        SOLIDSYSLOG_SEVERITY_ERROR,         \
+        &SolidSyslogBlockStoreErrorSource,  \
+        SOLIDSYSLOG_CAT_STORE_FROZEN,       \
+        failedOperation                     \
+    )
+
 enum
 {
     TEST_BUF_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE,
@@ -690,12 +698,7 @@ TEST(SolidSyslogBlockStoreErrors, AReadFailureFreezesTheStore)
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, AFailedReadOfARecordBodyFreezesTheStore)
@@ -723,12 +726,7 @@ TEST(SolidSyslogBlockStoreErrors, AReadFailureWhileResumingFreezesTheStore)
 
     store = SolidSyslogBlockStore_Create(&config);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, ASentFlagThatWillNotReadWhileResumingFreezesTheStore)
@@ -757,12 +755,7 @@ TEST(SolidSyslogBlockStoreErrors, MarkSentFailureFreezesTheStore)
 
     SolidSyslogStore_MarkSent(store);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, ARecordWhoseSentFlagWouldNotWriteIsNotReadAgain)
@@ -788,12 +781,7 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureFreezesTheStore)
 
     store = SolidSyslogBlockStore_Create(&config);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, AppendFailureFreezesTheStore)
@@ -805,12 +793,7 @@ TEST(SolidSyslogBlockStoreErrors, AppendFailureFreezesTheStore)
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, AFrozenStoreIsTransient)
@@ -1533,12 +1516,7 @@ TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureFreezesTheStore)
 
     WriteMaxMsg();
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
@@ -1575,12 +1553,7 @@ TEST(SolidSyslogBlockStoreRotation, AFailedEvictionFreezesTheStore)
 
     WriteMaxMsg(); /* block 02 - the discard of 00 fails */
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreRotation, AWriteThatFreezesTheStoreReturnsFalse)
@@ -1621,12 +1594,7 @@ TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockFreezesTheStore
 
     SolidSyslogStore_MarkSent(store); /* block 00 drained - its dispose fails */
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockOnRotationFreezesTheStore)
@@ -1642,12 +1610,7 @@ TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockOnRotationFreez
 
     WriteMaxMsg(); /* rotates; block 00's dispose fails */
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_FROZEN,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
 }
 
 enum
