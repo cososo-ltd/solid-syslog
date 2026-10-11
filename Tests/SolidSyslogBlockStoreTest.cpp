@@ -1821,6 +1821,14 @@ TEST(SolidSyslogBlockStoreCorruption, TruncatedLengthHasNoUnsent)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
+TEST(SolidSyslogBlockStoreCorruption, ZeroLengthRecordHasNoUnsent)
+{
+    uint8_t zeroLength[] = {0xA5, 0x5A, 0x00, 0x00, 0xFF};
+    WriteRawBytes("/tmp/test_store00.log", zeroLength, sizeof(zeroLength));
+    CreateStore();
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
 TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
 {
     /* What a power cut mid-append leaves: the record runs past the end of the

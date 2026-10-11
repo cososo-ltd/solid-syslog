@@ -336,9 +336,10 @@ static inline uint16_t RecordStore_RecordLength(struct SolidSyslogRecordStore* r
     return (uint16_t) (((uint16_t) lengthBytes[0]) | (((uint16_t) lengthBytes[1]) << 8));
 }
 
+/* The store never writes a record of no bytes, so one on the media is damaged. */
 static inline bool RecordStore_IsValidLength(uint16_t length)
 {
-    return length <= SOLIDSYSLOG_MAX_MESSAGE_SIZE;
+    return (length > 0U) && (length <= SOLIDSYSLOG_MAX_MESSAGE_SIZE);
 }
 
 static inline bool RecordStore_ValidateHeader(struct SolidSyslogRecordStore* recordStore, uint16_t* length)
