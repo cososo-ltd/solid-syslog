@@ -55,7 +55,17 @@ enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
     size_t dataSize
 );
 
-bool SolidSyslogRecordStore_Read(
+/* What Read found. A record that runs past the end of the block's data, or that
+ * fails validation, is no record; a device read that fails within the data is
+ * a device failure. */
+enum SolidSyslogRecordStoreReadResult
+{
+    SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED,
+    SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD,
+    SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED
+};
+
+enum SolidSyslogRecordStoreReadResult SolidSyslogRecordStore_Read(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
@@ -82,12 +92,20 @@ enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore);
 
+/* What FindFirstUnsent met on its way through the block. */
+enum SolidSyslogRecordStoreScanResult
+{
+    SOLIDSYSLOG_RECORD_STORE_SCAN_CLEAN,
+    SOLIDSYSLOG_RECORD_STORE_SCAN_CORRUPT,
+    SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED
+};
+
 size_t SolidSyslogRecordStore_FindFirstUnsent(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t blockSize,
-    bool* corrupt
+    enum SolidSyslogRecordStoreScanResult* scanned
 );
 
 #endif /* SOLIDSYSLOGRECORDSTOREPRIVATE_H */

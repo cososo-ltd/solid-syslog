@@ -673,6 +673,72 @@ TEST(SolidSyslogBlockStoreErrors, ReadReturnsFalseOnReadFailure)
     LONGS_EQUAL(0, bytesRead);
 }
 
+TEST(SolidSyslogBlockStoreErrors, AReadFailureFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextRead(file);
+
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFailedReadOfARecordBodyFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    FileFake_FailReadAfter(file, 1); /* the header reads, the body does not */
+
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AReadFailureWhileResumingFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogBlockStore_Destroy(store);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextRead(file);
+
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreErrors, ASentFlagThatWillNotReadWhileResumingFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogBlockStore_Destroy(store);
+    FileFake_FailReadAfter(file, 3); /* header, body and trailer read; the sent flag does not */
+
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
 TEST(SolidSyslogBlockStoreErrors, MarkSentFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
@@ -1785,6 +1851,20 @@ TEST(SolidSyslogBlockStoreCorruption, TruncatedLengthHasNoUnsent)
     WriteRawBytes("/tmp/test_store00.log", truncatedHeader, sizeof(truncatedHeader));
     CreateStore();
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
+{
+    /* What a power cut mid-append leaves: the record runs past the end of the
+     * block, which is damaged data, not a failing device. */
+    uint8_t truncatedBody[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e'};
+    WriteRawBytes("/tmp/test_store00.log", truncatedBody, sizeof(truncatedBody));
+    ErrorHandlerFake_Install(nullptr);
+
+    CreateStore();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
 }
 
 TEST(SolidSyslogBlockStoreCorruption, TruncatedBodyHasNoUnsent)

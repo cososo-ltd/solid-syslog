@@ -104,15 +104,23 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
      * is independent of the write block's fill level. */
     size_t readBlockSize = SolidSyslogBlockDevice_Size(device, readSequence);
 
-    bool corrupt = false;
+    enum SolidSyslogRecordStoreScanResult scanned = SOLIDSYSLOG_RECORD_STORE_SCAN_CLEAN;
     size_t cursor =
-        SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &corrupt);
+        SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &scanned);
 
     SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, cursor);
 
-    if (corrupt)
+    if (scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED)
+    {
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+    }
+    else if (scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_CORRUPT)
     {
         SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+    }
+    else
+    {
+        /* Every record before the cursor was sent. */
     }
 }
 
@@ -228,30 +236,46 @@ static bool BlockStore_IsTransient(struct SolidSyslogStore* base)
     return false;
 }
 
-static bool BlockStore_ReadCurrent(struct SolidSyslogBlockStore* self, void* data, size_t maxSize, size_t* bytesRead);
+static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
+    struct SolidSyslogBlockStore* self,
+    void* data,
+    size_t maxSize,
+    size_t* bytesRead
+);
 
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
 {
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
-    bool read = false;
     *bytesRead = 0;
 
     if (SolidSyslogBlockSequence_HasUnsent(self->BlockSequence))
     {
-        read = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
+        enum SolidSyslogRecordStoreReadResult result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
 
-        while (!read && SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
+        while ((result == SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD) &&
+               SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
         {
             SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
-            read = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
+            result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
+        }
+
+        if (result == SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED)
+        {
+            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
         }
     }
 
-    return read;
+    /* A record of no bytes is nothing to send. */
+    return *bytesRead > 0U;
 }
 
-static bool BlockStore_ReadCurrent(struct SolidSyslogBlockStore* self, void* data, size_t maxSize, size_t* bytesRead)
+static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
+    struct SolidSyslogBlockStore* self,
+    void* data,
+    size_t maxSize,
+    size_t* bytesRead
+)
 {
     return SolidSyslogRecordStore_Read(
         self->RecordStore,
