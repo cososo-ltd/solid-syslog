@@ -78,7 +78,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  MBEDTLS_TLS_* and MBEDTLS_TLS1_3_* macros of ssl_ciphersuites.h. One list
          *  covers both TLS versions here. NULL leaves every ciphersuite the build
          *  enables, which on a trimmed mbedtls_config.h is whatever was compiled in
-         *  rather than a curated set. Mbed TLS does not copy the array. */
+         *  rather than a curated set. Mbed TLS does not copy the array. The element
+         *  type is int, rather than a fixed-width type, because Mbed TLS takes the
+         *  array as it stands. */
         const int* CipherSuites;
         /** @optional X.509 profile every certificate in the peer's chain is held
          *  to: which signature hashes it may carry, which public-key algorithms and

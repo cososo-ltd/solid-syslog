@@ -87,12 +87,12 @@ bool BddTargetOsPrimitives_WaitForNotify(uint32_t timeoutMilliseconds)
     return ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(timeoutMilliseconds)) != 0U;
 }
 
-void BddTargetOsPrimitives_Sleep(int milliseconds)
+void BddTargetOsPrimitives_Sleep(uint32_t milliseconds)
 {
     /* Round a non-zero sub-tick request up to one tick, or vTaskDelay(0) would
      * only yield - the CmsdkUart yield against a 100 Hz tick relies on this. */
     TickType_t ticks = pdMS_TO_TICKS((TickType_t) milliseconds);
-    if ((milliseconds > 0) && (ticks == 0U))
+    if ((milliseconds > 0U) && (ticks == 0U))
     {
         ticks = 1U;
     }

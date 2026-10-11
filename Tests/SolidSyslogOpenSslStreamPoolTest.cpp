@@ -23,7 +23,7 @@ using namespace CososoTesting;
 
 namespace
 {
-void NoOpSleep(int milliseconds)
+void NoOpSleep(uint32_t milliseconds)
 {
     (void) milliseconds;
 }

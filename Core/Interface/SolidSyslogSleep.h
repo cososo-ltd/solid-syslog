@@ -10,6 +10,8 @@
 
 #include "SolidSyslogExternC.h"
 
+#include <stdint.h>
+
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Millisecond sleep callback injected via config. Drives the bounded
@@ -17,7 +19,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  poll, and the lwIP TCP connect and DNS resolve spins. Injecting it keeps
      *  platform sleep APIs out of the library and lets tests pass a no-op with
      *  no conditional compilation. */
-    typedef void (*SolidSyslogSleepFunction)(int milliseconds);
+    typedef void (*SolidSyslogSleepFunction)(uint32_t milliseconds);
 
 SOLIDSYSLOG_EXTERN_C_END
 

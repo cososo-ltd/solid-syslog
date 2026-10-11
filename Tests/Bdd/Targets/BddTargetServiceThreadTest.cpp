@@ -22,10 +22,10 @@
 using namespace CososoTesting;
 
 static int SleepFakeCallCount;
-static int lastSleepMs;
+static uint32_t lastSleepMs;
 static volatile bool* sleepShutdownFlag;
 
-static void SleepFake(int milliseconds)
+static void SleepFake(uint32_t milliseconds)
 {
     SleepFakeCallCount++;
     lastSleepMs = milliseconds;
@@ -117,7 +117,7 @@ TEST(BddTargetServiceThread, YieldsOneMillisecondAfterEachServiceTick)
     BddTargetServiceThread_Run(solidSyslog, &shutdown, SleepFake);
 
     CALLED_FUNCTION(SleepFake, ONCE);
-    LONGS_EQUAL(1, lastSleepMs);
+    UNSIGNED_LONGS_EQUAL(1, lastSleepMs);
 }
 
 TEST(BddTargetServiceThread, SkipsIdleYieldWhenServiceReportsWorkReady)
@@ -129,5 +129,5 @@ TEST(BddTargetServiceThread, SkipsIdleYieldWhenServiceReportsWorkReady)
     BddTargetServiceThread_Run(solidSyslog, &shutdown, SleepFake);
 
     CALLED_FUNCTION(SleepFake, ONCE);
-    LONGS_EQUAL(0, lastSleepMs);
+    UNSIGNED_LONGS_EQUAL(0, lastSleepMs);
 }

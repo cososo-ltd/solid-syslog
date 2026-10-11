@@ -34,7 +34,7 @@ const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource = {"Open
 
 enum
 {
-    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1,
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1U,
     OPENSSL_STREAM_SECURITY_LEVEL = 2
 };
 

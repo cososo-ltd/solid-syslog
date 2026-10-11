@@ -62,9 +62,9 @@ static const char* const TEST_SHA256_PINS[] = {
 };
 
 static int NoOpSleepCallCount;
-static int g_lastSleepMs;
+static uint32_t g_lastSleepMs;
 
-static void NoOpSleep(int milliseconds)
+static void NoOpSleep(uint32_t milliseconds)
 {
     NoOpSleepCallCount++;
     g_lastSleepMs = milliseconds;

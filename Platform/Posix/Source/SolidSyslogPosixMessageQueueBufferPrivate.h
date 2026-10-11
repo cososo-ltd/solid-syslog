@@ -34,7 +34,7 @@ struct SolidSyslogPosixMessageQueueBuffer
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     size_t maxMessageSize,
-    long maxMessages,
+    size_t maxMessages,
     size_t slotIndex
 );
 void SolidSyslogPosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);

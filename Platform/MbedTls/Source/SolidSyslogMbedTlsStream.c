@@ -46,7 +46,7 @@ const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {"Mbed
 
 enum
 {
-    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1,
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1U,
     MBEDTLS_STREAM_DHM_MIN_BITLEN = 2048U
 };
 

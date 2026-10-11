@@ -43,7 +43,7 @@ static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPo
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     size_t maxMessageSize,
-    long maxMessages,
+    size_t maxMessages,
     size_t slotIndex
 )
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -63,7 +63,7 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     SolidSyslogFormatter_Uint32(name, (uint32_t) slotIndex);
 
     struct mq_attr attr = {0};
-    attr.mq_maxmsg = maxMessages;
+    attr.mq_maxmsg = (long) maxMessages;
     attr.mq_msgsize = (long) maxMessageSize;
 
     self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);

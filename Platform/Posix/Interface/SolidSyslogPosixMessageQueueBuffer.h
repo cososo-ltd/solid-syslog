@@ -24,7 +24,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** @p maxMessageSize and @p maxMessages size the queue; an exhausted pool
      *  falls back to the shared NullBuffer. */
-    struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMessageSize, long maxMessages);
+    struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMessageSize, size_t maxMessages);
     /** Release the pool slot; closes and unlinks the underlying queue. */
     void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer * base);
 

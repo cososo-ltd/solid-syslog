@@ -169,7 +169,7 @@ static void MmioWrite32(uintptr_t address, uint32_t value)
     *(volatile uint32_t*) address = value;
 }
 
-void BddTargetFreeRtosPipeline_Sleep(int milliseconds)
+void BddTargetFreeRtosPipeline_Sleep(uint32_t milliseconds)
 {
     /* Kept as a named function because main.c and the TLS sender pass it as a
      * SolidSyslogSleepFunction callback. */

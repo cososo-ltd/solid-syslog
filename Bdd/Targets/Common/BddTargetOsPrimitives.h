@@ -69,7 +69,7 @@ bool BddTargetOsPrimitives_WaitForNotify(uint32_t timeoutMilliseconds);
 
 /* Block the calling thread. A non-zero request shorter than one tick still
  * blocks for a tick rather than merely yielding. */
-void BddTargetOsPrimitives_Sleep(int milliseconds);
+void BddTargetOsPrimitives_Sleep(uint32_t milliseconds);
 
 /* Monotonic milliseconds since the scheduler started. 64-bit so that it does
  * not wrap earlier than the kernel's own tick counter would. */

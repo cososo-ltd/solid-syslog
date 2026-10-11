@@ -46,13 +46,12 @@ connection callback - and on bare metal nothing else is driving lwIP during that
 sleep. Your `Sleep` must keep the stack running:
 
 ```c
-void MyLwipSleep(int milliseconds)
+void MyLwipSleep(uint32_t milliseconds)
 {
     /* Elapsed rather than a deadline, so the loop is correct across a
      * timebase wrap; unsigned subtraction wraps with it. */
     uint32_t start = MyTimebase_NowMs();
-    uint32_t duration = (milliseconds > 0) ? (uint32_t) milliseconds : 0U;
-    while ((MyTimebase_NowMs() - start) < duration)
+    while ((MyTimebase_NowMs() - start) < milliseconds)
     {
         sys_check_timeouts();
         MyNetif_DrivePolledRx();   /* your board's receive pump */

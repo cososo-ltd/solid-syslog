@@ -323,7 +323,7 @@ static bool LwipRawTcpStream_WaitForConnectedCallback(struct SolidSyslogLwipRawT
     uint32_t elapsedMs = 0U;
     while (!self->Connected && !self->Errored && (elapsedMs < deadlineMs))
     {
-        self->Config.Sleep((int) pollMs);
+        self->Config.Sleep(pollMs);
         elapsedMs += pollMs;
     }
     return self->Connected;

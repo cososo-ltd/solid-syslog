@@ -51,9 +51,9 @@ static const uint8_t TEST_SHA256_DIGEST[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x0
                                                0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
 
 static int NoOpSleepCallCount;
-static int g_lastSleepMs;
+static uint32_t g_lastSleepMs;
 
-static void NoOpSleep(int milliseconds)
+static void NoOpSleep(uint32_t milliseconds)
 {
     NoOpSleepCallCount++;
     g_lastSleepMs = milliseconds;

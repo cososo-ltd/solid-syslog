@@ -9,12 +9,14 @@
 
 #include "SolidSyslogExternC.h"
 
+#include <stdint.h>
+
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Sleeps for @p milliseconds via nanosleep. It neither performs nor bounds
      *  retries; callers such as the TLS handshake use it to yield between their own
      *  bounded attempts. */
-    void SolidSyslogPosix_Sleep(int milliseconds);
+    void SolidSyslogPosix_Sleep(uint32_t milliseconds);
 
 SOLIDSYSLOG_EXTERN_C_END
 

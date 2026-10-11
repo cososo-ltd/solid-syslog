@@ -16,14 +16,9 @@ enum
     MILLISECONDS_PER_SECOND = 1000
 };
 
-void SolidSyslogVxWorks64_Sleep(int milliseconds)
+void SolidSyslogVxWorks64_Sleep(uint32_t milliseconds)
 {
-    int64_t ticks = 0;
-
-    if (milliseconds > 0)
-    {
-        ticks = (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + (MILLISECONDS_PER_SECOND - 1)) /
-                MILLISECONDS_PER_SECOND;
-    }
+    int64_t ticks = (((int64_t) milliseconds * (int64_t) sysClkRateGet()) + (MILLISECONDS_PER_SECOND - 1)) /
+                    MILLISECONDS_PER_SECOND;
     (void) taskDelay((int) ticks);
 }

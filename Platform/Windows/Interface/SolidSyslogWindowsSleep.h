@@ -10,11 +10,13 @@
 
 #include "SolidSyslogExternC.h"
 
+#include <stdint.h>
+
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Wraps Sleep so a bounded retry loop (e.g. the TLS handshake) yields to the
      *  scheduler between attempts. */
-    void SolidSyslogWindows_Sleep(int milliseconds);
+    void SolidSyslogWindows_Sleep(uint32_t milliseconds);
 
 SOLIDSYSLOG_EXTERN_C_END
 

@@ -42,7 +42,7 @@ static void IntegrationProfile(struct SolidSyslogOpenSslProfile* profile, void* 
     profile->CipherList = values->CipherList;
 }
 
-static void NoOpSleep(int milliseconds)
+static void NoOpSleep(uint32_t milliseconds)
 {
     (void) milliseconds;
 }
