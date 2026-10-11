@@ -673,20 +673,40 @@ TEST(SolidSyslogBlockStoreErrors, ReadReturnsFalseOnReadFailure)
     LONGS_EQUAL(0, bytesRead);
 }
 
-TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
+TEST(SolidSyslogBlockStoreErrors, MarkSentFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     store = SolidSyslogBlockStore_Create(&config);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
-
     char buf[TEST_BUF_SIZE];
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
-
+    ErrorHandlerFake_Install(nullptr);
     FileFake_FailNextWrite(file);
+
     SolidSyslogStore_MarkSent(store);
 
-    CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreErrors, ARecordWhoseSentFlagWouldNotWriteIsNotReadAgain)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
 }
 
 TEST(SolidSyslogBlockStoreErrors, OpenFailureFreezesTheStore)

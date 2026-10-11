@@ -65,7 +65,16 @@ bool SolidSyslogRecordStore_Read(
     size_t* bytesRead
 );
 
-bool SolidSyslogRecordStore_MarkLastReadAsSent(
+/* What MarkLastReadAsSent did: nothing when no record has been read since the
+ * last mark. */
+enum SolidSyslogRecordStoreMarkResult
+{
+    SOLIDSYSLOG_RECORD_STORE_MARK_SUCCEEDED,
+    SOLIDSYSLOG_RECORD_STORE_MARK_NOTHING_READ,
+    SOLIDSYSLOG_RECORD_STORE_MARK_DEVICE_FAILED
+};
+
+enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t* nextCursor

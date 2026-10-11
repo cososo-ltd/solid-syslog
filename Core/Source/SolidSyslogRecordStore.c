@@ -389,22 +389,27 @@ static inline bool RecordStore_WriteSentFlag(
     struct SolidSyslogBlockDevice* blockDevice
 );
 
-bool SolidSyslogRecordStore_MarkLastReadAsSent(
+enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t* nextCursor
 )
 {
-    bool marked = false;
+    enum SolidSyslogRecordStoreMarkResult result = SOLIDSYSLOG_RECORD_STORE_MARK_NOTHING_READ;
 
-    if (recordStore->HasReadRecord && RecordStore_WriteSentFlag(recordStore, blockDevice))
+    if (recordStore->HasReadRecord)
     {
-        *nextCursor = recordStore->LastSentFlagOffset + SENT_FLAG_SIZE;
-        recordStore->HasReadRecord = false;
-        marked = true;
+        result = SOLIDSYSLOG_RECORD_STORE_MARK_DEVICE_FAILED;
+
+        if (RecordStore_WriteSentFlag(recordStore, blockDevice))
+        {
+            *nextCursor = recordStore->LastSentFlagOffset + SENT_FLAG_SIZE;
+            recordStore->HasReadRecord = false;
+            result = SOLIDSYSLOG_RECORD_STORE_MARK_SUCCEEDED;
+        }
     }
 
-    return marked;
+    return result;
 }
 
 static inline bool RecordStore_WriteSentFlag(

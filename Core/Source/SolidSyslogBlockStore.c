@@ -268,12 +268,19 @@ static void BlockStore_MarkSent(struct SolidSyslogStore* base)
 {
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     size_t nextCursor = 0U;
+    enum SolidSyslogRecordStoreMarkResult marked = SolidSyslogRecordStore_MarkLastReadAsSent(
+        self->RecordStore,
+        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+        &nextCursor
+    );
 
-    if (SolidSyslogRecordStore_MarkLastReadAsSent(
-            self->RecordStore,
-            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
-            &nextCursor
-        ))
+    if (marked == SOLIDSYSLOG_RECORD_STORE_MARK_DEVICE_FAILED)
+    {
+        /* The record was delivered. Freezing is what stops it being read and
+         * sent again, since its flag still says unsent. */
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED);
+    }
+    else if (marked == SOLIDSYSLOG_RECORD_STORE_MARK_SUCCEEDED)
     {
         SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
 
@@ -284,5 +291,9 @@ static void BlockStore_MarkSent(struct SolidSyslogStore* base)
         {
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
         }
+    }
+    else
+    {
+        /* Nothing read since the last mark - nothing to do. */
     }
 }
