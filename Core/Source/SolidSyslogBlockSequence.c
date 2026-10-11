@@ -96,8 +96,9 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
 
     if (foundExistingBlocks)
     {
-        blockSequence->WritePosition =
-            SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->WriteSequence);
+        size_t writePosition = 0U;
+        (void) SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->WriteSequence, &writePosition);
+        blockSequence->WritePosition = writePosition;
         ready = true;
     }
     else
@@ -537,8 +538,9 @@ static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlock
 
 static inline bool BlockSequence_IsReadBlockFullyDrained(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    return blockSequence->ReadCursor >=
-           SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence);
+    size_t readBlockSize = 0U;
+    (void) SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence, &readBlockSize);
+    return blockSequence->ReadCursor >= readBlockSize;
 }
 
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence)

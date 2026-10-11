@@ -37,6 +37,7 @@ struct ScanFake
     std::vector<DeviceCall>* calls; /* optional - tests that don't care leave nullptr */
     std::map<size_t, size_t>* sizes; /* optional - tests that need realistic Size readings populate */
     bool failNextDispose;
+    bool failNextSize;
 };
 
 inline ScanFake& ToFake(struct SolidSyslogBlockDevice* self)
@@ -121,7 +122,7 @@ bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
     return true;
 }
 
-size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+bool FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t* reported)
 {
     ScanFake& fake = ToFake(self);
     RecordCall(fake, CallType::Size, blockIndex);
@@ -136,7 +137,8 @@ size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
         }
     }
 
-    return size;
+    *reported = size;
+    return !fake.failNextSize;
 }
 } // namespace
 

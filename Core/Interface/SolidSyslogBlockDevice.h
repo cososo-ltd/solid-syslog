@@ -66,10 +66,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t count
     );
 
-    /** Current occupancy of @p blockIndex in bytes: how far Append has filled it, and the
-     *  offset at which the next Append lands. Contrast GetBlockSize (the fixed capacity).
-     *  @retval 0 the block is empty or absent. */
-    size_t SolidSyslogBlockDevice_Size(struct SolidSyslogBlockDevice * device, size_t blockIndex);
+    /** Current occupancy of @p blockIndex in bytes, written to @p size: how far Append has
+     *  filled it, and the offset at which the next Append lands. An empty block is 0.
+     *  Contrast GetBlockSize (the fixed capacity).
+     *  @retval false the device could not say, so @p size means nothing. A store treats
+     *                this as a failed device, never as an empty block. */
+    bool SolidSyslogBlockDevice_Size(struct SolidSyslogBlockDevice * device, size_t blockIndex, size_t* size);
 
     /** The device-wide per-block capacity in bytes: how large each block may grow. Distinct
      *  from Size(blockIndex), the current occupancy of one block. The device is the single

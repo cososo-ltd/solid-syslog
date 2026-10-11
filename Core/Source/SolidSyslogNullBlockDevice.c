@@ -34,7 +34,7 @@ static bool NullBlockDevice_Append(
     const void* buf,
     size_t count
 );
-static size_t NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+static bool NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size);
 static size_t NullBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base);
 
 struct SolidSyslogBlockDevice* SolidSyslogNullBlockDevice_Get(void)
@@ -125,11 +125,12 @@ static bool NullBlockDevice_WriteAt(
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-static size_t NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex)
+static bool NullBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size)
 {
     (void) base;
     (void) blockIndex;
-    return 0;
+    *size = 0U;
+    return false;
 }
 
 static size_t NullBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base)

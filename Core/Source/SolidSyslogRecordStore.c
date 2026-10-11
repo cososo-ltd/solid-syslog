@@ -205,7 +205,8 @@ enum SolidSyslogRecordStoreReadResult SolidSyslogRecordStore_Read(
 )
 {
     uint16_t length = 0U;
-    size_t dataSize = SolidSyslogBlockDevice_Size(blockDevice, blockIndex);
+    size_t dataSize = 0U;
+    (void) SolidSyslogBlockDevice_Size(blockDevice, blockIndex, &dataSize);
 
     *bytesRead = 0;
 

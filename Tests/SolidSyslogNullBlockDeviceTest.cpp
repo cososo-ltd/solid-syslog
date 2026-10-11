@@ -51,9 +51,17 @@ TEST(SolidSyslogNullBlockDevice, WriteAtReturnsFalse)
     CHECK_FALSE(SolidSyslogBlockDevice_WriteAt(device, 0, 0, "x", 1));
 }
 
-TEST(SolidSyslogNullBlockDevice, SizeReturnsZero)
+TEST(SolidSyslogNullBlockDevice, SizeReturnsFalse)
 {
-    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
+    size_t size = 1U;
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
+}
+
+TEST(SolidSyslogNullBlockDevice, SizeReportsZero)
+{
+    size_t size = 1U;
+    SolidSyslogBlockDevice_Size(device, 0, &size);
+    LONGS_EQUAL(0, size);
 }
 
 TEST(SolidSyslogNullBlockDevice, GetBlockSizeReturnsZero)

@@ -55,9 +55,9 @@ bool SolidSyslogBlockDevice_WriteAt(
     return device->WriteAt(device, blockIndex, offset, buf, count);
 }
 
-size_t SolidSyslogBlockDevice_Size(struct SolidSyslogBlockDevice* device, size_t blockIndex)
+bool SolidSyslogBlockDevice_Size(struct SolidSyslogBlockDevice* device, size_t blockIndex, size_t* size)
 {
-    return device->Size(device, blockIndex);
+    return device->Size(device, blockIndex, size);
 }
 
 size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* device)

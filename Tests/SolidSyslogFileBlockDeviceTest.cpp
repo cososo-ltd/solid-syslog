@@ -12,9 +12,13 @@
 
 using namespace CososoTesting;
 
+class TEST_SolidSyslogFileBlockDevice_AcquireFreshBlockHasZeroSize_Test;
 class TEST_SolidSyslogFileBlockDevice_AcquireSecondBlockPreservesFirstBlockContent_Test;
+class TEST_SolidSyslogFileBlockDevice_AppendIncreasesBlockSize_Test;
 class TEST_SolidSyslogFileBlockDevice_AppendsAccumulateAtEnd_Test;
+class TEST_SolidSyslogFileBlockDevice_DisposeLeavesOtherBlocksUntouched_Test;
 class TEST_SolidSyslogFileBlockDevice_OverlargeBlockIndexLeavesValidBlockUntouched_Test;
+class TEST_SolidSyslogFileBlockDevice_ReacquireTruncatesExistingBlock_Test;
 class TEST_SolidSyslogFileBlockDevice_ReadAtOffsetReturnsBytesFromOffset_Test;
 class TEST_SolidSyslogFileBlockDevice_ReadFollowedByWriteOnSameBlockDoesNotOpenTwoHandles_Test;
 class TEST_SolidSyslogFileBlockDevice_ReadReturnsAppendedBytes_Test;
@@ -31,6 +35,15 @@ static const char* const TEST_PATH_PREFIX = "/tmp/blockdev_";
         char checkBuf[(length) + 1] = {};                                                            \
         CHECK_TRUE(SolidSyslogBlockDevice_Read(device, (blockIndex), (offset), checkBuf, (length))); \
         MEMCMP_EQUAL((expected), checkBuf, (length));                                                \
+    }
+
+/* Asserts block `blockIndex` reports `expected` bytes. A macro for the caller's
+ * __FILE__/__LINE__, as CHECK_BLOCK_CONTAINS. */
+#define CHECK_BLOCK_SIZE(blockIndex, expected)                                     \
+    {                                                                              \
+        size_t checkSize = 0U;                                                     \
+        CHECK_TRUE(SolidSyslogBlockDevice_Size(device, (blockIndex), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                                        \
     }
 
 // clang-format off
@@ -89,7 +102,7 @@ TEST(SolidSyslogFileBlockDevice, AcquireMakesBlockExist)
 TEST(SolidSyslogFileBlockDevice, AcquireFreshBlockHasZeroSize)
 {
     SolidSyslogBlockDevice_Acquire(device, 0);
-    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(0, 0);
 }
 
 TEST(SolidSyslogFileBlockDevice, ReacquireTruncatesExistingBlock)
@@ -99,14 +112,14 @@ TEST(SolidSyslogFileBlockDevice, ReacquireTruncatesExistingBlock)
 
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
 
-    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(0, 0);
 }
 
 TEST(SolidSyslogFileBlockDevice, AppendIncreasesBlockSize)
 {
     SolidSyslogBlockDevice_Acquire(device, 0);
     CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, "abc", 3));
-    LONGS_EQUAL(3, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(0, 3);
 }
 
 TEST(SolidSyslogFileBlockDevice, ReadReturnsAppendedBytes)
@@ -123,7 +136,7 @@ TEST(SolidSyslogFileBlockDevice, AppendsAccumulateAtEnd)
     SolidSyslogBlockDevice_Append(device, 0, "abc", 3);
     SolidSyslogBlockDevice_Append(device, 0, "de", 2);
 
-    LONGS_EQUAL(5, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(0, 5);
     CHECK_BLOCK_CONTAINS(0, 0, "abcde", 5);
 }
 
@@ -143,7 +156,7 @@ TEST(SolidSyslogFileBlockDevice, WriteAtMutatesByteInPlace)
     CHECK_TRUE(SolidSyslogBlockDevice_WriteAt(device, 0, 1, "X", 1));
 
     CHECK_BLOCK_CONTAINS(0, 0, "aXcde", 5);
-    LONGS_EQUAL(5, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(0, 5);
 }
 
 TEST(SolidSyslogFileBlockDevice, AcquireSecondBlockPreservesFirstBlockContent)
@@ -152,8 +165,8 @@ TEST(SolidSyslogFileBlockDevice, AcquireSecondBlockPreservesFirstBlockContent)
     SolidSyslogBlockDevice_Append(device, 0, "first", 5);
     SolidSyslogBlockDevice_Acquire(device, 1);
 
-    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 1));
-    LONGS_EQUAL(5, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(1, 0);
+    CHECK_BLOCK_SIZE(0, 5);
     CHECK_BLOCK_CONTAINS(0, 0, "first", 5);
 }
 
@@ -173,7 +186,7 @@ TEST(SolidSyslogFileBlockDevice, DisposeLeavesOtherBlocksUntouched)
     SolidSyslogBlockDevice_Dispose(device, 0);
 
     CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 1));
-    LONGS_EQUAL(4, SolidSyslogBlockDevice_Size(device, 1));
+    CHECK_BLOCK_SIZE(1, 4);
 }
 
 TEST(SolidSyslogFileBlockDevice, BlockFilenameZeroPadsSequenceToTwoDigits)
@@ -205,7 +218,7 @@ TEST(SolidSyslogFileBlockDevice, OverlargeBlockIndexLeavesValidBlockUntouched)
 
     SolidSyslogBlockDevice_Acquire(device, 256); /* would alias to block 0 if not guarded */
 
-    LONGS_EQUAL(4, SolidSyslogBlockDevice_Size(device, 0));
+    CHECK_BLOCK_SIZE(0, 4);
     CHECK_BLOCK_CONTAINS(0, 0, "real", 4);
 }
 
@@ -235,9 +248,17 @@ TEST(SolidSyslogFileBlockDevice, DisposeReturnsFalseForOverlargeBlockIndex)
     CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 256));
 }
 
-TEST(SolidSyslogFileBlockDevice, SizeReturnsZeroForOverlargeBlockIndex)
+TEST(SolidSyslogFileBlockDevice, SizeFailsForOverlargeBlockIndex)
 {
-    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 256));
+    size_t size = 0U;
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 256, &size));
+}
+
+TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheBlockWillNotOpen)
+{
+    size_t size = 0U;
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
 }
 
 TEST(SolidSyslogFileBlockDevice, DestroyClosesOpenFileHandles)
@@ -285,7 +306,8 @@ TEST(SolidSyslogFileBlockDevice, UseAfterDestroyIsCrashSafeViaNullBlockDeviceVta
     CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buf, 3));
     CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, "x", 1));
     CHECK_FALSE(SolidSyslogBlockDevice_WriteAt(device, 0, 0, "x", 1));
-    LONGS_EQUAL(0, SolidSyslogBlockDevice_Size(device, 0));
+    size_t size = 0U;
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
 
     device = nullptr; // teardown's nullptr guard skips the second Destroy
 }

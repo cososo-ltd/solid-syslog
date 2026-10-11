@@ -41,7 +41,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
             const void* buf,
             size_t count
         );
-        size_t (*Size)(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+        bool (*Size)(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size);
         /** Fixed per-block capacity; read once at BlockStore construction. */
         size_t (*GetBlockSize)(struct SolidSyslogBlockDevice* base);
     };

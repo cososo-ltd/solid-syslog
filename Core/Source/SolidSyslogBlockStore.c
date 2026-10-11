@@ -102,7 +102,8 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
     /* Bound the scan by the read block's actual size, not WritePosition. On a
      * multi-block resume the read block is a closed earlier block whose size
      * is independent of the write block's fill level. */
-    size_t readBlockSize = SolidSyslogBlockDevice_Size(device, readSequence);
+    size_t readBlockSize = 0U;
+    (void) SolidSyslogBlockDevice_Size(device, readSequence, &readBlockSize);
 
     enum SolidSyslogRecordStoreScanResult scanned = SOLIDSYSLOG_RECORD_STORE_SCAN_CLEAN;
     size_t cursor =
