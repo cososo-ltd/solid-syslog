@@ -704,7 +704,7 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureReportsTheStoreDidNotOpen)
     );
 }
 
-TEST(SolidSyslogBlockStoreErrors, AppendFailureReportsTheWriteFailed)
+TEST(SolidSyslogBlockStoreErrors, AppendFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     store = SolidSyslogBlockStore_Create(&config);
@@ -716,9 +716,59 @@ TEST(SolidSyslogBlockStoreErrors, AppendFailureReportsTheWriteFailed)
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED
     );
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreIsTransient)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreHasNothingUnsent)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreNoLongerWritesToTheDevice)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    FileFake_FailNextWrite(file);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    size_t sizeWhenFrozen = FileFake_FileSize();
+
+    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(sizeWhenFrozen, FileFake_FileSize());
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreReportsOnlyOnce)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextWrite(file);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    FileFake_FailNextWrite(file);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
 TEST(SolidSyslogBlockStoreErrors, ACreateAndWriteThatSucceedReportNothing)

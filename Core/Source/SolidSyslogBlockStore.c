@@ -122,7 +122,8 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
 }
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
-static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended);
+static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation);
+static inline void BlockStore_ReportSealFailed(void);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
@@ -155,24 +156,39 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
         }
+        else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
+        {
+            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
+        }
         else
         {
-            BlockStore_ReportRecordNotKept(appended);
+            BlockStore_ReportSealFailed();
         }
     }
 
     return written;
 }
 
-/* The policy reports why it would not seal; the device, when it reports, why
- * it would not take the record. Either way the record is lost, which this
- * reports. */
-static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended)
+/* A device that has failed once is not trusted with audit records again. The
+ * store takes on the NullStore vtable, as Cleanup does, so it never calls the
+ * device again: what it held stays on the media for the next start, and
+ * Service sends new records directly because the store is now transient. The
+ * slot is still in use, so Destroy releases it as usual. */
+static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation)
 {
-    enum SolidSyslogBlockStoreErrors code = (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SEAL_FAILED)
-                                                ? SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
-                                                : SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED;
-    BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, code);
+    BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_FROZEN, failedOperation);
+    self->Base = *SolidSyslogNullStore_Get();
+}
+
+/* The policy reports why it would not seal; this reports that the record is
+ * lost. */
+static inline void BlockStore_ReportSealFailed(void)
+{
+    BlockStore_Report(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+    );
 }
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)
