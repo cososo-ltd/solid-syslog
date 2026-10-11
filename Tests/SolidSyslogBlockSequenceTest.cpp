@@ -137,8 +137,10 @@ bool FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t* re
         }
     }
 
-    *reported = size;
-    return !fake.failNextSize;
+    bool known = !fake.failNextSize;
+    fake.failNextSize = false;
+    *reported = known ? size : 0U; /* as a real device: a size it could not read is no size */
+    return known;
 }
 } // namespace
 
@@ -382,4 +384,27 @@ TEST(BlockSequenceRotation, AStaleBlockThatWillNotDisposeIsADisposeFailure)
     ForceRotation();
 
     LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}
+
+TEST(BlockSequenceRotation, AReadBlockWhoseSizeFailsIsNotDisposed)
+{
+    ForceRotation(); /* block 0, holding an unread record, is now behind the write block */
+    calls.clear();
+    fakeDevice.failNextSize = true;
+    bool readBlockChanged = false;
+
+    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged);
+
+    CHECK_TRUE(calls.back().type == CallType::Size);
+}
+
+TEST(BlockSequenceRotation, AReadBlockWhoseSizeFailsIsASizeFailure)
+{
+    ForceRotation();
+    fakeDevice.failNextSize = true;
+    bool readBlockChanged = false;
+
+    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged);
+
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
 }

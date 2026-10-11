@@ -27,8 +27,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /* Raised under SOLIDSYSLOG_CAT_STORE_FROZEN, each naming the device
            operation that failed: opening the device at create, appending a
            record, starting a new block, disposing of one, marking a record
-           sent, or reading one back. The device beneath, where it reports,
-           says why. */
+           sent, reading one back, or measuring a block. The device beneath,
+           where it reports, says why. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED,
@@ -37,6 +37,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  it is sent once more after the store is created again. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

@@ -501,7 +501,14 @@ void SolidSyslogBlockSequence_SetReadCursor(struct SolidSyslogBlockSequence* blo
 
 static inline bool BlockSequence_IsReadBlockActiveWrite(const struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlockSequence* blockSequence);
-static inline bool BlockSequence_IsReadBlockFullyDrained(const struct SolidSyslogBlockSequence* blockSequence);
+static inline bool BlockSequence_MeasureReadBlock(
+    struct SolidSyslogBlockSequence* blockSequence,
+    size_t* readBlockSize
+);
+static inline bool BlockSequence_IsReadBlockFullyDrained(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    size_t readBlockSize
+);
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
@@ -511,17 +518,22 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
 {
     *readBlockChanged = false;
 
-    if (!BlockSequence_IsReadBlockActiveWrite(blockSequence) && BlockSequence_IsReadBlockOldest(blockSequence) &&
-        BlockSequence_IsReadBlockFullyDrained(blockSequence))
+    if (!BlockSequence_IsReadBlockActiveWrite(blockSequence) && BlockSequence_IsReadBlockOldest(blockSequence))
     {
-        if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence))
+        size_t readBlockSize = 0U;
+
+        if (BlockSequence_MeasureReadBlock(blockSequence, &readBlockSize) &&
+            BlockSequence_IsReadBlockFullyDrained(blockSequence, readBlockSize))
         {
-            BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
-            *readBlockChanged = true;
-        }
-        else
-        {
-            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+            if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence))
+            {
+                BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
+                *readBlockChanged = true;
+            }
+            else
+            {
+                BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+            }
         }
     }
 }
@@ -536,10 +548,25 @@ static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlock
     return blockSequence->ReadSequence == blockSequence->OldestSequence;
 }
 
-static inline bool BlockSequence_IsReadBlockFullyDrained(const struct SolidSyslogBlockSequence* blockSequence)
+/* A size the device could not read is a failed device, never an empty block:
+ * read as empty, a block still holding unsent records would look drained. */
+static inline bool BlockSequence_MeasureReadBlock(struct SolidSyslogBlockSequence* blockSequence, size_t* readBlockSize)
 {
-    size_t readBlockSize = 0U;
-    (void) SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence, &readBlockSize);
+    bool known = SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence, readBlockSize);
+
+    if (!known)
+    {
+        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+    }
+
+    return known;
+}
+
+static inline bool BlockSequence_IsReadBlockFullyDrained(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    size_t readBlockSize
+)
+{
     return blockSequence->ReadCursor >= readBlockSize;
 }
 
