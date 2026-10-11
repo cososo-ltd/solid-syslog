@@ -70,7 +70,7 @@ struct FileFake
     bool open;
     bool failNextOpen;
     bool failNextWrite;
-    bool failNextRead;
+    size_t readsUntilFailure; /* 0 when no read is set to fail; 1 fails the next */
     bool failNextDelete;
 };
 
@@ -94,6 +94,18 @@ static inline bool ShouldFailOnThisCall(bool* flag);
 static inline bool FoundEntry(const struct FileEntry* entry);
 static inline bool IsOwnedByAnotherInstance(const struct FileEntry* entry, const struct FileFake* fake);
 static inline void ActivateEntry(struct FileFake* fake, struct FileEntry* entry);
+static inline bool ShouldFailThisRead(struct FileFake* fake)
+{
+    bool fail = false;
+    if (fake->readsUntilFailure > 0U)
+    {
+        fake->readsUntilFailure--;
+        fail = fake->readsUntilFailure == 0U;
+    }
+    return fail;
+}
+
+static inline bool ShouldFailThisRead(struct FileFake* fake);
 static inline bool HasBytesToRead(const struct FileFake* fake, size_t count);
 static inline void CopyFromFile(struct FileFake* fake, void* buf, size_t count);
 static inline bool HasSpaceToWrite(const struct FileFake* fake, size_t count);
@@ -187,7 +199,17 @@ void FileFake_FailNextRead(struct SolidSyslogFile* file)
         TestAssert_Fail("FileFake_FailNextRead called with null file");
         return;
     }
-    AsFake(file)->failNextRead = true;
+    AsFake(file)->readsUntilFailure = 1U;
+}
+
+void FileFake_FailReadAfter(struct SolidSyslogFile* file, size_t readsThatSucceed)
+{
+    if (file == NULL)
+    {
+        TestAssert_Fail("FileFake_FailReadAfter called with null file");
+        return;
+    }
+    AsFake(file)->readsUntilFailure = readsThatSucceed + 1U;
 }
 
 void FileFake_FailNextDelete(struct SolidSyslogFile* file)
@@ -371,7 +393,7 @@ static bool FileFake_Read(struct SolidSyslogFile* self, void* buf, size_t count)
     struct FileFake* fake = AsFake(self);
     RequireOpenFile(fake, "Read called with no file open");
 
-    if (ShouldFailOnThisCall(&fake->failNextRead))
+    if (ShouldFailThisRead(fake))
     {
         return false;
     }
