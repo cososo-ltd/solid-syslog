@@ -72,6 +72,8 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->ReadSequence = 0;
     blockSequence->WriteSequence = 0;
     blockSequence->ReadCursor = 0;
+    blockSequence->ReadBlockSize = 0;
+    blockSequence->ReadBlockSizeKnown = false;
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
     blockSequence->DeviceFailed = false;
@@ -158,6 +160,11 @@ static void BlockSequence_ScanForBlockPresence(
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest);
 
+static inline void BlockSequence_StartReadingBlock(
+    struct SolidSyslogBlockSequence* blockSequence,
+    uint8_t readSequence
+);
+
 /* The on-disk block set is a single contiguous run in the circular sequence
  * space [0, MAX_SEQUENCE). After enough rotations the run straddles the
  * 99 -> 00 boundary (e.g. {98, 99, 0, 1}). Naive lowest=oldest /
@@ -176,11 +183,20 @@ static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence*
         BlockSequence_LocateRunBoundaries(&presence, &oldest, &newest);
 
         blockSequence->OldestSequence = (uint8_t) oldest;
-        blockSequence->ReadSequence = (uint8_t) oldest;
+        BlockSequence_StartReadingBlock(blockSequence, (uint8_t) oldest);
         blockSequence->WriteSequence = (uint8_t) newest;
     }
 
     return presence.FoundAny;
+}
+
+/* The cursor goes to the start of the block, and a size cached for the block
+ * it leaves is forgotten. */
+static inline void BlockSequence_StartReadingBlock(struct SolidSyslogBlockSequence* blockSequence, uint8_t readSequence)
+{
+    blockSequence->ReadSequence = readSequence;
+    blockSequence->ReadCursor = 0;
+    blockSequence->ReadBlockSizeKnown = false;
 }
 
 static void BlockSequence_ScanForBlockPresence(
@@ -467,8 +483,7 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
 
 static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence)
 {
-    blockSequence->ReadSequence = blockSequence->OldestSequence;
-    blockSequence->ReadCursor = 0;
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
 }
 
 struct SolidSyslogBlockDevice* SolidSyslogBlockSequence_BlockDevice(const struct SolidSyslogBlockSequence* blockSequence
@@ -511,7 +526,8 @@ void SolidSyslogBlockSequence_SetReadCursor(struct SolidSyslogBlockSequence* blo
 static inline bool BlockSequence_IsReadBlockActiveWrite(const struct SolidSyslogBlockSequence* blockSequence);
 
 /* A size the device could not read is a failed device, never an empty block:
- * read as empty, a block still holding unsent records would look drained. */
+ * read as empty, a block still holding unsent records would look drained. A
+ * block behind the write block no longer grows, so its size is read once. */
 bool SolidSyslogBlockSequence_ReadBlockSize(struct SolidSyslogBlockSequence* blockSequence, size_t* size)
 {
     bool known = true;
@@ -520,9 +536,15 @@ bool SolidSyslogBlockSequence_ReadBlockSize(struct SolidSyslogBlockSequence* blo
     {
         *size = blockSequence->WritePosition;
     }
+    else if (blockSequence->ReadBlockSizeKnown)
+    {
+        *size = blockSequence->ReadBlockSize;
+    }
     else
     {
         known = SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence, size);
+        blockSequence->ReadBlockSize = *size;
+        blockSequence->ReadBlockSizeKnown = known;
 
         if (!known)
         {
@@ -588,15 +610,13 @@ static inline bool BlockSequence_IsReadBlockFullyDrained(
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
     blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
-    blockSequence->ReadSequence = blockSequence->OldestSequence;
-    blockSequence->ReadCursor = 0;
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
 void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
-    blockSequence->ReadSequence = BlockSequence_NextSequence(blockSequence->ReadSequence);
-    blockSequence->ReadCursor = 0;
+    BlockSequence_StartReadingBlock(blockSequence, BlockSequence_NextSequence(blockSequence->ReadSequence));
 }
 
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence)

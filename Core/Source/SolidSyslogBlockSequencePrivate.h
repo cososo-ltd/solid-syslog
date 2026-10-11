@@ -45,6 +45,8 @@ struct SolidSyslogBlockSequence
     uint8_t ReadSequence;
     uint8_t WriteSequence;
     size_t ReadCursor;
+    size_t ReadBlockSize; /* cached once read, for a read block behind the write block */
+    bool ReadBlockSizeKnown;
     size_t WritePosition;
     bool WriteBlockCorrupt;
     bool DeviceFailed;

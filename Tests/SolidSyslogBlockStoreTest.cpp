@@ -1591,13 +1591,16 @@ TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnResumeFree
 
 TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnReadFreezesTheStore)
 {
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, 3);
     WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - the device's handle is now on this block */
-    ErrorHandlerFake_Install(nullptr);
-    FileFake_FailNextOpen(file);
+    WriteMaxMsg(); /* block 01 */
+    WriteMaxMsg(); /* block 02 - the device's handle is now on this block */
     char buf[TEST_BUF_SIZE];
     size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 00 drained and disposed; 01 is read next, unmeasured */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
 
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 

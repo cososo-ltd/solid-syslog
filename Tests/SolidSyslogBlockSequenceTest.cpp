@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
@@ -388,23 +389,32 @@ TEST(BlockSequenceRotation, AStaleBlockThatWillNotDisposeIsADisposeFailure)
 
 TEST(BlockSequenceRotation, AReadBlockWhoseSizeFailsIsNotDisposed)
 {
-    ForceRotation(); /* block 0, holding an unread record, is now behind the write block */
-    calls.clear();
     fakeDevice.failNextSize = true;
-    bool readBlockChanged = false;
 
-    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged);
+    ForceRotation(); /* block 0, holding an unread record, is now behind the write block */
 
     CHECK_TRUE(calls.back().type == CallType::Size);
 }
 
 TEST(BlockSequenceRotation, AReadBlockWhoseSizeFailsIsASizeFailure)
 {
-    ForceRotation();
     fakeDevice.failNextSize = true;
-    bool readBlockChanged = false;
 
-    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged);
+    ForceRotation();
 
     LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}
+
+TEST(BlockSequenceRotation, AnEarlierReadBlockIsMeasuredOnce)
+{
+    ForceRotation(); /* block 0 is behind the write block, and is measured here */
+    size_t size = 0U;
+
+    SolidSyslogBlockSequence_ReadBlockSize(sequence, &size);
+    SolidSyslogBlockSequence_ReadBlockSize(sequence, &size);
+
+    LONGS_EQUAL(
+        1,
+        std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) { return call.type == CallType::Size; })
+    );
 }
