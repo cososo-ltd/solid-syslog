@@ -94,6 +94,7 @@ static inline bool ShouldFailOnThisCall(bool* flag);
 static inline bool FoundEntry(const struct FileEntry* entry);
 static inline bool IsOwnedByAnotherInstance(const struct FileEntry* entry, const struct FileFake* fake);
 static inline void ActivateEntry(struct FileFake* fake, struct FileEntry* entry);
+
 static inline bool ShouldFailThisRead(struct FileFake* fake)
 {
     bool fail = false;
