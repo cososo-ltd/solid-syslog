@@ -162,7 +162,12 @@ the tunables header, which orders it after the library's build even under
 # After the include of solidsyslog-dkm.makefile, which defines
 # SOLIDSYSLOG_CONFIG_HEADER.
 <object directory>/syslogBridge.o: <source directory>/syslogBridge.c $(SOLIDSYSLOG_CONFIG_HEADER)
-	<the DKM's compiler> -I<checkout>/Platform/VxWorks64/Compat <the DKM's flags> 		-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(SOLIDSYSLOG_CONFIG_HEADER)\" 		$(ADDED_INCLUDES) -c $< -o $@
+	<the DKM's compiler> \
+		-I<checkout>/Platform/VxWorks64/Compat \
+		<the DKM's flags> \
+		-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(SOLIDSYSLOG_CONFIG_HEADER)\" \
+		$(ADDED_INCLUDES) \
+		-c $< -o $@
 ```
 
 <!-- markdownlint-enable MD010 -->
