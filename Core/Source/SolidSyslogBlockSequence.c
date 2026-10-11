@@ -329,7 +329,7 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     uint8_t nextSequence
 );
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
-static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice* device, size_t blockIndex);
+static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 static inline void BlockSequence_NoteDeviceFailure(
     struct SolidSyslogBlockSequence* blockSequence,
     enum SolidSyslogBlockStoreErrors failedOperation
@@ -338,7 +338,7 @@ static inline void BlockSequence_NoteDeviceFailure(
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged)
 {
     uint8_t nextSequence = BlockSequence_NextSequence(blockSequence->WriteSequence);
-    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence->BlockDevice, nextSequence);
+    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
 
     *readBlockChanged = false;
 
@@ -364,9 +364,8 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
     }
     else
     {
-        /* Only a device failure gets here: a full store that keeps what it has
-         * never rotates. */
-        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
+        /* Only a device failure gets here, and AcquireEmptyBlock has noted it: a
+         * full store that keeps what it has never rotates. */
     }
 
     return acquired;
@@ -387,22 +386,32 @@ static inline void BlockSequence_NoteDeviceFailure(
  * past it. Flash drivers depend on this - Acquire = erase, and writing into
  * a non-erased block corrupts data on most flash families.
  *
- * If Dispose fails we surface the failure rather than letting Acquire mask it:
- * a "verify-and-use" flash driver (S18.04 design notes) would Acquire-fail on
- * the still-stale block anyway, and skipping the wasted Acquire keeps callers'
- * retry path (slice 3) symmetric with the dispose-failure path. */
-static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice* device, size_t blockIndex)
+ * If Dispose fails, Acquire is not tried: a "verify-and-use" flash driver would
+ * reject the still-stale block anyway. The failure is noted as the operation
+ * that failed, so a stale block that will not go is a dispose failure. */
+static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
 {
+    struct SolidSyslogBlockDevice* device = blockSequence->BlockDevice;
     bool ready = true;
 
     if (SolidSyslogBlockDevice_Exists(device, blockIndex))
     {
         ready = SolidSyslogBlockDevice_Dispose(device, blockIndex);
+
+        if (!ready)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+        }
     }
 
     if (ready)
     {
         ready = SolidSyslogBlockDevice_Acquire(device, blockIndex);
+
+        if (!ready)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
+        }
     }
 
     return ready;

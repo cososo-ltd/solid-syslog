@@ -6,6 +6,7 @@
 
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 
 extern "C"
 {
@@ -369,4 +370,14 @@ TEST(BlockSequenceRotation, AFailedEvictionIsTheLastDeviceCall)
     ForceRotation(); /* block 2 - evicting block 0 fails */
 
     CHECK_TRUE(calls.back().type == CallType::Dispose);
+}
+
+TEST(BlockSequenceRotation, AStaleBlockThatWillNotDisposeIsADisposeFailure)
+{
+    existing.insert(1);
+    fakeDevice.failNextDispose = true;
+
+    ForceRotation();
+
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
 }
