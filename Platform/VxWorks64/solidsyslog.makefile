@@ -12,6 +12,13 @@
 #                              (default: solidsyslog in the project directory)
 #   SOLIDSYSLOG_TARGET_CFLAGS  the flags the library is compiled with
 #                              (default: the project's CFLAGS less its dialect)
+#   SOLIDSYSLOG_TUNABLES_FILE  the absolute path of a header that overrides
+#                              tunables (default: none)
+#
+# The library writes solidsyslog-config.h into SOLIDSYSLOG_BUILD_DIR. The
+# project's CFLAGS name it in SOLIDSYSLOG_USER_TUNABLES_FILE, so its sources see
+# the tunables the library was built with. The library's build drops that
+# define from the flags it takes, because it supplies its own.
 #
 # The generated Makefile defines CFLAGS and the toolchain after including this
 # file, so everything here that reads them is recursively expanded - assigned
@@ -29,11 +36,12 @@ endif
 
 SOLIDSYSLOG_PLATFORMS     ?=
 SOLIDSYSLOG_BUILD_DIR     ?= $(PRJ_DIR)/solidsyslog
+SOLIDSYSLOG_TUNABLES_FILE ?=
 SOLIDSYSLOG_TARGET_CFLAGS ?= $(filter-out -Xansi -ansi -std=%,$(CFLAGS))
 
 # Passed through the environment rather than the command line, so that no
 # quoting in the project's flags has to survive a shell.
-export SOLIDSYSLOG_TARGET_CFLAGS
+export SOLIDSYSLOG_TARGET_CFLAGS SOLIDSYSLOG_TUNABLES_FILE
 
 export ADDED_INCLUDES += -I$(SOLIDSYSLOG_DIR)/Core/Interface \
 	$(foreach p,$(SOLIDSYSLOG_PLATFORMS),-I$(SOLIDSYSLOG_DIR)/Platform/$(p)/Interface)

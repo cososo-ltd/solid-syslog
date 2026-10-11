@@ -40,8 +40,10 @@ SolidSyslog headers include. The pack supplies both, for 32-bit targets, in
 `Platform/VxWorks64/Compat/`. The library's own build puts that directory first,
 ahead of the project's include path, which in a DKM can hold an incomplete
 `<stdint.h>`. In a VIP, application files that include a SolidSyslog header
-take it last, so it only fills the gap. A DKM's own sources do not take it at
-all: their headers may define integer types of their own that would conflict.
+take it last, so it only fills the gap. A DKM does not put it on its own
+include path: the DKM's headers may define integer types of their own that would
+conflict. A single bridging source that includes none of those headers can take
+it, as [Compat in a DKM](setup.md#compat-in-a-dkm) describes.
 
 The pack's public headers include no VxWorks header; the semaphore and every
 other kernel type stay inside its sources. An application file that includes
