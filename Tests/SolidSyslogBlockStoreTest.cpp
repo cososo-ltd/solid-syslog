@@ -151,6 +151,11 @@ TEST(SolidSyslogBlockStore, WriteReturnsTrue)
     CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
 }
 
+TEST(SolidSyslogBlockStore, WriteOfNoBytesIsRejected)
+{
+    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, 0));
+}
+
 TEST(SolidSyslogBlockStore, HasUnsentReturnsTrueAfterWrite)
 {
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);

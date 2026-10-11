@@ -141,7 +141,15 @@ static inline void BlockStore_ReportSealFailed(void);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
-    return BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
+    bool written = false;
+
+    /* A record of no bytes would read back as nothing unsent and jam the cursor. */
+    if (size > 0U)
+    {
+        written = BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
+    }
+
+    return written;
 }
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size)
