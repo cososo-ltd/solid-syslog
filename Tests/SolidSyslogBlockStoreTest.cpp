@@ -641,14 +641,15 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureStillReturnsNonNull)
     CHECK_TRUE(store != nullptr);
 }
 
-TEST(SolidSyslogBlockStoreErrors, TransientOpenFailureRecoversOnNextWrite)
+TEST(SolidSyslogBlockStoreErrors, AStoreThatFailedToOpenKeepsNothing)
 {
-    /* BlockDevice opens lazily - a one-shot Open failure during Create heals
-     * on the next operation that needs the file. */
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     FileFake_FailNextOpen(file);
     store = SolidSyslogBlockStore_Create(&config);
-    CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+
+    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
 TEST(SolidSyslogBlockStoreErrors, WriteReturnsFalseOnWriteFailure)
@@ -688,7 +689,7 @@ TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
     CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
 }
 
-TEST(SolidSyslogBlockStoreErrors, OpenFailureReportsTheStoreDidNotOpen)
+TEST(SolidSyslogBlockStoreErrors, OpenFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     ErrorHandlerFake_Install(nullptr);
@@ -697,9 +698,9 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureReportsTheStoreDidNotOpen)
     store = SolidSyslogBlockStore_Create(&config);
 
     CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_OPEN_FAILED,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
     );
 }

@@ -97,9 +97,9 @@ TEST(BddTargetErrorText, StoreWriteFailedCategoryMapsToText)
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, "store write failed");
 }
 
-TEST(BddTargetErrorText, StoreOpenFailedCategoryMapsToText)
+TEST(BddTargetErrorText, StoreFrozenCategoryMapsToText)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_OPEN_FAILED, "store open failed");
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_FROZEN, "store frozen");
 }
 
 TEST(BddTargetErrorText, UnrecognisedCategoryMapsToUnknown)
