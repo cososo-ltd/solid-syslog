@@ -1589,6 +1589,21 @@ TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnResumeFree
     CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
 }
 
+TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnReadFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - the device's handle is now on this block */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
+
 TEST(SolidSyslogBlockStoreRotation, AFailedEvictionFreezesTheStore)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);

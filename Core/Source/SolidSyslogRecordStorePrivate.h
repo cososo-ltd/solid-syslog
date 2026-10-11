@@ -65,11 +65,13 @@ enum SolidSyslogRecordStoreReadResult
     SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED
 };
 
+/* @p dataSize is how far the block's data runs: a span past it is no record. */
 enum SolidSyslogRecordStoreReadResult SolidSyslogRecordStore_Read(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
+    size_t dataSize,
     void* dst,
     size_t maxSize,
     size_t* bytesRead

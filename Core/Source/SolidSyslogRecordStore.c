@@ -199,14 +199,13 @@ enum SolidSyslogRecordStoreReadResult SolidSyslogRecordStore_Read(
     struct SolidSyslogBlockDevice* blockDevice,
     size_t blockIndex,
     size_t offset,
+    size_t dataSize,
     void* dst,
     size_t maxSize,
     size_t* bytesRead
 )
 {
     uint16_t length = 0U;
-    size_t dataSize = 0U;
-    (void) SolidSyslogBlockDevice_Size(blockDevice, blockIndex, &dataSize);
 
     *bytesRead = 0;
 

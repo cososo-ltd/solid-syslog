@@ -280,7 +280,12 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
 
         if (result == SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED)
         {
-            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+            /* A block size the sequence could not read is noted there and named
+             * by it; any other failure is the read of the record itself. */
+            if (!BlockStore_FreezeIfDeviceFailed(self))
+            {
+                BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+            }
         }
     }
 
@@ -295,15 +300,24 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
     size_t* bytesRead
 )
 {
-    return SolidSyslogRecordStore_Read(
-        self->RecordStore,
-        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
-        SolidSyslogBlockSequence_ReadSequence(self->BlockSequence),
-        SolidSyslogBlockSequence_ReadCursor(self->BlockSequence),
-        data,
-        maxSize,
-        bytesRead
-    );
+    size_t readBlockSize = 0U;
+    enum SolidSyslogRecordStoreReadResult result = SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED;
+
+    if (SolidSyslogBlockSequence_ReadBlockSize(self->BlockSequence, &readBlockSize))
+    {
+        result = SolidSyslogRecordStore_Read(
+            self->RecordStore,
+            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+            SolidSyslogBlockSequence_ReadSequence(self->BlockSequence),
+            SolidSyslogBlockSequence_ReadCursor(self->BlockSequence),
+            readBlockSize,
+            data,
+            maxSize,
+            bytesRead
+        );
+    }
+
+    return result;
 }
 
 static void BlockStore_MarkSent(struct SolidSyslogStore* base)
