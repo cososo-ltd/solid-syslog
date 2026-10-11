@@ -370,6 +370,27 @@ TEST(ServiceDrainInterleave, DiscardNewestDoesNotLetNewestBypassOldestOnRecovery
     }
 }
 
+TEST(ServiceDrainInterleave, AStoreThatFreezesStillDeliversWhatIsLogged)
+{
+    DrainTestConfig cfg = {
+        /*maxBlocks=*/2,
+        /*maxBlockSize=*/4096,
+        /*payloadSize=*/16,
+        SOLIDSYSLOG_DISCARD_POLICY_OLDEST
+    };
+    Setup(cfg);
+    FileFake_FailNextWrite(file); /* the first record's append fails */
+
+    Enqueue(1, cfg.PayloadSize);
+    Enqueue(2, cfg.PayloadSize);
+    SolidSyslog_Service(solidSyslog);
+
+    std::vector<uint32_t> ids = DecodeSequenceIds(spy.successfulSends);
+    LONGS_EQUAL(2U, ids.size());
+    LONGS_EQUAL(1U, ids[0]);
+    LONGS_EQUAL(2U, ids[1]);
+}
+
 /* Reproducer for the BDD discard-newest failure shape. With max-blocks=2
  * and a small max-block-size relative to the payload, an "outage" of 10
  * messages should produce *some* drain order - what matters is that the
