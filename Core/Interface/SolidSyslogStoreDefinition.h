@@ -50,7 +50,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  for stores that actually retain records, where a rejection is the
          *  discard policy speaking and the message must NOT bypass older records
          *  via a direct-send fallback. Service consults this after a failed Write
-         *  to decide whether to fall through. */
+         *  to decide whether to fall through. It asks after every rejected Write,
+         *  so a store that stops retaining - a BlockStore whose device failed -
+         *  answers true from then on. */
         bool (*IsTransient)(struct SolidSyslogStore* base);
     };
 

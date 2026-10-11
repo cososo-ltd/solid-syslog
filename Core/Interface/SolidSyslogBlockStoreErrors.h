@@ -21,12 +21,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_BLOCK_STORE_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_TOO_SMALL,
-        /* Raised under SolidSyslogStoreCategories.h. The block device beneath,
-           or the security policy for SEAL_FAILED, reports the cause. */
+        /* Raised under SOLIDSYSLOG_CAT_STORE_WRITE_FAILED. The security policy
+           reports why it would not seal. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED,
+        /* Raised under SOLIDSYSLOG_CAT_STORE_FROZEN, each naming the device
+           operation that failed: opening the device at create, appending a
+           record, starting a new block, disposing of one, marking a record
+           sent, or reading one back. The device beneath, where it reports,
+           says why. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED,

@@ -20,6 +20,12 @@
  *  threshold callback re-enters Write - drive the logger from a returning Buffer
  *  or gate the Log instead.
  *
+ *  The first block device operation that fails freezes the store, as
+ *  SOLIDSYSLOG_CAT_STORE_FROZEN describes - opening the device at Create
+ *  included, so a volume has to be mounted before the store is created. A read
+ *  that runs past the end of a block's data, as a power cut mid-append leaves,
+ *  is damaged data rather than a failed device, and does not freeze it.
+ *
  *  Internally each pool slot composes an inner RecordStore over a BlockSequence,
  *  both drawn from sibling pools; a block too small for one worst-case record is
  *  grown to fit and reported as a WARNING rather than failing Create. */
