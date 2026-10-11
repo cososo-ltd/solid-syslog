@@ -52,6 +52,7 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
     options->CapacityThreshold = 0;
     options->HaltExit = false;
     options->NoSd = false;
+    options->ErrorsFatal = "1";
 
     for (int i = 1; i < argc; i++)
     {
@@ -78,6 +79,10 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
         else if (((i + 1) < argc) && (strcmp(argv[i], "--app-name") == 0))
         {
             options->AppName = argv[++i];
+        }
+        else if (((i + 1) < argc) && (strcmp(argv[i], "--errors-fatal") == 0))
+        {
+            options->ErrorsFatal = argv[++i];
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--store") == 0))
         {

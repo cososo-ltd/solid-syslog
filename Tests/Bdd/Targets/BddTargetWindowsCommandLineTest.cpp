@@ -177,3 +177,21 @@ TEST(BddTargetWindowsCommandLine, HaltExitFlagSetsHaltExit)
     Parse(2, argv);
     CHECK_TRUE(options.HaltExit);
 }
+
+TEST(BddTargetWindowsCommandLine, DefaultErrorsFatalIsOn)
+{
+    char arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    Parse(1, argv);
+    STRCMP_EQUAL("1", options.ErrorsFatal);
+}
+
+TEST(BddTargetWindowsCommandLine, ErrorsFatalFlagSetsErrorsFatal)
+{
+    char arg0[] = "test";
+    char arg1[] = "--errors-fatal";
+    char arg2[] = "0";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    STRCMP_EQUAL("0", options.ErrorsFatal);
+}
