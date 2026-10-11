@@ -114,6 +114,15 @@ TEST_BASE(BlockDeviceTestBase)
             device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, blockSize);
         }
     }
+
+    /* What a restart does to the device: its open handle goes, and the next
+     * operation on a block has to open the file again. */
+    void RestartDevice()
+    {
+        size_t blockSize = SolidSyslogBlockDevice_GetBlockSize(device);
+        SolidSyslogFileBlockDevice_Destroy(device);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, blockSize);
+    }
 };
 
 // clang-format on
@@ -355,12 +364,22 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- total and markedSent have distinct semantics
     void WritePreviousSession(int total, int markedSent)
     {
-        struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        store = SolidSyslogBlockStore_Create(&config);
+        RecordPreviousSession(total, markedSent);
+        Resume();
+    }
+
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- total and markedSent have distinct semantics
+    void RecordPreviousSession(int total, int markedSent)
+    {
+        Resume();
         WriteMessages(total);
         DrainMessages(markedSent);
         SolidSyslogBlockStore_Destroy(store);
+    }
 
+    void Resume()
+    {
+        struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -388,6 +407,18 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
 };
 
 // clang-format on
+
+TEST(SolidSyslogBlockStoreResume, AWriteBlockWhoseSizeFailsFreezesTheStore)
+{
+    RecordPreviousSession(3, 1);
+    RestartDevice();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    Resume();
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
 
 TEST(SolidSyslogBlockStoreResume, HasUnsentAfterResume)
 {
@@ -1541,6 +1572,21 @@ TEST(SolidSyslogBlockStoreRotation, ARotationThatFailedOnceIsNotRetried)
 
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnResumeFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    SolidSyslogBlockStore_Destroy(store);
+    RestartDevice();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailOpenAfter(file, 1); /* the write block opens; the read block behind it does not */
+
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreRotation, AFailedEvictionFreezesTheStore)

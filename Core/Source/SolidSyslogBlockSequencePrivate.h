@@ -76,6 +76,10 @@ void SolidSyslogBlockSequence_MarkWriteBlockCorrupt(struct SolidSyslogBlockSeque
 size_t SolidSyslogBlockSequence_ReadSequence(const struct SolidSyslogBlockSequence* blockSequence);
 size_t SolidSyslogBlockSequence_ReadCursor(const struct SolidSyslogBlockSequence* blockSequence);
 void SolidSyslogBlockSequence_SetReadCursor(struct SolidSyslogBlockSequence* blockSequence, size_t cursor);
+/* How far the read block's data runs: the write position when it is the write
+ * block, otherwise what the device reports. False, with the failure noted, when
+ * the device cannot say - never read as an empty block. */
+bool SolidSyslogBlockSequence_ReadBlockSize(struct SolidSyslogBlockSequence* blockSequence, size_t* size);
 void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence);
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(

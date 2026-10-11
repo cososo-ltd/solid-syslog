@@ -32,6 +32,7 @@ static bool BlockStore_IsTransient(struct SolidSyslogStore* base);
 static inline struct SolidSyslogBlockStore* BlockStore_SelfFromBase(struct SolidSyslogStore* base);
 static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* self);
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self);
+static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t readBlockSize);
 static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation);
 
 /* ------------------------------------------------------------------
@@ -64,7 +65,7 @@ void SolidSyslogBlockStore_Initialise(
     }
     else
     {
-        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED);
+        BlockStore_Freeze(self, SolidSyslogBlockSequence_FailedOperation(self->BlockSequence));
     }
 }
 
@@ -97,14 +98,22 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
 
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self)
 {
+    size_t readBlockSize = 0U;
+
+    if (SolidSyslogBlockSequence_ReadBlockSize(self->BlockSequence, &readBlockSize))
+    {
+        BlockStore_ScanReadBlock(self, readBlockSize);
+    }
+    else
+    {
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+    }
+}
+
+static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t readBlockSize)
+{
     struct SolidSyslogBlockDevice* device = SolidSyslogBlockSequence_BlockDevice(self->BlockSequence);
     size_t readSequence = SolidSyslogBlockSequence_ReadSequence(self->BlockSequence);
-    /* Bound the scan by the read block's actual size, not WritePosition. On a
-     * multi-block resume the read block is a closed earlier block whose size
-     * is independent of the write block's fill level. */
-    size_t readBlockSize = 0U;
-    (void) SolidSyslogBlockDevice_Size(device, readSequence, &readBlockSize);
-
     enum SolidSyslogRecordStoreScanResult scanned = SOLIDSYSLOG_RECORD_STORE_SCAN_CLEAN;
     size_t cursor =
         SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &scanned);

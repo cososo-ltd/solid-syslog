@@ -67,10 +67,10 @@ struct FileFake
     struct SolidSyslogFile base;
     struct FileEntry* active;
     size_t position;
-    bool open;
-    bool failNextOpen;
-    bool failNextWrite;
+    size_t opensUntilFailure; /* 0 when no open is set to fail; 1 fails the next */
     size_t readsUntilFailure; /* 0 when no read is set to fail; 1 fails the next */
+    bool open;
+    bool failNextWrite;
     bool failNextDelete;
 };
 
@@ -95,6 +95,8 @@ static inline bool FoundEntry(const struct FileEntry* entry);
 static inline bool IsOwnedByAnotherInstance(const struct FileEntry* entry, const struct FileFake* fake);
 static inline void ActivateEntry(struct FileFake* fake, struct FileEntry* entry);
 static inline bool ShouldFailThisRead(struct FileFake* fake);
+static inline bool ShouldFailThisOpen(struct FileFake* fake);
+static inline bool CountDownToFailure(size_t* callsUntilFailure);
 static inline bool HasBytesToRead(const struct FileFake* fake, size_t count);
 static inline void CopyFromFile(struct FileFake* fake, void* buf, size_t count);
 static inline bool HasSpaceToWrite(const struct FileFake* fake, size_t count);
@@ -168,7 +170,17 @@ void FileFake_FailNextOpen(struct SolidSyslogFile* file)
         TestAssert_Fail("FileFake_FailNextOpen called with null file");
         return;
     }
-    AsFake(file)->failNextOpen = true;
+    AsFake(file)->opensUntilFailure = 1U;
+}
+
+void FileFake_FailOpenAfter(struct SolidSyslogFile* file, size_t opensThatSucceed)
+{
+    if (file == NULL)
+    {
+        TestAssert_Fail("FileFake_FailOpenAfter called with null file");
+        return;
+    }
+    AsFake(file)->opensUntilFailure = opensThatSucceed + 1U;
 }
 
 void FileFake_FailNextWrite(struct SolidSyslogFile* file)
@@ -230,7 +242,7 @@ static bool FileFake_Open(struct SolidSyslogFile* self, const char* path)
 {
     struct FileFake* fake = AsFake(self);
 
-    if (ShouldFailOnThisCall(&fake->failNextOpen))
+    if (ShouldFailThisOpen(fake))
     {
         return false;
     }
@@ -399,11 +411,21 @@ static bool FileFake_Read(struct SolidSyslogFile* self, void* buf, size_t count)
 
 static inline bool ShouldFailThisRead(struct FileFake* fake)
 {
+    return CountDownToFailure(&fake->readsUntilFailure);
+}
+
+static inline bool ShouldFailThisOpen(struct FileFake* fake)
+{
+    return CountDownToFailure(&fake->opensUntilFailure);
+}
+
+static inline bool CountDownToFailure(size_t* callsUntilFailure)
+{
     bool fail = false;
-    if (fake->readsUntilFailure > 0U)
+    if (*callsUntilFailure > 0U)
     {
-        fake->readsUntilFailure--;
-        fail = fake->readsUntilFailure == 0U;
+        (*callsUntilFailure)--;
+        fail = *callsUntilFailure == 0U;
     }
     return fail;
 }
