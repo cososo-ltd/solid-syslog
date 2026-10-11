@@ -16,6 +16,7 @@ compiler and flags, by glue that differs with the kind of project:
 | Glue | `Platform/VxWorks64/solidsyslog.makefile`, run with the project's Makefile | `Platform/VxWorks64/solidsyslog-dkm.makefile`, included from a managed-build extension makefile |
 | Library written to | `solidsyslog/` in the project | `solidsyslog/<BUILD_SPEC>/<MODE_DIR>` in the project |
 | Headers reach your sources through | `CFLAGS`, set with `vxprj buildmacro`, with `Compat` last | `ADDED_INCLUDES`, without `Compat` |
+| Tunables reach your sources through | `CFLAGS`, set with `vxprj buildmacro` | `ADDED_CFLAGS`, set by the glue |
 | The kernel image also needs | nothing more | the compiler intrinsics component for the DKM's toolchain |
 
 ### In a VIP
@@ -39,9 +40,11 @@ make -C <project> -f Makefile -f <checkout>/Platform/VxWorks64/solidsyslog.makef
 ```
 
 The library is written to `solidsyslog/` in the project directory unless you
-set `SOLIDSYSLOG_BUILD_DIR`. Run it after `vxprj` has generated the project's
-configuration: the VxWorks headers include the generated `prjComps.h`, so the
-library cannot build in a project that has just been cleaned.
+set `SOLIDSYSLOG_BUILD_DIR`, and takes the tunables header named in
+`SOLIDSYSLOG_TUNABLES_FILE`, as [Tunables and rebuilds](#tunables-and-rebuilds)
+describes. Run it after `vxprj` has generated the project's configuration: the
+VxWorks headers include the generated `prjComps.h`, so the library cannot build
+in a project that has just been cleaned.
 
 Then give the project the headers and the library, with
 `vxprj buildmacro set` on each build specification:
@@ -49,6 +52,11 @@ Then give the project the headers and the library, with
 - `CFLAGS` gains `-I<checkout>/Core/Interface`,
   `-I<checkout>/Platform/VxWorks64/Interface` and, last,
   `-I<checkout>/Platform/VxWorks64/Compat`.
+- `CFLAGS` also gains
+  `-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"<project>/solidsyslog/solidsyslog-config.h\"`,
+  naming the header the library's build writes, with the absolute path of the
+  library's directory if you set `SOLIDSYSLOG_BUILD_DIR`. The library's build
+  leaves this define out of the flags it takes from `CFLAGS` and supplies its own.
 - `LIBS` names the library ahead of `$(VX_OS_LIBS)`, which it calls into.
 
 [VxWorks 6.4](index.md#requirements) says why the library needs its own dialect
@@ -83,6 +91,8 @@ SOLIDSYSLOG_AR := <the DKM's archiver command>
 # The DKM's CPU, define and include flags, without its dialect flag: the
 # library adds its own C99 dialect.
 SOLIDSYSLOG_TARGET_CFLAGS := <the DKM's target flags>
+# Optional: the absolute path of your tunables header.
+SOLIDSYSLOG_TUNABLES_FILE := <absolute path>/solidsyslog_tunables.h
 
 include <checkout>/Platform/VxWorks64/solidsyslog-dkm.makefile
 ```
@@ -100,11 +110,14 @@ What the glue then does on each build:
   platform in `SOLIDSYSLOG_PLATFORMS`, and `ADDED_LIBPATH` and `ADDED_LIBS`
   add the library. `SOLIDSYSLOG_PLATFORMS` defaults to `VxWorks64`; setting it
   replaces that default, so name `VxWorks64` among the others.
+- `ADDED_CFLAGS` gains the define that names the library's tunables, so the
+  DKM's sources see the same tunables as the library.
 - Cleaning the project cleans the library's build too.
 
-Do not add `Platform/VxWorks64/Compat` to the DKM's own include path. The
-library's build takes it first, but the DKM's sources must not:
-[VxWorks 6.4](index.md#requirements) says why.
+Under `make -j`, the first build of a project can compile a DKM source before
+the library's build has written its tunables header. A source that includes a
+SolidSyslog header which reads tunables then fails to find it; building again
+succeeds, and later builds order the two correctly.
 
 `SOLIDSYSLOG_DIR` defaults to the checkout the glue sits in. Set
 `SOLIDSYSLOG_BUILD_DIR` only to run the glue outside a Workbench build: without
@@ -116,6 +129,51 @@ The kernel image the module loads into needs the compiler intrinsics component
 for the DKM's toolchain, `INCLUDE_DIAB_INTRINSICS` or `INCLUDE_GNU_INTRINSICS`.
 The uptime and sleep callbacks divide 64-bit values, and a module takes the
 helpers that do that from the kernel when it loads.
+
+#### Compat in a DKM
+
+Do not add `Platform/VxWorks64/Compat` to the DKM's project-wide include path.
+The library's build takes it first, but the DKM's headers may define integer
+types of their own that conflict with it:
+[VxWorks 6.4](index.md#requirements) says more.
+
+A single source file that bridges your application to SolidSyslog can take it
+on its own, as a flag on that file alone, when:
+
+- the file includes SolidSyslog headers and none of the application headers
+  that define their own integer types;
+- `Compat` comes first on that file's include path, as it does in the library's
+  build, because the DKM's include path can hold an incomplete `<stdint.h>`;
+- the bridge's own header uses no `<stdint.h>` types, so the application files
+  that include it never need `Compat`.
+
+### Tunables and rebuilds
+
+Put any tunables you override in a header, give its absolute path to the glue in
+`SOLIDSYSLOG_TUNABLES_FILE`, and leave the variable unset to keep every default.
+[Adding it to your build](../../build-integration.md#tunables) lists the
+tunables. Do not define them in `SOLIDSYSLOG_TARGET_CFLAGS`: a define there
+would reach the library and not your sources, which would then disagree with it
+about the sizes the tunables set, so the build stops and names it.
+
+The library's build writes `solidsyslog-config.h` beside the library. It
+includes your tunables header, if you named one, and records the compiler, the
+flags, the platforms and the tunables header the library was built with. It is
+rewritten only when one of those changes, and every library object depends on
+it, so:
+
+- changing any of them rebuilds the whole library, and the archive then holds
+  only what that build compiled;
+- building again without a change compiles nothing and leaves the archive as it
+  was;
+- editing your tunables header rebuilds the library objects that include it,
+  and your sources that include it wherever your build tracks header
+  dependencies.
+
+Your sources take the same header through `SOLIDSYSLOG_USER_TUNABLES_FILE`, so
+those that read a tunable recompile when the library's configuration changes.
+A change to your project's own flags is not part of that configuration; whether
+it rebuilds your sources is up to your project's build.
 
 ## Drawing the UDP pieces
 
