@@ -74,7 +74,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBlockStoreConfig
     {
         struct SolidSyslogBlockDevice* BlockDevice; /**< Required; block store is the sole writer. */
-        size_t MaxBlocks; /**< Retention ceiling in blocks; DiscardPolicy governs the overflow. */
+        /** Retention ceiling in blocks; DiscardPolicy governs the overflow. An
+         *  eviction that fails freezes the store with one block more than this on
+         *  the media, and the next start keeps it. At the ceiling of 99 that uses
+         *  every block number, so the next start cannot tell which block is
+         *  oldest and may resume from the wrong one. */
+        size_t MaxBlocks;
         enum SolidSyslogDiscardPolicy DiscardPolicy;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
         SolidSyslogStoreFullCallback OnStoreFull;
