@@ -643,10 +643,8 @@ Site categories that trigger this rule:
   `SolidSyslog_Install*` functions reading `config->` pointer fields in
   `SolidSyslog.c`, `SolidSyslogMessageFormatter_Format` reading
   `context->Clock`, `GetHostname`, `GetAppName`, `GetProcessId` and `Sd` in
-  `SolidSyslogMessageFormatter.c`, `BlockSequence_IsReadBlockFullyDrained`
-  passing `blockSequence->BlockDevice` to `SolidSyslogBlockDevice_Size`, and
-  `BlockStore_ResolveSecurityPolicy` accepting `config->SecurityPolicy` in
-  `SolidSyslogBlockStoreStatic.c`.
+  `SolidSyslogMessageFormatter.c`, and `BlockStore_ResolveSecurityPolicy`
+  accepting `config->SecurityPolicy` in `SolidSyslogBlockStoreStatic.c`.
 - **Pragmatic level** - the `select()` timeout cast in
   `Platform/Windows/Source/SolidSyslogWinsockTcpStream.c`, the lwIP
   `pbuf->payload` field cast in
