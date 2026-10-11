@@ -353,10 +353,14 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
 
         /* Sealing the prior write block can re-arm dispose-on-empty: drain that
          * fully MarkSent the block before rotation could not fire here because
-         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now. */
-        bool disposedAfterRotate = false;
-        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
-        *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now,
+         * unless the eviction failed - a failed device is not called again. */
+        if (!blockSequence->DeviceFailed)
+        {
+            bool disposedAfterRotate = false;
+            SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
+            *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+        }
     }
     else
     {

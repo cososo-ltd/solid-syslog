@@ -19,7 +19,8 @@ enum class CallType
 {
     Acquire,
     Dispose,
-    Exists
+    Exists,
+    Size
 };
 
 struct DeviceCall
@@ -121,7 +122,8 @@ bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
 
 size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
 {
-    const ScanFake& fake = ToFake(self);
+    ScanFake& fake = ToFake(self);
+    RecordCall(fake, CallType::Size, blockIndex);
     size_t size = 0U;
 
     if (fake.sizes != nullptr)
@@ -247,10 +249,20 @@ TEST_GROUP(BlockSequenceRotation)
         fakeDevice.calls        = &calls;
         fakeDevice.sizes        = &sizes;
 
+        CreateSequence(99);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogBlockSequence_Destroy(sequence);
+    }
+
+    void CreateSequence(size_t maxBlocks)
+    {
         struct SolidSyslogBlockSequenceConfig config = {};
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
-        config.MaxBlocks                  = 99;
+        config.MaxBlocks                  = maxBlocks;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         sequence = SolidSyslogBlockSequence_Create(&config);
 
@@ -258,14 +270,22 @@ TEST_GROUP(BlockSequenceRotation)
         /* Simulate one record's worth of data in block 0 - production rotation
          * never seals an empty block, and the dispose-on-empty trigger uses
          * device.Size to decide drained-ness. */
-        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
-        sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
+        NoteRecordInWriteBlock();
         calls.clear();
     }
 
-    void teardown() override
+    void RecreateWithMaxBlocks(size_t maxBlocks)
     {
         SolidSyslogBlockSequence_Destroy(sequence);
+        existing.clear();
+        sizes.clear();
+        CreateSequence(maxBlocks);
+    }
+
+    void NoteRecordInWriteBlock()
+    {
+        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
+        sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
     }
 
     [[nodiscard]] bool DisposePrecedesAcquire(size_t blockIndex) const
@@ -336,4 +356,17 @@ TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
             FAIL("Acquire(1) was called even though Dispose(1) failed");
         }
     }
+}
+
+TEST(BlockSequenceRotation, AFailedEvictionIsTheLastDeviceCall)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* block 1 */
+    NoteRecordInWriteBlock();
+    calls.clear();
+    fakeDevice.failNextDispose = true;
+
+    ForceRotation(); /* block 2 - evicting block 0 fails */
+
+    CHECK_TRUE(calls.back().type == CallType::Dispose);
 }
