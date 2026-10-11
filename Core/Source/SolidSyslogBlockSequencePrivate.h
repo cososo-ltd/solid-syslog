@@ -6,6 +6,7 @@
 #define SOLIDSYSLOGBLOCKSEQUENCEPRIVATE_H
 
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -46,6 +47,8 @@ struct SolidSyslogBlockSequence
     size_t ReadCursor;
     size_t WritePosition;
     bool WriteBlockCorrupt;
+    bool DeviceFailed;
+    enum SolidSyslogBlockStoreErrors FailedOperation;
 };
 
 void SolidSyslogBlockSequence_Initialise(
@@ -78,6 +81,12 @@ bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSeq
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
     struct SolidSyslogBlockSequence* blockSequence,
     bool* readBlockChanged
+);
+
+/* Set by the first block device operation that fails; the store freezes on it. */
+bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence);
+enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(
+    const struct SolidSyslogBlockSequence* blockSequence
 );
 
 bool SolidSyslogBlockSequence_HasUnsent(const struct SolidSyslogBlockSequence* blockSequence);

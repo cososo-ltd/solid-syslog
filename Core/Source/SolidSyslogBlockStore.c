@@ -122,6 +122,7 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
 }
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
+static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
 static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation);
 static inline void BlockStore_ReportSealFailed(void);
 
@@ -135,8 +136,9 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
     bool written = false;
+    bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
 
-    if (SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged))
+    if (!BlockStore_FreezeIfDeviceFailed(self) && prepared)
     {
         if (readBlockChanged)
         {
@@ -167,6 +169,18 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     }
 
     return written;
+}
+
+static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)
+{
+    bool failed = SolidSyslogBlockSequence_DeviceFailed(self->BlockSequence);
+
+    if (failed)
+    {
+        BlockStore_Freeze(self, SolidSyslogBlockSequence_FailedOperation(self->BlockSequence));
+    }
+
+    return failed;
 }
 
 /* A device that has failed once is not trusted with audit records again. The
@@ -272,7 +286,7 @@ static void BlockStore_MarkSent(struct SolidSyslogStore* base)
         bool readBlockChanged = false;
         SolidSyslogBlockSequence_DisposeReadBlockIfDrained(self->BlockSequence, &readBlockChanged);
 
-        if (readBlockChanged)
+        if (!BlockStore_FreezeIfDeviceFailed(self) && readBlockChanged)
         {
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
         }

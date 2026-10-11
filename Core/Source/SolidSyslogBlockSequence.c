@@ -7,8 +7,6 @@
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
-#include "SolidSyslogError.h"
-#include "SolidSyslogStoreCategories.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -76,6 +74,8 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->ReadCursor = 0;
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
+    blockSequence->DeviceFailed = false;
+    blockSequence->FailedOperation = SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX;
 }
 
 void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequence)
@@ -330,6 +330,10 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
 );
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice* device, size_t blockIndex);
+static inline void BlockSequence_NoteDeviceFailure(
+    struct SolidSyslogBlockSequence* blockSequence,
+    enum SolidSyslogBlockStoreErrors failedOperation
+);
 
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged)
 {
@@ -358,15 +362,19 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
     {
         /* Only a device failure gets here: a full store that keeps what it has
          * never rotates. */
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &SolidSyslogBlockStoreErrorSource,
-            SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-            (int32_t) SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
-        );
+        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
     }
 
     return acquired;
+}
+
+static inline void BlockSequence_NoteDeviceFailure(
+    struct SolidSyslogBlockSequence* blockSequence,
+    enum SolidSyslogBlockStoreErrors failedOperation
+)
+{
+    blockSequence->DeviceFailed = true;
+    blockSequence->FailedOperation = failedOperation;
 }
 
 /* Dispose-then-Acquire enforces the BlockDevice contract that an Acquired block
@@ -425,6 +433,10 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
             BlockSequence_ResetReadToOldest(blockSequence);
             readBlockChanged = true;
         }
+    }
+    else
+    {
+        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
     }
 
     return readBlockChanged;
@@ -493,6 +505,10 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
             BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
             *readBlockChanged = true;
         }
+        else
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+        }
     }
 }
 
@@ -529,6 +545,18 @@ void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequ
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence)
 {
     return blockSequence->ReadSequence != blockSequence->WriteSequence;
+}
+
+bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return blockSequence->DeviceFailed;
+}
+
+enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(
+    const struct SolidSyslogBlockSequence* blockSequence
+)
+{
+    return blockSequence->FailedOperation;
 }
 
 bool SolidSyslogBlockSequence_HasUnsent(const struct SolidSyslogBlockSequence* blockSequence)

@@ -1432,7 +1432,7 @@ TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureReportsTheWriteFailed)
+TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureFreezesTheStore)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg(); /* fills block 00 */
@@ -1444,7 +1444,7 @@ TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureReportsTheWriteFailed)
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
     );
 }
@@ -1461,36 +1461,101 @@ TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogBlockStoreRotation, RotationRetriesAfterTransientAcquireFailure)
+TEST(SolidSyslogBlockStoreRotation, ARotationThatFailedOnceIsNotRetried)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg(); /* block 00 */
 
     FileFake_FailNextOpen(file);
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* fails - Acquire on block 01 rejected */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* Acquire on block 01 rejected */
 
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* retry succeeds */
-    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, DiscardRetriesAfterTransientDisposeFailure)
+TEST(SolidSyslogBlockStoreRotation, AFailedEvictionFreezesTheStore)
 {
-    /* Without this guarantee the oldest pointer would advance past a still-on-disk
-     * block, leaving it orphaned forever. Force a Dispose failure on the discard
-     * during block-02 rotation, then trigger another rotation: the next discard
-     * cycle must re-attempt block 00 - not skip past it to block 01. Both Writes
-     * succeed (rotation acquires the new block; only the discard silently fails). */
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg(); /* block 00 */
     WriteMaxMsg(); /* block 01 */
-
+    ErrorHandlerFake_Install(nullptr);
     FileFake_FailNextDelete(file);
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
-    ); /* block 02 - discard of 00 fails; oldest must stay at 0 */
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
-    ); /* block 03 - next discard cycle re-attempts and removes 00 */
 
-    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    WriteMaxMsg(); /* block 02 - the discard of 00 fails */
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreRotation, AWriteThatFreezesTheStoreReturnsFalse)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    FileFake_FailNextDelete(file);
+
+    /* False, with the store now transient, is what sends the record directly. */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedEvictionLeavesTheOldestBlockOnTheDevice)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    FileFake_FailNextDelete(file);
+    WriteMaxMsg(); /* block 02 - the discard of 00 fails */
+
+    WriteMaxMsg();
+
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* rotates to block 01 */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    SolidSyslogStore_MarkSent(store); /* block 00 drained - its dispose fails */
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
+    );
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockOnRotationFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00, also the write block */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* drained, but still the write block */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    WriteMaxMsg(); /* rotates; block 00's dispose fails */
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
+    );
 }
 
 enum
