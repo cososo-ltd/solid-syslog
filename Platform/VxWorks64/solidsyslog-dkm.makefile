@@ -18,6 +18,8 @@
 # it, so the source recompiles when the library's configuration changes.
 # Under make -j the first build can compile such a source before the header
 # exists; build again and it is found.
+# SOLIDSYSLOG_CONFIG_HEADER names the header, for a rule of the including
+# makefile's own that compiles a source against it.
 
 SOLIDSYSLOG_VXWORKS64_DKM_MAKEFILE := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 SOLIDSYSLOG_DIR ?= $(dir $(SOLIDSYSLOG_VXWORKS64_DKM_MAKEFILE))../..

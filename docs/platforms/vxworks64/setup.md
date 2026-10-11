@@ -56,7 +56,8 @@ Then give the project the headers and the library, with
   `-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"<project>/solidsyslog/solidsyslog-config.h\"`,
   naming the header the library's build writes, with the absolute path of the
   library's directory if you set `SOLIDSYSLOG_BUILD_DIR`. The library's build
-  leaves this define out of the flags it takes from `CFLAGS` and supplies its own.
+  supplies the same define itself, and drops this one from the flags it takes
+  from `CFLAGS`. A define naming any other file stops the build.
 - `LIBS` names the library ahead of `$(VX_OS_LIBS)`, which it calls into.
 
 [VxWorks 6.4](index.md#requirements) says why the library needs its own dialect
@@ -98,7 +99,8 @@ include <checkout>/Platform/VxWorks64/solidsyslog-dkm.makefile
 ```
 
 The glue stops the build, naming the variable, if any of the three is missing
-or empty.
+or empty. If the target flags are derived from `ADDED_CFLAGS`, they carry the
+define the glue adds there, and the library's build drops it.
 
 What the glue then does on each build:
 
@@ -120,7 +122,8 @@ SolidSyslog header which reads tunables then fails to find it; building again
 succeeds, and later builds order the two correctly.
 
 `SOLIDSYSLOG_DIR` defaults to the checkout the glue sits in. Set
-`SOLIDSYSLOG_BUILD_DIR` only to run the glue outside a Workbench build: without
+`SOLIDSYSLOG_BUILD_DIR` to build the library somewhere other than its default,
+inside a Workbench build or outside one. Outside one you must set it: without
 `PRJ_ROOT_DIR`, `BUILD_SPEC` and `MODE_DIR` the default would name a directory
 at the root of the drive, so the glue refuses to build or clean until you name
 one.
@@ -146,6 +149,23 @@ on its own, as a flag on that file alone, when:
   build, because the DKM's include path can hold an incomplete `<stdint.h>`;
 - the bridge's own header uses no `<stdint.h>` types, so the application files
   that include it never need `Compat`.
+
+A bridge compiled by the managed build takes the tunables define from
+`ADDED_CFLAGS` like any other source, so only `Compat` is added to it. A bridge
+compiled by a rule in the extension makefile takes both itself, and depends on
+the tunables header, which orders it after the library's build even under
+`make -j`:
+
+<!-- markdownlint-disable MD010 - a Make recipe line must begin with a literal tab, so the snippet carries one for a reader who copies it. -->
+
+```make
+# After the include of solidsyslog-dkm.makefile, which defines
+# SOLIDSYSLOG_CONFIG_HEADER.
+<object directory>/syslogBridge.o: <source directory>/syslogBridge.c $(SOLIDSYSLOG_CONFIG_HEADER)
+	<the DKM's compiler> -I<checkout>/Platform/VxWorks64/Compat <the DKM's flags> 		-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(SOLIDSYSLOG_CONFIG_HEADER)\" 		$(ADDED_INCLUDES) -c $< -o $@
+```
+
+<!-- markdownlint-enable MD010 -->
 
 ### Tunables and rebuilds
 

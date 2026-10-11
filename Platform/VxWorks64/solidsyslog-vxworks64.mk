@@ -48,13 +48,6 @@ ifndef SOLIDSYSLOG_BUILD_DIR
 $(error SOLIDSYSLOG_BUILD_DIR is not set - name a directory for the build output)
 endif
 
-# A SolidSyslog define in the target flags would reach the library and not the
-# sources that include its headers, which would then disagree with it about the
-# size of what the tunables size.
-ifneq ($(filter -DSOLIDSYSLOG_%,$(SOLIDSYSLOG_TARGET_CFLAGS)),)
-$(error SOLIDSYSLOG_TARGET_CFLAGS defines $(filter -DSOLIDSYSLOG_%,$(SOLIDSYSLOG_TARGET_CFLAGS)) - put tunables in a header and name it with SOLIDSYSLOG_TUNABLES_FILE)
-endif
-
 SOLIDSYSLOG_TUNABLES_FILE ?=
 
 # -ei4188 turns off "enumerated type mixed with another type". In C an
@@ -90,6 +83,18 @@ SOLIDSYSLOG_LIB := $(SOLIDSYSLOG_BUILD_DIR)/libsolidsyslog.a
 
 SOLIDSYSLOG_CONFIG_HEADER   := $(SOLIDSYSLOG_BUILD_DIR)/solidsyslog-config.h
 SOLIDSYSLOG_TUNABLES_CFLAGS := -DSOLIDSYSLOG_USER_TUNABLES_FILE=\"$(SOLIDSYSLOG_CONFIG_HEADER)\"
+
+# Flags taken from a project that already passes this define to its own sources,
+# such as a VIP's CFLAGS or a DKM's ADDED_CFLAGS, carry it; the library supplies
+# its own, so that exact define is dropped. Any other SolidSyslog define, attached
+# (-DSOLIDSYSLOG_X) or separate (-D SOLIDSYSLOG_X), would reach the library and
+# not the sources that include its headers, which would then disagree with it
+# about what the tunables size, so it stops the build.
+override SOLIDSYSLOG_TARGET_CFLAGS := $(filter-out $(SOLIDSYSLOG_TUNABLES_CFLAGS),$(SOLIDSYSLOG_TARGET_CFLAGS))
+SOLIDSYSLOG_FOREIGN_DEFINES := $(filter -DSOLIDSYSLOG_% SOLIDSYSLOG_%,$(SOLIDSYSLOG_TARGET_CFLAGS))
+ifneq ($(SOLIDSYSLOG_FOREIGN_DEFINES),)
+$(error SOLIDSYSLOG_TARGET_CFLAGS defines $(SOLIDSYSLOG_FOREIGN_DEFINES) - put tunables in a header and name it with SOLIDSYSLOG_TUNABLES_FILE; the library and your sources take $(SOLIDSYSLOG_TUNABLES_CFLAGS))
+endif
 
 # Everything an object depends on besides its source and the headers it
 # includes. Each makefile that builds into this directory includes this one, so
