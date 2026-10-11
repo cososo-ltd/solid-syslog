@@ -20,6 +20,7 @@ from environment import (
     STORE_FILE_PATH,
     STORE_PATH_PREFIX,
     THRESHOLD_MARKER_PATH,
+    clean_store_files,
     otel_kill_oracle,
     otel_start_oracle,
 )
@@ -92,12 +93,6 @@ VXWORKS64_HOSTNAME = "SolidSyslogVxWorks64"
 # Targets with no process model, which send PROCID as NILVALUE (RFC 5424
 # section 6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
 NO_PROCESS_MODEL_TARGETS = ("freertos", "vxworks64")
-
-
-def clean_store_files():
-    """Remove all rotating store files matching the path prefix."""
-    for path in glob.glob(STORE_PATH_PREFIX + "*.log"):
-        os.remove(path)
 
 
 def line_count(path):
