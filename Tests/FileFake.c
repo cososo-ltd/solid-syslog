@@ -94,18 +94,6 @@ static inline bool ShouldFailOnThisCall(bool* flag);
 static inline bool FoundEntry(const struct FileEntry* entry);
 static inline bool IsOwnedByAnotherInstance(const struct FileEntry* entry, const struct FileFake* fake);
 static inline void ActivateEntry(struct FileFake* fake, struct FileEntry* entry);
-
-static inline bool ShouldFailThisRead(struct FileFake* fake)
-{
-    bool fail = false;
-    if (fake->readsUntilFailure > 0U)
-    {
-        fake->readsUntilFailure--;
-        fail = fake->readsUntilFailure == 0U;
-    }
-    return fail;
-}
-
 static inline bool ShouldFailThisRead(struct FileFake* fake);
 static inline bool HasBytesToRead(const struct FileFake* fake, size_t count);
 static inline void CopyFromFile(struct FileFake* fake, void* buf, size_t count);
@@ -407,6 +395,17 @@ static bool FileFake_Read(struct SolidSyslogFile* self, void* buf, size_t count)
     }
 
     return success;
+}
+
+static inline bool ShouldFailThisRead(struct FileFake* fake)
+{
+    bool fail = false;
+    if (fake->readsUntilFailure > 0U)
+    {
+        fake->readsUntilFailure--;
+        fail = fake->readsUntilFailure == 0U;
+    }
+    return fail;
 }
 
 static inline bool HasBytesToRead(const struct FileFake* fake, size_t count)
