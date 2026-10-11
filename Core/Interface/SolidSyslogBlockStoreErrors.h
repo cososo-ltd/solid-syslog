@@ -33,6 +33,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED,
+        /** The record was delivered, but the device still holds it as unsent, so
+         *  it is sent once more after the store is created again. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
