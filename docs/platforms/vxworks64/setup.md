@@ -62,7 +62,10 @@ Then give the project the headers and the library, with
 
 [VxWorks 6.4](index.md#requirements) says why the library needs its own dialect
 and what `Compat` supplies. `Bdd/Targets/VxWorks64/New-VxWorks64Vip.ps1` and
-`Build-VxWorks64Vip.ps1` carry out every step above for the BDD target.
+`Build-VxWorks64Vip.ps1` carry out every step above for the BDD target except
+the tunables define. The BDD target overrides no tunable, and its one project
+source includes the headers only to prove they compile at C89, so the defaults
+it sees are the library's.
 
 ### In a DKM
 

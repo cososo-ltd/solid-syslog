@@ -114,19 +114,14 @@ Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'setstring', $projectFile, 'ADDIF_ADDR', '10.0.2.15')
 Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'parameter', 'set', $projectFile, 'ADDIF_MASK', '0xffffff00')
 
-# Give every build specification the SolidSyslog headers, the library's
-# tunables and the library. Compat goes last, so it only fills the C99 headers
-# the kernel tree lacks. The tunables define names the header the library's
-# build writes, spelled as the build spells it, so the build recognises it and
-# drops it from the flags it takes.
+# Give every build specification the SolidSyslog headers and the library.
+# Compat goes last, so it only fills the C99 headers the kernel tree lacks.
 # The BDD target's archive goes first, then the library it calls, then the OS
 # libraries both call into. buildmacro acts on the current build specification,
 # so each is selected in turn.
 $includes = '-I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Core\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Interface')) +
     ' -I' + (ConvertTo-MakePath (Join-Path $script:RepositoryRoot 'Platform\VxWorks64\Compat'))
-$tunables = '-DSOLIDSYSLOG_USER_TUNABLES_FILE=\"' +
-    (ConvertTo-MakePath (Join-Path (Get-LibraryDirectory -ProjectDirectory $ProjectDirectory) 'solidsyslog-config.h')) + '\"'
 $library = ConvertTo-MakePath (Join-Path (Get-LibraryDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslog.a')
 $bddTarget = ConvertTo-MakePath (Join-Path (Get-BddTargetDirectory -ProjectDirectory $ProjectDirectory) 'libsolidsyslogbdd.a')
 foreach ($buildSpec in @('default', 'default_rom'))
@@ -141,7 +136,7 @@ foreach ($buildSpec in @('default', 'default_rom'))
         }
 
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
-        'CFLAGS', "$cflags $includes $tunables")
+        'CFLAGS', "$cflags $includes")
     Invoke-WindRiver @vxprj -Command @('vxprj.bat', 'buildmacro', 'set', $projectFile,
         'LIBS', "$bddTarget $library `$(VX_OS_LIBS)")
 
