@@ -711,6 +711,7 @@ static inline enum SolidSyslogRecordStoreScanResult RecordStore_ScanResultOf(
     enum SolidSyslogRecordStoreReadResult result
 );
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- blockIndex, cursor and blockSize are a block, a position in it and a bound; distinct semantics
 enum SolidSyslogRecordStoreScanResult SolidSyslogRecordStore_ScanToEnd(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
@@ -740,6 +741,8 @@ enum SolidSyslogRecordStoreScanResult SolidSyslogRecordStore_ScanToEnd(
 
     return scanned;
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /* What a record that would not read means for the block: a device that failed,
  * or data that is corrupt. */
