@@ -50,6 +50,17 @@ static bool IsValidErrorsFatal(const char* value)
     return (strcmp(value, "0") == 0) || (strcmp(value, "1") == 0);
 }
 
+/* Takes @p value into @p field when it is one the option accepts. Returns 0
+ * when taken, 1 when not - the parse's own result. */
+static int SetIfValid(bool valid, const char* value, const char** field)
+{
+    if (valid)
+    {
+        *field = value;
+    }
+    return valid ? 0 : 1;
+}
+
 /* Applies one parsed option to `options`. Returns 0 on success, 1 if the
  * option's argument is invalid (which fails the whole parse). Split out of
  * BddTargetCommandLine_Parse to keep the loop a thin driver and the per-option
@@ -99,18 +110,10 @@ static int ApplyOption(int opt, const char* value, struct BddTargetOptions* opti
             result = ParsePositiveNumber(value, &options->MaxBlockSize) ? 0 : 1;
             break;
         case OPT_DISCARD_POLICY:
-            result = IsValidDiscardPolicy(value) ? 0 : 1;
-            if (result == 0)
-            {
-                options->DiscardPolicy = value;
-            }
+            result = SetIfValid(IsValidDiscardPolicy(value), value, &options->DiscardPolicy);
             break;
         case OPT_SECURITY_POLICY:
-            result = IsValidSecurityPolicy(value) ? 0 : 1;
-            if (result == 0)
-            {
-                options->SecurityPolicy = value;
-            }
+            result = SetIfValid(IsValidSecurityPolicy(value), value, &options->SecurityPolicy);
             break;
         case OPT_CAPACITY_THRESHOLD:
             result = ParsePositiveNumber(value, &options->CapacityThreshold) ? 0 : 1;
@@ -125,11 +128,7 @@ static int ApplyOption(int opt, const char* value, struct BddTargetOptions* opti
             options->AppName = value;
             break;
         case OPT_ERRORS_FATAL:
-            result = IsValidErrorsFatal(value) ? 0 : 1;
-            if (result == 0)
-            {
-                options->ErrorsFatal = value;
-            }
+            result = SetIfValid(IsValidErrorsFatal(value), value, &options->ErrorsFatal);
             break;
         default:
             result = 1;
