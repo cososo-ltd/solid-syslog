@@ -20,11 +20,14 @@ from environment import (
     STORE_FILE_PATH,
     STORE_PATH_PREFIX,
     THRESHOLD_MARKER_PATH,
+    clean_store_files,
     otel_kill_oracle,
     otel_start_oracle,
 )
 from target_driver import apply_extra_args, assert_binary_present, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
+from syslog_severities import severity_value
+from store_reports import reported_store_freezes
 from tls_reports import reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
@@ -91,12 +94,6 @@ VXWORKS64_HOSTNAME = "SolidSyslogVxWorks64"
 # Targets with no process model, which send PROCID as NILVALUE (RFC 5424
 # section 6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
 NO_PROCESS_MODEL_TARGETS = ("freertos", "vxworks64")
-
-
-def clean_store_files():
-    """Remove all rotating store files matching the path prefix."""
-    for path in glob.glob(STORE_PATH_PREFIX + "*.log"):
-        os.remove(path)
 
 
 def line_count(path):
@@ -621,6 +618,8 @@ def build_buffered_extra_args(context, transport, no_sd=False):
         args.append("--no-sd")
     if getattr(context, "halt_exit", False):
         args.append("--halt-exit")
+    if getattr(context, "errors_fatal", None):
+        args.extend(["--errors-fatal", context.errors_fatal])
     return args
 
 
@@ -665,6 +664,19 @@ def step_block_store_enabled(context):
     context.store_type = "file"
     if os.path.exists(STORE_FILE_PATH):
         os.remove(STORE_FILE_PATH)
+
+
+@given("the block store is enabled on a path that cannot be opened")
+def step_block_store_enabled_on_unopenable_path(context):
+    # A directory where the first block file goes. The store takes it for an
+    # existing block, and cannot open it to measure it, so it freezes as it is
+    # created. The freeze is an ERROR, which ends a hosted target by default, so
+    # the scenario says it expects one - on the command line, because a `set`
+    # at the prompt arrives after the store is created.
+    context.store_type = "file"
+    clean_store_files()
+    os.makedirs(STORE_PATH_PREFIX + "00.log")
+    context.errors_fatal = "0"
 
 
 @given("the security policy is {policy}")
@@ -1260,6 +1272,22 @@ def step_check_sequential_ids(context, count):
         assert match.group(1) == str(i), (
             f"Message {i}: expected sequenceId {i}, got {match.group(1)}"
         )
+
+
+@then("the target reports that the store froze")
+def step_target_reports_store_froze(context):
+    # Reported as the store is created, before the oracle has the messages;
+    # the loop only covers the stderr reader catching up.
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
+    freezes = reported_store_freezes(context.interactive_process)
+    while (not freezes) and (time.monotonic() < deadline):
+        time.sleep(0.1)
+        freezes = reported_store_freezes(context.interactive_process)
+
+    severities = [severity for severity, _detail in freezes]
+    assert severities == [severity_value("ERROR")], (
+        f"Expected one frozen-store report at ERROR, got {freezes}"
+    )
 
 
 @when("the client sends {count:d} messages")

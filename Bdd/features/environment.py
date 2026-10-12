@@ -63,6 +63,19 @@ RECEIVED_TLS_B_LOG = "Bdd/output/received_tls_b.log"
 RECEIVED_MTLS_LOG = "Bdd/output/received_mtls.log"
 
 
+def clean_store_files():
+    """Remove all rotating store files matching the path prefix.
+
+    A scenario spoiling the store's path leaves a directory where a block goes,
+    and an interrupted run can leave it behind for the next one.
+    """
+    for path in glob.glob(STORE_PATH_PREFIX + "*.log"):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
+
+
 def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=CONDITION_TIMEOUT_SECONDS):
     """Poll until the TCP port accepts connections."""
     deadline = time.monotonic() + timeout
@@ -293,8 +306,7 @@ def after_scenario(context, scenario):
         os.remove(STORE_FILE_PATH)
     except FileNotFoundError:
         pass
-    for path in glob.glob(STORE_PATH_PREFIX + "*.log"):
-        os.remove(path)
+    clean_store_files()
     try:
         os.remove(THRESHOLD_MARKER_PATH)
     except FileNotFoundError:

@@ -32,6 +32,8 @@ static bool BlockStore_IsTransient(struct SolidSyslogStore* base);
 static inline struct SolidSyslogBlockStore* BlockStore_SelfFromBase(struct SolidSyslogStore* base);
 static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* self);
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self);
+static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t readBlockSize);
+static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation);
 
 /* ------------------------------------------------------------------
  * Initialise / Cleanup - private lifecycle pair invoked by Static.c.
@@ -63,13 +65,7 @@ void SolidSyslogBlockStore_Initialise(
     }
     else
     {
-        /* The store stands: the block device opens lazily, so the next write
-         * tries again, and reports if that fails too. */
-        BlockStore_Report(
-            SOLIDSYSLOG_SEVERITY_WARNING,
-            SOLIDSYSLOG_CAT_STORE_OPEN_FAILED,
-            SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
-        );
+        BlockStore_Freeze(self, SolidSyslogBlockSequence_FailedOperation(self->BlockSequence));
     }
 }
 
@@ -102,31 +98,68 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
 
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self)
 {
-    struct SolidSyslogBlockDevice* device = SolidSyslogBlockSequence_BlockDevice(self->BlockSequence);
-    size_t readSequence = SolidSyslogBlockSequence_ReadSequence(self->BlockSequence);
-    /* Bound the scan by the read block's actual size, not WritePosition. On a
-     * multi-block resume the read block is a closed earlier block whose size
-     * is independent of the write block's fill level. */
-    size_t readBlockSize = SolidSyslogBlockDevice_Size(device, readSequence);
+    size_t readBlockSize = 0U;
 
-    bool corrupt = false;
-    size_t cursor =
-        SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &corrupt);
-
-    SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, cursor);
-
-    if (corrupt)
+    if (SolidSyslogBlockSequence_ReadBlockSize(self->BlockSequence, &readBlockSize))
     {
-        SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+        BlockStore_ScanReadBlock(self, readBlockSize);
+    }
+    else
+    {
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
     }
 }
 
+static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t readBlockSize)
+{
+    struct SolidSyslogBlockDevice* device = SolidSyslogBlockSequence_BlockDevice(self->BlockSequence);
+    size_t readSequence = SolidSyslogBlockSequence_ReadSequence(self->BlockSequence);
+    enum SolidSyslogRecordStoreScanResult scanned = SOLIDSYSLOG_RECORD_STORE_SCAN_CLEAN;
+    size_t cursor =
+        SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &scanned);
+
+    SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, cursor);
+
+    if (scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED)
+    {
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+    }
+    else if (scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_CORRUPT)
+    {
+        SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+    }
+    else
+    {
+        /* Every record before the cursor was sent. */
+    }
+}
+
+/* A device that has failed once is not trusted with audit records again. The
+ * store takes on the NullStore vtable through Cleanup, so it never calls the
+ * device again: what it held stays on the media for the next start, and
+ * Service sends new records directly because the store is now transient. The
+ * slot is still in use, so Destroy releases it as usual. */
+static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation)
+{
+    BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_FROZEN, failedOperation);
+    SolidSyslogBlockStore_Cleanup(&self->Base);
+}
+
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
-static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended);
+static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
+static inline void BlockStore_ReportSealFailed(void);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
-    return BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
+    bool written = false;
+
+    /* A record of no bytes would read back as nothing unsent and jam the cursor. */
+    if (size > 0U)
+    {
+        written = BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
+    }
+
+    return written;
 }
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size)
@@ -134,8 +167,9 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
     bool written = false;
+    bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
 
-    if (SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged))
+    if (!BlockStore_FreezeIfDeviceFailed(self) && prepared)
     {
         if (readBlockChanged)
         {
@@ -155,24 +189,40 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
         }
+        else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
+        {
+            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
+        }
         else
         {
-            BlockStore_ReportRecordNotKept(appended);
+            BlockStore_ReportSealFailed();
         }
     }
 
     return written;
 }
 
-/* The policy reports why it would not seal; the device, when it reports, why
- * it would not take the record. Either way the record is lost, which this
- * reports. */
-static inline void BlockStore_ReportRecordNotKept(enum SolidSyslogRecordStoreAppendResult appended)
+static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)
 {
-    enum SolidSyslogBlockStoreErrors code = (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SEAL_FAILED)
-                                                ? SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
-                                                : SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED;
-    BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, code);
+    bool failed = SolidSyslogBlockSequence_DeviceFailed(self->BlockSequence);
+
+    if (failed)
+    {
+        BlockStore_Freeze(self, SolidSyslogBlockSequence_FailedOperation(self->BlockSequence));
+    }
+
+    return failed;
+}
+
+/* The policy reports why it would not seal; this reports that the record is
+ * lost. */
+static inline void BlockStore_ReportSealFailed(void)
+{
+    BlockStore_Report(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+    );
 }
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)
@@ -204,61 +254,102 @@ static bool BlockStore_IsTransient(struct SolidSyslogStore* base)
     return false;
 }
 
-static bool BlockStore_ReadCurrent(struct SolidSyslogBlockStore* self, void* data, size_t maxSize, size_t* bytesRead);
+static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
+    struct SolidSyslogBlockStore* self,
+    void* data,
+    size_t maxSize,
+    size_t* bytesRead
+);
 
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
 {
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
-    bool read = false;
     *bytesRead = 0;
 
     if (SolidSyslogBlockSequence_HasUnsent(self->BlockSequence))
     {
-        read = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
+        enum SolidSyslogRecordStoreReadResult result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
 
-        while (!read && SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
+        while ((result == SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD) &&
+               SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
         {
             SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
-            read = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
+            result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
+        }
+
+        if (result == SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED)
+        {
+            /* A block size the sequence could not read is noted there and named
+             * by it; any other failure is the read of the record itself. */
+            if (!BlockStore_FreezeIfDeviceFailed(self))
+            {
+                BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+            }
         }
     }
 
-    return read;
+    /* A record of no bytes is nothing to send. */
+    return *bytesRead > 0U;
 }
 
-static bool BlockStore_ReadCurrent(struct SolidSyslogBlockStore* self, void* data, size_t maxSize, size_t* bytesRead)
+static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
+    struct SolidSyslogBlockStore* self,
+    void* data,
+    size_t maxSize,
+    size_t* bytesRead
+)
 {
-    return SolidSyslogRecordStore_Read(
-        self->RecordStore,
-        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
-        SolidSyslogBlockSequence_ReadSequence(self->BlockSequence),
-        SolidSyslogBlockSequence_ReadCursor(self->BlockSequence),
-        data,
-        maxSize,
-        bytesRead
-    );
+    size_t readBlockSize = 0U;
+    enum SolidSyslogRecordStoreReadResult result = SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED;
+
+    if (SolidSyslogBlockSequence_ReadBlockSize(self->BlockSequence, &readBlockSize))
+    {
+        result = SolidSyslogRecordStore_Read(
+            self->RecordStore,
+            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+            SolidSyslogBlockSequence_ReadSequence(self->BlockSequence),
+            SolidSyslogBlockSequence_ReadCursor(self->BlockSequence),
+            readBlockSize,
+            data,
+            maxSize,
+            bytesRead
+        );
+    }
+
+    return result;
 }
 
 static void BlockStore_MarkSent(struct SolidSyslogStore* base)
 {
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     size_t nextCursor = 0U;
+    enum SolidSyslogRecordStoreMarkResult marked = SolidSyslogRecordStore_MarkLastReadAsSent(
+        self->RecordStore,
+        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+        &nextCursor
+    );
 
-    if (SolidSyslogRecordStore_MarkLastReadAsSent(
-            self->RecordStore,
-            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
-            &nextCursor
-        ))
+    if (marked == SOLIDSYSLOG_RECORD_STORE_MARK_DEVICE_FAILED)
+    {
+        /* The record was delivered. Freezing is what stops it being read and
+         * sent again, since its flag still says unsent. */
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED);
+    }
+    else if (marked == SOLIDSYSLOG_RECORD_STORE_MARK_SUCCEEDED)
     {
         SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
 
         bool readBlockChanged = false;
         SolidSyslogBlockSequence_DisposeReadBlockIfDrained(self->BlockSequence, &readBlockChanged);
 
-        if (readBlockChanged)
+        if (!BlockStore_FreezeIfDeviceFailed(self) && readBlockChanged)
         {
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
         }
+    }
+    else
+    {
+        /* Nothing read since the last mark - nothing to do. */
     }
 }

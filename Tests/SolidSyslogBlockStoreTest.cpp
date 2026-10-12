@@ -26,6 +26,14 @@ static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA = "hello";
 static const size_t TEST_DATA_LEN = 5;
 
+#define CHECK_STORE_FROZEN(failedOperation) \
+    CHECK_ERROR_REPORTED_ONCE(              \
+        SOLIDSYSLOG_SEVERITY_ERROR,         \
+        &SolidSyslogBlockStoreErrorSource,  \
+        SOLIDSYSLOG_CAT_STORE_FROZEN,       \
+        failedOperation                     \
+    )
+
 enum
 {
     TEST_BUF_SIZE = SOLIDSYSLOG_MAX_MESSAGE_SIZE,
@@ -106,6 +114,15 @@ TEST_BASE(BlockDeviceTestBase)
             device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, blockSize);
         }
     }
+
+    /* What a restart does to the device: its open handle goes, and the next
+     * operation on a block has to open the file again. */
+    void RestartDevice()
+    {
+        size_t blockSize = SolidSyslogBlockDevice_GetBlockSize(device);
+        SolidSyslogFileBlockDevice_Destroy(device);
+        device = SolidSyslogFileBlockDevice_Create(file, TEST_PATH_PREFIX, blockSize);
+    }
 };
 
 // clang-format on
@@ -149,6 +166,11 @@ TEST(SolidSyslogBlockStore, HasUnsentReturnsFalseOnEmpty)
 TEST(SolidSyslogBlockStore, WriteReturnsTrue)
 {
     CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+}
+
+TEST(SolidSyslogBlockStore, WriteOfNoBytesIsRejected)
+{
+    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, 0));
 }
 
 TEST(SolidSyslogBlockStore, HasUnsentReturnsTrueAfterWrite)
@@ -342,12 +364,22 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- total and markedSent have distinct semantics
     void WritePreviousSession(int total, int markedSent)
     {
-        struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-        store = SolidSyslogBlockStore_Create(&config);
+        RecordPreviousSession(total, markedSent);
+        Resume();
+    }
+
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- total and markedSent have distinct semantics
+    void RecordPreviousSession(int total, int markedSent)
+    {
+        Resume();
         WriteMessages(total);
         DrainMessages(markedSent);
         SolidSyslogBlockStore_Destroy(store);
+    }
 
+    void Resume()
+    {
+        struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -375,6 +407,18 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
 };
 
 // clang-format on
+
+TEST(SolidSyslogBlockStoreResume, AWriteBlockWhoseSizeFailsFreezesTheStore)
+{
+    RecordPreviousSession(3, 1);
+    RestartDevice();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    Resume();
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
 
 TEST(SolidSyslogBlockStoreResume, HasUnsentAfterResume)
 {
@@ -641,14 +685,15 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureStillReturnsNonNull)
     CHECK_TRUE(store != nullptr);
 }
 
-TEST(SolidSyslogBlockStoreErrors, TransientOpenFailureRecoversOnNextWrite)
+TEST(SolidSyslogBlockStoreErrors, AStoreThatFailedToOpenKeepsNothing)
 {
-    /* BlockDevice opens lazily - a one-shot Open failure during Create heals
-     * on the next operation that needs the file. */
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     FileFake_FailNextOpen(file);
     store = SolidSyslogBlockStore_Create(&config);
-    CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+
+    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
 TEST(SolidSyslogBlockStoreErrors, WriteReturnsFalseOnWriteFailure)
@@ -672,23 +717,94 @@ TEST(SolidSyslogBlockStoreErrors, ReadReturnsFalseOnReadFailure)
     LONGS_EQUAL(0, bytesRead);
 }
 
-TEST(SolidSyslogBlockStoreErrors, MarkSentDoesNotAdvanceWhenWriteFails)
+TEST(SolidSyslogBlockStoreErrors, AReadFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     store = SolidSyslogBlockStore_Create(&config);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextRead(file);
 
     char buf[TEST_BUF_SIZE];
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
-    FileFake_FailNextWrite(file);
-    SolidSyslogStore_MarkSent(store);
-
-    CHECK_TRUE(SolidSyslogStore_HasUnsent(store));
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
 }
 
-TEST(SolidSyslogBlockStoreErrors, OpenFailureReportsTheStoreDidNotOpen)
+TEST(SolidSyslogBlockStoreErrors, AFailedReadOfARecordBodyFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    FileFake_FailReadAfter(file, 1); /* the header reads, the body does not */
+
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AReadFailureWhileResumingFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogBlockStore_Destroy(store);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextRead(file);
+
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreErrors, ASentFlagThatWillNotReadWhileResumingFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogBlockStore_Destroy(store);
+    FileFake_FailReadAfter(file, 3); /* header, body and trailer read; the sent flag does not */
+
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, MarkSentFailureFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreErrors, ARecordWhoseSentFlagWouldNotWriteIsNotReadAgain)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+}
+
+TEST(SolidSyslogBlockStoreErrors, OpenFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     ErrorHandlerFake_Install(nullptr);
@@ -696,15 +812,10 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureReportsTheStoreDidNotOpen)
 
     store = SolidSyslogBlockStore_Create(&config);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_WARNING,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_OPEN_FAILED,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED);
 }
 
-TEST(SolidSyslogBlockStoreErrors, AppendFailureReportsTheWriteFailed)
+TEST(SolidSyslogBlockStoreErrors, AppendFailureFreezesTheStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     store = SolidSyslogBlockStore_Create(&config);
@@ -713,12 +824,57 @@ TEST(SolidSyslogBlockStoreErrors, AppendFailureReportsTheWriteFailed)
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreIsTransient)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreHasNothingUnsent)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    FileFake_FailNextWrite(file);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreNoLongerWritesToTheDevice)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    FileFake_FailNextWrite(file);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    size_t sizeWhenFrozen = FileFake_FileSize();
+
+    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(sizeWhenFrozen, FileFake_FileSize());
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFrozenStoreReportsOnlyOnce)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextWrite(file);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    FileFake_FailNextWrite(file);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
 TEST(SolidSyslogBlockStoreErrors, ACreateAndWriteThatSucceedReportNothing)
@@ -1264,27 +1420,27 @@ TEST(SolidSyslogBlockStoreRotation, MaxBlocksAtUpperLimit)
 {
     enum
     {
-        MAX_BLOCKS = 99
+        MAX_BLOCKS = 98
     };
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, MAX_BLOCKS);
 
-    /* Fill all 99 blocks */
+    /* Fill all 98 blocks */
     for (int i = 0; i < MAX_BLOCKS; i++)
     {
         WriteMaxMsg();
     }
 
-    /* All 99 blocks should exist (00-98) */
+    /* All 98 blocks should exist (00-97) */
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
-    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
-    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store99.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store97.log"));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
 
-    /* One more write - should discard block 00 and create block 99 */
+    /* One more write - should discard block 00 and create block 98 */
     WriteMaxMsg();
 
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
-    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store99.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store98.log"));
 }
 
 TEST(SolidSyslogBlockStoreRotation, MultipleRecordsPerBlockDrainAcrossRotation)
@@ -1382,7 +1538,7 @@ TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureReportsTheWriteFailed)
+TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureFreezesTheStore)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg(); /* fills block 00 */
@@ -1391,12 +1547,7 @@ TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureReportsTheWriteFailed)
 
     WriteMaxMsg();
 
-    CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        &SolidSyslogBlockStoreErrorSource,
-        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
-    );
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
@@ -1411,36 +1562,119 @@ TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogBlockStoreRotation, RotationRetriesAfterTransientAcquireFailure)
+TEST(SolidSyslogBlockStoreRotation, ARotationThatFailedOnceIsNotRetried)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg(); /* block 00 */
 
     FileFake_FailNextOpen(file);
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* fails - Acquire on block 01 rejected */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* Acquire on block 01 rejected */
 
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* retry succeeds */
-    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
-TEST(SolidSyslogBlockStoreRotation, DiscardRetriesAfterTransientDisposeFailure)
+TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnResumeFreezesTheStore)
 {
-    /* Without this guarantee the oldest pointer would advance past a still-on-disk
-     * block, leaving it orphaned forever. Force a Dispose failure on the discard
-     * during block-02 rotation, then trigger another rotation: the next discard
-     * cycle must re-attempt block 00 - not skip past it to block 01. Both Writes
-     * succeed (rotation acquires the new block; only the discard silently fails). */
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
     WriteMaxMsg(); /* block 00 */
     WriteMaxMsg(); /* block 01 */
+    SolidSyslogBlockStore_Destroy(store);
+    RestartDevice();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailOpenAfter(file, 1); /* the write block opens; the read block behind it does not */
 
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnReadFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, 3);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    WriteMaxMsg(); /* block 02 - the device's handle is now on this block */
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 00 drained and disposed; 01 is read next, unmeasured */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedEvictionFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    ErrorHandlerFake_Install(nullptr);
     FileFake_FailNextDelete(file);
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
-    ); /* block 02 - discard of 00 fails; oldest must stay at 0 */
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
-    ); /* block 03 - next discard cycle re-attempts and removes 00 */
 
-    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    WriteMaxMsg(); /* block 02 - the discard of 00 fails */
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreRotation, AWriteThatFreezesTheStoreReturnsFalse)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    FileFake_FailNextDelete(file);
+
+    /* False, with the store now transient, is what sends the record directly. */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedEvictionLeavesTheOldestBlockOnTheDevice)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    FileFake_FailNextDelete(file);
+    WriteMaxMsg(); /* block 02 - the discard of 00 fails */
+
+    WriteMaxMsg();
+
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* rotates to block 01 */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    SolidSyslogStore_MarkSent(store); /* block 00 drained - its dispose fails */
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockOnRotationFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00, also the write block */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* drained, but still the write block */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    WriteMaxMsg(); /* rotates; block 00's dispose fails */
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
 }
 
 enum
@@ -1649,6 +1883,28 @@ TEST(SolidSyslogBlockStoreCorruption, TruncatedLengthHasNoUnsent)
     WriteRawBytes("/tmp/test_store00.log", truncatedHeader, sizeof(truncatedHeader));
     CreateStore();
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, ZeroLengthRecordHasNoUnsent)
+{
+    uint8_t zeroLength[] = {0xA5, 0x5A, 0x00, 0x00, 0xFF};
+    WriteRawBytes("/tmp/test_store00.log", zeroLength, sizeof(zeroLength));
+    CreateStore();
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
+{
+    /* What a power cut mid-append leaves: the record runs past the end of the
+     * block, which is damaged data, not a failing device. */
+    uint8_t truncatedBody[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e'};
+    WriteRawBytes("/tmp/test_store00.log", truncatedBody, sizeof(truncatedBody));
+    ErrorHandlerFake_Install(nullptr);
+
+    CreateStore();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
 }
 
 TEST(SolidSyslogBlockStoreCorruption, TruncatedBodyHasNoUnsent)

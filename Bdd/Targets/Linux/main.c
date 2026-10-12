@@ -316,6 +316,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    /* Before the store is created, so a scenario expecting an ERROR from its
+       Create can say so - a `set` at the prompt arrives too late for that. */
+    (void) BddTargetStderrErrorHandler_SetByName("errors-fatal", options.ErrorsFatal);
+
     /* Honour --app-name when supplied (BDD scenarios pin it for record-size
        parity across runners); otherwise derive from argv[0] as before. */
     BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);

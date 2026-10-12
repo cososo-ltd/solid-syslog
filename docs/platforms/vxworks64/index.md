@@ -262,7 +262,9 @@ the two apart and reporting a delete that fails.
 The file opens the paths the block device gives it, under a volume the image
 has already mounted, and never mounts or formats one itself. Bring the volume
 up before the store is created; with no volume there, the file cannot open
-the store's files, and reports each open that fails.
+the store's files, reports the open that fails, and the store freezes as
+[`SOLIDSYSLOG_CAT_STORE_FROZEN`](../../api/SolidSyslogStoreCategories_8h.md)
+describes.
 
 ### Log from a task, not an interrupt
 

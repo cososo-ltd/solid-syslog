@@ -370,6 +370,15 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct BddTargetWindowsOptions options;
     BddTargetWindowsCommandLine_Parse(argc, argv, &options);
 
+    /* Before the store is created, so a scenario expecting an ERROR from its
+       Create can say so - a `set` at the prompt arrives too late for that. */
+    if (!BddTargetStderrErrorHandler_SetByName("errors-fatal", options.ErrorsFatal))
+    {
+        (void) fprintf(stderr, "BDD-TARGET: --errors-fatal takes 0 or 1, not %s\n", options.ErrorsFatal);
+        WSACleanup();
+        return 1;
+    }
+
     /* Honour --app-name when supplied (BDD scenarios pin it for record-size
        parity across runners); otherwise derive from argv[0] as before. */
     BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);

@@ -7,8 +7,6 @@
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
-#include "SolidSyslogError.h"
-#include "SolidSyslogStoreCategories.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,8 +17,10 @@ struct SolidSyslogBlockDevice;
 enum
 {
     MIN_MAX_BLOCKS = 2U,
-    MAX_MAX_BLOCKS = 99U,
-    SEQUENCE_MODULUS = 100U
+    SEQUENCE_MODULUS = 100U,
+    /* Two short of the sequence space: a failed eviction leaves one block over
+     * the ceiling, and a resume still needs an absent number to find the run. */
+    MAX_MAX_BLOCKS = SEQUENCE_MODULUS - 2U
 };
 
 static inline uint8_t BlockSequence_NextSequence(uint8_t current)
@@ -74,8 +74,12 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->ReadSequence = 0;
     blockSequence->WriteSequence = 0;
     blockSequence->ReadCursor = 0;
+    blockSequence->ReadBlockSize = 0;
+    blockSequence->ReadBlockSizeKnown = false;
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
+    blockSequence->DeviceFailed = false;
+    blockSequence->FailedOperation = SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX;
 }
 
 void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequence)
@@ -87,6 +91,10 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence);
+static inline void BlockSequence_NoteDeviceFailure(
+    struct SolidSyslogBlockSequence* blockSequence,
+    enum SolidSyslogBlockStoreErrors failedOperation
+);
 static inline void BlockSequence_NotifyThresholdCrossed(struct SolidSyslogBlockSequence* blockSequence);
 
 bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequence)
@@ -96,13 +104,23 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
 
     if (foundExistingBlocks)
     {
-        blockSequence->WritePosition =
-            SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->WriteSequence);
-        ready = true;
+        size_t writePosition = 0U;
+        ready = SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->WriteSequence, &writePosition);
+        blockSequence->WritePosition = writePosition;
+
+        if (!ready)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+        }
     }
     else
     {
         ready = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, 0);
+
+        if (!ready)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED);
+        }
     }
 
     if (ready)
@@ -111,6 +129,18 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
     }
 
     return ready;
+}
+
+static inline void BlockSequence_NoteDeviceFailure(
+    struct SolidSyslogBlockSequence* blockSequence,
+    enum SolidSyslogBlockStoreErrors failedOperation
+)
+{
+    if (!blockSequence->DeviceFailed)
+    {
+        blockSequence->DeviceFailed = true;
+        blockSequence->FailedOperation = failedOperation;
+    }
 }
 
 enum
@@ -135,6 +165,11 @@ static void BlockSequence_ScanForBlockPresence(
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest);
 
+static inline void BlockSequence_StartReadingBlock(
+    struct SolidSyslogBlockSequence* blockSequence,
+    uint8_t readSequence
+);
+
 /* The on-disk block set is a single contiguous run in the circular sequence
  * space [0, MAX_SEQUENCE). After enough rotations the run straddles the
  * 99 -> 00 boundary (e.g. {98, 99, 0, 1}). Naive lowest=oldest /
@@ -153,11 +188,20 @@ static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence*
         BlockSequence_LocateRunBoundaries(&presence, &oldest, &newest);
 
         blockSequence->OldestSequence = (uint8_t) oldest;
-        blockSequence->ReadSequence = (uint8_t) oldest;
+        BlockSequence_StartReadingBlock(blockSequence, (uint8_t) oldest);
         blockSequence->WriteSequence = (uint8_t) newest;
     }
 
     return presence.FoundAny;
+}
+
+/* The cursor goes to the start of the block, and a size cached for the block
+ * it leaves is forgotten. */
+static inline void BlockSequence_StartReadingBlock(struct SolidSyslogBlockSequence* blockSequence, uint8_t readSequence)
+{
+    blockSequence->ReadSequence = readSequence;
+    blockSequence->ReadCursor = 0;
+    blockSequence->ReadBlockSizeKnown = false;
 }
 
 static void BlockSequence_ScanForBlockPresence(
@@ -329,12 +373,12 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     uint8_t nextSequence
 );
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
-static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice* device, size_t blockIndex);
+static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged)
 {
     uint8_t nextSequence = BlockSequence_NextSequence(blockSequence->WriteSequence);
-    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence->BlockDevice, nextSequence);
+    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
 
     *readBlockChanged = false;
 
@@ -349,21 +393,19 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
 
         /* Sealing the prior write block can re-arm dispose-on-empty: drain that
          * fully MarkSent the block before rotation could not fire here because
-         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now. */
-        bool disposedAfterRotate = false;
-        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
-        *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now,
+         * unless the eviction failed - a failed device is not called again. */
+        if (!blockSequence->DeviceFailed)
+        {
+            bool disposedAfterRotate = false;
+            SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
+            *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+        }
     }
     else
     {
-        /* Only a device failure gets here: a full store that keeps what it has
-         * never rotates. */
-        SolidSyslog_Error(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            &SolidSyslogBlockStoreErrorSource,
-            SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-            (int32_t) SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED
-        );
+        /* Only a device failure gets here, and AcquireEmptyBlock has noted it: a
+         * full store that keeps what it has never rotates. */
     }
 
     return acquired;
@@ -375,22 +417,32 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
  * past it. Flash drivers depend on this - Acquire = erase, and writing into
  * a non-erased block corrupts data on most flash families.
  *
- * If Dispose fails we surface the failure rather than letting Acquire mask it:
- * a "verify-and-use" flash driver (S18.04 design notes) would Acquire-fail on
- * the still-stale block anyway, and skipping the wasted Acquire keeps callers'
- * retry path (slice 3) symmetric with the dispose-failure path. */
-static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockDevice* device, size_t blockIndex)
+ * If Dispose fails, Acquire is not tried: a "verify-and-use" flash driver would
+ * reject the still-stale block anyway. The failure is noted as the operation
+ * that failed, so a stale block that will not go is a dispose failure. */
+static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
 {
+    struct SolidSyslogBlockDevice* device = blockSequence->BlockDevice;
     bool ready = true;
 
     if (SolidSyslogBlockDevice_Exists(device, blockIndex))
     {
         ready = SolidSyslogBlockDevice_Dispose(device, blockIndex);
+
+        if (!ready)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+        }
     }
 
     if (ready)
     {
         ready = SolidSyslogBlockDevice_Acquire(device, blockIndex);
+
+        if (!ready)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
+        }
     }
 
     return ready;
@@ -426,14 +478,17 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
             readBlockChanged = true;
         }
     }
+    else
+    {
+        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+    }
 
     return readBlockChanged;
 }
 
 static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence)
 {
-    blockSequence->ReadSequence = blockSequence->OldestSequence;
-    blockSequence->ReadCursor = 0;
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
 }
 
 struct SolidSyslogBlockDevice* SolidSyslogBlockSequence_BlockDevice(const struct SolidSyslogBlockSequence* blockSequence
@@ -474,8 +529,47 @@ void SolidSyslogBlockSequence_SetReadCursor(struct SolidSyslogBlockSequence* blo
 }
 
 static inline bool BlockSequence_IsReadBlockActiveWrite(const struct SolidSyslogBlockSequence* blockSequence);
+
+/* A size the device could not read is a failed device, never an empty block:
+ * read as empty, a block still holding unsent records would look drained. A
+ * block behind the write block no longer grows, so its size is read once. */
+bool SolidSyslogBlockSequence_ReadBlockSize(struct SolidSyslogBlockSequence* blockSequence, size_t* size)
+{
+    bool known = true;
+
+    if (BlockSequence_IsReadBlockActiveWrite(blockSequence))
+    {
+        *size = blockSequence->WritePosition;
+    }
+    else if (blockSequence->ReadBlockSizeKnown)
+    {
+        *size = blockSequence->ReadBlockSize;
+    }
+    else
+    {
+        known = SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence, size);
+        blockSequence->ReadBlockSize = *size;
+        blockSequence->ReadBlockSizeKnown = known;
+
+        if (!known)
+        {
+            BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+        }
+    }
+
+    return known;
+}
+
+static inline bool BlockSequence_IsReadBlockActiveWrite(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return blockSequence->ReadSequence == blockSequence->WriteSequence;
+}
+
 static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlockSequence* blockSequence);
-static inline bool BlockSequence_IsReadBlockFullyDrained(const struct SolidSyslogBlockSequence* blockSequence);
+static inline bool BlockSequence_IsReadBlockFullyDrained(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    size_t readBlockSize
+);
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
@@ -485,20 +579,24 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
 {
     *readBlockChanged = false;
 
-    if (!BlockSequence_IsReadBlockActiveWrite(blockSequence) && BlockSequence_IsReadBlockOldest(blockSequence) &&
-        BlockSequence_IsReadBlockFullyDrained(blockSequence))
+    if (!BlockSequence_IsReadBlockActiveWrite(blockSequence) && BlockSequence_IsReadBlockOldest(blockSequence))
     {
-        if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence))
+        size_t readBlockSize = 0U;
+
+        if (SolidSyslogBlockSequence_ReadBlockSize(blockSequence, &readBlockSize) &&
+            BlockSequence_IsReadBlockFullyDrained(blockSequence, readBlockSize))
         {
-            BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
-            *readBlockChanged = true;
+            if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence))
+            {
+                BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
+                *readBlockChanged = true;
+            }
+            else
+            {
+                BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+            }
         }
     }
-}
-
-static inline bool BlockSequence_IsReadBlockActiveWrite(const struct SolidSyslogBlockSequence* blockSequence)
-{
-    return blockSequence->ReadSequence == blockSequence->WriteSequence;
 }
 
 static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlockSequence* blockSequence)
@@ -506,29 +604,41 @@ static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlock
     return blockSequence->ReadSequence == blockSequence->OldestSequence;
 }
 
-static inline bool BlockSequence_IsReadBlockFullyDrained(const struct SolidSyslogBlockSequence* blockSequence)
+static inline bool BlockSequence_IsReadBlockFullyDrained(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    size_t readBlockSize
+)
 {
-    return blockSequence->ReadCursor >=
-           SolidSyslogBlockDevice_Size(blockSequence->BlockDevice, blockSequence->ReadSequence);
+    return blockSequence->ReadCursor >= readBlockSize;
 }
 
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
     blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
-    blockSequence->ReadSequence = blockSequence->OldestSequence;
-    blockSequence->ReadCursor = 0;
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
 void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
-    blockSequence->ReadSequence = BlockSequence_NextSequence(blockSequence->ReadSequence);
-    blockSequence->ReadCursor = 0;
+    BlockSequence_StartReadingBlock(blockSequence, BlockSequence_NextSequence(blockSequence->ReadSequence));
 }
 
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence)
 {
     return blockSequence->ReadSequence != blockSequence->WriteSequence;
+}
+
+bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return blockSequence->DeviceFailed;
+}
+
+enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(
+    const struct SolidSyslogBlockSequence* blockSequence
+)
+{
+    return blockSequence->FailedOperation;
 }
 
 bool SolidSyslogBlockSequence_HasUnsent(const struct SolidSyslogBlockSequence* blockSequence)

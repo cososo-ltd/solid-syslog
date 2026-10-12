@@ -25,7 +25,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Take a copy of @p data (@p size bytes) as an unsent record. False means
          *  not retained: for a retaining store that is the discard policy refusing
          *  it (drop-newest, or halted), for a transient store it means "never held,
-         *  send it directly". Service branches on IsTransient to tell the two apart. */
+         *  send it directly". Service branches on IsTransient to tell the two apart.
+         *  A record of no bytes is never retained, since ReadNextUnsent could not
+         *  tell it from nothing unsent. */
         bool (*Write)(struct SolidSyslogStore* base, const void* data, size_t size);
         /** Copy the oldest unsent record into @p data (up to @p maxSize, over-long
          *  records truncated), set @p bytesRead, and position the cursor on it for a
@@ -50,7 +52,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  for stores that actually retain records, where a rejection is the
          *  discard policy speaking and the message must NOT bypass older records
          *  via a direct-send fallback. Service consults this after a failed Write
-         *  to decide whether to fall through. */
+         *  to decide whether to fall through. It asks after every rejected Write,
+         *  so a store that stops retaining - a BlockStore whose device failed -
+         *  answers true from then on. */
         bool (*IsTransient)(struct SolidSyslogStore* base);
     };
 

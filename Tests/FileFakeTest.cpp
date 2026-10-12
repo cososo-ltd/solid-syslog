@@ -158,6 +158,20 @@ TEST(FileFake, FailNextReadOnlyAffectsOneCall)
     CHECK_TRUE(SolidSyslogFile_Read(api, buf, 5));
 }
 
+TEST(FileFake, FailReadAfterLetsThatManyReadsSucceedThenFailsOne)
+{
+    SolidSyslogFile_Open(api, "test.dat");
+    SolidSyslogFile_Write(api, "hello", 5);
+    FileFake_FailReadAfter(api, 2);
+
+    char buf[16] = {};
+    SolidSyslogFile_SeekTo(api, 0);
+    CHECK_TRUE(SolidSyslogFile_Read(api, buf, 1));
+    CHECK_TRUE(SolidSyslogFile_Read(api, buf, 1));
+    CHECK_FALSE(SolidSyslogFile_Read(api, buf, 1));
+    CHECK_TRUE(SolidSyslogFile_Read(api, buf, 1));
+}
+
 TEST(FileFake, FailNextDeleteMakesDeleteReturnFalse)
 {
     SolidSyslogFile_Open(api, "test.dat");

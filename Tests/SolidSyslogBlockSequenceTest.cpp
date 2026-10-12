@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
@@ -6,6 +7,7 @@
 
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 
 extern "C"
 {
@@ -19,7 +21,8 @@ enum class CallType
 {
     Acquire,
     Dispose,
-    Exists
+    Exists,
+    Size
 };
 
 struct DeviceCall
@@ -35,6 +38,7 @@ struct ScanFake
     std::vector<DeviceCall>* calls; /* optional - tests that don't care leave nullptr */
     std::map<size_t, size_t>* sizes; /* optional - tests that need realistic Size readings populate */
     bool failNextDispose;
+    bool failNextSize;
 };
 
 inline ScanFake& ToFake(struct SolidSyslogBlockDevice* self)
@@ -119,9 +123,10 @@ bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
     return true;
 }
 
-size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+bool FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t* reported)
 {
-    const ScanFake& fake = ToFake(self);
+    ScanFake& fake = ToFake(self);
+    RecordCall(fake, CallType::Size, blockIndex);
     size_t size = 0U;
 
     if (fake.sizes != nullptr)
@@ -133,7 +138,10 @@ size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
         }
     }
 
-    return size;
+    bool known = !fake.failNextSize;
+    fake.failNextSize = false;
+    *reported = known ? size : 0U; /* as a real device: a size it could not read is no size */
+    return known;
 }
 } // namespace
 
@@ -170,6 +178,13 @@ TEST_GROUP(BlockSequenceScan)
 };
 
 // clang-format on
+
+TEST(BlockSequenceScan, MaxBlocksStopsShortOfEverySequenceNumber)
+{
+    /* Configured at 99. A failed eviction leaves one block over the ceiling, and
+     * a resume needs an absent sequence number to find where the run starts. */
+    LONGS_EQUAL(98 * 1000, SolidSyslogBlockSequence_TotalBytes(sequence));
+}
 
 TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
 {
@@ -247,10 +262,20 @@ TEST_GROUP(BlockSequenceRotation)
         fakeDevice.calls        = &calls;
         fakeDevice.sizes        = &sizes;
 
+        CreateSequence(99);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogBlockSequence_Destroy(sequence);
+    }
+
+    void CreateSequence(size_t maxBlocks)
+    {
         struct SolidSyslogBlockSequenceConfig config = {};
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
-        config.MaxBlocks                  = 99;
+        config.MaxBlocks                  = maxBlocks;
         config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         sequence = SolidSyslogBlockSequence_Create(&config);
 
@@ -258,14 +283,22 @@ TEST_GROUP(BlockSequenceRotation)
         /* Simulate one record's worth of data in block 0 - production rotation
          * never seals an empty block, and the dispose-on-empty trigger uses
          * device.Size to decide drained-ness. */
-        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
-        sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
+        NoteRecordInWriteBlock();
         calls.clear();
     }
 
-    void teardown() override
+    void RecreateWithMaxBlocks(size_t maxBlocks)
     {
         SolidSyslogBlockSequence_Destroy(sequence);
+        existing.clear();
+        sizes.clear();
+        CreateSequence(maxBlocks);
+    }
+
+    void NoteRecordInWriteBlock()
+    {
+        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
+        sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
     }
 
     [[nodiscard]] bool DisposePrecedesAcquire(size_t blockIndex) const
@@ -336,4 +369,72 @@ TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
             FAIL("Acquire(1) was called even though Dispose(1) failed");
         }
     }
+}
+
+TEST(BlockSequenceRotation, AFailedEvictionIsTheLastDeviceCall)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* block 1 */
+    NoteRecordInWriteBlock();
+    calls.clear();
+    fakeDevice.failNextDispose = true;
+
+    ForceRotation(); /* block 2 - evicting block 0 fails */
+
+    CHECK_TRUE(calls.back().type == CallType::Dispose);
+}
+
+TEST(BlockSequenceRotation, AStaleBlockThatWillNotDisposeIsADisposeFailure)
+{
+    existing.insert(1);
+    fakeDevice.failNextDispose = true;
+
+    ForceRotation();
+
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}
+
+TEST(BlockSequenceRotation, AReadBlockWhoseSizeFailsIsNotDisposed)
+{
+    fakeDevice.failNextSize = true;
+
+    ForceRotation(); /* block 0, holding an unread record, is now behind the write block */
+
+    CHECK_TRUE(calls.back().type == CallType::Size);
+}
+
+TEST(BlockSequenceRotation, AReadBlockWhoseSizeFailsIsASizeFailure)
+{
+    fakeDevice.failNextSize = true;
+
+    ForceRotation();
+
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}
+
+TEST(BlockSequenceRotation, AnEarlierReadBlockIsMeasuredOnce)
+{
+    ForceRotation(); /* block 0 is behind the write block, and is measured here */
+    size_t size = 0U;
+
+    SolidSyslogBlockSequence_ReadBlockSize(sequence, &size);
+    SolidSyslogBlockSequence_ReadBlockSize(sequence, &size);
+
+    LONGS_EQUAL(
+        1,
+        std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) { return call.type == CallType::Size; })
+    );
+}
+
+TEST(BlockSequenceRotation, TheFirstFailureIsTheOneKept)
+{
+    fakeDevice.failNextSize = true;
+    ForceRotation(); /* measuring block 0, now behind the write block, fails */
+    SolidSyslogBlockSequence_SetReadCursor(sequence, SIMULATED_RECORD_SIZE);
+    fakeDevice.failNextDispose = true;
+    bool readBlockChanged = false;
+
+    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged); /* disposing it fails too */
+
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
 }

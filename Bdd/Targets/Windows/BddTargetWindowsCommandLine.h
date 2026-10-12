@@ -25,6 +25,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t CapacityThreshold; /* --capacity-threshold (bytes; 0 disables) */
         bool HaltExit; /* --halt-exit */
         bool NoSd; /* --no-sd (suppress structured data) */
+        const char* ErrorsFatal; /* --errors-fatal 1|0 - whether an ERROR ends the target */
     };
 
     /* Minimal CLI parser - recognises the flags below. Unknown flags and
@@ -45,6 +46,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          --capacity-threshold N          (default: 0 - disabled)
          --halt-exit                     (flag; default: off - matches the Linux Threaded example so the BDD step's --halt-exit flag works on both runners)
          --no-sd                         (flag; default: off - suppress structured data)
+         --errors-fatal 1|0              (default: 1 - an ERROR ends the target)
        getopt is not available on MSVC and pulling in a vcpkg getopt for a
        handful of flags would be overkill. */
     void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetWindowsOptions* options);

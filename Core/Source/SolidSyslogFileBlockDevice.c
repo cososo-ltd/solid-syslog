@@ -67,7 +67,7 @@ static bool FileBlockDevice_WriteAt(
     size_t count
 );
 // NOLINTEND(bugprone-easily-swappable-parameters)
-static size_t FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+static bool FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size);
 static size_t FileBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base);
 
 static inline struct SolidSyslogFileBlockDevice* FileBlockDevice_SelfFromBase(struct SolidSyslogBlockDevice* base);
@@ -338,20 +338,23 @@ static bool FileBlockDevice_WriteAt(
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-static size_t FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex)
+static bool FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size)
 {
-    size_t size = 0U;
+    bool known = false;
+    *size = 0U;
 
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* self = FileBlockDevice_SelfFromBase(base);
-        if (FileBlockDevice_EnsureHandleOpenOnBlock(&self->Handle, self, blockIndex))
+        known = FileBlockDevice_EnsureHandleOpenOnBlock(&self->Handle, self, blockIndex);
+
+        if (known)
         {
-            size = SolidSyslogFile_Size(self->Handle.File);
+            *size = SolidSyslogFile_Size(self->Handle.File);
         }
     }
 
-    return size;
+    return known;
 }
 
 static size_t FileBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base)

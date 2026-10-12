@@ -21,6 +21,7 @@ struct FakeBlockDevice
     bool appendReturn = true;
     bool writeAtReturn = true;
     size_t sizeReturn = 0U;
+    bool sizeSucceeds = true;
 };
 
 inline FakeBlockDevice& ToFake(struct SolidSyslogBlockDevice* self)
@@ -80,11 +81,12 @@ bool FakeWriteAt(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t 
     return fake.writeAtReturn;
 }
 
-size_t FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex)
+bool FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t* size)
 {
     FakeBlockDevice& fake = ToFake(self);
     fake.lastBlockIndex = blockIndex;
-    return fake.sizeReturn;
+    *size = fake.sizeReturn;
+    return fake.sizeSucceeds;
 }
 } // namespace
 
@@ -195,12 +197,22 @@ TEST(SolidSyslogBlockDevice, WriteAtReturnsVtableResult)
 
 TEST(SolidSyslogBlockDevice, SizeForwardsBlockIndexToVtable)
 {
-    SolidSyslogBlockDevice_Size(device, 6);
+    size_t size = 0U;
+    SolidSyslogBlockDevice_Size(device, 6, &size);
     LONGS_EQUAL(6, fake.lastBlockIndex);
 }
 
-TEST(SolidSyslogBlockDevice, SizeReturnsVtableResult)
+TEST(SolidSyslogBlockDevice, SizeReturnsVtableSize)
 {
     fake.sizeReturn = 42;
-    LONGS_EQUAL(42, SolidSyslogBlockDevice_Size(device, 0));
+    size_t size = 0U;
+    CHECK_TRUE(SolidSyslogBlockDevice_Size(device, 0, &size));
+    LONGS_EQUAL(42, size);
+}
+
+TEST(SolidSyslogBlockDevice, SizeReturnsVtableFailure)
+{
+    fake.sizeSucceeds = false;
+    size_t size = 0U;
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
 }

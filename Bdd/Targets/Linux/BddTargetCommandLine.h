@@ -26,6 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t CapacityThreshold;
         bool NoSd;
         bool HaltExit;
+        const char* ErrorsFatal; /* "1" (default) | "0" - whether an ERROR ends the target */
     };
 
     int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options);

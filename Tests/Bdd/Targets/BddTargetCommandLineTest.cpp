@@ -259,3 +259,30 @@ TEST(BddTargetCommandLine, AppNameFlagSetsAppName)
     LONGS_EQUAL(0, Parse(3, argv));
     STRCMP_EQUAL("SolidSyslogThreadedExample", options.AppName);
 }
+
+TEST(BddTargetCommandLine, DefaultErrorsFatalIsOn)
+{
+    char arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    LONGS_EQUAL(0, Parse(1, argv));
+    STRCMP_EQUAL("1", options.ErrorsFatal);
+}
+
+TEST(BddTargetCommandLine, ErrorsFatalFlagSetsErrorsFatal)
+{
+    char arg0[] = "test";
+    char arg1[] = "--errors-fatal";
+    char arg2[] = "0";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    STRCMP_EQUAL("0", options.ErrorsFatal);
+}
+
+TEST(BddTargetCommandLine, InvalidErrorsFatalReturnsOne)
+{
+    char arg0[] = "test";
+    char arg1[] = "--errors-fatal";
+    char arg2[] = "maybe";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(1, Parse(3, argv));
+}

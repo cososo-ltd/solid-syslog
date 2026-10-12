@@ -20,6 +20,12 @@
  *  threshold callback re-enters Write - drive the logger from a returning Buffer
  *  or gate the Log instead.
  *
+ *  The first block device operation that fails freezes the store, as
+ *  SOLIDSYSLOG_CAT_STORE_FROZEN describes - opening the device at Create
+ *  included, so a volume has to be mounted before the store is created. A read
+ *  that runs past the end of a block's data, as a power cut mid-append leaves,
+ *  is damaged data rather than a failed device, and does not freeze it.
+ *
  *  Internally each pool slot composes an inner RecordStore over a BlockSequence,
  *  both drawn from sibling pools; a block too small for one worst-case record is
  *  grown to fit and reported as a WARNING rather than failing Create. */
@@ -68,7 +74,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBlockStoreConfig
     {
         struct SolidSyslogBlockDevice* BlockDevice; /**< Required; block store is the sole writer. */
-        size_t MaxBlocks; /**< Retention ceiling in blocks; DiscardPolicy governs the overflow. */
+        /** Retention ceiling in blocks, clamped to 2..98; DiscardPolicy governs the
+         *  overflow. An eviction that fails freezes the store with one block more
+         *  than this on the media, and the next start keeps it. */
+        size_t MaxBlocks;
         enum SolidSyslogDiscardPolicy DiscardPolicy;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
         SolidSyslogStoreFullCallback OnStoreFull;

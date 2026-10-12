@@ -63,8 +63,8 @@ const char* BddTargetErrorText_Category(uint16_t category)
         case SOLIDSYSLOG_CAT_STORE_WRITE_FAILED:
             result = "store write failed";
             break;
-        case SOLIDSYSLOG_CAT_STORE_OPEN_FAILED:
-            result = "store open failed";
+        case SOLIDSYSLOG_CAT_STORE_FROZEN:
+            result = "store frozen";
             break;
         default:
             break;

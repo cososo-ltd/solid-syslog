@@ -6,6 +6,7 @@
 #define SOLIDSYSLOGBLOCKSEQUENCEPRIVATE_H
 
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -44,8 +45,12 @@ struct SolidSyslogBlockSequence
     uint8_t ReadSequence;
     uint8_t WriteSequence;
     size_t ReadCursor;
+    size_t ReadBlockSize; /* cached once read, for a read block behind the write block */
+    bool ReadBlockSizeKnown;
     size_t WritePosition;
     bool WriteBlockCorrupt;
+    bool DeviceFailed;
+    enum SolidSyslogBlockStoreErrors FailedOperation;
 };
 
 void SolidSyslogBlockSequence_Initialise(
@@ -73,11 +78,21 @@ void SolidSyslogBlockSequence_MarkWriteBlockCorrupt(struct SolidSyslogBlockSeque
 size_t SolidSyslogBlockSequence_ReadSequence(const struct SolidSyslogBlockSequence* blockSequence);
 size_t SolidSyslogBlockSequence_ReadCursor(const struct SolidSyslogBlockSequence* blockSequence);
 void SolidSyslogBlockSequence_SetReadCursor(struct SolidSyslogBlockSequence* blockSequence, size_t cursor);
+/* How far the read block's data runs: the write position when it is the write
+ * block, otherwise what the device reports. False, with the failure noted, when
+ * the device cannot say - never read as an empty block. */
+bool SolidSyslogBlockSequence_ReadBlockSize(struct SolidSyslogBlockSequence* blockSequence, size_t* size);
 void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence);
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
     struct SolidSyslogBlockSequence* blockSequence,
     bool* readBlockChanged
+);
+
+/* Set by the first block device operation that fails; the store freezes on it. */
+bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence);
+enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(
+    const struct SolidSyslogBlockSequence* blockSequence
 );
 
 bool SolidSyslogBlockSequence_HasUnsent(const struct SolidSyslogBlockSequence* blockSequence);
