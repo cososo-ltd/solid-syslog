@@ -502,6 +502,11 @@ size_t SolidSyslogBlockSequence_WriteSequence(const struct SolidSyslogBlockSeque
     return blockSequence->WriteSequence;
 }
 
+size_t SolidSyslogBlockSequence_WritePosition(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return blockSequence->WritePosition;
+}
+
 void SolidSyslogBlockSequence_NoteRecordWritten(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize)
 {
     blockSequence->WritePosition += recordSize;

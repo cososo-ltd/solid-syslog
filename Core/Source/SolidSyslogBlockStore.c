@@ -32,7 +32,9 @@ static bool BlockStore_IsTransient(struct SolidSyslogStore* base);
 static inline struct SolidSyslogBlockStore* BlockStore_SelfFromBase(struct SolidSyslogStore* base);
 static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* self);
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self);
-static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t readBlockSize);
+static enum SolidSyslogRecordStoreScanResult BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self);
+static void BlockStore_CheckWriteBlock(struct SolidSyslogBlockStore* self);
+static bool BlockStore_AbandonRestOfReadBlock(struct SolidSyslogBlockStore* self);
 static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors failedOperation);
 
 /* ------------------------------------------------------------------
@@ -96,29 +98,71 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
     self->Base.IsTransient = BlockStore_IsTransient;
 }
 
+/* A corrupt block is abandoned and the block after it scanned in its turn, so
+ * the cursor comes to rest on the first record still to send. */
 static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* self)
 {
+    enum SolidSyslogRecordStoreScanResult scanned = BlockStore_ScanReadBlock(self);
+
+    while ((scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_CORRUPT) && BlockStore_AbandonRestOfReadBlock(self))
+    {
+        scanned = BlockStore_ScanReadBlock(self);
+    }
+
+    if (scanned != SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED)
+    {
+        BlockStore_CheckWriteBlock(self);
+    }
+}
+
+/* Puts the cursor on the read block's first unsent record, or at its end where
+ * the records stop being readable. A device that fails freezes the store. */
+static enum SolidSyslogRecordStoreScanResult BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self)
+{
     size_t readBlockSize = 0U;
+    enum SolidSyslogRecordStoreScanResult scanned = SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED;
 
     if (SolidSyslogBlockSequence_ReadBlockSize(self->BlockSequence, &readBlockSize))
     {
-        BlockStore_ScanReadBlock(self, readBlockSize);
+        size_t cursor = SolidSyslogRecordStore_FindFirstUnsent(
+            self->RecordStore,
+            SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+            SolidSyslogBlockSequence_ReadSequence(self->BlockSequence),
+            readBlockSize,
+            &scanned
+        );
+        SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, cursor);
+
+        if (scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED)
+        {
+            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
+        }
     }
     else
     {
         BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
     }
+
+    return scanned;
 }
 
-static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t readBlockSize)
+/* Nothing reads the write block past its first unsent record before the next
+ * write appends after its last, so the block has to end on a record boundary
+ * now, or the write would land inside a record a power cut cut short. The scan
+ * has walked the read block as far as the cursor; a write block the read has
+ * not reached is walked whole. */
+static void BlockStore_CheckWriteBlock(struct SolidSyslogBlockStore* self)
 {
-    struct SolidSyslogBlockDevice* device = SolidSyslogBlockSequence_BlockDevice(self->BlockSequence);
-    size_t readSequence = SolidSyslogBlockSequence_ReadSequence(self->BlockSequence);
-    enum SolidSyslogRecordStoreScanResult scanned = SOLIDSYSLOG_RECORD_STORE_SCAN_CLEAN;
-    size_t cursor =
-        SolidSyslogRecordStore_FindFirstUnsent(self->RecordStore, device, readSequence, readBlockSize, &scanned);
-
-    SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, cursor);
+    size_t from = SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence)
+                      ? 0U
+                      : SolidSyslogBlockSequence_ReadCursor(self->BlockSequence);
+    enum SolidSyslogRecordStoreScanResult scanned = SolidSyslogRecordStore_ScanToEnd(
+        self->RecordStore,
+        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+        SolidSyslogBlockSequence_WriteSequence(self->BlockSequence),
+        from,
+        SolidSyslogBlockSequence_WritePosition(self->BlockSequence)
+    );
 
     if (scanned == SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED)
     {
@@ -130,7 +174,7 @@ static void BlockStore_ScanReadBlock(struct SolidSyslogBlockStore* self, size_t 
     }
     else
     {
-        /* Every record before the cursor was sent. */
+        /* Whole to the end: the next write appends after the last record. */
     }
 }
 
@@ -262,6 +306,7 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
 );
 static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result);
 static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self);
+static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self);
 
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
 {
@@ -320,8 +365,8 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
 }
 
 /* Moves the cursor past what the read met, where there is something to move
- * past: a record the policy rejected, or the end of a block the write has
- * left behind. Says whether there is a next record to try. */
+ * past: a record the policy rejected, the end of a block the write has left
+ * behind, or damage. Says whether there is a next record to try. */
 static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result)
 {
     bool stepped = false;
@@ -330,19 +375,55 @@ static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSy
     {
         stepped = BlockStore_DiscardCurrent(self);
     }
-    else if ((result == SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD) &&
-             SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
+    else if (result == SOLIDSYSLOG_RECORD_STORE_READ_END_OF_DATA)
     {
-        SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
-        SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
-        stepped = true;
+        stepped = BlockStore_ReadNextBlockIfBehind(self);
+    }
+    else if (result == SOLIDSYSLOG_RECORD_STORE_READ_CORRUPT)
+    {
+        stepped = BlockStore_AbandonRestOfReadBlock(self);
     }
     else
     {
-        /* A record to hand back, a device failure, or nothing left to read. */
+        /* A record to hand back, or a device failure. */
     }
 
     return stepped;
+}
+
+/* Reads on in the next block where the write has left this one behind; at the
+ * end of the write block there is nothing more. */
+static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self)
+{
+    bool behind = SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence);
+
+    if (behind)
+    {
+        SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
+        SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
+    }
+
+    return behind;
+}
+
+/* The rest of the read block cannot be read. Behind the write block the next
+ * block is read instead. In the write block nothing unsent remains, and the
+ * block is closed so the next write starts a new one rather than appending
+ * after the damage. */
+static bool BlockStore_AbandonRestOfReadBlock(struct SolidSyslogBlockStore* self)
+{
+    bool movedOn = BlockStore_ReadNextBlockIfBehind(self);
+
+    if (!movedOn)
+    {
+        SolidSyslogBlockSequence_SetReadCursor(
+            self->BlockSequence,
+            SolidSyslogBlockSequence_WritePosition(self->BlockSequence)
+        );
+        SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+    }
+
+    return movedOn;
 }
 
 /* Marks the rejected record on the media so nothing offers it again, and moves
