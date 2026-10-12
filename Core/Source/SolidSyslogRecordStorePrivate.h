@@ -57,11 +57,13 @@ enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
 
 /* What Read found. A record that runs past the end of the block's data, or that
  * fails validation, is no record; a device read that fails within the data is
- * a device failure. */
+ * a device failure. A record the policy rejects has a valid header, so its
+ * extent is known and it can be stepped over. */
 enum SolidSyslogRecordStoreReadResult
 {
     SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED,
     SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD,
+    SOLIDSYSLOG_RECORD_STORE_READ_REJECTED,
     SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED
 };
 
@@ -93,6 +95,14 @@ enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
 );
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore);
+
+/* Marks the record Read last met as discarded, so no later read or resume scan
+ * offers it again: @p nextCursor is where the record after it starts. */
+enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_DiscardLastRead(
+    struct SolidSyslogRecordStore* recordStore,
+    struct SolidSyslogBlockDevice* blockDevice,
+    size_t* nextCursor
+);
 
 /* What FindFirstUnsent met on its way through the block. */
 enum SolidSyslogRecordStoreScanResult

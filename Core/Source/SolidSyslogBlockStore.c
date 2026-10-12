@@ -260,6 +260,8 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
     size_t maxSize,
     size_t* bytesRead
 );
+static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result);
+static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self);
 
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
 {
@@ -270,11 +272,8 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
     {
         enum SolidSyslogRecordStoreReadResult result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
 
-        while ((result == SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD) &&
-               SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
+        while (BlockStore_StepPast(self, result))
         {
-            SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
-            SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
             result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
         }
 
@@ -318,6 +317,57 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
     }
 
     return result;
+}
+
+/* Moves the cursor past what the read met, where there is something to move
+ * past: a record the policy rejected, or the end of a block the write has
+ * left behind. Says whether there is a next record to try. */
+static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result)
+{
+    bool stepped = false;
+
+    if (result == SOLIDSYSLOG_RECORD_STORE_READ_REJECTED)
+    {
+        stepped = BlockStore_DiscardCurrent(self);
+    }
+    else if ((result == SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD) &&
+             SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
+    {
+        SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
+        SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
+        stepped = true;
+    }
+    else
+    {
+        /* A record to hand back, a device failure, or nothing left to read. */
+    }
+
+    return stepped;
+}
+
+/* Marks the rejected record on the media so nothing offers it again, and moves
+ * the cursor to the record after it. A mark that will not write is a media
+ * fault: the store freezes, and there is no next record to try. */
+static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self)
+{
+    size_t nextCursor = 0U;
+    enum SolidSyslogRecordStoreMarkResult marked = SolidSyslogRecordStore_DiscardLastRead(
+        self->RecordStore,
+        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
+        &nextCursor
+    );
+    bool discarded = marked == SOLIDSYSLOG_RECORD_STORE_MARK_SUCCEEDED;
+
+    if (discarded)
+    {
+        SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
+    }
+    else
+    {
+        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED);
+    }
+
+    return discarded;
 }
 
 static void BlockStore_MarkSent(struct SolidSyslogStore* base)
