@@ -66,6 +66,9 @@ const char* BddTargetErrorText_Category(uint16_t category)
         case SOLIDSYSLOG_CAT_STORE_FROZEN:
             result = "store frozen";
             break;
+        case SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED:
+            result = "store record discarded";
+            break;
         default:
             break;
     }

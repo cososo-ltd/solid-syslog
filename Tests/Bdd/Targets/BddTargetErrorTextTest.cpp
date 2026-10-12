@@ -102,6 +102,11 @@ TEST(BddTargetErrorText, StoreFrozenCategoryMapsToText)
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_FROZEN, "store frozen");
 }
 
+TEST(BddTargetErrorText, StoreRecordDiscardedCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, "store record discarded");
+}
+
 TEST(BddTargetErrorText, UnrecognisedCategoryMapsToUnknown)
 {
     CHECK_CATEGORY_TEXT((uint16_t) 0xFFFFU, "unknown");
