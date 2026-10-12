@@ -1911,6 +1911,59 @@ TEST(SolidSyslogBlockStoreIntegrity, ADiscardMarkThatWillNotWriteFreezesTheStore
     CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED);
 }
 
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsReportedAsDiscarded)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenRejections = 1;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED
+    );
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARunOfRejectedRecordsIsReportedOnce)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    SolidSyslogStore_Write(store, "third", 5);
+    spyOpenRejections = 2;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThatReadsCleanlyEndsTheRunSoTheNextRejectionIsReportedAgain)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    SolidSyslogStore_Write(store, "third", 5);
+    SolidSyslogStore_Write(store, "fourth", 6);
+    ErrorHandlerFake_Install(nullptr);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    spyOpenRejections = 1;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    spyOpenRejections = 1;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogBlockStoreIntegrity, TheResumeScanStepsOverSentRecordsWithoutOpeningThem)
 {
     SolidSyslogStore_Write(store, "first", 5);
@@ -2016,12 +2069,25 @@ TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
      * block, which is damaged data, not a failing device. */
     uint8_t truncatedBody[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e'};
     WriteRawBytes("/tmp/test_store00.log", truncatedBody, sizeof(truncatedBody));
+
+    CreateStore();
+
+    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, ACorruptRecordIsReportedAsDiscarded)
+{
+    WriteRawBytes("/tmp/test_store00.log", WORLD_FLAGLESS, sizeof(WORLD_FLAGLESS));
     ErrorHandlerFake_Install(nullptr);
 
     CreateStore();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
-    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT
+    );
 }
 
 TEST(SolidSyslogBlockStoreCorruption, RecordsWrittenAfterAFlaglessRecordAreDelivered)

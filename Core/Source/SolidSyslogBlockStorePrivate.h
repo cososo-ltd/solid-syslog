@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGBLOCKSTOREPRIVATE_H
 #define SOLIDSYSLOGBLOCKSTOREPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogBlockStoreErrors.h"
@@ -21,6 +22,9 @@ struct SolidSyslogBlockStore
     struct SolidSyslogStore Base;
     struct SolidSyslogRecordStore* RecordStore;
     struct SolidSyslogBlockSequence* BlockSequence;
+    /* A report stands for the current run of discarded records; the next record
+     * that reads cleanly ends the run. */
+    bool LossReported;
 };
 
 /* SolidSyslogBlockStore_Initialise wires the vtable + composes the inner pool slots that the

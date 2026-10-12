@@ -4,7 +4,8 @@
 
 /** @file
  *  Portable category constants (uint16_t macros) for the Store role:
- *  SOLIDSYSLOG_CAT_STORE_WRITE_FAILED and SOLIDSYSLOG_CAT_STORE_FROZEN. */
+ *  SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, SOLIDSYSLOG_CAT_STORE_FROZEN and
+ *  SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED. */
 #ifndef SOLIDSYSLOGSTORECATEGORIES_H
 #define SOLIDSYSLOGSTORECATEGORIES_H
 
@@ -30,5 +31,13 @@
  *  it held stay on the device, untouched, for the next start. Nothing recovers
  *  it short of destroying and creating it again. Raised once. */
 #define SOLIDSYSLOG_CAT_STORE_FROZEN ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 3U))
+
+/** The store discarded a stored record it could not deliver. event->Detail
+ *  says why: its security policy rejected it, in which case it is marked on the
+ *  device and not offered again; or it was corrupt, in which case where it ends
+ *  is unknown and the rest of its block is discarded with it. Raised once per
+ *  run of discarded records, naming the first fault of the run; the next record
+ *  that reads cleanly ends the run, so the fault after that is reported afresh. */
+#define SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 4U))
 
 #endif /* SOLIDSYSLOGSTORECATEGORIES_H */

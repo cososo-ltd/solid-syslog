@@ -59,6 +59,7 @@ void SolidSyslogBlockStore_Initialise(
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     self->RecordStore = recordStore;
     self->BlockSequence = blockSequence;
+    self->LossReported = false;
     BlockStore_InitialiseVtable(self);
 
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
@@ -306,6 +307,7 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
 );
 static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result);
 static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self);
+static void BlockStore_ReportLoss(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors fault);
 static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self);
 
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
@@ -322,7 +324,12 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
             result = BlockStore_ReadCurrent(self, data, maxSize, bytesRead);
         }
 
-        if (result == SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED)
+        if (result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED)
+        {
+            /* A record that reads cleanly ends a run of lost ones. */
+            self->LossReported = false;
+        }
+        else if (result == SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED)
         {
             /* A block size the sequence could not read is noted there and named
              * by it; any other failure is the read of the record itself. */
@@ -330,6 +337,10 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
             {
                 BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
             }
+        }
+        else
+        {
+            /* Nothing left to read. */
         }
     }
 
@@ -414,6 +425,8 @@ static bool BlockStore_AbandonRestOfReadBlock(struct SolidSyslogBlockStore* self
 {
     bool movedOn = BlockStore_ReadNextBlockIfBehind(self);
 
+    BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT);
+
     if (!movedOn)
     {
         SolidSyslogBlockSequence_SetReadCursor(
@@ -441,6 +454,7 @@ static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self)
 
     if (discarded)
     {
+        BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED);
         SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
     }
     else
@@ -449,6 +463,17 @@ static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self)
     }
 
     return discarded;
+}
+
+/* One report stands for a whole run of records lost one after another; the
+ * first of them says what went wrong. */
+static void BlockStore_ReportLoss(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors fault)
+{
+    if (!self->LossReported)
+    {
+        BlockStore_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, fault);
+        self->LossReported = true;
+    }
 }
 
 static void BlockStore_MarkSent(struct SolidSyslogStore* base)
