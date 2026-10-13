@@ -5,6 +5,7 @@ set(BDD_TARGET_TEST_SOURCES
     BddTargetCustomSdTest.cpp
     BddTargetErrorTextTest.cpp
     BddTargetIpsTest.cpp
+    BddTargetKeyTest.cpp
     BddTargetLanguageTest.cpp
     BddTargetMessageSettingsTest.cpp
     BddTargetStoreSettingsTest.cpp
@@ -18,6 +19,7 @@ set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetKey.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c

@@ -22,6 +22,7 @@ if(SOLIDSYSLOG_POSIX)
         Common/BddTargetCustomSd.c
         Common/BddTargetInteractive.c
         Common/BddTargetIps.c
+        Common/BddTargetKey.c
         Common/BddTargetLanguage.c
         Common/BddTargetServiceThread.c
         Common/BddTargetStderrErrorHandler.c
@@ -59,6 +60,7 @@ elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
         Common/BddTargetCustomSd.c
         Common/BddTargetInteractive.c
         Common/BddTargetIps.c
+        Common/BddTargetKey.c
         Common/BddTargetLanguage.c
         Common/BddTargetServiceThread.c
         Common/BddTargetStderrErrorHandler.c

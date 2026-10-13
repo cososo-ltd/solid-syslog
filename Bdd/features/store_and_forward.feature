@@ -33,6 +33,45 @@ Feature: Store and forward during sender outage
     And the replayed messages have sequenceIds 3, 4
     And the target reports that a stored record was discarded
 
+  # A record the policy cannot open for want of its key is not taken for
+  # tampering: it waits in the store, with the records behind it, until the key
+  # returns. @hmac and @aesgcm run wherever those policies are wired.
+  @hmac
+  Scenario: Stored messages wait for an HMAC key that is briefly unavailable
+    Given the syslog oracle is running
+    And the block store is enabled
+    And the security policy is hmac-sha256
+    And the BDD target is running with transport tcp
+    When the client sends a message
+    Then the syslog oracle receives 1 message
+    When the syslog oracle stops accepting TCP connections
+    And the client sends 3 messages
+    And the key is withheld
+    And the syslog oracle resumes accepting TCP connections
+    Then the syslog oracle receives no more messages
+    And the target reports once that the key is unavailable
+    When the key is restored
+    Then the syslog oracle receives 4 messages
+    And the messages have contiguous sequenceIds
+
+  @aesgcm
+  Scenario: Stored messages wait for an AES-256-GCM key that is briefly unavailable
+    Given the syslog oracle is running
+    And the block store is enabled
+    And the security policy is aes-256-gcm
+    And the BDD target is running with transport tcp
+    When the client sends a message
+    Then the syslog oracle receives 1 message
+    When the syslog oracle stops accepting TCP connections
+    And the client sends 3 messages
+    And the key is withheld
+    And the syslog oracle resumes accepting TCP connections
+    Then the syslog oracle receives no more messages
+    And the target reports once that the key is unavailable
+    When the key is restored
+    Then the syslog oracle receives 4 messages
+    And the messages have contiguous sequenceIds
+
   @host_store
   Scenario: Messages delivered after the store freezes
     Given the syslog oracle is running
