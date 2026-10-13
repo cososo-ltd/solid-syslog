@@ -17,9 +17,10 @@
  *    exactly 32 bytes (AES-256 admits no other length), if nonce generation
  *    fails, or on any encrypt error.
  *  - OpenRecord decrypts the body and verifies the tag over header + ciphertext.
- *    A tag mismatch is the expected tamper-detected outcome and returns false
- *    silently; only a genuine OpenSSL error is reported. The key is likewise
- *    fetched on demand and wiped. */
+ *    A tag mismatch is the expected tamper-detected outcome and is rejected
+ *    silently. A key that is unavailable or not 32 bytes, or an OpenSSL error,
+ *    could not run, and is reported. The key is likewise fetched on demand and
+ *    wiped. */
 #ifndef SOLIDSYSLOGOPENSSLAESGCMPOLICY_H
 #define SOLIDSYSLOGOPENSSLAESGCMPOLICY_H
 
@@ -34,7 +35,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogOpenSslAesGcmPolicyConfig
     {
         SolidSyslogKeyFunction GetKey; /**< Fetches the 32-byte AES-256 key on demand; required. A key that is
-                                        *  unavailable or not exactly 32 bytes fails the seal/open closed. */
+                                        *  not exactly 32 bytes is treated as unavailable. */
         void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
     };
 

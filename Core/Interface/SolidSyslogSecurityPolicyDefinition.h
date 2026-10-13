@@ -7,7 +7,8 @@
  *  integrity/confidentiality contract an implementor fills in (the SecurityPolicy
  *  extension point). SealRecord authenticates (AEAD policies also encrypt) and
  *  writes a trailer on the way in; OpenRecord verifies (and decrypts) on replay,
- *  failing closed so a tampered or unkeyed record is dropped rather than replayed. */
+ *  so a tampered record is dropped rather than replayed, and one the policy cannot
+ *  check yet is kept until it can. */
 #ifndef SOLIDSYSLOGSECURITYPOLICYDEFINITION_H
 #define SOLIDSYSLOGSECURITYPOLICYDEFINITION_H
 
@@ -40,14 +41,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         uint8_t* Trailer; /**< Written by SealRecord, read back and consumed by OpenRecord. */
     };
 
-    /** What OpenRecord found. A rejection is a verdict on the record; a policy
-     *  that could not run has reached no verdict, so the record is kept. */
+    /** What OpenRecord found. Opened and rejected are verdicts on the record;
+     *  could-not-run is not, since "could not check" is not evidence of
+     *  corruption. */
     enum SolidSyslogSecurityPolicyOpenResult
     {
-        SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, /**< Verified (and decrypted); replay it. */
-        SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, /**< Verification failed: tampering or corruption. */
-        SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN /**< No verdict: the key is unavailable or the crypto
-                                                        *   backend failed. */
+        /** Verified, and decrypted in place by an AEAD policy. */
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED,
+        /** Verification failed: the record was altered or corrupted. */
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED,
+        /** No verdict: the key was unavailable or the crypto backend failed. */
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN
     };
 
     /** The at-rest integrity/confidentiality contract the block store applies to
@@ -60,8 +64,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  pass-through that adds no trailer and never rejects (no integrity, no
      *  confidentiality); Crc16 is an unkeyed checksum catching accidental
      *  corruption; the HmacSha256 and AesGcm policies are keyed and fetch their
-     *  key on demand from an integrator callback, failing closed (Seal returns
-     *  false, nothing is stored) if the key is unavailable. */
+     *  key on demand from an integrator callback, so an unavailable key fails a
+     *  seal (nothing is stored) and leaves an open unable to run.
+     *
+     *  A keyed policy reports why it could not run - its key, or its crypto
+     *  backend - once per run of such faults, seal and open together, and is
+     *  re-armed by the next seal or open that reaches a verdict. */
     struct SolidSyslogSecurityPolicy
     {
         /** Bytes SealRecord appends per record; the store reserves this and
@@ -74,7 +82,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         bool (*SealRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
         /** Verify @p record against its trailer (and, for an AEAD policy, decrypt
          *  the body in place). On REJECTED the store discards the record and
-         *  reports the discard, so a policy need not report the verdict itself. */
+         *  reports the discard, so a policy need not report the verdict itself.
+         *  On COULD_NOT_RUN the store keeps the record where it is and tries it
+         *  again on the next Service pass; the records behind it wait with it. */
         enum SolidSyslogSecurityPolicyOpenResult (*OpenRecord)(
             struct SolidSyslogSecurityPolicy* base,
             const struct SolidSyslogSecurityRecord* record

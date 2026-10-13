@@ -74,8 +74,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 | `TLS_STREAM_HANDSHAKE_FAILED` - rejected | `ERROR` | cert / protocol: the attempt fails the same way until the peer or the certificate changes. |
 | `TLS_STREAM_HANDSHAKE_FAILED` - timeout | `WARNING` | transient: may clear on the next reconnect. |
 | `TLS_STREAM_INIT_FAILED` | `ERROR` | a TLS context, its defaults or its session would not initialise, so no connection can be attempted; not split. |
-| `SECURITY_POLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable: key material is provisioned with the deployment, so it changes without a code change. |
-| `SECURITY_POLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | runtime crypto operation failed. |
+| `SECURITY_POLICY_KEY_UNAVAILABLE` | `ERROR` | key too short / unavailable: key material is provisioned with the deployment, so it changes without a code change. A record that could not be sealed is lost; one that could not be opened stays in the store and is tried again on the next pass. Raised once per run of faults, together with `_SEAL_FAILED` and `_OPEN_FAILED`, re-armed by the next seal or open that reaches a verdict. |
+| `SECURITY_POLICY_SEAL_FAILED` / `_OPEN_FAILED` | `ERROR` | the crypto backend failed, with the same consequence for the record and in the same run as `_KEY_UNAVAILABLE`. Neither is a verdict on a record: one that fails verification is reported by the store as `STORE_RECORD_DISCARDED`. |
 | `BUFFER_BACKEND_FAILED` | `ERROR` | message-queue backend fault, or a record too large for a circular buffer; not split. |
 | `RESOLVER_RESOLVE_FAILED` - transient | `WARNING` | DNS may resolve on a later attempt. |
 | `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | the lookup answered in a family the transports cannot send to. Permanent for that destination: it clears when the destination changes to one that resolves in a family the transports send to. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |

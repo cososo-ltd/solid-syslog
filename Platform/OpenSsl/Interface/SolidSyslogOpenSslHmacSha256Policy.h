@@ -14,11 +14,11 @@
  *    writes the 32-byte tag into the record trailer. The key is fetched on demand
  *    via GetKey and wiped after the computation.
  *  - OpenRecord recomputes the tag and compares it to the stored trailer in
- *    constant time (no early exit, no timing oracle); a mismatch returns false.
- *  - It fails closed - returns false, so nothing is sealed / verified - if the
- *    key is unavailable, shorter than 32 bytes (RFC 2104 / NIST SP 800-107: an
- *    HMAC key should be at least the hash output length), or the HMAC computation
- *    fails. */
+ *    constant time (no early exit, no timing oracle); a mismatch is rejected.
+ *  - If the key is unavailable, shorter than 32 bytes (RFC 2104 / NIST SP
+ *    800-107: an HMAC key should be at least the hash output length), or the HMAC
+ *    computation fails, SealRecord returns false and nothing is sealed, and
+ *    OpenRecord could not run. */
 #ifndef SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H
 #define SOLIDSYSLOGOPENSSLHMACSHA256POLICY_H
 
@@ -32,8 +32,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Supplies the key SolidSyslogOpenSslHmacSha256Policy seals and verifies with. */
     struct SolidSyslogOpenSslHmacSha256PolicyConfig
     {
-        SolidSyslogKeyFunction GetKey; /**< Fetches the HMAC key on demand; required. Must report at least 32
-                                        *  bytes (SHA-256 output size) or seal/verify fails closed. */
+        SolidSyslogKeyFunction GetKey; /**< Fetches the HMAC key on demand; required. A key shorter than 32
+                                        *  bytes (SHA-256 output size) is treated as unavailable. */
         void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
     };
 

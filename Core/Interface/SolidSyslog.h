@@ -58,9 +58,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing to do anywhere; wait for the next Log.
      *  @retval SOLIDSYSLOG_SERVICE_READY   Work moved this pass, or the store still has
      *                                      unsent after a send; loop again.
-     *  @retval SOLIDSYSLOG_SERVICE_BLOCKED The buffer was idle and only the sender is stuck
-     *                                      (a send was attempted and failed); back off, a
-     *                                      Log will wake it.
+     *  @retval SOLIDSYSLOG_SERVICE_BLOCKED The buffer was idle and the store could not move a
+     *                                      record: a send was attempted and failed, or the
+     *                                      store holds records it cannot hand out yet; back
+     *                                      off, a Log will wake it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The store is halted (only under
      *                                      SOLIDSYSLOG_DISCARD_POLICY_HALT); alarm / slow heartbeat.
      *

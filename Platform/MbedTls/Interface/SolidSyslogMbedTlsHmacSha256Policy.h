@@ -14,8 +14,9 @@
  *    the key is unavailable or shorter than the SHA-256 output (32 bytes), Seal
  *    returns false and nothing is stored.
  *  - Open recomputes the tag and compares it to the stored one in constant time
- *    (no early exit, no timing oracle). A mismatch returns false silently - the
- *    expected tamper verdict - and is not reported.
+ *    (no early exit, no timing oracle). A mismatch is rejected - the expected
+ *    tamper verdict - and is not reported. A key that is unavailable or too
+ *    short, or an mbedTLS fault, could not run, and is reported.
  *
  *  The key is fetched on demand via GetKey and wiped after every computation - it
  *  is never stored on the instance. */
@@ -31,8 +32,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMbedTlsHmacSha256PolicyConfig
     {
-        SolidSyslogKeyFunction GetKey; /**< Fetches the HMAC key on demand; required. Must report at least 32
-                                            bytes (the SHA-256 output size) or seal/verify fails closed. */
+        SolidSyslogKeyFunction GetKey; /**< Fetches the HMAC key on demand; required. A key shorter than 32
+                                            bytes (the SHA-256 output size) is treated as unavailable. */
         void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
     };
 

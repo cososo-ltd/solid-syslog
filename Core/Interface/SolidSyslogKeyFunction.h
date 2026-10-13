@@ -24,11 +24,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      *  Writes up to @p capacity bytes into @p keyOut, sets @p keyLengthOut to
      *  the number of bytes written, and returns true on success. Returns false
-     *  if the key is unavailable or does not fit, which fails the seal / verify
-     *  operation closed.
+     *  if the key is unavailable or does not fit: the seal fails, so the record
+     *  is not stored, and an open cannot run, so the stored record is kept and
+     *  tried again.
      *
      *  Each keyed policy imposes its own length requirement on the reported key
-     *  and fails closed if it is not met: AES-GCM requires exactly 32 bytes; the
+     *  and treats a key that does not meet it as unavailable: AES-GCM requires exactly 32 bytes; the
      *  HMAC-SHA256 policies require at least 32 bytes (the SHA-256 output size,
      *  per RFC 2104 / NIST SP 800-107). @p context is passed through unchanged
      *  from the policy config the callback was registered in. */
