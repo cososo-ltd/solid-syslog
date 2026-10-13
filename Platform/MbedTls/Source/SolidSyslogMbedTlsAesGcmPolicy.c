@@ -49,7 +49,7 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool MbedTlsAesGcmPolicy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
@@ -187,7 +187,7 @@ static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecor
  * (associated data) and ciphertext. Fetches the key on demand and wipes it. A
  * tag mismatch is the expected tamper-detected outcome and returns false
  * silently; only a genuine mbedTLS error is reported. */
-static bool MbedTlsAesGcmPolicy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
@@ -201,7 +201,7 @@ static bool MbedTlsAesGcmPolicy_OpenRecord(
         opened = MbedTlsAesGcmPolicy_GcmDecrypt(record, key);
     }
     mbedtls_platform_zeroize(key, sizeof key);
-    return opened;
+    return opened ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
 }
 
 /* Decrypts the record's body in place, reading nonce||tag from its trailer and

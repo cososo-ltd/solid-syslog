@@ -146,7 +146,7 @@ TEST_GROUP_BASE(SolidSyslogMbedTlsHmacSha256PolicySeal, MbedTlsHmacSha256PolicyT
     bool verify(uint8_t* content, size_t length, uint8_t* tag) const
     {
         struct SolidSyslogSecurityRecord rec = {content, (uint16_t) length, 0, tag};
-        return policy->OpenRecord(policy, &rec);
+        return policy->OpenRecord(policy, &rec) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
     }
 
     static void expectedTagFor(const uint8_t* record, size_t length, uint8_t* tagOut)

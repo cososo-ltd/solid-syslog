@@ -25,8 +25,8 @@ TEST(SolidSyslogNullSecurityPolicy, TrailerSizeIsZero)
     LONGS_EQUAL(0, policy->TrailerSize);
 }
 
-TEST(SolidSyslogNullSecurityPolicy, OpenRecordReturnsTrue)
+TEST(SolidSyslogNullSecurityPolicy, OpenRecordOpens)
 {
     struct SolidSyslogSecurityRecord record = {nullptr, 0, 0, nullptr};
-    CHECK_TRUE(policy->OpenRecord(policy, &record));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, policy->OpenRecord(policy, &record));
 }

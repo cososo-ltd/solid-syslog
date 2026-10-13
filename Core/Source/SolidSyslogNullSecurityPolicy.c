@@ -19,14 +19,14 @@ static bool NullSecurityPolicy_NullSealRecord(
     return true;
 }
 
-static bool NullSecurityPolicy_NullOpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult NullSecurityPolicy_NullOpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
 {
     (void) self;
     (void) record;
-    return true;
+    return SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
 }
 
 struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Get(void)

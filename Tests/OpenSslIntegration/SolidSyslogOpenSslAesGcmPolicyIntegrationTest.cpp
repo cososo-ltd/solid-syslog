@@ -81,7 +81,7 @@ TEST_GROUP(SolidSyslogOpenSslAesGcmPolicyIntegration)
     bool open()
     {
         struct SolidSyslogSecurityRecord rec = {content, CONTENT_LEN, HEADER_LEN, trailer};
-        return policy->OpenRecord(policy, &rec);
+        return policy->OpenRecord(policy, &rec) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
     }
 
     uint8_t* body()

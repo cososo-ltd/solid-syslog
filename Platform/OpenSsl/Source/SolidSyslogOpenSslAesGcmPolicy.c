@@ -38,7 +38,7 @@ static bool OpenSslAesGcmPolicy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool OpenSslAesGcmPolicy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
@@ -194,7 +194,7 @@ static bool OpenSslAesGcmPolicy_GcmEncrypt(
  * (associated data) and ciphertext. Fetches the key on demand and wipes it. A
  * tag mismatch is the expected tamper-detected outcome and returns false
  * silently; only a genuine OpenSSL error is reported. */
-static bool OpenSslAesGcmPolicy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
@@ -213,7 +213,7 @@ static bool OpenSslAesGcmPolicy_OpenRecord(
             OpenSslAesGcmPolicy_GcmDecrypt(key, nonce, body, bodyLength, record->Content, record->HeaderLength, tag);
     }
     OPENSSL_cleanse(key, sizeof key);
-    return opened;
+    return opened ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
 }
 
 static bool OpenSslAesGcmPolicy_GcmDecrypt(

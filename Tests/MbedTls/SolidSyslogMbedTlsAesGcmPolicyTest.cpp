@@ -184,7 +184,7 @@ TEST_GROUP_BASE(SolidSyslogMbedTlsAesGcmPolicySeal, MbedTlsAesGcmPolicyTestBase)
     bool open()
     {
         struct SolidSyslogSecurityRecord rec = {content, TEST_CONTENT_LEN, TEST_HEADER_LEN, trailer};
-        return policy->OpenRecord(policy, &rec);
+        return policy->OpenRecord(policy, &rec) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
     }
 };
 

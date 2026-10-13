@@ -38,7 +38,7 @@ static bool OpenSslHmacSha256Policy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool OpenSslHmacSha256Policy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslHmacSha256Policy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
@@ -184,7 +184,7 @@ static inline bool OpenSslHmacSha256Policy_KeyLengthIsValid(size_t keyLength)
     return (keyLength >= (size_t) HMAC_SHA256_MIN_KEY_SIZE) && (keyLength <= (size_t) SOLIDSYSLOG_MAX_HMAC_KEY_SIZE);
 }
 
-static bool OpenSslHmacSha256Policy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslHmacSha256Policy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
@@ -201,7 +201,7 @@ static bool OpenSslHmacSha256Policy_OpenRecord(
     {
         verified = OpenSslHmacSha256Policy_ConstantTimeEquals(expected, record->Trailer, HMAC_SHA256_TAG_SIZE);
     }
-    return verified;
+    return verified ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
 }
 
 static inline bool OpenSslHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length)

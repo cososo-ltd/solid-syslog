@@ -1725,7 +1725,10 @@ static uint8_t openContentData[CONTENT_REGION_MAX];
 static uint16_t openContentLength;
 static uint16_t openHeaderLength;
 
-static bool SpyOpenRecord(struct SolidSyslogSecurityPolicy* self, const struct SolidSyslogSecurityRecord* record)
+static enum SolidSyslogSecurityPolicyOpenResult SpyOpenRecord(
+    struct SolidSyslogSecurityPolicy* self,
+    const struct SolidSyslogSecurityRecord* record
+)
 {
     (void) self;
     SpyOpenRecordCallCount++;
@@ -1733,12 +1736,13 @@ static bool SpyOpenRecord(struct SolidSyslogSecurityPolicy* self, const struct S
     openHeaderLength = record->HeaderLength;
     memcpy(openContentData, record->Content, record->ContentLength);
 
-    bool opened = spyOpenRejections == 0;
-    if (!opened)
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
+    if (spyOpenRejections > 0)
     {
         spyOpenRejections--;
+        result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
     }
-    return opened;
+    return result;
 }
 
 static struct SolidSyslogSecurityPolicy spyPolicy = {

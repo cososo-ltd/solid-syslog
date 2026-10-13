@@ -40,6 +40,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         uint8_t* Trailer; /**< Written by SealRecord, read back and consumed by OpenRecord. */
     };
 
+    /** What OpenRecord found. A rejection is a verdict on the record; a policy
+     *  that could not run has reached no verdict, so the record is kept. */
+    enum SolidSyslogSecurityPolicyOpenResult
+    {
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, /**< Verified (and decrypted); replay it. */
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, /**< Verification failed: tampering or corruption. */
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN /**< No verdict: the key is unavailable or the crypto
+                                                        *   backend failed. */
+    };
+
     /** The at-rest integrity/confidentiality contract the block store applies to
      *  every record: SealRecord on the way in (before the record is stored),
      *  OpenRecord on replay-read (before the record is handed back). A record
@@ -63,11 +73,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  unprotected. */
         bool (*SealRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
         /** Verify @p record against its trailer (and, for an AEAD policy, decrypt
-         *  the body in place). @retval false integrity check failed: tampering or
-         *  corruption detected, or the open could not run (e.g. key unavailable);
-         *  the store discards the record rather than replaying it, and reports
-         *  the discard, so a policy need not report the verdict itself. */
-        bool (*OpenRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
+         *  the body in place). On REJECTED the store discards the record and
+         *  reports the discard, so a policy need not report the verdict itself. */
+        enum SolidSyslogSecurityPolicyOpenResult (*OpenRecord)(
+            struct SolidSyslogSecurityPolicy* base,
+            const struct SolidSyslogSecurityRecord* record
+        );
     };
 
 SOLIDSYSLOG_EXTERN_C_END

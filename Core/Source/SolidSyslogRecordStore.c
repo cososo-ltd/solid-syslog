@@ -268,7 +268,10 @@ static inline bool RecordStore_RecordIsWithinData(
     uint16_t length,
     size_t dataSize
 );
-static inline bool RecordStore_OpenRecord(struct SolidSyslogRecordStore* recordStore, uint16_t length);
+static inline enum SolidSyslogSecurityPolicyOpenResult RecordStore_OpenRecord(
+    struct SolidSyslogRecordStore* recordStore,
+    uint16_t length
+);
 
 /* A record is read only once it is known to lie whole within the block's data,
  * so one cut short - what a power cut mid-append leaves - is corrupt rather
@@ -311,8 +314,9 @@ static enum SolidSyslogRecordStoreReadResult RecordStore_ReadAndValidateRecord(
 
     if (result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED)
     {
-        result = RecordStore_OpenRecord(recordStore, *length) ? SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED
-                                                              : SOLIDSYSLOG_RECORD_STORE_READ_REJECTED;
+        result = (RecordStore_OpenRecord(recordStore, *length) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED)
+                     ? SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED
+                     : SOLIDSYSLOG_RECORD_STORE_READ_REJECTED;
     }
 
     return result;
@@ -450,7 +454,10 @@ static inline bool RecordStore_ValidateHeader(struct SolidSyslogRecordStore* rec
     return valid;
 }
 
-static inline bool RecordStore_OpenRecord(struct SolidSyslogRecordStore* recordStore, uint16_t length)
+static inline enum SolidSyslogSecurityPolicyOpenResult RecordStore_OpenRecord(
+    struct SolidSyslogRecordStore* recordStore,
+    uint16_t length
+)
 {
     struct SolidSyslogSecurityRecord record = {
         RecordStore_ContentAddress(recordStore),
