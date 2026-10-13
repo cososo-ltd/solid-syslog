@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGOPENSSLHMACSHA256POLICYPRIVATE_H
 #define SOLIDSYSLOGOPENSSLHMACSHA256POLICYPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
@@ -17,6 +18,7 @@ struct SolidSyslogOpenSslHmacSha256Policy
 {
     struct SolidSyslogSecurityPolicy Base;
     struct SolidSyslogOpenSslHmacSha256PolicyConfig Config;
+    bool FaultReported; /* A run of faults is reported once; a verdict re-arms it. */
 };
 
 void SolidSyslogOpenSslHmacSha256Policy_Initialise(

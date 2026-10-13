@@ -528,3 +528,112 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealWipesTheKeyBufferAfterUse)
     POINTERS_EQUAL(lastGetKeyBuffer, OpenSslFake_LastCleanseBuf());
     LONGS_EQUAL(lastGetKeyCapacity, OpenSslFake_LastCleanseLen());
 }
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, AKeyThatStaysUnavailableIsReportedOnce)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    open();
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, AnOpenedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    open();
+
+    keyAvailable = false;
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, ARejectedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    OpenSslFake_SetGcmStepFails(OPENSSLFAKE_GCM_STEP_FINAL);
+    open();
+    OpenSslFake_SetGcmStepFails(OPENSSLFAKE_GCM_STEP_NONE);
+
+    keyAvailable = false;
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, ASealedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal();
+    keyAvailable = true;
+    seal();
+
+    keyAvailable = false;
+    seal();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealAndOpenShareOneRunOfFaults)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    seal();
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, AKeyFaultAndABackendFaultShareOneRun)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    OpenSslFake_SetGcmStepFails(OPENSSLFAKE_GCM_STEP_CTX_NEW);
+
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, AKeyFaultAndASealBackendFaultShareOneRun)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal();
+    keyAvailable = true;
+    OpenSslFake_SetRandBytesFails(true);
+
+    seal();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfterAnEarlierOneInTheSameSlotWasLatched)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    SolidSyslogOpenSslAesGcmPolicy_Destroy(policy);
+    policy = SolidSyslogOpenSslAesGcmPolicy_Create(&config);
+
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}

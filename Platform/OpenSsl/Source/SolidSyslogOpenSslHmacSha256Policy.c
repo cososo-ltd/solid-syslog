@@ -54,6 +54,11 @@ static bool OpenSslHmacSha256Policy_FetchKey(
     uint8_t* keyOut,
     size_t* keyLengthOut
 );
+static void OpenSslHmacSha256Policy_ReportFault(
+    struct SolidSyslogOpenSslHmacSha256Policy* policy,
+    uint16_t category,
+    enum SolidSyslogHmacSha256PolicyErrors code
+);
 static inline bool OpenSslHmacSha256Policy_KeyLengthIsValid(size_t keyLength);
 static inline bool OpenSslHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length);
 
@@ -67,6 +72,7 @@ void SolidSyslogOpenSslHmacSha256Policy_Initialise(
     self->Base.SealRecord = OpenSslHmacSha256Policy_SealRecord;
     self->Base.OpenRecord = OpenSslHmacSha256Policy_OpenRecord;
     self->Config = *config;
+    self->FaultReported = false;
 }
 
 void SolidSyslogOpenSslHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
@@ -123,12 +129,14 @@ static bool OpenSslHmacSha256Policy_ComputeTag(
     {
         if (HMAC(EVP_sha256(), key, (int) keyLength, data, length, tagOut, NULL) != NULL)
         {
+            /* A tag to seal with or verify against: the run of faults is over. */
             computed = true;
+            policy->FaultReported = false;
         }
         else
         {
-            OpenSslHmacSha256Policy_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
+            OpenSslHmacSha256Policy_ReportFault(
+                policy,
                 failureCategory,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
             );
@@ -161,8 +169,8 @@ static bool OpenSslHmacSha256Policy_FetchKey(
         }
         else
         {
-            OpenSslHmacSha256Policy_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
+            OpenSslHmacSha256Policy_ReportFault(
+                policy,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
             );
@@ -170,13 +178,27 @@ static bool OpenSslHmacSha256Policy_FetchKey(
     }
     else
     {
-        OpenSslHmacSha256Policy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+        OpenSslHmacSha256Policy_ReportFault(
+            policy,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
+}
+
+/* The first fault in a run is the one reported. */
+static void OpenSslHmacSha256Policy_ReportFault(
+    struct SolidSyslogOpenSslHmacSha256Policy* policy,
+    uint16_t category,
+    enum SolidSyslogHmacSha256PolicyErrors code
+)
+{
+    if (!policy->FaultReported)
+    {
+        OpenSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
+        policy->FaultReported = true;
+    }
 }
 
 static inline bool OpenSslHmacSha256Policy_KeyLengthIsValid(size_t keyLength)

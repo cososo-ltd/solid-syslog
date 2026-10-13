@@ -54,6 +54,11 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
     const struct SolidSyslogSecurityRecord* record
 );
 static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* policy, uint8_t* keyOut);
+static void MbedTlsAesGcmPolicy_ReportFault(
+    struct SolidSyslogMbedTlsAesGcmPolicy* policy,
+    uint16_t category,
+    enum SolidSyslogAesGcmPolicyErrors code
+);
 static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_GcmDecrypt(
     const struct SolidSyslogSecurityRecord* record,
@@ -70,6 +75,7 @@ void SolidSyslogMbedTlsAesGcmPolicy_Initialise(
     self->Base.SealRecord = MbedTlsAesGcmPolicy_SealRecord;
     self->Base.OpenRecord = MbedTlsAesGcmPolicy_OpenRecord;
     self->Config = *config;
+    self->FaultReported = false;
 }
 
 void SolidSyslogMbedTlsAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
@@ -110,11 +116,12 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
             if (MbedTlsAesGcmPolicy_GcmEncrypt(record, key))
             {
                 sealed = true;
+                policy->FaultReported = false;
             }
             else
             {
-                MbedTlsAesGcmPolicy_Report(
-                    SOLIDSYSLOG_SEVERITY_ERROR,
+                MbedTlsAesGcmPolicy_ReportFault(
+                    policy,
                     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                     SOLIDSYSLOG_AES_GCM_POLICY_ERROR_ENCRYPT_FAILED
                 );
@@ -122,8 +129,8 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
         }
         else
         {
-            MbedTlsAesGcmPolicy_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
+            MbedTlsAesGcmPolicy_ReportFault(
+                policy,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                 SOLIDSYSLOG_AES_GCM_POLICY_ERROR_NONCE_FAILED
             );
@@ -142,13 +149,27 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        MbedTlsAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+        MbedTlsAesGcmPolicy_ReportFault(
+            policy,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_AES_GCM_POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
+}
+
+/* The first fault in a run is the one reported. */
+static void MbedTlsAesGcmPolicy_ReportFault(
+    struct SolidSyslogMbedTlsAesGcmPolicy* policy,
+    uint16_t category,
+    enum SolidSyslogAesGcmPolicyErrors code
+)
+{
+    if (!policy->FaultReported)
+    {
+        MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
+        policy->FaultReported = true;
+    }
 }
 
 /* Encrypts the record's body in place and writes nonce||tag into its trailer.
@@ -203,6 +224,19 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
     if (MbedTlsAesGcmPolicy_FetchKey(policy, key))
     {
         result = MbedTlsAesGcmPolicy_GcmDecrypt(record, key);
+        if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
+        {
+            MbedTlsAesGcmPolicy_ReportFault(
+                policy,
+                SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
+                SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
+            );
+        }
+        else
+        {
+            /* A verdict: the run of faults is over. */
+            policy->FaultReported = false;
+        }
     }
     mbedtls_platform_zeroize(key, sizeof key);
     return result;
@@ -213,7 +247,7 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
  * GcmEncrypt. mbedtls_gcm_auth_decrypt verifies the tag itself and signals the
  * verdict through its return code: 0 = authentic, GCM_AUTH_FAILED = tamper /
  * wrong key (the expected rejection - silent, like the HMAC verify), anything
- * else = a genuine mbedTLS error worth reporting, which reaches no verdict. */
+ * else = a genuine mbedTLS error, which reaches no verdict. */
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_GcmDecrypt(
     const struct SolidSyslogSecurityRecord* record,
     const uint8_t* key
@@ -249,17 +283,9 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_GcmDecrypt(
         }
         else
         {
-            /* Genuine mbedTLS failure - no verdict, reported below. */
+            /* Genuine mbedTLS failure - no verdict. */
         }
     }
     mbedtls_gcm_free(&ctx);
-    if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
-    {
-        MbedTlsAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
-            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
-        );
-    }
     return result;
 }

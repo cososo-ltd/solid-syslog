@@ -491,3 +491,112 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealWipesTheKeyBufferAfterUse)
     POINTERS_EQUAL(lastGetKeyBuffer, MbedTlsFake_LastPlatformZeroizeBuf());
     LONGS_EQUAL(lastGetKeyCapacity, MbedTlsFake_LastPlatformZeroizeLen());
 }
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AKeyThatStaysUnavailableIsReportedOnce)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    open();
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AnOpenedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    open();
+
+    keyAvailable = false;
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ARejectedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    MbedTlsFake_SetGcmAuthFails(true);
+    open();
+    MbedTlsFake_SetGcmAuthFails(false);
+
+    keyAvailable = false;
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ASealedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal();
+    keyAvailable = true;
+    seal();
+
+    keyAvailable = false;
+    seal();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealAndOpenShareOneRunOfFaults)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    seal();
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AKeyFaultAndABackendFaultShareOneRun)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    MbedTlsFake_SetGcmStepFails(MBEDTLSFAKE_GCM_STEP_SETKEY);
+
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AKeyFaultAndASealBackendFaultShareOneRun)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal();
+    keyAvailable = true;
+    MbedTlsFake_SetCtrDrbgRandomFails(true);
+
+    seal();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfterAnEarlierOneInTheSameSlotWasLatched)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    SolidSyslogMbedTlsAesGcmPolicy_Destroy(policy);
+    policy = SolidSyslogMbedTlsAesGcmPolicy_Create(&config);
+
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}

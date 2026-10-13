@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H
 #define SOLIDSYSLOGMBEDTLSAESGCMPOLICYPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
@@ -17,6 +18,7 @@ struct SolidSyslogMbedTlsAesGcmPolicy
 {
     struct SolidSyslogSecurityPolicy Base;
     struct SolidSyslogMbedTlsAesGcmPolicyConfig Config;
+    bool FaultReported; /* A run of faults is reported once; a verdict re-arms it. */
 };
 
 void SolidSyslogMbedTlsAesGcmPolicy_Initialise(

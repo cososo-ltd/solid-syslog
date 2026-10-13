@@ -446,3 +446,104 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, OpenRecordReportsHmacFailureAsOpenF
         SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
     );
 }
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, AKeyThatStaysUnavailableIsReportedOnce)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, AnOpenedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+    keyAvailable = true;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    keyAvailable = false;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ARejectedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    tag[0] ^= 0xFFU;
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+    keyAvailable = true;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    keyAvailable = false;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ASealedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    keyAvailable = true;
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    keyAvailable = false;
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, SealAndOpenShareOneRunOfFaults)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, AKeyFaultAndABackendFaultShareOneRun)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+    keyAvailable = true;
+    OpenSslFake_SetHmacFails(true);
+
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ANewPolicyReportsItsFirstFaultEvenAfterAnEarlierOneInTheSameSlotWasLatched)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+    SolidSyslogOpenSslHmacSha256Policy_Destroy(policy);
+    policy = SolidSyslogOpenSslHmacSha256Policy_Create(&config);
+
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
