@@ -55,13 +55,18 @@ enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
     size_t dataSize
 );
 
-/* What Read found. A record that runs past the end of the block's data, or that
- * fails validation, is no record; a device read that fails within the data is
- * a device failure. */
+/* What Read found. At or past the end of the block's data there is nothing. A
+ * header that will not parse, or a record that runs past the data, is corrupt:
+ * where it ends is unknown, so nothing after it in the block can be read. A
+ * record the policy rejects has a valid header, so its extent is known and it
+ * can be stepped over. A device read that fails within the data is a device
+ * failure. */
 enum SolidSyslogRecordStoreReadResult
 {
     SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED,
-    SOLIDSYSLOG_RECORD_STORE_READ_NO_RECORD,
+    SOLIDSYSLOG_RECORD_STORE_READ_END_OF_DATA,
+    SOLIDSYSLOG_RECORD_STORE_READ_CORRUPT,
+    SOLIDSYSLOG_RECORD_STORE_READ_REJECTED,
     SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED
 };
 
@@ -94,6 +99,14 @@ enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore);
 
+/* Marks the record Read last met as discarded, so no later read or resume scan
+ * offers it again: @p nextCursor is where the record after it starts. */
+enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_DiscardLastRead(
+    struct SolidSyslogRecordStore* recordStore,
+    struct SolidSyslogBlockDevice* blockDevice,
+    size_t* nextCursor
+);
+
 /* What FindFirstUnsent met on its way through the block. */
 enum SolidSyslogRecordStoreScanResult
 {
@@ -108,6 +121,17 @@ size_t SolidSyslogRecordStore_FindFirstUnsent(
     size_t blockIndex,
     size_t blockSize,
     enum SolidSyslogRecordStoreScanResult* scanned
+);
+
+/* Whether the records from @p cursor run whole to the end of the block's data,
+ * judged by their headers alone. Corrupt when one will not parse or runs past
+ * the data: the block must not be appended to. */
+enum SolidSyslogRecordStoreScanResult SolidSyslogRecordStore_ScanToEnd(
+    struct SolidSyslogRecordStore* recordStore,
+    struct SolidSyslogBlockDevice* blockDevice,
+    size_t blockIndex,
+    size_t cursor,
+    size_t blockSize
 );
 
 #endif /* SOLIDSYSLOGRECORDSTOREPRIVATE_H */

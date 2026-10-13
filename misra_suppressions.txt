@@ -29,7 +29,7 @@ misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddress.c:17
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:27
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:34
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.h:39
-misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:84
+misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:87
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:119
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:110
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83

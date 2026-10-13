@@ -27,8 +27,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /* Raised under SOLIDSYSLOG_CAT_STORE_FROZEN, each naming the device
            operation that failed: opening the device at create, appending a
            record, starting a new block, disposing of one, marking a record
-           sent, reading one back, or measuring a block. The device beneath,
-           where it reports, says why. */
+           sent, reading one back, measuring a block, or marking a record
+           discarded. The device beneath, where it reports, says why. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED,
@@ -38,6 +38,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MARK_SENT_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED,
+        /** A record that failed verification could not be marked discarded, so
+         *  the device still holds it as unsent. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED,
+        /* Raised under SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, naming why the
+           record could not be delivered: the security policy rejected it, or
+           it was corrupt. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED,
+        /** Its header would not parse, or it ran past the end of its block, so
+         *  where it ends is unknown and the rest of the block goes with it. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

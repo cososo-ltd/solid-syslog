@@ -27,7 +27,8 @@ from environment import (
 from target_driver import apply_extra_args, assert_binary_present, spawn_example_process, stop_example_process
 from tls_collectors import fingerprint_of, listener
 from syslog_severities import severity_value
-from store_reports import reported_store_freezes
+from store_files import corrupt_first_unsent_record
+from store_reports import reported_store_discards, reported_store_freezes
 from tls_reports import reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
@@ -679,6 +680,15 @@ def step_block_store_enabled_on_unopenable_path(context):
     context.errors_fatal = "0"
 
 
+@when("a byte of the first stored record still to send is corrupted")
+def step_corrupt_first_unsent_record(context):
+    # The record fails verification on the next run, which the store reports
+    # at ERROR. An ERROR ends a hosted target by default, so the scenario says
+    # it expects one before the target is started again.
+    corrupt_first_unsent_record(STORE_PATH_PREFIX + "00.log")
+    context.errors_fatal = "0"
+
+
 @given("the security policy is {policy}")
 def step_security_policy(context, policy):
     # Selects the at-rest integrity policy for the block store (S17.02). On
@@ -1274,19 +1284,37 @@ def step_check_sequential_ids(context, count):
         )
 
 
+def _block_store_reports_once_made(read_reports, process):
+    """The block store's reports of one kind, waiting for the stderr reader to catch up on the first."""
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
+    reports = read_reports(process)
+    while (not reports) and (time.monotonic() < deadline):
+        time.sleep(0.1)
+        reports = read_reports(process)
+    return reports
+
+
 @then("the target reports that the store froze")
 def step_target_reports_store_froze(context):
     # Reported as the store is created, before the oracle has the messages;
-    # the loop only covers the stderr reader catching up.
-    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
-    freezes = reported_store_freezes(context.interactive_process)
-    while (not freezes) and (time.monotonic() < deadline):
-        time.sleep(0.1)
-        freezes = reported_store_freezes(context.interactive_process)
+    # the wait only covers the stderr reader catching up.
+    freezes = _block_store_reports_once_made(reported_store_freezes, context.interactive_process)
 
     severities = [severity for severity, _detail in freezes]
     assert severities == [severity_value("ERROR")], (
         f"Expected one frozen-store report at ERROR, got {freezes}"
+    )
+
+
+@then("the target reports that a stored record was discarded")
+def step_target_reports_record_discarded(context):
+    # One run of discarded records, one report: the corrupted record and
+    # nothing else, since the records after it read cleanly.
+    discards = _block_store_reports_once_made(reported_store_discards, context.interactive_process)
+
+    severities = [severity for severity, _detail in discards]
+    assert severities == [severity_value("ERROR")], (
+        f"Expected one discarded-record report at ERROR, got {discards}"
     )
 
 

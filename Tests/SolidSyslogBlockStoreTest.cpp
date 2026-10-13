@@ -766,11 +766,32 @@ TEST(SolidSyslogBlockStoreErrors, ASentFlagThatWillNotReadWhileResumingFreezesTh
     store = SolidSyslogBlockStore_Create(&config);
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     SolidSyslogBlockStore_Destroy(store);
-    FileFake_FailReadAfter(file, 3); /* header, body and trailer read; the sent flag does not */
+    FileFake_FailReadAfter(file, 1); /* the header reads; the sent flag does not */
 
     store = SolidSyslogBlockStore_Create(&config);
 
     CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreErrors, AWriteBlockThatWillNotReadToItsEndWhileResumingFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    SolidSyslogBlockStore_Destroy(store);
+    ErrorHandlerFake_Install(nullptr);
+    /* The scan reads two headers and two flags to find the unsent record; the
+     * walk from there to the end of the block does not get its header. */
+    FileFake_FailReadAfter(file, 4);
+
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, MarkSentFailureFreezesTheStore)
@@ -1699,6 +1720,7 @@ static bool SpySealRecord(struct SolidSyslogSecurityPolicy* self, const struct S
 }
 
 static int SpyOpenRecordCallCount;
+static int spyOpenRejections; /* how many of the next opens the policy refuses */
 static uint8_t openContentData[CONTENT_REGION_MAX];
 static uint16_t openContentLength;
 static uint16_t openHeaderLength;
@@ -1710,7 +1732,13 @@ static bool SpyOpenRecord(struct SolidSyslogSecurityPolicy* self, const struct S
     openContentLength = record->ContentLength;
     openHeaderLength = record->HeaderLength;
     memcpy(openContentData, record->Content, record->ContentLength);
-    return true;
+
+    bool opened = spyOpenRejections == 0;
+    if (!opened)
+    {
+        spyOpenRejections--;
+    }
+    return opened;
 }
 
 static struct SolidSyslogSecurityPolicy spyPolicy = {
@@ -1733,20 +1761,32 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
         sealHeaderLength  = 0;
         memset(sealContentData, 0, sizeof(sealContentData));
         SpyOpenRecordCallCount   = 0;
+        spyOpenRejections   = 0;
         openContentLength   = 0;
         openHeaderLength   = 0;
         memset(openContentData, 0, sizeof(openContentData));
-
-        struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
-        config.BlockDevice    = device;
-        config.SecurityPolicy = &spyPolicy;
-        store = SolidSyslogBlockStore_Create(&config);
+        CreateStore();
     }
 
     void teardown() override
     {
         SolidSyslogBlockStore_Destroy(store);
         teardownBlockDeviceFakes();
+    }
+
+    void CreateStore()
+    {
+        struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
+        config.BlockDevice    = device;
+        config.SecurityPolicy = &spyPolicy;
+        store = SolidSyslogBlockStore_Create(&config);
+    }
+
+    /* A restart: the store resumes from what is on the device. */
+    void RecreateStore()
+    {
+        SolidSyslogBlockStore_Destroy(store);
+        CreateStore();
     }
 };
 
@@ -1829,6 +1869,125 @@ TEST(SolidSyslogBlockStoreIntegrity, OpenRecordReceivesContentRegionAndHeaderSpl
     MEMCMP_EQUAL(TEST_DATA, openContentData + HEADER_SIZE, TEST_DATA_LEN);
 }
 
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyRejectsIsSteppedOverToTheNext)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenRejections = 1;
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("second", buf, 6);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsNotOfferedAgainAfterARestart)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenRejections = 1;
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    RecreateStore();
+
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("second", buf, 6);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ADiscardMarkThatWillNotWriteFreezesTheStore)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenRejections = 1;
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextWrite(file);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsReportedAsDiscarded)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenRejections = 1;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED
+    );
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARunOfRejectedRecordsIsReportedOnce)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    SolidSyslogStore_Write(store, "third", 5);
+    spyOpenRejections = 2;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThatReadsCleanlyEndsTheRunSoTheNextRejectionIsReportedAgain)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    SolidSyslogStore_Write(store, "third", 5);
+    SolidSyslogStore_Write(store, "fourth", 6);
+    ErrorHandlerFake_Install(nullptr);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    spyOpenRejections = 1;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    spyOpenRejections = 1;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, TheResumeScanStepsOverSentRecordsWithoutOpeningThem)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    SpyOpenRecordCallCount = 0;
+
+    RecreateStore();
+
+    CALLED_FUNCTION(SpyOpenRecord, NEVER);
+}
+
+/* Records as the Null policy lays them out: magic, length, body, sent flag. */
+static const uint8_t HELLO_UNSENT[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e', 'l', 'l', 'o', 0xFF};
+static const uint8_t HELLO_SENT[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e', 'l', 'l', 'o', 0x00};
+static const uint8_t HELLO_BAD_MAGIC[] = {0x00, 0x5A, 0x05, 0x00, 'h', 'e', 'l', 'l', 'o', 0xFF};
+static const uint8_t WORLD_UNSENT[] = {0xA5, 0x5A, 0x05, 0x00, 'w', 'o', 'r', 'l', 'd', 0xFF};
+/* Whole but for its sent flag: what a power cut before the last byte of an
+ * append leaves, with the flag's place past the end of the block. */
+static const uint8_t WORLD_FLAGLESS[] = {0xA5, 0x5A, 0x05, 0x00, 'w', 'o', 'r', 'l', 'd'};
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreCorruption, BlockDeviceTestBase)
 {
@@ -1849,6 +2008,17 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruption, BlockDeviceTestBase)
     {
         SolidSyslogFile_Open(file, path);
         SolidSyslogFile_Write(file, data, size);
+        SolidSyslogFile_Close(file);
+    }
+
+    /* A block holding two records, as a run that wrote the second after the
+     * first leaves it. */
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- the two records are positional; distinct semantics
+    void WriteRawRecords(const char* path, const void* first, size_t firstSize, const void* second, size_t secondSize) const
+    {
+        SolidSyslogFile_Open(file, path);
+        SolidSyslogFile_Write(file, first, firstSize);
+        SolidSyslogFile_Write(file, second, secondSize);
         SolidSyslogFile_Close(file);
     }
 
@@ -1899,12 +2069,139 @@ TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
      * block, which is damaged data, not a failing device. */
     uint8_t truncatedBody[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e'};
     WriteRawBytes("/tmp/test_store00.log", truncatedBody, sizeof(truncatedBody));
+
+    CreateStore();
+
+    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, ACorruptRecordIsReportedAsDiscarded)
+{
+    WriteRawBytes("/tmp/test_store00.log", WORLD_FLAGLESS, sizeof(WORLD_FLAGLESS));
     ErrorHandlerFake_Install(nullptr);
 
     CreateStore();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
-    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT
+    );
+}
+
+TEST(SolidSyslogBlockStoreCorruption, RecordsWrittenAfterAFlaglessRecordAreDelivered)
+{
+    WriteRawBytes("/tmp/test_store00.log", WORLD_FLAGLESS, sizeof(WORLD_FLAGLESS));
+    CreateStore();
+
+    SolidSyslogStore_Write(store, "second", 6);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("second", buf, 6);
+}
+
+TEST(SolidSyslogBlockStoreCorruption, AFlaglessRecordBehindAnUnsentOneIsNotOffered)
+{
+    /* The scan stops at the unsent "hello", short of the flagless "world". */
+    WriteRawRecords(
+        "/tmp/test_store00.log",
+        HELLO_UNSENT,
+        sizeof(HELLO_UNSENT),
+        WORLD_FLAGLESS,
+        sizeof(WORLD_FLAGLESS)
+    );
+    CreateStore();
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, RecordsWrittenAfterAFlaglessRecordBehindAnUnsentOneAreDelivered)
+{
+    /* The scan stops at the unsent "hello", short of the flagless "world"; a
+     * write into that block would start where world's flag belongs. */
+    WriteRawRecords(
+        "/tmp/test_store00.log",
+        HELLO_UNSENT,
+        sizeof(HELLO_UNSENT),
+        WORLD_FLAGLESS,
+        sizeof(WORLD_FLAGLESS)
+    );
+    CreateStore();
+    SolidSyslogStore_Write(store, "second", 6);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("second", buf, 6);
+}
+
+TEST(SolidSyslogBlockStoreCorruption, RecordsWrittenAfterAFlaglessRecordAreDeliveredWhenReadingAnEarlierBlock)
+{
+    WriteRawBytes("/tmp/test_store00.log", HELLO_UNSENT, sizeof(HELLO_UNSENT));
+    WriteRawBytes("/tmp/test_store01.log", WORLD_FLAGLESS, sizeof(WORLD_FLAGLESS));
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.MaxBlocks = 3; /* room for the block the closed one forces, without discarding block 00 */
+    store = SolidSyslogBlockStore_Create(&config);
+    SolidSyslogStore_Write(store, "second", 6);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("second", buf, 6);
+}
+
+TEST(SolidSyslogBlockStoreCorruption, NothingIsUnsentOnceTheReadMeetsAFlaglessRecordInTheWriteBlock)
+{
+    WriteRawRecords(
+        "/tmp/test_store00.log",
+        HELLO_UNSENT,
+        sizeof(HELLO_UNSENT),
+        WORLD_FLAGLESS,
+        sizeof(WORLD_FLAGLESS)
+    );
+    CreateStore();
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, ACorruptHeaderInAnEarlierBlockDoesNotCloseTheWriteBlock)
+{
+    WriteRawBytes("/tmp/test_store00.log", HELLO_BAD_MAGIC, sizeof(HELLO_BAD_MAGIC));
+    WriteRawBytes("/tmp/test_store01.log", WORLD_UNSENT, sizeof(WORLD_UNSENT));
+    /* At two blocks, a write the closed block forces into a third is turned away. */
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    store = SolidSyslogBlockStore_Create(&config);
+
+    CHECK_TRUE(SolidSyslogStore_Write(store, "second", 6));
+}
+
+TEST(SolidSyslogBlockStoreCorruption, TheBlockAfterACorruptOneIsScannedForItsFirstUnsent)
+{
+    WriteRawBytes("/tmp/test_store00.log", HELLO_BAD_MAGIC, sizeof(HELLO_BAD_MAGIC));
+    WriteRawRecords("/tmp/test_store01.log", HELLO_SENT, sizeof(HELLO_SENT), WORLD_UNSENT, sizeof(WORLD_UNSENT));
+    CreateStore();
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("world", buf, 5);
 }
 
 TEST(SolidSyslogBlockStoreCorruption, TruncatedBodyHasNoUnsent)
@@ -2002,8 +2299,9 @@ TEST(SolidSyslogBlockStoreCorruption, InvalidLengthReadReturnsFalse)
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
 {
-    static const size_t RECORD_OVERHEAD    = 7; /* 2 (magic) + 2 (length) + 2 (crc) + 1 (sent) */
-    static const size_t ONE_MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + RECORD_OVERHEAD;
+    static const size_t RECORD_OVERHEAD      = 7; /* 2 (magic) + 2 (length) + 2 (crc) + 1 (sent) */
+    static const size_t ONE_MAX_MSG_RECORD   = SOLIDSYSLOG_MAX_MESSAGE_SIZE + RECORD_OVERHEAD;
+    static const size_t TWO_MAX_MSG_RECORDS  = 2 * ONE_MAX_MSG_RECORD;
 
     struct SolidSyslogStore* store = nullptr;
     struct SolidSyslogSecurityPolicy* policy = nullptr;
@@ -2046,6 +2344,16 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
         SolidSyslogFile_Write(file, &corrupt, 1);
         SolidSyslogFile_Close(file);
     }
+
+    /* A header that will not parse: the rest of the block cannot be stepped over. */
+    void CorruptFirstRecordMagic(const char* path) const
+    {
+        SolidSyslogFile_Open(file, path);
+        uint8_t corrupt = 0x00;
+        SolidSyslogFile_SeekTo(file, 0);
+        SolidSyslogFile_Write(file, &corrupt, 1);
+        SolidSyslogFile_Close(file);
+    }
 };
 
 // clang-format on
@@ -2072,17 +2380,36 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, ReadSkipsCorruptOlderBlockToNextBl
     BYTES_EQUAL('A', buf[0]);
 }
 
+TEST(SolidSyslogBlockStoreCorruptionRecovery, ARejectedRecordBehindTheWriteBlockCostsOnlyItself)
+{
+    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* block 00 is full */
+    char newMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(newMsg, 'N', sizeof(newMsg));
+    SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)); /* block 01 */
+    SolidSyslogBlockStore_Destroy(store);
+
+    CorruptFirstRecordBody("/tmp/test_store00.log");
+
+    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
+
+    /* The second record of block 00 is read, not the first of block 01. */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    BYTES_EQUAL('A', buf[0]);
+}
+
 TEST(SolidSyslogBlockStoreCorruptionRecovery, CorruptWriteBlockRotatesOnNextWrite)
 {
     /* Use a block size that fits two records - the first write leaves space,
      * so rotation on the second write proves corruption forced it */
-    static const size_t TWO_MAX_MSG_RECORDS = 2 * ONE_MAX_MSG_RECORD;
-
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
     WriteMaxMsg(); /* block 00 - partially filled */
     SolidSyslogBlockStore_Destroy(store);
 
-    CorruptFirstRecordBody("/tmp/test_store00.log");
+    CorruptFirstRecordMagic("/tmp/test_store00.log");
 
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
 

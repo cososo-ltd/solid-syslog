@@ -65,7 +65,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Verify @p record against its trailer (and, for an AEAD policy, decrypt
          *  the body in place). @retval false integrity check failed: tampering or
          *  corruption detected, or the open could not run (e.g. key unavailable);
-         *  the store discards the record rather than replaying it. */
+         *  the store discards the record rather than replaying it, and reports
+         *  the discard, so a policy need not report the verdict itself. */
         bool (*OpenRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
     };
 
