@@ -59,14 +59,16 @@ enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
  * header that will not parse, or a record that runs past the data, is corrupt:
  * where it ends is unknown, so nothing after it in the block can be read. A
  * record the policy rejects has a valid header, so its extent is known and it
- * can be stepped over. A device read that fails within the data is a device
- * failure. */
+ * can be stepped over. A record the policy could not open has had no verdict,
+ * so it stays where it is to be tried again. A device read that fails within
+ * the data is a device failure. */
 enum SolidSyslogRecordStoreReadResult
 {
     SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED,
     SOLIDSYSLOG_RECORD_STORE_READ_END_OF_DATA,
     SOLIDSYSLOG_RECORD_STORE_READ_CORRUPT,
     SOLIDSYSLOG_RECORD_STORE_READ_REJECTED,
+    SOLIDSYSLOG_RECORD_STORE_READ_COULD_NOT_OPEN,
     SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED
 };
 

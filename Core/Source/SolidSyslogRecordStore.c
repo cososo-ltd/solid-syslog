@@ -268,7 +268,7 @@ static inline bool RecordStore_RecordIsWithinData(
     uint16_t length,
     size_t dataSize
 );
-static inline enum SolidSyslogSecurityPolicyOpenResult RecordStore_OpenRecord(
+static inline enum SolidSyslogRecordStoreReadResult RecordStore_OpenRecord(
     struct SolidSyslogRecordStore* recordStore,
     uint16_t length
 );
@@ -314,9 +314,7 @@ static enum SolidSyslogRecordStoreReadResult RecordStore_ReadAndValidateRecord(
 
     if (result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED)
     {
-        result = (RecordStore_OpenRecord(recordStore, *length) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED)
-                     ? SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED
-                     : SOLIDSYSLOG_RECORD_STORE_READ_REJECTED;
+        result = RecordStore_OpenRecord(recordStore, *length);
     }
 
     return result;
@@ -454,7 +452,7 @@ static inline bool RecordStore_ValidateHeader(struct SolidSyslogRecordStore* rec
     return valid;
 }
 
-static inline enum SolidSyslogSecurityPolicyOpenResult RecordStore_OpenRecord(
+static inline enum SolidSyslogRecordStoreReadResult RecordStore_OpenRecord(
     struct SolidSyslogRecordStore* recordStore,
     uint16_t length
 )
@@ -465,7 +463,24 @@ static inline enum SolidSyslogSecurityPolicyOpenResult RecordStore_OpenRecord(
         CONTENT_HEADER_SIZE,
         RecordStore_TrailerAddress(recordStore, length)
     };
-    return recordStore->SecurityPolicy->OpenRecord(recordStore->SecurityPolicy, &record);
+    enum SolidSyslogSecurityPolicyOpenResult opened =
+        recordStore->SecurityPolicy->OpenRecord(recordStore->SecurityPolicy, &record);
+    enum SolidSyslogRecordStoreReadResult result = SOLIDSYSLOG_RECORD_STORE_READ_COULD_NOT_OPEN;
+
+    if (opened == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED)
+    {
+        result = SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED;
+    }
+    else if (opened == SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED)
+    {
+        result = SOLIDSYSLOG_RECORD_STORE_READ_REJECTED;
+    }
+    else
+    {
+        /* No verdict: the record is kept. */
+    }
+
+    return result;
 }
 
 static inline size_t RecordStore_BoundedSize(uint16_t length, size_t maxSize)
