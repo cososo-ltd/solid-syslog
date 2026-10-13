@@ -52,7 +52,7 @@ static bool OpenSslAesGcmPolicy_GcmEncrypt(
     uint16_t aadLength,
     uint8_t* tagOut
 );
-static bool OpenSslAesGcmPolicy_GcmDecrypt(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_GcmDecrypt(
     const uint8_t* key,
     const uint8_t* nonce,
     uint8_t* body,
@@ -192,8 +192,9 @@ static bool OpenSslAesGcmPolicy_GcmEncrypt(
 
 /* Opens in place: decrypts the body and verifies the tag over the header
  * (associated data) and ciphertext. Fetches the key on demand and wipes it. A
- * tag mismatch is the expected tamper-detected outcome and returns false
- * silently; only a genuine OpenSSL error is reported. */
+ * tag mismatch is the expected tamper-detected outcome and is rejected
+ * silently; a missing key or a genuine OpenSSL error could not run, and is
+ * reported. */
 static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
@@ -205,18 +206,18 @@ static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_OpenRecord(
     const uint8_t* nonce = record->Trailer;
     const uint8_t* tag = &record->Trailer[GCM_NONCE_SIZE];
 
-    bool opened = false;
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     uint8_t key[AES_256_KEY_SIZE];
     if (OpenSslAesGcmPolicy_FetchKey(policy, key))
     {
-        opened =
+        result =
             OpenSslAesGcmPolicy_GcmDecrypt(key, nonce, body, bodyLength, record->Content, record->HeaderLength, tag);
     }
     OPENSSL_cleanse(key, sizeof key);
-    return opened ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
+    return result;
 }
 
-static bool OpenSslAesGcmPolicy_GcmDecrypt(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_GcmDecrypt(
     const uint8_t* key,
     const uint8_t* nonce,
     uint8_t* body,
@@ -231,11 +232,10 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     uint8_t tag[GCM_TAG_SIZE];
     (void) memcpy(tag, tagIn, sizeof tag);
 
-    /* A tag mismatch is the expected tamper-detected outcome - return false
+    /* A tag mismatch is the expected tamper-detected outcome - rejected
      * silently, like the HMAC verify. Only a genuine OpenSSL failure (context
-     * allocation or any setup step) is reported. */
-    bool opened = false;
-    bool errored = true;
+     * allocation or any setup step) is reported, and it reaches no verdict. */
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (ctx != NULL)
     {
@@ -249,12 +249,13 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
         if (setUp)
         {
             int finalLength = 0;
-            errored = false;
-            opened = (EVP_DecryptFinal_ex(ctx, &body[outLength], &finalLength) == 1);
+            result = (EVP_DecryptFinal_ex(ctx, &body[outLength], &finalLength) == 1)
+                         ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED
+                         : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
         }
         EVP_CIPHER_CTX_free(ctx);
     }
-    if (errored)
+    if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
     {
         OpenSslAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
@@ -262,5 +263,5 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
             SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
         );
     }
-    return opened;
+    return result;
 }

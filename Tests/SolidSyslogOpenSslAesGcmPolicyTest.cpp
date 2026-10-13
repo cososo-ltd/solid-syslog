@@ -79,16 +79,16 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
         );                                                  \
     }
 
-#define CHECK_OPEN_REPORTS_DECRYPT_FAILURE_AT(step)         \
-    {                                                       \
-        ErrorHandlerFake_Install(nullptr);                  \
-        OpenSslFake_SetGcmStepFails(step);                  \
-        CHECK_FALSE(open());                                \
-        CHECK_REPORTED_ERROR(                               \
-            SOLIDSYSLOG_SEVERITY_ERROR,                     \
-            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,    \
-            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED \
-        );                                                  \
+#define CHECK_OPEN_REPORTS_DECRYPT_FAILURE_AT(step)                          \
+    {                                                                        \
+        ErrorHandlerFake_Install(nullptr);                                   \
+        OpenSslFake_SetGcmStepFails(step);                                   \
+        LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, open()); \
+        CHECK_REPORTED_ERROR(                                                \
+            SOLIDSYSLOG_SEVERITY_ERROR,                                      \
+            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,                     \
+            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED                  \
+        );                                                                   \
     }
 
 // clang-format off
@@ -175,10 +175,10 @@ TEST_GROUP_BASE(SolidSyslogOpenSslAesGcmPolicySeal, OpenSslAesGcmPolicyTestBase)
         return policy->SealRecord(policy, &rec);
     }
 
-    bool open()
+    enum SolidSyslogSecurityPolicyOpenResult open()
     {
         struct SolidSyslogSecurityRecord rec = {content, TEST_CONTENT_LEN, TEST_HEADER_LEN, trailer};
-        return policy->OpenRecord(policy, &rec) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
+        return policy->OpenRecord(policy, &rec);
     }
 };
 
@@ -351,31 +351,31 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReadsTheNonceFromTheTrailer)
 {
     CHECK_TRUE(seal());
 
-    CHECK_TRUE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, open());
 
     /* Open must decrypt with the nonce the seal wrote into the trailer. */
     MEMCMP_EQUAL(trailer, OpenSslFake_LastGcmNonce(), GCM_NONCE_SIZE);
 }
 
-TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReturnsTrueWhenDecryptionSucceeds)
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenOpensWhenDecryptionSucceeds)
 {
     CHECK_TRUE(seal());
 
-    CHECK_TRUE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, open());
 
     LONGS_EQUAL(1, OpenSslFake_GcmOpenCount());
 }
 
 /* A tag mismatch (tamper or wrong key) surfaces as EVP_DecryptFinal_ex returning
- * 0. Production must fail closed but stay silent - that is the expected outcome,
+ * 0. Production must reject the record but stay silent - that is the expected outcome,
  * not a library error. Real tamper/wrong-key rejection lives in the integration
  * suite; here we only prove the adapter's verdict-propagation and silence. */
-TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReturnsFalseWithoutReportingWhenAuthenticationFails)
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenRejectsWithoutReportingWhenAuthenticationFails)
 {
     ErrorHandlerFake_Install(nullptr);
     OpenSslFake_SetGcmStepFails(OPENSSLFAKE_GCM_STEP_FINAL);
 
-    CHECK_FALSE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, open());
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
@@ -405,13 +405,21 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealFailsClosedWhenKeyIsWrongLength)
     );
 }
 
-TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenFailsClosedWhenKeyUnavailable)
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenCouldNotRunWhenKeyUnavailable)
+{
+    CHECK_TRUE(seal());
+    keyAvailable = false;
+
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, open());
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReportsWhenKeyUnavailable)
 {
     CHECK_TRUE(seal());
     ErrorHandlerFake_Install(nullptr);
     keyAvailable = false;
 
-    CHECK_FALSE(open());
+    open();
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
@@ -476,7 +484,7 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, SealReportsErrorWhenReadingTheTagFails)
 
 /* Open's setup chain (everything up to and including SET_TAG) reports
  * DECRYPT_FAILED on any non-1. The DecryptFinal verdict is separate - that
- * fail-closed-but-silent path is OpenReturnsFalseWithoutReporting... above. */
+ * rejected-but-silent path is OpenRejectsWithoutReporting... above. */
 TEST(SolidSyslogOpenSslAesGcmPolicySeal, OpenReportsErrorWhenContextAllocationFails)
 {
     CHECK_OPEN_REPORTS_DECRYPT_FAILURE_AT(OPENSSLFAKE_GCM_STEP_CTX_NEW);

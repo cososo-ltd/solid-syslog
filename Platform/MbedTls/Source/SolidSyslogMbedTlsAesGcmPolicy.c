@@ -55,7 +55,10 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
 );
 static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* policy, uint8_t* keyOut);
 static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
-static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
+static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_GcmDecrypt(
+    const struct SolidSyslogSecurityRecord* record,
+    const uint8_t* key
+);
 
 void SolidSyslogMbedTlsAesGcmPolicy_Initialise(
     struct SolidSyslogSecurityPolicy* base,
@@ -185,8 +188,9 @@ static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecor
 
 /* Opens in place: decrypts the body and verifies the tag over the header
  * (associated data) and ciphertext. Fetches the key on demand and wipes it. A
- * tag mismatch is the expected tamper-detected outcome and returns false
- * silently; only a genuine mbedTLS error is reported. */
+ * tag mismatch is the expected tamper-detected outcome and is rejected
+ * silently; a missing key or a genuine mbedTLS error could not run, and is
+ * reported. */
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
@@ -194,31 +198,33 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
 {
     struct SolidSyslogMbedTlsAesGcmPolicy* policy = MbedTlsAesGcmPolicy_SelfFromBase(self);
 
-    bool opened = false;
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     uint8_t key[AES_256_KEY_SIZE];
     if (MbedTlsAesGcmPolicy_FetchKey(policy, key))
     {
-        opened = MbedTlsAesGcmPolicy_GcmDecrypt(record, key);
+        result = MbedTlsAesGcmPolicy_GcmDecrypt(record, key);
     }
     mbedtls_platform_zeroize(key, sizeof key);
-    return opened ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
+    return result;
 }
 
 /* Decrypts the record's body in place, reading nonce||tag from its trailer and
  * authenticating the header. Takes the whole record for the same reasons as
  * GcmEncrypt. mbedtls_gcm_auth_decrypt verifies the tag itself and signals the
  * verdict through its return code: 0 = authentic, GCM_AUTH_FAILED = tamper /
- * wrong key (the expected rejection - return false silently, like the HMAC
- * verify), anything else = a genuine mbedTLS error worth reporting. */
-static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key)
+ * wrong key (the expected rejection - silent, like the HMAC verify), anything
+ * else = a genuine mbedTLS error worth reporting, which reaches no verdict. */
+static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_GcmDecrypt(
+    const struct SolidSyslogSecurityRecord* record,
+    const uint8_t* key
+)
 {
     uint8_t* body = &record->Content[record->HeaderLength];
     uint16_t bodyLength = (uint16_t) (record->ContentLength - record->HeaderLength);
 
     mbedtls_gcm_context ctx;
     mbedtls_gcm_init(&ctx);
-    bool opened = false;
-    bool errored = true;
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     if (mbedtls_gcm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, key, AES_256_KEY_BITS) == 0)
     {
         int verdict = mbedtls_gcm_auth_decrypt(
@@ -235,20 +241,19 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
         );
         if (verdict == 0)
         {
-            opened = true;
-            errored = false;
+            result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
         }
         else if (verdict == MBEDTLS_ERR_GCM_AUTH_FAILED)
         {
-            errored = false;
+            result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
         }
         else
         {
-            /* Genuine mbedTLS failure - errored stays true and is reported below. */
+            /* Genuine mbedTLS failure - no verdict, reported below. */
         }
     }
     mbedtls_gcm_free(&ctx);
-    if (errored)
+    if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
     {
         MbedTlsAesGcmPolicy_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
@@ -256,5 +261,5 @@ static bool MbedTlsAesGcmPolicy_GcmDecrypt(const struct SolidSyslogSecurityRecor
             SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
         );
     }
-    return opened;
+    return result;
 }

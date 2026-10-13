@@ -143,10 +143,10 @@ TEST_GROUP_BASE(SolidSyslogMbedTlsHmacSha256PolicySeal, MbedTlsHmacSha256PolicyT
         return policy->SealRecord(policy, &rec);
     }
 
-    bool verify(uint8_t* content, size_t length, uint8_t* tag) const
+    enum SolidSyslogSecurityPolicyOpenResult verify(uint8_t* content, size_t length, uint8_t* tag) const
     {
         struct SolidSyslogSecurityRecord rec = {content, (uint16_t) length, 0, tag};
-        return policy->OpenRecord(policy, &rec) == SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
+        return policy->OpenRecord(policy, &rec);
     }
 
     static void expectedTagFor(const uint8_t* record, size_t length, uint8_t* tagOut)
@@ -373,13 +373,13 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordFailsClosedWhenKeyExceeds
     CHECK_FALSE(seal(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
-TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordFailsClosedWhenKeyBelowMinimum)
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordCouldNotRunWhenKeyBelowMinimum)
 {
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);
     testKeyLength = 16;
 
-    CHECK_FALSE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
 TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordWipesTheKeyBufferAfterUse)
@@ -398,7 +398,7 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordAcceptsATagItProduced)
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);
 
-    CHECK_TRUE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
 TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordRejectsAModifiedTag)
@@ -407,16 +407,25 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordRejectsAModifiedTag)
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);
     tag[0] ^= 0xFFU;
 
-    CHECK_FALSE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
-TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordFailsClosedWhenKeyUnavailable)
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordCouldNotRunWhenKeyUnavailable)
 {
     uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
     seal(TEST_RECORD, sizeof TEST_RECORD, tag);
     keyAvailable = false;
 
-    CHECK_FALSE(verify(TEST_RECORD, sizeof TEST_RECORD, tag));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, verify(TEST_RECORD, sizeof TEST_RECORD, tag));
+}
+
+TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordCouldNotRunWhenHmacFails)
+{
+    uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};
+    seal(TEST_RECORD, sizeof TEST_RECORD, tag);
+    MbedTlsFake_SetMdHmacReturn(-1);
+
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, verify(TEST_RECORD, sizeof TEST_RECORD, tag));
 }
 
 // An HMAC computation failure during verify is an OPEN failure, not a SEAL
@@ -429,9 +438,8 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, OpenRecordReportsHmacFailureAsOpenF
     ErrorHandlerFake_Install(nullptr);
     MbedTlsFake_SetMdHmacReturn(-1);
 
-    bool verified = verify(TEST_RECORD, sizeof TEST_RECORD, tag);
+    verify(TEST_RECORD, sizeof TEST_RECORD, tag);
 
-    CHECK_FALSE(verified);
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,

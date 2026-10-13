@@ -190,7 +190,7 @@ static enum SolidSyslogSecurityPolicyOpenResult OpenSslHmacSha256Policy_OpenReco
 )
 {
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
-    bool verified = false;
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     if (OpenSslHmacSha256Policy_ComputeTag(
             OpenSslHmacSha256Policy_SelfFromBase(self),
             record->Content,
@@ -199,9 +199,11 @@ static enum SolidSyslogSecurityPolicyOpenResult OpenSslHmacSha256Policy_OpenReco
             SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED
         ))
     {
-        verified = OpenSslHmacSha256Policy_ConstantTimeEquals(expected, record->Trailer, HMAC_SHA256_TAG_SIZE);
+        result = OpenSslHmacSha256Policy_ConstantTimeEquals(expected, record->Trailer, HMAC_SHA256_TAG_SIZE)
+                     ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED
+                     : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
     }
-    return verified ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
+    return result;
 }
 
 static inline bool OpenSslHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length)
