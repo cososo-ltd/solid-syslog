@@ -1106,7 +1106,7 @@ TEST(SolidSyslogBlockStoreRotation, ARotationThatEvictsNothingUnsentEndsTheRunSo
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store); /* block 01 drained and disposed */
-    WriteMaxMsg();                    /* block 03 - evicts nothing */
+    WriteMaxMsg(); /* block 03 - evicts nothing */
 
     WriteMaxMsg(); /* block 04 - evicts 02 */
 
@@ -1699,7 +1699,7 @@ TEST(SolidSyslogBlockStoreRotation, ARecordTheStoreKeepsEndsTheRunSoTheNextRefus
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
     SolidSyslogStore_MarkSent(store); /* block 00 drained and disposed */
-    WriteMaxMsg();                    /* kept */
+    WriteMaxMsg(); /* kept */
 
     WriteMaxMsg(); /* refused */
 
