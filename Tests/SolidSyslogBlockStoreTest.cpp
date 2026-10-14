@@ -1951,6 +1951,31 @@ TEST(SolidSyslogBlockStoreIntegrity, ASealThePolicyRefusesReportsTheRecordWasNot
     );
 }
 
+TEST(SolidSyslogBlockStoreIntegrity, ARunOfSealsThePolicyRefusesIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    spySealSucceeds = false;
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordTheStoreKeepsEndsTheRunSoTheNextSealFailureIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    spySealSucceeds = false;
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+    spySealSucceeds = true;
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    spySealSucceeds = false;
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogBlockStoreIntegrity, SealRecordReceivesContentRegionAndHeaderSplit)
 {
     enum

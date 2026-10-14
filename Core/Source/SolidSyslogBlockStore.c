@@ -62,6 +62,7 @@ void SolidSyslogBlockStore_Initialise(
     self->LossReported = false;
     self->RefusalReported = false;
     self->EvictionReported = false;
+    self->SealFailureReported = false;
     BlockStore_InitialiseVtable(self);
 
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
@@ -196,7 +197,7 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
-static inline void BlockStore_ReportSealFailed(void);
+static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
@@ -248,7 +249,9 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         if (written)
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
+            /* A record kept ends a run of refusals or seal failures. */
             self->RefusalReported = false;
+            self->SealFailureReported = false;
         }
         else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
         {
@@ -256,7 +259,7 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         }
         else
         {
-            BlockStore_ReportSealFailed();
+            BlockStore_ReportSealFailed(self);
         }
     }
 
@@ -315,14 +318,18 @@ static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self)
 }
 
 /* The policy reports why it would not seal; this reports that the record is
- * lost. */
-static inline void BlockStore_ReportSealFailed(void)
+ * lost, once for a run of them. */
+static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self)
 {
-    BlockStore_Report(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
-    );
+    if (!self->SealFailureReported)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+        );
+        self->SealFailureReported = true;
+    }
 }
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)

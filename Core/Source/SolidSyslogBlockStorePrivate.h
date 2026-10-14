@@ -30,6 +30,9 @@ struct SolidSyslogBlockStore
      * by the next rotation that evicts nothing unsent. */
     bool RefusalReported;
     bool EvictionReported;
+    /* A report stands for a run of records the policy would not seal; the next
+     * record kept ends the run. */
+    bool SealFailureReported;
 };
 
 /* SolidSyslogBlockStore_Initialise wires the vtable + composes the inner pool slots that the
