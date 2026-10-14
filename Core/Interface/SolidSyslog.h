@@ -61,7 +61,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  @retval SOLIDSYSLOG_SERVICE_BLOCKED The buffer was idle and the store could not move a
      *                                      record: a send was attempted and failed, or the
      *                                      store holds records it cannot hand out yet; back
-     *                                      off, a Log will wake it.
+     *                                      off and call again later. A Log also wakes it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The store is halted (only under
      *                                      SOLIDSYSLOG_DISCARD_POLICY_HALT); alarm / slow heartbeat.
      *

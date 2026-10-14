@@ -43,13 +43,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** What OpenRecord found. Opened and rejected are verdicts on the record;
      *  could-not-run is not, since "could not check" is not evidence of
-     *  corruption. */
+     *  corruption.
+     *
+     *  Rejected is zero so that a result left zeroed fails closed. */
     enum SolidSyslogSecurityPolicyOpenResult
     {
-        /** Verified, and decrypted in place by an AEAD policy. */
-        SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED,
         /** Verification failed: the record was altered or corrupted. */
         SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED,
+        /** Verified, and decrypted in place by an AEAD policy. */
+        SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED,
         /** No verdict: the key was unavailable or the crypto backend failed. */
         SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN
     };

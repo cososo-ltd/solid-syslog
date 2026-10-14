@@ -10,7 +10,8 @@ enum
     DEMO_KEY_SIZE = 32
 };
 
-static bool withheld;
+/* Written by the prompt's task, read by the Service task. */
+static volatile bool withheld;
 
 void BddTargetKey_Reset(void)
 {

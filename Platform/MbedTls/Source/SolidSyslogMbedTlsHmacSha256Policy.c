@@ -110,9 +110,10 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
 
 /* Fetches the key on demand into a transient buffer, computes HMAC-SHA256 over
  * `data` into `tagOut`, then wipes the key buffer - the key never lingers
- * beyond a single computation. Returns false (fail closed) and reports the
- * reason if the key is unavailable or the HMAC computation fails. Shared by
- * seal (writes the record tag) and verify (recomputes for comparison). */
+ * beyond a single computation. Returns false and reports the reason if the key
+ * is unavailable or the HMAC computation fails: no tag, so a seal fails and an
+ * open could not run. Shared by seal (writes the record tag) and verify
+ * (recomputes for comparison). */
 static bool MbedTlsHmacSha256Policy_ComputeTag(
     struct SolidSyslogMbedTlsHmacSha256Policy* policy,
     const uint8_t* data,

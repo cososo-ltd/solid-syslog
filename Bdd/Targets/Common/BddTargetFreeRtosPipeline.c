@@ -635,8 +635,10 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
 {
     (void) argument;
 
-    /* Seed the destination host with the platform default before any `set host`. */
+    /* Seed the destination host with the platform default before any `set host`,
+       and start with the demo key available. */
     BddTargetMessageSettings_Reset(g_config->DefaultHost);
+    BddTargetKey_Reset();
 
     /* Platform brings up its network and hands back a ready-to-use sender with
      * the default transport already selected. */
