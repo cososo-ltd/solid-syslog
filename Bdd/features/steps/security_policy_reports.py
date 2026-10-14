@@ -2,7 +2,7 @@
 
 import re
 
-from tls_reports import target_output
+from tls_reports import reported_output
 
 
 def reported_keys_unavailable(process):
@@ -11,4 +11,4 @@ def reported_keys_unavailable(process):
     Any source: the OpenSSL and Mbed TLS policies name themselves differently,
     and the category is what the step asserts on."""
     pattern = re.compile(r"severity=(\d+) \[\S+ cat=\d+ detail=(-?\d+)\] key unavailable")
-    return [(int(severity), int(detail)) for severity, detail in pattern.findall(target_output(process))]
+    return [(int(severity), int(detail)) for severity, detail in pattern.findall(reported_output(process))]
