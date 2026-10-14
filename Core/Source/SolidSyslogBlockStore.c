@@ -338,14 +338,11 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
                 BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_READ_FAILED);
             }
         }
-        else if (result == SOLIDSYSLOG_RECORD_STORE_READ_COULD_NOT_OPEN)
-        {
-            /* No verdict on the record: it stays where it is, to be tried again
-             * on the next pass, and the records behind it wait with it. */
-        }
         else
         {
-            /* Nothing left to read. */
+            /* Nothing left to read, or a record the policy could not open: with
+             * no verdict on it, it stays where it is to be tried again on the
+             * next pass, and the records behind it wait with it. */
         }
     }
 
