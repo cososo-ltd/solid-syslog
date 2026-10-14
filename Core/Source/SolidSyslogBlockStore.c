@@ -55,10 +55,11 @@ void SolidSyslogBlockStore_Initialise(
     const struct SolidSyslogBlockStoreConfig* config
 )
 {
-    (void) config; /* config drove the inner Creates already; nothing left to copy. */
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     self->RecordStore = recordStore;
     self->BlockSequence = blockSequence;
+    self->OnStoreFull = config->OnStoreFull;
+    self->StoreFullContext = config->StoreFullContext;
     self->LossReported = false;
     self->RefusalReported = false;
     self->EvictionReported = false;
@@ -196,6 +197,7 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
+static void BlockStore_NotifyIfJustHalted(struct SolidSyslogBlockStore* self, bool wasHalted);
 static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
 
@@ -217,6 +219,7 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
     bool written = false;
+    bool wasHalted = SolidSyslogBlockSequence_IsHalted(self->BlockSequence);
     bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
     bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
@@ -227,6 +230,7 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     else if (!prepared)
     {
         BlockStore_ReportRefusal(self);
+        BlockStore_NotifyIfJustHalted(self, wasHalted);
     }
     else
     {
@@ -290,6 +294,16 @@ static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self)
             SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
         );
         self->RefusalReported = true;
+    }
+}
+
+/* Called after the refusal is reported, so an OnStoreFull that resets the
+ * device and never returns does not lose the report. */
+static void BlockStore_NotifyIfJustHalted(struct SolidSyslogBlockStore* self, bool wasHalted)
+{
+    if (!wasHalted && SolidSyslogBlockSequence_IsHalted(self->BlockSequence) && (self->OnStoreFull != NULL))
+    {
+        self->OnStoreFull(self->StoreFullContext);
     }
 }
 

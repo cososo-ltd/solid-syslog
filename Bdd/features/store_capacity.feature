@@ -46,6 +46,7 @@ Feature: Store capacity limit and discard policy
     When the syslog oracle stops accepting TCP connections
     And the client sends 8 messages
     And the client attempts to send it exits with code 2
+    Then the target reports once that the store lost records
 
   Scenario: Halt prevents further service after store overflows
     Given the syslog oracle is running

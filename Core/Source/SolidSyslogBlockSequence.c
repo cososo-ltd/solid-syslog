@@ -62,8 +62,6 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->MaxBlockSize = config->MaxBlockSize;
     blockSequence->MaxBlocks = BlockSequence_ClampToRange(config->MaxBlocks, MIN_MAX_BLOCKS, MAX_MAX_BLOCKS);
     blockSequence->DiscardPolicy = config->DiscardPolicy;
-    blockSequence->OnStoreFull = config->OnStoreFull;
-    blockSequence->StoreFullContext = config->StoreFullContext;
     blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
     blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
     blockSequence->ThresholdContext = config->ThresholdContext;
@@ -309,7 +307,7 @@ static inline bool BlockSequence_IsAboveThreshold(
 
 static inline bool BlockSequence_BlockIsFull(const struct SolidSyslogBlockSequence* blockSequence, size_t recordSize);
 static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequence* blockSequence);
-static inline void BlockSequence_NotifyStoreFull(struct SolidSyslogBlockSequence* blockSequence);
+static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence);
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged);
 
 bool SolidSyslogBlockSequence_PrepareForWrite(
@@ -326,7 +324,7 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
     {
         blockSequence->AtCapacity = true; /* sticky 100% - fixes UsedBytes at total */
         BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
-        BlockSequence_NotifyStoreFull(blockSequence);
+        BlockSequence_HaltIfPolicyHalts(blockSequence);
         spaceAvailable = false;
     }
     else if (blockFull)
@@ -353,16 +351,13 @@ static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequen
            (blockSequence->DiscardPolicy != SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
 }
 
-static inline void BlockSequence_NotifyStoreFull(struct SolidSyslogBlockSequence* blockSequence)
+/* The store calls OnStoreFull when it sees the halt, once it has reported the
+ * record lost. */
+static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence)
 {
-    if ((blockSequence->DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT) && !blockSequence->Halted)
+    if (blockSequence->DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT)
     {
         blockSequence->Halted = true;
-
-        if (blockSequence->OnStoreFull != NULL)
-        {
-            blockSequence->OnStoreFull(blockSequence->StoreFullContext);
-        }
     }
 }
 

@@ -55,7 +55,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_DISCARD_POLICY_HALT
     };
 
-    /** Fired once when a Halt-policy store first fills. */
+    /** Fired once when a Halt-policy store first fills, after the refused record
+     *  has been reported, so a callback that resets the device and never returns
+     *  loses nothing the error handler would have seen. */
     typedef void (*SolidSyslogStoreFullCallback)(void* context);
 
     /** Returns the capacity threshold in bytes; 0 disables. Queried on every Write. */

@@ -20,8 +20,6 @@ struct SolidSyslogBlockSequenceConfig
     size_t MaxBlockSize;
     size_t MaxBlocks;
     enum SolidSyslogDiscardPolicy DiscardPolicy;
-    SolidSyslogStoreFullCallback OnStoreFull;
-    void* StoreFullContext;
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;
@@ -33,8 +31,6 @@ struct SolidSyslogBlockSequence
     size_t MaxBlockSize;
     size_t MaxBlocks;
     enum SolidSyslogDiscardPolicy DiscardPolicy;
-    SolidSyslogStoreFullCallback OnStoreFull;
-    void* StoreFullContext;
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;

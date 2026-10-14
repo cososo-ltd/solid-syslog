@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -22,6 +23,8 @@ struct SolidSyslogBlockStore
     struct SolidSyslogStore Base;
     struct SolidSyslogRecordStore* RecordStore;
     struct SolidSyslogBlockSequence* BlockSequence;
+    SolidSyslogStoreFullCallback OnStoreFull;
+    void* StoreFullContext;
     /* A report stands for the current run of discarded records; the next record
      * that reads cleanly ends the run. */
     bool LossReported;

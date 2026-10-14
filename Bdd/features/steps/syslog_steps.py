@@ -1329,7 +1329,8 @@ def step_target_reports_store_lost_records_once(context):
     # evicting unsent blocks - and nothing it does then ends the run: no record
     # is kept, no rotation evicts a block already sent, and a halted store keeps
     # nothing more. One run, one report.
-    losses = _block_store_reports_once_made(reported_store_losses, context.interactive_process)
+    process = getattr(context, "interactive_process", None) or context.exited_process
+    losses = _block_store_reports_once_made(reported_store_losses, process)
 
     severities = [severity for severity, _detail in losses]
     assert severities == [severity_value("WARNING")], (
@@ -1384,6 +1385,8 @@ def step_client_attempts_send_exits(context, code):
     assert process.returncode == code, (
         f"Expected exit code {code}, got {process.returncode}"
     )
+    # What it reported before it exited is still read from this.
+    context.exited_process = process
     del context.interactive_process
 
 

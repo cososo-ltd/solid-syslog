@@ -1675,6 +1675,29 @@ TEST(SolidSyslogBlockStoreRotation, AFullStoreThatHaltsReportsTheRecordLostAndSt
     CALLED_FUNCTION(StoreFullCallback, ONCE);
 }
 
+static int reportsMadeBeforeStoreFull;
+
+static void StoreFullCallbackCountingReports(void* context)
+{
+    (void) context;
+    reportsMadeBeforeStoreFull = ErrorHandlerFake_HandleCallCount();
+}
+
+/* An OnStoreFull that resets the device never returns, so the loss has to be
+ * reported before it is called. */
+TEST(SolidSyslogBlockStoreRotation, AStoreThatHaltsReportsTheRecordLostBeforeCallingOnStoreFull)
+{
+    reportsMadeBeforeStoreFull = 0;
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, StoreFullCallbackCountingReports);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* both blocks full */
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg();
+
+    LONGS_EQUAL(1, reportsMadeBeforeStoreFull);
+}
+
 TEST(SolidSyslogBlockStoreRotation, ARunOfRefusedRecordsIsReportedOnce)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
