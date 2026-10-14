@@ -16,12 +16,17 @@ class StoreReportRecorder:
     """Keeps every block-store line from one stream, however much else the stream says."""
 
     def __init__(self):
-        self._partial = b""
+        self._partial = bytearray()
         self.lines = []
 
     def feed(self, data):
-        *complete, self._partial = (self._partial + data).split(b"\n")
-        self.lines.extend(line for line in complete if b"[BlockStore " in line)
+        # The stdout reader feeds a byte at a time, so a line is split out only
+        # once its newline arrives.
+        self._partial += data
+        if b"\n" in data:
+            *complete, rest = bytes(self._partial).split(b"\n")
+            self._partial = bytearray(rest)
+            self.lines.extend(line for line in complete if b"[BlockStore " in line)
 
 
 def _store_report_output(process):
