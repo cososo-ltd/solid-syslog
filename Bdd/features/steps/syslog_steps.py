@@ -29,7 +29,12 @@ from tls_collectors import fingerprint_of, listener
 from syslog_severities import severity_value
 from store_files import corrupt_first_unsent_record
 from security_policy_reports import reported_keys_unavailable
-from store_reports import reported_store_discards, reported_store_freezes
+from store_reports import (
+    StoreReportRecorder,
+    reported_store_discards,
+    reported_store_freezes,
+    reported_store_losses,
+)
 from tls_reports import reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
@@ -327,6 +332,7 @@ def _start_stdout_reader(process):
     # used by after_step diagnostics when a scenario fails. Stays in-process
     # (no disk I/O) and capped so a long run doesn't grow unbounded.
     process._solidsyslog_stdout_log = bytearray()
+    process._solidsyslog_stdout_store_reports = StoreReportRecorder()
     fd = process.stdout.fileno()
 
     def _reader():
@@ -336,6 +342,7 @@ def _start_stdout_reader(process):
                 if not data:
                     break
                 process._solidsyslog_byte_queue.put(data)
+                process._solidsyslog_stdout_store_reports.feed(data)
                 log = process._solidsyslog_stdout_log
                 log += data
                 # Cap at 16 KB — recent context only.
@@ -369,6 +376,7 @@ def _start_stderr_reader(process):
         return
 
     process._solidsyslog_stderr_log = bytearray()
+    process._solidsyslog_stderr_store_reports = StoreReportRecorder()
     fd = process.stderr.fileno()
 
     def _reader():
@@ -376,6 +384,7 @@ def _start_stderr_reader(process):
             data = os.read(fd, 4096)
             if not data:
                 break
+            process._solidsyslog_stderr_store_reports.feed(data)
             log = process._solidsyslog_stderr_log
             log += data
             # Cap at 16 KB — recent context only.
@@ -1316,6 +1325,18 @@ def step_target_reports_record_discarded(context):
     severities = [severity for severity, _detail in discards]
     assert severities == [severity_value("ERROR")], (
         f"Expected one discarded-record report at ERROR, got {discards}"
+    )
+
+
+@then("the target reports once that the store lost records")
+def step_target_reports_store_lost_records_once(context):
+    # Every record refused while the store stayed full is one run, and nothing
+    # was kept during the outage to end it.
+    losses = _block_store_reports_once_made(reported_store_losses, context.interactive_process)
+
+    severities = [severity for severity, _detail in losses]
+    assert severities == [severity_value("WARNING")], (
+        f"Expected one lost-records report at WARNING, got {losses}"
     )
 
 
