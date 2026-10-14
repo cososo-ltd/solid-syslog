@@ -25,6 +25,7 @@ struct SolidSyslogBlockStore
     /* A report stands for the current run of discarded records; the next record
      * that reads cleanly ends the run. */
     bool LossReported;
+    bool RefusalReported;
 };
 
 /* SolidSyslogBlockStore_Initialise wires the vtable + composes the inner pool slots that the

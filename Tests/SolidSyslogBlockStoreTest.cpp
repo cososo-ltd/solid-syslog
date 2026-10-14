@@ -1571,7 +1571,7 @@ TEST(SolidSyslogBlockStoreRotation, RotationAcquireFailureFreezesTheStore)
     CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_ROTATE_FAILED);
 }
 
-TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
+TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsTheRecordLost)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     WriteMaxMsg();
@@ -1580,7 +1580,62 @@ TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsNothing)
 
     WriteMaxMsg();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
+    );
+}
+
+TEST(SolidSyslogBlockStoreRotation, AFullStoreThatHaltsReportsTheRecordLostAndStillCallsOnStoreFull)
+{
+    StoreFullCallbackCallCount = 0;
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, StoreFullCallback);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* both blocks full */
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
+    );
+    CALLED_FUNCTION(StoreFullCallback, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreRotation, ARunOfRefusedRecordsIsReportedOnce)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* both blocks full */
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg();
+    WriteMaxMsg();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreRotation, ARecordTheStoreKeepsEndsTheRunSoTheNextRefusalIsReportedAgain)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* both blocks full */
+    ErrorHandlerFake_Install(nullptr);
+    WriteMaxMsg(); /* refused */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 00 drained and disposed */
+    WriteMaxMsg();                    /* kept */
+
+    WriteMaxMsg(); /* refused */
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogBlockStoreRotation, ARotationThatFailedOnceIsNotRetried)

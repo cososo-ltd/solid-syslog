@@ -48,6 +48,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Its header would not parse, or it ran past the end of its block, so
          *  where it ends is unknown and the rest of the block goes with it. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

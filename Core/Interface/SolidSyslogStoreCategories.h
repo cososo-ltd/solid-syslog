@@ -40,4 +40,7 @@
  *  that reads cleanly ends the run, so the fault after that is reported afresh. */
 #define SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 4U))
 
+/** The store lost records to its discard policy. */
+#define SOLIDSYSLOG_CAT_STORE_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 5U))
+
 #endif /* SOLIDSYSLOGSTORECATEGORIES_H */

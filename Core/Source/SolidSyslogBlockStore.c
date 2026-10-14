@@ -60,6 +60,7 @@ void SolidSyslogBlockStore_Initialise(
     self->RecordStore = recordStore;
     self->BlockSequence = blockSequence;
     self->LossReported = false;
+    self->RefusalReported = false;
     BlockStore_InitialiseVtable(self);
 
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
@@ -192,6 +193,7 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
+static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
 static inline void BlockStore_ReportSealFailed(void);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
@@ -213,8 +215,17 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     bool readBlockChanged = false;
     bool written = false;
     bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
+    bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
-    if (!BlockStore_FreezeIfDeviceFailed(self) && prepared)
+    if (frozen)
+    {
+        /* The freeze has reported which operation failed. */
+    }
+    else if (!prepared)
+    {
+        BlockStore_ReportRefusal(self);
+    }
+    else
     {
         if (readBlockChanged)
         {
@@ -233,6 +244,7 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         if (written)
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
+            self->RefusalReported = false;
         }
         else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
         {
@@ -257,6 +269,21 @@ static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)
     }
 
     return failed;
+}
+
+/* The discard policy turned the record away. One report stands for a run of
+ * refusals; the next record the store keeps ends the run. */
+static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self)
+{
+    if (!self->RefusalReported)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
+        );
+        self->RefusalReported = true;
+    }
 }
 
 /* The policy reports why it would not seal; this reports that the record is
