@@ -258,13 +258,13 @@ static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self)
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self)
 {
     bool drained = SolidSyslog_DrainBufferIntoStore(self);
-    bool sendFailed = SolidSyslog_SendOneFromStore(self);
+    bool blocked = SolidSyslog_SendOneFromStore(self);
     enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
 
-    /* Buffer activity out-ranks a send failure: only a buffer that stayed idle lets a
-       failed send surface as BLOCKED, and any buffer drain or remaining stored record
-       keeps the loop READY. */
-    if (sendFailed && !drained)
+    /* Buffer activity out-ranks a blocked store: only a buffer that stayed idle lets a
+       failed send, or a stored record that cannot be read yet, surface as BLOCKED, and
+       any buffer drain or remaining stored record keeps the loop READY. */
+    if (blocked && !drained)
     {
         status = SOLIDSYSLOG_SERVICE_BLOCKED;
     }
@@ -311,7 +311,7 @@ static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 {
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t len = 0U;
-    bool sendFailed = false;
+    bool blocked = false;
 
     if (SolidSyslogStore_ReadNextUnsent(self->Store, buf, sizeof(buf), &len))
     {
@@ -321,11 +321,16 @@ static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
         }
         else
         {
-            sendFailed = true;
+            blocked = true;
         }
     }
+    else
+    {
+        /* Records the store holds but cannot hand out yet. */
+        blocked = SolidSyslogStore_HasUnsent(self->Store);
+    }
 
-    return sendFailed;
+    return blocked;
 }
 
 void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage* message)

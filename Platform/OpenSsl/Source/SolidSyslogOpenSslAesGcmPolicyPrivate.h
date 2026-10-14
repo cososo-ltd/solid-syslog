@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGOPENSSLAESGCMPOLICYPRIVATE_H
 #define SOLIDSYSLOGOPENSSLAESGCMPOLICYPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
@@ -17,6 +18,7 @@ struct SolidSyslogOpenSslAesGcmPolicy
 {
     struct SolidSyslogSecurityPolicy Base;
     struct SolidSyslogOpenSslAesGcmPolicyConfig Config;
+    bool FaultReported; /* A run of faults is reported once; a verdict re-arms it. */
 };
 
 void SolidSyslogOpenSslAesGcmPolicy_Initialise(

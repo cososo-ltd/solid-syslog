@@ -49,10 +49,12 @@ trailer is `nonce (12) ‖ tag (16)`.
   under the same key. [Integrating Mbed TLS](../platforms/mbedtls/setup.md) states the
   entropy the adapter assumes and the silent failure mode when it is missing.
   Uniqueness stays probabilistic, bounded by the 2³² per-key envelope below.
-- Failure: `OpenRecord` returns a single `bool`. A tag mismatch (the
-  expected tamper-detected outcome) returns `false` silently and the record is
-  discarded on read; only a genuine library or crypto-backend error is routed to the
-  error handler.
+- Failure: `OpenRecord` tells a verdict from a fault. A tag mismatch (the
+  expected tamper-detected outcome) is rejected silently, and the store discards
+  the record and reports the discard. A missing key or a crypto-backend error is
+  not a verdict: the policy reports it, and the store keeps the record until the
+  policy can run. The [SecurityPolicy contract](../api/structSolidSyslogSecurityPolicy.md)
+  states both.
 
 ### Nonce envelope (not a concern at syslog volumes)
 

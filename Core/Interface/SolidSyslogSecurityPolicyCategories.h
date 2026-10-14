@@ -15,16 +15,19 @@
 /**
  * Portable SecurityPolicy-role error categories, shared by every integrity /
  * confidentiality policy whichever library provides it. Seal (write
- * side) and open (read side) are kept distinct because "a stored record can no
- * longer be read back" is a materially different operational signal from
- * "a record could not be written".
+ * side) and open (read side) are kept distinct because a record that could not
+ * be sealed is lost, while one that could not be opened stays in the store and
+ * is tried again.
  */
 
 /** The policy's key material was missing or could not be loaded. */
 #define SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE ((uint16_t) (SOLIDSYSLOG_CAT_SECURITY_POLICY_BASE + 1U))
 /** Write side: a record could not be sealed (tag / encrypt). */
 #define SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_SECURITY_POLICY_BASE + 2U))
-/** Read side: a stored record failed to open (verify / decrypt) and cannot be read back. */
+/** Read side: the crypto backend failed while verifying or decrypting a stored
+ *  record. This is a fault in the policy, not a verdict on the record, which is
+ *  kept and tried again. A record that fails verification raises nothing here:
+ *  the store reports its discard. */
 #define SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_SECURITY_POLICY_BASE + 3U))
 
 #endif /* SOLIDSYSLOGSECURITYPOLICYCATEGORIES_H */

@@ -28,6 +28,7 @@ from target_driver import apply_extra_args, assert_binary_present, spawn_example
 from tls_collectors import fingerprint_of, listener
 from syslog_severities import severity_value
 from store_files import corrupt_first_unsent_record
+from security_policy_reports import reported_keys_unavailable
 from store_reports import reported_store_discards, reported_store_freezes
 from tls_reports import reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
@@ -1315,6 +1316,32 @@ def step_target_reports_record_discarded(context):
     severities = [severity for severity, _detail in discards]
     assert severities == [severity_value("ERROR")], (
         f"Expected one discarded-record report at ERROR, got {discards}"
+    )
+
+
+@when("the key is withheld")
+def step_key_withheld(context):
+    # Each record the store tries to open while the key is away raises nothing
+    # new after the first, but that first is an ERROR, which ends a hosted target
+    # by default, so the scenario says it expects one.
+    apply_tls_setting(context.interactive_process, "errors-fatal", "0")
+    apply_tls_setting(context.interactive_process, "key", "withheld")
+
+
+@when("the key is restored")
+def step_key_restored(context):
+    apply_tls_setting(context.interactive_process, "key", "available")
+
+
+@then("the target reports once that the key is unavailable")
+def step_target_reports_key_unavailable_once(context):
+    # Every Service pass retries the record the policy could not open, and
+    # every retry finds the key still missing; one run of faults, one report.
+    reports = _block_store_reports_once_made(reported_keys_unavailable, context.interactive_process)
+
+    severities = [severity for severity, _detail in reports]
+    assert severities == [severity_value("ERROR")], (
+        f"Expected one key-unavailable report at ERROR, got {reports}"
     )
 
 

@@ -83,16 +83,16 @@ static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* 
         );                                                  \
     }
 
-#define CHECK_OPEN_REPORTS_DECRYPT_FAILURE_AT(step)         \
-    {                                                       \
-        ErrorHandlerFake_Install(nullptr);                  \
-        MbedTlsFake_SetGcmStepFails(step);                  \
-        CHECK_FALSE(open());                                \
-        CHECK_REPORTED_ERROR(                               \
-            SOLIDSYSLOG_SEVERITY_ERROR,                     \
-            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,    \
-            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED \
-        );                                                  \
+#define CHECK_OPEN_REPORTS_DECRYPT_FAILURE_AT(step)                          \
+    {                                                                        \
+        ErrorHandlerFake_Install(nullptr);                                   \
+        MbedTlsFake_SetGcmStepFails(step);                                   \
+        LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, open()); \
+        CHECK_REPORTED_ERROR(                                                \
+            SOLIDSYSLOG_SEVERITY_ERROR,                                      \
+            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,                     \
+            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED                  \
+        );                                                                   \
     }
 
 // clang-format off
@@ -181,7 +181,7 @@ TEST_GROUP_BASE(SolidSyslogMbedTlsAesGcmPolicySeal, MbedTlsAesGcmPolicyTestBase)
         return policy->SealRecord(policy, &rec);
     }
 
-    bool open()
+    enum SolidSyslogSecurityPolicyOpenResult open()
     {
         struct SolidSyslogSecurityRecord rec = {content, TEST_CONTENT_LEN, TEST_HEADER_LEN, trailer};
         return policy->OpenRecord(policy, &rec);
@@ -368,32 +368,32 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReadsTheNonceFromTheTrailer)
 {
     CHECK_TRUE(seal());
 
-    CHECK_TRUE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, open());
 
     /* Open must decrypt with the nonce the seal wrote into the trailer. */
     MEMCMP_EQUAL(trailer, MbedTlsFake_LastGcmNonce(), GCM_NONCE_SIZE);
 }
 
-TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReturnsTrueWhenDecryptionSucceeds)
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenOpensWhenDecryptionSucceeds)
 {
     CHECK_TRUE(seal());
 
-    CHECK_TRUE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, open());
 
     LONGS_EQUAL(1, MbedTlsFake_GcmOpenCount());
 }
 
 /* A tag mismatch (tamper or wrong key) surfaces as mbedtls_gcm_auth_decrypt
- * returning MBEDTLS_ERR_GCM_AUTH_FAILED. Production must fail closed but stay
- * silent - that is the expected outcome, not a library error. Real tamper /
+ * returning MBEDTLS_ERR_GCM_AUTH_FAILED. Production must reject the record but
+ * stay silent - that is the expected outcome, not a library error. Real tamper /
  * wrong-key rejection lives in the integration suite; here we only prove the
  * adapter's verdict-propagation and silence. */
-TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReturnsFalseWithoutReportingWhenAuthenticationFails)
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenRejectsWithoutReportingWhenAuthenticationFails)
 {
     ErrorHandlerFake_Install(nullptr);
     MbedTlsFake_SetGcmAuthFails(true);
 
-    CHECK_FALSE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, open());
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
@@ -423,13 +423,21 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealFailsClosedWhenKeyIsWrongLength)
     );
 }
 
-TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenFailsClosedWhenKeyUnavailable)
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenCouldNotRunWhenKeyUnavailable)
+{
+    CHECK_TRUE(seal());
+    keyAvailable = false;
+
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN, open());
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReportsWhenKeyUnavailable)
 {
     CHECK_TRUE(seal());
     ErrorHandlerFake_Install(nullptr);
     keyAvailable = false;
 
-    CHECK_FALSE(open());
+    open();
     CHECK_REPORTED_ERROR(
         SOLIDSYSLOG_SEVERITY_ERROR,
         SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
@@ -463,8 +471,8 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealReportsErrorWhenEncryptingFails)
 }
 
 /* Open's setkey failure and a genuine (non-auth) auth_decrypt error both report
- * DECRYPT_FAILED. The auth-mismatch verdict is separate - that fail-closed-but-
- * silent path is OpenReturnsFalseWithoutReporting... above. */
+ * DECRYPT_FAILED, and reach no verdict. The auth-mismatch verdict is separate -
+ * that rejected-but-silent path is OpenRejectsWithoutReporting... above. */
 TEST(SolidSyslogMbedTlsAesGcmPolicySeal, OpenReportsErrorWhenSettingKeyFails)
 {
     CHECK_OPEN_REPORTS_DECRYPT_FAILURE_AT(MBEDTLSFAKE_GCM_STEP_SETKEY);
@@ -482,4 +490,113 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealWipesTheKeyBufferAfterUse)
     LONGS_EQUAL(1, MbedTlsFake_PlatformZeroizeCallCount());
     POINTERS_EQUAL(lastGetKeyBuffer, MbedTlsFake_LastPlatformZeroizeBuf());
     LONGS_EQUAL(lastGetKeyCapacity, MbedTlsFake_LastPlatformZeroizeLen());
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AKeyThatStaysUnavailableIsReportedOnce)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    open();
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AnOpenedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    open();
+
+    keyAvailable = false;
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ARejectedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    MbedTlsFake_SetGcmAuthFails(true);
+    open();
+    MbedTlsFake_SetGcmAuthFails(false);
+
+    keyAvailable = false;
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ASealedRecordEndsTheRunSoTheNextFaultIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal();
+    keyAvailable = true;
+    seal();
+
+    keyAvailable = false;
+    seal();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealAndOpenShareOneRunOfFaults)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+
+    seal();
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AKeyFaultAndABackendFaultShareOneRun)
+{
+    CHECK_TRUE(seal());
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    keyAvailable = true;
+    MbedTlsFake_SetGcmStepFails(MBEDTLSFAKE_GCM_STEP_SETKEY);
+
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, AKeyFaultAndASealBackendFaultShareOneRun)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    seal();
+    keyAvailable = true;
+    MbedTlsFake_SetCtrDrbgRandomFails(true);
+
+    seal();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfterAnEarlierOneInTheSameSlotWasLatched)
+{
+    ErrorHandlerFake_Install(nullptr);
+    keyAvailable = false;
+    open();
+    SolidSyslogMbedTlsAesGcmPolicy_Destroy(policy);
+    policy = SolidSyslogMbedTlsAesGcmPolicy_Create(&config);
+
+    open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }

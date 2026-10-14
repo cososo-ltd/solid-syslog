@@ -37,7 +37,7 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool MbedTlsHmacSha256Policy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult MbedTlsHmacSha256Policy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
@@ -53,6 +53,11 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
     uint8_t* keyOut,
     size_t* keyLengthOut
 );
+static void MbedTlsHmacSha256Policy_ReportFault(
+    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    uint16_t category,
+    enum SolidSyslogHmacSha256PolicyErrors code
+);
 static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength);
 static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length);
 
@@ -66,6 +71,7 @@ void SolidSyslogMbedTlsHmacSha256Policy_Initialise(
     self->Base.SealRecord = MbedTlsHmacSha256Policy_SealRecord;
     self->Base.OpenRecord = MbedTlsHmacSha256Policy_OpenRecord;
     self->Config = *config;
+    self->FaultReported = false;
 }
 
 void SolidSyslogMbedTlsHmacSha256Policy_Cleanup(struct SolidSyslogSecurityPolicy* base)
@@ -104,9 +110,10 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
 
 /* Fetches the key on demand into a transient buffer, computes HMAC-SHA256 over
  * `data` into `tagOut`, then wipes the key buffer - the key never lingers
- * beyond a single computation. Returns false (fail closed) and reports the
- * reason if the key is unavailable or the HMAC computation fails. Shared by
- * seal (writes the record tag) and verify (recomputes for comparison). */
+ * beyond a single computation. Returns false and reports the reason if the key
+ * is unavailable or the HMAC computation fails: no tag, so a seal fails and an
+ * open could not run. Shared by seal (writes the record tag) and verify
+ * (recomputes for comparison). */
 static bool MbedTlsHmacSha256Policy_ComputeTag(
     struct SolidSyslogMbedTlsHmacSha256Policy* policy,
     const uint8_t* data,
@@ -123,12 +130,14 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
         const mbedtls_md_info_t* sha256 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
         if (mbedtls_md_hmac(sha256, key, keyLength, data, length, tagOut) == 0)
         {
+            /* A tag to seal with or verify against: the run of faults is over. */
             computed = true;
+            policy->FaultReported = false;
         }
         else
         {
-            MbedTlsHmacSha256Policy_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
+            MbedTlsHmacSha256Policy_ReportFault(
+                policy,
                 failureCategory,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
             );
@@ -160,8 +169,8 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
         }
         else
         {
-            MbedTlsHmacSha256Policy_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
+            MbedTlsHmacSha256Policy_ReportFault(
+                policy,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
             );
@@ -169,8 +178,8 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
     }
     else
     {
-        MbedTlsHmacSha256Policy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+        MbedTlsHmacSha256Policy_ReportFault(
+            policy,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
         );
@@ -178,18 +187,32 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
     return fetched;
 }
 
+/* The first fault in a run is the one reported. */
+static void MbedTlsHmacSha256Policy_ReportFault(
+    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    uint16_t category,
+    enum SolidSyslogHmacSha256PolicyErrors code
+)
+{
+    if (!policy->FaultReported)
+    {
+        MbedTlsHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
+        policy->FaultReported = true;
+    }
+}
+
 static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength)
 {
     return (keyLength >= (size_t) HMAC_SHA256_MIN_KEY_SIZE) && (keyLength <= (size_t) SOLIDSYSLOG_MAX_HMAC_KEY_SIZE);
 }
 
-static bool MbedTlsHmacSha256Policy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult MbedTlsHmacSha256Policy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
 {
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
-    bool verified = false;
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     if (MbedTlsHmacSha256Policy_ComputeTag(
             MbedTlsHmacSha256Policy_SelfFromBase(self),
             record->Content,
@@ -198,9 +221,11 @@ static bool MbedTlsHmacSha256Policy_OpenRecord(
             SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED
         ))
     {
-        verified = MbedTlsHmacSha256Policy_ConstantTimeEquals(expected, record->Trailer, HMAC_SHA256_TAG_SIZE);
+        result = MbedTlsHmacSha256Policy_ConstantTimeEquals(expected, record->Trailer, HMAC_SHA256_TAG_SIZE)
+                     ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED
+                     : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
     }
-    return verified;
+    return result;
 }
 
 static inline bool MbedTlsHmacSha256Policy_ConstantTimeEquals(const uint8_t* a, const uint8_t* b, size_t length)

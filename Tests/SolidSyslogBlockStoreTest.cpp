@@ -1721,11 +1721,15 @@ static bool SpySealRecord(struct SolidSyslogSecurityPolicy* self, const struct S
 
 static int SpyOpenRecordCallCount;
 static int spyOpenRejections; /* how many of the next opens the policy refuses */
+static int spyOpenCouldNotRuns; /* then how many it cannot run */
 static uint8_t openContentData[CONTENT_REGION_MAX];
 static uint16_t openContentLength;
 static uint16_t openHeaderLength;
 
-static bool SpyOpenRecord(struct SolidSyslogSecurityPolicy* self, const struct SolidSyslogSecurityRecord* record)
+static enum SolidSyslogSecurityPolicyOpenResult SpyOpenRecord(
+    struct SolidSyslogSecurityPolicy* self,
+    const struct SolidSyslogSecurityRecord* record
+)
 {
     (void) self;
     SpyOpenRecordCallCount++;
@@ -1733,12 +1737,22 @@ static bool SpyOpenRecord(struct SolidSyslogSecurityPolicy* self, const struct S
     openHeaderLength = record->HeaderLength;
     memcpy(openContentData, record->Content, record->ContentLength);
 
-    bool opened = spyOpenRejections == 0;
-    if (!opened)
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
+    if (spyOpenRejections > 0)
     {
         spyOpenRejections--;
+        result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
     }
-    return opened;
+    else if (spyOpenCouldNotRuns > 0)
+    {
+        spyOpenCouldNotRuns--;
+        result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
+    }
+    else
+    {
+        /* Opens. */
+    }
+    return result;
 }
 
 static struct SolidSyslogSecurityPolicy spyPolicy = {
@@ -1762,6 +1776,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
         memset(sealContentData, 0, sizeof(sealContentData));
         SpyOpenRecordCallCount   = 0;
         spyOpenRejections   = 0;
+        spyOpenCouldNotRuns = 0;
         openContentLength   = 0;
         openHeaderLength   = 0;
         memset(openContentData, 0, sizeof(openContentData));
@@ -1962,6 +1977,61 @@ TEST(SolidSyslogBlockStoreIntegrity, ARecordThatReadsCleanlyEndsTheRunSoTheNextR
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyCouldNotOpenIsNotSteppedOver)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenCouldNotRuns = 1;
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyCouldNotOpenIsReadOnceItCanRun)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenCouldNotRuns = 1;
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+    MEMCMP_EQUAL("first", buf, 5);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyCouldNotOpenIsNotReportedAsDiscarded)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    spyOpenCouldNotRuns = 1;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyCouldNotOpenDoesNotEndARunOfRejections)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    SolidSyslogStore_Write(store, "third", 5);
+    ErrorHandlerFake_Install(nullptr);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    spyOpenRejections = 1;
+    spyOpenCouldNotRuns = 1;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    spyOpenRejections = 1;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, TheResumeScanStepsOverSentRecordsWithoutOpeningThem)

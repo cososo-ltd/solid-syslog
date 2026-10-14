@@ -340,7 +340,9 @@ static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data,
         }
         else
         {
-            /* Nothing left to read. */
+            /* Nothing left to read, or a record the policy could not open: with
+             * no verdict on it, it stays where it is to be tried again on the
+             * next pass, and the records behind it wait with it. */
         }
     }
 
@@ -377,7 +379,8 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
 
 /* Moves the cursor past what the read met, where there is something to move
  * past: a record the policy rejected, the end of a block the write has left
- * behind, or damage. Says whether there is a next record to try. */
+ * behind, or damage. A record the policy could not open is not moved past.
+ * Says whether there is a next record to try. */
 static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result)
 {
     bool stepped = false;
@@ -396,7 +399,8 @@ static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSy
     }
     else
     {
-        /* A record to hand back, or a device failure. */
+        /* A record to hand back, one the policy could not open, or a device
+         * failure. */
     }
 
     return stepped;

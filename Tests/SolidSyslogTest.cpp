@@ -838,6 +838,27 @@ TEST(SolidSyslog, ServiceReturnsBlockedWhenBufferIdleAndSendFails)
     BufferFake_Destroy();
 }
 
+TEST(SolidSyslog, ServiceReturnsBlockedWhenBufferIdleAndTheStoreHoldsARecordItCannotRead)
+{
+    SolidSyslogBuffer* fakeBuffer = BufferFake_Create();
+    SolidSyslogStore* fakeStore = StoreFake_Create();
+    SolidSyslogConfig serviceConfig =
+        {fakeBuffer, fakeSender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, fakeStore, nullptr, 0};
+
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&serviceConfig);
+
+    SolidSyslogStore_Write(fakeStore, "stored", 6);
+    StoreFake_FailNextRead();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, SolidSyslog_Service(solidSyslog));
+
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+    StoreFake_Destroy();
+    BufferFake_Destroy();
+}
+
 TEST(SolidSyslog, ServiceReturnsReadyWhenStoreStillHasUnsentAfterSuccessfulSend)
 {
     SolidSyslogBuffer* fakeBuffer = BufferFake_Create();

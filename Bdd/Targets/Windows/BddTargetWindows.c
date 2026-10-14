@@ -3,6 +3,7 @@
 #include "BddTargetEnterpriseId.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
+#include "BddTargetKey.h"
 #include "BddTargetLanguage.h"
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetServiceThread.h"
@@ -242,30 +243,12 @@ static void DestroySender(void)
     SolidSyslogWinsockResolver_Destroy(resolver);
 }
 
-/* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
- * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction - never a
- * hard-coded constant. This exists so the BDD scenario can exercise the OpenSSL
- * HMAC-SHA256 at-rest policy end-to-end with real crypto. */
-static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
-{
-    enum
-    {
-        DEMO_KEY_SIZE = 32
-    };
-
-    (void) context;
-    size_t written = (capacity < DEMO_KEY_SIZE) ? capacity : (size_t) DEMO_KEY_SIZE;
-    (void) memset(keyOut, 0x5A, written);
-    *keyLengthOut = written;
-    return true;
-}
-
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(const struct BddTargetWindowsOptions* options)
 {
     struct SolidSyslogSecurityPolicy* policy = NULL;
     if (strcmp(options->SecurityPolicy, "hmac-sha256") == 0)
     {
-        static const struct SolidSyslogOpenSslHmacSha256PolicyConfig hmacConfig = {BddDemoGetKey, NULL};
+        static const struct SolidSyslogOpenSslHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
         policy = SolidSyslogOpenSslHmacSha256Policy_Create(&hmacConfig);
     }
     else if (strcmp(options->SecurityPolicy, "null") == 0)
@@ -336,11 +319,15 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetW
     /* else: NullStore is shared and immutable - nothing to destroy. */
 }
 
-/* Two owners of `set` names on this target, tried in turn: the error handler's
-   own knob first, then everything BddTargetTlsConfig owns. */
+/* Three owners of `set` names on this target, tried in turn: the error
+   handler's own knob, the demo key, then everything BddTargetTlsConfig owns. */
 static bool OnSet(const char* name, const char* value)
 {
     bool applied = BddTargetStderrErrorHandler_SetByName(name, value);
+    if (!applied)
+    {
+        applied = BddTargetKey_SetByName(name, value);
+    }
     if (!applied)
     {
         applied = BddTargetTlsConfig_SetByName(name, value);

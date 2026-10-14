@@ -38,11 +38,16 @@ static bool OpenSslAesGcmPolicy_SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool OpenSslAesGcmPolicy_OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
 static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* policy, uint8_t* keyOut);
+static void OpenSslAesGcmPolicy_ReportFault(
+    struct SolidSyslogOpenSslAesGcmPolicy* policy,
+    uint16_t category,
+    enum SolidSyslogAesGcmPolicyErrors code
+);
 static bool OpenSslAesGcmPolicy_GcmEncrypt(
     const uint8_t* key,
     const uint8_t* nonce,
@@ -52,7 +57,7 @@ static bool OpenSslAesGcmPolicy_GcmEncrypt(
     uint16_t aadLength,
     uint8_t* tagOut
 );
-static bool OpenSslAesGcmPolicy_GcmDecrypt(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_GcmDecrypt(
     const uint8_t* key,
     const uint8_t* nonce,
     uint8_t* body,
@@ -72,6 +77,7 @@ void SolidSyslogOpenSslAesGcmPolicy_Initialise(
     self->Base.SealRecord = OpenSslAesGcmPolicy_SealRecord;
     self->Base.OpenRecord = OpenSslAesGcmPolicy_OpenRecord;
     self->Config = *config;
+    self->FaultReported = false;
 }
 
 void SolidSyslogOpenSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base)
@@ -121,11 +127,12 @@ static bool OpenSslAesGcmPolicy_SealRecord(
                 ))
             {
                 sealed = true;
+                policy->FaultReported = false;
             }
             else
             {
-                OpenSslAesGcmPolicy_Report(
-                    SOLIDSYSLOG_SEVERITY_ERROR,
+                OpenSslAesGcmPolicy_ReportFault(
+                    policy,
                     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                     SOLIDSYSLOG_AES_GCM_POLICY_ERROR_ENCRYPT_FAILED
                 );
@@ -133,8 +140,8 @@ static bool OpenSslAesGcmPolicy_SealRecord(
         }
         else
         {
-            OpenSslAesGcmPolicy_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
+            OpenSslAesGcmPolicy_ReportFault(
+                policy,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                 SOLIDSYSLOG_AES_GCM_POLICY_ERROR_NONCE_FAILED
             );
@@ -153,13 +160,27 @@ static bool OpenSslAesGcmPolicy_FetchKey(struct SolidSyslogOpenSslAesGcmPolicy* 
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
-        OpenSslAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
+        OpenSslAesGcmPolicy_ReportFault(
+            policy,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_AES_GCM_POLICY_ERROR_KEY_UNAVAILABLE
         );
     }
     return fetched;
+}
+
+/* The first fault in a run is the one reported. */
+static void OpenSslAesGcmPolicy_ReportFault(
+    struct SolidSyslogOpenSslAesGcmPolicy* policy,
+    uint16_t category,
+    enum SolidSyslogAesGcmPolicyErrors code
+)
+{
+    if (!policy->FaultReported)
+    {
+        OpenSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
+        policy->FaultReported = true;
+    }
 }
 
 static bool OpenSslAesGcmPolicy_GcmEncrypt(
@@ -192,9 +213,10 @@ static bool OpenSslAesGcmPolicy_GcmEncrypt(
 
 /* Opens in place: decrypts the body and verifies the tag over the header
  * (associated data) and ciphertext. Fetches the key on demand and wipes it. A
- * tag mismatch is the expected tamper-detected outcome and returns false
- * silently; only a genuine OpenSSL error is reported. */
-static bool OpenSslAesGcmPolicy_OpenRecord(
+ * tag mismatch is the expected tamper-detected outcome and is rejected
+ * silently; a missing key or a genuine OpenSSL error could not run, and is
+ * reported. */
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
@@ -205,18 +227,31 @@ static bool OpenSslAesGcmPolicy_OpenRecord(
     const uint8_t* nonce = record->Trailer;
     const uint8_t* tag = &record->Trailer[GCM_NONCE_SIZE];
 
-    bool opened = false;
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     uint8_t key[AES_256_KEY_SIZE];
     if (OpenSslAesGcmPolicy_FetchKey(policy, key))
     {
-        opened =
+        result =
             OpenSslAesGcmPolicy_GcmDecrypt(key, nonce, body, bodyLength, record->Content, record->HeaderLength, tag);
+        if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
+        {
+            OpenSslAesGcmPolicy_ReportFault(
+                policy,
+                SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
+                SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
+            );
+        }
+        else
+        {
+            /* A verdict: the run of faults is over. */
+            policy->FaultReported = false;
+        }
     }
     OPENSSL_cleanse(key, sizeof key);
-    return opened;
+    return result;
 }
 
-static bool OpenSslAesGcmPolicy_GcmDecrypt(
+static enum SolidSyslogSecurityPolicyOpenResult OpenSslAesGcmPolicy_GcmDecrypt(
     const uint8_t* key,
     const uint8_t* nonce,
     uint8_t* body,
@@ -231,11 +266,10 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
     uint8_t tag[GCM_TAG_SIZE];
     (void) memcpy(tag, tagIn, sizeof tag);
 
-    /* A tag mismatch is the expected tamper-detected outcome - return false
-     * silently, like the HMAC verify. Only a genuine OpenSSL failure (context
-     * allocation or any setup step) is reported. */
-    bool opened = false;
-    bool errored = true;
+    /* A tag mismatch is the expected tamper-detected outcome - rejected,
+     * like the HMAC verify. A genuine OpenSSL failure (context allocation or
+     * any setup step) reaches no verdict. */
+    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     if (ctx != NULL)
     {
@@ -249,18 +283,11 @@ static bool OpenSslAesGcmPolicy_GcmDecrypt(
         if (setUp)
         {
             int finalLength = 0;
-            errored = false;
-            opened = (EVP_DecryptFinal_ex(ctx, &body[outLength], &finalLength) == 1);
+            result = (EVP_DecryptFinal_ex(ctx, &body[outLength], &finalLength) == 1)
+                         ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED
+                         : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
         }
         EVP_CIPHER_CTX_free(ctx);
     }
-    if (errored)
-    {
-        OpenSslAesGcmPolicy_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
-            SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
-        );
-    }
-    return opened;
+    return result;
 }

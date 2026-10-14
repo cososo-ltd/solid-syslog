@@ -49,7 +49,7 @@ TEST(SolidSyslogCrc16Policy, SealThenOpenRoundTrip)
     uint8_t trailer[2] = {};
     struct SolidSyslogSecurityRecord record = {content, 5, 0, trailer};
     policy->SealRecord(policy, &record);
-    CHECK_TRUE(policy->OpenRecord(policy, &record));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, policy->OpenRecord(policy, &record));
 }
 
 TEST(SolidSyslogCrc16Policy, OpenDetectsTrailerBitFlip)
@@ -59,7 +59,7 @@ TEST(SolidSyslogCrc16Policy, OpenDetectsTrailerBitFlip)
     struct SolidSyslogSecurityRecord record = {content, 5, 0, trailer};
     policy->SealRecord(policy, &record);
     trailer[0] ^= 0x01;
-    CHECK_FALSE(policy->OpenRecord(policy, &record));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, policy->OpenRecord(policy, &record));
 }
 
 TEST(SolidSyslogCrc16Policy, OpenDetectsContentCorruption)
@@ -69,7 +69,7 @@ TEST(SolidSyslogCrc16Policy, OpenDetectsContentCorruption)
     struct SolidSyslogSecurityRecord record = {content, 5, 0, trailer};
     policy->SealRecord(policy, &record);
     content[0] ^= 0x01;
-    CHECK_FALSE(policy->OpenRecord(policy, &record));
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, policy->OpenRecord(policy, &record));
 }
 
 TEST(SolidSyslogCrc16Policy, DestroyDoesNotCrash)

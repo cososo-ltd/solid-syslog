@@ -14,6 +14,7 @@
 #include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
+#include "BddTargetKey.h"
 #include "BddTargetLanguage.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
@@ -237,8 +238,9 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
 
 static bool OnSet(const char* name, const char* value)
 {
-    /* The message and destination settings are shared with every BDD target. */
-    if (BddTargetMessageSettings_SetByName(name, value))
+    /* The message and destination settings, and the demo key, are shared with
+       every BDD target. */
+    if (BddTargetMessageSettings_SetByName(name, value) || BddTargetKey_SetByName(name, value))
     {
         return true;
     }
@@ -401,24 +403,6 @@ static bool TryParseUInt(const char* value, unsigned long* out)
     return true;
 }
 
-/* DEMO KEY ONLY. A real integrator supplies key material from a secure element,
- * a KDF, or encrypted NVM via their own SolidSyslogKeyFunction - never a
- * hard-coded constant. This exists so the BDD scenario can exercise the mbedTLS
- * HMAC-SHA256 / AES-256-GCM at-rest policies end-to-end with real crypto. */
-static bool BddDemoGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
-{
-    enum
-    {
-        DEMO_KEY_SIZE = 32
-    };
-
-    (void) context;
-    size_t written = (capacity < DEMO_KEY_SIZE) ? capacity : (size_t) DEMO_KEY_SIZE;
-    (void) memset(keyOut, 0x5A, written);
-    *keyLengthOut = written;
-    return true;
-}
-
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
 {
     /* Latch the kind now so teardown destroys against what we actually built,
@@ -428,7 +412,7 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
     struct SolidSyslogSecurityPolicy* policy = NULL;
     if (strcmp(pendingSecurityPolicy, "hmac-sha256") == 0)
     {
-        static const struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {BddDemoGetKey, NULL};
+        static const struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
         policy = SolidSyslogMbedTlsHmacSha256Policy_Create(&hmacConfig);
     }
     else if (strcmp(pendingSecurityPolicy, "aes-256-gcm") == 0)
@@ -437,7 +421,7 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
          * source - see BddTargetTlsSender_GetRng. Not static const: Rng is a
          * runtime handle. */
         const struct SolidSyslogMbedTlsAesGcmPolicyConfig aesConfig =
-            {BddDemoGetKey, NULL, BddTargetTlsSender_GetRng()};
+            {BddTargetKey_Get, NULL, BddTargetTlsSender_GetRng()};
         policy = SolidSyslogMbedTlsAesGcmPolicy_Create(&aesConfig);
     }
     else if (strcmp(pendingSecurityPolicy, "null") == 0)
@@ -651,8 +635,10 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
 {
     (void) argument;
 
-    /* Seed the destination host with the platform default before any `set host`. */
+    /* Seed the destination host with the platform default before any `set host`,
+       and start with the demo key available. */
     BddTargetMessageSettings_Reset(g_config->DefaultHost);
+    BddTargetKey_Reset();
 
     /* Platform brings up its network and hands back a ready-to-use sender with
      * the default transport already selected. */

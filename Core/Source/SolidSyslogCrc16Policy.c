@@ -19,7 +19,7 @@ static bool Crc16Policy_Crc16SealRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool Crc16Policy_Crc16OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult Crc16Policy_Crc16OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 );
@@ -53,7 +53,7 @@ static bool Crc16Policy_Crc16SealRecord(
     return true;
 }
 
-static bool Crc16Policy_Crc16OpenRecord(
+static enum SolidSyslogSecurityPolicyOpenResult Crc16Policy_Crc16OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
 )
@@ -61,5 +61,5 @@ static bool Crc16Policy_Crc16OpenRecord(
     (void) self;
     uint16_t crc = SolidSyslogCrc16_Compute(record->Content, record->ContentLength);
     uint16_t expected = (uint16_t) ((uint16_t) (record->Trailer[0] << 8U) | record->Trailer[1]);
-    return crc == expected;
+    return (crc == expected) ? SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED : SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
 }

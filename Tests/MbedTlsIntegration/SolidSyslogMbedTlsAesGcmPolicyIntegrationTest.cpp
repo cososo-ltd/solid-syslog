@@ -91,7 +91,7 @@ TEST_GROUP(SolidSyslogMbedTlsAesGcmPolicyIntegration)
         return policy->SealRecord(policy, &rec);
     }
 
-    bool open()
+    enum SolidSyslogSecurityPolicyOpenResult open()
     {
         struct SolidSyslogSecurityRecord rec = {content, CONTENT_LEN, HEADER_LEN, trailer};
         return policy->OpenRecord(policy, &rec);
@@ -110,7 +110,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, SealEncryptsBodyAndOpenRestoresI
     CHECK_TRUE(seal());
     CHECK_TEXT(memcmp(body(), originalBody, BODY_LEN) != 0, "body was not encrypted");
 
-    CHECK_TRUE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED, open());
     MEMCMP_EQUAL(originalBody, body(), BODY_LEN);
 }
 
@@ -141,7 +141,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, TamperedCiphertextIsRejected)
     CHECK_TRUE(seal());
     content[HEADER_LEN] ^= 0xFFU;
 
-    CHECK_FALSE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, open());
 }
 
 TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, TamperedTagIsRejected)
@@ -149,7 +149,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, TamperedTagIsRejected)
     CHECK_TRUE(seal());
     trailer[NONCE_SIZE] ^= 0xFFU;
 
-    CHECK_FALSE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, open());
 }
 
 TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, TamperedHeaderIsRejected)
@@ -157,7 +157,7 @@ TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, TamperedHeaderIsRejected)
     CHECK_TRUE(seal());
     content[0] ^= 0xFFU;
 
-    CHECK_FALSE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, open());
 }
 
 TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, WrongKeyIsRejected)
@@ -165,5 +165,5 @@ TEST(SolidSyslogMbedTlsAesGcmPolicyIntegration, WrongKeyIsRejected)
     CHECK_TRUE(seal());
     SetKey(0x99);
 
-    CHECK_FALSE(open());
+    LONGS_EQUAL(SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED, open());
 }

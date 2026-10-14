@@ -15,7 +15,8 @@
  *    not exactly 32 bytes, Seal returns false and nothing is stored.
  *  - Open reverses it: decrypts the body and verifies the tag over the header and
  *    ciphertext. A tag mismatch (tamper, or wrong key) is the expected rejection
- *    and returns false silently; only a genuine mbedTLS fault is reported.
+ *    and is silent. A key that is unavailable or not 32 bytes, or a genuine
+ *    mbedTLS fault, could not run, and is reported.
  *
  *  The key is fetched on demand via GetKey and wiped after every operation - it
  *  is never stored on the instance. */
@@ -33,7 +34,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogMbedTlsAesGcmPolicyConfig
     {
         SolidSyslogKeyFunction GetKey; /**< Fetches the 32-byte AES-256 key on demand; required. Any other
-                                            reported length fails the operation closed. */
+                                            reported length is treated as unavailable. */
         void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
         struct mbedtls_ctr_drbg_context* Rng; /**< Seeded CTR-DRBG each record's 12-byte nonce is drawn from;
                                             required and caller-owned. Injected because mbedTLS has no
