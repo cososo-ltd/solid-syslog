@@ -1330,8 +1330,10 @@ def step_target_reports_record_discarded(context):
 
 @then("the target reports once that the store lost records")
 def step_target_reports_store_lost_records_once(context):
-    # Every record refused while the store stayed full is one run, and nothing
-    # was kept during the outage to end it.
+    # Each policy loses records throughout the outage - refusing them, or
+    # evicting unsent blocks - and nothing it does then ends the run: no record
+    # is kept, no rotation evicts a block already sent, and a halted store keeps
+    # nothing more. One run, one report.
     losses = _block_store_reports_once_made(reported_store_losses, context.interactive_process)
 
     severities = [severity for severity, _detail in losses]
