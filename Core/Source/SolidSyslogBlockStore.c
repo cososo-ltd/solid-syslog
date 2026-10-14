@@ -61,6 +61,7 @@ void SolidSyslogBlockStore_Initialise(
     self->BlockSequence = blockSequence;
     self->LossReported = false;
     self->RefusalReported = false;
+    self->EvictionReported = false;
     BlockStore_InitialiseVtable(self);
 
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
@@ -194,6 +195,7 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
+static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
 static inline void BlockStore_ReportSealFailed(void);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
@@ -227,6 +229,8 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     }
     else
     {
+        BlockStore_ReportEviction(self);
+
         if (readBlockChanged)
         {
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
@@ -283,6 +287,30 @@ static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self)
             SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
         );
         self->RefusalReported = true;
+    }
+}
+
+/* One report stands for a run of rotations that each evicted unsent records;
+ * the next rotation that evicts nothing unsent ends the run. A write that does
+ * not rotate leaves the run as it was. */
+static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self)
+{
+    if (!SolidSyslogBlockSequence_EvictedUnsent(self->BlockSequence))
+    {
+        self->EvictionReported = false;
+    }
+    else if (!self->EvictionReported)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED
+        );
+        self->EvictionReported = true;
+    }
+    else
+    {
+        /* Still the run already reported. */
     }
 }
 

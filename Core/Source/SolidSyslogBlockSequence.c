@@ -79,6 +79,7 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
     blockSequence->DeviceFailed = false;
+    blockSequence->EvictedUnsent = false;
     blockSequence->FailedOperation = SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX;
 }
 
@@ -385,21 +386,19 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
     if (acquired)
     {
         BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
-
-        if (BlockSequence_ExceedsMaxBlocks(blockSequence))
-        {
-            *readBlockChanged = BlockSequence_DiscardOldestBlock(blockSequence);
-        }
+        blockSequence->EvictedUnsent = false;
 
         /* Sealing the prior write block can re-arm dispose-on-empty: drain that
          * fully MarkSent the block before rotation could not fire here because
-         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now,
-         * unless the eviction failed - a failed device is not called again. */
-        if (!blockSequence->DeviceFailed)
+         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. It is
+         * re-evaluated before any eviction, so a block with nothing left to send
+         * is disposed rather than evicted, and an eviction always costs records. */
+        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, readBlockChanged);
+
+        /* A failed device is not called again. */
+        if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
         {
-            bool disposedAfterRotate = false;
-            SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
-            *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+            *readBlockChanged = BlockSequence_DiscardOldestBlock(blockSequence) || *readBlockChanged;
         }
     }
     else
@@ -470,6 +469,7 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
     if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
     {
         bool readingOldestBlock = (blockSequence->ReadSequence == blockSequence->OldestSequence);
+        blockSequence->EvictedUnsent = readingOldestBlock;
         blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
 
         if (readingOldestBlock)
@@ -637,6 +637,11 @@ bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSeq
 bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence)
 {
     return blockSequence->DeviceFailed;
+}
+
+bool SolidSyslogBlockSequence_EvictedUnsent(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return blockSequence->EvictedUnsent;
 }
 
 enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(

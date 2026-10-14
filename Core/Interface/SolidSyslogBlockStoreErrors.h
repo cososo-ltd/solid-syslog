@@ -49,6 +49,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  where it ends is unknown and the rest of the block goes with it. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

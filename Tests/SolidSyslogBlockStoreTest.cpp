@@ -1045,6 +1045,74 @@ TEST(SolidSyslogBlockStoreRotation, DiscardOldestDeletesOldestBlockWhenAtMaxBloc
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
 }
 
+TEST(SolidSyslogBlockStoreRotation, EvictingABlockOfUnsentRecordsReportsTheRecordsLost)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg(); /* block 02 - evicts 00 */
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED
+    );
+}
+
+TEST(SolidSyslogBlockStoreRotation, ARunOfEvictionsOfUnsentRecordsIsReportedOnce)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg(); /* block 02 - evicts 00 */
+    WriteMaxMsg(); /* block 03 - evicts 01 */
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreRotation, ABlockLeftFullySentByAnEarlierRunIsDisposedRatherThanReportedAsEvicted)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    FileFake_FailNextDelete(file);
+    SolidSyslogStore_MarkSent(store); /* block 00 sent, but left on the device */
+    SolidSyslogBlockStore_Destroy(store);
+    RestartDevice();
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    ErrorHandlerFake_Install(nullptr);
+
+    WriteMaxMsg(); /* block 02 */
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogBlockStoreRotation, ARotationThatEvictsNothingUnsentEndsTheRunSoTheNextEvictionIsReportedAgain)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
+    ErrorHandlerFake_Install(nullptr);
+    WriteMaxMsg(); /* block 02 - evicts 00 */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 01 drained and disposed */
+    WriteMaxMsg();                    /* block 03 - evicts nothing */
+
+    WriteMaxMsg(); /* block 04 - evicts 02 */
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogBlockStoreRotation, DiscardOldestSurvivingDataIsReadable)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
