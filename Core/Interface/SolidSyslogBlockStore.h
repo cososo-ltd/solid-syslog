@@ -46,7 +46,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** What happens once MaxBlocks are full. Oldest keeps accepting writes,
      *  evicting the oldest block to make room; Newest refuses the incoming record;
      *  Halt refuses it, latches (IsHalted, Service stops), and fires OnStoreFull
-     *  once on entry. */
+     *  once on entry. Records lost this way raise SOLIDSYSLOG_CAT_STORE_RECORDS_LOST;
+     *  evicting a block whose records were all sent loses nothing and raises
+     *  nothing. */
     enum SolidSyslogDiscardPolicy
     {
         SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
