@@ -81,7 +81,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Installed via SolidSyslog_SetErrorHandler; @p context is passed back
-     *  unchanged. The event is only valid for the duration of the call. */
+     *  unchanged. The event is only valid for the duration of the call.
+     *
+     *  The handler runs on the task that met the fault, often part way through a
+     *  SolidSyslog call, and must not call back into SolidSyslog - not
+     *  SolidSyslog_Log, SolidSyslog_Service, nor any Create or Destroy. Senders and
+     *  streams are not reentrant, so a call from the handler can re-enter one in
+     *  the middle of an operation, and a log that fails reports again, which
+     *  recurses. Record the event instead - count it, set a flag, or queue a copy
+     *  of it - and act on it from your own code once the handler has returned. */
     typedef void (*SolidSyslogErrorHandler)(void* context, const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time

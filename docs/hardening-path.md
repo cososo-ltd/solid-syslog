@@ -90,7 +90,9 @@ This is not only an integration aid. The handler is the seam into your product's
 error and health reporting, and it stays valuable at run time: the sender raises an
 edge-triggered warning when the collector becomes unreachable and a notice when delivery
 recovers, and the ring buffer raises an error for a record too large to enqueue. Route
-it wherever your device already routes faults.
+it wherever your device already routes faults, but not back into SolidSyslog: the
+[handler contract](api/SolidSyslogError_8h.md#typedef-solidsyslogerrorhandler) says
+why, and what to do instead.
 
 For more detail see [error handling and severity](error-severity.md).
 
