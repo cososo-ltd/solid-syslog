@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGCIRCULARBUFFERPRIVATE_H
 #define SOLIDSYSLOGCIRCULARBUFFERPRIVATE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -24,6 +25,10 @@ struct SolidSyslogCircularBuffer
     size_t Head;
     size_t Tail;
     size_t WrapPoint;
+    /* A report stands for a run of refused records; the next record kept ends
+     * the run. Set under the mutex, before the report is raised, so a handler
+     * that logs into the full ring finds the run already reported. */
+    bool LossReported;
 };
 
 void SolidSyslogCircularBuffer_Initialise(

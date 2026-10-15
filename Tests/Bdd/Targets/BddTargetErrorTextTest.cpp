@@ -42,6 +42,11 @@ TEST(BddTargetErrorText, BufferBackendFailedCategoryMapsToText)
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, "buffer backend failed");
 }
 
+TEST(BddTargetErrorText, BufferRecordsLostCategoryMapsToText)
+{
+    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, "buffer records lost");
+}
+
 TEST(BddTargetErrorText, ResolverResolveFailedCategoryMapsToText)
 {
     CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED, "resolve failed");

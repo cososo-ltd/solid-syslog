@@ -1,5 +1,6 @@
 #include <cerrno>
 #include <cstdlib>
+#include <cstring>
 
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
@@ -8,13 +9,16 @@ using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "MqFake.h"
+#include "MutexFake.h"
 #include "SenderFake.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
@@ -25,6 +29,7 @@ struct SolidSyslogStore;
 
 static const char* const TEST_MESSAGE = "hello";
 static const size_t TEST_MESSAGE_LEN = 5;
+static const size_t TEST_MAX_MESSAGES = 10;
 
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
@@ -36,12 +41,13 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
     void setup() override
     {
         MqFake_Reset();
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES);
         readSize = 0;
     }
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
     }
 
@@ -104,7 +110,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, SecondReadAfterSingleWriteReturnsFalse)
     CHECK_FALSE(Read());
 }
 
-TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
+TEST(SolidSyslogPosixMessageQueueBuffer, AFullQueueReportsTheRecordLost)
 {
     ErrorHandlerFake_Install(nullptr);
     MqFake_FailNextSend(EAGAIN);
@@ -112,6 +118,63 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
     Write();
 
     CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
+    );
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfRefusedRecordsIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ARecordTheQueueTakesEndsTheRunSoTheNextRefusalIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+    Write(); /* taken */
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfFailedSendsIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EBADF);
+    Write();
+    MqFake_FailNextSend(EBADF);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+/* A queue that fills and then breaks must still say it broke: the failure is
+ * an ERROR a handler may be filtering for. */
+TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsReportedToo)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+    MqFake_FailNextSend(EBADF);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT(
         SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
@@ -119,10 +182,8 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
     );
 }
 
-/* Regression guard: the production check is errno-agnostic
- * (`if (mq_send(...) != 0)`), so EAGAIN and EMSGSIZE flow through
- * the same branch today. A future contributor who adds errno-specific
- * handling has to deliberately drop one of these cases. */
+/* Only a full queue is a record lost to capacity; any other refusal is the
+ * queue failing. */
 TEST(SolidSyslogPosixMessageQueueBuffer, WriteWithOversizedMessageReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
@@ -186,7 +247,11 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UseAfterDestroyIsCrashSafeViaNullBuffer
     CHECK_FALSE(SolidSyslogBuffer_Read(buffer, data, sizeof(data), &bytesRead));
     LONGS_EQUAL(0, bytesRead);
 
-    buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10); // for teardown
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
+        SolidSyslogNullMutex_Get(),
+        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+        10
+    ); // for teardown
 }
 
 TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
@@ -217,6 +282,65 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     }
 
 // clang-format off
+TEST_GROUP(SolidSyslogPosixMessageQueueBufferMutex)
+{
+    struct SolidSyslogBuffer* buffer = nullptr;
+
+    void setup() override
+    {
+        MqFake_Reset();
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES);
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
+        SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
+        MutexFake_Destroy();
+    }
+
+    void Write() const
+    {
+        SolidSyslogBuffer_Write(buffer, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogPosixMessageQueueBufferMutex, WriteCallsLockThenUnlockOnce)
+{
+    Write();
+
+    STRCMP_EQUAL("LU", MutexFake_Sequence());
+}
+
+static int LogIntoTheQueueCallCount;
+
+/* An integrator's handler that logs the report, which lands in the same full
+ * queue. */
+static void LogIntoTheQueue(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) event;
+    LogIntoTheQueueCallCount++;
+    SolidSyslogBuffer_Write(static_cast<struct SolidSyslogBuffer*>(context), "nested", 6);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferMutex, AHandlerThatLogsTheLossIntoTheFullQueueIsCalledOnceAndNotUnderTheLock)
+{
+    for (size_t i = 0; i < TEST_MAX_MESSAGES; i++)
+    {
+        Write();
+    }
+    LogIntoTheQueueCallCount = 0;
+    SolidSyslog_SetErrorHandler(LogIntoTheQueue, buffer);
+
+    Write();
+
+    CALLED_FUNCTION(LogIntoTheQueue, ONCE);
+    CHECK_TEXT(strstr(MutexFake_Sequence(), "LL") == nullptr, MutexFake_Sequence());
+}
+
+// clang-format off
 TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
 {
     struct SolidSyslogBuffer* pooled[SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE] = {};
@@ -245,7 +369,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
 
     static struct SolidSyslogBuffer* MakeBuffer()
     {
-        return SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
     }
 
     void FillPool()

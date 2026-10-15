@@ -4,7 +4,7 @@
 
 /** @file
  *  Portable category constants (uint16_t macros) for the Buffer role:
- *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED. */
+ *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED and SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST. */
 #ifndef SOLIDSYSLOGBUFFERCATEGORIES_H
 #define SOLIDSYSLOGBUFFERCATEGORIES_H
 
@@ -19,8 +19,15 @@
  * (POSIX message queue, ring...).
  */
 
-/** The buffer's underlying backend refused a record (queue full, write failed,
- *  ...). event->Source names which buffer. */
+/** The buffer's backend failed: a write or read the mechanism refused for a
+ *  reason other than being full, or a head record too large for the reader.
+ *  event->Source names which buffer, and event->Detail the fault. */
 #define SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_BUFFER_BASE + 1U))
+
+/** The buffer was full and turned a record away, which is lost. Raised as a
+ *  WARNING, once per run of losses: the next record the buffer keeps ends the
+ *  run. A full buffer clears as Service drains it, so a run usually means
+ *  Service is falling behind the logging rate. */
+#define SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_BUFFER_BASE + 2U))
 
 #endif /* SOLIDSYSLOGBUFFERCATEGORIES_H */

@@ -11,9 +11,11 @@
  *  wrap point is written whole to the front, leaving a gap that the reader skips
  *  via a wrap marker. On a full ring the newest record is dropped (the write is
  *  simply refused) rather than overwriting unsent data, so the oldest queued
- *  records survive. A record larger than SOLIDSYSLOG_MAX_MESSAGE_SIZE is
- *  rejected outright, and a Read whose buffer is too small for the head record
- *  leaves the record in place and reports nothing delivered.
+ *  records survive; the refusal is reported as SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST.
+ *  A record larger than SOLIDSYSLOG_MAX_MESSAGE_SIZE, which SolidSyslog_Log never
+ *  formats, is rejected outright and reported as SOLIDSYSLOG_CAT_BAD_ARGUMENT.
+ *  A Read whose buffer is too small for the head record leaves the record in
+ *  place and reports nothing delivered.
  *
  *  Every enqueue and drain is bracketed by the injected mutex, so the two sides
  *  are safe on separate tasks; inject SolidSyslogNullMutex_Get() for single-task

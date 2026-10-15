@@ -11,6 +11,7 @@
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogCircularBufferErrors.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPrival.h"
@@ -211,6 +212,51 @@ TEST(SolidSyslogCircularBuffer, OverflowingWriteIsDropped)
     CHECK_FALSE(Read());
 }
 
+TEST(SolidSyslogCircularBuffer, AFullRingReportsTheRecordLost)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    ErrorHandlerFake_Install(nullptr);
+
+    Write("extra");
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogCircularBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_REFUSED
+    );
+}
+
+TEST(SolidSyslogCircularBuffer, ARunOfRefusedRecordsIsReportedOnce)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    ErrorHandlerFake_Install(nullptr);
+
+    Write("extra");
+    Write("extra");
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogCircularBuffer, ARecordTheRingKeepsEndsTheRunSoTheNextRefusalIsReportedAgain)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    ErrorHandlerFake_Install(nullptr);
+    Write("extra"); /* refused */
+    Read();
+    Write(filler, sizeof(filler)); /* kept */
+
+    Write("extra"); /* refused */
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogCircularBuffer, WriteAfterDrainAcceptsRecordTooLargeForRemainingTailSpace)
 {
     Write("x");
@@ -231,6 +277,22 @@ TEST(SolidSyslogCircularBuffer, WriteExceedingMaxMessageSizeIsDropped)
     Write(tooBig, sizeof(tooBig));
 
     CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogCircularBuffer, AWriteLargerThanAnyMessageIsReportedAsABadArgument)
+{
+    char tooBig[SOLIDSYSLOG_MAX_MESSAGE_SIZE + 1];
+    memset(tooBig, 'X', sizeof(tooBig));
+    ErrorHandlerFake_Install(nullptr);
+
+    Write(tooBig, sizeof(tooBig));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogCircularBufferErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_EXCEEDS_MAX_MESSAGE_SIZE
+    );
 }
 
 TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
@@ -276,12 +338,66 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferMutex, CircularBufferFixture)
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         SolidSyslogCircularBuffer_Destroy(buffer);
         MutexFake_Destroy();
     }
 };
 
 // clang-format on
+
+static int LogIntoTheBufferCallCount;
+
+/* An integrator's handler that logs the report, which lands in the same full
+ * ring. */
+static void LogIntoTheBuffer(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) event;
+    LogIntoTheBufferCallCount++;
+    SolidSyslogBuffer_Write(static_cast<struct SolidSyslogBuffer*>(context), "nested", 6);
+}
+
+TEST(SolidSyslogCircularBufferMutex, AHandlerThatLogsTheLossIntoTheFullRingIsCalledOnceAndNotUnderTheLock)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    LogIntoTheBufferCallCount = 0;
+    SolidSyslog_SetErrorHandler(LogIntoTheBuffer, buffer);
+
+    Write("extra");
+
+    CALLED_FUNCTION(LogIntoTheBuffer, ONCE);
+    STRCMP_EQUAL("LULULU", MutexFake_Sequence());
+}
+
+/* A record the handler logs that does fit is a record kept, so it ends the run
+ * and the next refusal is reported again. Each such report costs one handler
+ * record, so the reports stop once those records have filled the room left. */
+TEST(SolidSyslogCircularBufferMutex, HandlerRecordsThatFitEndTheRunOnlyUntilTheyFillTheRing)
+{
+    enum
+    {
+        ROOM_LEFT = 100,
+        ATTEMPTS = 50
+    };
+
+    char partFiller[SOLIDSYSLOG_MAX_MESSAGE_SIZE - ROOM_LEFT];
+    memset(partFiller, 'A', sizeof(partFiller));
+    Write(partFiller, sizeof(partFiller));
+    char big[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(big, 'B', sizeof(big));
+    LogIntoTheBufferCallCount = 0;
+    SolidSyslog_SetErrorHandler(LogIntoTheBuffer, buffer);
+
+    for (int i = 0; i < ATTEMPTS; i++)
+    {
+        Write(big, sizeof(big));
+    }
+
+    CHECK(LogIntoTheBufferCallCount > 1);
+    CHECK(LogIntoTheBufferCallCount < ATTEMPTS);
+}
 
 TEST(SolidSyslogCircularBufferMutex, WriteCallsLockThenUnlockOnce)
 {

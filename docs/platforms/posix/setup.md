@@ -57,6 +57,10 @@ circular buffer between them with `SolidSyslogPosixMutex` filling the mutex
 role. Leaving the mutex unfilled is safe only while `Log` and `Service` run on
 the same thread.
 
+The message-queue buffer needs no help between one logging thread and one
+draining thread, since the kernel keeps the queue consistent. Its mutex matters
+when more than one thread logs: fill it with `SolidSyslogPosixMutex` there too.
+
 ## When it does not work
 
 Install an error handler before you start; [error severity](../../error-severity.md)

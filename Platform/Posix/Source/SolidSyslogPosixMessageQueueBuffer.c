@@ -18,6 +18,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogMutex.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPosixMessageQueueBufferPrivate.h"
@@ -31,8 +32,22 @@ enum
     OWNER_READ_WRITE = 0x180U
 };
 
+/* Which run of failed sends, if any, a write has just started. */
+enum SolidSyslogPosixMessageQueueBufferRunStarted
+{
+    RUN_STARTED_NONE,
+    RUN_STARTED_REFUSALS,
+    RUN_STARTED_FAILURES
+};
+
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
+    struct SolidSyslogPosixMessageQueueBuffer* self,
+    const void* data,
+    size_t size
+);
+static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessageQueueBufferRunStarted started);
 
 static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
     struct SolidSyslogBuffer* base
@@ -42,6 +57,7 @@ static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPo
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- distinct semantic meaning; mirrors the public SolidSyslogPosixMessageQueueBuffer_Create signature plus a per-slot discriminator
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
+    struct SolidSyslogMutex* mutex,
     size_t maxMessageSize,
     size_t maxMessages,
     size_t slotIndex
@@ -68,6 +84,9 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
 
     self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
     self->MaxMessageSize = maxMessageSize;
+    self->Mutex = mutex;
+    self->RefusalReported = false;
+    self->FailureReported = false;
     self->Base.Write = PosixMessageQueueBuffer_Write;
     self->Base.Read = PosixMessageQueueBuffer_Read;
     return self->Mq != (mqd_t) -1;
@@ -120,13 +139,74 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
-    if (mq_send(self->Mq, data, size, 0) != 0)
+    /* Tasks logging at once share the run state. The report is raised after
+     * the unlock: the handler may log, which re-enters Write. */
+    SolidSyslogMutex_Lock(self->Mutex);
+    enum SolidSyslogPosixMessageQueueBufferRunStarted started =
+        PosixMessageQueueBuffer_SendNotingRuns(self, data, size);
+    SolidSyslogMutex_Unlock(self->Mutex);
+    PosixMessageQueueBuffer_ReportRunStarted(started);
+}
+
+/* Sends the record, and says which run of failed sends, if any, this one
+ * starts: the one send of each run that is reported. A full queue and a queue
+ * that fails are separate runs, so a queue that fills and then breaks still
+ * says it broke. The run is marked here, before it is reported, so a handler
+ * that logs into the queue finds it already reported. */
+static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
+    struct SolidSyslogPosixMessageQueueBuffer* self,
+    const void* data,
+    size_t size
+)
+{
+    enum SolidSyslogPosixMessageQueueBufferRunStarted started = RUN_STARTED_NONE;
+    bool sent = mq_send(self->Mq, data, size, 0) == 0;
+    /* Captured straight after mq_send, as Read does, so the test below reads
+     * errno only after the call that set it (MISRA C:2012 Rule 22.10). */
+    int sendErrno = sent ? 0 : errno;
+
+    if (sent)
+    {
+        self->RefusalReported = false;
+        self->FailureReported = false;
+    }
+    else if (sendErrno == EAGAIN)
+    {
+        started = self->RefusalReported ? RUN_STARTED_NONE : RUN_STARTED_REFUSALS;
+        self->RefusalReported = true;
+    }
+    else
+    {
+        started = self->FailureReported ? RUN_STARTED_NONE : RUN_STARTED_FAILURES;
+        self->FailureReported = true;
+    }
+
+    return started;
+}
+
+/* A full queue is a record lost to capacity; anything else is the queue
+ * failing. */
+static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessageQueueBufferRunStarted started)
+{
+    if (started == RUN_STARTED_REFUSALS)
+    {
+        PosixMessageQueueBuffer_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
+        );
+    }
+    else if (started == RUN_STARTED_FAILURES)
     {
         PosixMessageQueueBuffer_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
             SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
         );
+    }
+    else
+    {
+        /* Sent, or a run already reported. */
     }
 }
 
