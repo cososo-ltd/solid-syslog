@@ -14,6 +14,7 @@
 #include "SolidSyslogCircularBufferErrors.h"
 #include "SolidSyslogCircularBufferPrivate.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPrival.h"
@@ -32,7 +33,9 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
 static inline struct SolidSyslogCircularBuffer* CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
 static inline void CircularBuffer_ReportRecordTooLarge(void);
+static bool CircularBuffer_StoreOrStartLossRun(struct SolidSyslogCircularBuffer* self, const void* data, size_t size);
 static inline void CircularBuffer_ReportRecordRefused(void);
+static inline void CircularBuffer_ReportRecordExceedsMaxMessageSize(void);
 
 static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
 static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* self);
@@ -153,40 +156,52 @@ static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* s
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
-    bool reportLoss = false;
     if (size <= SOLIDSYSLOG_MAX_MESSAGE_SIZE)
     {
-        SolidSyslogMutex_Lock(self->Mutex);
-        if (CircularBuffer_IsEmpty(self))
+        /* Reported after the unlock, as Read does: the handler may log, which
+         * re-enters Write. */
+        if (CircularBuffer_StoreOrStartLossRun(self, data, size))
         {
-            CircularBuffer_ResetToStart(self);
+            CircularBuffer_ReportRecordRefused();
         }
-        size_t recordBytes = HEADER_BYTES + size;
-        bool fitsAtTail = CircularBuffer_RecordFitsAtTail(self, recordBytes);
-        bool shouldWrite = fitsAtTail || CircularBuffer_RecordFitsAfterWrap(self, recordBytes);
-        if (shouldWrite)
-        {
-            if (!fitsAtTail)
-            {
-                CircularBuffer_WrapTail(self);
-            }
-            CircularBuffer_StoreRecord(self, data, size);
-            self->LossReported = false;
-        }
-        else
-        {
-            reportLoss = !self->LossReported;
-            self->LossReported = true;
-        }
-        SolidSyslogMutex_Unlock(self->Mutex);
     }
-
-    /* Reported after the unlock, as Read does: the handler may log, which
-     * re-enters Write. */
-    if (reportLoss)
+    else
     {
-        CircularBuffer_ReportRecordRefused();
+        CircularBuffer_ReportRecordExceedsMaxMessageSize();
     }
+}
+
+/* Stores the record if the ring has room. Says whether it was refused at the
+ * start of a run of refusals, the one refusal of the run that is reported. The
+ * run is marked under the lock, so a write from the handler reporting it finds
+ * it already reported. */
+static bool CircularBuffer_StoreOrStartLossRun(struct SolidSyslogCircularBuffer* self, const void* data, size_t size)
+{
+    bool lossRunStarted = false;
+    SolidSyslogMutex_Lock(self->Mutex);
+    if (CircularBuffer_IsEmpty(self))
+    {
+        CircularBuffer_ResetToStart(self);
+    }
+    size_t recordBytes = HEADER_BYTES + size;
+    bool fitsAtTail = CircularBuffer_RecordFitsAtTail(self, recordBytes);
+    bool shouldWrite = fitsAtTail || CircularBuffer_RecordFitsAfterWrap(self, recordBytes);
+    if (shouldWrite)
+    {
+        if (!fitsAtTail)
+        {
+            CircularBuffer_WrapTail(self);
+        }
+        CircularBuffer_StoreRecord(self, data, size);
+        self->LossReported = false;
+    }
+    else
+    {
+        lossRunStarted = !self->LossReported;
+        self->LossReported = true;
+    }
+    SolidSyslogMutex_Unlock(self->Mutex);
+    return lossRunStarted;
 }
 
 static inline void CircularBuffer_ReportRecordRefused(void)
@@ -195,6 +210,17 @@ static inline void CircularBuffer_ReportRecordRefused(void)
         SOLIDSYSLOG_SEVERITY_WARNING,
         SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_REFUSED
+    );
+}
+
+/* SolidSyslog_Log never formats a message this large, so only a caller writing
+ * to the buffer directly can hand one over. */
+static inline void CircularBuffer_ReportRecordExceedsMaxMessageSize(void)
+{
+    CircularBuffer_Report(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_EXCEEDS_MAX_MESSAGE_SIZE
     );
 }
 

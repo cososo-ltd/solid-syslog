@@ -279,6 +279,22 @@ TEST(SolidSyslogCircularBuffer, WriteExceedingMaxMessageSizeIsDropped)
     CHECK_FALSE(Read());
 }
 
+TEST(SolidSyslogCircularBuffer, AWriteLargerThanAnyMessageIsReportedAsABadArgument)
+{
+    char tooBig[SOLIDSYSLOG_MAX_MESSAGE_SIZE + 1];
+    memset(tooBig, 'X', sizeof(tooBig));
+    ErrorHandlerFake_Install(nullptr);
+
+    Write(tooBig, sizeof(tooBig));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogCircularBufferErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_EXCEEDS_MAX_MESSAGE_SIZE
+    );
+}
+
 TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallForHeadRecordReportsError)
 {
     ErrorHandlerFake_Install(nullptr);
