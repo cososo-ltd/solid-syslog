@@ -5,11 +5,14 @@
 #ifndef SOLIDSYSLOGPRIVATE_H
 #define SOLIDSYSLOGPRIVATE_H
 
+#include <stddef.h>
+
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogMessageFormatter.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTimestamp.h"
+#include "SolidSyslogTunables.h"
 
 struct SolidSyslogBuffer;
 struct SolidSyslogConfig;
@@ -23,6 +26,11 @@ struct SolidSyslog
     struct SolidSyslogSender* Sender;
     struct SolidSyslogStore* Store;
     struct SolidSyslogMessageFormatterContext Format;
+    /* The record Service has taken from the buffer and not yet dealt with. It
+     * lives here rather than on the Service task's stack, and only Service
+     * touches it, from the one task that calls it. */
+    char HeldRecord[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t HeldRecordLength;
 };
 
 void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config);

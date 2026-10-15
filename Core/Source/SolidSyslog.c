@@ -34,6 +34,8 @@ struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
 
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
+static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
+static void SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static void SolidSyslog_DoLog(
     struct SolidSyslog* handle,
@@ -104,6 +106,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
+    self->HeldRecordLength = 0U;
 }
 
 static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured)
@@ -291,20 +294,33 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
  * ones once the sender recovered). */
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
-    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t len = 0U;
     bool drained = false;
 
-    while (SolidSyslogBuffer_Read(self->Buffer, buf, sizeof(buf), &len))
+    while (SolidSyslog_HoldNextRecord(self))
     {
         drained = true;
-        if (!SolidSyslogStore_Write(self->Store, buf, len) && SolidSyslogStore_IsTransient(self->Store))
-        {
-            (void) SolidSyslogSender_Send(self->Sender, buf, len);
-        }
+        SolidSyslog_DealWithHeldRecord(self);
     }
 
     return drained;
+}
+
+/* Takes the next record from the buffer into the slot. Says whether one was
+ * there to take. */
+static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self)
+{
+    return SolidSyslogBuffer_Read(self->Buffer, self->HeldRecord, sizeof(self->HeldRecord), &self->HeldRecordLength);
+}
+
+/* The store keeps the record or refuses it; a store that keeps nothing hands it
+ * to the sender. Either way the record has been dealt with. */
+static void SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self)
+{
+    if (!SolidSyslogStore_Write(self->Store, self->HeldRecord, self->HeldRecordLength) &&
+        SolidSyslogStore_IsTransient(self->Store))
+    {
+        (void) SolidSyslogSender_Send(self->Sender, self->HeldRecord, self->HeldRecordLength);
+    }
 }
 
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
