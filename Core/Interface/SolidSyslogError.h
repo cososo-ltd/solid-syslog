@@ -88,8 +88,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  SolidSyslog_Log, SolidSyslog_Service, nor any Create or Destroy. Senders and
      *  streams are not reentrant, so a call from the handler can re-enter one in
      *  the middle of an operation, and a log that fails reports again, which
-     *  recurses. Record the event instead - count it, set a flag, or queue it -
-     *  and act on it from your own code once the handler has returned. */
+     *  recurses. Record the event instead - count it, set a flag, or queue a copy
+     *  of it - and act on it from your own code once the handler has returned. */
     typedef void (*SolidSyslogErrorHandler)(void* context, const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time
