@@ -29,8 +29,8 @@ from tls_collectors import fingerprint_of, listener
 from syslog_severities import severity_value
 from store_files import corrupt_first_unsent_record
 from security_policy_reports import reported_keys_unavailable
-from store_reports import reported_store_discards, reported_store_freezes
-from tls_reports import reported_details
+from store_reports import reported_store_discards, reported_store_freezes, reported_store_losses
+from tls_reports import ReportRecorder, reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
@@ -327,6 +327,7 @@ def _start_stdout_reader(process):
     # used by after_step diagnostics when a scenario fails. Stays in-process
     # (no disk I/O) and capped so a long run doesn't grow unbounded.
     process._solidsyslog_stdout_log = bytearray()
+    process._solidsyslog_stdout_reports = ReportRecorder()
     fd = process.stdout.fileno()
 
     def _reader():
@@ -336,6 +337,7 @@ def _start_stdout_reader(process):
                 if not data:
                     break
                 process._solidsyslog_byte_queue.put(data)
+                process._solidsyslog_stdout_reports.feed(data)
                 log = process._solidsyslog_stdout_log
                 log += data
                 # Cap at 16 KB — recent context only.
@@ -369,6 +371,7 @@ def _start_stderr_reader(process):
         return
 
     process._solidsyslog_stderr_log = bytearray()
+    process._solidsyslog_stderr_reports = ReportRecorder()
     fd = process.stderr.fileno()
 
     def _reader():
@@ -376,6 +379,7 @@ def _start_stderr_reader(process):
             data = os.read(fd, 4096)
             if not data:
                 break
+            process._solidsyslog_stderr_reports.feed(data)
             log = process._solidsyslog_stderr_log
             log += data
             # Cap at 16 KB — recent context only.
@@ -1319,6 +1323,21 @@ def step_target_reports_record_discarded(context):
     )
 
 
+@then("the target reports once that the store lost records")
+def step_target_reports_store_lost_records_once(context):
+    # Each policy loses records throughout the outage - refusing them, or
+    # evicting unsent blocks - and nothing it does then ends the run: no record
+    # is kept, no rotation evicts a block already sent, and a halted store keeps
+    # nothing more. One run, one report.
+    process = getattr(context, "interactive_process", None) or context.exited_process
+    losses = _block_store_reports_once_made(reported_store_losses, process)
+
+    severities = [severity for severity, _detail in losses]
+    assert severities == [severity_value("WARNING")], (
+        f"Expected one lost-records report at WARNING, got {losses}"
+    )
+
+
 @when("the key is withheld")
 def step_key_withheld(context):
     # Each record the store tries to open while the key is away raises nothing
@@ -1366,6 +1385,8 @@ def step_client_attempts_send_exits(context, code):
     assert process.returncode == code, (
         f"Expected exit code {code}, got {process.returncode}"
     )
+    # What it reported before it exited is still read from this.
+    context.exited_process = process
     del context.interactive_process
 
 

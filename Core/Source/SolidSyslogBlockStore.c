@@ -55,11 +55,15 @@ void SolidSyslogBlockStore_Initialise(
     const struct SolidSyslogBlockStoreConfig* config
 )
 {
-    (void) config; /* config drove the inner Creates already; nothing left to copy. */
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     self->RecordStore = recordStore;
     self->BlockSequence = blockSequence;
+    self->OnStoreFull = config->OnStoreFull;
+    self->StoreFullContext = config->StoreFullContext;
     self->LossReported = false;
+    self->RefusalReported = false;
+    self->EvictionReported = false;
+    self->SealFailureReported = false;
     BlockStore_InitialiseVtable(self);
 
     if (SolidSyslogBlockSequence_Open(self->BlockSequence))
@@ -192,7 +196,10 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
 
 static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
-static inline void BlockStore_ReportSealFailed(void);
+static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
+static void BlockStore_NotifyIfJustHalted(struct SolidSyslogBlockStore* self, bool wasHalted);
+static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
+static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
 
 static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
@@ -212,10 +219,23 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
     bool written = false;
+    bool wasHalted = SolidSyslogBlockSequence_IsHalted(self->BlockSequence);
     bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
+    bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
-    if (!BlockStore_FreezeIfDeviceFailed(self) && prepared)
+    if (frozen)
     {
+        /* The freeze has reported which operation failed. */
+    }
+    else if (!prepared)
+    {
+        BlockStore_ReportRefusal(self);
+        BlockStore_NotifyIfJustHalted(self, wasHalted);
+    }
+    else
+    {
+        BlockStore_ReportEviction(self);
+
         if (readBlockChanged)
         {
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
@@ -233,6 +253,9 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         if (written)
         {
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
+            /* A record kept ends a run of refusals or seal failures. */
+            self->RefusalReported = false;
+            self->SealFailureReported = false;
         }
         else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
         {
@@ -240,7 +263,7 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         }
         else
         {
-            BlockStore_ReportSealFailed();
+            BlockStore_ReportSealFailed(self);
         }
     }
 
@@ -259,15 +282,68 @@ static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)
     return failed;
 }
 
-/* The policy reports why it would not seal; this reports that the record is
- * lost. */
-static inline void BlockStore_ReportSealFailed(void)
+/* The discard policy turned the record away. One report stands for a run of
+ * refusals; the next record the store keeps ends the run. */
+static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self)
 {
-    BlockStore_Report(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
-    );
+    if (!self->RefusalReported)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
+        );
+        self->RefusalReported = true;
+    }
+}
+
+/* Called after the refusal is reported, so an OnStoreFull that resets the
+ * device and never returns does not lose the report. */
+static void BlockStore_NotifyIfJustHalted(struct SolidSyslogBlockStore* self, bool wasHalted)
+{
+    if (!wasHalted && SolidSyslogBlockSequence_IsHalted(self->BlockSequence) && (self->OnStoreFull != NULL))
+    {
+        self->OnStoreFull(self->StoreFullContext);
+    }
+}
+
+/* One report stands for a run of rotations that each evicted unsent records;
+ * the next rotation that evicts nothing unsent ends the run. A write that does
+ * not rotate leaves the run as it was. */
+static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self)
+{
+    if (!SolidSyslogBlockSequence_EvictedUnsent(self->BlockSequence))
+    {
+        self->EvictionReported = false;
+    }
+    else if (!self->EvictionReported)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED
+        );
+        self->EvictionReported = true;
+    }
+    else
+    {
+        /* Still the run already reported. */
+    }
+}
+
+/* The policy reports why it would not seal; this reports that the record is
+ * lost, once for a run of them. */
+static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self)
+{
+    if (!self->SealFailureReported)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+        );
+        self->SealFailureReported = true;
+    }
 }
 
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)

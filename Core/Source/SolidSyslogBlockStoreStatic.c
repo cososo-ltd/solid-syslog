@@ -127,8 +127,6 @@ static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig
         .MaxBlockSize = maxBlockSize,
         .MaxBlocks = config->MaxBlocks,
         .DiscardPolicy = config->DiscardPolicy,
-        .OnStoreFull = config->OnStoreFull,
-        .StoreFullContext = config->StoreFullContext,
         .GetCapacityThreshold = config->GetCapacityThreshold,
         .OnThresholdCrossed = config->OnThresholdCrossed,
         .ThresholdContext = config->ThresholdContext,

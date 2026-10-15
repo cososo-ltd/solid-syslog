@@ -46,7 +46,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** What happens once MaxBlocks are full. Oldest keeps accepting writes,
      *  evicting the oldest block to make room; Newest refuses the incoming record;
      *  Halt refuses it, latches (IsHalted, Service stops), and fires OnStoreFull
-     *  once on entry. */
+     *  once on entry. Records lost this way are reported as
+     *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
     enum SolidSyslogDiscardPolicy
     {
         SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
@@ -54,7 +55,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_DISCARD_POLICY_HALT
     };
 
-    /** Fired once when a Halt-policy store first fills. */
+    /** Fired once when a Halt-policy store first fills, after the refused record
+     *  has been reported, so a callback that resets the device and never returns
+     *  loses nothing the error handler would have seen. */
     typedef void (*SolidSyslogStoreFullCallback)(void* context);
 
     /** Returns the capacity threshold in bytes; 0 disables. Queried on every Write. */

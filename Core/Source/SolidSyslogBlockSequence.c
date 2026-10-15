@@ -62,8 +62,6 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->MaxBlockSize = config->MaxBlockSize;
     blockSequence->MaxBlocks = BlockSequence_ClampToRange(config->MaxBlocks, MIN_MAX_BLOCKS, MAX_MAX_BLOCKS);
     blockSequence->DiscardPolicy = config->DiscardPolicy;
-    blockSequence->OnStoreFull = config->OnStoreFull;
-    blockSequence->StoreFullContext = config->StoreFullContext;
     blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
     blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
     blockSequence->ThresholdContext = config->ThresholdContext;
@@ -79,6 +77,7 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
     blockSequence->DeviceFailed = false;
+    blockSequence->EvictedUnsent = false;
     blockSequence->FailedOperation = SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX;
 }
 
@@ -308,7 +307,7 @@ static inline bool BlockSequence_IsAboveThreshold(
 
 static inline bool BlockSequence_BlockIsFull(const struct SolidSyslogBlockSequence* blockSequence, size_t recordSize);
 static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequence* blockSequence);
-static inline void BlockSequence_NotifyStoreFull(struct SolidSyslogBlockSequence* blockSequence);
+static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence);
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged);
 
 bool SolidSyslogBlockSequence_PrepareForWrite(
@@ -325,7 +324,7 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
     {
         blockSequence->AtCapacity = true; /* sticky 100% - fixes UsedBytes at total */
         BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
-        BlockSequence_NotifyStoreFull(blockSequence);
+        BlockSequence_HaltIfPolicyHalts(blockSequence);
         spaceAvailable = false;
     }
     else if (blockFull)
@@ -352,16 +351,13 @@ static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequen
            (blockSequence->DiscardPolicy != SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
 }
 
-static inline void BlockSequence_NotifyStoreFull(struct SolidSyslogBlockSequence* blockSequence)
+/* The store calls OnStoreFull when it sees the halt, once it has reported the
+ * record lost. */
+static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence)
 {
-    if ((blockSequence->DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT) && !blockSequence->Halted)
+    if (blockSequence->DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT)
     {
         blockSequence->Halted = true;
-
-        if (blockSequence->OnStoreFull != NULL)
-        {
-            blockSequence->OnStoreFull(blockSequence->StoreFullContext);
-        }
     }
 }
 
@@ -385,21 +381,19 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
     if (acquired)
     {
         BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
-
-        if (BlockSequence_ExceedsMaxBlocks(blockSequence))
-        {
-            *readBlockChanged = BlockSequence_DiscardOldestBlock(blockSequence);
-        }
+        blockSequence->EvictedUnsent = false;
 
         /* Sealing the prior write block can re-arm dispose-on-empty: drain that
          * fully MarkSent the block before rotation could not fire here because
-         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. Re-evaluate now,
-         * unless the eviction failed - a failed device is not called again. */
-        if (!blockSequence->DeviceFailed)
+         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. It is
+         * re-evaluated before any eviction, so a block with nothing left to send
+         * is disposed rather than evicted, and an eviction always costs records. */
+        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, readBlockChanged);
+
+        /* A failed device is not called again. */
+        if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
         {
-            bool disposedAfterRotate = false;
-            SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &disposedAfterRotate);
-            *readBlockChanged = *readBlockChanged || disposedAfterRotate;
+            *readBlockChanged = BlockSequence_DiscardOldestBlock(blockSequence) || *readBlockChanged;
         }
     }
     else
@@ -470,6 +464,7 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
     if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
     {
         bool readingOldestBlock = (blockSequence->ReadSequence == blockSequence->OldestSequence);
+        blockSequence->EvictedUnsent = readingOldestBlock;
         blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
 
         if (readingOldestBlock)
@@ -637,6 +632,11 @@ bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSeq
 bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence)
 {
     return blockSequence->DeviceFailed;
+}
+
+bool SolidSyslogBlockSequence_EvictedUnsent(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return blockSequence->EvictedUnsent;
 }
 
 enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(

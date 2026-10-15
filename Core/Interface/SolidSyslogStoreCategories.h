@@ -4,8 +4,8 @@
 
 /** @file
  *  Portable category constants (uint16_t macros) for the Store role:
- *  SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, SOLIDSYSLOG_CAT_STORE_FROZEN and
- *  SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED. */
+ *  SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, SOLIDSYSLOG_CAT_STORE_FROZEN,
+ *  SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED and SOLIDSYSLOG_CAT_STORE_RECORDS_LOST. */
 #ifndef SOLIDSYSLOGSTORECATEGORIES_H
 #define SOLIDSYSLOGSTORECATEGORIES_H
 
@@ -20,9 +20,10 @@
  */
 
 /** The store could not keep a record because its security policy would not
- *  seal it. The record is not retained, and the policy reports why. A record
- *  the discard policy turns away is not a failure and raises nothing; a device
- *  that fails raises SOLIDSYSLOG_CAT_STORE_FROZEN instead. */
+ *  seal it. The record is not retained, and the policy reports why. Raised once
+ *  per run of such records; the next record the store keeps ends the run. A
+ *  record the discard policy turns away raises SOLIDSYSLOG_CAT_STORE_RECORDS_LOST
+ *  instead, and a device that fails raises SOLIDSYSLOG_CAT_STORE_FROZEN. */
 #define SOLIDSYSLOG_CAT_STORE_WRITE_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 1U))
 
 /** The store's device failed, so the store will not use it again. event->Detail
@@ -39,5 +40,14 @@
  *  run of discarded records, naming the first fault of the run; the next record
  *  that reads cleanly ends the run, so the fault after that is reported afresh. */
 #define SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 4U))
+
+/** The store lost records to its discard policy, which is working as
+ *  configured: a full store refused the record being written, or evicted its
+ *  oldest block while that block still held records not yet sent.
+ *  event->Detail says which. Raised as a WARNING, once per run of losses: a run
+ *  of refusals ends with the next record the store keeps, and a run of
+ *  evictions with the next block rotation that evicts nothing unsent. A store
+ *  that halts keeps nothing more, so it raises this once. */
+#define SOLIDSYSLOG_CAT_STORE_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 5U))
 
 #endif /* SOLIDSYSLOGSTORECATEGORIES_H */

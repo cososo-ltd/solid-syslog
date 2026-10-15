@@ -18,6 +18,7 @@ Feature: Store capacity limit and discard policy
     And the syslog oracle received sequenceId 11
     And the syslog oracle did not receive sequenceId 2
     And the outage messages have contiguous sequenceIds
+    And the target reports once that the store lost records
 
   Scenario: Discard-newest preserves oldest messages when store overflows
     Given the syslog oracle is running
@@ -33,6 +34,7 @@ Feature: Store capacity limit and discard policy
     And the syslog oracle received sequenceId 2
     And the syslog oracle did not receive sequenceId 11
     And the outage messages have contiguous sequenceIds
+    And the target reports once that the store lost records
 
   Scenario: Halt stops the application when store overflows
     Given the syslog oracle is running
@@ -44,6 +46,7 @@ Feature: Store capacity limit and discard policy
     When the syslog oracle stops accepting TCP connections
     And the client sends 8 messages
     And the client attempts to send it exits with code 2
+    Then the target reports once that the store lost records
 
   Scenario: Halt prevents further service after store overflows
     Given the syslog oracle is running
@@ -55,3 +58,4 @@ Feature: Store capacity limit and discard policy
     And the client sends 10 messages
     And the syslog oracle resumes accepting TCP connections
     Then the syslog oracle receives no more messages
+    And the target reports once that the store lost records

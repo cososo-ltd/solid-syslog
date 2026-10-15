@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -22,9 +23,19 @@ struct SolidSyslogBlockStore
     struct SolidSyslogStore Base;
     struct SolidSyslogRecordStore* RecordStore;
     struct SolidSyslogBlockSequence* BlockSequence;
+    SolidSyslogStoreFullCallback OnStoreFull;
+    void* StoreFullContext;
     /* A report stands for the current run of discarded records; the next record
      * that reads cleanly ends the run. */
     bool LossReported;
+    /* Each reports a run of records lost to the discard policy: refused while
+     * the store is full, ended by the next record kept; or evicted unsent, ended
+     * by the next rotation that evicts nothing unsent. */
+    bool RefusalReported;
+    bool EvictionReported;
+    /* A report stands for a run of records the policy would not seal; the next
+     * record kept ends the run. */
+    bool SealFailureReported;
 };
 
 /* SolidSyslogBlockStore_Initialise wires the vtable + composes the inner pool slots that the

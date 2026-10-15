@@ -20,8 +20,6 @@ struct SolidSyslogBlockSequenceConfig
     size_t MaxBlockSize;
     size_t MaxBlocks;
     enum SolidSyslogDiscardPolicy DiscardPolicy;
-    SolidSyslogStoreFullCallback OnStoreFull;
-    void* StoreFullContext;
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;
@@ -33,8 +31,6 @@ struct SolidSyslogBlockSequence
     size_t MaxBlockSize;
     size_t MaxBlocks;
     enum SolidSyslogDiscardPolicy DiscardPolicy;
-    SolidSyslogStoreFullCallback OnStoreFull;
-    void* StoreFullContext;
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;
@@ -50,6 +46,7 @@ struct SolidSyslogBlockSequence
     size_t WritePosition;
     bool WriteBlockCorrupt;
     bool DeviceFailed;
+    bool EvictedUnsent; /* the latest rotation evicted a block still holding unsent records */
     enum SolidSyslogBlockStoreErrors FailedOperation;
 };
 
@@ -93,6 +90,7 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
 
 /* Set by the first block device operation that fails; the store freezes on it. */
 bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence);
+bool SolidSyslogBlockSequence_EvictedUnsent(const struct SolidSyslogBlockSequence* blockSequence);
 enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(
     const struct SolidSyslogBlockSequence* blockSequence
 );
