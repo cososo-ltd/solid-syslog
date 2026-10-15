@@ -23,10 +23,19 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBuffer;
+    struct SolidSyslogMutex;
 
     /** @p maxMessageSize and @p maxMessages size the queue; an exhausted pool
-     *  falls back to the shared NullBuffer. */
-    struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(size_t maxMessageSize, size_t maxMessages);
+     *  falls back to the shared NullBuffer. @p mutex makes Write safe for tasks
+     *  logging at once, and must outlive the buffer; inject
+     *  SolidSyslogNullMutex_Get() when only one task logs. It guards this
+     *  process's own state, not the queue, which the kernel shares between
+     *  processes itself. */
+    struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
+        struct SolidSyslogMutex * mutex,
+        size_t maxMessageSize,
+        size_t maxMessages
+    );
     /** Release the pool slot; closes and unlinks the underlying queue. */
     void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer * base);
 

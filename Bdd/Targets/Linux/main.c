@@ -39,6 +39,7 @@
 #include "SolidSyslogPosixFile.h"
 #include "SolidSyslogPosixHostname.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
+#include "SolidSyslogPosixMutex.h"
 #include "SolidSyslogPosixProcessId.h"
 #include "SolidSyslogPosixSleep.h"
 #include "SolidSyslogPosixSysUpTime.h"
@@ -314,7 +315,10 @@ int main(int argc, char* argv[])
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
 
-    struct SolidSyslogBuffer* buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+    /* The interactive thread logs while the service thread drains. */
+    struct SolidSyslogMutex* bufferMutex = SolidSyslogPosixMutex_Create();
+    struct SolidSyslogBuffer* buffer =
+        SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
     struct SolidSyslogAtomicCounter* counter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
@@ -374,6 +378,7 @@ int main(int argc, char* argv[])
     SolidSyslogStdAtomicCounter_Destroy(counter);
     DestroyStore(store, &options);
     SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
+    SolidSyslogPosixMutex_Destroy(bufferMutex);
     DestroySender();
 
     return 0;

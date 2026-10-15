@@ -18,6 +18,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogMutex.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPosixMessageQueueBufferPrivate.h"
@@ -56,6 +57,7 @@ static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPo
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- distinct semantic meaning; mirrors the public SolidSyslogPosixMessageQueueBuffer_Create signature plus a per-slot discriminator
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
+    struct SolidSyslogMutex* mutex,
     size_t maxMessageSize,
     size_t maxMessages,
     size_t slotIndex
@@ -82,6 +84,7 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
 
     self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
     self->MaxMessageSize = maxMessageSize;
+    self->Mutex = mutex;
     self->RefusalReported = false;
     self->FailureReported = false;
     self->Base.Write = PosixMessageQueueBuffer_Write;
@@ -136,7 +139,11 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
+    /* Tasks logging at once share the run state. The report is raised after
+     * the unlock: the handler may log, which re-enters Write. */
+    SolidSyslogMutex_Lock(self->Mutex);
     enum RunStarted started = PosixMessageQueueBuffer_SendNotingRuns(self, data, size);
+    SolidSyslogMutex_Unlock(self->Mutex);
     PosixMessageQueueBuffer_ReportRunStarted(started);
 }
 

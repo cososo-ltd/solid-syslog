@@ -22,9 +22,12 @@ enum
     POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE = 64
 };
 
+struct SolidSyslogMutex;
+
 struct SolidSyslogPosixMessageQueueBuffer
 {
     struct SolidSyslogBuffer Base;
+    struct SolidSyslogMutex* Mutex;
     mqd_t Mq;
     SolidSyslogFormatterStorage
         NameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE)];
@@ -37,6 +40,7 @@ struct SolidSyslogPosixMessageQueueBuffer
 
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
+    struct SolidSyslogMutex* mutex,
     size_t maxMessageSize,
     size_t maxMessages,
     size_t slotIndex
