@@ -172,7 +172,21 @@ TEST(SolidSyslogPosixMessageQueueBuffer, AHandlerThatLogsTheLossIntoTheFullQueue
     CALLED_FUNCTION(LogIntoTheQueue, ONCE);
 }
 
-TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsPartOfTheSameRun)
+TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfFailedSendsIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EBADF);
+    Write();
+    MqFake_FailNextSend(EBADF);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+/* A queue that fills and then breaks must still say it broke: the failure is
+ * an ERROR a handler may be filtering for. */
+TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsReportedToo)
 {
     ErrorHandlerFake_Install(nullptr);
     MqFake_FailNextSend(EAGAIN);
@@ -181,7 +195,13 @@ TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsPartOf
 
     Write();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
+    );
 }
 
 /* Only a full queue is a record lost to capacity; any other refusal is the

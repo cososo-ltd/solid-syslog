@@ -29,11 +29,10 @@ struct SolidSyslogPosixMessageQueueBuffer
     SolidSyslogFormatterStorage
         NameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE)];
     size_t MaxMessageSize;
-    /* A report stands for a run of records the queue would not take, full or
-     * failing; the next record it takes ends the run. Set before the report
-     * is raised, so a handler that logs into the queue finds the run already
-     * reported. */
-    bool LossReported;
+    /* Each report stands for a run of records the queue would not take - full,
+     * or failing; the next record it takes ends both runs. */
+    bool RefusalReported;
+    bool FailureReported;
 };
 
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
