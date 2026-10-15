@@ -14,6 +14,7 @@ using namespace CososoTesting;
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
@@ -25,6 +26,7 @@ struct SolidSyslogStore;
 
 static const char* const TEST_MESSAGE = "hello";
 static const size_t TEST_MESSAGE_LEN = 5;
+static const size_t TEST_MAX_MESSAGES = 10;
 
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
@@ -36,12 +38,13 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
     void setup() override
     {
         MqFake_Reset();
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES);
         readSize = 0;
     }
 
     void teardown() override
     {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
         SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
     }
 
@@ -104,7 +107,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, SecondReadAfterSingleWriteReturnsFalse)
     CHECK_FALSE(Read());
 }
 
-TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
+TEST(SolidSyslogPosixMessageQueueBuffer, AFullQueueReportsTheRecordLost)
 {
     ErrorHandlerFake_Install(nullptr);
     MqFake_FailNextSend(EAGAIN);
@@ -112,17 +115,77 @@ TEST(SolidSyslogPosixMessageQueueBuffer, WriteWhenMqSendFailsReportsError)
     Write();
 
     CHECK_ERROR_REPORTED_ONCE(
-        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPosixMessageQueueBufferErrorSource,
-        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
     );
 }
 
-/* Regression guard: the production check is errno-agnostic
- * (`if (mq_send(...) != 0)`), so EAGAIN and EMSGSIZE flow through
- * the same branch today. A future contributor who adds errno-specific
- * handling has to deliberately drop one of these cases. */
+TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfRefusedRecordsIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ARecordTheQueueTakesEndsTheRunSoTheNextRefusalIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+    Write(); /* taken */
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+static int LogIntoTheQueueCallCount;
+
+/* An integrator's handler that logs the report, which lands in the same full
+ * queue. */
+static void LogIntoTheQueue(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) event;
+    LogIntoTheQueueCallCount++;
+    SolidSyslogBuffer_Write(static_cast<struct SolidSyslogBuffer*>(context), "nested", 6);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, AHandlerThatLogsTheLossIntoTheFullQueueIsCalledOnce)
+{
+    for (size_t i = 0; i < TEST_MAX_MESSAGES; i++)
+    {
+        Write();
+    }
+    LogIntoTheQueueCallCount = 0;
+    SolidSyslog_SetErrorHandler(LogIntoTheQueue, buffer);
+
+    Write();
+
+    CALLED_FUNCTION(LogIntoTheQueue, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsPartOfTheSameRun)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+    MqFake_FailNextSend(EBADF);
+
+    Write();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+/* Only a full queue is a record lost to capacity; any other refusal is the
+ * queue failing. */
 TEST(SolidSyslogPosixMessageQueueBuffer, WriteWithOversizedMessageReportsError)
 {
     ErrorHandlerFake_Install(nullptr);

@@ -33,6 +33,7 @@ enum
 
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+static inline void PosixMessageQueueBuffer_ReportSendFailed(int sendErrno);
 
 static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
     struct SolidSyslogBuffer* base
@@ -68,6 +69,7 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
 
     self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
     self->MaxMessageSize = maxMessageSize;
+    self->LossReported = false;
     self->Base.Write = PosixMessageQueueBuffer_Write;
     self->Base.Read = PosixMessageQueueBuffer_Read;
     return self->Mq != (mqd_t) -1;
@@ -120,7 +122,37 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
-    if (mq_send(self->Mq, data, size, 0) != 0)
+
+    if (mq_send(self->Mq, data, size, 0) == 0)
+    {
+        self->LossReported = false;
+    }
+    else if (!self->LossReported)
+    {
+        /* Marked before the report is raised: a handler that logs into the
+         * queue finds the run already reported. */
+        self->LossReported = true;
+        PosixMessageQueueBuffer_ReportSendFailed(errno);
+    }
+    else
+    {
+        /* Still the run already reported. */
+    }
+}
+
+/* A full queue is a record lost to capacity; anything else is the queue
+ * failing. */
+static inline void PosixMessageQueueBuffer_ReportSendFailed(int sendErrno)
+{
+    if (sendErrno == EAGAIN)
+    {
+        PosixMessageQueueBuffer_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
+        );
+    }
+    else
     {
         PosixMessageQueueBuffer_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
