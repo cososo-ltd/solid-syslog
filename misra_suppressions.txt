@@ -93,7 +93,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:105
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:108
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:75
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:74
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:169
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:212
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:55
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:115
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:17
@@ -218,7 +218,7 @@ misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:17
 misra-c2012-5.7:Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:12
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime32.c:13
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixHostname.c:14
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:29
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:30
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:21
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:10
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsClock.c:25
