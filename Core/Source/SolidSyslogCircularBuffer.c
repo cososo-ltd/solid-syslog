@@ -32,6 +32,7 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
 static inline struct SolidSyslogCircularBuffer* CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
 static inline void CircularBuffer_ReportRecordTooLarge(void);
+static inline void CircularBuffer_ReportRecordRefused(void);
 
 static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
 static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* self);
@@ -58,6 +59,7 @@ void SolidSyslogCircularBuffer_Initialise(
     self->Mutex = mutex;
     self->Ring = ring;
     self->Capacity = ringBytes;
+    self->LossReported = false;
     CircularBuffer_ResetToStart(self);
 }
 
@@ -151,6 +153,7 @@ static inline void CircularBuffer_LoadRecord(struct SolidSyslogCircularBuffer* s
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
+    bool reportLoss = false;
     if (size <= SOLIDSYSLOG_MAX_MESSAGE_SIZE)
     {
         SolidSyslogMutex_Lock(self->Mutex);
@@ -168,9 +171,31 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
                 CircularBuffer_WrapTail(self);
             }
             CircularBuffer_StoreRecord(self, data, size);
+            self->LossReported = false;
+        }
+        else
+        {
+            reportLoss = !self->LossReported;
+            self->LossReported = true;
         }
         SolidSyslogMutex_Unlock(self->Mutex);
     }
+
+    /* Reported after the unlock, as Read does: the handler may log, which
+     * re-enters Write. */
+    if (reportLoss)
+    {
+        CircularBuffer_ReportRecordRefused();
+    }
+}
+
+static inline void CircularBuffer_ReportRecordRefused(void)
+{
+    CircularBuffer_Report(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_REFUSED
+    );
 }
 
 static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* self)

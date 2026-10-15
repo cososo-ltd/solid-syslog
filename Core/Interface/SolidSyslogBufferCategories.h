@@ -23,4 +23,7 @@
  *  ...). event->Source names which buffer. */
 #define SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_BUFFER_BASE + 1U))
 
+/** The buffer was full and turned a record away. */
+#define SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_BUFFER_BASE + 2U))
+
 #endif /* SOLIDSYSLOGBUFFERCATEGORIES_H */
