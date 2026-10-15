@@ -33,6 +33,9 @@ const char* BddTargetErrorText_Category(uint16_t category)
         case SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED:
             result = "buffer backend failed";
             break;
+        case SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST:
+            result = "buffer records lost";
+            break;
         case SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED:
             result = "resolve failed";
             break;
