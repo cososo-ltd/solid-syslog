@@ -28,10 +28,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  exactly the bytes one Write was given: nothing downstream re-orders or
      *  re-frames them. Write cannot refuse a record, since it has no way to say
      *  so, which leaves the overflow policy to the implementation. A record it
-     *  drops is reported once per run of drops, as SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST
-     *  describes, and the run is marked reported before the report is raised,
-     *  outside any lock Write holds: the handler may log, which re-enters
-     *  Write. */
+     *  drops for lack of room is reported as SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST
+     *  describes; one dropped for another reason is reported under its own
+     *  category. Either way the report is raised outside any lock Write holds,
+     *  and its run is marked reported first, so a report that leads back into
+     *  Write cannot repeat without bound. */
     struct SolidSyslogBuffer
     {
         void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);

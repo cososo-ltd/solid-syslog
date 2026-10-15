@@ -371,6 +371,34 @@ TEST(SolidSyslogCircularBufferMutex, AHandlerThatLogsTheLossIntoTheFullRingIsCal
     STRCMP_EQUAL("LULULU", MutexFake_Sequence());
 }
 
+/* A record the handler logs that does fit is a record kept, so it ends the run
+ * and the next refusal is reported again. Each such report costs one handler
+ * record, so the reports stop once those records have filled the room left. */
+TEST(SolidSyslogCircularBufferMutex, HandlerRecordsThatFitEndTheRunOnlyUntilTheyFillTheRing)
+{
+    enum
+    {
+        ROOM_LEFT = 100,
+        ATTEMPTS = 50
+    };
+
+    char partFiller[SOLIDSYSLOG_MAX_MESSAGE_SIZE - ROOM_LEFT];
+    memset(partFiller, 'A', sizeof(partFiller));
+    Write(partFiller, sizeof(partFiller));
+    char big[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(big, 'B', sizeof(big));
+    LogIntoTheBufferCallCount = 0;
+    SolidSyslog_SetErrorHandler(LogIntoTheBuffer, buffer);
+
+    for (int i = 0; i < ATTEMPTS; i++)
+    {
+        Write(big, sizeof(big));
+    }
+
+    CHECK(LogIntoTheBufferCallCount > 1);
+    CHECK(LogIntoTheBufferCallCount < ATTEMPTS);
+}
+
 TEST(SolidSyslogCircularBufferMutex, WriteCallsLockThenUnlockOnce)
 {
     Write("hello");

@@ -22,7 +22,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  as needed and need not outlive the call. There is no back-pressure signal:
      *  whether this blocks (PassthroughBuffer sends inline) or returns at once
      *  (CircularBuffer enqueues) is the buffer's choice, and a record that does
-     *  not fit is dropped and reported through the error handler. */
+     *  not fit is dropped; the first drop of each run is reported through the
+     *  error handler. */
     void SolidSyslogBuffer_Write(struct SolidSyslogBuffer * buffer, const void* data, size_t size);
 
     /** Consumer side, called by SolidSyslog_Service to drain the buffer. Returns
