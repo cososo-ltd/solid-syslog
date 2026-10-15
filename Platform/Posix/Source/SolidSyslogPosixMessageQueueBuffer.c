@@ -33,7 +33,7 @@ enum
 };
 
 /* Which run of failed sends, if any, a write has just started. */
-enum RunStarted
+enum SolidSyslogPosixMessageQueueBufferRunStarted
 {
     RUN_STARTED_NONE,
     RUN_STARTED_REFUSALS,
@@ -42,12 +42,12 @@ enum RunStarted
 
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
-static enum RunStarted PosixMessageQueueBuffer_SendNotingRuns(
+static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
     const void* data,
     size_t size
 );
-static void PosixMessageQueueBuffer_ReportRunStarted(enum RunStarted started);
+static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessageQueueBufferRunStarted started);
 
 static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
     struct SolidSyslogBuffer* base
@@ -142,7 +142,8 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
     /* Tasks logging at once share the run state. The report is raised after
      * the unlock: the handler may log, which re-enters Write. */
     SolidSyslogMutex_Lock(self->Mutex);
-    enum RunStarted started = PosixMessageQueueBuffer_SendNotingRuns(self, data, size);
+    enum SolidSyslogPosixMessageQueueBufferRunStarted started =
+        PosixMessageQueueBuffer_SendNotingRuns(self, data, size);
     SolidSyslogMutex_Unlock(self->Mutex);
     PosixMessageQueueBuffer_ReportRunStarted(started);
 }
@@ -152,20 +153,24 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
  * that fails are separate runs, so a queue that fills and then breaks still
  * says it broke. The run is marked here, before it is reported, so a handler
  * that logs into the queue finds it already reported. */
-static enum RunStarted PosixMessageQueueBuffer_SendNotingRuns(
+static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
     const void* data,
     size_t size
 )
 {
-    enum RunStarted started = RUN_STARTED_NONE;
+    enum SolidSyslogPosixMessageQueueBufferRunStarted started = RUN_STARTED_NONE;
+    bool sent = mq_send(self->Mq, data, size, 0) == 0;
+    /* Captured straight after mq_send, as Read does, so the test below reads
+     * errno only after the call that set it (MISRA C:2012 Rule 22.10). */
+    int sendErrno = sent ? 0 : errno;
 
-    if (mq_send(self->Mq, data, size, 0) == 0)
+    if (sent)
     {
         self->RefusalReported = false;
         self->FailureReported = false;
     }
-    else if (errno == EAGAIN)
+    else if (sendErrno == EAGAIN)
     {
         started = self->RefusalReported ? RUN_STARTED_NONE : RUN_STARTED_REFUSALS;
         self->RefusalReported = true;
@@ -181,7 +186,7 @@ static enum RunStarted PosixMessageQueueBuffer_SendNotingRuns(
 
 /* A full queue is a record lost to capacity; anything else is the queue
  * failing. */
-static void PosixMessageQueueBuffer_ReportRunStarted(enum RunStarted started)
+static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessageQueueBufferRunStarted started)
 {
     if (started == RUN_STARTED_REFUSALS)
     {
