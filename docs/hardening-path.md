@@ -296,8 +296,9 @@ convenient later. Nothing that logs waits on the network.
 however many events can be logged before it is next serviced. It also makes logging from
 multiple tasks safe.
 
-**Cost.** Flash ~750 B, RAM ~5.5k - the ring plus the service task's stack. You choose
-the ring size, and stage 20 revisits it once the store is there to hold a backlog.
+**Cost.** Flash ~750 B, RAM ~5.5k - the ring, the service task's stack, and the record
+slot the instance keeps for the record it is dealing with. You choose the ring size, and
+stage 20 revisits it once the store is there to hold a backlog.
 
 The mutex comes from your RTOS, so add its platform to the list from stage 1.
 
@@ -795,12 +796,13 @@ device actually uses.
 #define SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE 1U
 ```
 
-The message cap comes first, because the ring, the store's record buffer and the
-formatter frame on both task stacks all follow it. The worst case measured on the example
-is 379 octets - four SD-ELEMENTs with both counters at full 32-bit width and both
-addresses at fifteen characters, plus a short message - so 400 leaves room for longer
-messages on that device. Anything longer is truncated rather than dropped. RFC 5424 section 6.1
-says a receiver should accept 2048 octets; over UDP, RFC 5426 section 3.2 guarantees only 480.
+The message cap comes first, because the ring, the record slot in the instance, the
+store's record buffer and the formatter frame on both task stacks all follow it. The
+worst case measured on the example is 379 octets - four SD-ELEMENTs with both counters at
+full 32-bit width and both addresses at fifteen characters, plus a short message - so 400
+leaves room for longer messages on that device. Anything longer is truncated rather than
+dropped. RFC 5424 section 6.1 says a receiver should accept 2048 octets; over UDP, RFC
+5426 section 3.2 guarantees only 480.
 
 The pools follow. Their defaults suit a device running several transports at once; this
 one runs a single sender, over a single stream, to a single destination. Then the ring,
