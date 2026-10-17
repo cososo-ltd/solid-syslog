@@ -34,6 +34,9 @@ struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
 
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
+static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
+static void SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static void SolidSyslog_DoLog(
     struct SolidSyslog* handle,
@@ -66,6 +69,8 @@ static void SolidSyslog_InstallStructuredData(
     size_t count
 );
 static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self);
+static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
+static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
@@ -104,6 +109,20 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
+    self->HeldRecordLength = 0U;
+}
+
+/* No-op defaults for the header-field callbacks. No public Null equivalent
+ * exists for the function-pointer typedefs. */
+static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
+{
+    (void) ts;
+}
+
+static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context)
+{
+    (void) field;
+    (void) context;
 }
 
 static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured)
@@ -282,29 +301,46 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
  * the sender is slow or down - overflow then engages the store's discard policy
- * rather than silently dropping at the buffer. The fall-through to a direct
- * Sender_Send on Store_Write rejection is *only* taken when the store is
- * transient (NullStore): a NullStore Write rejection means "I never retain
- * anything, please try the sender." For a real BlockStore, rejection is the
- * discard policy speaking - letting that message escape via direct send would
- * break the discard-newest contract (a newer message would bypass older stored
- * ones once the sender recovered). */
+ * rather than silently dropping at the buffer. */
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
-    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t len = 0U;
     bool drained = false;
 
-    while (SolidSyslogBuffer_Read(self->Buffer, buf, sizeof(buf), &len))
+    while (SolidSyslog_HoldNextRecord(self))
     {
         drained = true;
-        if (!SolidSyslogStore_Write(self->Store, buf, len) && SolidSyslogStore_IsTransient(self->Store))
-        {
-            (void) SolidSyslogSender_Send(self->Sender, buf, len);
-        }
+        SolidSyslog_DealWithHeldRecord(self);
     }
 
     return drained;
+}
+
+/* Takes the next record from the buffer into the slot. Says whether one was
+ * there to take. */
+static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self)
+{
+    return SolidSyslogBuffer_Read(self->Buffer, self->HeldRecord, sizeof(self->HeldRecord), &self->HeldRecordLength);
+}
+
+/* A record the store has not dealt with goes to the sender. */
+static void SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self)
+{
+    if (!SolidSyslog_StoreDealsWithHeldRecord(self))
+    {
+        (void) SolidSyslogSender_Send(self->Sender, self->HeldRecord, self->HeldRecordLength);
+    }
+}
+
+/* Offers the held record to the store. A store that retains records has dealt
+ * with it either way: it kept it, or its discard policy refused it and reported
+ * the loss - letting a refused record escape to the sender would put it ahead
+ * of older stored ones once the sender recovered. A store that keeps nothing
+ * never had it, so the record is still to be sent. */
+static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self)
+{
+    bool kept = SolidSyslogStore_Write(self->Store, self->HeldRecord, self->HeldRecordLength);
+
+    return kept || !SolidSyslogStore_IsTransient(self->Store);
 }
 
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
@@ -398,15 +434,4 @@ static void SolidSyslog_DoLog(
             SolidSyslogFormatter_Length(f)
         );
     }
-}
-
-void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
-{
-    (void) ts;
-}
-
-void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context)
-{
-    (void) field;
-    (void) context;
 }

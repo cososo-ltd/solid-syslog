@@ -11,9 +11,6 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
-#include "SolidSyslogNullBuffer.h"
-#include "SolidSyslogNullSender.h"
-#include "SolidSyslogNullStore.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogPrivate.h"
@@ -73,18 +70,9 @@ static void SolidSyslog_EnsureNullInstancePopulated(void)
     static bool populated = false;
     if (!populated)
     {
-        SolidSyslog_NullInstance.Buffer = SolidSyslogNullBuffer_Get();
-        SolidSyslog_NullInstance.Sender = SolidSyslogNullSender_Get();
-        SolidSyslog_NullInstance.Store = SolidSyslogNullStore_Get();
-        SolidSyslog_NullInstance.Format.Clock = SolidSyslog_NullClock;
-        SolidSyslog_NullInstance.Format.GetHostname = SolidSyslog_NullHeaderField;
-        SolidSyslog_NullInstance.Format.GetHostnameContext = NULL;
-        SolidSyslog_NullInstance.Format.GetAppName = SolidSyslog_NullHeaderField;
-        SolidSyslog_NullInstance.Format.GetAppNameContext = NULL;
-        SolidSyslog_NullInstance.Format.GetProcessId = SolidSyslog_NullHeaderField;
-        SolidSyslog_NullInstance.Format.GetProcessIdContext = NULL;
-        SolidSyslog_NullInstance.Format.Sd = NULL;
-        SolidSyslog_NullInstance.Format.SdCount = 0;
+        /* The safe defaults a destroyed slot is left with are the ones the
+         * fallback needs, so there is one place that says what they are. */
+        SolidSyslog_Cleanup(&SolidSyslog_NullInstance);
         populated = true;
     }
 }
