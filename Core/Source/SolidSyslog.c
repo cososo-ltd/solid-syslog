@@ -68,6 +68,8 @@ static void SolidSyslog_InstallStructuredData(
     size_t count
 );
 static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self);
+static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
+static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
@@ -107,6 +109,19 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
     self->HeldRecordLength = 0U;
+}
+
+/* No-op defaults for the header-field callbacks. No public Null equivalent
+ * exists for the function-pointer typedefs. */
+static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
+{
+    (void) ts;
+}
+
+static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context)
+{
+    (void) field;
+    (void) context;
 }
 
 static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured)
@@ -414,15 +429,4 @@ static void SolidSyslog_DoLog(
             SolidSyslogFormatter_Length(f)
         );
     }
-}
-
-void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
-{
-    (void) ts;
-}
-
-void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context)
-{
-    (void) field;
-    (void) context;
 }

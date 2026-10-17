@@ -27,21 +27,15 @@ struct SolidSyslog
     struct SolidSyslogStore* Store;
     struct SolidSyslogMessageFormatterContext Format;
     /* The record Service has taken from the buffer and not yet dealt with. It
-     * lives here rather than on the Service task's stack, and only Service
-     * touches it, from the one task that calls it. */
+     * lives in the instance so that a record can be kept across Service passes.
+     * Service alone uses it, from the one task that calls it; Create and
+     * Destroy only reset the length. */
     char HeldRecord[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t HeldRecordLength;
 };
 
 void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config);
 void SolidSyslog_Cleanup(struct SolidSyslog* self);
-
-/* No-op function-pointer defaults shared between SolidSyslog.c and
- * SolidSyslogStatic.c (the latter wires them into the exhaustion-fallback
- * NullInstance). No public Null equivalent exists for the function-pointer
- * typedefs, so they stay TU-internal across this class. */
-void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
-void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
 
 static inline void SolidSyslog_Report(enum SolidSyslogSeverity severity, uint16_t category, enum SolidSyslogErrors code)
 {
