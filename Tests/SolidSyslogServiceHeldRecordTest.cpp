@@ -6,22 +6,29 @@
 #include <stdint.h>
 
 #include "CppUTest/TestHarness.h"
+#include "FileFake.h"
 #include "SenderFake.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogTunables.h"
 #include "StoreFake.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
 
+class TEST_SolidSyslogServiceHeldRecordFrozenStore_NothingIsLostAcrossAnOutageWithAFrozenStore_Test;
 class TEST_SolidSyslogServiceHeldRecord_NothingIsLostAcrossAnOutageOfSeveralPasses_Test;
 class TEST_SolidSyslogServiceHeldRecord_ServiceDoesNotReadTheBufferWhileItHoldsARecord_Test;
+struct SolidSyslogBlockDevice;
 struct SolidSyslogBuffer;
+struct SolidSyslogFile;
 struct SolidSyslogSender;
 struct SolidSyslogStore;
 
@@ -42,26 +49,26 @@ struct SolidSyslogStore;
         CHECK_FALSE(SolidSyslogBuffer_Read(circularBuffer, next, sizeof(next), &nextLength)); \
     }
 
-/* Service over a store that keeps nothing: a buffered record goes straight to
- * the sender, and one the sender refuses is held by Service for the next pass. */
+/* Shared fixture - a CircularBuffer feeding a SenderFake, with the store left
+ * to each group. Service over a store that keeps nothing sends a buffered
+ * record directly, and holds one the sender refuses for the next pass. */
 // clang-format off
-TEST_GROUP(SolidSyslogServiceHeldRecord)
+TEST_BASE(ServiceHeldRecordBase)
 {
     struct SolidSyslog*       solidSyslog    = nullptr;
     struct SolidSyslogSender* fakeSender     = nullptr;
     struct SolidSyslogBuffer* circularBuffer = nullptr;
 
-    void setup() override
+    void setupPipeline()
     {
         static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)];
 
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
             SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing));
-        CreateOver(SolidSyslogNullStore_Get());
     }
 
-    void teardown() override
+    void teardownPipeline()
     {
         SolidSyslog_Destroy(solidSyslog);
         SolidSyslogCircularBuffer_Destroy(circularBuffer);
@@ -81,6 +88,54 @@ TEST_GROUP(SolidSyslogServiceHeldRecord)
     {
         SenderFake_FailNextSend(fakeSender);
         return SolidSyslog_Service(solidSyslog);
+    }
+};
+
+TEST_GROUP_BASE(SolidSyslogServiceHeldRecord, ServiceHeldRecordBase)
+{
+    void setup() override
+    {
+        setupPipeline();
+        CreateOver(SolidSyslogNullStore_Get());
+    }
+
+    void teardown() override
+    {
+        teardownPipeline();
+    }
+};
+
+/* A BlockStore whose device fails on its first open freezes, and from then on
+ * keeps nothing - the case S43.01 leaves a device fault in. */
+TEST_GROUP_BASE(SolidSyslogServiceHeldRecordFrozenStore, ServiceHeldRecordBase)
+{
+    struct FileFakeStorage         storage = {};
+    struct SolidSyslogFile*        file    = nullptr;
+    struct SolidSyslogBlockDevice* device  = nullptr;
+    struct SolidSyslogStore*       store   = nullptr;
+
+    void setup() override
+    {
+        setupPipeline();
+        file   = FileFake_Create(&storage);
+        device = SolidSyslogFileBlockDevice_Create(
+            file, "/tmp/test_store", 2U * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + 5U + SOLIDSYSLOG_MAX_INTEGRITY_SIZE));
+
+        struct SolidSyslogBlockStoreConfig config = {};
+        config.BlockDevice   = device;
+        config.MaxBlocks     = 2U;
+        config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+        FileFake_FailNextOpen(file);
+        store = SolidSyslogBlockStore_Create(&config);
+        CreateOver(store);
+    }
+
+    void teardown() override
+    {
+        teardownPipeline();
+        SolidSyslogBlockStore_Destroy(store);
+        SolidSyslogFileBlockDevice_Destroy(device);
+        FileFake_Destroy();
     }
 };
 
@@ -177,4 +232,19 @@ TEST(SolidSyslogServiceHeldRecord, ServiceDoesNotHoldARecordTheStoreRefused)
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("second", SenderFake_LastBufferAsString(fakeSender));
     StoreFake_Destroy();
+}
+
+TEST(SolidSyslogServiceHeldRecordFrozenStore, NothingIsLostAcrossAnOutageWithAFrozenStore)
+{
+    SolidSyslogBuffer_Write(circularBuffer, "first", 5);
+    SolidSyslogBuffer_Write(circularBuffer, "second", 6);
+    SolidSyslogBuffer_Write(circularBuffer, "third", 5);
+    ServiceWhileTheSenderIsDown();
+    ServiceWhileTheSenderIsDown();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
+    STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
+    CHECK_BUFFER_EMPTY();
 }
