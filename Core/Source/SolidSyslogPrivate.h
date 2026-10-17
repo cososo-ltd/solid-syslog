@@ -29,9 +29,12 @@ struct SolidSyslog
     /* The record Service has taken from the buffer and not yet dealt with. It
      * lives in the instance so that a record can be kept across Service passes.
      * Service alone uses it, from the one task that calls it; Create and
-     * Destroy only reset the length. */
+     * Destroy only empty it. HoldsRecord is true while a record is in the
+     * slot: taken from the buffer this pass, or refused by the sender in an
+     * earlier one and waiting to be sent. */
     char HeldRecord[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t HeldRecordLength;
+    bool HoldsRecord;
 };
 
 void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config);
