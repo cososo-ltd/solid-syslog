@@ -48,25 +48,35 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t sdCount
     );
 
-    /** Run one servicing pass (drain the buffer into the store, then attempt one
-     *  send from the store) and return an advisory hint for driving an
-     *  event-driven loop. The hint is never load-bearing: each call re-derives
-     *  its state from the live buffer and store, so a missed or spurious wake is
-     *  safe and a fixed-delay poll loop may ignore the return. A NULL handle is
-     *  reported and returns IDLE.
+    /** Run one servicing pass (drain the buffer into the store, or straight to
+     *  the sender when the store keeps nothing, then attempt one send from the
+     *  store) and return an advisory hint for driving an event-driven loop. The
+     *  hint is never load-bearing: each call re-derives its state from the live
+     *  buffer and store, so a missed or spurious wake is safe and a fixed-delay
+     *  poll loop may ignore the return. A NULL handle is reported and returns
+     *  IDLE.
      *
      *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing to do anywhere; wait for the next Log.
      *  @retval SOLIDSYSLOG_SERVICE_READY   Work moved this pass, or the store still has
      *                                      unsent after a send; loop again.
-     *  @retval SOLIDSYSLOG_SERVICE_BLOCKED The buffer was idle and the store could not move a
-     *                                      record: a send was attempted and failed, or the
-     *                                      store holds records it cannot hand out yet; back
-     *                                      off and call again later. A Log also wakes it.
+     *  @retval SOLIDSYSLOG_SERVICE_BLOCKED A record is waiting on the sender. With a store
+     *                                      that keeps nothing, a direct send failed and
+     *                                      Service holds the record. Otherwise the buffer
+     *                                      was idle and the store could not move a record:
+     *                                      a send was attempted and failed, or the store
+     *                                      holds records it cannot hand out yet. Back off
+     *                                      and call again later. A Log also wakes it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The store is halted (only under
      *                                      SOLIDSYSLOG_DISCARD_POLICY_HALT); alarm / slow heartbeat.
      *
-     *  Buffer drain out-ranks a send failure: a down sender never demotes the
-     *  loop out of "keep draining" while the buffer still has records to move.
+     *  With a store that retains records, buffer drain out-ranks a send failure:
+     *  a down sender never demotes the loop out of "keep draining" while the
+     *  buffer still has records to move into the store. With a store that keeps
+     *  nothing - a NullStore, or a BlockStore that has frozen - the buffer is the
+     *  only queue. Service then stops at the first failed send, holds that
+     *  record, and reads neither the buffer nor the store again until it has
+     *  gone, so nothing overtakes it; records logged meanwhile wait in the
+     *  buffer under its own policy.
      *
      *  Call this from one task. SolidSyslog_Log is the only entry point designed
      *  to be called concurrently; everything reached from Service - the sender,
