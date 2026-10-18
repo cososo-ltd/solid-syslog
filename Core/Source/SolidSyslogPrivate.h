@@ -26,14 +26,14 @@ struct SolidSyslog
     struct SolidSyslogSender* Sender;
     struct SolidSyslogStore* Store;
     struct SolidSyslogMessageFormatterContext Format;
-    /* The record Service has taken from the buffer and not yet dealt with. It
-     * lives in the instance so that a record can be kept across Service passes.
-     * Service alone uses it, from the one task that calls it; Create and
-     * Destroy only empty it. HoldsRecord is true while a record is in the
-     * slot: taken from the buffer this pass, or refused by the sender in an
-     * earlier one and waiting to be sent. */
-    char HeldRecord[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t HeldRecordLength;
+    /* The one record Service works on at a time: taken from the buffer, or read
+     * from the store to send. It lives in the instance so that a record no store
+     * will take can be kept across Service passes; HoldsRecord is true while one
+     * is kept that way, and Service reads neither the buffer nor the store until
+     * it has gone. Service alone uses the slot, from the one task that calls it;
+     * Create and Destroy only empty it. */
+    char Record[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t RecordLength;
     bool HoldsRecord;
 };
 

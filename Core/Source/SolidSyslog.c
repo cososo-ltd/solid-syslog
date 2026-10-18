@@ -39,6 +39,7 @@ static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
+static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_IsBlocked(struct SolidSyslog* self, bool storeBlocked, bool drained);
 static void SolidSyslog_DoLog(
     struct SolidSyslog* handle,
@@ -111,7 +112,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
-    self->HeldRecordLength = 0U;
+    self->RecordLength = 0U;
     self->HoldsRecord = false;
 }
 
@@ -323,8 +324,7 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
  * there to take. */
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self)
 {
-    self->HoldsRecord =
-        SolidSyslogBuffer_Read(self->Buffer, self->HeldRecord, sizeof(self->HeldRecord), &self->HeldRecordLength);
+    self->HoldsRecord = SolidSyslogBuffer_Read(self->Buffer, self->Record, sizeof(self->Record), &self->RecordLength);
 
     return self->HoldsRecord;
 }
@@ -346,7 +346,7 @@ static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self)
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self)
 {
     return SolidSyslog_StoreDealsWithHeldRecord(self) ||
-           SolidSyslogSender_Send(self->Sender, self->HeldRecord, self->HeldRecordLength);
+           SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength);
 }
 
 /* Offers the held record to the store. A store that retains records has dealt
@@ -356,20 +356,20 @@ static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* 
  * never had it, so the record is still to be sent. */
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self)
 {
-    bool kept = SolidSyslogStore_Write(self->Store, self->HeldRecord, self->HeldRecordLength);
+    bool kept = SolidSyslogStore_Write(self->Store, self->Record, self->RecordLength);
 
     return kept || !SolidSyslogStore_IsTransient(self->Store);
 }
 
+/* Sends one record the store hands out. The slot is the staging buffer; the
+ * record stays the store's, re-read next pass if the sender refuses it. */
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 {
-    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t len = 0U;
     bool blocked = false;
 
-    if (SolidSyslogStore_ReadNextUnsent(self->Store, buf, sizeof(buf), &len))
+    if (SolidSyslog_TakeNextFromStore(self))
     {
-        if (SolidSyslogSender_Send(self->Sender, buf, len))
+        if (SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength))
         {
             SolidSyslogStore_MarkSent(self->Store);
         }
@@ -385,6 +385,15 @@ static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
     }
 
     return blocked;
+}
+
+/* Reads the store's oldest unsent record into the slot. Nothing is asked of the
+ * store while Service holds a record of its own: the slot is taken, and a store
+ * that keeps nothing has nothing to hand out anyway. */
+static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self)
+{
+    return !self->HoldsRecord &&
+           SolidSyslogStore_ReadNextUnsent(self->Store, self->Record, sizeof(self->Record), &self->RecordLength);
 }
 
 /* A record held for a failed direct send blocks the pass outright: the buffer
