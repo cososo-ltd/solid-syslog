@@ -565,6 +565,33 @@ TEST(SolidSyslogCircularBufferMutex, HandlerRecordsThatFitEndTheRunOnlyUntilThey
     CHECK(LogIntoTheBufferCallCount < ATTEMPTS);
 }
 
+/* An integrator's policy function that logs once, which lands in the same
+ * buffer that asked. */
+static struct SolidSyslogBuffer* policyLogTarget;
+
+static enum SolidSyslogDiscardPolicy PolicyThatLogs(void* context)
+{
+    (void) context;
+    struct SolidSyslogBuffer* target = policyLogTarget;
+    policyLogTarget = nullptr;
+    if (target != nullptr)
+    {
+        SolidSyslogBuffer_Write(target, "nested", 6);
+    }
+    return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+}
+
+TEST(SolidSyslogCircularBufferMutex, APolicyFunctionThatLogsIsNotAskedUnderTheLock)
+{
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    buffer = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring), PolicyThatLogs, nullptr);
+    policyLogTarget = buffer;
+
+    Write("x");
+
+    CHECK_TEXT(strstr(MutexFake_Sequence(), "LL") == nullptr, MutexFake_Sequence());
+}
+
 TEST(SolidSyslogCircularBufferMutex, WriteCallsLockThenUnlockOnce)
 {
     Write("hello");

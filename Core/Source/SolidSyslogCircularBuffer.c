@@ -50,9 +50,14 @@ static inline void CircularBuffer_ReportRecordTooLarge(void);
 static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPolicy(
     struct SolidSyslogCircularBuffer* self,
     const void* data,
-    size_t size
+    size_t size,
+    enum SolidSyslogDiscardPolicy policy
 );
-static inline bool CircularBuffer_PolicyEvictsFor(struct SolidSyslogCircularBuffer* self, size_t recordBytes);
+static inline bool CircularBuffer_PolicyEvictsFor(
+    const struct SolidSyslogCircularBuffer* self,
+    size_t recordBytes,
+    enum SolidSyslogDiscardPolicy policy
+);
 static inline bool CircularBuffer_CouldHoldWhenEmpty(const struct SolidSyslogCircularBuffer* self, size_t recordBytes);
 static inline void CircularBuffer_EvictUntilRecordFits(struct SolidSyslogCircularBuffer* self, size_t recordBytes);
 static inline void CircularBuffer_DropHead(struct SolidSyslogCircularBuffer* self);
@@ -213,9 +218,11 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
     if (size <= SOLIDSYSLOG_MAX_MESSAGE_SIZE)
     {
-        /* Reported after the unlock, as Read does: the handler may log, which
+        /* The policy is asked before the lock and the loss reported after it,
+         * as Read reports: both are integrator code that may log, which
          * re-enters Write. */
-        enum SolidSyslogCircularBufferRunStarted started = CircularBuffer_StoreApplyingPolicy(self, data, size);
+        enum SolidSyslogDiscardPolicy policy = self->GetDiscardPolicy(self->DiscardPolicyContext);
+        enum SolidSyslogCircularBufferRunStarted started = CircularBuffer_StoreApplyingPolicy(self, data, size, policy);
         CircularBuffer_ReportRunStarted(started);
     }
     else
@@ -231,7 +238,8 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
 static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPolicy(
     struct SolidSyslogCircularBuffer* self,
     const void* data,
-    size_t size
+    size_t size,
+    enum SolidSyslogDiscardPolicy policy
 )
 {
     enum SolidSyslogCircularBufferRunStarted started = RUN_STARTED_NONE;
@@ -242,7 +250,7 @@ static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPoli
     }
     size_t recordBytes = HEADER_BYTES + size;
     bool evicted = false;
-    if (!CircularBuffer_RecordFits(self, recordBytes) && CircularBuffer_PolicyEvictsFor(self, recordBytes))
+    if (!CircularBuffer_RecordFits(self, recordBytes) && CircularBuffer_PolicyEvictsFor(self, recordBytes, policy))
     {
         CircularBuffer_EvictUntilRecordFits(self, recordBytes);
         evicted = true;
@@ -261,11 +269,14 @@ static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPoli
 
 /* Only Oldest makes room, and only for a record the ring could hold at all:
  * evicting everything for one that still would not fit loses records for
- * nothing. The policy is asked here, on the task that logs. */
-static inline bool CircularBuffer_PolicyEvictsFor(struct SolidSyslogCircularBuffer* self, size_t recordBytes)
+ * nothing. */
+static inline bool CircularBuffer_PolicyEvictsFor(
+    const struct SolidSyslogCircularBuffer* self,
+    size_t recordBytes,
+    enum SolidSyslogDiscardPolicy policy
+)
 {
-    return CircularBuffer_CouldHoldWhenEmpty(self, recordBytes) &&
-           (self->GetDiscardPolicy(self->DiscardPolicyContext) == SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+    return CircularBuffer_CouldHoldWhenEmpty(self, recordBytes) && (policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
 }
 
 static inline bool CircularBuffer_CouldHoldWhenEmpty(const struct SolidSyslogCircularBuffer* self, size_t recordBytes)

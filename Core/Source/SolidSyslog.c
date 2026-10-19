@@ -44,6 +44,7 @@ static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
+static inline void SolidSyslog_Halt(struct SolidSyslog* self);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_IsBlocked(struct SolidSyslog* self, bool storeBlocked, bool drained);
@@ -374,12 +375,12 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
- * the sender is slow or down - overflow then engages the store's discard policy
- * rather than silently dropping at the buffer. A pass deals with the record held
- * from the last one before it reads the buffer, and stops at a record it cannot
- * deal with, so nothing overtakes a record waiting on the sender, or at the
- * refusal that halts the logger. Says whether anything was taken from the
- * buffer. */
+ * the sender is slow or down - a store that retains records then takes the
+ * backlog, and the buffer applies the discard policy only to what it cannot
+ * hand on. A pass deals with the record held from the last one before it reads
+ * the buffer, and stops at a record it cannot deal with, so nothing overtakes a
+ * record waiting on the sender, or at the refusal that halts the logger. Says
+ * whether anything was taken from the buffer. */
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
     bool drained = false;
@@ -413,7 +414,7 @@ static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidS
         }
         else if (policy == SOLIDSYSLOG_DISCARD_POLICY_HALT)
         {
-            SolidSyslog_HaltIfPolicyHalts(self);
+            SolidSyslog_Halt(self);
         }
         else
         {
@@ -495,12 +496,16 @@ static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self
  * that. */
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self)
 {
-    self->Halted = SolidSyslog_PolicyHalts(self);
-
-    if (self->Halted)
+    if (SolidSyslog_PolicyHalts(self))
     {
-        self->OnHalt(self->HaltContext);
+        SolidSyslog_Halt(self);
     }
+}
+
+static inline void SolidSyslog_Halt(struct SolidSyslog* self)
+{
+    self->Halted = true;
+    self->OnHalt(self->HaltContext);
 }
 
 /* Sends one record the store hands out. The slot is the staging buffer; the

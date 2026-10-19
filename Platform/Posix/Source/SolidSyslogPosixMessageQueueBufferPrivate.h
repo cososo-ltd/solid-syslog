@@ -17,7 +17,6 @@
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogTunables.h"
 
 enum
 {
@@ -36,9 +35,6 @@ struct SolidSyslogPosixMessageQueueBuffer
     size_t MaxMessageSize;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;
-    /* Where the record Oldest takes out of the full queue lands; it is dropped
-     * from here. Sized for any record SolidSyslog_Log formats. */
-    char Evicted[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     /* Each report stands for a run of records the queue would not take as it
      * stood - full, or failing - or of sends that had to evict; the next record
      * it takes ends the first two, the next send that evicts nothing the

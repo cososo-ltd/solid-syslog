@@ -350,6 +350,55 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAQueueWithNothingToEvictRefu
     CHECK_FALSE(Read());
 }
 
+/* The eviction is a loss of its own, reported whatever becomes of the send
+ * it made room for. */
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAnEvictionIsReportedEvenWhenTheRetriedSendFails)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailSecondSend(EBADF);
+
+    Write("newest");
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT_AT(
+        0,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORDS_EVICTED
+    );
+    CHECK_ERROR_EVENT_AT(
+        1,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED
+    );
+}
+
+/* Another task filled the room between the eviction and the send: both losses
+ * are reported. */
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestARecordRefusedAfterEvictingReportsBothLosses)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailSecondSend(EAGAIN);
+
+    Write("newest");
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
+    );
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 TEST(SolidSyslogPosixMessageQueueBuffer, UnderHaltAFullQueueRefusesTheRecordAsUnderNewest)
 {
     testPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
@@ -540,6 +589,39 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferMutex)
 };
 
 // clang-format on
+
+/* An integrator's policy function that logs once, which lands in the same
+ * queue that asked. */
+static struct SolidSyslogBuffer* policyLogTarget;
+
+static enum SolidSyslogDiscardPolicy PolicyThatLogs(void* context)
+{
+    (void) context;
+    struct SolidSyslogBuffer* target = policyLogTarget;
+    policyLogTarget = nullptr;
+    if (target != nullptr)
+    {
+        SolidSyslogBuffer_Write(target, "nested", 6);
+    }
+    return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferMutex, APolicyFunctionThatLogsIsNotAskedUnderTheLock)
+{
+    SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
+        MutexFake_Create(),
+        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+        TEST_MAX_MESSAGES,
+        PolicyThatLogs,
+        nullptr
+    );
+    policyLogTarget = buffer;
+
+    Write();
+
+    CHECK_TEXT(strstr(MutexFake_Sequence(), "LL") == nullptr, MutexFake_Sequence());
+}
 
 TEST(SolidSyslogPosixMessageQueueBufferMutex, WriteCallsLockThenUnlockOnce)
 {

@@ -22,6 +22,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* send configuration - one-shot, consumed by the next mq_send call */
     void MqFake_FailNextSend(int errnoValue);
+    /* one-shot, consumed by the mq_send call after the next one */
+    void MqFake_FailSecondSend(int errnoValue);
 
     int MqFake_SendCallCount(void);
     mqd_t MqFake_LastSendMqd(void);

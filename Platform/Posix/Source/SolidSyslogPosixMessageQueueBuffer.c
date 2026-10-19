@@ -23,6 +23,7 @@
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPosixMessageQueueBufferPrivate.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogPosixMessageQueueBufferErrorSource = {"PosixMessageQueueBuffer"};
 
@@ -32,13 +33,14 @@ enum
     OWNER_READ_WRITE = 0x180U
 };
 
-/* Which run of losses, if any, a write has just started. */
+/* Which run of sends the queue would not take, if any, a write has just
+ * started. A run of evictions is noted apart, since a write can evict and
+ * still be refused. */
 enum SolidSyslogPosixMessageQueueBufferRunStarted
 {
     RUN_STARTED_NONE,
     RUN_STARTED_REFUSALS,
-    RUN_STARTED_FAILURES,
-    RUN_STARTED_EVICTIONS
+    RUN_STARTED_FAILURES
 };
 
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
@@ -48,7 +50,9 @@ static inline void PosixMessageQueueBuffer_NoteRecordTaken(struct SolidSyslogPos
 static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
     const void* data,
-    size_t size
+    size_t size,
+    enum SolidSyslogDiscardPolicy policy,
+    bool* evictionRunStarted
 );
 static inline bool PosixMessageQueueBuffer_Send(
     struct SolidSyslogPosixMessageQueueBuffer* self,
@@ -56,12 +60,9 @@ static inline bool PosixMessageQueueBuffer_Send(
     size_t size,
     int* sendErrno
 );
-static inline bool PosixMessageQueueBuffer_PolicyEvicts(struct SolidSyslogPosixMessageQueueBuffer* self);
-static inline bool PosixMessageQueueBuffer_EvictOne(struct SolidSyslogPosixMessageQueueBuffer* self);
-static inline enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_NoteSent(
-    struct SolidSyslogPosixMessageQueueBuffer* self,
-    bool evicted
-);
+static inline bool PosixMessageQueueBuffer_EvictOne(const struct SolidSyslogPosixMessageQueueBuffer* self);
+static inline bool PosixMessageQueueBuffer_NoteEvicted(struct SolidSyslogPosixMessageQueueBuffer* self, bool evicted);
+static inline void PosixMessageQueueBuffer_ReportRecordsEvicted(void);
 static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessageQueueBufferRunStarted started);
 
 static inline struct SolidSyslogPosixMessageQueueBuffer* PosixMessageQueueBuffer_SelfFromBase(
@@ -205,12 +206,19 @@ static bool PosixMessageQueueBuffer_IsFull(struct SolidSyslogBuffer* base)
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
-    /* Tasks logging at once share the run state. The report is raised after
-     * the unlock: the handler may log, which re-enters Write. */
+    /* Tasks logging at once share the run state. The policy is asked before
+     * the lock and the losses reported after it: both are integrator code that
+     * may log, which re-enters Write. */
+    enum SolidSyslogDiscardPolicy policy = self->GetDiscardPolicy(self->DiscardPolicyContext);
+    bool evictionRunStarted = false;
     SolidSyslogMutex_Lock(self->Mutex);
     enum SolidSyslogPosixMessageQueueBufferRunStarted started =
-        PosixMessageQueueBuffer_SendNotingRuns(self, data, size);
+        PosixMessageQueueBuffer_SendNotingRuns(self, data, size, policy, &evictionRunStarted);
     SolidSyslogMutex_Unlock(self->Mutex);
+    if (evictionRunStarted)
+    {
+        PosixMessageQueueBuffer_ReportRecordsEvicted();
+    }
     PosixMessageQueueBuffer_ReportRunStarted(started);
 }
 
@@ -218,12 +226,15 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
  * and says which run of losses, if any, this write starts: the one write of
  * each run that is reported. A full queue, a queue that fails and a queue that
  * had to evict are separate runs, so a queue that fills and then breaks still
- * says it broke. The run is marked here, before it is reported, so a handler
- * that logs into the queue finds it already reported. */
+ * says it broke, and one that evicts and is still refused - another task filled
+ * the room - says both. The runs are marked here, before they are reported, so
+ * a handler that logs into the queue finds them already reported. */
 static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
     const void* data,
-    size_t size
+    size_t size,
+    enum SolidSyslogDiscardPolicy policy,
+    bool* evictionRunStarted
 )
 {
     enum SolidSyslogPosixMessageQueueBufferRunStarted started = RUN_STARTED_NONE;
@@ -231,33 +242,50 @@ static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer
     bool sent = PosixMessageQueueBuffer_Send(self, data, size, &sendErrno);
     bool evicted = false;
 
-    if (!sent && (sendErrno == EAGAIN) && PosixMessageQueueBuffer_PolicyEvicts(self))
+    if (!sent && (sendErrno == EAGAIN) && (policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST))
     {
-        /* One record out, one send again: another task may have filled the
-         * room meanwhile, and the refusal that follows reports that loss. */
         evicted = PosixMessageQueueBuffer_EvictOne(self);
         sent = evicted && PosixMessageQueueBuffer_Send(self, data, size, &sendErrno);
     }
+    *evictionRunStarted = PosixMessageQueueBuffer_NoteEvicted(self, evicted);
 
     if (sent)
     {
-        started = PosixMessageQueueBuffer_NoteSent(self, evicted);
+        self->RefusalReported = false;
+        self->FailureReported = false;
+        self->Full = evicted;
     }
     else if (sendErrno == EAGAIN)
     {
         started = self->RefusalReported ? RUN_STARTED_NONE : RUN_STARTED_REFUSALS;
         self->RefusalReported = true;
-        self->EvictionReported = false;
         self->Full = true;
     }
     else
     {
         started = self->FailureReported ? RUN_STARTED_NONE : RUN_STARTED_FAILURES;
         self->FailureReported = true;
-        self->EvictionReported = false;
     }
 
     return started;
+}
+
+/* A send that evicted continues or starts the run of evictions; one that
+ * evicted nothing ends it. Says whether a run started. */
+static inline bool PosixMessageQueueBuffer_NoteEvicted(struct SolidSyslogPosixMessageQueueBuffer* self, bool evicted)
+{
+    bool runStarted = evicted && !self->EvictionReported;
+    self->EvictionReported = evicted;
+    return runStarted;
+}
+
+static inline void PosixMessageQueueBuffer_ReportRecordsEvicted(void)
+{
+    PosixMessageQueueBuffer_Report(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORDS_EVICTED
+    );
 }
 
 /* errno is captured straight after mq_send, as Read does, so the tests on it
@@ -274,42 +302,17 @@ static inline bool PosixMessageQueueBuffer_Send(
     return sent;
 }
 
-/* Asked on the task that logs, at the moment the full queue has to decide. */
-static inline bool PosixMessageQueueBuffer_PolicyEvicts(struct SolidSyslogPosixMessageQueueBuffer* self)
-{
-    return self->GetDiscardPolicy(self->DiscardPolicyContext) == SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-}
-
 /* Takes the oldest record out of the queue and drops it. Fails when the queue
  * has emptied meanwhile, or holds a record larger than the scratch; either
  * way nothing was evicted and the send is not retried. */
-static inline bool PosixMessageQueueBuffer_EvictOne(struct SolidSyslogPosixMessageQueueBuffer* self)
+static inline bool PosixMessageQueueBuffer_EvictOne(const struct SolidSyslogPosixMessageQueueBuffer* self)
 {
-    return mq_receive(self->Mq, self->Evicted, sizeof(self->Evicted), NULL) >= 0;
+    char evicted[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    return mq_receive(self->Mq, evicted, sizeof(evicted), NULL) >= 0;
 }
 
-/* A record sent ends the runs of refusals and failures; one sent without
- * evicting ends the run of evictions. The queue is full afterwards only if it
- * had to make room. */
-static inline enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_NoteSent(
-    struct SolidSyslogPosixMessageQueueBuffer* self,
-    bool evicted
-)
-{
-    enum SolidSyslogPosixMessageQueueBufferRunStarted started = RUN_STARTED_NONE;
-    self->RefusalReported = false;
-    self->FailureReported = false;
-    if (evicted && !self->EvictionReported)
-    {
-        started = RUN_STARTED_EVICTIONS;
-    }
-    self->EvictionReported = evicted;
-    self->Full = evicted;
-    return started;
-}
-
-/* A full queue is a record lost to capacity, refused or evicted; anything else
- * is the queue failing. */
+/* A full queue is a record lost to capacity; anything else is the queue
+ * failing. */
 static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessageQueueBufferRunStarted started)
 {
     if (started == RUN_STARTED_REFUSALS)
@@ -318,14 +321,6 @@ static void PosixMessageQueueBuffer_ReportRunStarted(enum SolidSyslogPosixMessag
             SOLIDSYSLOG_SEVERITY_WARNING,
             SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
             SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
-        );
-    }
-    else if (started == RUN_STARTED_EVICTIONS)
-    {
-        PosixMessageQueueBuffer_Report(
-            SOLIDSYSLOG_SEVERITY_WARNING,
-            SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
-            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORDS_EVICTED
         );
     }
     else if (started == RUN_STARTED_FAILURES)
