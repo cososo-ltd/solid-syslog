@@ -286,7 +286,6 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
         storeConfig.MaxBlocks = options->MaxBlocks;
-        discardPolicy = MapDiscardPolicy(options->DiscardPolicy);
         storeConfig.GetDiscardPolicy = GetDiscardPolicy;
         storeConfig.SecurityPolicy = securityPolicy;
         storeConfig.GetCapacityThreshold = GetCapacityThreshold;
@@ -379,6 +378,9 @@ int BddTargetWindows_Run(int argc, char* argv[])
     BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);
 
     haltExit = options.HaltExit;
+    /* One policy for the pipeline: the store, the buffer and the logger ask the
+       same function. */
+    discardPolicy = MapDiscardPolicy(options.DiscardPolicy);
 
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);

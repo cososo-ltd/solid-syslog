@@ -29,6 +29,7 @@ from tls_collectors import fingerprint_of, listener
 from syslog_severities import severity_value
 from store_files import corrupt_first_unsent_record
 from security_policy_reports import reported_keys_unavailable
+from buffer_reports import reported_buffer_losses
 from store_reports import reported_store_discards, reported_store_freezes, reported_store_losses
 from tls_reports import ReportRecorder, reported_details
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
@@ -724,6 +725,19 @@ def step_block_store_enabled_with_config(context, max_blocks, max_block_size, po
     clean_store_files()
 
 
+@given("the discard policy is {policy}")
+def step_discard_policy(context, policy):
+    # One policy for the pipeline: the target gives the same function to the
+    # logger, the buffer and any store, so this reaches the buffer with no
+    # store wired.
+    context.store_discard_policy = policy
+
+
+@given("the client's message body is {length:d} characters long")
+def step_message_body_length(context, length):
+    context.message_body = "X" * length
+
+
 @given("the halt callback exits the process")
 def step_halt_callback_exits(context):
     context.halt_exit = True
@@ -1289,8 +1303,8 @@ def step_check_sequential_ids(context, count):
         )
 
 
-def _block_store_reports_once_made(read_reports, process):
-    """The block store's reports of one kind, waiting for the stderr reader to catch up on the first."""
+def _reports_once_made(read_reports, process):
+    """The target's reports of one kind, waiting for the stderr reader to catch up on the first."""
     deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
     reports = read_reports(process)
     while (not reports) and (time.monotonic() < deadline):
@@ -1303,7 +1317,7 @@ def _block_store_reports_once_made(read_reports, process):
 def step_target_reports_store_froze(context):
     # Reported as the store is created, before the oracle has the messages;
     # the wait only covers the stderr reader catching up.
-    freezes = _block_store_reports_once_made(reported_store_freezes, context.interactive_process)
+    freezes = _reports_once_made(reported_store_freezes, context.interactive_process)
 
     severities = [severity for severity, _detail in freezes]
     assert severities == [severity_value("ERROR")], (
@@ -1315,7 +1329,7 @@ def step_target_reports_store_froze(context):
 def step_target_reports_record_discarded(context):
     # One run of discarded records, one report: the corrupted record and
     # nothing else, since the records after it read cleanly.
-    discards = _block_store_reports_once_made(reported_store_discards, context.interactive_process)
+    discards = _reports_once_made(reported_store_discards, context.interactive_process)
 
     severities = [severity for severity, _detail in discards]
     assert severities == [severity_value("ERROR")], (
@@ -1330,11 +1344,40 @@ def step_target_reports_store_lost_records_once(context):
     # is kept, no rotation evicts a block already sent, and a halted logger
     # writes nothing more. One run, one report.
     process = getattr(context, "interactive_process", None) or context.exited_process
-    losses = _block_store_reports_once_made(reported_store_losses, process)
+    losses = _reports_once_made(reported_store_losses, process)
 
     severities = [severity for severity, _detail in losses]
     assert severities == [severity_value("WARNING")], (
         f"Expected one lost-records report at WARNING, got {losses}"
+    )
+
+
+@then("the target reports once that the buffer lost records")
+def step_target_reports_buffer_lost_records_once(context):
+    # A refusing policy loses records throughout the outage and keeps none,
+    # so the run never ends: one run, one report.
+    process = getattr(context, "interactive_process", None) or context.exited_process
+    losses = _reports_once_made(reported_buffer_losses, process)
+
+    severities = [severity for severity, _source, _detail in losses]
+    assert severities == [severity_value("WARNING")], (
+        f"Expected one lost-records report at WARNING, got {losses}"
+    )
+
+
+@then("the target reports that the buffer lost records")
+def step_target_reports_buffer_lost_records(context):
+    # Under Oldest the buffer evicts as Log outruns Service, and Service drops
+    # the record it holds when the buffer fills behind it; how the passes
+    # interleave with the burst decides how many runs each sees, so only that
+    # the loss was reported, at WARNING, is pinned.
+    process = getattr(context, "interactive_process", None) or context.exited_process
+    losses = _reports_once_made(reported_buffer_losses, process)
+
+    assert losses, "Expected the buffer's losses to be reported; nothing was"
+    severities = {severity for severity, _source, _detail in losses}
+    assert severities == {severity_value("WARNING")}, (
+        f"Expected every lost-records report at WARNING, got {losses}"
     )
 
 
@@ -1356,7 +1399,7 @@ def step_key_restored(context):
 def step_target_reports_key_unavailable_once(context):
     # Every Service pass retries the record the policy could not open, and
     # every retry finds the key still missing; one run of faults, one report.
-    reports = _block_store_reports_once_made(reported_keys_unavailable, context.interactive_process)
+    reports = _reports_once_made(reported_keys_unavailable, context.interactive_process)
 
     severities = [severity for severity, _detail in reports]
     assert severities == [severity_value("ERROR")], (
