@@ -132,3 +132,16 @@ TEST(BddTargetServiceThread, SkipsIdleYieldWhenServiceReportsWorkReady)
     CALLED_FUNCTION(SleepFake, ONCE);
     UNSIGNED_LONGS_EQUAL(0, lastSleepMs);
 }
+
+TEST(BddTargetServiceThread, BacksOffWhileARecordWaitsOnTheSender)
+{
+    shutdown = false;
+    sleepShutdownFlag = &shutdown;
+    SocketFake_SetSendtoFails(true);
+    Log();
+
+    BddTargetServiceThread_Run(solidSyslog, &shutdown, SleepFake);
+
+    CALLED_FUNCTION(SleepFake, ONCE);
+    UNSIGNED_LONGS_EQUAL(20, lastSleepMs);
+}

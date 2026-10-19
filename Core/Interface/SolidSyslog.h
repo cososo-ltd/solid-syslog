@@ -56,9 +56,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  poll loop may ignore the return. A NULL handle is reported and returns
      *  IDLE.
      *
-     *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing to do anywhere; wait for the next Log.
-     *  @retval SOLIDSYSLOG_SERVICE_READY   Work moved this pass, or the store still has
-     *                                      unsent after a send; loop again.
+     *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing left anywhere - no record held, buffered
+     *                                      or stored; wait for the next Log.
+     *  @retval SOLIDSYSLOG_SERVICE_READY   There is more to do: the buffer was read this
+     *                                      pass, or the store still has unsent after a
+     *                                      send; loop again.
      *  @retval SOLIDSYSLOG_SERVICE_BLOCKED A record is waiting on the sender. With a store
      *                                      that keeps nothing, a direct send failed and
      *                                      Service holds the record. Otherwise the buffer
