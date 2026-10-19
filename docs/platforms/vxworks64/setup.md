@@ -294,8 +294,12 @@ static uint8_t ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(8)];
 struct SolidSyslogMutex* mutex = SolidSyslogVxWorks64Mutex_Create();
 
 struct SolidSyslogBuffer* buffer =
-    SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring), GetDiscardPolicy, NULL);
 ```
+
+The last two arguments are the discard-policy function and its context, the
+same pair `SolidSyslogConfig` takes, so the ring applies the logger's policy
+when it fills; NULL applies Oldest.
 
 The ring memory and the mutex must outlive the buffer.
 

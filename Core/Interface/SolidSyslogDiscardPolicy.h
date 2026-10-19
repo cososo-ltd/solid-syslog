@@ -26,8 +26,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Answers which policy applies. A queue asks at the moment it has to decide,
      *  so the answer may change on a running device. The store and Service ask
-     *  from the task that calls SolidSyslog_Service. The context is the one
-     *  paired with it, passed back unchanged. */
+     *  from the task that calls SolidSyslog_Service; a buffer asks from the
+     *  task that logs. The context is the one paired with it, passed back
+     *  unchanged. */
     typedef enum SolidSyslogDiscardPolicy (*SolidSyslogDiscardPolicyFunction)(void* context);
 
     /** The policy applied where none was injected: Oldest. */

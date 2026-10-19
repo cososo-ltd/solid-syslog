@@ -896,7 +896,8 @@ struct SolidSyslogBuffer
    SolidSyslogCircularBuffer_Destroy takes the base type (matches the
    abstract Buffer contract), so its parameter is `base`. */
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
+    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy, void* discardPolicyContext
 );
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base);
 
@@ -929,7 +930,8 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 /* Core/Source/SolidSyslogCircularBufferStatic.c ------------------------- */
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
+    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy, void* discardPolicyContext
 )
 {
     /* Locals - `index` and `handle`; the pool slot is the instance,

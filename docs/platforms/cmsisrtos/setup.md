@@ -37,8 +37,12 @@ struct SolidSyslogMutex* mutex =
     SolidSyslogCmsisRtosMutex_Create(&controlBlock, sizeof(controlBlock));
 
 struct SolidSyslogBuffer* buffer =
-    SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+    SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring), GetDiscardPolicy, NULL);
 ```
+
+The last two arguments are the discard-policy function and its context, the
+same pair `SolidSyslogConfig` takes, so the ring applies the logger's policy
+when it fills; NULL applies Oldest.
 
 The ring memory, the control block and the mutex must all outlive the buffer.
 

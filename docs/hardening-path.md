@@ -285,7 +285,7 @@ A [`SolidSyslogCircularBuffer`](api/SolidSyslogCircularBuffer_8h.md) between
 ```c
 static uint8_t s_ring[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(SYSLOG_BUFFER_RECORDS)];
 
-.Buffer = SolidSyslogCircularBuffer_Create(SolidSyslogFreeRtosMutex_Create(), s_ring, sizeof(s_ring)),
+.Buffer = SolidSyslogCircularBuffer_Create(SolidSyslogFreeRtosMutex_Create(), s_ring, sizeof(s_ring), NULL, NULL),
 ```
 
 This separates logging an event from sending it.
@@ -293,9 +293,10 @@ This separates logging an event from sending it.
 enough to call from the place the event actually happens rather than from somewhere
 convenient later. Nothing that logs waits on the network.
 
-A ring that fills turns the next record away. The buffer reports once when a run of
-refusals starts, and again only after it has kept a record since; the sequence number
-from stage 6 says how many went. The store from stage 10 reports loss under the same
+A ring that fills applies the discard policy its last two arguments inject; NULL is
+Oldest, which drops the oldest records to make room, and stage 10 chooses. The buffer
+reports once when a run of losses starts, and again only after a write has lost nothing
+since; the sequence number from stage 6 says how many went. The store from stage 10 reports loss under the same
 rules, stated once under [when a record is lost](error-severity.md#when-a-record-is-lost).
 
 **When you need it.** Once logging and sending are decoupled, the buffer has to absorb
@@ -396,10 +397,11 @@ rather than RAM; what happens when it fills - discard oldest, discard newest, or
 and whether you want warning before that point, via the capacity-threshold callback.
 
 The discard policy is a function of yours, asked at the moment a queue has to decide,
-so you can change the answer on a running device. Give the same function to the store
-and to the logger's `SolidSyslogConfig`, which is where a halt is decided: under halt
-the logger stops at the first record a full store refuses, calls its `OnHalt` once,
-and moves nothing more until your function answers otherwise or the device restarts.
+so you can change the answer on a running device. Give the same function to the store,
+to the ring from stage 7 and to the logger's `SolidSyslogConfig`, which is where a halt
+is decided: under halt the logger stops at the first record a full store or buffer
+refuses, calls its `OnHalt` once, and moves nothing more until your function answers
+otherwise or the device restarts.
 
 What the store loses it reports as the buffer does: a run of records turned away or
 evicted unsent raises one warning when it starts. A medium that fails is different in
