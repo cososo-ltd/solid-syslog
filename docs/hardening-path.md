@@ -389,6 +389,12 @@ Three decisions come with it: how much you can store, which is capacity on the m
 rather than RAM; what happens when it fills - discard oldest, discard newest, or halt;
 and whether you want warning before that point, via the capacity-threshold callback.
 
+The discard policy is a function of yours, asked at the moment a queue has to decide,
+so you can change the answer on a running device. Give the same function to the store
+and to the logger's `SolidSyslogConfig`, which is where a halt is decided: under halt
+the logger stops at the first record a full store refuses, calls its `OnHalt` once,
+and moves nothing more until your function answers otherwise or the device restarts.
+
 The file layer comes from your filesystem, so add its platform to the list from stage 1.
 
 The checksum here is a checksum, not tamper-evidence. It catches a truncated write or

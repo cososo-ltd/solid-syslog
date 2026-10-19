@@ -46,8 +46,9 @@
  *  oldest block while that block still held records not yet sent.
  *  event->Detail says which. Raised as a WARNING, once per run of losses: a run
  *  of refusals ends with the next record the store keeps, and a run of
- *  evictions with the next block rotation that evicts nothing unsent. A store
- *  that halts keeps nothing more, so it raises this once. */
+ *  evictions with the next block rotation that evicts nothing unsent. Under
+ *  the Halt policy the logger stops at the refusal and writes nothing more, so
+ *  it is raised once. */
 #define SOLIDSYSLOG_CAT_STORE_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 5U))
 
 #endif /* SOLIDSYSLOGSTORECATEGORIES_H */

@@ -1327,8 +1327,8 @@ def step_target_reports_record_discarded(context):
 def step_target_reports_store_lost_records_once(context):
     # Each policy loses records throughout the outage - refusing them, or
     # evicting unsent blocks - and nothing it does then ends the run: no record
-    # is kept, no rotation evicts a block already sent, and a halted store keeps
-    # nothing more. One run, one report.
+    # is kept, no rotation evicts a block already sent, and a halted logger
+    # writes nothing more. One run, one report.
     process = getattr(context, "interactive_process", None) or context.exited_process
     losses = _block_store_reports_once_made(reported_store_losses, process)
 
