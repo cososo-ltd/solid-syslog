@@ -530,6 +530,7 @@ What application and setup code actually includes:
 | `SolidSyslogTimestamp.h` | Timestamp struct and the clock callback |
 | `SolidSyslogEndpoint.h`, `SolidSyslogEndpointHost.h` | Setup code supplying the destination host and port |
 | `SolidSyslogTransport.h` | Transport selection and the default port constants |
+| `SolidSyslogDiscardPolicy.h` | Setup code choosing what a full buffer or store does with a record that does not fit |
 | `SolidSyslogError.h`, `SolidSyslogErrorCategory.h` | Installing an error handler; the portable category axis |
 | `SolidSyslogConfigLock.h` | Setup on targets where pool slot walks can race across tasks or cores |
 | `SolidSyslogSdElement.h`, `SolidSyslogSdValue.h` | Authors of custom structured data |

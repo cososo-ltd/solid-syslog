@@ -34,6 +34,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogExternC.h"
 
 struct SolidSyslogStore;
@@ -42,18 +43,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBlockDevice;
     struct SolidSyslogSecurityPolicy;
-
-    /** What happens once MaxBlocks are full. Oldest keeps accepting writes,
-     *  evicting the oldest block to make room; Newest refuses the incoming record;
-     *  Halt refuses it, latches (IsHalted, Service stops), and fires OnStoreFull
-     *  once on entry. Records lost this way are reported as
-     *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
-    enum SolidSyslogDiscardPolicy
-    {
-        SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
-        SOLIDSYSLOG_DISCARD_POLICY_NEWEST,
-        SOLIDSYSLOG_DISCARD_POLICY_HALT
-    };
 
     /** Fired once when a Halt-policy store first fills, after the refused record
      *  has been reported, so a callback that resets the device and never returns
@@ -81,6 +70,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  overflow. An eviction that fails freezes the store with one block more
          *  than this on the media, and the next start keeps it. */
         size_t MaxBlocks;
+        /** What a full store does with the record that does not fit: Oldest
+         *  evicts the oldest block, Newest refuses it, Halt refuses it, latches
+         *  (IsHalted, Service stops) and fires OnStoreFull once. Records lost
+         *  either way are reported as SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
         enum SolidSyslogDiscardPolicy DiscardPolicy;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
         SolidSyslogStoreFullCallback OnStoreFull;
