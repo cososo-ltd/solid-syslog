@@ -208,6 +208,16 @@ TEST(SolidSyslogPlusFatFile, SizeReturnsFfilelength)
     CHECK_FILE_SIZE(file, 42);
 }
 
+TEST(SolidSyslogPlusFatFile, SizeFailsWhenFfilelengthLeavesAnErrno)
+{
+    SolidSyslogFile_Open(file, TEST_PATH);
+    PlusFatFake_SetFileLengthErrno(pdFREERTOS_ERRNO_EBADF);
+
+    size_t size = 42U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+    LONGS_EQUAL(0, size);
+}
+
 TEST(SolidSyslogPlusFatFile, TruncateSeeksToZeroAndCallsFseteof)
 {
     SolidSyslogFile_Open(file, TEST_PATH);

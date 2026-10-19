@@ -34,6 +34,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int PlusFatFake_LastSeekWhence(void);
 
     void PlusFatFake_SetFileLength(unsigned long length);
+    /* Makes ff_filelength fail, leaving @p errnoValue in the task errno. */
+    void PlusFatFake_SetFileLengthErrno(int errnoValue);
 
     int PlusFatFake_SeteofCallCount(void);
 

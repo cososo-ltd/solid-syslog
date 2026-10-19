@@ -69,6 +69,7 @@ static int lastSeekWhence;
 
 /* ff_filelength state */
 static size_t fileLength;
+static int fileLengthErrno;
 
 /* ff_seteof state */
 static int seteofCallCount;
@@ -114,6 +115,7 @@ void PlusFatFake_Reset(void)
     lastSeekOffset = 0;
     lastSeekWhence = 0;
     fileLength = 0;
+    fileLengthErrno = 0;
     seteofCallCount = 0;
     statCallCount = 0;
     lastStatPath = NULL;
@@ -305,10 +307,18 @@ void PlusFatFake_SetFileLength(unsigned long length)
     fileLength = (size_t) length;
 }
 
+void PlusFatFake_SetFileLengthErrno(int errnoValue)
+{
+    fileLengthErrno = errnoValue;
+}
+
+/* Mirror the real ff_filelength, which records the outcome in the task errno
+ * on every call and answers 0 on failure. */
 size_t ff_filelength(FF_FILE* pxFile)
 {
     (void) pxFile;
-    return fileLength;
+    stdioSET_ERRNO(fileLengthErrno);
+    return (fileLengthErrno == 0) ? fileLength : 0U;
 }
 
 int PlusFatFake_SeteofCallCount(void)

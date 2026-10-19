@@ -144,8 +144,12 @@ static void PlusFatFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 
 static bool PlusFatFile_Size(struct SolidSyslogFile* base, size_t* size)
 {
-    *size = ff_filelength(PlusFatFile_SelfFromBase(base)->Fp);
-    return true;
+    /* ff_filelength answers 0 for a failure as well as for an empty file; the
+     * task errno it sets on every call is what tells them apart. */
+    size_t length = ff_filelength(PlusFatFile_SelfFromBase(base)->Fp);
+    bool known = stdioGET_ERRNO() == pdFREERTOS_ERRNO_NONE;
+    *size = known ? length : 0U;
+    return known;
 }
 
 static void PlusFatFile_Truncate(struct SolidSyslogFile* base)
