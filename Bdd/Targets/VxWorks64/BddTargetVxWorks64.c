@@ -93,7 +93,7 @@ static bool BddTargetVxWorks64_ReadyTheDisk(void);
 static bool BddTargetVxWorks64_CarriesThePolicy(void);
 static void BddTargetVxWorks64_UseFileStore(void);
 static void BddTargetVxWorks64_DestroyStore(void);
-static void BddTargetVxWorks64_OnStoreFull(void* context);
+static void BddTargetVxWorks64_OnHalt(void* context);
 static void BddTargetVxWorks64_OnThresholdCrossed(void* context);
 static enum SolidSyslogServiceStatus BddTargetVxWorks64_ServiceStep(void);
 
@@ -293,6 +293,8 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.Sd = sdList;
     config.SdCount = sizeof(sdList) / sizeof(sdList[0]);
     config.Store = store;
+    config.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
+    config.OnHalt = BddTargetVxWorks64_OnHalt;
     config.GetAppName = BddTargetMessageSettings_GetAppName;
     config.Clock = SolidSyslogVxWorks64_GetTimestamp;
     config.GetHostname = SolidSyslogVxWorks64_GetHostname;
@@ -529,9 +531,8 @@ static void BddTargetVxWorks64_UseFileStore(void)
                       : SolidSyslogNullSecurityPolicy_Get();
     storeConfig.BlockDevice = storeBlockDevice;
     storeConfig.MaxBlocks = BddTargetStoreSettings_MaxBlocks();
-    storeConfig.DiscardPolicy = BddTargetStoreSettings_DiscardPolicy();
+    storeConfig.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
     storeConfig.SecurityPolicy = storePolicy;
-    storeConfig.OnStoreFull = BddTargetVxWorks64_OnStoreFull;
     storeConfig.GetCapacityThreshold = BddTargetStoreSettings_GetCapacityThreshold;
     storeConfig.OnThresholdCrossed = BddTargetVxWorks64_OnThresholdCrossed;
     store = SolidSyslogBlockStore_Create(&storeConfig);
@@ -545,7 +546,7 @@ static void BddTargetVxWorks64_UseFileStore(void)
 
 /* The target cannot hand QEMU an exit status, so it prints the one a halted
  * run ends with, and the harness's console stops the target when it reads it. */
-static void BddTargetVxWorks64_OnStoreFull(void* context)
+static void BddTargetVxWorks64_OnHalt(void* context)
 {
     (void) context;
     if (BddTargetStoreSettings_HaltExit())

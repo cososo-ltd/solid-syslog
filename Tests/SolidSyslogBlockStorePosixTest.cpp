@@ -70,7 +70,6 @@ TEST_GROUP(SolidSyslogBlockStorePosix)
         struct SolidSyslogBlockStoreConfig config = {};
         config.BlockDevice   = device;
         config.MaxBlocks     = maxBlocks;
-        config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         store = SolidSyslogBlockStore_Create(&config);
     }
 

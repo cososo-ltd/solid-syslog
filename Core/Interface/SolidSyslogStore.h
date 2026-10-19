@@ -12,6 +12,7 @@
 #define SOLIDSYSLOGSTORE_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogStoreDefinition.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -19,9 +20,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogStore;
 
-    /** Retain @p data (@p size bytes) as an unsent record. False means not retained,
-     *  see the Write vtable slot in SolidSyslogStoreDefinition.h for what that implies. */
-    bool SolidSyslogStore_Write(struct SolidSyslogStore * store, const void* data, size_t size);
+    /** Retain @p data (@p size bytes) as an unsent record, and say what became of
+     *  it; SolidSyslogStoreDefinition.h states what each outcome implies. */
+    enum SolidSyslogStoreWriteResult SolidSyslogStore_Write(
+        struct SolidSyslogStore * store,
+        const void* data,
+        size_t size
+    );
     /** Read the oldest unsent record without consuming it, then MarkSent to advance.
      *  The two form one read cursor, see SolidSyslogStoreDefinition.h for the protocol. */
     bool
@@ -29,8 +34,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Confirm the last ReadNextUnsent delivered and advance the cursor. */
     void SolidSyslogStore_MarkSent(struct SolidSyslogStore * store);
     bool SolidSyslogStore_HasUnsent(struct SolidSyslogStore * store);
-    /** True once a Halt-policy store has filled and stopped accepting writes. */
-    bool SolidSyslogStore_IsHalted(struct SolidSyslogStore * store);
     /** Configured capacity in bytes. */
     size_t SolidSyslogStore_GetTotalBytes(struct SolidSyslogStore * store);
     /** Bytes currently occupied by retained records. */

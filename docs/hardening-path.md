@@ -372,10 +372,15 @@ drains the ring into storage and sends from there, so a failed send costs a retr
 than the record.
 
 ```c
+static enum SolidSyslogDiscardPolicy ChooseDiscardPolicy(void* context)
+{
+    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+}
+
 struct SolidSyslogBlockStoreConfig storeConfig = {
     .BlockDevice    = SolidSyslogFileBlockDevice_Create(SolidSyslogFatFsFile_Create(), SYSLOG_STORE_PREFIX, 0U),
     .MaxBlocks      = SYSLOG_STORE_BLOCKS,
-    .DiscardPolicy  = SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
+    .GetDiscardPolicy = ChooseDiscardPolicy,
     .SecurityPolicy = SolidSyslogCrc16Policy_Create(),
 };
 ```
@@ -383,6 +388,12 @@ struct SolidSyslogBlockStoreConfig storeConfig = {
 Three decisions come with it: how much you can store, which is capacity on the medium
 rather than RAM; what happens when it fills - discard oldest, discard newest, or halt;
 and whether you want warning before that point, via the capacity-threshold callback.
+
+The discard policy is a function of yours, asked at the moment a queue has to decide,
+so you can change the answer on a running device. Give the same function to the store
+and to the logger's `SolidSyslogConfig`, which is where a halt is decided: under halt
+the logger stops at the first record a full store refuses, calls its `OnHalt` once,
+and moves nothing more until your function answers otherwise or the device restarts.
 
 The file layer comes from your filesystem, so add its platform to the list from stage 1.
 

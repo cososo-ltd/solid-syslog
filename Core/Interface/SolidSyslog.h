@@ -68,8 +68,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      a send was attempted and failed, or the store
      *                                      holds records it cannot hand out yet. Back off
      *                                      and call again later. A Log also wakes it.
-     *  @retval SOLIDSYSLOG_SERVICE_HALTED  The store is halted (only under
-     *                                      SOLIDSYSLOG_DISCARD_POLICY_HALT); alarm / slow heartbeat.
+     *  @retval SOLIDSYSLOG_SERVICE_HALTED  The logger has stopped: a queue refused a record
+     *                                      while the discard policy answered HALT, and the
+     *                                      pass that saw it called OnHalt. Nothing moves until
+     *                                      the policy answers otherwise, or the device restarts;
+     *                                      alarm / slow heartbeat.
      *
      *  With a store that retains records, buffer drain out-ranks a send failure:
      *  a down sender never demotes the loop out of "keep draining" while the

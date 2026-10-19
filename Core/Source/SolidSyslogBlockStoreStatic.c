@@ -71,7 +71,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 
             if (blockSequence != NULL)
             {
-                SolidSyslogBlockStore_Initialise(&BlockStore_Pool[index].Base, recordStore, blockSequence, config);
+                SolidSyslogBlockStore_Initialise(&BlockStore_Pool[index].Base, recordStore, blockSequence);
                 result = &BlockStore_Pool[index].Base;
             }
             else
@@ -126,7 +126,8 @@ static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig
         .BlockDevice = config->BlockDevice,
         .MaxBlockSize = maxBlockSize,
         .MaxBlocks = config->MaxBlocks,
-        .DiscardPolicy = config->DiscardPolicy,
+        .GetDiscardPolicy = config->GetDiscardPolicy,
+        .DiscardPolicyContext = config->DiscardPolicyContext,
         .GetCapacityThreshold = config->GetCapacityThreshold,
         .OnThresholdCrossed = config->OnThresholdCrossed,
         .ThresholdContext = config->ThresholdContext,

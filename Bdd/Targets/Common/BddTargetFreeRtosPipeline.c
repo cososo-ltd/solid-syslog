@@ -151,7 +151,8 @@ static void DestroySecurityPolicy(void);
 static bool RebuildWithFileStore(void);
 static void DestroyCurrentStore(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
-static void OnStoreFull(void* context);
+static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
+static void OnHalt(void* context);
 static size_t GetCapacityThreshold(void* context);
 static void OnThresholdCrossed(void* context);
 static void TeardownAll(void);
@@ -467,10 +468,8 @@ static bool RebuildWithFileStore(void)
     struct SolidSyslogBlockStoreConfig storeConfig = {
         .BlockDevice = storeBlockDevice,
         .MaxBlocks = pendingMaxBlocks,
-        .DiscardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
+        .GetDiscardPolicy = GetDiscardPolicy,
         .SecurityPolicy = policy,
-        .OnStoreFull = OnStoreFull,
-        .StoreFullContext = NULL,
         .GetCapacityThreshold = GetCapacityThreshold,
         .OnThresholdCrossed = OnThresholdCrossed,
         .ThresholdContext = &pendingCapacityThreshold,
@@ -479,6 +478,8 @@ static bool RebuildWithFileStore(void)
     currentStoreIsFile = true;
 
     solidSyslogConfig.Store = currentStore;
+    solidSyslogConfig.GetDiscardPolicy = GetDiscardPolicy;
+    solidSyslogConfig.OnHalt = OnHalt;
     /* Re-honour `set no-sd 1` if it arrived before this rebuild - target_driver.py
      * sorts `set no-sd` before `set store file`, so the value is final here. */
     solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
@@ -534,7 +535,15 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
     return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 }
 
-static void OnStoreFull(void* context)
+/* The store asks when it is full, so the policy is the pending name as it
+ * stands then. */
+static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
+{
+    (void) context;
+    return MapDiscardPolicy(pendingDiscardPolicy);
+}
+
+static void OnHalt(void* context)
 {
     (void) context;
     if (pendingHaltExit)

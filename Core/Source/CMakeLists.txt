@@ -43,6 +43,7 @@ set(SOURCES
     SolidSyslogOriginSdStatic.c
     SolidSyslogFile.c
     SolidSyslogNullFile.c
+    SolidSyslogDiscardPolicy.c
     SolidSyslogBlockStore.c
     SolidSyslogBlockStoreStatic.c
     SolidSyslogRecordStore.c

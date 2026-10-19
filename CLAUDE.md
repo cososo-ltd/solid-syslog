@@ -530,6 +530,7 @@ What application and setup code actually includes:
 | `SolidSyslogTimestamp.h` | Timestamp struct and the clock callback |
 | `SolidSyslogEndpoint.h`, `SolidSyslogEndpointHost.h` | Setup code supplying the destination host and port |
 | `SolidSyslogTransport.h` | Transport selection and the default port constants |
+| `SolidSyslogDiscardPolicy.h` | Setup code choosing what a full store does with a record that does not fit |
 | `SolidSyslogError.h`, `SolidSyslogErrorCategory.h` | Installing an error handler; the portable category axis |
 | `SolidSyslogConfigLock.h` | Setup on targets where pool slot walks can race across tasks or cores |
 | `SolidSyslogSdElement.h`, `SolidSyslogSdValue.h` | Authors of custom structured data |
@@ -849,8 +850,8 @@ those are; a list here would only go stale.
 **For existing callbacks:**
 
 - Migrate at the same time as a refactor or significant modification of the owning class,
-  never in a sweep PR of its own — the way `SolidSyslogStoreFullCallback` gained its
-  context inside the FileStore split.
+  never in a sweep PR of its own — the way the store's threshold callbacks gained their
+  shared context inside the FileStore split.
 
 ## Pool Allocation (E11)
 

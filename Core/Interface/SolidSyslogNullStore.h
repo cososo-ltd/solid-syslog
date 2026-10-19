@@ -5,7 +5,7 @@
 /** @file
  *  The no-op Store Null object (no store-and-forward): Write returns false and IsTransient
  *  returns true, so Service sends a buffered record directly instead of storing it.
- *  ReadNextUnsent and HasUnsent report empty, IsHalted reports false. */
+ *  ReadNextUnsent and HasUnsent report empty. */
 #ifndef SOLIDSYSLOGNULLSTORE_H
 #define SOLIDSYSLOGNULLSTORE_H
 
@@ -18,7 +18,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  configuration with no store-and-forward. A record the sender refuses is not lost at
      *  once. Service holds it and retries it on every pass, and the buffer is the only queue
      *  behind it, applying its own discard policy as it fills; see SolidSyslog_Service.
-     *  ReadNextUnsent and HasUnsent report empty; IsHalted reports false. */
+     *  ReadNextUnsent and HasUnsent report empty. */
     struct SolidSyslogStore* SolidSyslogNullStore_Get(void);
 
 SOLIDSYSLOG_EXTERN_C_END

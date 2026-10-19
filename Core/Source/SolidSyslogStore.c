@@ -8,7 +8,7 @@
 #include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogStore.h"
 
-bool SolidSyslogStore_Write(struct SolidSyslogStore* store, const void* data, size_t size)
+enum SolidSyslogStoreWriteResult SolidSyslogStore_Write(struct SolidSyslogStore* store, const void* data, size_t size)
 {
     return store->Write(store, data, size);
 }
@@ -26,11 +26,6 @@ void SolidSyslogStore_MarkSent(struct SolidSyslogStore* store)
 bool SolidSyslogStore_HasUnsent(struct SolidSyslogStore* store)
 {
     return store->HasUnsent(store);
-}
-
-bool SolidSyslogStore_IsHalted(struct SolidSyslogStore* store)
-{
-    return store->IsHalted(store);
 }
 
 size_t SolidSyslogStore_GetTotalBytes(struct SolidSyslogStore* store)

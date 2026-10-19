@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogExternC.h"
@@ -22,6 +23,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogSender;
     struct SolidSyslogStore;
     struct SolidSyslogStructuredData;
+
+    /** Called once when the logger halts: a queue has refused a record while the
+     *  discard policy answers Halt. It runs on the task that calls
+     *  SolidSyslog_Service, after the refusal has been reported, so a callback
+     *  that stops the device and never returns loses nothing the error handler
+     *  would have seen. */
+    typedef void (*SolidSyslogHaltCallback)(void* context);
 
     /** Wiring for SolidSyslog_Create. NULL is safe for any field: Buffer,
      *  Sender, and Store fall back to their Null object and report an error
@@ -43,6 +51,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         struct SolidSyslogStore* Store; /**< NULL (or SolidSyslogNullStore_Get()) means no store-and-forward. */
         struct SolidSyslogStructuredData** Sd; /**< @optional per-instance SD-ELEMENTs, before any per-message SD. */
         size_t SdCount;
+        /** Asked, with DiscardPolicyContext, when Service has to decide what a
+         *  refused record means: under Halt the logger stops moving records.
+         *  Give the store the same function at its own Create; the logger's
+         *  answer decides the halt, the store's whether it evicts or refuses,
+         *  and nothing checks that the two agree. NULL applies Oldest. */
+        SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+        void* DiscardPolicyContext;
+        SolidSyslogHaltCallback OnHalt; /**< @optional nothing is called when NULL. */
+        void* HaltContext; /**< Passed back to OnHalt unchanged. */
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or

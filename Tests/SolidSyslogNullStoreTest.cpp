@@ -3,6 +3,7 @@
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogNullStore)
@@ -35,7 +36,7 @@ TEST(SolidSyslogNullStore, WriteReturnsFalseToSignalNotRetained)
      * = not held". NullStore never retains, so reports false - the eager-drain
      * loop in ProcessMessages then takes the direct-send fallback, preserving
      * the constrained-system "one attempt per message, no buffering" path. */
-    CHECK_FALSE(SolidSyslogStore_Write(store, "hello", 5));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, "hello", 5));
 }
 
 TEST(SolidSyslogNullStore, MarkSentDoesNotCrash)

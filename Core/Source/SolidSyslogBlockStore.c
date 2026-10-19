@@ -20,11 +20,10 @@
 const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore"};
 
 /* vtable - forward-declared because BlockStore_InitialiseVtable references them before their definitions */
-static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void BlockStore_MarkSent(struct SolidSyslogStore* base);
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base);
-static bool BlockStore_IsHalted(struct SolidSyslogStore* base);
 static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* base);
 static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* base);
 static bool BlockStore_IsTransient(struct SolidSyslogStore* base);
@@ -51,15 +50,12 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
 void SolidSyslogBlockStore_Initialise(
     struct SolidSyslogStore* base,
     struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockSequence* blockSequence,
-    const struct SolidSyslogBlockStoreConfig* config
+    struct SolidSyslogBlockSequence* blockSequence
 )
 {
     struct SolidSyslogBlockStore* self = BlockStore_SelfFromBase(base);
     self->RecordStore = recordStore;
     self->BlockSequence = blockSequence;
-    self->OnStoreFull = config->OnStoreFull;
-    self->StoreFullContext = config->StoreFullContext;
     self->LossReported = false;
     self->RefusalReported = false;
     self->EvictionReported = false;
@@ -97,7 +93,6 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
     self->Base.ReadNextUnsent = BlockStore_ReadNextUnsent;
     self->Base.MarkSent = BlockStore_MarkSent;
     self->Base.HasUnsent = BlockStore_HasUnsent;
-    self->Base.IsHalted = BlockStore_IsHalted;
     self->Base.GetTotalBytes = BlockStore_GetTotalBytes;
     self->Base.GetUsedBytes = BlockStore_GetUsedBytes;
     self->Base.IsTransient = BlockStore_IsTransient;
@@ -194,32 +189,40 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
     SolidSyslogBlockStore_Cleanup(&self->Base);
 }
 
-static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
+    struct SolidSyslogBlockStore* self,
+    const void* data,
+    size_t size
+);
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
-static void BlockStore_NotifyIfJustHalted(struct SolidSyslogBlockStore* self, bool wasHalted);
 static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
 
-static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
+static enum SolidSyslogStoreWriteResult BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
-    bool written = false;
+    enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
 
     /* A record of no bytes would read back as nothing unsent and jam the cursor. */
     if (size > 0U)
     {
-        written = BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
+        result = BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
     }
 
-    return written;
+    return result;
 }
 
-static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size)
+/* A frozen store has not retained the record and, transient from then on,
+ * leaves it to the sender; a record the policy would not seal is lost here. */
+static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
+    struct SolidSyslogBlockStore* self,
+    const void* data,
+    size_t size
+)
 {
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
-    bool written = false;
-    bool wasHalted = SolidSyslogBlockSequence_IsHalted(self->BlockSequence);
+    enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
     bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
     bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
@@ -230,7 +233,6 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
     else if (!prepared)
     {
         BlockStore_ReportRefusal(self);
-        BlockStore_NotifyIfJustHalted(self, wasHalted);
     }
     else
     {
@@ -248,10 +250,9 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
             data,
             size
         );
-        written = appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED;
-
-        if (written)
+        if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED)
         {
+            result = SOLIDSYSLOG_STORE_WRITE_KEPT;
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
             /* A record kept ends a run of refusals or seal failures. */
             self->RefusalReported = false;
@@ -263,11 +264,12 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         }
         else
         {
+            result = SOLIDSYSLOG_STORE_WRITE_LOST;
             BlockStore_ReportSealFailed(self);
         }
     }
 
-    return written;
+    return result;
 }
 
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)
@@ -294,16 +296,6 @@ static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self)
             SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
         );
         self->RefusalReported = true;
-    }
-}
-
-/* Called after the refusal is reported, so an OnStoreFull that resets the
- * device and never returns does not lose the report. */
-static void BlockStore_NotifyIfJustHalted(struct SolidSyslogBlockStore* self, bool wasHalted)
-{
-    if (!wasHalted && SolidSyslogBlockSequence_IsHalted(self->BlockSequence) && (self->OnStoreFull != NULL))
-    {
-        self->OnStoreFull(self->StoreFullContext);
     }
 }
 
@@ -351,11 +343,6 @@ static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)
     return SolidSyslogBlockSequence_HasUnsent(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
-static bool BlockStore_IsHalted(struct SolidSyslogStore* base)
-{
-    return SolidSyslogBlockSequence_IsHalted(BlockStore_SelfFromBase(base)->BlockSequence);
-}
-
 static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* base)
 {
     return SolidSyslogBlockSequence_TotalBytes(BlockStore_SelfFromBase(base)->BlockSequence);
@@ -367,7 +354,7 @@ static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* base)
 }
 
 /* BlockStore retains records - a BlockStore_Write rejection here is the discard
- * policy speaking (DISCARD_NEWEST or HALT), and the message must NOT
+ * policy speaking (Newest or Halt), and the message must NOT
  * bypass older stored records via a Service direct-send fallback. */
 static bool BlockStore_IsTransient(struct SolidSyslogStore* base)
 {

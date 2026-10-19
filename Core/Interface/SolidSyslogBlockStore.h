@@ -10,10 +10,10 @@
  *  per-record integrity trailer from the injected SecurityPolicy) so a reboot
  *  keeps unsent records queued.
  *
- *  MaxBlocks caps retention; DiscardPolicy governs the overflow once every block
- *  is full - Oldest evicts the oldest block to keep accepting writes, Newest
- *  refuses the incoming record, Halt refuses it, latches (IsHalted stops
- *  Service), and fires OnStoreFull once. An optional capacity-threshold function
+ *  MaxBlocks caps retention; the injected discard policy governs the overflow
+ *  once every block is full - Oldest evicts the oldest block to keep accepting
+ *  writes, Newest and Halt refuse the incoming record, and under Halt the
+ *  logger stops at that refusal. An optional capacity-threshold function
  *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
  *  early back-pressure signalling. Mind the recursion gotcha: under a
  *  PassthroughBuffer, SolidSyslog_Log sends inline, so logging from the
@@ -34,6 +34,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogExternC.h"
 
 struct SolidSyslogStore;
@@ -42,23 +43,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogBlockDevice;
     struct SolidSyslogSecurityPolicy;
-
-    /** What happens once MaxBlocks are full. Oldest keeps accepting writes,
-     *  evicting the oldest block to make room; Newest refuses the incoming record;
-     *  Halt refuses it, latches (IsHalted, Service stops), and fires OnStoreFull
-     *  once on entry. Records lost this way are reported as
-     *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
-    enum SolidSyslogDiscardPolicy
-    {
-        SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
-        SOLIDSYSLOG_DISCARD_POLICY_NEWEST,
-        SOLIDSYSLOG_DISCARD_POLICY_HALT
-    };
-
-    /** Fired once when a Halt-policy store first fills, after the refused record
-     *  has been reported, so a callback that resets the device and never returns
-     *  loses nothing the error handler would have seen. */
-    typedef void (*SolidSyslogStoreFullCallback)(void* context);
 
     /** Returns the capacity threshold in bytes; 0 disables. Queried on every Write. */
     typedef size_t (*SolidSyslogStoreThresholdFunction)(void* context);
@@ -77,14 +61,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBlockStoreConfig
     {
         struct SolidSyslogBlockDevice* BlockDevice; /**< Required; block store is the sole writer. */
-        /** Retention ceiling in blocks, clamped to 2..98; DiscardPolicy governs the
-         *  overflow. An eviction that fails freezes the store with one block more
+        /** Retention ceiling in blocks, clamped to 2..98; GetDiscardPolicy governs
+         *  the overflow. An eviction that fails freezes the store with one block more
          *  than this on the media, and the next start keeps it. */
         size_t MaxBlocks;
-        enum SolidSyslogDiscardPolicy DiscardPolicy;
+        /** Asked, with DiscardPolicyContext, on a write the full store cannot
+         *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.
+         *  NULL applies Oldest. Records lost either way are reported as
+         *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
+        SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+        void* DiscardPolicyContext;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
-        SolidSyslogStoreFullCallback OnStoreFull;
-        void* StoreFullContext;
         SolidSyslogStoreThresholdFunction GetCapacityThreshold;
         SolidSyslogStoreThresholdCallback OnThresholdCrossed;
         void* ThresholdContext; /**< Shared by GetCapacityThreshold and OnThresholdCrossed. */

@@ -27,6 +27,7 @@ extern "C"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogTunables.h"
 }
 
@@ -106,9 +107,17 @@ struct DrainTestConfig
  * adds Buffer + Mutex + SenderSpy + the SolidSyslog facade. Matches the
  * established TEST_BASE / TEST_GROUP_BASE pattern from
  * SolidSyslogBlockStoreTest.cpp. */
+/* The store's policy function for the fixtures: answers the policy a test
+ * configured, read through the context so one function serves every group. */
+static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
+{
+    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
+}
+
 // clang-format off
 TEST_BASE(DrainTestFixtureBase)
 {
+    enum SolidSyslogDiscardPolicy configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
     struct FileFakeStorage            fileStorage = {};
     struct SolidSyslogFile*           file        = nullptr;
     struct SolidSyslogBlockDevice*    device      = nullptr;
@@ -167,7 +176,9 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
         struct SolidSyslogBlockStoreConfig config = {};
         config.BlockDevice                        = device;
         config.MaxBlocks                          = cfg.MaxBlocks;
-        config.DiscardPolicy                      = cfg.DiscardPolicy;
+        configuredPolicy                          = cfg.DiscardPolicy;
+        config.GetDiscardPolicy                   = AnswersConfiguredPolicy;
+        config.DiscardPolicyContext               = &configuredPolicy;
         config.SecurityPolicy                     = policy;
         store                                     = SolidSyslogBlockStore_Create(&config);
     }
@@ -184,7 +195,7 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
         buf[1] = static_cast<uint8_t>((sequenceId >> 8) & 0xFFU);
         buf[2] = static_cast<uint8_t>((sequenceId >> 16) & 0xFFU);
         buf[3] = static_cast<uint8_t>((sequenceId >> 24) & 0xFFU);
-        return SolidSyslogStore_Write(store, buf.data(), buf.size());
+        return SolidSyslogStore_Write(store, buf.data(), buf.size()) == SOLIDSYSLOG_STORE_WRITE_KEPT;
     }
 
     // Drains the next unsent record. Returns the sequenceId decoded from
@@ -263,7 +274,9 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
         struct SolidSyslogBlockStoreConfig storeCfg = {};
         storeCfg.BlockDevice                        = device;
         storeCfg.MaxBlocks                          = cfg.MaxBlocks;
-        storeCfg.DiscardPolicy                      = cfg.DiscardPolicy;
+        configuredPolicy                            = cfg.DiscardPolicy;
+        storeCfg.GetDiscardPolicy                   = AnswersConfiguredPolicy;
+        storeCfg.DiscardPolicyContext               = &configuredPolicy;
         storeCfg.SecurityPolicy                     = policy;
         store                                       = SolidSyslogBlockStore_Create(&storeCfg);
 

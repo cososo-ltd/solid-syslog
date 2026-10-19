@@ -9,11 +9,10 @@
 
 #include "SolidSyslogStoreDefinition.h"
 
-static bool NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
 static bool NullStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void NullStore_MarkSent(struct SolidSyslogStore* base);
 static bool NullStore_HasUnsent(struct SolidSyslogStore* base);
-static bool NullStore_IsHalted(struct SolidSyslogStore* base);
 static size_t NullStore_GetTotalBytes(struct SolidSyslogStore* base);
 static size_t NullStore_GetUsedBytes(struct SolidSyslogStore* base);
 static bool NullStore_IsTransient(struct SolidSyslogStore* base);
@@ -25,7 +24,6 @@ struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
         .ReadNextUnsent = NullStore_ReadNextUnsent,
         .MarkSent = NullStore_MarkSent,
         .HasUnsent = NullStore_HasUnsent,
-        .IsHalted = NullStore_IsHalted,
         .GetTotalBytes = NullStore_GetTotalBytes,
         .GetUsedBytes = NullStore_GetUsedBytes,
         .IsTransient = NullStore_IsTransient
@@ -33,16 +31,15 @@ struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
     return &instance;
 }
 
-/* NullStore never retains. Returns false to signal "not held by this store"
- * so the eager-drain loop in ProcessMessages takes the direct-send path -
- * NullStore + real-buffer + UDP is the constrained-system "one attempt per
- * message, no buffering" configuration. */
-static bool NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
+/* NullStore never retains, so the eager-drain loop in ProcessMessages takes
+ * the direct-send path - NullStore + real-buffer + UDP is the
+ * constrained-system "one attempt per message, no buffering" configuration. */
+static enum SolidSyslogStoreWriteResult NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
     (void) base;
     (void) data;
     (void) size;
-    return false;
+    return SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
 }
 
 static bool NullStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
@@ -60,12 +57,6 @@ static void NullStore_MarkSent(struct SolidSyslogStore* base)
 }
 
 static bool NullStore_HasUnsent(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return false;
-}
-
-static bool NullStore_IsHalted(struct SolidSyslogStore* base)
 {
     (void) base;
     return false;
