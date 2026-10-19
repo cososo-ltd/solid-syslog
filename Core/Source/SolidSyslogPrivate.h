@@ -37,6 +37,9 @@ struct SolidSyslog
     char Record[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t RecordLength;
     bool HoldsRecord;
+    /* A report stands for a run of held records dropped because the buffer
+     * filled behind them; a held record dealt with ends the run. */
+    bool HeldRecordLossReported;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;
     SolidSyslogHaltCallback OnHalt;
