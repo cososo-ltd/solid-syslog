@@ -46,9 +46,11 @@ TEST(SolidSyslogNullFile, SeekToDoesNotCrash)
     SolidSyslogFile_SeekTo(file, 0U);
 }
 
-TEST(SolidSyslogNullFile, SizeReturnsZero)
+TEST(SolidSyslogNullFile, SizeFailsWithZero)
 {
-    UNSIGNED_LONGS_EQUAL(0U, SolidSyslogFile_Size(file));
+    size_t size = 42U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+    UNSIGNED_LONGS_EQUAL(0U, size);
 }
 
 TEST(SolidSyslogNullFile, TruncateDoesNotCrash)

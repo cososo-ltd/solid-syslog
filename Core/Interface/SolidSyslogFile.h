@@ -26,7 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool SolidSyslogFile_Read(struct SolidSyslogFile * file, void* buf, size_t count);
     bool SolidSyslogFile_Write(struct SolidSyslogFile * file, const void* buf, size_t count);
     void SolidSyslogFile_SeekTo(struct SolidSyslogFile * file, size_t offset);
-    size_t SolidSyslogFile_Size(struct SolidSyslogFile * file);
+    bool SolidSyslogFile_Size(struct SolidSyslogFile * file, size_t* size);
     void SolidSyslogFile_Truncate(struct SolidSyslogFile * file);
     bool SolidSyslogFile_Exists(struct SolidSyslogFile * file, const char* path);
     bool SolidSyslogFile_Delete(struct SolidSyslogFile * file, const char* path);

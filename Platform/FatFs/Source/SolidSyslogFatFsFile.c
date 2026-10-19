@@ -24,7 +24,7 @@ static bool FatFsFile_IsOpen(struct SolidSyslogFile* base);
 static bool FatFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool FatFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void FatFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
-static size_t FatFsFile_Size(struct SolidSyslogFile* base);
+static bool FatFsFile_Size(struct SolidSyslogFile* base, size_t* size);
 static void FatFsFile_Truncate(struct SolidSyslogFile* base);
 static bool FatFsFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path);
@@ -109,9 +109,11 @@ static void FatFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
     f_lseek(FatFsFile_Handle(base), (FSIZE_t) offset);
 }
 
-static size_t FatFsFile_Size(struct SolidSyslogFile* base)
+static bool FatFsFile_Size(struct SolidSyslogFile* base, size_t* size)
 {
-    return (size_t) f_size(FatFsFile_Handle(base));
+    /* f_size reads the file object's own record of its length and cannot fail. */
+    *size = (size_t) f_size(FatFsFile_Handle(base));
+    return true;
 }
 
 static void FatFsFile_Truncate(struct SolidSyslogFile* base)

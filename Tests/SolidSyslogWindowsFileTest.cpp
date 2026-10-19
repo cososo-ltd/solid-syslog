@@ -39,6 +39,15 @@ static std::string MakeTempPath(const char* filename)
     return std::string(tempDir, len) + filename;
 }
 
+/* Asserts the open file reports `expected` bytes. A macro so a failure
+ * reports the caller's __FILE__/__LINE__. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 TEST_GROUP(SolidSyslogWindowsFile)
 {
     struct SolidSyslogFile* file = nullptr;
@@ -107,9 +116,9 @@ TEST(SolidSyslogWindowsFile, WriteAndReadRoundTrip)
 TEST(SolidSyslogWindowsFile, SizeReturnsFileSize)
 {
     OpenTestFile();
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 0);
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
-    LONGS_EQUAL(5, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 5);
 }
 
 TEST(SolidSyslogWindowsFile, TruncateClearsFile)
@@ -117,7 +126,7 @@ TEST(SolidSyslogWindowsFile, TruncateClearsFile)
     OpenTestFile();
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
     SolidSyslogFile_Truncate(file);
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 0);
 }
 
 TEST(SolidSyslogWindowsFile, BinaryRoundTripPreservesNewlineBytes)
@@ -133,7 +142,7 @@ TEST(SolidSyslogWindowsFile, BinaryRoundTripPreservesNewlineBytes)
     unsigned char roundTrip[sizeof(payload)] = {};
     CHECK_TRUE(SolidSyslogFile_Read(file, roundTrip, sizeof(roundTrip)));
     MEMCMP_EQUAL(payload, roundTrip, sizeof(payload));
-    LONGS_EQUAL(sizeof(payload), SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, sizeof(payload));
 }
 
 TEST(SolidSyslogWindowsFile, OpenWithInvalidPathReturnsFalse)

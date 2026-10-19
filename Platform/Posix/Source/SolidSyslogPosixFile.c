@@ -33,7 +33,7 @@ static bool PosixFile_IsOpen(struct SolidSyslogFile* base);
 static bool PosixFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool PosixFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void PosixFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
-static size_t PosixFile_Size(struct SolidSyslogFile* base);
+static bool PosixFile_Size(struct SolidSyslogFile* base, size_t* size);
 static void PosixFile_Truncate(struct SolidSyslogFile* base);
 static bool PosixFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path);
@@ -115,11 +115,13 @@ static void PosixFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
     lseek(self->Fd, (off_t) offset, SEEK_SET);
 }
 
-static size_t PosixFile_Size(struct SolidSyslogFile* base)
+static bool PosixFile_Size(struct SolidSyslogFile* base, size_t* size)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    off_t size = lseek(self->Fd, 0, SEEK_END);
-    return (size >= 0) ? (size_t) size : 0U;
+    off_t end = lseek(self->Fd, 0, SEEK_END);
+    bool known = end >= 0;
+    *size = known ? (size_t) end : 0U;
+    return known;
 }
 
 static void PosixFile_Truncate(struct SolidSyslogFile* base)

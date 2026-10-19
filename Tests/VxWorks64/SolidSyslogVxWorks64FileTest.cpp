@@ -74,6 +74,15 @@ static const int OWNER_READ_WRITE = 0x180;
         code                                  \
     )
 
+/* Asserts the open file reports `expected` bytes. A macro so a failure
+ * reports the caller's __FILE__/__LINE__. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64File)
 {
@@ -455,7 +464,8 @@ TEST(SolidSyslogVxWorks64File, SizeSeeksTheOpenDescriptorToItsEnd)
 {
     SolidSyslogFile_Open(file, TEST_PATH);
 
-    SolidSyslogFile_Size(file);
+    size_t size = 0U;
+    SolidSyslogFile_Size(file, &size);
 
     LONGS_EQUAL(VxWorks64IoFake_Fd(), VxWorks64IoFake_LastLseekFd());
     LONGS_EQUAL(0, VxWorks64IoFake_LastLseekOffset());
@@ -467,16 +477,18 @@ TEST(SolidSyslogVxWorks64File, SizeIsWhereTheEndIs)
     VxWorks64IoFake_SetFileSize(1234);
     SolidSyslogFile_Open(file, TEST_PATH);
 
-    LONGS_EQUAL(1234, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 1234);
 }
 
-TEST(SolidSyslogVxWorks64File, SizeIsZeroWhenTheSeekFails)
+TEST(SolidSyslogVxWorks64File, SizeFailsWhenTheSeekFails)
 {
     VxWorks64IoFake_SetFileSize(1234);
     VxWorks64IoFake_FailLseeks();
     SolidSyslogFile_Open(file, TEST_PATH);
 
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    size_t size = 0U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+    LONGS_EQUAL(0, size);
 }
 
 TEST(SolidSyslogVxWorks64File, TruncateTruncatesTheOpenDescriptorToNothing)
@@ -535,7 +547,8 @@ TEST(SolidSyslogVxWorks64File, SizeThatFailsReportsTheFailedSizeAndItsErrno)
     VxWorks64IoFake_FailWithErrno(EINVAL);
     SolidSyslogFile_Open(file, TEST_PATH);
 
-    SolidSyslogFile_Size(file);
+    size_t size = 0U;
+    SolidSyslogFile_Size(file, &size);
 
     CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, EINVAL);
 }
@@ -578,8 +591,9 @@ TEST(SolidSyslogVxWorks64File, SeekSizeAndTruncateThatSucceedReportNothing)
     ErrorHandlerFake_Install(nullptr);
     SolidSyslogFile_Open(file, TEST_PATH);
 
+    size_t size = 0U;
     SolidSyslogFile_SeekTo(file, 0);
-    SolidSyslogFile_Size(file);
+    SolidSyslogFile_Size(file, &size);
     SolidSyslogFile_Truncate(file);
     SolidSyslogFile_Close(file);
 

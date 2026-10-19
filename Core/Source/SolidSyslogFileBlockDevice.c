@@ -304,7 +304,9 @@ static bool FileBlockDevice_Append(
         struct SolidSyslogFileBlockDevice* self = FileBlockDevice_SelfFromBase(base);
         if (FileBlockDevice_EnsureHandleOpenOnBlock(&self->Handle, self, blockIndex))
         {
-            SolidSyslogFile_SeekTo(self->Handle.File, SolidSyslogFile_Size(self->Handle.File));
+            size_t end = 0U;
+            (void) SolidSyslogFile_Size(self->Handle.File, &end);
+            SolidSyslogFile_SeekTo(self->Handle.File, end);
             written = SolidSyslogFile_Write(self->Handle.File, buf, count);
         }
     }
@@ -350,7 +352,7 @@ static bool FileBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t blo
 
         if (known)
         {
-            *size = SolidSyslogFile_Size(self->Handle.File);
+            known = SolidSyslogFile_Size(self->Handle.File, size);
         }
     }
 

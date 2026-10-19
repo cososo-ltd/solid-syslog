@@ -19,6 +19,15 @@ using namespace CososoTesting;
 
 static const lfs_size_t TEST_CACHE_SIZE = 64;
 
+/* Asserts the open file reports `expected` bytes. A macro so a failure
+ * reports the caller's __FILE__/__LINE__. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 // clang-format off
 TEST_GROUP(SolidSyslogLittleFsFile)
 {
@@ -137,15 +146,16 @@ TEST(SolidSyslogLittleFsFile, SizeReportsTheFileLength)
     LittleFsFake_SetFileSize(1234);
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
 
-    LONGS_EQUAL(1234, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 1234);
 }
 
-TEST(SolidSyslogLittleFsFile, SizeIsZeroWhenLittleFsReportsAnError)
+TEST(SolidSyslogLittleFsFile, SizeFailsWhenLittleFsReportsAnError)
 {
     LittleFsFake_SetFileSizeError(LFS_ERR_IO);
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
 
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    size_t size = 0U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
 }
 
 TEST(SolidSyslogLittleFsFile, TruncateEmptiesTheFileAndLeavesItOpen)

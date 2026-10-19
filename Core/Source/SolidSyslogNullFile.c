@@ -15,7 +15,7 @@ static bool NullFile_IsOpen(struct SolidSyslogFile* base);
 static bool NullFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool NullFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void NullFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
-static size_t NullFile_Size(struct SolidSyslogFile* base);
+static bool NullFile_Size(struct SolidSyslogFile* base, size_t* size);
 static void NullFile_Truncate(struct SolidSyslogFile* base);
 static bool NullFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool NullFile_Delete(struct SolidSyslogFile* base, const char* path);
@@ -84,10 +84,11 @@ static void NullFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
     (void) offset;
 }
 
-static size_t NullFile_Size(struct SolidSyslogFile* base)
+static bool NullFile_Size(struct SolidSyslogFile* base, size_t* size)
 {
     (void) base;
-    return 0U;
+    *size = 0U;
+    return false;
 }
 
 static void NullFile_Truncate(struct SolidSyslogFile* base)

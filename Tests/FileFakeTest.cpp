@@ -5,6 +5,15 @@
 #include "CppUTest/TestHarness.h"
 
 // clang-format off
+/* Asserts the open file reports `expected` bytes. A macro so a failure
+ * reports the caller's __FILE__/__LINE__. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 TEST_GROUP(FileFake)
 {
     struct FileFakeStorage storage = {};
@@ -79,9 +88,9 @@ TEST(FileFake, SeekToChangesReadPosition)
 TEST(FileFake, SizeReturnsFileSize)
 {
     SolidSyslogFile_Open(api, "test.dat");
-    LONGS_EQUAL(0, SolidSyslogFile_Size(api));
+    CHECK_FILE_SIZE(api, 0);
     SolidSyslogFile_Write(api, "hello", 5);
-    LONGS_EQUAL(5, SolidSyslogFile_Size(api));
+    CHECK_FILE_SIZE(api, 5);
 }
 
 TEST(FileFake, TruncateClearsContent)
@@ -89,7 +98,7 @@ TEST(FileFake, TruncateClearsContent)
     SolidSyslogFile_Open(api, "test.dat");
     SolidSyslogFile_Write(api, "hello", 5);
     SolidSyslogFile_Truncate(api);
-    LONGS_EQUAL(0, SolidSyslogFile_Size(api));
+    CHECK_FILE_SIZE(api, 0);
 }
 
 TEST(FileFake, WriteAtPositionOverwritesContent)
@@ -201,7 +210,7 @@ TEST(FileFake, FileSizeMatchesApiSize)
 {
     SolidSyslogFile_Open(api, "test.dat");
     SolidSyslogFile_Write(api, "hello", 5);
-    LONGS_EQUAL(SolidSyslogFile_Size(api), FileFake_FileSize());
+    CHECK_FILE_SIZE(api, FileFake_FileSize());
 }
 
 TEST(FileFake, OpenPreservesExistingContent)
@@ -211,7 +220,7 @@ TEST(FileFake, OpenPreservesExistingContent)
     SolidSyslogFile_Close(api);
     SolidSyslogFile_Open(api, "test.dat");
 
-    LONGS_EQUAL(5, SolidSyslogFile_Size(api));
+    CHECK_FILE_SIZE(api, 5);
     char buf[16] = {};
     SolidSyslogFile_Read(api, buf, 5);
     MEMCMP_EQUAL("hello", buf, 5);
@@ -333,9 +342,22 @@ TEST(FileFake, SeekToWithNoFileOpenThrows)
     CHECK_THROWS(std::runtime_error, SolidSyslogFile_SeekTo(api, 0));
 }
 
+TEST(FileFake, FailNextSizeFailsOneSizeAndRecovers)
+{
+    SolidSyslogFile_Open(api, "test.dat");
+    SolidSyslogFile_Write(api, "hello", 5);
+    FileFake_FailNextSize(api);
+
+    size_t size = 42U;
+    CHECK_FALSE(SolidSyslogFile_Size(api, &size));
+    LONGS_EQUAL(0, size);
+    CHECK_FILE_SIZE(api, 5);
+}
+
 TEST(FileFake, SizeWithNoFileOpenThrows)
 {
-    CHECK_THROWS(std::runtime_error, SolidSyslogFile_Size(api));
+    size_t size = 0U;
+    CHECK_THROWS(std::runtime_error, SolidSyslogFile_Size(api, &size));
 }
 
 TEST(FileFake, TruncateWithNoFileOpenThrows)
@@ -395,7 +417,8 @@ TEST(FileFakeAfterDestroy, SeekToThrows)
 
 TEST(FileFakeAfterDestroy, SizeThrows)
 {
-    CHECK_THROWS(std::runtime_error, SolidSyslogFile_Size(api));
+    size_t size = 0U;
+    CHECK_THROWS(std::runtime_error, SolidSyslogFile_Size(api, &size));
 }
 
 TEST(FileFakeAfterDestroy, TruncateThrows)

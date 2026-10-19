@@ -38,9 +38,9 @@ void SolidSyslogFile_SeekTo(struct SolidSyslogFile* file, size_t offset)
     file->SeekTo(file, offset);
 }
 
-size_t SolidSyslogFile_Size(struct SolidSyslogFile* file)
+bool SolidSyslogFile_Size(struct SolidSyslogFile* file, size_t* size)
 {
-    return file->Size(file);
+    return file->Size(file, size);
 }
 
 void SolidSyslogFile_Truncate(struct SolidSyslogFile* file)

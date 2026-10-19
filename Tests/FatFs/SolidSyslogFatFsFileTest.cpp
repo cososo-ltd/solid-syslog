@@ -23,6 +23,15 @@ static const char* const TEST_PATH = "test.log";
 #define CHECK_STAT_PATH(path) STRCMP_EQUAL((path), FatFsFake_LastStatPath())
 #define CHECK_UNLINK_PATH(path) STRCMP_EQUAL((path), FatFsFake_LastUnlinkPath())
 
+/* Asserts the open file reports `expected` bytes. A macro so a failure
+ * reports the caller's __FILE__/__LINE__. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 // clang-format off
 TEST_GROUP(SolidSyslogFatFsFile)
 {
@@ -130,7 +139,7 @@ TEST(SolidSyslogFatFsFile, SizeReturnsFileObjectSize)
 {
     Open();
     FatFsFake_SetFileSize(42);
-    LONGS_EQUAL(42, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 42);
 }
 
 TEST(SolidSyslogFatFsFile, ReadCallsFReadWithCorrectDefaults)

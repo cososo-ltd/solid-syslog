@@ -13,6 +13,15 @@ using namespace CososoTesting;
 
 static const char* const TEST_PATH = "test.log";
 
+/* Asserts the open file reports `expected` bytes. A macro so a failure
+ * reports the caller's __FILE__/__LINE__. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 // clang-format off
 TEST_GROUP(SolidSyslogPlusFatFile)
 {
@@ -196,7 +205,7 @@ TEST(SolidSyslogPlusFatFile, SizeReturnsFfilelength)
     SolidSyslogFile_Open(file, TEST_PATH);
     PlusFatFake_SetFileLength(42);
 
-    LONGS_EQUAL(42, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 42);
 }
 
 TEST(SolidSyslogPlusFatFile, TruncateSeeksToZeroAndCallsFseteof)
