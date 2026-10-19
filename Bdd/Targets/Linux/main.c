@@ -156,7 +156,7 @@ static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
 
 static volatile bool haltExit;
 
-static void OnStoreFull(void* context)
+static void OnHalt(void* context)
 {
     (void) context;
     if (haltExit)
@@ -224,7 +224,6 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
         discardPolicy = MapDiscardPolicy(options->DiscardPolicy);
         storeConfig.GetDiscardPolicy = GetDiscardPolicy;
         storeConfig.SecurityPolicy = securityPolicy;
-        storeConfig.OnStoreFull = OnStoreFull;
         storeConfig.GetCapacityThreshold = GetCapacityThreshold;
         storeConfig.OnThresholdCrossed = OnThresholdCrossed;
         storeConfig.ThresholdContext = &capacityThreshold;
@@ -359,6 +358,8 @@ int main(int argc, char* argv[])
         .Store = store,
         .Sd = sdList,
         .SdCount = sdCount,
+        .GetDiscardPolicy = GetDiscardPolicy,
+        .OnHalt = OnHalt,
     };
     solidSyslog = SolidSyslog_Create(&config);
 

@@ -82,6 +82,8 @@ static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self);
 static inline bool SolidSyslog_PolicyHalts(struct SolidSyslog* self);
 static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
 static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
+static void SolidSyslog_NullHalt(void* context);
+static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCallback configured, void* context);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
@@ -97,6 +99,7 @@ void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogCo
     SolidSyslog_InstallProcessId(self, config->GetProcessId, config->GetProcessIdContext);
     SolidSyslog_InstallStructuredData(self, config->Sd, config->SdCount);
     SolidSyslog_InstallDiscardPolicy(self, config->GetDiscardPolicy, config->DiscardPolicyContext);
+    SolidSyslog_InstallHalt(self, config->OnHalt, config->HaltContext);
 }
 
 void SolidSyslog_Cleanup(struct SolidSyslog* self)
@@ -125,6 +128,8 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->HoldsRecord = false;
     self->GetDiscardPolicy = SolidSyslogDiscardPolicy_Default;
     self->DiscardPolicyContext = NULL;
+    self->OnHalt = SolidSyslog_NullHalt;
+    self->HaltContext = NULL;
     self->Halted = false;
 }
 
@@ -138,6 +143,11 @@ static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts)
 static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context)
 {
     (void) field;
+    (void) context;
+}
+
+static void SolidSyslog_NullHalt(void* context)
+{
     (void) context;
 }
 
@@ -246,6 +256,15 @@ static void SolidSyslog_InstallDiscardPolicy(
     {
         self->GetDiscardPolicy = configured;
         self->DiscardPolicyContext = context;
+    }
+}
+
+static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCallback configured, void* context)
+{
+    if (configured != NULL)
+    {
+        self->OnHalt = configured;
+        self->HaltContext = context;
     }
 }
 
@@ -410,10 +429,16 @@ static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self
 
 /* A refusal is the discard policy at work; under Halt it is also where the
  * logger stops. The record refused is gone either way, so the halt is asked
- * about after the store has reported it. */
+ * about after the store has reported it, and the callback hears of it after
+ * that. */
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self)
 {
     self->Halted = SolidSyslog_PolicyHalts(self);
+
+    if (self->Halted)
+    {
+        self->OnHalt(self->HaltContext);
+    }
 }
 
 /* Sends one record the store hands out. The slot is the staging buffer; the

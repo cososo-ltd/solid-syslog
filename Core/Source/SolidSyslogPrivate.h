@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogConfig.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrors.h"
@@ -38,6 +39,8 @@ struct SolidSyslog
     bool HoldsRecord;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;
+    SolidSyslogHaltCallback OnHalt;
+    void* HaltContext;
     /* Set when a retaining store refuses a record while the policy answers
      * Halt; Service then moves nothing until the answer changes. */
     bool Halted;

@@ -10,10 +10,10 @@
  *  per-record integrity trailer from the injected SecurityPolicy) so a reboot
  *  keeps unsent records queued.
  *
- *  MaxBlocks caps retention; DiscardPolicy governs the overflow once every block
- *  is full - Oldest evicts the oldest block to keep accepting writes, Newest
- *  refuses the incoming record, Halt refuses it, latches (IsHalted stops
- *  Service), and fires OnStoreFull once. An optional capacity-threshold function
+ *  MaxBlocks caps retention; the injected discard policy governs the overflow
+ *  once every block is full - Oldest evicts the oldest block to keep accepting
+ *  writes, Newest refuses the incoming record, and Halt refuses it and latches
+ *  (IsHalted stops Service). An optional capacity-threshold function
  *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
  *  early back-pressure signalling. Mind the recursion gotcha: under a
  *  PassthroughBuffer, SolidSyslog_Log sends inline, so logging from the
@@ -44,11 +44,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBlockDevice;
     struct SolidSyslogSecurityPolicy;
 
-    /** Fired once when a Halt-policy store first fills, after the refused record
-     *  has been reported, so a callback that resets the device and never returns
-     *  loses nothing the error handler would have seen. */
-    typedef void (*SolidSyslogStoreFullCallback)(void* context);
-
     /** Returns the capacity threshold in bytes; 0 disables. Queried on every Write. */
     typedef size_t (*SolidSyslogStoreThresholdFunction)(void* context);
 
@@ -72,14 +67,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
          *  fit: Oldest evicts the oldest block, Newest refuses the record, Halt
-         *  refuses it, latches (IsHalted, Service stops) and fires OnStoreFull
-         *  once. NULL applies Oldest. Records lost either way are reported as
+         *  refuses it and latches (IsHalted, Service stops). NULL applies Oldest. Records lost either way are reported as
          *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
         SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
         void* DiscardPolicyContext;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
-        SolidSyslogStoreFullCallback OnStoreFull;
-        void* StoreFullContext;
         SolidSyslogStoreThresholdFunction GetCapacityThreshold;
         SolidSyslogStoreThresholdCallback OnThresholdCrossed;
         void* ThresholdContext; /**< Shared by GetCapacityThreshold and OnThresholdCrossed. */

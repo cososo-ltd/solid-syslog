@@ -60,8 +60,6 @@ static const struct SolidSyslogBlockStoreConfig DEFAULT_CONFIG = {
     nullptr,
     nullptr,
     nullptr,
-    nullptr,
-    nullptr,
 };
 
 /* The store's policy function for the fixtures: answers the policy a test
@@ -952,8 +950,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
     }
 
     void CreateWithMaxBlockSize(size_t maxBlockSize, enum SolidSyslogDiscardPolicy policy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
-                               size_t maxBlocks = 2,
-                               SolidSyslogStoreFullCallback onStoreFull = nullptr, void* storeFullContext = nullptr)
+                               size_t maxBlocks = 2)
     {
         EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
@@ -962,8 +959,6 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
         configuredPolicy         = policy;
         config.GetDiscardPolicy  = AnswersConfiguredPolicy;
         config.DiscardPolicyContext = &configuredPolicy;
-        config.OnStoreFull       = onStoreFull;
-        config.StoreFullContext  = storeFullContext;
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -1198,36 +1193,6 @@ TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxBlocks)
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
-static int StoreFullCallbackCallCount;
-
-static void StoreFullCallback(void* context)
-{
-    (void) context;
-    StoreFullCallbackCallCount++;
-}
-
-TEST(SolidSyslogBlockStoreRotation, HaltInvokesCallbackWhenStoreFull)
-{
-    StoreFullCallbackCallCount = 0;
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, StoreFullCallback);
-
-    WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
-
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-    CALLED_FUNCTION(StoreFullCallback, ONCE);
-}
-
-TEST(SolidSyslogBlockStoreRotation, HaltWithNullCallbackDoesNotCrash)
-{
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT);
-
-    WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
-
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-}
-
 TEST(SolidSyslogBlockStoreRotation, HaltSetsIsHaltedTrue)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT);
@@ -1266,73 +1231,6 @@ TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionChangesItsAnswerApp
     configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
     CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-}
-
-TEST(SolidSyslogBlockStoreRotation, DiscardNewestDoesNotInvokeCallback)
-{
-    StoreFullCallbackCallCount = 0;
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, 2, StoreFullCallback);
-
-    WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
-
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-    CALLED_FUNCTION(StoreFullCallback, NEVER);
-}
-
-static int CountStoreFullInvocationsCallCount;
-
-static void CountStoreFullInvocations(void* context)
-{
-    (void) context;
-    CountStoreFullInvocationsCallCount++;
-}
-
-TEST(SolidSyslogBlockStoreRotation, HaltOnStoreFullFiresOncePerRisingEdge)
-{
-    CountStoreFullInvocationsCallCount = 0;
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, CountStoreFullInvocations);
-
-    WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
-
-    /* Three consecutive failed Writes - callback must fire on the first only. */
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
-
-    CALLED_FUNCTION(CountStoreFullInvocations, ONCE);
-}
-
-static void* storeFullCallbackContext;
-
-static void StoreFullCallbackCapturingContext(void* context)
-{
-    storeFullCallbackContext = context;
-}
-
-/* Given the integrator wires storeFullContext at config time,
- * When onStoreFull fires,
- * Then the callback receives the configured context pointer unchanged. */
-TEST(SolidSyslogBlockStoreRotation, OnStoreFullReceivesConfiguredContext)
-{
-    int sentinel = 0;
-    storeFullCallbackContext = nullptr;
-
-    CreateWithMaxBlockSize(
-        ONE_MAX_MSG_RECORD,
-        SOLIDSYSLOG_DISCARD_POLICY_HALT,
-        2,
-        StoreFullCallbackCapturingContext,
-        &sentinel
-    );
-
-    WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - at maxBlocks */
-
-    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* triggers halt callback */
-
-    POINTERS_EQUAL(&sentinel, storeFullCallbackContext);
 }
 
 TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleBlocksExist)
@@ -1707,10 +1605,9 @@ TEST(SolidSyslogBlockStoreRotation, AFullStoreDiscardingTheNewestReportsTheRecor
     );
 }
 
-TEST(SolidSyslogBlockStoreRotation, AFullStoreThatHaltsReportsTheRecordLostAndStillCallsOnStoreFull)
+TEST(SolidSyslogBlockStoreRotation, AFullStoreThatHaltsReportsTheRecordLost)
 {
-    StoreFullCallbackCallCount = 0;
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, StoreFullCallback);
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT);
     WriteMaxMsg();
     WriteMaxMsg(); /* both blocks full */
     ErrorHandlerFake_Install(nullptr);
@@ -1723,30 +1620,6 @@ TEST(SolidSyslogBlockStoreRotation, AFullStoreThatHaltsReportsTheRecordLostAndSt
         SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED
     );
-    CALLED_FUNCTION(StoreFullCallback, ONCE);
-}
-
-static int reportsMadeBeforeStoreFull;
-
-static void StoreFullCallbackCountingReports(void* context)
-{
-    (void) context;
-    reportsMadeBeforeStoreFull = ErrorHandlerFake_HandleCallCount();
-}
-
-/* An OnStoreFull that resets the device never returns, so the loss has to be
- * reported before it is called. */
-TEST(SolidSyslogBlockStoreRotation, AStoreThatHaltsReportsTheRecordLostBeforeCallingOnStoreFull)
-{
-    reportsMadeBeforeStoreFull = 0;
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT, 2, StoreFullCallbackCountingReports);
-    WriteMaxMsg();
-    WriteMaxMsg(); /* both blocks full */
-    ErrorHandlerFake_Install(nullptr);
-
-    WriteMaxMsg();
-
-    LONGS_EQUAL(1, reportsMadeBeforeStoreFull);
 }
 
 TEST(SolidSyslogBlockStoreRotation, ARunOfRefusedRecordsIsReportedOnce)
@@ -3003,57 +2876,6 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ContextIsPassedToBothCallbacks)
 
     POINTERS_EQUAL(&sentinel, capturedThresholdFunctionContext);
     POINTERS_EQUAL(&sentinel, capturedThresholdCallbackContext);
-}
-
-static int nextFireOrder;
-static int thresholdFireOrder;
-static int storeFullFireOrder;
-
-static void RecordThresholdFireOrder(void* context)
-{
-    (void) context;
-    thresholdFireOrder = ++nextFireOrder;
-}
-
-static void RecordStoreFullFireOrder(void* context)
-{
-    (void) context;
-    storeFullFireOrder = ++nextFireOrder;
-}
-
-/* Given threshold = 100% (total bytes) and SOLIDSYSLOG_DISCARD_POLICY_HALT,
- * When a Write fails for size and engages the sticky 100% bit,
- * Then onThresholdCrossed fires before onStoreFull on that same Write. */
-TEST(SolidSyslogBlockStoreCapacityThreshold, AtFullCapacityWithHaltThresholdFiresBeforeStoreFull)
-{
-    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
-    static const size_t SLACK = 100;
-
-    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    memset(maxMsg, 'A', sizeof(maxMsg));
-
-    nextFireOrder = 0;
-    thresholdFireOrder = 0;
-    storeFullFireOrder = 0;
-
-    EnsureDeviceBlockSize(MAX_MSG_RECORD + SLACK);
-    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.MaxBlocks = 2;
-    config.GetDiscardPolicy = AnswersHalt;
-    config.OnStoreFull = RecordStoreFullFireOrder;
-    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
-    config.OnThresholdCrossed = RecordThresholdFireOrder;
-    /* Threshold = total: only the sticky-100% engagement on a failed Write reaches it. */
-    thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);
-    store = SolidSyslogBlockStore_Create(&config);
-
-    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 0 partially full */
-    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotate; block 1 partially full */
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* HALT: fails, sticky engages */
-
-    CHECK_TRUE(thresholdFireOrder > 0);
-    CHECK_TRUE(storeFullFireOrder > 0);
-    CHECK_TRUE(thresholdFireOrder < storeFullFireOrder);
 }
 
 /* Given a failed Write has already engaged the sticky 100% bit,

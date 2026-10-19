@@ -152,7 +152,7 @@ static bool RebuildWithFileStore(void);
 static void DestroyCurrentStore(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
 static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
-static void OnStoreFull(void* context);
+static void OnHalt(void* context);
 static size_t GetCapacityThreshold(void* context);
 static void OnThresholdCrossed(void* context);
 static void TeardownAll(void);
@@ -470,8 +470,6 @@ static bool RebuildWithFileStore(void)
         .MaxBlocks = pendingMaxBlocks,
         .GetDiscardPolicy = GetDiscardPolicy,
         .SecurityPolicy = policy,
-        .OnStoreFull = OnStoreFull,
-        .StoreFullContext = NULL,
         .GetCapacityThreshold = GetCapacityThreshold,
         .OnThresholdCrossed = OnThresholdCrossed,
         .ThresholdContext = &pendingCapacityThreshold,
@@ -480,6 +478,8 @@ static bool RebuildWithFileStore(void)
     currentStoreIsFile = true;
 
     solidSyslogConfig.Store = currentStore;
+    solidSyslogConfig.GetDiscardPolicy = GetDiscardPolicy;
+    solidSyslogConfig.OnHalt = OnHalt;
     /* Re-honour `set no-sd 1` if it arrived before this rebuild - target_driver.py
      * sorts `set no-sd` before `set store file`, so the value is final here. */
     solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
@@ -543,7 +543,7 @@ static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
     return MapDiscardPolicy(pendingDiscardPolicy);
 }
 
-static void OnStoreFull(void* context)
+static void OnHalt(void* context)
 {
     (void) context;
     if (pendingHaltExit)

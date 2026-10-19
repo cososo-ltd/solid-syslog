@@ -123,7 +123,7 @@ TEST_GROUP(SolidSyslog)
         metaSdCounter = nullptr;
         metaSd        = nullptr;
         timeQualitySd = nullptr;
-        config = {buffer, nullptr, nullptr, StringFake_GetHostname, nullptr, StringFake_GetAppName, nullptr, StringFake_GetProcessId, nullptr, store, nullptr, 0, nullptr, nullptr};
+        config = {buffer, nullptr, nullptr, StringFake_GetHostname, nullptr, StringFake_GetAppName, nullptr, StringFake_GetProcessId, nullptr, store, nullptr, 0, nullptr, nullptr, nullptr, nullptr};
         solidSyslog = SolidSyslog_Create(&config);
         message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
     }
@@ -568,6 +568,8 @@ TEST(SolidSyslog, ServiceSendsMessageReadFromBuffer)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -604,6 +606,8 @@ TEST(SolidSyslog, ServiceSendsBufferedMessageWithNullStore)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -639,6 +643,8 @@ TEST(SolidSyslog, ServiceSendsFromStoreWhenHasUnsent)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -677,6 +683,8 @@ TEST(SolidSyslog, ServiceMarksSentAfterSuccessfulSend)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -711,6 +719,8 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentOnSendFailure)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -747,6 +757,8 @@ TEST(SolidSyslog, ServiceWritesBufferMessageToStore)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -787,6 +799,8 @@ TEST(SolidSyslog, ServiceSendsStoreMessageNotBufferMessage)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -829,6 +843,8 @@ TEST(SolidSyslog, ServiceDoesNotBypassToSenderWhenNonTransientStoreRejectsWrite)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -865,6 +881,8 @@ TEST(SolidSyslog, ServiceDoesNotSendWhenStoreReadFails)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -903,6 +921,8 @@ TEST(SolidSyslog, ServiceReturnsIdleWhenBufferAndStoreAreEmpty)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -934,6 +954,8 @@ TEST(SolidSyslog, ServiceReturnsReadyWhenBufferDrainsAMessage)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -968,6 +990,8 @@ TEST(SolidSyslog, ServiceReturnsReadyWhenBufferDrainsEvenIfSenderFails)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -1004,6 +1028,8 @@ TEST(SolidSyslog, ServiceReturnsBlockedWhenBufferIdleAndSendFails)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -1038,6 +1064,8 @@ TEST(SolidSyslog, ServiceReturnsBlockedWhenBufferIdleAndTheStoreHoldsARecordItCa
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -1074,6 +1102,8 @@ TEST(SolidSyslog, ServiceReturnsReadyWhenStoreStillHasUnsentAfterSuccessfulSend)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -1108,6 +1138,8 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentWhenSendingFromBuffer)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -1214,6 +1246,12 @@ TEST_GROUP(SolidSyslogServiceHalt)
     struct SolidSyslogBuffer* fakeBuffer  = nullptr;
     struct SolidSyslogStore*  fakeStore   = nullptr;
     enum SolidSyslogDiscardPolicy policy  = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    int                       haltCount   = 0;
+
+    static void CountHalt(void* context)
+    {
+        (*static_cast<int*>(context))++;
+    }
 
     void setup() override
     {
@@ -1227,6 +1265,8 @@ TEST_GROUP(SolidSyslogServiceHalt)
         config.Store                = fakeStore;
         config.GetDiscardPolicy     = AnswersConfiguredPolicy;
         config.DiscardPolicyContext = &policy;
+        config.OnHalt               = CountHalt;
+        config.HaltContext          = &haltCount;
         solidSyslog = SolidSyslog_Create(&config);
     }
 
@@ -1267,6 +1307,15 @@ TEST(SolidSyslogServiceHalt, ServiceResumesOnceThePolicyNoLongerAnswersHalt)
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_EQUAL("after", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogServiceHalt, ServiceCallsOnHaltWhenItHalts)
+{
+    LogOneTheStoreRefuses();
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, haltCount);
 }
 
 TEST(SolidSyslogServiceHalt, AHaltedServiceMovesNothing)
@@ -1325,6 +1374,8 @@ TEST(SolidSyslog, ServiceDoesNothingWhenStoreIsHalted)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -1362,6 +1413,8 @@ TEST(SolidSyslog, ServiceReturnsHaltedWhenStoreIsHalted)
         nullptr,
         0,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -1394,6 +1447,8 @@ TEST(SolidSyslog, LogAfterDestroyAndRecreateWithNullFunctionsProducesNilvalues)
         store,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr
     };
@@ -1435,7 +1490,7 @@ TEST_GROUP(SolidSyslogLifecycle)
 
     [[nodiscard]] SolidSyslogConfig validConfig() const
     {
-        return {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0, nullptr, nullptr};
+        return {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0, nullptr, nullptr, nullptr, nullptr};
     }
 };
 

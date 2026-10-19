@@ -23,8 +23,6 @@ struct SolidSyslogBlockStore
     struct SolidSyslogStore Base;
     struct SolidSyslogRecordStore* RecordStore;
     struct SolidSyslogBlockSequence* BlockSequence;
-    SolidSyslogStoreFullCallback OnStoreFull;
-    void* StoreFullContext;
     /* A report stands for the current run of discarded records; the next record
      * that reads cleanly ends the run. */
     bool LossReported;
@@ -45,8 +43,7 @@ struct SolidSyslogBlockStore
 void SolidSyslogBlockStore_Initialise(
     struct SolidSyslogStore* base,
     struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockSequence* blockSequence,
-    const struct SolidSyslogBlockStoreConfig* config
+    struct SolidSyslogBlockSequence* blockSequence
 );
 void SolidSyslogBlockStore_Cleanup(struct SolidSyslogStore* base);
 

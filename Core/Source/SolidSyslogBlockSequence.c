@@ -366,8 +366,6 @@ static inline enum SolidSyslogDiscardPolicy BlockSequence_DiscardPolicy(
     return blockSequence->GetDiscardPolicy(blockSequence->DiscardPolicyContext);
 }
 
-/* The store calls OnStoreFull when it sees the halt, once it has reported the
- * record lost. */
 static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence)
 {
     if (BlockSequence_DiscardPolicy(blockSequence) == SOLIDSYSLOG_DISCARD_POLICY_HALT)

@@ -4,8 +4,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "CppUTest/TestHarness.h"
+#include "ErrorHandlerFake.h"
 #include "FileFake.h"
 #include "SenderFake.h"
 #include "SolidSyslog.h"
@@ -13,10 +15,13 @@
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogDiscardPolicy.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogStore.h"
 #include "SolidSyslogTunables.h"
 #include "StoreFake.h"
 #include "TestUtils.h"
@@ -255,4 +260,121 @@ TEST(SolidSyslogServiceHeldRecordFrozenStore, NothingIsLostAcrossAnOutageWithAFr
     SolidSyslog_Service(solidSyslog);
 
     CHECK_ALL_THREE_DELIVERED();
+}
+
+static enum SolidSyslogDiscardPolicy AnswersHalt(void* context)
+{
+    (void) context;
+    return SOLIDSYSLOG_DISCARD_POLICY_HALT;
+}
+
+static int haltOrder;
+static int thresholdOrder;
+static int reportsBeforeHalt;
+static int nextOrder;
+
+static void NoteHalt(void* context)
+{
+    (void) context;
+    haltOrder = ++nextOrder;
+    reportsBeforeHalt = ErrorHandlerFake_HandleCallCount();
+}
+
+static void NoteThresholdCrossed(void* context)
+{
+    (void) context;
+    thresholdOrder = ++nextOrder;
+}
+
+static size_t WholeStore(void* context)
+{
+    return *static_cast<const size_t*>(context);
+}
+
+/* A block store one record per block and two blocks deep, so the third record
+ * Service drains into it is the one its policy refuses. What Service does on
+ * that refusal under HALT is what these pin: the order the integrator hears
+ * about it in. */
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogServiceHaltOrdering, ServiceHeldRecordBase)
+{
+    static const size_t RECORD_OVERHEAD = 5;
+
+    struct FileFakeStorage         storage   = {};
+    struct SolidSyslogFile*        file      = nullptr;
+    struct SolidSyslogBlockDevice* device    = nullptr;
+    struct SolidSyslogStore*       store     = nullptr;
+    size_t                         threshold = 0U;
+    char                           maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+
+    void setup() override
+    {
+        setupPipeline();
+        memset(maxMsg, 'A', sizeof(maxMsg));
+        file   = FileFake_Create(&storage);
+        device = SolidSyslogFileBlockDevice_Create(file, "/tmp/test_store", SOLIDSYSLOG_MAX_MESSAGE_SIZE + RECORD_OVERHEAD);
+
+        struct SolidSyslogBlockStoreConfig storeConfig = {};
+        storeConfig.BlockDevice          = device;
+        storeConfig.MaxBlocks            = 2U;
+        storeConfig.GetDiscardPolicy     = AnswersHalt;
+        storeConfig.GetCapacityThreshold = WholeStore;
+        storeConfig.OnThresholdCrossed   = NoteThresholdCrossed;
+        storeConfig.ThresholdContext     = &threshold;
+        store     = SolidSyslogBlockStore_Create(&storeConfig);
+        threshold = SolidSyslogStore_GetTotalBytes(store);
+
+        SolidSyslogConfig config    = {};
+        config.Buffer               = circularBuffer;
+        config.Sender               = fakeSender;
+        config.Store                = store;
+        config.GetDiscardPolicy     = AnswersHalt;
+        config.OnHalt               = NoteHalt;
+        solidSyslog = SolidSyslog_Create(&config);
+
+        nextOrder         = 0;
+        haltOrder         = 0;
+        thresholdOrder    = 0;
+        reportsBeforeHalt = -1;
+        ErrorHandlerFake_Install(nullptr);
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
+        teardownPipeline();
+        SolidSyslogBlockStore_Destroy(store);
+        SolidSyslogFileBlockDevice_Destroy(device);
+        FileFake_Destroy();
+    }
+
+    void LogThreeTheStoreCannotAllHold() const
+    {
+        SolidSyslogBuffer_Write(circularBuffer, maxMsg, sizeof(maxMsg));
+        SolidSyslogBuffer_Write(circularBuffer, maxMsg, sizeof(maxMsg));
+        SolidSyslogBuffer_Write(circularBuffer, maxMsg, sizeof(maxMsg));
+    }
+};
+
+// clang-format on
+
+/* An OnHalt that stops the device never returns, so the loss is reported
+ * before it is called. */
+TEST(SolidSyslogServiceHaltOrdering, TheRefusalIsReportedBeforeOnHaltIsCalled)
+{
+    LogThreeTheStoreCannotAllHold();
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, reportsBeforeHalt);
+}
+
+TEST(SolidSyslogServiceHaltOrdering, TheThresholdCallbackFiresBeforeOnHalt)
+{
+    LogThreeTheStoreCannotAllHold();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(thresholdOrder > 0);
+    CHECK(haltOrder > thresholdOrder);
 }

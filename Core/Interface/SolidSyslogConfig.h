@@ -24,6 +24,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogStore;
     struct SolidSyslogStructuredData;
 
+    /** Called once when the logger halts: a queue has refused a record while the
+     *  discard policy answers Halt. It runs on the task that calls
+     *  SolidSyslog_Service, after the refusal has been reported, so a callback
+     *  that stops the device and never returns loses nothing the error handler
+     *  would have seen. */
+    typedef void (*SolidSyslogHaltCallback)(void* context);
+
     /** Wiring for SolidSyslog_Create. NULL is safe for any field: Buffer,
      *  Sender, and Store fall back to their Null object and report an error
      *  (a no-op unless an error handler is installed; inject the Null* object
@@ -50,6 +57,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  Create, so the one answer governs every queue. NULL applies Oldest. */
         SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
         void* DiscardPolicyContext;
+        SolidSyslogHaltCallback OnHalt; /**< @optional nothing is called when NULL. */
+        void* HaltContext; /**< Passed back to OnHalt unchanged. */
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or

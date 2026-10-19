@@ -71,7 +71,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 
             if (blockSequence != NULL)
             {
-                SolidSyslogBlockStore_Initialise(&BlockStore_Pool[index].Base, recordStore, blockSequence, config);
+                SolidSyslogBlockStore_Initialise(&BlockStore_Pool[index].Base, recordStore, blockSequence);
                 result = &BlockStore_Pool[index].Base;
             }
             else
