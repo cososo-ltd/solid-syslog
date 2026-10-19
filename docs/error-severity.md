@@ -59,8 +59,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 ## When a record is lost
 
-Every record the library loses shows at the collector as a gap in the sequence number.
-The handler is there to say why, and four rules decide what it is told. The table under
+Every record the library loses shows at the collector as a gap in the sequence number,
+once a later record arrives. The handler is there to say why, and four rules decide what it is told. The table under
 [Policy by category](#policy-by-category) applies them category by category, and each
 category's header doc comment is the home of its detail.
 
@@ -68,9 +68,10 @@ category's header doc comment is the home of its detail.
    event when it starts. Nothing more is raised on that path until it next succeeds
    without loss, which re-arms it. There is no matching "restored" event: the collector
    already sees how many records went missing.
-2. **Bad data is discarded and the drain carries on. Bad media is not used again.** A
-   stored record that fails verification is discarded on its own, a corrupt header costs
-   the rest of its block, and the records after either are delivered. A block device
+2. **Bad data is discarded and the drain carries on. Bad media is not used again.** On
+   media that is working, a stored record that fails verification is discarded on its
+   own, a corrupt header costs the rest of its block, and the records after either are
+   delivered. A block device
    operation that fails freezes the store, which reports once and does not touch the
    device again; delivery continues without store-and-forward.
 3. **The faulty component reports the cause; the store or buffer reports the cost.** A

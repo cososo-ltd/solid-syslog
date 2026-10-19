@@ -295,7 +295,7 @@ convenient later. Nothing that logs waits on the network.
 
 A ring that fills turns the next record away. The buffer reports once when a run of
 refusals starts, and again only after it has kept a record since; the sequence number
-from stage 6 says how many went. Every queue in the library reports loss under the same
+from stage 6 says how many went. The store from stage 10 reports loss under the same
 rules, stated once under [when a record is lost](error-severity.md#when-a-record-is-lost).
 
 **When you need it.** Once logging and sending are decoupled, the buffer has to absorb
