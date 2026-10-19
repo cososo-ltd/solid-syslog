@@ -69,4 +69,14 @@ enum
         CHECK_ERROR_EVENT(expectedSeverity, expectedSource, expectedCategory, expectedDetail);        \
     }
 
+/* Asserts the open SolidSyslogFile reports `expected` bytes. The caller
+ * includes SolidSyslogFile.h, as it does ErrorHandlerFake.h for the
+ * CHECK_ERROR_* family above. */
+#define CHECK_FILE_SIZE(file, expected)                       \
+    {                                                         \
+        size_t checkSize = 0U;                                \
+        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
+        LONGS_EQUAL((expected), checkSize);                   \
+    }
+
 #endif /* TESTUTILS_H */

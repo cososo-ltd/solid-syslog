@@ -74,15 +74,6 @@ static const int OWNER_READ_WRITE = 0x180;
         code                                  \
     )
 
-/* Asserts the open file reports `expected` bytes. A macro so a failure
- * reports the caller's __FILE__/__LINE__. */
-#define CHECK_FILE_SIZE(file, expected)                       \
-    {                                                         \
-        size_t checkSize = 0U;                                \
-        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
-        LONGS_EQUAL((expected), checkSize);                   \
-    }
-
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64File)
 {

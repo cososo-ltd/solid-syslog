@@ -30,15 +30,6 @@ static const char* const TEST_FIFO_PATH = "/tmp/test_posix_file.fifo";
         }                                                                              \
     }
 
-/* Asserts the open file reports `expected` bytes. A macro so a failure
- * reports the caller's __FILE__/__LINE__. */
-#define CHECK_FILE_SIZE(file, expected)                       \
-    {                                                         \
-        size_t checkSize = 0U;                                \
-        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
-        LONGS_EQUAL((expected), checkSize);                   \
-    }
-
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFile)
 {

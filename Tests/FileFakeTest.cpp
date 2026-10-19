@@ -1,19 +1,11 @@
 #include <stdexcept>
 
 #include "FileFake.h"
+#include "TestUtils.h"
 #include "SolidSyslogFile.h"
 #include "CppUTest/TestHarness.h"
 
 // clang-format off
-/* Asserts the open file reports `expected` bytes. A macro so a failure
- * reports the caller's __FILE__/__LINE__. */
-#define CHECK_FILE_SIZE(file, expected)                       \
-    {                                                         \
-        size_t checkSize = 0U;                                \
-        CHECK_TRUE(SolidSyslogFile_Size((file), &checkSize)); \
-        LONGS_EQUAL((expected), checkSize);                   \
-    }
-
 TEST_GROUP(FileFake)
 {
     struct FileFakeStorage storage = {};

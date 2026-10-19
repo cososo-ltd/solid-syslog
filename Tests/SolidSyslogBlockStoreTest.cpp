@@ -500,6 +500,18 @@ TEST(SolidSyslogBlockStoreResume, CanWriteNewMessagesAfterResume)
     MEMCMP_EQUAL("new", buf, strlen("new"));
 }
 
+TEST(SolidSyslogBlockStoreResume, AWriteBlockWhoseFileSizeFailsFreezesTheStore)
+{
+    RecordPreviousSession(3, 1);
+    RestartDevice();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextSize(file);
+
+    Resume();
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreDestroy, BlockDeviceTestBase)
 {
@@ -1667,18 +1679,6 @@ TEST(SolidSyslogBlockStoreRotation, ARotationThatFailedOnceIsNotRetried)
 
     LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
-}
-
-TEST(SolidSyslogBlockStoreResume, AWriteBlockWhoseFileSizeFailsFreezesTheStore)
-{
-    RecordPreviousSession(3, 1);
-    RestartDevice();
-    ErrorHandlerFake_Install(nullptr);
-    FileFake_FailNextSize(file);
-
-    Resume();
-
-    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnResumeFreezesTheStore)

@@ -218,8 +218,8 @@ static bool VxWorks64File_Size(struct SolidSyslogFile* base, size_t* size)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
     off_t end = lseek(self->Fd, 0, SEEK_END);
-    int sizeErrno = (end == ERROR) ? errno : 0;
     bool known = end != ERROR;
+    int sizeErrno = known ? 0 : errno;
     if (!known)
     {
         VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, sizeErrno);
