@@ -42,7 +42,7 @@ struct SolidSyslogBuffer* buffer =
 
 The last two arguments are the discard-policy function and its context, the
 same pair `SolidSyslogConfig` takes, so the ring applies the logger's policy
-when it fills; NULL applies Oldest.
+when it fills; a NULL function applies Oldest.
 
 The ring memory, the control block and the mutex must all outlive the buffer.
 

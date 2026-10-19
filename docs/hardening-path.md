@@ -399,8 +399,9 @@ and whether you want warning before that point, via the capacity-threshold callb
 The discard policy is a function of yours, asked at the moment a queue has to decide,
 so you can change the answer on a running device. Give the same function to the store,
 to the ring from stage 7 and to the logger's `SolidSyslogConfig`, which is where a halt
-is decided: under halt the logger stops at the first record a full store or buffer
-refuses, calls its `OnHalt` once, and moves nothing more until your function answers
+is decided: under halt the logger stops at the first record a full store refuses, or
+when the ring has filled behind a record Service is still holding from its last pass;
+it calls its `OnHalt` once, and moves nothing more until your function answers
 otherwise or the device restarts.
 
 What the store loses it reports as the buffer does: a run of records turned away or
