@@ -113,6 +113,9 @@ TEST(SolidSyslogWindowsFile, WriteAndReadRoundTrip)
     MEMCMP_EQUAL("hello", buf, 5);
 }
 
+/* There is no failing-Size test: the CRT's _lseeki64 succeeds on every
+ * descriptor _sopen_s can hand out, NUL and pipes included, and a closed
+ * descriptor trips the CRT's invalid-parameter handler rather than returning. */
 TEST(SolidSyslogWindowsFile, SizeReturnsFileSize)
 {
     OpenTestFile();
