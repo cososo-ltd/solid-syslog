@@ -49,6 +49,15 @@ struct SolidSyslogStore;
         CHECK_FALSE(SolidSyslogBuffer_Read(circularBuffer, next, sizeof(next), &nextLength)); \
     }
 
+/* After a two-pass outage, the two failed attempts and three deliveries, the
+ * last of them the third record, with nothing left in the buffer. */
+#define CHECK_ALL_THREE_DELIVERED()                                       \
+    {                                                                     \
+        CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);                   \
+        STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender)); \
+        CHECK_BUFFER_EMPTY();                                             \
+    }
+
 /* Shared fixture - a CircularBuffer feeding a SenderFake, with the store left
  * to each group. Service over a store that keeps nothing sends a buffered
  * record directly, and holds one the sender refuses for the next pass. */
@@ -68,7 +77,7 @@ TEST_BASE(ServiceHeldRecordBase)
             SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing));
     }
 
-    void teardownPipeline()
+    void teardownPipeline() const
     {
         SolidSyslog_Destroy(solidSyslog);
         SolidSyslogCircularBuffer_Destroy(circularBuffer);
@@ -84,10 +93,21 @@ TEST_BASE(ServiceHeldRecordBase)
         solidSyslog = SolidSyslog_Create(&config);
     }
 
-    enum SolidSyslogServiceStatus ServiceWhileTheSenderIsDown()
+    void ServiceWhileTheSenderIsDown() const
     {
         SenderFake_FailNextSend(fakeSender);
-        return SolidSyslog_Service(solidSyslog);
+        SolidSyslog_Service(solidSyslog);
+    }
+
+    /* Three records logged, then two passes with the sender down: the first
+     * is held, the other two wait in the buffer. */
+    void LogThreeAcrossATwoPassOutage() const
+    {
+        SolidSyslogBuffer_Write(circularBuffer, "first", 5);
+        SolidSyslogBuffer_Write(circularBuffer, "second", 6);
+        SolidSyslogBuffer_Write(circularBuffer, "third", 5);
+        ServiceWhileTheSenderIsDown();
+        ServiceWhileTheSenderIsDown();
     }
 };
 
@@ -119,7 +139,7 @@ TEST_GROUP_BASE(SolidSyslogServiceHeldRecordFrozenStore, ServiceHeldRecordBase)
         setupPipeline();
         file   = FileFake_Create(&storage);
         device = SolidSyslogFileBlockDevice_Create(
-            file, "/tmp/test_store", 2U * (SOLIDSYSLOG_MAX_MESSAGE_SIZE + 5U + SOLIDSYSLOG_MAX_INTEGRITY_SIZE));
+            file, "/tmp/test_store", 2U * static_cast<size_t>(SOLIDSYSLOG_MAX_MESSAGE_SIZE + 5U + SOLIDSYSLOG_MAX_INTEGRITY_SIZE));
 
         struct SolidSyslogBlockStoreConfig config = {};
         config.BlockDevice   = device;
@@ -144,8 +164,9 @@ TEST_GROUP_BASE(SolidSyslogServiceHeldRecordFrozenStore, ServiceHeldRecordBase)
 TEST(SolidSyslogServiceHeldRecord, ServiceReturnsBlockedWhenADirectSendFails)
 {
     SolidSyslogBuffer_Write(circularBuffer, "first", 5);
+    SenderFake_FailNextSend(fakeSender);
 
-    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, ServiceWhileTheSenderIsDown());
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, SolidSyslog_Service(solidSyslog));
 }
 
 TEST(SolidSyslogServiceHeldRecord, ServiceDoesNotReadTheBufferWhileItHoldsARecord)
@@ -193,17 +214,11 @@ TEST(SolidSyslogServiceHeldRecord, ServiceReturnsIdleOnceTheHeldRecordIsSentAndN
 
 TEST(SolidSyslogServiceHeldRecord, NothingIsLostAcrossAnOutageOfSeveralPasses)
 {
-    SolidSyslogBuffer_Write(circularBuffer, "first", 5);
-    SolidSyslogBuffer_Write(circularBuffer, "second", 6);
-    SolidSyslogBuffer_Write(circularBuffer, "third", 5);
-    ServiceWhileTheSenderIsDown();
-    ServiceWhileTheSenderIsDown();
+    LogThreeAcrossATwoPassOutage();
 
     SolidSyslog_Service(solidSyslog);
 
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
-    STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
-    CHECK_BUFFER_EMPTY();
+    CHECK_ALL_THREE_DELIVERED();
 }
 
 TEST(SolidSyslogServiceHeldRecord, DestroyDropsAHeldRecord)
@@ -236,15 +251,9 @@ TEST(SolidSyslogServiceHeldRecord, ServiceDoesNotHoldARecordTheStoreRefused)
 
 TEST(SolidSyslogServiceHeldRecordFrozenStore, NothingIsLostAcrossAnOutageWithAFrozenStore)
 {
-    SolidSyslogBuffer_Write(circularBuffer, "first", 5);
-    SolidSyslogBuffer_Write(circularBuffer, "second", 6);
-    SolidSyslogBuffer_Write(circularBuffer, "third", 5);
-    ServiceWhileTheSenderIsDown();
-    ServiceWhileTheSenderIsDown();
+    LogThreeAcrossATwoPassOutage();
 
     SolidSyslog_Service(solidSyslog);
 
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
-    STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
-    CHECK_BUFFER_EMPTY();
+    CHECK_ALL_THREE_DELIVERED();
 }

@@ -214,6 +214,8 @@ Feature: TLS equivalence matrix
     And the BDD target is still running
 
   Scenario: Rotating the trust anchors lets a refused device deliver without a restart
+    # The record the collector refused is not lost: with no store, Service holds
+    # it and delivers it once the anchors are right, ahead of the next one.
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
     And the BDD target trusts certificate authority "ca-b"
@@ -223,7 +225,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     When the client is given trust anchors "ca"
     And the client sends a message
-    Then the syslog oracle receives 1 message over tls
+    Then the syslog oracle receives 2 messages over tls
 
   Scenario: Rotating the pin set stops a delivering device at its next connection
     Given the syslog oracle is running
