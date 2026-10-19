@@ -30,7 +30,7 @@ misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:27
 misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:34
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.h:39
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:87
-misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:179
+misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:184
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:110
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:64
@@ -93,7 +93,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:105
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:108
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:75
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:74
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:349
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:344
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:55
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:115
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:17
@@ -126,7 +126,6 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/SolidSyslog.c:98
 misra-c2012-11.8:Core/Source/SolidSyslog.c:99
 misra-c2012-11.8:Core/Source/SolidSyslog.c:100
 misra-c2012-11.8:Core/Source/SolidSyslog.c:101
@@ -136,6 +135,7 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:104
 misra-c2012-11.8:Core/Source/SolidSyslog.c:105
 misra-c2012-11.8:Core/Source/SolidSyslog.c:106
 misra-c2012-11.8:Core/Source/SolidSyslog.c:107
+misra-c2012-11.8:Core/Source/SolidSyslog.c:108
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
@@ -220,8 +220,8 @@ misra-c2012-5.7:Core/Source/SolidSyslogOriginSdPrivate.h:17
 misra-c2012-5.7:Platform/CmsisRtos/Source/SolidSyslogCmsisRtosSysUpTime.c:12
 misra-c2012-5.7:Platform/FreeRtos/Source/SolidSyslogFreeRtosSysUpTime32.c:13
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixHostname.c:14
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:30
-misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:23
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:31
+misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferPrivate.h:22
 misra-c2012-5.7:Platform/Posix/Source/SolidSyslogPosixSysUpTime.c:10
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsClock.c:25
 misra-c2012-5.7:Platform/Windows/Source/SolidSyslogWindowsHostname.c:23
