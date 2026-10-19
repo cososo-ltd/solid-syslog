@@ -145,8 +145,9 @@ TEST(SolidSyslogLittleFsFile, SizeFailsWhenLittleFsReportsAnError)
     LittleFsFake_SetFileSizeError(LFS_ERR_IO);
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
 
-    size_t size = 0U;
+    size_t size = 42U;
     CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+    LONGS_EQUAL(0, size);
 }
 
 TEST(SolidSyslogLittleFsFile, TruncateEmptiesTheFileAndLeavesItOpen)

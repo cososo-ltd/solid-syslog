@@ -477,7 +477,7 @@ TEST(SolidSyslogVxWorks64File, SizeFailsWhenTheSeekFails)
     VxWorks64IoFake_FailLseeks();
     SolidSyslogFile_Open(file, TEST_PATH);
 
-    size_t size = 0U;
+    size_t size = 42U;
     CHECK_FALSE(SolidSyslogFile_Size(file, &size));
     LONGS_EQUAL(0, size);
 }
