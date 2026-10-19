@@ -16,20 +16,29 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
+    /** What became of the record a Write was given. Not retained is the
+     *  outcome Service reads with IsTransient: a retaining store's discard
+     *  policy turned it away, which under Halt is where the logger stops, or a
+     *  store that keeps nothing never had it and the sender takes it. Lost
+     *  means the store could not write it and has reported why; the record is
+     *  gone and the logger carries on. Zero is the outcome that fails closed. */
+    enum SolidSyslogStoreWriteResult
+    {
+        SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED,
+        SOLIDSYSLOG_STORE_WRITE_KEPT,
+        SOLIDSYSLOG_STORE_WRITE_LOST
+    };
+
     /** Store-and-forward vtable. The Service loop is the only reader: it drains
      *  the buffer through Write, then repeatedly ReadNextUnsent / MarkSent as the
      *  sender accepts records. ReadNextUnsent and MarkSent form a single read
      *  cursor (see below); they are not safe to interleave from two contexts. */
     struct SolidSyslogStore
     {
-        /** Take a copy of @p data (@p size bytes) as an unsent record. False means
-         *  not retained: for a retaining store that is the discard policy refusing
-         *  it, for a transient store it means "never held, send it directly".
-         *  Service branches on IsTransient to tell the two apart, and under the
-         *  Halt policy a refusal is where it stops.
-         *  A record of no bytes is never retained, since ReadNextUnsent could not
-         *  tell it from nothing unsent. */
-        bool (*Write)(struct SolidSyslogStore* base, const void* data, size_t size);
+        /** Take a copy of @p data (@p size bytes) as an unsent record, and say
+         *  what became of it. A record of no bytes is never retained, since
+         *  ReadNextUnsent could not tell it from nothing unsent. */
+        enum SolidSyslogStoreWriteResult (*Write)(struct SolidSyslogStore* base, const void* data, size_t size);
         /** Copy the oldest unsent record into @p data (up to @p maxSize, over-long
          *  records truncated), set @p bytesRead, and position the cursor on it for a
          *  following MarkSent. Does not consume the record, a repeat call re-reads

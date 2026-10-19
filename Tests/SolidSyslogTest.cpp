@@ -1318,6 +1318,18 @@ TEST(SolidSyslogServiceHalt, ServiceCallsOnHaltWhenItHalts)
     LONGS_EQUAL(1, haltCount);
 }
 
+/* Only the discard policy's refusal halts. A record the store lost for
+ * another reason - one its security policy would not seal - is reported by
+ * the store and gone, and the logger carries on. */
+TEST(SolidSyslogServiceHalt, ARecordTheStoreLostForAnotherReasonDoesNotHalt)
+{
+    SolidSyslogBuffer_Write(fakeBuffer, "unsealed", 8);
+    StoreFake_LoseNextWrite();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_READY, SolidSyslog_Service(solidSyslog));
+    LONGS_EQUAL(0, haltCount);
+}
+
 TEST(SolidSyslogServiceHalt, AHaltedServiceMovesNothing)
 {
     LogOneTheStoreRefuses();

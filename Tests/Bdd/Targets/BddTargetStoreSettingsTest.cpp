@@ -76,21 +76,21 @@ TEST(BddTargetStoreSettings, CapacityThresholdThatIsNotANumberIsRefused)
 
 TEST(BddTargetStoreSettings, DiscardPolicyIsOldestUntilSet)
 {
-    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_OLDEST, BddTargetStoreSettings_DiscardPolicy());
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_OLDEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetStoreSettings, SetDiscardPolicyNewestChangesIt)
 {
     CHECK_TRUE(BddTargetStoreSettings_SetByName("discard-policy", "newest"));
 
-    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_NEWEST, BddTargetStoreSettings_DiscardPolicy());
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_NEWEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetStoreSettings, SetDiscardPolicyHaltChangesIt)
 {
     CHECK_TRUE(BddTargetStoreSettings_SetByName("discard-policy", "halt"));
 
-    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_HALT, BddTargetStoreSettings_DiscardPolicy());
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_HALT, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetStoreSettings, SetDiscardPolicyOldestChangesItBack)
@@ -99,7 +99,7 @@ TEST(BddTargetStoreSettings, SetDiscardPolicyOldestChangesItBack)
 
     CHECK_TRUE(BddTargetStoreSettings_SetByName("discard-policy", "oldest"));
 
-    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_OLDEST, BddTargetStoreSettings_DiscardPolicy());
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_OLDEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetStoreSettings, ADiscardPolicyItDoesNotKnowIsRefusedAndKeepsThePrevious)
@@ -108,7 +108,7 @@ TEST(BddTargetStoreSettings, ADiscardPolicyItDoesNotKnowIsRefusedAndKeepsThePrev
 
     CHECK_FALSE(BddTargetStoreSettings_SetByName("discard-policy", "random"));
 
-    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_NEWEST, BddTargetStoreSettings_DiscardPolicy());
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_NEWEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetStoreSettings, SecurityPolicyIsCrc16UntilSet)

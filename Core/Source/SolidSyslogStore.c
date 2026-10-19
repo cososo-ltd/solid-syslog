@@ -8,7 +8,7 @@
 #include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogStore.h"
 
-bool SolidSyslogStore_Write(struct SolidSyslogStore* store, const void* data, size_t size)
+enum SolidSyslogStoreWriteResult SolidSyslogStore_Write(struct SolidSyslogStore* store, const void* data, size_t size)
 {
     return store->Write(store, data, size);
 }

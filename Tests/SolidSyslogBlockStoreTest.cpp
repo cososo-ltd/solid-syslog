@@ -14,6 +14,7 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogTunables.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogStoreCategories.h"
@@ -183,12 +184,12 @@ TEST(SolidSyslogBlockStore, HasUnsentReturnsFalseOnEmpty)
 
 TEST(SolidSyslogBlockStore, WriteReturnsTrue)
 {
-    CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
 }
 
 TEST(SolidSyslogBlockStore, WriteOfNoBytesIsRejected)
 {
-    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, 0));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, TEST_DATA, 0));
 }
 
 TEST(SolidSyslogBlockStore, HasUnsentReturnsTrueAfterWrite)
@@ -564,7 +565,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 
     void VerifyWriteAndReadBack() const
     {
-        CHECK_TRUE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+        LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
         char   buf[TEST_BUF_SIZE] = {};
         size_t bytesRead = 0U;
         SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
@@ -668,7 +669,7 @@ TEST(SolidSyslogBlockStoreConfig, OversizedSecurityPolicyLeavesNoIntegrityGap)
 
     const char body[] = "HELLO WORLD";
     const size_t bodyLen = sizeof(body) - 1;
-    CHECK_TRUE(SolidSyslogStore_Write(store, body, bodyLen));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, body, bodyLen));
 
     const size_t RECORD_HEADER = 4;
     const size_t SENT_FLAG = 1;
@@ -709,7 +710,7 @@ TEST(SolidSyslogBlockStoreErrors, AStoreThatFailedToOpenKeepsNothing)
     FileFake_FailNextOpen(file);
     store = SolidSyslogBlockStore_Create(&config);
 
-    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
     CHECK_TRUE(SolidSyslogStore_IsTransient(store));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
@@ -719,7 +720,7 @@ TEST(SolidSyslogBlockStoreErrors, WriteReturnsFalseOnWriteFailure)
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     store = SolidSyslogBlockStore_Create(&config);
     FileFake_FailNextWrite(file);
-    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
 }
 
 TEST(SolidSyslogBlockStoreErrors, ReadReturnsFalseOnReadFailure)
@@ -898,7 +899,7 @@ TEST(SolidSyslogBlockStoreErrors, AFrozenStoreNoLongerWritesToTheDevice)
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
     size_t sizeWhenFrozen = FileFake_FileSize();
 
-    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
     LONGS_EQUAL(sizeWhenFrozen, FileFake_FileSize());
 }
 
@@ -1190,7 +1191,7 @@ TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxBlocks)
     WriteMaxMsg(); /* block 00 */
     WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
 
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
 /* The policy is the integrator's function, asked when the store has to decide. */
@@ -1204,7 +1205,7 @@ TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionAnswersNewestRefuse
     WriteMaxMsg(); /* block 00 */
     WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
 
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
 /* The function is asked each time, so an answer that changes on a running
@@ -1214,11 +1215,11 @@ TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionChangesItsAnswerApp
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     WriteMaxMsg(); /* block 00 */
     WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 
     configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
 TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleBlocksExist)
@@ -1284,7 +1285,7 @@ TEST(SolidSyslogBlockStoreRotation, ResumeWithMultipleBlocksCanWriteNewMessage)
 
     char newMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(newMsg, 'N', sizeof(newMsg));
-    CHECK_TRUE(SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
 
     /* Should have rotated to block 02 - block 01 was full */
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
@@ -1303,7 +1304,7 @@ TEST(SolidSyslogBlockStoreRotation, ResumeWriteAppendsToPartiallyFilledWriteBloc
     CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS);
 
     /* Write should append to block 01, not rotate */
-    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
 }
 
@@ -1560,7 +1561,7 @@ TEST(SolidSyslogBlockStoreRotation, WriteReturnsFalseWhenRotationAcquireFails)
     WriteMaxMsg(); /* fills block 00 */
 
     FileFake_FailNextOpen(file); /* next Acquire on rotation will fail */
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
@@ -1647,9 +1648,12 @@ TEST(SolidSyslogBlockStoreRotation, ARotationThatFailedOnceIsNotRetried)
     WriteMaxMsg(); /* block 00 */
 
     FileFake_FailNextOpen(file);
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* Acquire on block 01 rejected */
+    LONGS_EQUAL(
+        SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED,
+        SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))
+    ); /* Acquire on block 01 rejected */
 
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
@@ -1707,7 +1711,7 @@ TEST(SolidSyslogBlockStoreRotation, AWriteThatFreezesTheStoreReturnsFalse)
     FileFake_FailNextDelete(file);
 
     /* False, with the store now transient, is what sends the record directly. */
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
     CHECK_TRUE(SolidSyslogStore_IsTransient(store));
 }
 
@@ -2342,7 +2346,7 @@ TEST(SolidSyslogBlockStoreCorruption, ACorruptHeaderInAnEarlierBlockDoesNotClose
     config.GetDiscardPolicy = AnswersNewest;
     store = SolidSyslogBlockStore_Create(&config);
 
-    CHECK_TRUE(SolidSyslogStore_Write(store, "second", 6));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, "second", 6));
 }
 
 TEST(SolidSyslogBlockStoreCorruption, TheBlockAfterACorruptOneIsScannedForItsFirstUnsent)
@@ -2569,7 +2573,7 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, CorruptWriteBlockRotatesOnNextWrit
     /* Block 00 has space but is corrupt - write should rotate to block 01 */
     char newMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     memset(newMsg, 'N', sizeof(newMsg));
-    CHECK_TRUE(SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
@@ -2702,7 +2706,7 @@ TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
     WriteMaxMsg(); /* block 1: SLACK bytes slack, at maxBlocks */
 
     /* The next write needs to rotate but can't (HALT, at maxBlocks) - fails for size. */
-    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 
     /* Sticky: GetUsedBytes returns total even though the active blocks have slack. */
     LONGS_EQUAL(SolidSyslogStore_GetTotalBytes(store), SolidSyslogStore_GetUsedBytes(store));
@@ -3024,7 +3028,7 @@ TEST(SolidSyslogBlockStorePool, UseAfterDestroyIsCrashSafeViaNullStoreVtable)
     pooled[0] = nullptr;
 
     /* Vtable now matches NullStore - Write drops, ReadNextUnsent has nothing. */
-    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
     char buf[TEST_BUF_SIZE] = {};
     size_t bytesRead = 99;
     CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));

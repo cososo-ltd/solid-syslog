@@ -20,7 +20,7 @@
 const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore"};
 
 /* vtable - forward-declared because BlockStore_InitialiseVtable references them before their definitions */
-static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void BlockStore_MarkSent(struct SolidSyslogStore* base);
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base);
@@ -189,30 +189,40 @@ static void BlockStore_Freeze(struct SolidSyslogBlockStore* self, enum SolidSysl
     SolidSyslogBlockStore_Cleanup(&self->Base);
 }
 
-static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
+    struct SolidSyslogBlockStore* self,
+    const void* data,
+    size_t size
+);
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
 
-static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
+static enum SolidSyslogStoreWriteResult BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
-    bool written = false;
+    enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
 
     /* A record of no bytes would read back as nothing unsent and jam the cursor. */
     if (size > 0U)
     {
-        written = BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
+        result = BlockStore_StoreRecord(BlockStore_SelfFromBase(base), data, size);
     }
 
-    return written;
+    return result;
 }
 
-static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const void* data, size_t size)
+/* A frozen store has not retained the record and, transient from then on,
+ * leaves it to the sender; a record the policy would not seal is lost here. */
+static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
+    struct SolidSyslogBlockStore* self,
+    const void* data,
+    size_t size
+)
 {
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     bool readBlockChanged = false;
-    bool written = false;
+    enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
     bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
     bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
@@ -240,10 +250,9 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
             data,
             size
         );
-        written = appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED;
-
-        if (written)
+        if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED)
         {
+            result = SOLIDSYSLOG_STORE_WRITE_KEPT;
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
             /* A record kept ends a run of refusals or seal failures. */
             self->RefusalReported = false;
@@ -255,11 +264,12 @@ static bool BlockStore_StoreRecord(struct SolidSyslogBlockStore* self, const voi
         }
         else
         {
+            result = SOLIDSYSLOG_STORE_WRITE_LOST;
             BlockStore_ReportSealFailed(self);
         }
     }
 
-    return written;
+    return result;
 }
 
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)

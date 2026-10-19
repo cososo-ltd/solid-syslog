@@ -850,8 +850,8 @@ those are; a list here would only go stale.
 **For existing callbacks:**
 
 - Migrate at the same time as a refactor or significant modification of the owning class,
-  never in a sweep PR of its own — the way `SolidSyslogStoreFullCallback` gained its
-  context inside the FileStore split.
+  never in a sweep PR of its own — the way the store's threshold callbacks gained their
+  shared context inside the FileStore split.
 
 ## Pool Allocation (E11)
 

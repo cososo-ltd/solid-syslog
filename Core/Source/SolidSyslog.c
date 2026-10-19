@@ -23,6 +23,7 @@
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTunables.h"
 
@@ -78,7 +79,8 @@ static void SolidSyslog_InstallStructuredData(
     struct SolidSyslogStructuredData** configured,
     size_t count
 );
-static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self);
+static inline void SolidSyslog_ResumeIfPolicyChanged(struct SolidSyslog* self);
+static inline bool SolidSyslog_IsServiceEnabled(const struct SolidSyslog* self);
 static inline bool SolidSyslog_PolicyHalts(struct SolidSyslog* self);
 static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
 static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
@@ -304,14 +306,19 @@ enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog* handle)
             SOLIDSYSLOG_ERROR_SERVICE_NULL_HANDLE
         );
     }
-    else if (SolidSyslog_IsServiceEnabled(handle))
-    {
-        status = SolidSyslog_ProcessMessages(handle);
-    }
     else
     {
-        /* Halted - nothing moves until the policy answers otherwise. */
-        status = SOLIDSYSLOG_SERVICE_HALTED;
+        SolidSyslog_ResumeIfPolicyChanged(handle);
+
+        if (SolidSyslog_IsServiceEnabled(handle))
+        {
+            status = SolidSyslog_ProcessMessages(handle);
+        }
+        else
+        {
+            /* Halted - nothing moves until the policy answers otherwise. */
+            status = SOLIDSYSLOG_SERVICE_HALTED;
+        }
     }
 
     return status;
@@ -319,10 +326,13 @@ enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog* handle)
 
 /* A halt stands while the policy still answers Halt; a device whose policy
  * changes resumes from where it stopped, with everything it held still there. */
-static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self)
+static inline void SolidSyslog_ResumeIfPolicyChanged(struct SolidSyslog* self)
 {
     self->Halted = self->Halted && SolidSyslog_PolicyHalts(self);
+}
 
+static inline bool SolidSyslog_IsServiceEnabled(const struct SolidSyslog* self)
+{
     return !self->Halted;
 }
 
@@ -410,21 +420,22 @@ static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* 
 }
 
 /* Offers the held record to the store. A store that retains records has dealt
- * with it either way: it kept it, or its discard policy refused it and reported
- * the loss - letting a refused record escape to the sender would put it ahead
- * of older stored ones once the sender recovered. A store that keeps nothing
- * never had it, so the record is still to be sent. */
+ * with it either way: it kept it, it lost it and reported why, or its discard
+ * policy refused it and reported the loss - letting a refused record escape to
+ * the sender would put it ahead of older stored ones once the sender
+ * recovered. A store that keeps nothing never had it, so the record is still
+ * to be sent. */
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self)
 {
-    bool kept = SolidSyslogStore_Write(self->Store, self->Record, self->RecordLength);
-    bool refused = !kept && !SolidSyslogStore_IsTransient(self->Store);
+    enum SolidSyslogStoreWriteResult result = SolidSyslogStore_Write(self->Store, self->Record, self->RecordLength);
+    bool refused = (result == SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED) && !SolidSyslogStore_IsTransient(self->Store);
 
     if (refused)
     {
         SolidSyslog_HaltIfPolicyHalts(self);
     }
 
-    return kept || refused;
+    return refused || (result != SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED);
 }
 
 /* A refusal is the discard policy at work; under Halt it is also where the

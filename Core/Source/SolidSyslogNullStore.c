@@ -9,7 +9,7 @@
 
 #include "SolidSyslogStoreDefinition.h"
 
-static bool NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);
 static bool NullStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void NullStore_MarkSent(struct SolidSyslogStore* base);
 static bool NullStore_HasUnsent(struct SolidSyslogStore* base);
@@ -31,16 +31,15 @@ struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
     return &instance;
 }
 
-/* NullStore never retains. Returns false to signal "not held by this store"
- * so the eager-drain loop in ProcessMessages takes the direct-send path -
- * NullStore + real-buffer + UDP is the constrained-system "one attempt per
- * message, no buffering" configuration. */
-static bool NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
+/* NullStore never retains, so the eager-drain loop in ProcessMessages takes
+ * the direct-send path - NullStore + real-buffer + UDP is the
+ * constrained-system "one attempt per message, no buffering" configuration. */
+static enum SolidSyslogStoreWriteResult NullStore_Write(struct SolidSyslogStore* base, const void* data, size_t size)
 {
     (void) base;
     (void) data;
     (void) size;
-    return false;
+    return SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
 }
 
 static bool NullStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)

@@ -25,7 +25,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool BddTargetStoreSettings_SetByName(const char* name, const char* value);
     size_t BddTargetStoreSettings_MaxBlocks(void);
     size_t BddTargetStoreSettings_MaxBlockSize(void);
-    enum SolidSyslogDiscardPolicy BddTargetStoreSettings_DiscardPolicy(void);
     /* The BlockStore's GetDiscardPolicy callback; the context is unused. */
     enum SolidSyslogDiscardPolicy BddTargetStoreSettings_GetDiscardPolicy(void* context);
     enum BddTargetSecurityPolicy BddTargetStoreSettings_SecurityPolicy(void);

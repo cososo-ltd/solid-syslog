@@ -12,7 +12,7 @@ enum
     STOREFAKE_MAX_MESSAGE_SIZE = 1024
 };
 
-static bool Write(struct SolidSyslogStore* self, const void* data, size_t size);
+static enum SolidSyslogStoreWriteResult Write(struct SolidSyslogStore* self, const void* data, size_t size);
 static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead);
 static void MarkSent(struct SolidSyslogStore* self);
 static bool HasUnsent(struct SolidSyslogStore* self);
@@ -26,6 +26,7 @@ struct StoreFake
     size_t count;
     int writeCount;
     bool failNextWrite;
+    bool loseNextWrite;
     bool failNextRead;
 };
 
@@ -52,6 +53,11 @@ void StoreFake_FailNextWrite(void)
     instance.failNextWrite = true;
 }
 
+void StoreFake_LoseNextWrite(void)
+{
+    instance.loseNextWrite = true;
+}
+
 void StoreFake_FailNextRead(void)
 {
     instance.failNextRead = true;
@@ -62,22 +68,28 @@ int StoreFake_WriteCallCount(struct SolidSyslogStore* store)
     return ((struct StoreFake*) store)->writeCount;
 }
 
-static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
+static enum SolidSyslogStoreWriteResult Write(struct SolidSyslogStore* self, const void* data, size_t size)
 {
     struct StoreFake* fake = (struct StoreFake*) self;
 
     if (fake->failNextWrite)
     {
         fake->failNextWrite = false;
-        return false;
+        return SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
     }
 
-    /* Queue full mirrors a real store refusing a record: report the rejection
-     * via false and don't bump writeCount, so HasUnsent() and the test-side
-     * counters stay consistent with what was actually retained. */
+    if (fake->loseNextWrite)
+    {
+        fake->loseNextWrite = false;
+        return SOLIDSYSLOG_STORE_WRITE_LOST;
+    }
+
+    /* Queue full mirrors a real store refusing a record: not retained, and
+     * writeCount untouched, so HasUnsent() and the test-side counters stay
+     * consistent with what was actually retained. */
     if (fake->count >= STOREFAKE_MAX_MESSAGES)
     {
-        return false;
+        return SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
     }
 
     size_t copySize = MinSize(size, STOREFAKE_MAX_MESSAGE_SIZE);
@@ -85,7 +97,7 @@ static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
     fake->sizes[fake->count] = copySize;
     fake->count++;
     fake->writeCount++;
-    return true;
+    return SOLIDSYSLOG_STORE_WRITE_KEPT;
 }
 
 static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead)

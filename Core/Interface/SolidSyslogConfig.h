@@ -53,8 +53,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t SdCount;
         /** Asked, with DiscardPolicyContext, when Service has to decide what a
          *  refused record means: under Halt the logger stops moving records.
-         *  The store and the buffers take the same function at their own
-         *  Create, so the one answer governs every queue. NULL applies Oldest. */
+         *  Give the store the same function at its own Create; the logger's
+         *  answer decides the halt, the store's whether it evicts or refuses,
+         *  and nothing checks that the two agree. NULL applies Oldest. */
         SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
         void* DiscardPolicyContext;
         SolidSyslogHaltCallback OnHalt; /**< @optional nothing is called when NULL. */

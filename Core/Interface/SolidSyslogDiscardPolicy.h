@@ -3,9 +3,8 @@
  */
 
 /** @file
-     *  The discard policy: what a full queue does with the record that does not
-     *  fit. One policy covers every queue a record passes through on its way to
-     *  the collector, the buffer and the store alike. */
+ *  The discard policy: what a full queue does with the record that does not
+ *  fit, and the function an integrator injects to answer which policy applies. */
 #ifndef SOLIDSYSLOGDISCARDPOLICY_H
 #define SOLIDSYSLOGDISCARDPOLICY_H
 
@@ -26,10 +25,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Answers which policy applies. A queue asks at the moment it has to decide,
-     *  so the answer may change on a running device; a buffer asks from the task
-     *  that called SolidSyslog_Log, the store and Service from the task that calls
-     *  SolidSyslog_Service, and the function must be safe to call from both. The
-     *  context is the one paired with it, passed back unchanged. */
+     *  so the answer may change on a running device. The store and Service ask
+     *  from the task that calls SolidSyslog_Service. The context is the one
+     *  paired with it, passed back unchanged. */
     typedef enum SolidSyslogDiscardPolicy (*SolidSyslogDiscardPolicyFunction)(void* context);
 
     /** The policy applied where none was injected: Oldest. */

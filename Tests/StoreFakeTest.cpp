@@ -2,6 +2,7 @@
 
 #include "StoreFake.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -76,7 +77,7 @@ TEST(StoreFake, MarkSentClearsUnsent)
 TEST(StoreFake, WriteCanBeConfiguredToFail)
 {
     StoreFake_FailNextWrite();
-    CHECK_FALSE(SolidSyslogStore_Write(store, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }
 
 TEST(StoreFake, FailedWriteDoesNotSetUnsent)

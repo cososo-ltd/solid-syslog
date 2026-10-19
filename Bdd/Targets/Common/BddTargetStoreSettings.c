@@ -168,11 +168,6 @@ size_t BddTargetStoreSettings_MaxBlockSize(void)
     return maxBlockSize;
 }
 
-enum SolidSyslogDiscardPolicy BddTargetStoreSettings_DiscardPolicy(void)
-{
-    return discardPolicy;
-}
-
 enum SolidSyslogDiscardPolicy BddTargetStoreSettings_GetDiscardPolicy(void* context)
 {
     (void) context;
