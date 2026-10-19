@@ -1193,18 +1193,6 @@ TEST(SolidSyslogBlockStoreRotation, DiscardNewestReturnsFalseWhenAtMaxBlocks)
     CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
-TEST(SolidSyslogBlockStoreRotation, HaltSetsIsHaltedTrue)
-{
-    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_HALT);
-
-    WriteMaxMsg(); /* block 00 */
-    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
-
-    CHECK_FALSE(SolidSyslogStore_IsHalted(store));
-    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* triggers halt */
-    CHECK_TRUE(SolidSyslogStore_IsHalted(store));
-}
-
 /* The policy is the integrator's function, asked when the store has to decide. */
 TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionAnswersNewestRefusesTheRecordThatDoesNotFit)
 {

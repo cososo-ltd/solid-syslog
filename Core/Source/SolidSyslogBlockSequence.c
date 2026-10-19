@@ -67,7 +67,6 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
     blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
     blockSequence->ThresholdContext = config->ThresholdContext;
-    blockSequence->Halted = false;
     blockSequence->AtCapacity = false;
     blockSequence->ThresholdCrossed = false;
     blockSequence->OldestSequence = 0;
@@ -312,7 +311,6 @@ static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequen
 static inline enum SolidSyslogDiscardPolicy BlockSequence_DiscardPolicy(
     const struct SolidSyslogBlockSequence* blockSequence
 );
-static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence);
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged);
 
 bool SolidSyslogBlockSequence_PrepareForWrite(
@@ -329,7 +327,6 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
     {
         blockSequence->AtCapacity = true; /* sticky 100% - fixes UsedBytes at total */
         BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
-        BlockSequence_HaltIfPolicyHalts(blockSequence);
         spaceAvailable = false;
     }
     else if (blockFull)
@@ -364,14 +361,6 @@ static inline enum SolidSyslogDiscardPolicy BlockSequence_DiscardPolicy(
 )
 {
     return blockSequence->GetDiscardPolicy(blockSequence->DiscardPolicyContext);
-}
-
-static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence)
-{
-    if (BlockSequence_DiscardPolicy(blockSequence) == SOLIDSYSLOG_DISCARD_POLICY_HALT)
-    {
-        blockSequence->Halted = true;
-    }
 }
 
 static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence);
@@ -663,11 +652,6 @@ bool SolidSyslogBlockSequence_HasUnsent(const struct SolidSyslogBlockSequence* b
 {
     return SolidSyslogBlockSequence_ReadIsBehindWrite(blockSequence) ||
            (blockSequence->ReadCursor < blockSequence->WritePosition);
-}
-
-bool SolidSyslogBlockSequence_IsHalted(const struct SolidSyslogBlockSequence* blockSequence)
-{
-    return blockSequence->Halted;
 }
 
 size_t SolidSyslogBlockSequence_TotalBytes(const struct SolidSyslogBlockSequence* blockSequence)

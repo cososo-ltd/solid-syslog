@@ -29,8 +29,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Confirm the last ReadNextUnsent delivered and advance the cursor. */
     void SolidSyslogStore_MarkSent(struct SolidSyslogStore * store);
     bool SolidSyslogStore_HasUnsent(struct SolidSyslogStore * store);
-    /** True once a Halt-policy store has filled and stopped accepting writes. */
-    bool SolidSyslogStore_IsHalted(struct SolidSyslogStore * store);
     /** Configured capacity in bytes. */
     size_t SolidSyslogStore_GetTotalBytes(struct SolidSyslogStore * store);
     /** Bytes currently occupied by retained records. */

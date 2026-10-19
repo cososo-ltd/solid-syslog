@@ -13,7 +13,6 @@ static bool NullStore_Write(struct SolidSyslogStore* base, const void* data, siz
 static bool NullStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void NullStore_MarkSent(struct SolidSyslogStore* base);
 static bool NullStore_HasUnsent(struct SolidSyslogStore* base);
-static bool NullStore_IsHalted(struct SolidSyslogStore* base);
 static size_t NullStore_GetTotalBytes(struct SolidSyslogStore* base);
 static size_t NullStore_GetUsedBytes(struct SolidSyslogStore* base);
 static bool NullStore_IsTransient(struct SolidSyslogStore* base);
@@ -25,7 +24,6 @@ struct SolidSyslogStore* SolidSyslogNullStore_Get(void)
         .ReadNextUnsent = NullStore_ReadNextUnsent,
         .MarkSent = NullStore_MarkSent,
         .HasUnsent = NullStore_HasUnsent,
-        .IsHalted = NullStore_IsHalted,
         .GetTotalBytes = NullStore_GetTotalBytes,
         .GetUsedBytes = NullStore_GetUsedBytes,
         .IsTransient = NullStore_IsTransient
@@ -60,12 +58,6 @@ static void NullStore_MarkSent(struct SolidSyslogStore* base)
 }
 
 static bool NullStore_HasUnsent(struct SolidSyslogStore* base)
-{
-    (void) base;
-    return false;
-}
-
-static bool NullStore_IsHalted(struct SolidSyslogStore* base)
 {
     (void) base;
     return false;

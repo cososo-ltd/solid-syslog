@@ -16,7 +16,6 @@ static bool Write(struct SolidSyslogStore* self, const void* data, size_t size);
 static bool ReadNextUnsent(struct SolidSyslogStore* self, void* data, size_t maxSize, size_t* bytesRead);
 static void MarkSent(struct SolidSyslogStore* self);
 static bool HasUnsent(struct SolidSyslogStore* self);
-static bool IsHalted(struct SolidSyslogStore* self);
 static bool IsTransient(struct SolidSyslogStore* self);
 
 struct StoreFake
@@ -28,7 +27,6 @@ struct StoreFake
     int writeCount;
     bool failNextWrite;
     bool failNextRead;
-    bool halted;
 };
 
 static struct StoreFake instance;
@@ -40,7 +38,6 @@ struct SolidSyslogStore* StoreFake_Create(void)
     instance.base.ReadNextUnsent = ReadNextUnsent;
     instance.base.MarkSent = MarkSent;
     instance.base.HasUnsent = HasUnsent;
-    instance.base.IsHalted = IsHalted;
     instance.base.IsTransient = IsTransient;
     return &instance.base;
 }
@@ -75,7 +72,7 @@ static bool Write(struct SolidSyslogStore* self, const void* data, size_t size)
         return false;
     }
 
-    /* Queue full mirrors a real store's HALT-on-overflow: report the rejection
+    /* Queue full mirrors a real store refusing a record: report the rejection
      * via false and don't bump writeCount, so HasUnsent() and the test-side
      * counters stay consistent with what was actually retained. */
     if (fake->count >= STOREFAKE_MAX_MESSAGES)
@@ -136,12 +133,6 @@ static bool HasUnsent(struct SolidSyslogStore* self)
     return fake->count > 0;
 }
 
-static bool IsHalted(struct SolidSyslogStore* self)
-{
-    struct StoreFake* fake = (struct StoreFake*) self;
-    return fake->halted;
-}
-
 /* StoreFake models a real store - a Write rejection is a policy decision,
  * not a "please try elsewhere" signal. Service must not bypass to the
  * sender on rejection. */
@@ -149,9 +140,4 @@ static bool IsTransient(struct SolidSyslogStore* self)
 {
     (void) self;
     return false;
-}
-
-void StoreFake_SetHalted(void)
-{
-    instance.halted = true;
 }

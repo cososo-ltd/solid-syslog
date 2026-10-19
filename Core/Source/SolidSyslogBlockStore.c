@@ -24,7 +24,6 @@ static bool BlockStore_Write(struct SolidSyslogStore* base, const void* data, si
 static bool BlockStore_ReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
 static void BlockStore_MarkSent(struct SolidSyslogStore* base);
 static bool BlockStore_HasUnsent(struct SolidSyslogStore* base);
-static bool BlockStore_IsHalted(struct SolidSyslogStore* base);
 static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* base);
 static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* base);
 static bool BlockStore_IsTransient(struct SolidSyslogStore* base);
@@ -94,7 +93,6 @@ static inline void BlockStore_InitialiseVtable(struct SolidSyslogBlockStore* sel
     self->Base.ReadNextUnsent = BlockStore_ReadNextUnsent;
     self->Base.MarkSent = BlockStore_MarkSent;
     self->Base.HasUnsent = BlockStore_HasUnsent;
-    self->Base.IsHalted = BlockStore_IsHalted;
     self->Base.GetTotalBytes = BlockStore_GetTotalBytes;
     self->Base.GetUsedBytes = BlockStore_GetUsedBytes;
     self->Base.IsTransient = BlockStore_IsTransient;
@@ -335,11 +333,6 @@ static bool BlockStore_HasUnsent(struct SolidSyslogStore* base)
     return SolidSyslogBlockSequence_HasUnsent(BlockStore_SelfFromBase(base)->BlockSequence);
 }
 
-static bool BlockStore_IsHalted(struct SolidSyslogStore* base)
-{
-    return SolidSyslogBlockSequence_IsHalted(BlockStore_SelfFromBase(base)->BlockSequence);
-}
-
 static size_t BlockStore_GetTotalBytes(struct SolidSyslogStore* base)
 {
     return SolidSyslogBlockSequence_TotalBytes(BlockStore_SelfFromBase(base)->BlockSequence);
@@ -351,7 +344,7 @@ static size_t BlockStore_GetUsedBytes(struct SolidSyslogStore* base)
 }
 
 /* BlockStore retains records - a BlockStore_Write rejection here is the discard
- * policy speaking (DISCARD_NEWEST or HALT), and the message must NOT
+ * policy speaking (Newest or Halt), and the message must NOT
  * bypass older stored records via a Service direct-send fallback. */
 static bool BlockStore_IsTransient(struct SolidSyslogStore* base)
 {

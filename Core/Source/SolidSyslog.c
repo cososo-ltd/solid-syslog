@@ -310,7 +310,7 @@ enum SolidSyslogServiceStatus SolidSyslog_Service(struct SolidSyslog* handle)
     }
     else
     {
-        /* Halted store - skip drain/send. */
+        /* Halted - nothing moves until the policy answers otherwise. */
         status = SOLIDSYSLOG_SERVICE_HALTED;
     }
 
@@ -323,7 +323,7 @@ static inline bool SolidSyslog_IsServiceEnabled(struct SolidSyslog* self)
 {
     self->Halted = self->Halted && SolidSyslog_PolicyHalts(self);
 
-    return !self->Halted && !SolidSyslogStore_IsHalted(self->Store);
+    return !self->Halted;
 }
 
 static inline bool SolidSyslog_PolicyHalts(struct SolidSyslog* self)

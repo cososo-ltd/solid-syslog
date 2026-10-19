@@ -12,8 +12,8 @@
  *
  *  MaxBlocks caps retention; the injected discard policy governs the overflow
  *  once every block is full - Oldest evicts the oldest block to keep accepting
- *  writes, Newest refuses the incoming record, and Halt refuses it and latches
- *  (IsHalted stops Service). An optional capacity-threshold function
+ *  writes, Newest and Halt refuse the incoming record, and under Halt the
+ *  logger stops at that refusal. An optional capacity-threshold function
  *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
  *  early back-pressure signalling. Mind the recursion gotcha: under a
  *  PassthroughBuffer, SolidSyslog_Log sends inline, so logging from the
@@ -66,8 +66,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  than this on the media, and the next start keeps it. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
-         *  fit: Oldest evicts the oldest block, Newest refuses the record, Halt
-         *  refuses it and latches (IsHalted, Service stops). NULL applies Oldest. Records lost either way are reported as
+         *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.
+         *  NULL applies Oldest. Records lost either way are reported as
          *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
         SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
         void* DiscardPolicyContext;

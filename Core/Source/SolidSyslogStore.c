@@ -28,11 +28,6 @@ bool SolidSyslogStore_HasUnsent(struct SolidSyslogStore* store)
     return store->HasUnsent(store);
 }
 
-bool SolidSyslogStore_IsHalted(struct SolidSyslogStore* store)
-{
-    return store->IsHalted(store);
-}
-
 size_t SolidSyslogStore_GetTotalBytes(struct SolidSyslogStore* store)
 {
     return store->GetTotalBytes(store);

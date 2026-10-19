@@ -36,7 +36,6 @@ struct SolidSyslogBlockSequence
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;
-    bool Halted;
     bool AtCapacity;
     bool ThresholdCrossed;
     uint8_t OldestSequence;
@@ -98,7 +97,6 @@ enum SolidSyslogBlockStoreErrors SolidSyslogBlockSequence_FailedOperation(
 );
 
 bool SolidSyslogBlockSequence_HasUnsent(const struct SolidSyslogBlockSequence* blockSequence);
-bool SolidSyslogBlockSequence_IsHalted(const struct SolidSyslogBlockSequence* blockSequence);
 size_t SolidSyslogBlockSequence_TotalBytes(const struct SolidSyslogBlockSequence* blockSequence);
 size_t SolidSyslogBlockSequence_UsedBytes(const struct SolidSyslogBlockSequence* blockSequence);
 

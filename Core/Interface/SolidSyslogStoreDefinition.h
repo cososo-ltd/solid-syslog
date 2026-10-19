@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  The Store vtable (Write / ReadNextUnsent / MarkSent / HasUnsent / IsHalted /
+ *  The Store vtable (Write / ReadNextUnsent / MarkSent / HasUnsent /
  *  GetTotalBytes / GetUsedBytes / IsTransient) - the store-and-forward contract
  *  an implementor fills in (the Store extension point). */
 #ifndef SOLIDSYSLOGSTOREDEFINITION_H
@@ -24,8 +24,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         /** Take a copy of @p data (@p size bytes) as an unsent record. False means
          *  not retained: for a retaining store that is the discard policy refusing
-         *  it (drop-newest, or halted), for a transient store it means "never held,
-         *  send it directly". Service branches on IsTransient to tell the two apart.
+         *  it, for a transient store it means "never held, send it directly".
+         *  Service branches on IsTransient to tell the two apart, and under the
+         *  Halt policy a refusal is where it stops.
          *  A record of no bytes is never retained, since ReadNextUnsent could not
          *  tell it from nothing unsent. */
         bool (*Write)(struct SolidSyslogStore* base, const void* data, size_t size);
@@ -40,9 +41,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  skips this and the same record is re-read next pass. */
         void (*MarkSent)(struct SolidSyslogStore* base);
         bool (*HasUnsent)(struct SolidSyslogStore* base);
-        /** True once a full store under the Halt discard policy has stopped accepting
-         *  writes. Service treats a halted store as a hard stop, no drain, no send. */
-        bool (*IsHalted)(struct SolidSyslogStore* base);
         /** Configured capacity, for integrator capacity queries. */
         size_t (*GetTotalBytes)(struct SolidSyslogStore* base);
         /** Bytes currently occupied by retained records. */
