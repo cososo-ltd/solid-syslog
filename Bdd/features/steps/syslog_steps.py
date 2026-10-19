@@ -1707,3 +1707,21 @@ def step_check_per_transport_count(context, count, transport):
     assert actual == count, (
         f"Expected {count} {transport} message(s), got {actual} in {path}"
     )
+
+
+@then("the syslog oracle receives at least {count:d} message over {transport:w}")
+@then("the syslog oracle receives at least {count:d} messages over {transport:w}")
+def step_check_per_transport_at_least(context, count, transport):
+    """For a delivery whose exact count is a race the scenario does not decide.
+
+    A record refused during a TLS 1.3 handshake is held by Service and arrives
+    once the fault is fixed; one whose write got ahead of the refusal is lost in
+    flight. Which happened differs by lane and by run.
+    """
+    wait_for_per_transport_messages(context, transport, count)
+    path = per_transport_log(context, transport)
+    baseline = context.lines_before_per_transport.get(transport, 0)
+    actual = oracle_record_count(path, context.oracle_format) - baseline
+    assert actual >= count, (
+        f"Expected at least {count} {transport} message(s), got {actual} in {path}"
+    )
