@@ -16,6 +16,7 @@ using namespace CososoTesting;
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullMutex.h"
@@ -31,6 +32,17 @@ static const char* const TEST_MESSAGE = "hello";
 static const size_t TEST_MESSAGE_LEN = 5;
 static const size_t TEST_MAX_MESSAGES = 10;
 
+/* The policy every queue in this file is created with. Each group's setup
+ * resets it to Newest, so the refusal tests mean what they say; a test that
+ * wants another policy sets it before writing. */
+static enum SolidSyslogDiscardPolicy testPolicy;
+
+static enum SolidSyslogDiscardPolicy AnswersTestPolicy(void* context)
+{
+    (void) context;
+    return testPolicy;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
 {
@@ -41,7 +53,8 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
     void setup() override
     {
         MqFake_Reset();
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES);
+        testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
         readSize = 0;
     }
 
@@ -56,9 +69,33 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
         SolidSyslogBuffer_Write(buffer, TEST_MESSAGE, TEST_MESSAGE_LEN);
     }
 
+    void Write(const char* text) const
+    {
+        SolidSyslogBuffer_Write(buffer, text, strlen(text));
+    }
+
+    void FillTheQueue() const
+    {
+        for (size_t i = 0; i < TEST_MAX_MESSAGES; i++)
+        {
+            Write();
+        }
+    }
+
     bool Read()
     {
         return SolidSyslogBuffer_Read(buffer, readData, sizeof(readData), &readSize);
+    }
+
+    /* Drains the queue, answering the last record it held. */
+    const char* LastRecordQueued()
+    {
+        readData[0] = '\0';
+        while (Read())
+        {
+            readData[readSize] = '\0';
+        }
+        return readData;
     }
 };
 
@@ -206,6 +243,140 @@ TEST(SolidSyslogPosixMessageQueueBuffer, AWriteTheQueueTakesClearsFull)
     CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAFullQueueDropsItsOldestRecordToMakeRoom)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+
+    Write("newest");
+
+    STRCMP_EQUAL("newest", LastRecordQueued());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestOneRecordGoesForOneWritten)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    Write("newest");
+
+    size_t queued = 0;
+    while (Read())
+    {
+        queued++;
+    }
+
+    LONGS_EQUAL(TEST_MAX_MESSAGES, queued);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestTheSendIsRetriedOnceAfterEvicting)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+
+    Write("newest");
+
+    LONGS_EQUAL(TEST_MAX_MESSAGES + 2, MqFake_SendCallCount());
+    LONGS_EQUAL(1, MqFake_ReceiveCallCount());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAQueueThatMadeRoomIsFull)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+
+    Write("newest");
+
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestEvictingIsReportedAsRecordsLost)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    ErrorHandlerFake_Install(nullptr);
+
+    Write("newest");
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORDS_EVICTED
+    );
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfEvictionsIsReportedOnce)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    ErrorHandlerFake_Install(nullptr);
+
+    Write("newest");
+    Write("newer still");
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ASendThatEvictsNothingEndsTheRunSoTheNextEvictionIsReportedAgain)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    ErrorHandlerFake_Install(nullptr);
+    Write("newest"); /* evicts */
+    Read();
+    Write("fits");
+
+    Write("evicts again");
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+/* The one send of each run that is reported says why the record went: the
+ * refusal says the policy refused it, so a run of evictions reports as such. */
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAQueueWithNothingToEvictRefusesTheRecord)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED
+    );
+    CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderHaltAFullQueueRefusesTheRecordAsUnderNewest)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    FillTheQueue();
+
+    Write("newest");
+
+    STRCMP_EQUAL(TEST_MESSAGE, LastRecordQueued());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, NoPolicyInjectedAppliesOldest)
+{
+    SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
+        SolidSyslogNullMutex_Get(),
+        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+        TEST_MAX_MESSAGES,
+        nullptr,
+        nullptr
+    );
+    FillTheQueue();
+
+    Write("newest");
+
+    STRCMP_EQUAL("newest", LastRecordQueued());
+}
+
 /* A queue that fills and then breaks must still say it broke: the failure is
  * an ERROR a handler may be filtering for. */
 TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsReportedToo)
@@ -294,7 +465,9 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UseAfterDestroyIsCrashSafeViaNullBuffer
     buffer = SolidSyslogPosixMessageQueueBuffer_Create(
         SolidSyslogNullMutex_Get(),
         SOLIDSYSLOG_MAX_MESSAGE_SIZE,
-        10
+        10,
+        AnswersTestPolicy,
+        nullptr
     ); // for teardown
 }
 
@@ -349,7 +522,8 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferMutex)
     void setup() override
     {
         MqFake_Reset();
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES);
+        testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
     }
 
     void teardown() override
@@ -429,7 +603,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
 
     static struct SolidSyslogBuffer* MakeBuffer()
     {
-        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10, nullptr, nullptr);
     }
 
     void FillPool()
