@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogExternC.h"
@@ -43,6 +44,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         struct SolidSyslogStore* Store; /**< NULL (or SolidSyslogNullStore_Get()) means no store-and-forward. */
         struct SolidSyslogStructuredData** Sd; /**< @optional per-instance SD-ELEMENTs, before any per-message SD. */
         size_t SdCount;
+        /** Asked, with DiscardPolicyContext, when Service has to decide what a
+         *  refused record means: under Halt the logger stops moving records.
+         *  The store and the buffers take the same function at their own
+         *  Create, so the one answer governs every queue. NULL applies Oldest. */
+        SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+        void* DiscardPolicyContext;
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or

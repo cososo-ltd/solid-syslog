@@ -81,7 +81,7 @@ TEST_GROUP(BddTargetServiceThread)
         store  = SolidSyslogNullStore_Get();
 
         SolidSyslogConfig config =
-            {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0};
+            {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0, nullptr, nullptr};
         solidSyslog = SolidSyslog_Create(&config);
     }
 

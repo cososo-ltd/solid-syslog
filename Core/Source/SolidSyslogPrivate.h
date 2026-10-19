@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogMessageFormatter.h"
@@ -35,6 +36,11 @@ struct SolidSyslog
     char Record[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t RecordLength;
     bool HoldsRecord;
+    SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+    void* DiscardPolicyContext;
+    /* Set when a retaining store refuses a record while the policy answers
+     * Halt; Service then moves nothing until the answer changes. */
+    bool Halted;
 };
 
 void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config);
