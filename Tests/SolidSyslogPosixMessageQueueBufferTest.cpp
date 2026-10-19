@@ -162,6 +162,50 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfFailedSendsIsReportedOnce)
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, AnEmptyQueueIsNotFull)
+{
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, AQueueThatRefusedTheLastRecordIsFull)
+{
+    MqFake_FailNextSend(EAGAIN);
+
+    Write();
+
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, AQueueThatFailedToSendIsNotFull)
+{
+    MqFake_FailNextSend(EBADF);
+
+    Write();
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, AReadThatTakesARecordClearsFull)
+{
+    Write();
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+
+    Read();
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, AWriteTheQueueTakesClearsFull)
+{
+    MqFake_FailNextSend(EAGAIN);
+    Write();
+
+    Write();
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 /* A queue that fills and then breaks must still say it broke: the failure is
  * an ERROR a handler may be filtering for. */
 TEST(SolidSyslogPosixMessageQueueBuffer, AFailedSendDuringARunOfRefusalsIsReportedToo)

@@ -3,8 +3,8 @@
  */
 
 /** @file
- *  The Buffer vtable (Write / Read) - the contract an implementor fills in (the
- *  Buffer extension point). */
+ *  The Buffer vtable (Write / Read / IsFull) - the contract an implementor fills
+ *  in (the Buffer extension point). */
 #ifndef SOLIDSYSLOGBUFFERDEFINITION_H
 #define SOLIDSYSLOGBUFFERDEFINITION_H
 
@@ -32,11 +32,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  describes; one dropped for another reason is reported under its own
      *  category. Either way the report is raised outside any lock Write holds,
      *  and its run is marked reported first, so a report that leads back into
-     *  Write cannot repeat without bound. */
+     *  Write cannot repeat without bound.
+     *
+     *  IsFull carries the SolidSyslogBuffer_IsFull contract: true once a Write
+     *  has refused a record for lack of room and nothing has been taken out
+     *  since. A buffer that never queues answers false. */
     struct SolidSyslogBuffer
     {
         void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);
         bool (*Read)(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
+        bool (*IsFull)(struct SolidSyslogBuffer* base);
     };
 
 SOLIDSYSLOG_EXTERN_C_END

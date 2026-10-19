@@ -29,6 +29,7 @@ enum
 
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+static bool CircularBuffer_IsFull(struct SolidSyslogBuffer* base);
 
 static inline struct SolidSyslogCircularBuffer* CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
@@ -59,10 +60,12 @@ void SolidSyslogCircularBuffer_Initialise(
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
     self->Base.Read = CircularBuffer_Read;
     self->Base.Write = CircularBuffer_Write;
+    self->Base.IsFull = CircularBuffer_IsFull;
     self->Mutex = mutex;
     self->Ring = ring;
     self->Capacity = ringBytes;
     self->LossReported = false;
+    self->Full = false;
     CircularBuffer_ResetToStart(self);
 }
 
@@ -90,6 +93,7 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size
         if (CircularBuffer_PeekRecordSize(self) <= maxSize)
         {
             CircularBuffer_LoadRecord(self, data, bytesRead);
+            self->Full = false;
         }
         else
         {
@@ -194,14 +198,25 @@ static bool CircularBuffer_StoreOrStartLossRun(struct SolidSyslogCircularBuffer*
         }
         CircularBuffer_StoreRecord(self, data, size);
         self->LossReported = false;
+        self->Full = false;
     }
     else
     {
         lossRunStarted = !self->LossReported;
         self->LossReported = true;
+        self->Full = true;
     }
     SolidSyslogMutex_Unlock(self->Mutex);
     return lossRunStarted;
+}
+
+static bool CircularBuffer_IsFull(struct SolidSyslogBuffer* base)
+{
+    struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
+    SolidSyslogMutex_Lock(self->Mutex);
+    bool full = self->Full;
+    SolidSyslogMutex_Unlock(self->Mutex);
+    return full;
 }
 
 static inline void CircularBuffer_ReportRecordRefused(void)

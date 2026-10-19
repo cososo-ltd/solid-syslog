@@ -11,10 +11,12 @@
 
 static bool NullBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+static bool NullBuffer_IsFull(struct SolidSyslogBuffer* base);
 
 struct SolidSyslogBuffer* SolidSyslogNullBuffer_Get(void)
 {
-    static struct SolidSyslogBuffer instance = {.Write = NullBuffer_Write, .Read = NullBuffer_Read};
+    static struct SolidSyslogBuffer instance =
+        {.Write = NullBuffer_Write, .Read = NullBuffer_Read, .IsFull = NullBuffer_IsFull};
     return &instance;
 }
 
@@ -36,4 +38,11 @@ static void NullBuffer_Write(struct SolidSyslogBuffer* base, const void* data, s
     (void) base;
     (void) data;
     (void) size;
+}
+
+/* Nothing is ever queued, so nothing is ever outrun. */
+static bool NullBuffer_IsFull(struct SolidSyslogBuffer* base)
+{
+    (void) base;
+    return false;
 }

@@ -42,6 +42,8 @@ enum SolidSyslogPosixMessageQueueBufferRunStarted
 
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+static bool PosixMessageQueueBuffer_IsFull(struct SolidSyslogBuffer* base);
+static inline void PosixMessageQueueBuffer_NoteRecordTaken(struct SolidSyslogPosixMessageQueueBuffer* self);
 static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
     const void* data,
@@ -87,8 +89,10 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     self->Mutex = mutex;
     self->RefusalReported = false;
     self->FailureReported = false;
+    self->Full = false;
     self->Base.Write = PosixMessageQueueBuffer_Write;
     self->Base.Read = PosixMessageQueueBuffer_Read;
+    self->Base.IsFull = PosixMessageQueueBuffer_IsFull;
     return self->Mq != (mqd_t) -1;
 }
 
@@ -122,7 +126,11 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
          * EAGAIN is the empty-queue poll signal - part of the happy path and
          * must stay silent. Any other errno is a real failure worth surfacing. */
         int receiveErrno = success ? 0 : errno;
-        if (!success && (receiveErrno != EAGAIN))
+        if (success)
+        {
+            PosixMessageQueueBuffer_NoteRecordTaken(self);
+        }
+        else if (receiveErrno != EAGAIN)
         {
             PosixMessageQueueBuffer_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
@@ -130,10 +138,31 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
                 SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED
             );
         }
+        else
+        {
+            /* Empty: the poll's quiet answer. */
+        }
 
         *bytesRead = success ? (size_t) received : 0U;
     }
     return success;
+}
+
+/* A record taken out makes room, so the queue is no longer full. */
+static inline void PosixMessageQueueBuffer_NoteRecordTaken(struct SolidSyslogPosixMessageQueueBuffer* self)
+{
+    SolidSyslogMutex_Lock(self->Mutex);
+    self->Full = false;
+    SolidSyslogMutex_Unlock(self->Mutex);
+}
+
+static bool PosixMessageQueueBuffer_IsFull(struct SolidSyslogBuffer* base)
+{
+    struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
+    SolidSyslogMutex_Lock(self->Mutex);
+    bool full = self->Full;
+    SolidSyslogMutex_Unlock(self->Mutex);
+    return full;
 }
 
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size)
@@ -169,11 +198,13 @@ static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer
     {
         self->RefusalReported = false;
         self->FailureReported = false;
+        self->Full = false;
     }
     else if (sendErrno == EAGAIN)
     {
         started = self->RefusalReported ? RUN_STARTED_NONE : RUN_STARTED_REFUSALS;
         self->RefusalReported = true;
+        self->Full = true;
     }
     else
     {

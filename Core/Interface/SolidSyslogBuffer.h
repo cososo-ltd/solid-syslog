@@ -36,6 +36,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  the buffer-backend-failed category rather than failing silently. */
     bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer * buffer, void* data, size_t maxSize, size_t* bytesRead);
 
+    /** Whether Log has outrun Service: true when the last record written did
+     *  not fit for lack of room and nothing has been taken out since. A write
+     *  that fits, or a Read that takes a record, clears it. Service asks before
+     *  retrying a record it holds, to apply the discard policy to the head of
+     *  the whole queue rather than only to the records the buffer holds. A
+     *  record no empty buffer could hold is a configuration fault, not
+     *  fullness, and does not set it. */
+    bool SolidSyslogBuffer_IsFull(struct SolidSyslogBuffer * buffer);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGBUFFER_H */

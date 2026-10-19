@@ -29,6 +29,9 @@ struct SolidSyslogCircularBuffer
      * the run. Set under the mutex, before the report is raised, so a handler
      * that logs into the full ring finds the run already reported. */
     bool LossReported;
+    /* The last write was refused for lack of room and nothing has been taken
+     * out since - Log has outrun Service. Kept under the mutex. */
+    bool Full;
 };
 
 void SolidSyslogCircularBuffer_Initialise(

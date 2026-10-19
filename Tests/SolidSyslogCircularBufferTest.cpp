@@ -257,6 +257,46 @@ TEST(SolidSyslogCircularBuffer, ARecordTheRingKeepsEndsTheRunSoTheNextRefusalIsR
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
+TEST(SolidSyslogCircularBuffer, AnEmptyRingIsNotFull)
+{
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, ARingThatRefusedTheLastRecordIsFull)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+
+    Write("extra");
+
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, AReadThatTakesARecordClearsFull)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    Write("extra");
+
+    Read();
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, AWriteThatFitsClearsFull)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE - 8];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    Write(filler, sizeof(filler)); /* refused */
+
+    Write("fits");
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 TEST(SolidSyslogCircularBuffer, WriteAfterDrainAcceptsRecordTooLargeForRemainingTailSpace)
 {
     Write("x");

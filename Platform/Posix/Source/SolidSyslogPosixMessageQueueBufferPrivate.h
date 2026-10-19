@@ -36,6 +36,10 @@ struct SolidSyslogPosixMessageQueueBuffer
      * or failing; the next record it takes ends both runs. */
     bool RefusalReported;
     bool FailureReported;
+    /* The last send found the queue full and nothing has been received since -
+     * Log has outrun Service. Shared between the two sides, so kept under the
+     * mutex. */
+    bool Full;
 };
 
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(

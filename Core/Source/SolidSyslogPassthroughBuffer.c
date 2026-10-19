@@ -18,6 +18,7 @@ const struct SolidSyslogErrorSource SolidSyslogPassthroughBufferErrorSource = {"
 
 static bool PassthroughBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void PassthroughBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
+static bool PassthroughBuffer_IsFull(struct SolidSyslogBuffer* base);
 
 static inline struct SolidSyslogPassthroughBuffer* PassthroughBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
 
@@ -26,6 +27,7 @@ void SolidSyslogPassthroughBuffer_Initialise(struct SolidSyslogBuffer* base, str
     struct SolidSyslogPassthroughBuffer* self = PassthroughBuffer_SelfFromBase(base);
     self->Base.Write = PassthroughBuffer_Write;
     self->Base.Read = PassthroughBuffer_Read;
+    self->Base.IsFull = PassthroughBuffer_IsFull;
     self->Sender = sender;
 }
 
@@ -50,6 +52,13 @@ static void PassthroughBuffer_Write(struct SolidSyslogBuffer* base, const void* 
 {
     struct SolidSyslogPassthroughBuffer* self = PassthroughBuffer_SelfFromBase(base);
     (void) SolidSyslogSender_Send(self->Sender, data, size);
+}
+
+/* Nothing is queued, so nothing is ever outrun. */
+static bool PassthroughBuffer_IsFull(struct SolidSyslogBuffer* base)
+{
+    (void) base;
+    return false;
 }
 
 static inline struct SolidSyslogPassthroughBuffer* PassthroughBuffer_SelfFromBase(struct SolidSyslogBuffer* base)
