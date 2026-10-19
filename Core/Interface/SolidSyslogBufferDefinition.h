@@ -35,8 +35,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Write cannot repeat without bound.
      *
      *  IsFull carries the SolidSyslogBuffer_IsFull contract: true once a Write
-     *  has refused a record for lack of room and nothing has been taken out
-     *  since. A buffer that never queues answers false. */
+     *  has found no room for a record - evicting to make some, or refusing it -
+     *  and nothing has been taken out since. A buffer that never queues answers
+     *  false. */
     struct SolidSyslogBuffer
     {
         void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);

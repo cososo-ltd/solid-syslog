@@ -656,7 +656,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     /* CircularBuffer drained by ServiceTask, with a mutex gating concurrent
      * producers. */
     bufferMutex = BddTargetOsPrimitives_CreateMutex(BDD_TARGET_MUTEX_BUFFER);
-    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
+    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing), GetDiscardPolicy, NULL);
 
     /* Lifecycle mutex created up front so the Service task can take it from its
      * very first iteration without a NULL check. */

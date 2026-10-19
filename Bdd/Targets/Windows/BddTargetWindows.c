@@ -384,7 +384,8 @@ int BddTargetWindows_Run(int argc, char* argv[])
     struct SolidSyslogStore* store = CreateStore(&options);
 
     struct SolidSyslogMutex* mutex = SolidSyslogWindowsMutex_Create();
-    struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing));
+    struct SolidSyslogBuffer* buffer =
+        SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing), GetDiscardPolicy, NULL);
     struct SolidSyslogAtomicCounter* counter = SolidSyslogWindowsAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,

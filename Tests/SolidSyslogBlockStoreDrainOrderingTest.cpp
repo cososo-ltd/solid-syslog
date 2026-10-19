@@ -250,7 +250,7 @@ TEST_GROUP_BASE(ServiceDrainInterleave, DrainTestFixtureBase)
     {
         setupBlockDeviceAndPolicy();
         mutex  = SolidSyslogNullMutex_Get();
-        buffer = SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing));
+        buffer = SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing), nullptr, nullptr);
         SenderSpy_Init(spy);
     }
 

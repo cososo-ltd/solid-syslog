@@ -11,6 +11,7 @@
 
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBufferErrors.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
 
@@ -25,12 +26,16 @@ struct SolidSyslogCircularBuffer
     size_t Head;
     size_t Tail;
     size_t WrapPoint;
-    /* A report stands for a run of refused records; the next record kept ends
-     * the run. Set under the mutex, before the report is raised, so a handler
+    SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+    void* DiscardPolicyContext;
+    /* Each report stands for a run: of refused records, ended by the next
+     * record kept, or of writes that evicted, ended by the next that evicts
+     * nothing. Set under the mutex, before the report is raised, so a handler
      * that logs into the full ring finds the run already reported. */
     bool LossReported;
-    /* The last write was refused for lack of room and nothing has been taken
-     * out since - Log has outrun Service. Kept under the mutex. */
+    bool EvictionReported;
+    /* The last write found no room - it evicted, or was refused - and nothing
+     * has been taken out since: Log has outrun Service. Kept under the mutex. */
     bool Full;
 };
 
@@ -38,7 +43,9 @@ void SolidSyslogCircularBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
-    size_t ringBytes
+    size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy,
+    void* discardPolicyContext
 );
 void SolidSyslogCircularBuffer_Cleanup(struct SolidSyslogBuffer* base);
 

@@ -27,20 +27,52 @@ enum
     HEADER_BYTES = SOLIDSYSLOG_CIRCULAR_BUFFER_HEADER_BYTES
 };
 
+/* Which run of losses, if any, a write has just started. */
+enum SolidSyslogCircularBufferRunStarted
+{
+    RUN_STARTED_NONE,
+    RUN_STARTED_REFUSALS,
+    RUN_STARTED_EVICTIONS
+};
+
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
 static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 static bool CircularBuffer_IsFull(struct SolidSyslogBuffer* base);
 
 static inline struct SolidSyslogCircularBuffer* CircularBuffer_SelfFromBase(struct SolidSyslogBuffer* base);
+static inline void CircularBuffer_InstallDiscardPolicy(
+    struct SolidSyslogCircularBuffer* self,
+    SolidSyslogDiscardPolicyFunction configured,
+    void* context
+);
 
 static inline void CircularBuffer_ReportRecordTooLarge(void);
-static bool CircularBuffer_StoreOrStartLossRun(struct SolidSyslogCircularBuffer* self, const void* data, size_t size);
-static inline void CircularBuffer_ReportRecordRefused(void);
+static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPolicy(
+    struct SolidSyslogCircularBuffer* self,
+    const void* data,
+    size_t size
+);
+static inline bool CircularBuffer_PolicyEvictsFor(struct SolidSyslogCircularBuffer* self, size_t recordBytes);
+static inline bool CircularBuffer_CouldHoldWhenEmpty(const struct SolidSyslogCircularBuffer* self, size_t recordBytes);
+static inline void CircularBuffer_EvictUntilRecordFits(struct SolidSyslogCircularBuffer* self, size_t recordBytes);
+static inline void CircularBuffer_DropHead(struct SolidSyslogCircularBuffer* self);
+static inline enum SolidSyslogCircularBufferRunStarted CircularBuffer_KeepRecord(
+    struct SolidSyslogCircularBuffer* self,
+    const void* data,
+    size_t size,
+    bool evicted
+);
+static inline enum SolidSyslogCircularBufferRunStarted CircularBuffer_RefuseRecord(
+    struct SolidSyslogCircularBuffer* self,
+    size_t recordBytes
+);
+static void CircularBuffer_ReportRunStarted(enum SolidSyslogCircularBufferRunStarted started);
 static inline void CircularBuffer_ReportRecordExceedsMaxMessageSize(void);
 
 static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer* self);
 static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* self);
 static inline bool CircularBuffer_HeadAtWrapPoint(const struct SolidSyslogCircularBuffer* self);
+static inline bool CircularBuffer_RecordFits(const struct SolidSyslogCircularBuffer* self, size_t recordBytes);
 static inline bool CircularBuffer_RecordFitsAtTail(const struct SolidSyslogCircularBuffer* self, size_t recordBytes);
 static inline bool CircularBuffer_RecordFitsAfterWrap(const struct SolidSyslogCircularBuffer* self, size_t recordBytes);
 static inline void CircularBuffer_ResetToStart(struct SolidSyslogCircularBuffer* self);
@@ -54,7 +86,9 @@ void SolidSyslogCircularBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
-    size_t ringBytes
+    size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy,
+    void* discardPolicyContext
 )
 {
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
@@ -64,9 +98,26 @@ void SolidSyslogCircularBuffer_Initialise(
     self->Mutex = mutex;
     self->Ring = ring;
     self->Capacity = ringBytes;
+    CircularBuffer_InstallDiscardPolicy(self, getDiscardPolicy, discardPolicyContext);
     self->LossReported = false;
+    self->EvictionReported = false;
     self->Full = false;
     CircularBuffer_ResetToStart(self);
+}
+
+static inline void CircularBuffer_InstallDiscardPolicy(
+    struct SolidSyslogCircularBuffer* self,
+    SolidSyslogDiscardPolicyFunction configured,
+    void* context
+)
+{
+    self->GetDiscardPolicy = SolidSyslogDiscardPolicy_Default;
+    self->DiscardPolicyContext = NULL;
+    if (configured != NULL)
+    {
+        self->GetDiscardPolicy = configured;
+        self->DiscardPolicyContext = context;
+    }
 }
 
 void SolidSyslogCircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
@@ -164,10 +215,8 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
     {
         /* Reported after the unlock, as Read does: the handler may log, which
          * re-enters Write. */
-        if (CircularBuffer_StoreOrStartLossRun(self, data, size))
-        {
-            CircularBuffer_ReportRecordRefused();
-        }
+        enum SolidSyslogCircularBufferRunStarted started = CircularBuffer_StoreApplyingPolicy(self, data, size);
+        CircularBuffer_ReportRunStarted(started);
     }
     else
     {
@@ -175,39 +224,141 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
     }
 }
 
-/* Stores the record if the ring has room. Says whether it was refused at the
- * start of a run of refusals, the one refusal of the run that is reported. The
- * run is marked under the lock, so a write from the handler reporting it finds
- * it already reported. */
-static bool CircularBuffer_StoreOrStartLossRun(struct SolidSyslogCircularBuffer* self, const void* data, size_t size)
+/* Stores the record, making room for it first where the discard policy says
+ * to, and says which run of losses, if any, this write starts: the one write
+ * of each run that is reported. A run is marked under the lock, so a write
+ * from the handler reporting it finds it already reported. */
+static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPolicy(
+    struct SolidSyslogCircularBuffer* self,
+    const void* data,
+    size_t size
+)
 {
-    bool lossRunStarted = false;
+    enum SolidSyslogCircularBufferRunStarted started = RUN_STARTED_NONE;
     SolidSyslogMutex_Lock(self->Mutex);
     if (CircularBuffer_IsEmpty(self))
     {
         CircularBuffer_ResetToStart(self);
     }
     size_t recordBytes = HEADER_BYTES + size;
-    bool fitsAtTail = CircularBuffer_RecordFitsAtTail(self, recordBytes);
-    bool shouldWrite = fitsAtTail || CircularBuffer_RecordFitsAfterWrap(self, recordBytes);
-    if (shouldWrite)
+    bool evicted = false;
+    if (!CircularBuffer_RecordFits(self, recordBytes) && CircularBuffer_PolicyEvictsFor(self, recordBytes))
     {
-        if (!fitsAtTail)
-        {
-            CircularBuffer_WrapTail(self);
-        }
-        CircularBuffer_StoreRecord(self, data, size);
-        self->LossReported = false;
-        self->Full = false;
+        CircularBuffer_EvictUntilRecordFits(self, recordBytes);
+        evicted = true;
+    }
+    if (CircularBuffer_RecordFits(self, recordBytes))
+    {
+        started = CircularBuffer_KeepRecord(self, data, size, evicted);
     }
     else
     {
-        lossRunStarted = !self->LossReported;
-        self->LossReported = true;
-        self->Full = true;
+        started = CircularBuffer_RefuseRecord(self, recordBytes);
     }
     SolidSyslogMutex_Unlock(self->Mutex);
-    return lossRunStarted;
+    return started;
+}
+
+/* Only Oldest makes room, and only for a record the ring could hold at all:
+ * evicting everything for one that still would not fit loses records for
+ * nothing. The policy is asked here, on the task that logs. */
+static inline bool CircularBuffer_PolicyEvictsFor(struct SolidSyslogCircularBuffer* self, size_t recordBytes)
+{
+    return CircularBuffer_CouldHoldWhenEmpty(self, recordBytes) &&
+           (self->GetDiscardPolicy(self->DiscardPolicyContext) == SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+}
+
+static inline bool CircularBuffer_CouldHoldWhenEmpty(const struct SolidSyslogCircularBuffer* self, size_t recordBytes)
+{
+    return recordBytes <= self->Capacity;
+}
+
+/* Drops records from the head until the new one fits; an emptied ring always
+ * fits a record it could hold at all, so this ends. */
+static inline void CircularBuffer_EvictUntilRecordFits(struct SolidSyslogCircularBuffer* self, size_t recordBytes)
+{
+    while (!CircularBuffer_RecordFits(self, recordBytes))
+    {
+        CircularBuffer_DropHead(self);
+    }
+}
+
+/* Skips the head record as Read would take it, without copying it out. */
+static inline void CircularBuffer_DropHead(struct SolidSyslogCircularBuffer* self)
+{
+    if (CircularBuffer_HeadAtWrapPoint(self))
+    {
+        CircularBuffer_ConsumeWrapMarker(self);
+    }
+    self->Head += HEADER_BYTES + CircularBuffer_PeekRecordSize(self);
+    if (CircularBuffer_IsEmpty(self))
+    {
+        CircularBuffer_ResetToStart(self);
+    }
+}
+
+/* A record kept ends a run of refusals; one kept without evicting ends a run
+ * of evictions. The ring is full afterwards only if it had to make room. */
+static inline enum SolidSyslogCircularBufferRunStarted CircularBuffer_KeepRecord(
+    struct SolidSyslogCircularBuffer* self,
+    const void* data,
+    size_t size,
+    bool evicted
+)
+{
+    enum SolidSyslogCircularBufferRunStarted started = RUN_STARTED_NONE;
+    if (!CircularBuffer_RecordFitsAtTail(self, HEADER_BYTES + size))
+    {
+        CircularBuffer_WrapTail(self);
+    }
+    CircularBuffer_StoreRecord(self, data, size);
+    self->LossReported = false;
+    if (evicted && !self->EvictionReported)
+    {
+        started = RUN_STARTED_EVICTIONS;
+    }
+    self->EvictionReported = evicted;
+    self->Full = evicted;
+    return started;
+}
+
+/* A refusal evicts nothing, so it ends a run of evictions. It leaves the ring
+ * full unless the record could never have fitted, which is a configuration
+ * fault rather than Log outrunning Service. */
+static inline enum SolidSyslogCircularBufferRunStarted CircularBuffer_RefuseRecord(
+    struct SolidSyslogCircularBuffer* self,
+    size_t recordBytes
+)
+{
+    enum SolidSyslogCircularBufferRunStarted started = self->LossReported ? RUN_STARTED_NONE : RUN_STARTED_REFUSALS;
+    self->LossReported = true;
+    self->EvictionReported = false;
+    self->Full = CircularBuffer_CouldHoldWhenEmpty(self, recordBytes);
+    return started;
+}
+
+static void CircularBuffer_ReportRunStarted(enum SolidSyslogCircularBufferRunStarted started)
+{
+    if (started == RUN_STARTED_REFUSALS)
+    {
+        CircularBuffer_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+            SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_REFUSED
+        );
+    }
+    else if (started == RUN_STARTED_EVICTIONS)
+    {
+        CircularBuffer_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+            SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORDS_EVICTED
+        );
+    }
+    else
+    {
+        /* Kept without loss, or a run already reported. */
+    }
 }
 
 static bool CircularBuffer_IsFull(struct SolidSyslogBuffer* base)
@@ -217,15 +368,6 @@ static bool CircularBuffer_IsFull(struct SolidSyslogBuffer* base)
     bool full = self->Full;
     SolidSyslogMutex_Unlock(self->Mutex);
     return full;
-}
-
-static inline void CircularBuffer_ReportRecordRefused(void)
-{
-    CircularBuffer_Report(
-        SOLIDSYSLOG_SEVERITY_WARNING,
-        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
-        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_REFUSED
-    );
 }
 
 /* SolidSyslog_Log never formats a message this large, so only a caller writing
@@ -242,6 +384,11 @@ static inline void CircularBuffer_ReportRecordExceedsMaxMessageSize(void)
 static inline bool CircularBuffer_IsWrapped(const struct SolidSyslogCircularBuffer* self)
 {
     return self->Head > self->Tail;
+}
+
+static inline bool CircularBuffer_RecordFits(const struct SolidSyslogCircularBuffer* self, size_t recordBytes)
+{
+    return CircularBuffer_RecordFitsAtTail(self, recordBytes) || CircularBuffer_RecordFitsAfterWrap(self, recordBytes);
 }
 
 static inline bool CircularBuffer_RecordFitsAtTail(const struct SolidSyslogCircularBuffer* self, size_t recordBytes)
