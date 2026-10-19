@@ -529,7 +529,7 @@ static void BddTargetVxWorks64_UseFileStore(void)
                       : SolidSyslogNullSecurityPolicy_Get();
     storeConfig.BlockDevice = storeBlockDevice;
     storeConfig.MaxBlocks = BddTargetStoreSettings_MaxBlocks();
-    storeConfig.DiscardPolicy = BddTargetStoreSettings_DiscardPolicy();
+    storeConfig.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
     storeConfig.SecurityPolicy = storePolicy;
     storeConfig.OnStoreFull = BddTargetVxWorks64_OnStoreFull;
     storeConfig.GetCapacityThreshold = BddTargetStoreSettings_GetCapacityThreshold;

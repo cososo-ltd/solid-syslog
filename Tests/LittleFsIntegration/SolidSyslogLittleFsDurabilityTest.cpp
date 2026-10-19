@@ -59,7 +59,6 @@ struct Stack
         SolidSyslogBlockStoreConfig storeConfig = {};
         storeConfig.BlockDevice = device;
         storeConfig.MaxBlocks = STORE_MAX_BLOCKS;
-        storeConfig.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         store = SolidSyslogBlockStore_Create(&storeConfig);
     }
 

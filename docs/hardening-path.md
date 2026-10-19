@@ -372,10 +372,15 @@ drains the ring into storage and sends from there, so a failed send costs a retr
 than the record.
 
 ```c
+static enum SolidSyslogDiscardPolicy ChooseDiscardPolicy(void* context)
+{
+    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+}
+
 struct SolidSyslogBlockStoreConfig storeConfig = {
     .BlockDevice    = SolidSyslogFileBlockDevice_Create(SolidSyslogFatFsFile_Create(), SYSLOG_STORE_PREFIX, 0U),
     .MaxBlocks      = SYSLOG_STORE_BLOCKS,
-    .DiscardPolicy  = SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
+    .GetDiscardPolicy = ChooseDiscardPolicy,
     .SecurityPolicy = SolidSyslogCrc16Policy_Create(),
 };
 ```

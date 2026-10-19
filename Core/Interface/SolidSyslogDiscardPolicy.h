@@ -3,22 +3,38 @@
  */
 
 /** @file
- *  The discard policy: what a full queue does with the record that does not
- *  fit. One policy covers every queue a record passes through on its way to
- *  the collector, the buffer and the store alike. */
+     *  The discard policy: what a full queue does with the record that does not
+     *  fit. One policy covers every queue a record passes through on its way to
+     *  the collector, the buffer and the store alike. */
 #ifndef SOLIDSYSLOGDISCARDPOLICY_H
 #define SOLIDSYSLOGDISCARDPOLICY_H
 
-/** What a full queue does with the record that does not fit. Oldest makes
- *  room by dropping the oldest records it holds; Newest refuses the record
- *  being written; Halt refuses it too, and the logger stops moving records
- *  until the policy is changed or the device restarts. Records lost either way
- *  are reported by the queue that lost them, once per run. */
-enum SolidSyslogDiscardPolicy
-{
-    SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
-    SOLIDSYSLOG_DISCARD_POLICY_NEWEST,
-    SOLIDSYSLOG_DISCARD_POLICY_HALT
-};
+#include "SolidSyslogExternC.h"
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    /** What a full queue does with the record that does not fit. Oldest makes
+     *  room by dropping the oldest records it holds; Newest refuses the record
+     *  being written; Halt refuses it too, and the logger stops moving records
+     *  until the policy is changed or the device restarts. Records lost either way
+     *  are reported by the queue that lost them, once per run. */
+    enum SolidSyslogDiscardPolicy
+    {
+        SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
+        SOLIDSYSLOG_DISCARD_POLICY_NEWEST,
+        SOLIDSYSLOG_DISCARD_POLICY_HALT
+    };
+
+    /** Answers which policy applies. A queue asks at the moment it has to decide,
+     *  so the answer may change on a running device; a buffer asks from the task
+     *  that called SolidSyslog_Log, the store and Service from the task that calls
+     *  SolidSyslog_Service, and the function must be safe to call from both. The
+     *  context is the one paired with it, passed back unchanged. */
+    typedef enum SolidSyslogDiscardPolicy (*SolidSyslogDiscardPolicyFunction)(void* context);
+
+    /** The policy applied where none was injected: Oldest. */
+    enum SolidSyslogDiscardPolicy SolidSyslogDiscardPolicy_Default(void* context);
+
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGDISCARDPOLICY_H */

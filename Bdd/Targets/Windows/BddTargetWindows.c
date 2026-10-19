@@ -157,6 +157,14 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
     return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 }
 
+static enum SolidSyslogDiscardPolicy discardPolicy;
+
+static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
+{
+    (void) context;
+    return discardPolicy;
+}
+
 static volatile bool haltExit;
 
 static void OnStoreFull(void* context)
@@ -278,7 +286,8 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
         storeConfig.MaxBlocks = options->MaxBlocks;
-        storeConfig.DiscardPolicy = MapDiscardPolicy(options->DiscardPolicy);
+        discardPolicy = MapDiscardPolicy(options->DiscardPolicy);
+        storeConfig.GetDiscardPolicy = GetDiscardPolicy;
         storeConfig.SecurityPolicy = securityPolicy;
         storeConfig.OnStoreFull = OnStoreFull;
         storeConfig.GetCapacityThreshold = GetCapacityThreshold;

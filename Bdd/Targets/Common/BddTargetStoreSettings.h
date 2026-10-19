@@ -26,6 +26,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     size_t BddTargetStoreSettings_MaxBlocks(void);
     size_t BddTargetStoreSettings_MaxBlockSize(void);
     enum SolidSyslogDiscardPolicy BddTargetStoreSettings_DiscardPolicy(void);
+    /* The BlockStore's GetDiscardPolicy callback; the context is unused. */
+    enum SolidSyslogDiscardPolicy BddTargetStoreSettings_GetDiscardPolicy(void* context);
     enum BddTargetSecurityPolicy BddTargetStoreSettings_SecurityPolicy(void);
     /* Whether a full store under the halt policy ends the run, with status 2. */
     bool BddTargetStoreSettings_HaltExit(void);

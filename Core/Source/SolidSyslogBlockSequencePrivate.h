@@ -19,7 +19,8 @@ struct SolidSyslogBlockSequenceConfig
     struct SolidSyslogBlockDevice* BlockDevice;
     size_t MaxBlockSize;
     size_t MaxBlocks;
-    enum SolidSyslogDiscardPolicy DiscardPolicy;
+    SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+    void* DiscardPolicyContext;
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;
@@ -30,7 +31,8 @@ struct SolidSyslogBlockSequence
     struct SolidSyslogBlockDevice* BlockDevice;
     size_t MaxBlockSize;
     size_t MaxBlocks;
-    enum SolidSyslogDiscardPolicy DiscardPolicy;
+    SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+    void* DiscardPolicyContext;
     SolidSyslogStoreThresholdFunction GetCapacityThreshold;
     SolidSyslogStoreThresholdCallback OnThresholdCrossed;
     void* ThresholdContext;

@@ -151,6 +151,7 @@ static void DestroySecurityPolicy(void);
 static bool RebuildWithFileStore(void);
 static void DestroyCurrentStore(void);
 static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
+static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
 static void OnStoreFull(void* context);
 static size_t GetCapacityThreshold(void* context);
 static void OnThresholdCrossed(void* context);
@@ -467,7 +468,7 @@ static bool RebuildWithFileStore(void)
     struct SolidSyslogBlockStoreConfig storeConfig = {
         .BlockDevice = storeBlockDevice,
         .MaxBlocks = pendingMaxBlocks,
-        .DiscardPolicy = MapDiscardPolicy(pendingDiscardPolicy),
+        .GetDiscardPolicy = GetDiscardPolicy,
         .SecurityPolicy = policy,
         .OnStoreFull = OnStoreFull,
         .StoreFullContext = NULL,
@@ -532,6 +533,14 @@ static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
         return SOLIDSYSLOG_DISCARD_POLICY_HALT;
     }
     return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+}
+
+/* The store asks when it is full, so the policy is the pending name as it
+ * stands then. */
+static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
+{
+    (void) context;
+    return MapDiscardPolicy(pendingDiscardPolicy);
 }
 
 static void OnStoreFull(void* context)

@@ -167,7 +167,6 @@ TEST_GROUP(BlockSequenceScan)
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize                = 1000;
         config.MaxBlocks                   = 99;
-        config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         sequence = SolidSyslogBlockSequence_Create(&config);
     }
 
@@ -276,7 +275,6 @@ TEST_GROUP(BlockSequenceRotation)
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
         config.MaxBlocks                  = maxBlocks;
-        config.DiscardPolicy              = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         sequence = SolidSyslogBlockSequence_Create(&config);
 
         SolidSyslogBlockSequence_Open(sequence); /* cold start: Acquire(0) */

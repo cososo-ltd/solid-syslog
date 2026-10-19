@@ -70,11 +70,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  overflow. An eviction that fails freezes the store with one block more
          *  than this on the media, and the next start keeps it. */
         size_t MaxBlocks;
-        /** What a full store does with the record that does not fit: Oldest
-         *  evicts the oldest block, Newest refuses it, Halt refuses it, latches
-         *  (IsHalted, Service stops) and fires OnStoreFull once. Records lost
-         *  either way are reported as SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
-        enum SolidSyslogDiscardPolicy DiscardPolicy;
+        /** Asked, with DiscardPolicyContext, on a write the full store cannot
+         *  fit: Oldest evicts the oldest block, Newest refuses the record, Halt
+         *  refuses it, latches (IsHalted, Service stops) and fires OnStoreFull
+         *  once. NULL applies Oldest. Records lost either way are reported as
+         *  SOLIDSYSLOG_CAT_STORE_RECORDS_LOST describes. */
+        SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+        void* DiscardPolicyContext;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
         SolidSyslogStoreFullCallback OnStoreFull;
         void* StoreFullContext;

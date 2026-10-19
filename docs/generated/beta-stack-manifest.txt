@@ -54,6 +54,7 @@ Core/Source/SolidSyslogOriginSd.c
 Core/Source/SolidSyslogOriginSdStatic.c
 Core/Source/SolidSyslogFile.c
 Core/Source/SolidSyslogNullFile.c
+Core/Source/SolidSyslogDiscardPolicy.c
 Core/Source/SolidSyslogBlockStore.c
 Core/Source/SolidSyslogBlockStoreStatic.c
 Core/Source/SolidSyslogRecordStore.c

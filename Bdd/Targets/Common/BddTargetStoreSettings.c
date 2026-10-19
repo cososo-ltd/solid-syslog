@@ -173,6 +173,12 @@ enum SolidSyslogDiscardPolicy BddTargetStoreSettings_DiscardPolicy(void)
     return discardPolicy;
 }
 
+enum SolidSyslogDiscardPolicy BddTargetStoreSettings_GetDiscardPolicy(void* context)
+{
+    (void) context;
+    return discardPolicy;
+}
+
 enum BddTargetSecurityPolicy BddTargetStoreSettings_SecurityPolicy(void)
 {
     return securityPolicy;

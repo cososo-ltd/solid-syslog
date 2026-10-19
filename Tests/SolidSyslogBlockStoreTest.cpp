@@ -54,7 +54,8 @@ enum
 static const struct SolidSyslogBlockStoreConfig DEFAULT_CONFIG = {
     nullptr,
     TEST_MAX_BLOCKS,
-    SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
+    nullptr,
+    nullptr,
     nullptr,
     nullptr,
     nullptr,
@@ -62,6 +63,25 @@ static const struct SolidSyslogBlockStoreConfig DEFAULT_CONFIG = {
     nullptr,
     nullptr,
 };
+
+/* The store's policy function for the fixtures: answers the policy a test
+ * configured, read through the context so one function serves every group. */
+static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
+{
+    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
+}
+
+static enum SolidSyslogDiscardPolicy AnswersNewest(void* context)
+{
+    (void) context;
+    return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+}
+
+static enum SolidSyslogDiscardPolicy AnswersHalt(void* context)
+{
+    (void) context;
+    return SOLIDSYSLOG_DISCARD_POLICY_HALT;
+}
 
 static struct SolidSyslogBlockStoreConfig MakeConfig(struct SolidSyslogBlockDevice* device)
 {
@@ -917,6 +937,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
 
     struct SolidSyslogStore* store = nullptr;
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    enum SolidSyslogDiscardPolicy configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
     void setup() override
     {
@@ -938,7 +959,9 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
         config.BlockDevice       = device;
         config.MaxBlocks          = maxBlocks;
-        config.DiscardPolicy     = policy;
+        configuredPolicy         = policy;
+        config.GetDiscardPolicy  = AnswersConfiguredPolicy;
+        config.DiscardPolicyContext = &configuredPolicy;
         config.OnStoreFull       = onStoreFull;
         config.StoreFullContext  = storeFullContext;
         store = SolidSyslogBlockStore_Create(&config);
@@ -1215,6 +1238,34 @@ TEST(SolidSyslogBlockStoreRotation, HaltSetsIsHaltedTrue)
     CHECK_FALSE(SolidSyslogStore_IsHalted(store));
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* triggers halt */
     CHECK_TRUE(SolidSyslogStore_IsHalted(store));
+}
+
+/* The policy is the integrator's function, asked when the store has to decide. */
+TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionAnswersNewestRefusesTheRecordThatDoesNotFit)
+{
+    EnsureDeviceBlockSize(ONE_MAX_MSG_RECORD);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.GetDiscardPolicy = AnswersNewest;
+    store = SolidSyslogBlockStore_Create(&config);
+
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
+
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+}
+
+/* The function is asked each time, so an answer that changes on a running
+ * device takes effect at the next write that does not fit. */
+TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionChangesItsAnswerAppliesTheNewAnswer)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 - now at maxBlocks=2 */
+    CHECK_FALSE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+
+    configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+
+    CHECK_TRUE(SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
 TEST(SolidSyslogBlockStoreRotation, DiscardNewestDoesNotInvokeCallback)
@@ -2427,7 +2478,7 @@ TEST(SolidSyslogBlockStoreCorruption, ACorruptHeaderInAnEarlierBlockDoesNotClose
     WriteRawBytes("/tmp/test_store01.log", WORLD_UNSENT, sizeof(WORLD_UNSENT));
     /* At two blocks, a write the closed block forces into a third is turned away. */
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    config.GetDiscardPolicy = AnswersNewest;
     store = SolidSyslogBlockStore_Create(&config);
 
     CHECK_TRUE(SolidSyslogStore_Write(store, "second", 6));
@@ -2668,6 +2719,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
 
     struct SolidSyslogStore* store = nullptr;
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    enum SolidSyslogDiscardPolicy configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
     void setup() override
     {
@@ -2694,7 +2746,9 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacity, BlockDeviceTestBase)
         EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         config.MaxBlocks      = maxBlocks;
-        config.DiscardPolicy = policy;
+        configuredPolicy = policy;
+        config.GetDiscardPolicy = AnswersConfiguredPolicy;
+        config.DiscardPolicyContext = &configuredPolicy;
         store                = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -2874,7 +2928,6 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOlde
     EnsureDeviceBlockSize(TWO_RECORDS);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     config.MaxBlocks = 2;
-    config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
     config.GetCapacityThreshold = ReturnsConfiguredThreshold;
     config.OnThresholdCrossed = CountThresholdCrossings;
     /* Threshold sits between 3 and 4 records: 4-records crosses, 3-records is below. */
@@ -2986,7 +3039,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, AtFullCapacityWithHaltThresholdFire
     EnsureDeviceBlockSize(MAX_MSG_RECORD + SLACK);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     config.MaxBlocks = 2;
-    config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    config.GetDiscardPolicy = AnswersHalt;
     config.OnStoreFull = RecordStoreFullFireOrder;
     config.GetCapacityThreshold = ReturnsConfiguredThreshold;
     config.OnThresholdCrossed = RecordThresholdFireOrder;
@@ -3017,7 +3070,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, StickyHundredPercentDoesNotRefireTh
     EnsureDeviceBlockSize(MAX_MSG_RECORD + SLACK);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
     config.MaxBlocks = 2;
-    config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    config.GetDiscardPolicy = AnswersHalt;
     config.GetCapacityThreshold = ReturnsConfiguredThreshold;
     config.OnThresholdCrossed = CountThresholdCrossings;
     thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);

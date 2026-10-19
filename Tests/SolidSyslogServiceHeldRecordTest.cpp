@@ -144,7 +144,6 @@ TEST_GROUP_BASE(SolidSyslogServiceHeldRecordFrozenStore, ServiceHeldRecordBase)
         struct SolidSyslogBlockStoreConfig config = {};
         config.BlockDevice   = device;
         config.MaxBlocks     = 2U;
-        config.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
         FileFake_FailNextOpen(file);
         store = SolidSyslogBlockStore_Create(&config);
         CreateOver(store);

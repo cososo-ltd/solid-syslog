@@ -61,7 +61,9 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->BlockDevice = config->BlockDevice;
     blockSequence->MaxBlockSize = config->MaxBlockSize;
     blockSequence->MaxBlocks = BlockSequence_ClampToRange(config->MaxBlocks, MIN_MAX_BLOCKS, MAX_MAX_BLOCKS);
-    blockSequence->DiscardPolicy = config->DiscardPolicy;
+    blockSequence->GetDiscardPolicy =
+        (config->GetDiscardPolicy != NULL) ? config->GetDiscardPolicy : SolidSyslogDiscardPolicy_Default;
+    blockSequence->DiscardPolicyContext = config->DiscardPolicyContext;
     blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
     blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
     blockSequence->ThresholdContext = config->ThresholdContext;
@@ -307,6 +309,9 @@ static inline bool BlockSequence_IsAboveThreshold(
 
 static inline bool BlockSequence_BlockIsFull(const struct SolidSyslogBlockSequence* blockSequence, size_t recordSize);
 static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequence* blockSequence);
+static inline enum SolidSyslogDiscardPolicy BlockSequence_DiscardPolicy(
+    const struct SolidSyslogBlockSequence* blockSequence
+);
 static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence);
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged);
 
@@ -345,17 +350,27 @@ static inline bool BlockSequence_BlockIsFull(const struct SolidSyslogBlockSequen
            ((blockSequence->WritePosition + recordSize) > blockSequence->MaxBlockSize);
 }
 
+/* The policy is asked only once the store is at its block ceiling, so an
+ * integrator's function answers at the moment it has to decide, and nothing
+ * earlier. */
 static inline bool BlockSequence_StoreIsFull(const struct SolidSyslogBlockSequence* blockSequence)
 {
     return (BlockSequence_BlockCount(blockSequence) >= blockSequence->MaxBlocks) &&
-           (blockSequence->DiscardPolicy != SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+           (BlockSequence_DiscardPolicy(blockSequence) != SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+}
+
+static inline enum SolidSyslogDiscardPolicy BlockSequence_DiscardPolicy(
+    const struct SolidSyslogBlockSequence* blockSequence
+)
+{
+    return blockSequence->GetDiscardPolicy(blockSequence->DiscardPolicyContext);
 }
 
 /* The store calls OnStoreFull when it sees the halt, once it has reported the
  * record lost. */
 static inline void BlockSequence_HaltIfPolicyHalts(struct SolidSyslogBlockSequence* blockSequence)
 {
-    if (blockSequence->DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT)
+    if (BlockSequence_DiscardPolicy(blockSequence) == SOLIDSYSLOG_DISCARD_POLICY_HALT)
     {
         blockSequence->Halted = true;
     }
