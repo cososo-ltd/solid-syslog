@@ -378,6 +378,17 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAnEvictionIsReportedEvenWhen
     );
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAQueueThatMadeRoomIsFullEvenWhenTheRetriedSendFails)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    FillTheQueue();
+    MqFake_FailSecondSend(EBADF);
+
+    Write("newest");
+
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 /* Another task filled the room between the eviction and the send: both losses
  * are reported. */
 TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestARecordRefusedAfterEvictingReportsBothLosses)

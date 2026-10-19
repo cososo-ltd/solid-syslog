@@ -49,9 +49,9 @@ static inline void CircularBuffer_InstallDiscardPolicy(
 static inline void CircularBuffer_ReportRecordTooLarge(void);
 static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPolicy(
     struct SolidSyslogCircularBuffer* self,
+    enum SolidSyslogDiscardPolicy policy,
     const void* data,
-    size_t size,
-    enum SolidSyslogDiscardPolicy policy
+    size_t size
 );
 static inline bool CircularBuffer_PolicyEvictsFor(
     const struct SolidSyslogCircularBuffer* self,
@@ -222,7 +222,7 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
          * as Read reports: both are integrator code that may log, which
          * re-enters Write. */
         enum SolidSyslogDiscardPolicy policy = self->GetDiscardPolicy(self->DiscardPolicyContext);
-        enum SolidSyslogCircularBufferRunStarted started = CircularBuffer_StoreApplyingPolicy(self, data, size, policy);
+        enum SolidSyslogCircularBufferRunStarted started = CircularBuffer_StoreApplyingPolicy(self, policy, data, size);
         CircularBuffer_ReportRunStarted(started);
     }
     else
@@ -237,9 +237,9 @@ static void CircularBuffer_Write(struct SolidSyslogBuffer* base, const void* dat
  * from the handler reporting it finds it already reported. */
 static enum SolidSyslogCircularBufferRunStarted CircularBuffer_StoreApplyingPolicy(
     struct SolidSyslogCircularBuffer* self,
+    enum SolidSyslogDiscardPolicy policy,
     const void* data,
-    size_t size,
-    enum SolidSyslogDiscardPolicy policy
+    size_t size
 )
 {
     enum SolidSyslogCircularBufferRunStarted started = RUN_STARTED_NONE;

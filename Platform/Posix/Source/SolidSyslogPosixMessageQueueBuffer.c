@@ -49,9 +49,9 @@ static bool PosixMessageQueueBuffer_IsFull(struct SolidSyslogBuffer* base);
 static inline void PosixMessageQueueBuffer_NoteRecordTaken(struct SolidSyslogPosixMessageQueueBuffer* self);
 static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
+    enum SolidSyslogDiscardPolicy policy,
     const void* data,
     size_t size,
-    enum SolidSyslogDiscardPolicy policy,
     bool* evictionRunStarted
 );
 static inline bool PosixMessageQueueBuffer_Send(
@@ -213,7 +213,7 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
     bool evictionRunStarted = false;
     SolidSyslogMutex_Lock(self->Mutex);
     enum SolidSyslogPosixMessageQueueBufferRunStarted started =
-        PosixMessageQueueBuffer_SendNotingRuns(self, data, size, policy, &evictionRunStarted);
+        PosixMessageQueueBuffer_SendNotingRuns(self, policy, data, size, &evictionRunStarted);
     SolidSyslogMutex_Unlock(self->Mutex);
     if (evictionRunStarted)
     {
@@ -231,9 +231,9 @@ static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const 
  * a handler that logs into the queue finds them already reported. */
 static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
+    enum SolidSyslogDiscardPolicy policy,
     const void* data,
     size_t size,
-    enum SolidSyslogDiscardPolicy policy,
     bool* evictionRunStarted
 )
 {
@@ -265,6 +265,7 @@ static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer
     {
         started = self->FailureReported ? RUN_STARTED_NONE : RUN_STARTED_FAILURES;
         self->FailureReported = true;
+        self->Full = self->Full || evicted;
     }
 
     return started;
