@@ -134,6 +134,8 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:99
 misra-c2012-11.8:Core/Source/SolidSyslog.c:100
 misra-c2012-11.8:Core/Source/SolidSyslog.c:101
 misra-c2012-11.8:Core/Source/SolidSyslog.c:102
+misra-c2012-11.8:Core/Source/SolidSyslog.c:103
+misra-c2012-11.8:Core/Source/SolidSyslog.c:104
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85

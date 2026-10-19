@@ -14,6 +14,7 @@ extern "C"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogLittleFsFile.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 #include "lfs.h"
 }
 
@@ -89,7 +90,7 @@ struct Stack
 
     [[nodiscard]] bool Write(const std::string& record) const
     {
-        return SolidSyslogStore_Write(store, record.data(), record.size());
+        return SolidSyslogStore_Write(store, record.data(), record.size()) == SOLIDSYSLOG_STORE_WRITE_KEPT;
     }
 
     [[nodiscard]] std::vector<std::string> DrainUnsent() const

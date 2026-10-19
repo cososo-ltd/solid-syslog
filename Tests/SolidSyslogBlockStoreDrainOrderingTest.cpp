@@ -27,6 +27,7 @@ extern "C"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogTunables.h"
 }
 
@@ -194,7 +195,7 @@ TEST_GROUP_BASE(BlockStoreDrainOrdering, DrainTestFixtureBase)
         buf[1] = static_cast<uint8_t>((sequenceId >> 8) & 0xFFU);
         buf[2] = static_cast<uint8_t>((sequenceId >> 16) & 0xFFU);
         buf[3] = static_cast<uint8_t>((sequenceId >> 24) & 0xFFU);
-        return SolidSyslogStore_Write(store, buf.data(), buf.size());
+        return SolidSyslogStore_Write(store, buf.data(), buf.size()) == SOLIDSYSLOG_STORE_WRITE_KEPT;
     }
 
     // Drains the next unsent record. Returns the sequenceId decoded from
