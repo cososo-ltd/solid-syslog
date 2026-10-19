@@ -89,8 +89,9 @@ SolidSyslog_SetErrorHandler(OnSyslogError, NULL);
 This is not only an integration aid. The handler is the seam into your product's own
 error and health reporting, and it stays valuable at run time: the sender raises an
 edge-triggered warning when the collector becomes unreachable and a notice when delivery
-recovers, and the ring buffer raises an error for a record too large to enqueue. Route
-it wherever your device already routes faults, but not back into SolidSyslog: the
+recovers, the ring buffer raises an error for a record too large to enqueue and a
+warning when it starts turning records away. Route it wherever your device already
+routes faults, but not back into SolidSyslog: the
 [handler contract](api/SolidSyslogError_8h.md#typedef-solidsyslogerrorhandler) says
 why, and what to do instead.
 
@@ -292,6 +293,11 @@ This separates logging an event from sending it.
 enough to call from the place the event actually happens rather than from somewhere
 convenient later. Nothing that logs waits on the network.
 
+A ring that fills turns the next record away. The buffer reports once when a run of
+refusals starts, and again only after it has kept a record since; the sequence number
+from stage 6 says how many went. Every queue in the library reports loss under the same
+rules, stated once under [when a record is lost](error-severity.md#when-a-record-is-lost).
+
 **When you need it.** Once logging and sending are decoupled, the buffer has to absorb
 however many events can be logged before it is next serviced. It also makes logging from
 multiple tasks safe.
@@ -394,6 +400,11 @@ so you can change the answer on a running device. Give the same function to the 
 and to the logger's `SolidSyslogConfig`, which is where a halt is decided: under halt
 the logger stops at the first record a full store refuses, calls its `OnHalt` once,
 and moves nothing more until your function answers otherwise or the device restarts.
+
+What the store loses it reports as the buffer does: a run of records turned away or
+evicted unsent raises one warning when it starts. A medium that fails is different in
+kind. The store reports it once and never uses the device again, and delivery continues
+without storage, so route that event somewhere it will be acted on.
 
 The file layer comes from your filesystem, so add its platform to the list from stage 1.
 
@@ -630,7 +641,9 @@ is the example's renewal sequence rather than the library.
 Replace the CRC-16 from stage 10 with a keyed HMAC. The checksum told you a record came
 back the way it went in; the HMAC tells you nobody has changed it since. An edit made
 without the key fails verification, so stored records become tamper-*evident* rather
-than merely intact.
+than merely intact. The store discards such a record, reports it, and carries on with
+the ones behind it. A key that is briefly unavailable is not a verdict: the policy
+reports that instead, and the record waits in the store until it can be checked.
 
 ```c
 struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {.GetKey = SyslogStoreKey};
