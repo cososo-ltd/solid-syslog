@@ -500,6 +500,18 @@ TEST(SolidSyslogBlockStoreResume, CanWriteNewMessagesAfterResume)
     MEMCMP_EQUAL("new", buf, strlen("new"));
 }
 
+TEST(SolidSyslogBlockStoreResume, AWriteBlockWhoseFileSizeFailsFreezesTheStore)
+{
+    RecordPreviousSession(3, 1);
+    RestartDevice();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextSize(file);
+
+    Resume();
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreDestroy, BlockDeviceTestBase)
 {
@@ -853,6 +865,18 @@ TEST(SolidSyslogBlockStoreErrors, OpenFailureFreezesTheStore)
     store = SolidSyslogBlockStore_Create(&config);
 
     CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreErrors, AFileSizeFailureUnderAppendFreezesTheStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    store = SolidSyslogBlockStore_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextSize(file);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
 }
 
 TEST(SolidSyslogBlockStoreErrors, AppendFailureFreezesTheStore)
@@ -1668,6 +1692,24 @@ TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseSizeFailsOnResumeFree
     FileFake_FailOpenAfter(file, 1); /* the write block opens; the read block behind it does not */
 
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
+}
+
+TEST(SolidSyslogBlockStoreRotation, AnEarlierReadBlockWhoseFileSizeFailsOnReadFreezesTheStore)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, 3);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    WriteMaxMsg(); /* block 02 - the device's handle is now on this block */
+    char buf[TEST_BUF_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 00 drained and disposed; 01 is read next, unmeasured */
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextSize(file);
+
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED);
 }

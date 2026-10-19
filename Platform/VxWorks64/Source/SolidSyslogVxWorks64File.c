@@ -35,7 +35,7 @@ static bool VxWorks64File_IsOpen(struct SolidSyslogFile* base);
 static bool VxWorks64File_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool VxWorks64File_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void VxWorks64File_SeekTo(struct SolidSyslogFile* base, size_t offset);
-static size_t VxWorks64File_Size(struct SolidSyslogFile* base);
+static bool VxWorks64File_Size(struct SolidSyslogFile* base, size_t* size);
 static void VxWorks64File_Truncate(struct SolidSyslogFile* base);
 static bool VxWorks64File_Exists(struct SolidSyslogFile* base, const char* path);
 static bool VxWorks64File_Delete(struct SolidSyslogFile* base, const char* path);
@@ -214,16 +214,18 @@ static void VxWorks64File_SeekTo(struct SolidSyslogFile* base, size_t offset)
     }
 }
 
-static size_t VxWorks64File_Size(struct SolidSyslogFile* base)
+static bool VxWorks64File_Size(struct SolidSyslogFile* base, size_t* size)
 {
     struct SolidSyslogVxWorks64File* self = VxWorks64File_SelfFromBase(base);
     off_t end = lseek(self->Fd, 0, SEEK_END);
-    int sizeErrno = (end == ERROR) ? errno : 0;
-    if (end == ERROR)
+    bool known = end != ERROR;
+    int sizeErrno = known ? 0 : errno;
+    if (!known)
     {
         VxWorks64File_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, sizeErrno);
     }
-    return (end >= 0) ? (size_t) end : 0U;
+    *size = known ? (size_t) end : 0U;
+    return known;
 }
 
 static void VxWorks64File_Truncate(struct SolidSyslogFile* base)

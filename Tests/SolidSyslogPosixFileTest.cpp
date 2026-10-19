@@ -12,10 +12,13 @@
 #include "TestUtils.h"
 
 #include <cstdio>
+#include <sys/stat.h>
 
 using namespace CososoTesting;
 
 static const char* const TEST_PATH = "/tmp/test_posix_file.dat";
+/* A FIFO: open succeeds, and lseek on it fails with ESPIPE. */
+static const char* const TEST_FIFO_PATH = "/tmp/test_posix_file.fifo";
 
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
     {                                                                                  \
@@ -36,6 +39,7 @@ TEST_GROUP(SolidSyslogPosixFile)
     {
         SocketFake_Reset();
         remove(TEST_PATH);
+        remove(TEST_FIFO_PATH);
         file = SolidSyslogPosixFile_Create();
     }
 
@@ -43,6 +47,7 @@ TEST_GROUP(SolidSyslogPosixFile)
     {
         SolidSyslogPosixFile_Destroy(file);
         remove(TEST_PATH);
+        remove(TEST_FIFO_PATH);
     }
 
     void OpenTestFile() const
@@ -95,9 +100,19 @@ TEST(SolidSyslogPosixFile, WriteAndReadRoundTrip)
 TEST(SolidSyslogPosixFile, SizeReturnsFileSize)
 {
     OpenTestFile();
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 0);
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
-    LONGS_EQUAL(5, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 5);
+}
+
+TEST(SolidSyslogPosixFile, SizeFailsOnAFileThatCannotSeek)
+{
+    LONGS_EQUAL(0, mkfifo(TEST_FIFO_PATH, S_IRUSR | S_IWUSR));
+    CHECK_TRUE(SolidSyslogFile_Open(file, TEST_FIFO_PATH));
+
+    size_t size = 42U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+    LONGS_EQUAL(0, size);
 }
 
 TEST(SolidSyslogPosixFile, TruncateClearsFile)
@@ -105,7 +120,7 @@ TEST(SolidSyslogPosixFile, TruncateClearsFile)
     OpenTestFile();
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
     SolidSyslogFile_Truncate(file);
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 0);
 }
 
 TEST(SolidSyslogPosixFile, OpenWithInvalidPathReturnsFalse)

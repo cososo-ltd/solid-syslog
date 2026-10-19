@@ -42,7 +42,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  result; a backend that reports failures does so through the error
          *  handler. */
         void (*SeekTo)(struct SolidSyslogFile* base, size_t offset);
-        size_t (*Size)(struct SolidSyslogFile* base); /**< Current length in bytes; 0 on error. */
+        /** Current length in bytes, written to @p size.
+         *  @retval false the length could not be learned; @p size is then 0. A
+         *          consumer must not take that for an empty file. */
+        bool (*Size)(struct SolidSyslogFile* base, size_t* size);
         void (*Truncate)(struct SolidSyslogFile* base); /**< Discard all content, leaving the file open at length 0. */
         /** Queries @p path on the filesystem, independent of any open file. */
         bool (*Exists)(struct SolidSyslogFile* base, const char* path);

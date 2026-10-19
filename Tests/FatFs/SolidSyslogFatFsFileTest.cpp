@@ -130,7 +130,7 @@ TEST(SolidSyslogFatFsFile, SizeReturnsFileObjectSize)
 {
     Open();
     FatFsFake_SetFileSize(42);
-    LONGS_EQUAL(42, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 42);
 }
 
 TEST(SolidSyslogFatFsFile, ReadCallsFReadWithCorrectDefaults)

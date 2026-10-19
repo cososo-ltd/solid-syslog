@@ -26,7 +26,7 @@ static bool LittleFsFile_IsOpen(struct SolidSyslogFile* base);
 static bool LittleFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
-static size_t LittleFsFile_Size(struct SolidSyslogFile* base);
+static bool LittleFsFile_Size(struct SolidSyslogFile* base, size_t* size);
 static void LittleFsFile_Truncate(struct SolidSyslogFile* base);
 static bool LittleFsFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool LittleFsFile_Delete(struct SolidSyslogFile* base, const char* path);
@@ -160,13 +160,14 @@ static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
     (void) lfs_file_seek(self->Filesystem, &self->Handle, (lfs_soff_t) offset, LFS_SEEK_SET);
 }
 
-static size_t LittleFsFile_Size(struct SolidSyslogFile* base)
+static bool LittleFsFile_Size(struct SolidSyslogFile* base, size_t* size)
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
-    lfs_soff_t size = lfs_file_size(self->Filesystem, &self->Handle);
-    /* lfs reports an error as a negative value, which the contract renders
-     * as zero. */
-    return (size > 0) ? (size_t) size : 0U;
+    lfs_soff_t length = lfs_file_size(self->Filesystem, &self->Handle);
+    /* lfs reports an error as a negative value. */
+    bool known = length >= 0;
+    *size = known ? (size_t) length : 0U;
+    return known;
 }
 
 static void LittleFsFile_Truncate(struct SolidSyslogFile* base)

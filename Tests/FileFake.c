@@ -28,7 +28,7 @@ static bool FileFake_IsOpen(struct SolidSyslogFile* self);
 static bool FileFake_Read(struct SolidSyslogFile* self, void* buf, size_t count);
 static bool FileFake_Write(struct SolidSyslogFile* self, const void* buf, size_t count);
 static void FileFake_SeekTo(struct SolidSyslogFile* self, size_t offset);
-static size_t FileFake_Size(struct SolidSyslogFile* self);
+static bool FileFake_Size(struct SolidSyslogFile* self, size_t* size);
 static void FileFake_Truncate(struct SolidSyslogFile* self);
 static bool FileFake_Exists(struct SolidSyslogFile* self, const char* path);
 static bool FileFake_Delete(struct SolidSyslogFile* self, const char* path);
@@ -40,7 +40,7 @@ static bool FileFake_DestroyedIsOpen(struct SolidSyslogFile* self);
 static bool FileFake_DestroyedRead(struct SolidSyslogFile* self, void* buf, size_t count);
 static bool FileFake_DestroyedWrite(struct SolidSyslogFile* self, const void* buf, size_t count);
 static void FileFake_DestroyedSeekTo(struct SolidSyslogFile* self, size_t offset);
-static size_t FileFake_DestroyedSize(struct SolidSyslogFile* self);
+static bool FileFake_DestroyedSize(struct SolidSyslogFile* self, size_t* size);
 static void FileFake_DestroyedTruncate(struct SolidSyslogFile* self);
 static bool FileFake_DestroyedExists(struct SolidSyslogFile* self, const char* path);
 static bool FileFake_DestroyedDelete(struct SolidSyslogFile* self, const char* path);
@@ -72,6 +72,7 @@ struct FileFake
     bool open;
     bool failNextWrite;
     bool failNextDelete;
+    bool failNextSize;
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
@@ -221,6 +222,16 @@ void FileFake_FailNextDelete(struct SolidSyslogFile* file)
         return;
     }
     AsFake(file)->failNextDelete = true;
+}
+
+void FileFake_FailNextSize(struct SolidSyslogFile* file)
+{
+    if (file == NULL)
+    {
+        TestAssert_Fail("FileFake_FailNextSize called with null file");
+        return;
+    }
+    AsFake(file)->failNextSize = true;
 }
 
 const void* FileFake_FileContent(void)
@@ -493,11 +504,19 @@ static void FileFake_SeekTo(struct SolidSyslogFile* self, size_t offset)
     fake->position = offset;
 }
 
-static size_t FileFake_Size(struct SolidSyslogFile* self)
+static bool FileFake_Size(struct SolidSyslogFile* self, size_t* size)
 {
     struct FileFake* fake = AsFake(self);
     RequireOpenFile(fake, "Size called with no file open");
-    return fake->active->fileSize;
+
+    if (ShouldFailOnThisCall(&fake->failNextSize))
+    {
+        *size = 0U;
+        return false;
+    }
+
+    *size = fake->active->fileSize;
+    return true;
 }
 
 static void FileFake_Truncate(struct SolidSyslogFile* self)
@@ -597,11 +616,12 @@ static void FileFake_DestroyedSeekTo(struct SolidSyslogFile* self, size_t offset
     TestAssert_Fail("SeekTo called after FileFake_Destroy");
 }
 
-static size_t FileFake_DestroyedSize(struct SolidSyslogFile* self)
+static bool FileFake_DestroyedSize(struct SolidSyslogFile* self, size_t* size)
 {
     (void) self;
+    *size = 0U;
     TestAssert_Fail("Size called after FileFake_Destroy");
-    return 0;
+    return false;
 }
 
 static void FileFake_DestroyedTruncate(struct SolidSyslogFile* self)

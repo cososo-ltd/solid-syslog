@@ -40,7 +40,7 @@ static bool WindowsFile_IsOpen(struct SolidSyslogFile* base);
 static bool WindowsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count);
 static bool WindowsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count);
 static void WindowsFile_SeekTo(struct SolidSyslogFile* base, size_t offset);
-static size_t WindowsFile_Size(struct SolidSyslogFile* base);
+static bool WindowsFile_Size(struct SolidSyslogFile* base, size_t* size);
 static void WindowsFile_Truncate(struct SolidSyslogFile* base);
 static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path);
@@ -128,11 +128,13 @@ static void WindowsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
     _lseeki64(self->Fd, (__int64) offset, SEEK_SET);
 }
 
-static size_t WindowsFile_Size(struct SolidSyslogFile* base)
+static bool WindowsFile_Size(struct SolidSyslogFile* base, size_t* size)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    __int64 size = _lseeki64(self->Fd, 0, SEEK_END);
-    return (size >= 0) ? (size_t) size : 0U;
+    __int64 end = _lseeki64(self->Fd, 0, SEEK_END);
+    bool known = end >= 0;
+    *size = known ? (size_t) end : 0U;
+    return known;
 }
 
 static void WindowsFile_Truncate(struct SolidSyslogFile* base)

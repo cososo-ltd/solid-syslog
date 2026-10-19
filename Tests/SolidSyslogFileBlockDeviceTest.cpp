@@ -261,6 +261,25 @@ TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheBlockWillNotOpen)
     CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
 }
 
+TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheFileCannotTellItsSize)
+{
+    size_t size = 0U;
+    FileFake_FailNextSize(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
+}
+
+TEST(SolidSyslogFileBlockDevice, AppendDoesNotWriteWhenTheFileCannotTellItsSize)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, "abc", 3));
+    FileFake_FailNextSize(file);
+
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, "xyz", 3));
+
+    CHECK_BLOCK_SIZE(0, 3);
+    CHECK_BLOCK_CONTAINS(0, 0, "abc", 3);
+}
+
 TEST(SolidSyslogFileBlockDevice, DestroyClosesOpenFileHandles)
 {
     SolidSyslogBlockDevice_Acquire(device, 0);

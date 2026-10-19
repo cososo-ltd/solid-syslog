@@ -137,15 +137,17 @@ TEST(SolidSyslogLittleFsFile, SizeReportsTheFileLength)
     LittleFsFake_SetFileSize(1234);
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
 
-    LONGS_EQUAL(1234, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 1234);
 }
 
-TEST(SolidSyslogLittleFsFile, SizeIsZeroWhenLittleFsReportsAnError)
+TEST(SolidSyslogLittleFsFile, SizeFailsWhenLittleFsReportsAnError)
 {
     LittleFsFake_SetFileSizeError(LFS_ERR_IO);
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
 
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    size_t size = 42U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+    LONGS_EQUAL(0, size);
 }
 
 TEST(SolidSyslogLittleFsFile, TruncateEmptiesTheFileAndLeavesItOpen)

@@ -104,12 +104,15 @@ TEST(SolidSyslogWindowsFile, WriteAndReadRoundTrip)
     MEMCMP_EQUAL("hello", buf, 5);
 }
 
+/* There is no failing-Size test: the CRT's _lseeki64 succeeds on every
+ * descriptor _sopen_s can hand out, NUL and pipes included, and a closed
+ * descriptor trips the CRT's invalid-parameter handler rather than returning. */
 TEST(SolidSyslogWindowsFile, SizeReturnsFileSize)
 {
     OpenTestFile();
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 0);
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
-    LONGS_EQUAL(5, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 5);
 }
 
 TEST(SolidSyslogWindowsFile, TruncateClearsFile)
@@ -117,7 +120,7 @@ TEST(SolidSyslogWindowsFile, TruncateClearsFile)
     OpenTestFile();
     CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
     SolidSyslogFile_Truncate(file);
-    LONGS_EQUAL(0, SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, 0);
 }
 
 TEST(SolidSyslogWindowsFile, BinaryRoundTripPreservesNewlineBytes)
@@ -133,7 +136,7 @@ TEST(SolidSyslogWindowsFile, BinaryRoundTripPreservesNewlineBytes)
     unsigned char roundTrip[sizeof(payload)] = {};
     CHECK_TRUE(SolidSyslogFile_Read(file, roundTrip, sizeof(roundTrip)));
     MEMCMP_EQUAL(payload, roundTrip, sizeof(payload));
-    LONGS_EQUAL(sizeof(payload), SolidSyslogFile_Size(file));
+    CHECK_FILE_SIZE(file, sizeof(payload));
 }
 
 TEST(SolidSyslogWindowsFile, OpenWithInvalidPathReturnsFalse)

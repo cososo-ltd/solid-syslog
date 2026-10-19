@@ -31,6 +31,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Lets @p readsThatSucceed reads through, then fails one. */
     void FileFake_FailReadAfter(struct SolidSyslogFile * file, size_t readsThatSucceed);
     void FileFake_FailNextDelete(struct SolidSyslogFile * file);
+    void FileFake_FailNextSize(struct SolidSyslogFile * file);
     const void* FileFake_FileContent(void);
     size_t FileFake_FileSize(void);
 
