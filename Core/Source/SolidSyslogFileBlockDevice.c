@@ -302,10 +302,10 @@ static bool FileBlockDevice_Append(
     if (FileBlockDevice_IsValidBlockIndex(blockIndex))
     {
         struct SolidSyslogFileBlockDevice* self = FileBlockDevice_SelfFromBase(base);
-        if (FileBlockDevice_EnsureHandleOpenOnBlock(&self->Handle, self, blockIndex))
+        size_t end = 0U;
+        if (FileBlockDevice_EnsureHandleOpenOnBlock(&self->Handle, self, blockIndex)
+            && SolidSyslogFile_Size(self->Handle.File, &end))
         {
-            size_t end = 0U;
-            (void) SolidSyslogFile_Size(self->Handle.File, &end);
             SolidSyslogFile_SeekTo(self->Handle.File, end);
             written = SolidSyslogFile_Write(self->Handle.File, buf, count);
         }
