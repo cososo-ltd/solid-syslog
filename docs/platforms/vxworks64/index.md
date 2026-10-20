@@ -148,9 +148,11 @@ For a collector off the subnet, `arpResolve` answers that the host is not on
 the local network and does not look up the gateway. The datagram then sends as
 it stands, without asking again until the destination changes, so a burst sent
 while the gateway's entry is unresolved can still be lost. That is a divergence
-from the contract, open as
-[#987](https://github.com/cososo-ltd/solid-syslog/issues/987); calling
-`arpResolve` for the gateway once at start-up warms the entry.
+from the contract, and it stands: the one route lookup 6.4 offers is an
+internal API that has not been run on hardware, and a configured next hop would
+be a second copy of the routing table. Calling `arpResolve` for the gateway
+once at start-up warms the entry; [setup](setup.md#drawing-the-udp-pieces)
+shows the call.
 
 The TCP stream does not confirm the next hop. A connection that does not open
 within its bound fails the send, which is reported, rather than losing records
