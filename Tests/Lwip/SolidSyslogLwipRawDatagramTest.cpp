@@ -75,16 +75,6 @@ TEST_BASE(LwipRawDatagramTestBase)
      * and length are the observable surface. */
     char sendBuffer[SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD] = {};
 
-    /* Replace the fixture's datagram with one configured to ask the fake
-       getter, with the fake's state cleared. */
-    void recreateWithGetter(void* context)
-    {
-        FakeGetPayloadLimit_Reset();
-        const struct SolidSyslogLwipRawDatagramConfig tuned = {FakeGetPayloadLimit, context};
-        SolidSyslogLwipRawDatagram_Destroy(datagram);
-        datagram = SolidSyslogLwipRawDatagram_Create(&tuned);
-    }
-
     void createFakesAndHandles()
     {
         LwipUdpFake_Reset();
@@ -106,6 +96,16 @@ TEST_BASE(LwipRawDatagramTestBase)
         LONGS_EQUAL_TEXT(0, LwipPbufFake_OutstandingPbufCount(), "leaked pbuf past teardown");
         LwipFakeMarshalGuard_CheckNoBreach();
         SolidSyslogLwipRaw_SetMarshal(nullptr);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogLwipRawDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogLwipRawDatagram_Destroy(datagram);
+        datagram = SolidSyslogLwipRawDatagram_Create(&tuned);
     }
 
     /* SendTo against the shared buffer + address. Default length 1 - most

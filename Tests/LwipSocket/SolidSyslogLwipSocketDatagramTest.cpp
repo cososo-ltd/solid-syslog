@@ -60,16 +60,6 @@ TEST_GROUP(SolidSyslogLwipSocketDatagram)
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress*  address  = nullptr;
 
-    /* Replace the fixture's datagram with one configured to ask the fake
-       getter, with the fake's state cleared. */
-    void recreateWithGetter(void* context)
-    {
-        FakeGetPayloadLimit_Reset();
-        const struct SolidSyslogLwipSocketDatagramConfig tuned = {FakeGetPayloadLimit, context};
-        SolidSyslogLwipSocketDatagram_Destroy(datagram);
-        datagram = SolidSyslogLwipSocketDatagram_Create(&tuned);
-    }
-
     void setup() override
     {
         LwipSocketsFake_Reset();
@@ -87,6 +77,16 @@ TEST_GROUP(SolidSyslogLwipSocketDatagram)
     {
         SolidSyslogLwipSocketAddress_Destroy(address);
         SolidSyslogLwipSocketDatagram_Destroy(datagram);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogLwipSocketDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogLwipSocketDatagram_Destroy(datagram);
+        datagram = SolidSyslogLwipSocketDatagram_Create(&tuned);
     }
 
     [[nodiscard]] enum SolidSyslogDatagramSendResult SendTo() const

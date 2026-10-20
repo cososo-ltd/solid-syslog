@@ -64,16 +64,6 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress* address   = nullptr;
 
-    /* Replace the fixture's datagram with one configured to ask the fake
-       getter, with the fake's state cleared. */
-    void recreateWithGetter(void* context)
-    {
-        FakeGetPayloadLimit_Reset();
-        const struct SolidSyslogVxWorks64DatagramConfig tuned = {FakeGetPayloadLimit, context};
-        SolidSyslogVxWorks64Datagram_Destroy(datagram);
-        datagram = SolidSyslogVxWorks64Datagram_Create(&tuned);
-    }
-
     void setup() override
     {
         VxWorks64NetFake_Reset();
@@ -91,6 +81,16 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
     {
         SolidSyslogVxWorks64Address_Destroy(address);
         SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogVxWorks64DatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogVxWorks64Datagram_Destroy(datagram);
+        datagram = SolidSyslogVxWorks64Datagram_Create(&tuned);
     }
 
     [[nodiscard]] enum SolidSyslogDatagramSendResult OpenAndSend() const

@@ -57,16 +57,6 @@ TEST_GROUP(SolidSyslogPlusTcpDatagram)
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress* addr = nullptr;
 
-    /* Replace the fixture's datagram with one configured to ask the fake
-       getter, with the fake's state cleared. */
-    void recreateWithGetter(void* context)
-    {
-        FakeGetPayloadLimit_Reset();
-        const struct SolidSyslogPlusTcpDatagramConfig tuned = {FakeGetPayloadLimit, context};
-        SolidSyslogPlusTcpDatagram_Destroy(datagram);
-        datagram = SolidSyslogPlusTcpDatagram_Create(&tuned);
-    }
-
     void setup() override
     {
         FreeRtosSocketsFake_Reset();
@@ -84,6 +74,16 @@ TEST_GROUP(SolidSyslogPlusTcpDatagram)
     {
         SolidSyslogPlusTcpAddress_Destroy(addr);
         SolidSyslogPlusTcpDatagram_Destroy(datagram);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogPlusTcpDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogPlusTcpDatagram_Destroy(datagram);
+        datagram = SolidSyslogPlusTcpDatagram_Create(&tuned);
     }
 
     void openAndSendOnce() const
