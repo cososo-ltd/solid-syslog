@@ -6,14 +6,14 @@
  *  UDP transport over a FreeRTOS-Plus-TCP socket, for a UdpSender.
  *
  *  SendTo wraps FreeRTOS_sendto (unconnected, destination per call) and reports
- *  SENT when the stack accepts the whole datagram, else FAILED. On an ARP-cache
- *  miss it first issues an ARP probe and yields once (~50 ms) for the reply,
- *  because FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves - the
- *  cold-start packet would otherwise be dropped at the IP layer; if the reply
- *  is late the send is left to fail, since UDP is best-effort and retry belongs
- *  in the store-and-forward layer above. MaxPayload answers the limit the
- *  config states, or the SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable: the stack
- *  exposes no path MTU. */
+ *  SENT when the stack accepts the whole datagram, else FAILED. The stack drops
+ *  a datagram whose next hop it is still resolving, so before each send the
+ *  datagram confirms the next hop's link address is in the ARP cache, as the
+ *  Datagram contract requires: on a miss it sends one ARP request and checks
+ *  every tick for up to SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS, and a next hop
+ *  still unresolved fails the send and is reported. MaxPayload answers the
+ *  limit the config states, or the SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable:
+ *  the stack exposes no path MTU. */
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAM_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAM_H
 

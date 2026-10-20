@@ -15,18 +15,25 @@
 #include "FreeRTOS_ARP.h"
 #include "FreeRTOS_Sockets.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPlusTcpDatagramErrors.h"
 #include "SolidSyslogPlusTcpDatagramPrivate.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "task.h"
 
 const struct SolidSyslogErrorSource SolidSyslogPlusTcpDatagramErrorSource = {
     "PlusTcpDatagram",
     SolidSyslogDatagramErrors_Name
+};
+
+enum
+{
+    PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND = 1000U
 };
 
 struct SolidSyslogAddress;
@@ -43,7 +50,10 @@ static void PlusTcpDatagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self);
-static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip);
+static inline bool PlusTcpDatagram_NextHopResolves(struct SolidSyslogPlusTcpDatagram* self, uint32_t ip);
+static inline eARPLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop);
+static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void);
+static inline void PlusTcpDatagram_ReportUnresolved(eARPLookupResult_t lookup);
 
 void SolidSyslogPlusTcpDatagram_Initialise(
     struct SolidSyslogDatagram* base,
@@ -62,6 +72,7 @@ void SolidSyslogPlusTcpDatagram_Initialise(
     self->Base.MaxPayload = PlusTcpDatagram_MaxPayload;
     self->Base.Close = PlusTcpDatagram_Close;
     self->Socket = FREERTOS_INVALID_SOCKET;
+    self->ResolveFailing = false;
 }
 
 static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(struct SolidSyslogDatagram* base)
@@ -114,37 +125,84 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
     if (PlusTcpDatagram_IsOpen(self))
     {
         const struct freertos_sockaddr* dest = SolidSyslogPlusTcpAddress_AsConstFreertosSockaddr(addr);
-        PlusTcpDatagram_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
-        int32_t sent = FreeRTOS_sendto(self->Socket, buffer, size, 0, dest, sizeof(*dest));
-        if (sent > 0)
+        if (PlusTcpDatagram_NextHopResolves(self, dest->sin_address.ulIP_IPv4))
         {
-            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+            int32_t sent = FreeRTOS_sendto(self->Socket, buffer, size, 0, dest, sizeof(*dest));
+            if (sent > 0)
+            {
+                result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+            }
         }
     }
     return result;
 }
 
-/* FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves: a sendto to
- * an unresolved peer drops at the IP layer. Host-class kernels mask this
- * with internal ARP queuing; this stack does not. So on cache miss we issue a
- * probe and yield once for the reply to land. If the reply hasn't arrived in
- * time the sendto is allowed to fail or be dropped - UDP is best-effort and
- * retry belongs in the store-and-forward layer above, not here. */
-static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
+/* The stack drops a datagram whose next hop it is still resolving, so a
+ * record is handed over only once the next hop is resolved. Each send that
+ * finds it unresolved sends one request, which the stack does not repeat, so
+ * a request lost during the wait goes again with the next send. While
+ * resolution keeps failing the send asks but does not wait, so an unreachable
+ * next hop costs one wait, not one per record. The stack's own
+ * xARPWaitResolution is not used: it sleeps 250 ms between checks and does
+ * not wait at all for an entry whose reply is pending. */
+static inline bool PlusTcpDatagram_NextHopResolves(struct SolidSyslogPlusTcpDatagram* self, uint32_t ip)
 {
-    /* Time the calling task yields after issuing an ARP probe so the IP
-     * task can receive the reply and populate the cache before we
-     * attempt FreeRTOS_sendto. 50 ms is generous against typical
-     * sub-millisecond LAN ARP RTT but short enough that the first send
-     * latency stays tolerable. If the reply hasn't arrived in time the
-     * sendto is allowed to fail or be dropped - UDP semantics. */
-    static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
-
-    if (xIsIPInARPCache(ip) == pdFALSE)
+    uint32_t nextHop = 0U;
+    eARPLookupResult_t lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
+    if (lookup != eARPCacheHit)
     {
-        FreeRTOS_OutputARPRequest(ip);
-        vTaskDelay(ARP_RESOLUTION_WAIT_TICKS);
+        FreeRTOS_OutputARPRequest(nextHop);
     }
+    TickType_t ticksToWait = self->ResolveFailing ? 0U : PlusTcpDatagram_ResolveWaitTicks();
+    for (TickType_t tick = 0U; (tick < ticksToWait) && (lookup != eARPCacheHit); tick++)
+    {
+        vTaskDelay(1U);
+        lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
+    }
+    bool resolved = (lookup == eARPCacheHit);
+    if (!resolved && !self->ResolveFailing)
+    {
+        PlusTcpDatagram_ReportUnresolved(lookup);
+    }
+    self->ResolveFailing = !resolved;
+    return resolved;
+}
+
+/* The stack names the next hop: the destination when it is on the subnet,
+ * otherwise the gateway. */
+static inline eARPLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop)
+{
+    MACAddress_t linkAddress;
+    NetworkEndPoint_t* endPoint = NULL;
+    *nextHop = ip;
+    return eARPGetCacheEntry(nextHop, &linkAddress, &endPoint);
+}
+
+/* Rounded up, so a wait shorter than a tick is a tick rather than none. */
+static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void)
+{
+    return (TickType_t) ((((uint32_t) SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS * (uint32_t) configTICK_RATE_HZ) +
+                          (PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND - 1U)) /
+                         PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND);
+}
+
+/* The lookup's own answer follows as the native code: a miss, or
+ * eCantSendPacket for an entry whose reply is still pending, or a next hop the
+ * stack cannot send to at all, such as an off-subnet destination with no
+ * gateway configured. */
+static inline void PlusTcpDatagram_ReportUnresolved(eARPLookupResult_t lookup)
+{
+    PlusTcpDatagram_Report(
+        SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
+    );
+    SolidSyslog_Error(
+        SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
+        &SolidSyslogPlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        (int32_t) lookup
+    );
 }
 
 static size_t PlusTcpDatagram_MaxPayload(struct SolidSyslogDatagram* base)

@@ -46,9 +46,10 @@ Your `lwipopts.h` must enable the features the adapter wraps:
 | `LWIP_TCP=1` | the TCP stream |
 | `LWIP_DNS=1` | the DNS resolver only |
 
-Also set `ARP_QUEUEING=1` (else lwIP holds only the latest packet for an
-unresolved address, so earlier records in a burst are dropped), and size
-`PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to your instance counts.
+Also set `ARP_QUEUEING=1` and size `ARP_QUEUE_LEN` to the burst you log at
+start-up - see [a burst to an unresolved next hop](#a-burst-to-an-unresolved-next-hop-is-held-up-to-a-bound)
+below - and size `PBUF_POOL_SIZE` / `MEMP_NUM_TCP_PCB` / `MEMP_NUM_UDP_PCB` to
+your instance counts.
 `LWIP_TCP_KEEPALIVE=1` is worth setting but not required -
 see [dead-peer detection](#dead-peer-detection-is-yours-to-size) below. `IP_FRAG`
 decides what becomes of a record too large for the path - see
@@ -72,7 +73,24 @@ are read the moment the hop returns. An asynchronous marshal, or none at all,
 corrupts lwIP's internal state rather than failing cleanly. Install it once at
 boot, before any adapter is created.
 
-### What becomes of an over-large record
+### A burst to an unresolved next hop is held up to a bound
+
+While lwIP resolves a next hop's link address it holds the datagrams sent to
+it, and `udp_sendto` answers success for each one it takes into that queue;
+it refuses only when it is out of memory. Without `ARP_QUEUEING` it
+holds only the latest, so a burst sent before the reply arrives, such as the
+records logged at start-up, loses all but its last record with nothing
+reported. With `ARP_QUEUEING=1` it holds `ARP_QUEUE_LEN` of them, three by
+default, and drops the oldest for each one beyond that. It re-sends the
+request every `ARP_TMR_INTERVAL` (1 s) and gives up after `ARP_MAXPENDING`
+(5) tries, dropping what it held. The datagram does not check the cache
+itself; set `ARP_QUEUE_LEN` to the number of records you log before the
+first reply can arrive, and remember that a collector that never answers
+loses them whatever the depth. TCP does not have this loss: a connection
+waits for resolution and retransmits its opening, so the first records after
+boot are held by the stream rather than dropped by the stack.
+
+## What becomes of an over-large record
 
 The datagram cannot tell an over-large datagram from any other send failure,
 which the [Datagram](../../api/structSolidSyslogDatagram.md) contract permits,

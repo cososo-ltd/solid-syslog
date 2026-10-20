@@ -287,16 +287,11 @@ static uint32_t PlusTcpTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogPlusT
  * before FreeRTOS_connect runs. Without this, the cold-start SYN is dropped
  * at the IP layer (FreeRTOS-Plus-TCP does not queue while ARP resolves) and
  * the bounded 200 ms connect timeout expires before the SYN-and-resend
- * cycle completes. Symmetric with PlusTcpDatagram_SendTo. */
+ * cycle completes. */
 static inline void PlusTcpTcpStream_PrimeArpIfMissing(uint32_t ip)
 {
     /* Yield window for the IP task to receive an ARP reply and populate
-     * the cache before we attempt FreeRTOS_connect. Mirrors the
-     * established SolidSyslogPlusTcpDatagram pattern (see
-     * [[freertos-arp-first-packet]]) - without this, a cold-start TCP
-     * connect fires SYN before ARP resolves, the SYN is dropped at the
-     * IP layer, and the bounded 200 ms RCV-timeout connect expires
-     * before the retransmit ARP-and-resend cycle completes. */
+     * the cache before we attempt FreeRTOS_connect. */
     static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
 
     if (xIsIPInARPCache(ip) == pdFALSE)

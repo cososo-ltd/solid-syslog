@@ -28,9 +28,19 @@ no-op. `LWIP_SOCKET_SELECT` defaults to on, and the stream's bounded connect is
 what needs it, so a build that turns it off links everything here except the
 stream.
 
-Set `ARP_QUEUEING=1` as well. Without it lwIP holds only the latest packet for
-an address it is still resolving, so the datagram loses every earlier record in
-a burst sent before the reply arrives - typically the first records after boot.
+Set `ARP_QUEUEING=1` as well, and size `ARP_QUEUE_LEN` to the burst you log
+at start-up. While lwIP resolves a next hop's link address it holds the
+datagrams sent to it, and `sendto` answers success for each one it takes into
+that queue; it refuses only when it is out of memory. Without
+`ARP_QUEUEING` it holds only the latest, so a burst sent before the reply
+arrives, typically the first records after boot, loses all but its last record
+with nothing reported. With it, lwIP holds `ARP_QUEUE_LEN` of them, three by
+default, and drops the oldest for each one beyond that; it re-sends the request
+every `ARP_TMR_INTERVAL` (1 s) and gives up after `ARP_MAXPENDING` (5) tries,
+dropping what it held. The datagram does not check the cache itself. TCP does
+not have this loss: a connection waits for resolution and retransmits its
+opening, so the first records after boot are held by the stream rather than
+dropped by the stack.
 
 Your port must also make `errno` and its codes available, because the transports
 read it to tell one refusal from another. lwIP offers three ways to say where it
