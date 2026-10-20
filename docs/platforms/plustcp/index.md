@@ -60,10 +60,12 @@ reported again, so an unreachable collector costs one wait rather than one
 per record.
 
 The next hop is what the stack names: the collector when it is on the subnet,
-otherwise the gateway. UDP's supported shape is a collector or relay on the
-target's own subnet; a datagram that confirms its gateway's entry says nothing
-about the hops beyond it, so for a collector further away choose TCP, which
-retransmits.
+otherwise the gateway. The supported shape for UDP is a collector or relay on
+the target's own subnet, since a datagram that confirms its gateway's entry
+says nothing about the hops beyond it. A collector further away is a case for
+TCP: a connection waits for resolution and retransmits its opening, so the
+first records after boot are held by the stream rather than dropped by the
+stack.
 
 The TCP stream does not confirm the next hop. On a cache miss its connect
 sends an ARP request and yields once before the SYN, for 50 ms rounded down to
