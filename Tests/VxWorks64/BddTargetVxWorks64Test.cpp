@@ -272,7 +272,7 @@ TEST(BddTargetVxWorks64, TheBootsCoreOnlyCheckIsNotReportedAsAnError)
 {
     BddTargetVxWorks64_Init();
 
-    CHECK(Reported().find("bad config") == std::string::npos);
+    CHECK(Reported().find("BAD_CONFIG") == std::string::npos);
 }
 
 TEST(BddTargetVxWorks64, TeardownReleasesTheCounterForTheNextBoot)

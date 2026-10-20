@@ -1,123 +1,42 @@
-#include "BddTargetErrorText.h"
-#include "SolidSyslogBufferCategories.h"
-#include "SolidSyslogDatagramCategories.h"
-#include "SolidSyslogErrorCategory.h"
-#include "SolidSyslogFileCategories.h"
-#include "SolidSyslogResolverCategories.h"
-#include "SolidSyslogSecurityPolicyCategories.h"
-#include "SolidSyslogStoreCategories.h"
-#include "SolidSyslogStreamCategories.h"
-#include "SolidSyslogTlsStreamCategories.h"
+#include <stdint.h>
+
 #include "CppUTest/TestHarness.h"
+
+#include "BddTargetErrorText.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogPrival.h"
 
 TEST_GROUP(BddTargetErrorText){};
 
-#define CHECK_CATEGORY_TEXT(category, expectedText)                            \
-    {                                                                          \
-        STRCMP_EQUAL((expectedText), BddTargetErrorText_Category((category))); \
-    }
-
-TEST(BddTargetErrorText, BadConfigCategoryMapsToText)
+TEST(BddTargetErrorText, ACategoryIsNamedAsTheLibraryNamesIt)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BAD_CONFIG, "bad config");
+    STRCMP_EQUAL("POOL_EXHAUSTED", BddTargetErrorText_Category(SOLIDSYSLOG_CAT_POOL_EXHAUSTED));
 }
 
-TEST(BddTargetErrorText, BadArgumentCategoryMapsToText)
+TEST(BddTargetErrorText, ACategoryTheLibraryDoesNotNameIsUnknown)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BAD_ARGUMENT, "bad argument");
+    STRCMP_EQUAL("unknown", BddTargetErrorText_Category((uint16_t) 0xFFFFU));
 }
 
-TEST(BddTargetErrorText, PoolExhaustedCategoryMapsToText)
+TEST(BddTargetErrorText, ADetailIsNamedThroughItsSource)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_POOL_EXHAUSTED, "pool exhausted");
+    static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
+    const struct SolidSyslogErrorEvent event = {
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &source,
+        SOLIDSYSLOG_CAT_DATAGRAM_BASE,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
+    };
+
+    STRCMP_EQUAL("NEXT_HOP_UNRESOLVED", BddTargetErrorText_Detail(&event));
 }
 
-TEST(BddTargetErrorText, UnknownDestroyCategoryMapsToText)
+TEST(BddTargetErrorText, ADetailWithoutANameIsADash)
 {
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_UNKNOWN_DESTROY, "unknown destroy");
-}
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, &source, 0U, 7};
 
-TEST(BddTargetErrorText, BufferBackendFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, "buffer backend failed");
-}
-
-TEST(BddTargetErrorText, BufferRecordsLostCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, "buffer records lost");
-}
-
-TEST(BddTargetErrorText, ResolverResolveFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED, "resolve failed");
-}
-
-TEST(BddTargetErrorText, SecurityPolicyKeyUnavailableCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE, "key unavailable");
-}
-
-TEST(BddTargetErrorText, SecurityPolicySealFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED, "seal failed");
-}
-
-TEST(BddTargetErrorText, SecurityPolicyOpenFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED, "open failed");
-}
-
-TEST(BddTargetErrorText, StreamConnectFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, "connect failed");
-}
-
-TEST(BddTargetErrorText, OpenSslStreamInitFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED, "TLS init failed");
-}
-
-TEST(BddTargetErrorText, OpenSslStreamHandshakeFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, "TLS handshake failed");
-}
-
-TEST(BddTargetErrorText, NativeErrorCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_NATIVE_ERROR, "native error");
-}
-
-TEST(BddTargetErrorText, FileIoFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_FILE_IO_FAILED, "file I/O failed");
-}
-
-TEST(BddTargetErrorText, NextHopUnresolvedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED, "next hop unresolved");
-}
-
-TEST(BddTargetErrorText, StoreWriteFailedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, "store write failed");
-}
-
-TEST(BddTargetErrorText, StoreFrozenCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_FROZEN, "store frozen");
-}
-
-TEST(BddTargetErrorText, StoreRecordDiscardedCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, "store record discarded");
-}
-
-TEST(BddTargetErrorText, StoreRecordsLostCategoryMapsToText)
-{
-    CHECK_CATEGORY_TEXT(SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, "store records lost");
-}
-
-TEST(BddTargetErrorText, UnrecognisedCategoryMapsToUnknown)
-{
-    CHECK_CATEGORY_TEXT((uint16_t) 0xFFFFU, "unknown");
+    STRCMP_EQUAL("-", BddTargetErrorText_Detail(&event));
 }
