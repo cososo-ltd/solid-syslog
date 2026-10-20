@@ -20,7 +20,6 @@ using namespace CososoTesting;
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"
@@ -44,6 +43,21 @@ static const char TEST_MESSAGE[] = "hello";
 // Longer than any payload limit the datagram reports, so a test can send one byte past it.
 static const char TEST_LONG_RECORD[2048] = {0};
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64Datagram)
 {
@@ -55,7 +69,7 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
         VxWorks64NetFake_Reset();
         VxWorks64IoFake_Reset();
         VxWorks64ArpFake_Reset();
-        datagram = SolidSyslogVxWorks64Datagram_Create();
+        datagram = SolidSyslogVxWorks64Datagram_Create(nullptr);
         address  = SolidSyslogVxWorks64Address_Create();
         struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsSockaddrIn(address);
         sin->sin_family         = AF_INET;
@@ -67,6 +81,16 @@ TEST_GROUP(SolidSyslogVxWorks64Datagram)
     {
         SolidSyslogVxWorks64Address_Destroy(address);
         SolidSyslogVxWorks64Datagram_Destroy(datagram);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogVxWorks64DatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogVxWorks64Datagram_Destroy(datagram);
+        datagram = SolidSyslogVxWorks64Datagram_Create(&tuned);
     }
 
     [[nodiscard]] enum SolidSyslogDatagramSendResult OpenAndSend() const
@@ -347,11 +371,47 @@ TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
     LONGS_EQUAL(0, VxWorks64NetFake_LastSendtoFlags());
 }
 
-TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsTheUnknownPathPayload)
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
-    SolidSyslogDatagram_Open(datagram);
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
 
-    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsWhatTheGetterStates)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+/* The getter is asked on every query, never cached, so an end user can retune
+   the limit at run time without destroying the datagram. */
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadAsksTheGetterOnEveryQuery)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    FakeGetPayloadLimit_ReturnValue = 1400U;
+
+    LONGS_EQUAL(1400, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 0U;
+
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadPassesTheContextToTheGetter)
+{
+    int context = 0;
+    recreateWithGetter(&context);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    POINTERS_EQUAL(&context, FakeGetPayloadLimit_LastContext);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, CloseClosesTheSocketOpenMade)
@@ -431,7 +491,7 @@ TEST_GROUP(SolidSyslogVxWorks64DatagramPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogVxWorks64Datagram_Create();
+            slot = SolidSyslogVxWorks64Datagram_Create(nullptr);
         }
     }
 };
@@ -442,7 +502,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, FillingPoolThenOverflowReturnsDistinctFal
 {
     FillPool();
 
-    overflow = SolidSyslogVxWorks64Datagram_Create();
+    overflow = SolidSyslogVxWorks64Datagram_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -452,7 +512,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogVxWorks64Datagram_Create();
+    overflow = SolidSyslogVxWorks64Datagram_Create(nullptr);
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
@@ -465,7 +525,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogVxWorks64DatagramPool, FallbackSendToReturnsSent)
 {
     FillPool();
-    overflow = SolidSyslogVxWorks64Datagram_Create();
+    overflow = SolidSyslogVxWorks64Datagram_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(overflow, "x", 1, nullptr));
 }
@@ -474,7 +534,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, CreateAcquiresAndReleasesConfigLockOnFirs
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogVxWorks64Datagram_Create();
+    pooled[0] = SolidSyslogVxWorks64Datagram_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -485,7 +545,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFul
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogVxWorks64Datagram_Create();
+    overflow = SolidSyslogVxWorks64Datagram_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -493,7 +553,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFul
 
 TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogVxWorks64Datagram_Create();
+    pooled[0] = SolidSyslogVxWorks64Datagram_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogVxWorks64Datagram_Destroy(pooled[0]);
@@ -531,7 +591,7 @@ TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogVxWorks64Datagram_Create();
+    pooled[0] = SolidSyslogVxWorks64Datagram_Create(nullptr);
     SolidSyslogVxWorks64Datagram_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 

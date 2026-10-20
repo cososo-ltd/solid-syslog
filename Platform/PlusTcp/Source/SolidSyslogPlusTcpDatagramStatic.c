@@ -29,13 +29,13 @@ static struct SolidSyslogPoolAllocator PlusTcpDatagram_Allocator = {
     SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
-struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(void)
+struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(const struct SolidSyslogPlusTcpDatagramConfig* config)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PlusTcpDatagram_Allocator);
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&PlusTcpDatagram_Allocator, index) == true)
     {
-        SolidSyslogPlusTcpDatagram_Initialise(&PlusTcpDatagram_Pool[index].Base);
+        SolidSyslogPlusTcpDatagram_Initialise(&PlusTcpDatagram_Pool[index].Base, config);
         handle = &PlusTcpDatagram_Pool[index].Base;
     }
     else

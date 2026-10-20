@@ -23,7 +23,6 @@ using namespace CososoTesting;
 #include "SolidSyslogPlusTcpDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogUdpPayload.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -38,6 +37,21 @@ using namespace CososoTesting;
 
 static const uint16_t TEST_PORT = 514;
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 TEST_GROUP(SolidSyslogPlusTcpDatagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
@@ -48,7 +62,7 @@ TEST_GROUP(SolidSyslogPlusTcpDatagram)
         FreeRtosSocketsFake_Reset();
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
-        datagram = SolidSyslogPlusTcpDatagram_Create();
+        datagram = SolidSyslogPlusTcpDatagram_Create(nullptr);
         addr = SolidSyslogPlusTcpAddress_Create();
         struct freertos_sockaddr* sin = SolidSyslogPlusTcpAddress_AsFreertosSockaddr(addr);
         sin->sin_family = FREERTOS_AF_INET;
@@ -60,6 +74,16 @@ TEST_GROUP(SolidSyslogPlusTcpDatagram)
     {
         SolidSyslogPlusTcpAddress_Destroy(addr);
         SolidSyslogPlusTcpDatagram_Destroy(datagram);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogPlusTcpDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogPlusTcpDatagram_Destroy(datagram);
+        datagram = SolidSyslogPlusTcpDatagram_Create(&tuned);
     }
 
     void openAndSendOnce() const
@@ -106,10 +130,47 @@ TEST(SolidSyslogPlusTcpDatagram, OpenIsIdempotent)
     CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
 }
 
-TEST(SolidSyslogPlusTcpDatagram, MaxPayloadReturnsUnknownPathPayload)
-
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
-    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsWhatTheGetterStates)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+/* The getter is asked on every query, never cached, so an end user can retune
+   the limit at run time without destroying the datagram. */
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadAsksTheGetterOnEveryQuery)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    FakeGetPayloadLimit_ReturnValue = 1400U;
+
+    LONGS_EQUAL(1400, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 0U;
+
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadPassesTheContextToTheGetter)
+{
+    int context = 0;
+    recreateWithGetter(&context);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    POINTERS_EQUAL(&context, FakeGetPayloadLimit_LastContext);
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToFailsBeforeOpen)
@@ -306,7 +367,7 @@ TEST_GROUP(SolidSyslogPlusTcpDatagramPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogPlusTcpDatagram_Create();
+            slot = SolidSyslogPlusTcpDatagram_Create(nullptr);
         }
     }
 };
@@ -318,7 +379,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, FillingPoolThenOverflowReturnsDistinctFallb
 {
     FillPool();
 
-    overflow = SolidSyslogPlusTcpDatagram_Create();
+    overflow = SolidSyslogPlusTcpDatagram_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -329,7 +390,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogPlusTcpDatagram_Create();
+    overflow = SolidSyslogPlusTcpDatagram_Create(nullptr);
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
@@ -343,7 +404,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, FallbackVtableMethodsAreNoOps)
 
 {
     FillPool();
-    overflow = SolidSyslogPlusTcpDatagram_Create();
+    overflow = SolidSyslogPlusTcpDatagram_Create(nullptr);
     struct SolidSyslogAddress* localAddr = SolidSyslogPlusTcpAddress_Create();
     FreeRtosSocketsFake_Reset();
 
@@ -365,7 +426,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, CreateAcquiresAndReleasesConfigLockOnFirstF
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogPlusTcpDatagram_Create();
+    pooled[0] = SolidSyslogPlusTcpDatagram_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -377,7 +438,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogPlusTcpDatagram_Create();
+    overflow = SolidSyslogPlusTcpDatagram_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -386,7 +447,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfPooledHandleLocksOnce)
 
 {
-    pooled[0] = SolidSyslogPlusTcpDatagram_Create();
+    pooled[0] = SolidSyslogPlusTcpDatagram_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogPlusTcpDatagram_Destroy(pooled[0]);
@@ -427,7 +488,7 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfUnknownHandleReportsWarning)
 TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfStaleHandleReportsWarning)
 
 {
-    pooled[0] = SolidSyslogPlusTcpDatagram_Create();
+    pooled[0] = SolidSyslogPlusTcpDatagram_Create(nullptr);
     SolidSyslogPlusTcpDatagram_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 

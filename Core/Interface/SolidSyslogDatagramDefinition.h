@@ -28,9 +28,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      *  - **Report MaxPayload for the path in use, and never guess high.** The
      *    value bounds what the caller will retry, so an optimistic answer costs
-     *    the record. Where the stack cannot report a path MTU, answer
-     *    SolidSyslogUdpPayload_UnknownPath for the family rather than something
-     *    larger. The path meant is the destination currently being sent to; an
+     *    the record. Where the stack cannot discover a path MTU, answer what
+     *    the integrator states through a SolidSyslogUdpPayloadLimitFunction on
+     *    the implementation's config, resolved by SolidSyslogUdpPayload_Stated
+     *    to the SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable where none is
+     *    stated; where the stack discovers it but has no answer yet, fall back
+     *    to SolidSyslogUdpPayload_UnknownPath for the family rather than
+     *    something larger. The path meant is the destination currently being sent to; an
      *    implementation serving several at once answers low enough for all of
      *    them. Zero says the implementation cannot report a limit: the caller
      *    will not read a failure as oversize on its word, and an OVERSIZE

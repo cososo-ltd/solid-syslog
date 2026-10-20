@@ -3,6 +3,7 @@
  */
 
 #include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUtf8.h"
 
 enum
@@ -42,6 +43,20 @@ size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6)
     return isIpv6 ? (size_t) IPV6_UNKNOWN_PATH_MESSAGE_BYTES : (size_t) IPV4_UNKNOWN_PATH_MESSAGE_BYTES;
 }
 
+size_t SolidSyslogUdpPayload_Stated(SolidSyslogUdpPayloadLimitFunction limit, void* context)
+{
+    size_t stated = 0U;
+    if (limit != NULL)
+    {
+        stated = limit(context);
+    }
+    if (stated == 0U)
+    {
+        stated = (size_t) SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT;
+    }
+    return stated;
+}
+
 size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length)
 {
     size_t trimmed = length;
@@ -76,7 +91,7 @@ static inline bool UdpPayload_LastCodepointExtendsPastCut(
 }
 
 /* 11110xxx is the only remaining pattern - invalid bytes never reach here
- * because the formatter (S12.10) guarantees valid UTF-8 upstream. */
+ * because the formatter guarantees valid UTF-8 upstream. */
 static inline size_t UdpPayload_ExpectedSequenceLength(uint8_t startByte)
 {
     char b = (char) startByte;

@@ -69,8 +69,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** Largest datagram payload the current path is known to accept, used to
-     *  trim a record a send did not carry. Before a path MTU is known, or
-     *  where the stack cannot report one, an implementation falls back to
+     *  trim a record a send did not carry. Where the stack cannot discover a
+     *  path MTU, this is the limit the integrator stated on the
+     *  implementation's config, or the SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT
+     *  tunable; where it can but has not yet, the implementation falls back to
      *  SolidSyslogUdpPayload_UnknownPath for the destination's address
      *  family. */
     size_t SolidSyslogDatagram_MaxPayload(struct SolidSyslogDatagram * datagram);

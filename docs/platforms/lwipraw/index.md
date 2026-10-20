@@ -76,8 +76,9 @@ boot, before any adapter is created.
 
 The datagram cannot tell an over-large datagram from any other send failure,
 which the [Datagram](../../api/structSolidSyslogDatagram.md) contract permits,
-and it reports the IPv4 unknown-path payload from `MaxPayload` because the stack
-exposes no path MTU.
+and `MaxPayload` answers the limit the integrator states through the datagram
+config's payload-limit callback, or `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` where
+none is stated, because the stack exposes no path MTU.
 
 A record above that size is offered to lwIP whole, and what happens to that
 first attempt is `IP_FRAG`'s decision rather than the adapter's. Only the

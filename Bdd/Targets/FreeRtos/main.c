@@ -264,7 +264,7 @@ static struct SolidSyslogSender* BuildSender(void)
     BddTargetMtlsConfig_SetServerName("syslog-ng");
 
     resolver = SolidSyslogPlusTcpResolver_Create();
-    datagram = SolidSyslogPlusTcpDatagram_Create();
+    datagram = SolidSyslogPlusTcpDatagram_Create(NULL);
     udpAddress = SolidSyslogPlusTcpAddress_Create();
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .Resolver = resolver,

@@ -86,9 +86,18 @@ static inline bool VxWorks64Datagram_AskForTheLinkAddress(
     const struct sockaddr_in* sin
 );
 
-void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogVxWorks64Datagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogVxWorks64DatagramConfig* config
+)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
+    self->Config.GetPayloadLimit = NULL;
+    self->Config.PayloadLimitContext = NULL;
+    if (config != NULL)
+    {
+        self->Config = *config;
+    }
     self->Base.Open = VxWorks64Datagram_Open;
     self->Base.SendTo = VxWorks64Datagram_SendTo;
     self->Base.MaxPayload = VxWorks64Datagram_MaxPayload;
@@ -282,10 +291,8 @@ static inline enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendToStack(
 
 static size_t VxWorks64Datagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
-    /* No path-MTU query exists for UDP, so this returns the contract's
-     * unknown-path figure. */
-    (void) base;
-    return SolidSyslogUdpPayload_UnknownPath(false);
+    struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
+    return SolidSyslogUdpPayload_Stated(self->Config.GetPayloadLimit, self->Config.PayloadLimitContext);
 }
 
 static void VxWorks64Datagram_Close(struct SolidSyslogDatagram* base)

@@ -59,9 +59,18 @@ static void LwipRawDatagram_DoOpen(void* context);
 static void LwipRawDatagram_DoClose(void* context);
 static void LwipRawDatagram_DoSendTo(void* context);
 
-void SolidSyslogLwipRawDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogLwipRawDatagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogLwipRawDatagramConfig* config
+)
 {
     struct SolidSyslogLwipRawDatagram* self = LwipRawDatagram_SelfFromBase(base);
+    self->Config.GetPayloadLimit = NULL;
+    self->Config.PayloadLimitContext = NULL;
+    if (config != NULL)
+    {
+        self->Config = *config;
+    }
     self->Base.Open = LwipRawDatagram_Open;
     self->Base.Close = LwipRawDatagram_Close;
     self->Base.SendTo = LwipRawDatagram_SendTo;
@@ -177,8 +186,8 @@ static void LwipRawDatagram_DoSendTo(void* context)
 
 static size_t LwipRawDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
-    (void) base;
-    return SolidSyslogUdpPayload_UnknownPath(false);
+    struct SolidSyslogLwipRawDatagram* self = LwipRawDatagram_SelfFromBase(base);
+    return SolidSyslogUdpPayload_Stated(self->Config.GetPayloadLimit, self->Config.PayloadLimitContext);
 }
 
 #else

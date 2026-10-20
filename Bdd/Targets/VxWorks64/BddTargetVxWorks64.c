@@ -320,7 +320,7 @@ static struct SolidSyslogSender* BddTargetVxWorks64_CreateSenders(void)
     resolver = SolidSyslogVxWorks64Resolver_Create();
 
     udpAddress = SolidSyslogVxWorks64Address_Create();
-    datagram = SolidSyslogVxWorks64Datagram_Create();
+    datagram = SolidSyslogVxWorks64Datagram_Create(NULL);
     udpConfig.Resolver = resolver;
     udpConfig.Datagram = datagram;
     udpConfig.Address = udpAddress;

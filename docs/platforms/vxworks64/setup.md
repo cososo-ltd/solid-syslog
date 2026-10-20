@@ -212,10 +212,14 @@ it rebuilds your sources is up to your project's build.
 
 struct SolidSyslogAddress*  address  = SolidSyslogVxWorks64Address_Create();
 struct SolidSyslogResolver* resolver = SolidSyslogVxWorks64Resolver_Create();
-struct SolidSyslogDatagram* datagram = SolidSyslogVxWorks64Datagram_Create();
+
+/* NULL leaves the IPv4 payload limit at the SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT
+   tunable; supply a getter where the limit has to move at runtime. */
+struct SolidSyslogDatagram* datagram = SolidSyslogVxWorks64Datagram_Create(NULL);
 ```
 
-None of them takes a configuration. Hand all three to
+Only the datagram takes a configuration, and then only to state the IPv4
+payload the path carries, which the stack cannot discover. Hand all three to
 `SolidSyslogUdpSender_Create`; one address, one resolver and one datagram serve
 one sender.
 

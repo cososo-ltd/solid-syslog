@@ -9,16 +9,21 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogLwipSocketDatagram.h"
 #include "SolidSyslogLwipSocketDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 
 struct SolidSyslogLwipSocketDatagram
 {
     struct SolidSyslogDatagram Base;
+    struct SolidSyslogLwipSocketDatagramConfig Config;
     int Fd;
 };
 
-void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogLwipSocketDatagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogLwipSocketDatagramConfig* config
+);
 void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void LwipSocketDatagram_Report(

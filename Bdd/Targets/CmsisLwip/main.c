@@ -223,7 +223,7 @@ static struct SolidSyslogSender* BuildSender(void)
      * which a hostlist hit does without leaving the guest - and this is the
      * interactive task, never the tcpip thread the resolve waits on. */
     resolver = SolidSyslogLwipSocketResolver_Create();
-    datagram = SolidSyslogLwipSocketDatagram_Create();
+    datagram = SolidSyslogLwipSocketDatagram_Create(NULL);
     udpAddress = SolidSyslogLwipSocketAddress_Create();
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .Resolver = resolver,

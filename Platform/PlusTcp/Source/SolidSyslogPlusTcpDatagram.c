@@ -42,9 +42,18 @@ static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(st
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self);
 static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip);
 
-void SolidSyslogPlusTcpDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogPlusTcpDatagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogPlusTcpDatagramConfig* config
+)
 {
     struct SolidSyslogPlusTcpDatagram* self = PlusTcpDatagram_SelfFromBase(base);
+    self->Config.GetPayloadLimit = NULL;
+    self->Config.PayloadLimitContext = NULL;
+    if (config != NULL)
+    {
+        self->Config = *config;
+    }
     self->Base.Open = PlusTcpDatagram_Open;
     self->Base.SendTo = PlusTcpDatagram_SendTo;
     self->Base.MaxPayload = PlusTcpDatagram_MaxPayload;
@@ -137,8 +146,8 @@ static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
 
 static size_t PlusTcpDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
-    (void) base;
-    return SolidSyslogUdpPayload_UnknownPath(false);
+    struct SolidSyslogPlusTcpDatagram* self = PlusTcpDatagram_SelfFromBase(base);
+    return SolidSyslogUdpPayload_Stated(self->Config.GetPayloadLimit, self->Config.PayloadLimitContext);
 }
 
 // NOLINTEND(performance-no-int-to-ptr)

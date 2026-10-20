@@ -10,6 +10,7 @@
 #define SOLIDSYSLOGUDPPAYLOAD_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogUdpPayloadLimitFunction.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -37,10 +38,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  where its stack cannot report a path MTU. */
     size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6);
 
+    /** The IPv4 payload limit a Datagram answers where its stack cannot
+     *  discover the path MTU: what @p limit states, or
+     *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT where @p limit is NULL or answers
+     *  zero. @p context is passed to @p limit unchanged. */
+    size_t SolidSyslogUdpPayload_Stated(SolidSyslogUdpPayloadLimitFunction limit, void* context);
+
     /* Returns the largest length' <= length such that buffer[0..length' - 1]
      * ends on a UTF-8 codepoint boundary. Walks back over any partial
      * multi-byte sequence at the cut point. Assumes the bytes preceding the
-     * cut form valid UTF-8 (the formatter guarantees this - S12.10). */
+     * cut form valid UTF-8, which the formatter guarantees. */
     size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length);
 
 SOLIDSYSLOG_EXTERN_C_END

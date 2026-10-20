@@ -50,8 +50,10 @@ Cortex-M3. Budget for it before choosing this tier.
 struct SolidSyslogAddress*  address  = SolidSyslogLwipSocketAddress_Create();
 struct SolidSyslogResolver* resolver = SolidSyslogLwipSocketResolver_Create();
 
-/* For syslog over UDP. */
-struct SolidSyslogDatagram* datagram = SolidSyslogLwipSocketDatagram_Create();
+/* For syslog over UDP. NULL leaves the IPv4 payload limit at the
+   SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable; supply a getter where the limit
+   has to move at runtime. */
+struct SolidSyslogDatagram* datagram = SolidSyslogLwipSocketDatagram_Create(NULL);
 
 /* For syslog over TCP, and as the byte transport under a TLS stream. NULL
    leaves the connect deadline at the SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
@@ -59,9 +61,11 @@ struct SolidSyslogDatagram* datagram = SolidSyslogLwipSocketDatagram_Create();
 struct SolidSyslogStream* stream = SolidSyslogLwipSocketTcpStream_Create(NULL);
 ```
 
-Only the stream takes a configuration, and then only to tune its connect
-deadline; nothing else in the pack has anything only you can decide. One
-address, one resolver and one transport serve one sender. The pool sizes that
+The stream and the datagram each take a configuration, and each only for the
+one thing you alone can decide: the stream's connect deadline, and the IPv4
+payload the path carries, which the stack cannot discover. Nothing else in the
+pack has anything only you can decide. One address, one resolver and one
+transport serve one sender. The pool sizes that
 bound how many you may draw are in
 [Adding it to your build](../../build-integration.md#tunables); drawing past them
 hands back a Null object and reports `CRITICAL`, so a sender wired from an

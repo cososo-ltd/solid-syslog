@@ -50,8 +50,9 @@ logging inline from a task with a deadline.
 
 The adapter cannot tell an over-large datagram from any other send failure,
 which the [Datagram](../../api/structSolidSyslogDatagram.md) contract permits,
-and it reports the IPv4 unknown-path payload from `MaxPayload` because the stack
-exposes no path MTU.
+and `MaxPayload` answers the limit the integrator states through the datagram
+config's payload-limit callback, or `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` where
+none is stated, because the stack exposes no path MTU.
 
 A record above that size is offered to `FreeRTOS_sendto` whole. If the stack
 rejects it, the sender recognises a record that could not have fitted, trims it

@@ -747,6 +747,33 @@
 #endif
 
 /**
+ * IPv4 UDP payload limit, in bytes, for a Datagram whose stack cannot discover
+ * the path MTU and whose integrator has not stated one through its
+ * SolidSyslogUdpPayloadLimitFunction. A Datagram that reads the path MTU from
+ * its stack never consults this; each platform page says which it is.
+ *
+ * Default 480 - the size RFC 5426 section 3.2 names as the safest assumption
+ * for a sender that does not know the path. On a known path raise it to what
+ * the path carries unfragmented: 1472 on 1500-byte Ethernet. Never guess
+ * high: the sender trims an oversize record to this and retries, so a figure
+ * the path cannot carry loses the record.
+ *
+ * Floor: 1. Ceiling: 65507, the largest payload an IPv4 datagram can hold.
+ * Values outside rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT
+#define SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT 480U
+#endif
+
+#if SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT < 1
+#error "SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT must be >= 1"
+#endif
+
+#if SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT > 65507
+#error "SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT must be <= 65507"
+#endif
+
+/**
  * Idle period a TCP connection may sit silent before the first keepalive probe
  * is sent. This and the two tunables below are applied by every TCP Stream
  * backend that can set keepalive on its own connection; a backend whose stack

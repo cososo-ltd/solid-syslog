@@ -20,7 +20,6 @@ using namespace CososoTesting;
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogUdpPayload.h"
 
 // clang-format off
 // 6514 rather than 514: 514 is 0x0202, so host and network order are the same
@@ -40,6 +39,21 @@ static const int      TEST_DESCRIPTOR   = 7;
     }
 // clang-format on
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagram)
 {
@@ -49,7 +63,7 @@ TEST_GROUP(SolidSyslogLwipSocketDatagram)
     void setup() override
     {
         LwipSocketsFake_Reset();
-        datagram = SolidSyslogLwipSocketDatagram_Create();
+        datagram = SolidSyslogLwipSocketDatagram_Create(nullptr);
         address  = SolidSyslogLwipSocketAddress_Create();
         struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsSockaddrIn(address);
         sin->sin_family         = AF_INET;
@@ -63,6 +77,16 @@ TEST_GROUP(SolidSyslogLwipSocketDatagram)
     {
         SolidSyslogLwipSocketAddress_Destroy(address);
         SolidSyslogLwipSocketDatagram_Destroy(datagram);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogLwipSocketDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogLwipSocketDatagram_Destroy(datagram);
+        datagram = SolidSyslogLwipSocketDatagram_Create(&tuned);
     }
 
     [[nodiscard]] enum SolidSyslogDatagramSendResult SendTo() const
@@ -110,11 +134,47 @@ TEST(SolidSyslogLwipSocketDatagram, CloseClosesTheOpenSocket)
     CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
-TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheUnknownPathAnswerBecauseTheStackCannotReportAPathMtu)
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
-    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
 
-    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsWhatTheGetterStates)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+/* The getter is asked on every query, never cached, so an end user can retune
+   the limit at run time without destroying the datagram. */
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadAsksTheGetterOnEveryQuery)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    FakeGetPayloadLimit_ReturnValue = 1400U;
+
+    LONGS_EQUAL(1400, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 0U;
+
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadPassesTheContextToTheGetter)
+{
+    int context = 0;
+    recreateWithGetter(&context);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    POINTERS_EQUAL(&context, FakeGetPayloadLimit_LastContext);
 }
 
 TEST(SolidSyslogLwipSocketDatagram, OpenIsRefusedWhenTheStackWillNotGiveASocket)
@@ -189,7 +249,7 @@ TEST_GROUP(SolidSyslogLwipSocketDatagramPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogLwipSocketDatagram_Create();
+            slot = SolidSyslogLwipSocketDatagram_Create(nullptr);
         }
     }
 };
@@ -198,7 +258,7 @@ TEST_GROUP(SolidSyslogLwipSocketDatagramPool)
 
 TEST(SolidSyslogLwipSocketDatagramPool, DestroyClosesASocketTheDatagramStillHoldsOpen)
 {
-    pooled[0] = SolidSyslogLwipSocketDatagram_Create();
+    pooled[0] = SolidSyslogLwipSocketDatagram_Create(nullptr);
     LwipSocketsFake_Reset();
     LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
     CHECK_TRUE(SolidSyslogDatagram_Open(pooled[0]));
@@ -213,7 +273,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, FillingPoolThenOverflowReturnsTheNullDat
 {
     FillPool();
 
-    overflow = SolidSyslogLwipSocketDatagram_Create();
+    overflow = SolidSyslogLwipSocketDatagram_Create(nullptr);
 
     POINTERS_EQUAL(SolidSyslogNullDatagram_Get(), overflow);
 }
@@ -223,7 +283,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogLwipSocketDatagram_Create();
+    overflow = SolidSyslogLwipSocketDatagram_Create(nullptr);
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
@@ -237,7 +297,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, CreateAcquiresAndReleasesConfigLockOnFir
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogLwipSocketDatagram_Create();
+    pooled[0] = SolidSyslogLwipSocketDatagram_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -248,7 +308,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFu
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogLwipSocketDatagram_Create();
+    overflow = SolidSyslogLwipSocketDatagram_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -256,7 +316,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFu
 
 TEST(SolidSyslogLwipSocketDatagramPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogLwipSocketDatagram_Create();
+    pooled[0] = SolidSyslogLwipSocketDatagram_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogLwipSocketDatagram_Destroy(pooled[0]);
@@ -294,7 +354,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogLwipSocketDatagramPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogLwipSocketDatagram_Create();
+    pooled[0] = SolidSyslogLwipSocketDatagram_Create(nullptr);
     SolidSyslogLwipSocketDatagram_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
@@ -311,7 +371,7 @@ TEST(SolidSyslogLwipSocketDatagramPool, DestroyOfStaleHandleReportsWarning)
 
 TEST(SolidSyslogLwipSocketDatagramPool, SendingAfterDestroyIsASafeNoOp)
 {
-    struct SolidSyslogDatagram* stale = SolidSyslogLwipSocketDatagram_Create();
+    struct SolidSyslogDatagram* stale = SolidSyslogLwipSocketDatagram_Create(nullptr);
     struct SolidSyslogAddress* address = SolidSyslogLwipSocketAddress_Create();
     SolidSyslogLwipSocketDatagram_Destroy(stale);
     LwipSocketsFake_Reset();

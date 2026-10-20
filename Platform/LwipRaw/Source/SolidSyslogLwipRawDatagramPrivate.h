@@ -9,6 +9,7 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogLwipRawDatagram.h"
 #include "SolidSyslogLwipRawDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 
@@ -17,10 +18,14 @@ struct udp_pcb;
 struct SolidSyslogLwipRawDatagram
 {
     struct SolidSyslogDatagram Base;
+    struct SolidSyslogLwipRawDatagramConfig Config;
     struct udp_pcb* Pcb;
 };
 
-void SolidSyslogLwipRawDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogLwipRawDatagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogLwipRawDatagramConfig* config
+);
 void SolidSyslogLwipRawDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void LwipRawDatagram_Report(

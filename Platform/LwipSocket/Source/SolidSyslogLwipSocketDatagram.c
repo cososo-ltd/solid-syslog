@@ -42,9 +42,18 @@ static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base);
 static inline struct SolidSyslogLwipSocketDatagram* LwipSocketDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool LwipSocketDatagram_IsSocketValid(int fd);
 
-void SolidSyslogLwipSocketDatagram_Initialise(struct SolidSyslogDatagram* base)
+void SolidSyslogLwipSocketDatagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogLwipSocketDatagramConfig* config
+)
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
+    self->Config.GetPayloadLimit = NULL;
+    self->Config.PayloadLimitContext = NULL;
+    if (config != NULL)
+    {
+        self->Config = *config;
+    }
     self->Base.Open = LwipSocketDatagram_Open;
     self->Base.SendTo = LwipSocketDatagram_SendTo;
     self->Base.MaxPayload = LwipSocketDatagram_MaxPayload;
@@ -105,11 +114,11 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
 }
 
 /* lwIP's sockets layer exposes no IP_MTU, so the path MTU cannot be read back
- * and the contract's unknown-path answer is the honest one. */
+ * and the integrator's stated limit is the only honest answer. */
 static size_t LwipSocketDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
-    (void) base;
-    return SolidSyslogUdpPayload_UnknownPath(false);
+    struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
+    return SolidSyslogUdpPayload_Stated(self->Config.GetPayloadLimit, self->Config.PayloadLimitContext);
 }
 
 static void LwipSocketDatagram_Close(struct SolidSyslogDatagram* base)

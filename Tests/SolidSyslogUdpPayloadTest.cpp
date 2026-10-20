@@ -1,5 +1,6 @@
 #include <cstdint>
 
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "CppUTest/TestHarness.h"
 
@@ -38,6 +39,40 @@ TEST(SolidSyslogUdpPayload, UnknownPathIsRfc5426Ipv6SafestAssumption)
 TEST(SolidSyslogUdpPayload, MtuSmallerThanOverheadSaturatesToZero)
 {
     LONGS_EQUAL(0, SolidSyslogUdpPayload_FromMtu(0, false));
+}
+
+static size_t StatedLimit_ReturnValue;
+static void* StatedLimit_LastContext;
+
+static size_t StatedLimit(void* context)
+{
+    StatedLimit_LastContext = context;
+    return StatedLimit_ReturnValue;
+}
+
+TEST(SolidSyslogUdpPayload, StatedWithoutACallbackIsTheTunableDefault)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogUdpPayload_Stated(nullptr, nullptr));
+}
+
+TEST(SolidSyslogUdpPayload, StatedIsWhatTheCallbackAnswers)
+{
+    StatedLimit_ReturnValue = 1472;
+    LONGS_EQUAL(1472, SolidSyslogUdpPayload_Stated(StatedLimit, nullptr));
+}
+
+TEST(SolidSyslogUdpPayload, StatedPassesTheContextToTheCallback)
+{
+    int context = 0;
+    StatedLimit_ReturnValue = 1472;
+    (void) SolidSyslogUdpPayload_Stated(StatedLimit, &context);
+    POINTERS_EQUAL(&context, StatedLimit_LastContext);
+}
+
+TEST(SolidSyslogUdpPayload, StatedFallsToTheTunableWhenTheCallbackAnswersZero)
+{
+    StatedLimit_ReturnValue = 0;
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogUdpPayload_Stated(StatedLimit, nullptr));
 }
 
 TEST(SolidSyslogUdpPayload, TrimToCodepointBoundaryAsciiCutNeedsNoWalk)

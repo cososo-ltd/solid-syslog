@@ -44,6 +44,21 @@ static const uint16_t TEST_PORT = 514;
 #define CHECK_REPORTED(severity, source, expectedCategory, code) \
     CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 /* Shared fixture: every Datagram lifecycle test needs the fake reset, a fresh
  * datagram + address handle pair, teardown of both, and the leak invariant
  * - every udp_pcb handed out by udp_new must come back via udp_remove by the
@@ -66,7 +81,7 @@ TEST_BASE(LwipRawDatagramTestBase)
         LwipPbufFake_Reset();
         LwipFakeMarshalGuard_Reset();
         SolidSyslogLwipRaw_SetMarshal(LwipFakeMarshalGuard_TrackingMarshal);
-        datagram = SolidSyslogLwipRawDatagram_Create();
+        datagram = SolidSyslogLwipRawDatagram_Create(nullptr);
         address = SolidSyslogLwipRawAddress_Create();
         struct SolidSyslogLwipRawAddress* lwipAddress = SolidSyslogLwipRawAddress_As(address);
         IP4_ADDR(&lwipAddress->Ip, 127, 0, 0, 1);
@@ -81,6 +96,16 @@ TEST_BASE(LwipRawDatagramTestBase)
         LONGS_EQUAL_TEXT(0, LwipPbufFake_OutstandingPbufCount(), "leaked pbuf past teardown");
         LwipFakeMarshalGuard_CheckNoBreach();
         SolidSyslogLwipRaw_SetMarshal(nullptr);
+    }
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogLwipRawDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogLwipRawDatagram_Destroy(datagram);
+        datagram = SolidSyslogLwipRawDatagram_Create(&tuned);
     }
 
     /* SendTo against the shared buffer + address. Default length 1 - most
@@ -132,7 +157,7 @@ TEST(SolidSyslogLwipRawDatagram, DestroyReleasesSlotToPool)
 {
     SolidSyslogLwipRawDatagram_Destroy(datagram);
 
-    datagram = SolidSyslogLwipRawDatagram_Create();
+    datagram = SolidSyslogLwipRawDatagram_Create(nullptr);
 
     CHECK(datagram != SolidSyslogNullDatagram_Get());
 }
@@ -168,9 +193,47 @@ TEST(SolidSyslogLwipRawDatagram, OpenReturnsFalseWhenUdpNewFails)
     CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
 }
 
-TEST(SolidSyslogLwipRawDatagram, MaxPayloadReturnsUnknownPathPayload)
+TEST(SolidSyslogLwipRawDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
-    LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogLwipRawDatagram, MaxPayloadIsWhatTheGetterStates)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+/* The getter is asked on every query, never cached, so an end user can retune
+   the limit at run time without destroying the datagram. */
+TEST(SolidSyslogLwipRawDatagram, MaxPayloadAsksTheGetterOnEveryQuery)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    FakeGetPayloadLimit_ReturnValue = 1400U;
+
+    LONGS_EQUAL(1400, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogLwipRawDatagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 0U;
+
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
+TEST(SolidSyslogLwipRawDatagram, MaxPayloadPassesTheContextToTheGetter)
+{
+    int context = 0;
+    recreateWithGetter(&context);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    POINTERS_EQUAL(&context, FakeGetPayloadLimit_LastContext);
 }
 
 TEST(SolidSyslogLwipRawDatagram, SendToFailsBeforeOpen)
@@ -357,7 +420,7 @@ TEST_GROUP(SolidSyslogLwipRawDatagramPool)
     {
         for (auto*& slot : pooled)
         {
-            slot = SolidSyslogLwipRawDatagram_Create();
+            slot = SolidSyslogLwipRawDatagram_Create(nullptr);
         }
     }
 };
@@ -368,7 +431,7 @@ TEST(SolidSyslogLwipRawDatagramPool, FillingPoolThenOverflowReturnsDistinctFallb
 {
     FillPool();
 
-    overflow = SolidSyslogLwipRawDatagram_Create();
+    overflow = SolidSyslogLwipRawDatagram_Create(nullptr);
 
     CHECK_IS_FALLBACK(overflow, pooled);
 }
@@ -378,7 +441,7 @@ TEST(SolidSyslogLwipRawDatagramPool, ExhaustedCreateReportsError)
     ErrorHandlerFake_Install(nullptr);
     FillPool();
 
-    overflow = SolidSyslogLwipRawDatagram_Create();
+    overflow = SolidSyslogLwipRawDatagram_Create(nullptr);
 
     CHECK_REPORTED(
         SOLIDSYSLOG_SEVERITY_CRITICAL,
@@ -391,7 +454,7 @@ TEST(SolidSyslogLwipRawDatagramPool, ExhaustedCreateReportsError)
 TEST(SolidSyslogLwipRawDatagramPool, FallbackVtableMethodsAreNoOps)
 {
     FillPool();
-    overflow = SolidSyslogLwipRawDatagram_Create();
+    overflow = SolidSyslogLwipRawDatagram_Create(nullptr);
     struct SolidSyslogAddress* localAddr = SolidSyslogLwipRawAddress_Create();
 
     /* NullDatagram's Open returns true so caller success paths are not
@@ -409,7 +472,7 @@ TEST(SolidSyslogLwipRawDatagramPool, CreateAcquiresAndReleasesConfigLockOnFirstF
 {
     ConfigLockFake_Install();
 
-    pooled[0] = SolidSyslogLwipRawDatagram_Create();
+    pooled[0] = SolidSyslogLwipRawDatagram_Create(nullptr);
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
@@ -420,7 +483,7 @@ TEST(SolidSyslogLwipRawDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
     FillPool();
     ConfigLockFake_Install();
 
-    overflow = SolidSyslogLwipRawDatagram_Create();
+    overflow = SolidSyslogLwipRawDatagram_Create(nullptr);
 
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_LockCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_POOL_SIZE, ConfigLockFake_UnlockCallCount());
@@ -428,7 +491,7 @@ TEST(SolidSyslogLwipRawDatagramPool, CreateLocksOncePerSlotProbedWhenPoolIsFull)
 
 TEST(SolidSyslogLwipRawDatagramPool, DestroyOfPooledHandleLocksOnce)
 {
-    pooled[0] = SolidSyslogLwipRawDatagram_Create();
+    pooled[0] = SolidSyslogLwipRawDatagram_Create(nullptr);
     ConfigLockFake_Install();
 
     SolidSyslogLwipRawDatagram_Destroy(pooled[0]);
@@ -466,7 +529,7 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfUnknownHandleReportsWarning)
 
 TEST(SolidSyslogLwipRawDatagramPool, DestroyOfStaleHandleReportsWarning)
 {
-    pooled[0] = SolidSyslogLwipRawDatagram_Create();
+    pooled[0] = SolidSyslogLwipRawDatagram_Create(nullptr);
     SolidSyslogLwipRawDatagram_Destroy(pooled[0]);
     ErrorHandlerFake_Install(nullptr);
 
