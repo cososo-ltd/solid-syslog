@@ -887,7 +887,8 @@ and what it means when a build links two implementations of one role.
 What a caller can still supply is memory only the caller can size or the instance does
 not own. `SolidSyslogCircularBuffer_Create` takes the backing ring
 (`SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(maxMessages)`) plus a mutex, both of which must
-outlive the buffer, while the buffer's own instance stays in the pool.
+outlive the buffer, while the buffer's own instance stays in the pool; its discard-policy
+pair is injected function and context, not storage.
 `SolidSyslogCmsisRtosMutex_Create` takes the RTOS mutex control block and its size,
 because CMSIS-RTOS2 leaves that size to the implementation and only the integrator can
 know it. In both the class's own instance is still a pool slot. Library-internally

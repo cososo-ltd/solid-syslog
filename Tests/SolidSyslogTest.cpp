@@ -1183,7 +1183,7 @@ TEST_GROUP(SolidSyslogServiceEagerDrain)
 
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
-            SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing));
+            SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing), nullptr, nullptr);
         fakeStore      = StoreFake_Create();
 
         SolidSyslogConfig serviceConfig = {};

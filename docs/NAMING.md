@@ -885,6 +885,7 @@ struct SolidSyslogBuffer
 {
     void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);
     bool (*Read)(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
+    bool (*IsFull)(struct SolidSyslogBuffer* base);
 };
 
 /* Core/Interface/SolidSyslogCircularBuffer.h ---------------------------- */
@@ -896,7 +897,8 @@ struct SolidSyslogBuffer
    SolidSyslogCircularBuffer_Destroy takes the base type (matches the
    abstract Buffer contract), so its parameter is `base`. */
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
+    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy, void* discardPolicyContext
 );
 void SolidSyslogCircularBuffer_Destroy(struct SolidSyslogBuffer* base);
 
@@ -929,7 +931,8 @@ static inline bool CircularBuffer_IsEmpty(const struct SolidSyslogCircularBuffer
 /* Core/Source/SolidSyslogCircularBufferStatic.c ------------------------- */
 
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
-    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes
+    struct SolidSyslogMutex* mutex, uint8_t* ring, size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy, void* discardPolicyContext
 )
 {
     /* Locals - `index` and `handle`; the pool slot is the instance,
@@ -939,7 +942,9 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
     {
-        SolidSyslogCircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
+        SolidSyslogCircularBuffer_Initialise(
+            &CircularBuffer_Pool[index].Base, mutex, ring, ringBytes, getDiscardPolicy, discardPolicyContext
+        );
         handle = &CircularBuffer_Pool[index].Base;
     }
     return handle;

@@ -267,7 +267,13 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     sender = BddTargetVxWorks64_CreateSenders();
 
     bufferMutex = SolidSyslogVxWorks64Mutex_Create();
-    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing));
+    buffer = SolidSyslogCircularBuffer_Create(
+        bufferMutex,
+        bufferRing,
+        sizeof(bufferRing),
+        BddTargetStoreSettings_GetDiscardPolicy,
+        NULL
+    );
 
     counter = SolidSyslogVxWorks64AtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {0};

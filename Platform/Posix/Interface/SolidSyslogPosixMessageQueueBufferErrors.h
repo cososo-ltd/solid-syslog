@@ -24,9 +24,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED,
-        /** The queue was full (EAGAIN); raised under
-         *  SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST. */
+        /** The queue was full (EAGAIN) and the discard policy refused the
+         *  record; raised under SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per
+         *  run of refusals. */
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORD_REFUSED,
+        /** The queue was full and the Oldest policy took a record out of it to
+         *  make room for the one being written; raised under
+         *  SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per run of sends that
+         *  evicted. */
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECORDS_EVICTED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds iteration. */
     };
 

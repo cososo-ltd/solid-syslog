@@ -37,12 +37,16 @@ struct SolidSyslog
     char Record[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t RecordLength;
     bool HoldsRecord;
+    /* A report stands for a run of held records dropped because the buffer
+     * filled behind them; a held record dealt with ends the run. */
+    bool HeldRecordLossReported;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;
     SolidSyslogHaltCallback OnHalt;
     void* HaltContext;
-    /* Set when a retaining store refuses a record while the policy answers
-     * Halt; Service then moves nothing until the answer changes. */
+    /* Set while the policy answers Halt, when a retaining store refuses a
+     * record or the buffer has filled behind the record Service holds; Service
+     * then moves nothing until the answer changes. */
     bool Halted;
 };
 

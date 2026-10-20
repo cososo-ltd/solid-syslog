@@ -51,6 +51,8 @@ static size_t lastOpenMaxMessageSize;
 
 static bool nextSendShouldFail;
 static int nextSendErrno;
+static bool secondSendShouldFail;
+static int secondSendErrno;
 static int sendCallCount;
 static mqd_t lastSendMqd;
 static char lastSendBufCopy[MQFAKE_SEND_BUF_SIZE];
@@ -101,6 +103,8 @@ void MqFake_Reset(void)
 
     nextSendShouldFail = false;
     nextSendErrno = 0;
+    secondSendShouldFail = false;
+    secondSendErrno = 0;
     sendCallCount = 0;
     lastSendMqd = (mqd_t) -1;
     lastSendBufCopy[0] = '\0';
@@ -164,6 +168,12 @@ void MqFake_FailNextSend(int errnoValue)
 {
     nextSendShouldFail = true;
     nextSendErrno = errnoValue;
+}
+
+void MqFake_FailSecondSend(int errnoValue)
+{
+    secondSendShouldFail = true;
+    secondSendErrno = errnoValue;
 }
 
 int MqFake_SendCallCount(void)
@@ -353,6 +363,12 @@ int mq_send(mqd_t mqd, const char* msg, size_t msgLen, unsigned int msgPrio)
     }
     else
     {
+        if (secondSendShouldFail)
+        {
+            secondSendShouldFail = false;
+            nextSendShouldFail = true;
+            nextSendErrno = secondSendErrno;
+        }
         struct MqFakeQueue* queue = MqFake_QueueFromMqd(mqd);
         if (queue == NULL)
         {

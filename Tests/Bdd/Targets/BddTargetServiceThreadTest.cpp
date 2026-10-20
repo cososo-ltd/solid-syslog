@@ -77,7 +77,7 @@ TEST_GROUP(BddTargetServiceThread)
         SolidSyslogUdpSenderConfig udpConfig = {
             resolver, datagram, address, BddTargetEndpoint, BddTargetEndpointVersion, nullptr};
         sender = SolidSyslogUdpSender_Create(&udpConfig);
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10, nullptr, nullptr);
         store  = SolidSyslogNullStore_Get();
 
         SolidSyslogConfig config =

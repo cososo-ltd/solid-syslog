@@ -29,6 +29,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_ERROR_SERVICE_NULL_HANDLE,
         SOLIDSYSLOG_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_ERROR_UNKNOWN_DESTROY,
+        /** Service dropped the record it was holding for the sender, because
+         *  the buffer behind it had filled while the discard policy answers
+         *  Oldest: the held record is the oldest in the queue, so it goes first.
+         *  Raised under SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per run of
+         *  such drops, re-armed when a held record is dealt with. */
+        SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED,
         SOLIDSYSLOG_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

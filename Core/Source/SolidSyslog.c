@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogBuffer.h"
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
@@ -36,11 +37,14 @@ struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
 
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
+static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
+static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
+static inline void SolidSyslog_Halt(struct SolidSyslog* self);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_IsBlocked(struct SolidSyslog* self, bool storeBlocked, bool drained);
@@ -128,6 +132,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.SdCount = 0;
     self->RecordLength = 0U;
     self->HoldsRecord = false;
+    self->HeldRecordLossReported = false;
     self->GetDiscardPolicy = SolidSyslogDiscardPolicy_Default;
     self->DiscardPolicyContext = NULL;
     self->OnHalt = SolidSyslog_NullHalt;
@@ -370,16 +375,17 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
- * the sender is slow or down - overflow then engages the store's discard policy
- * rather than silently dropping at the buffer. A pass deals with the record held
- * from the last one before it reads the buffer, and stops at a record it cannot
- * deal with, so nothing overtakes a record waiting on the sender, or at the
- * refusal that halts the logger. Says whether anything was taken from the
- * buffer. */
+ * the sender is slow or down - a store that retains records then takes the
+ * backlog, and the buffer applies the discard policy only to what it cannot
+ * hand on. A pass deals with the record held from the last one before it reads
+ * the buffer, and stops at a record it cannot deal with, so nothing overtakes a
+ * record waiting on the sender, or at the refusal that halts the logger. Says
+ * whether anything was taken from the buffer. */
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
 {
     bool drained = false;
-    bool dealtWith = SolidSyslog_DealWithHeldRecord(self);
+    SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(self);
+    bool dealtWith = !self->Halted && SolidSyslog_DealWithHeldRecord(self);
 
     while (dealtWith && !self->Halted && SolidSyslog_HoldNextRecord(self))
     {
@@ -388,6 +394,51 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     }
 
     return drained;
+}
+
+/* A record held from the last pass is the head of the whole queue, with the
+ * buffer behind it. A buffer that has filled meanwhile has lost records under
+ * its policy already, and the same policy decides the head: under Oldest it is
+ * the next to go, so the buffer's head is taken in its place; under Halt the
+ * logger stops, as it does when the store refuses a record; under Newest the
+ * held record is kept and retried. */
+static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self)
+{
+    if (self->HoldsRecord && SolidSyslogBuffer_IsFull(self->Buffer))
+    {
+        enum SolidSyslogDiscardPolicy policy = self->GetDiscardPolicy(self->DiscardPolicyContext);
+
+        if (policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST)
+        {
+            SolidSyslog_DropHeldRecord(self);
+        }
+        else if (policy == SOLIDSYSLOG_DISCARD_POLICY_HALT)
+        {
+            SolidSyslog_Halt(self);
+        }
+        else
+        {
+            /* Newest: the held record keeps its place. */
+        }
+    }
+}
+
+/* The run is marked before the report, so a handler that logs cannot repeat
+ * it; it ends when a held record is dealt with. */
+static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self)
+{
+    bool runStarted = !self->HeldRecordLossReported;
+    self->HoldsRecord = false;
+    self->HeldRecordLossReported = true;
+
+    if (runStarted)
+    {
+        SolidSyslog_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+            SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED
+        );
+    }
 }
 
 /* Takes the next record from the buffer into the slot. Says whether one was
@@ -406,6 +457,7 @@ static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self)
     if (self->HoldsRecord)
     {
         self->HoldsRecord = !SolidSyslog_StoreOrSenderTakesHeldRecord(self);
+        self->HeldRecordLossReported = self->HoldsRecord && self->HeldRecordLossReported;
     }
 
     return !self->HoldsRecord;
@@ -444,12 +496,16 @@ static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self
  * that. */
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self)
 {
-    self->Halted = SolidSyslog_PolicyHalts(self);
-
-    if (self->Halted)
+    if (SolidSyslog_PolicyHalts(self))
     {
-        self->OnHalt(self->HaltContext);
+        SolidSyslog_Halt(self);
     }
+}
+
+static inline void SolidSyslog_Halt(struct SolidSyslog* self)
+{
+    self->Halted = true;
+    self->OnHalt(self->HaltContext);
 }
 
 /* Sends one record the store hands out. The slot is the staging buffer; the

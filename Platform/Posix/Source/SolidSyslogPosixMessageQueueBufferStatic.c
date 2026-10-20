@@ -40,7 +40,9 @@ static struct SolidSyslogPoolAllocator PosixMessageQueueBuffer_Allocator = {
 struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
     struct SolidSyslogMutex* mutex,
     size_t maxMessageSize,
-    size_t maxMessages
+    size_t maxMessages,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy,
+    void* discardPolicyContext
 )
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixMessageQueueBuffer_Allocator);
@@ -52,7 +54,9 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
             mutex,
             maxMessageSize,
             maxMessages,
-            index
+            index,
+            getDiscardPolicy,
+            discardPolicyContext
         );
         if (opened)
         {

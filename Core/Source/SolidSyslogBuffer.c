@@ -17,3 +17,8 @@ bool SolidSyslogBuffer_Read(struct SolidSyslogBuffer* buffer, void* data, size_t
 {
     return buffer->Read(buffer, data, maxSize, bytesRead);
 }
+
+bool SolidSyslogBuffer_IsFull(struct SolidSyslogBuffer* buffer)
+{
+    return buffer->IsFull(buffer);
+}

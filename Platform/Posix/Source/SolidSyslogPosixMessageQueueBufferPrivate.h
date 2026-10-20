@@ -12,6 +12,7 @@
 #include <stddef.h>
 
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
@@ -32,10 +33,19 @@ struct SolidSyslogPosixMessageQueueBuffer
     SolidSyslogFormatterStorage
         NameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE)];
     size_t MaxMessageSize;
-    /* Each report stands for a run of records the queue would not take - full,
-     * or failing; the next record it takes ends both runs. */
+    SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
+    void* DiscardPolicyContext;
+    /* Each report stands for a run of records the queue would not take as it
+     * stood - full, or failing - or of sends that had to evict; the next record
+     * it takes ends the first two, the next send that evicts nothing the
+     * third. */
     bool RefusalReported;
     bool FailureReported;
+    bool EvictionReported;
+    /* The last send found the queue full - it evicted, or was refused - and
+     * nothing has been received since: Log has outrun Service. Shared between
+     * the two sides, so kept under the mutex. */
+    bool Full;
 };
 
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
@@ -43,7 +53,9 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogMutex* mutex,
     size_t maxMessageSize,
     size_t maxMessages,
-    size_t slotIndex
+    size_t slotIndex,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy,
+    void* discardPolicyContext
 );
 void SolidSyslogPosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base);
 

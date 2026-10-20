@@ -52,10 +52,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         struct SolidSyslogStructuredData** Sd; /**< @optional per-instance SD-ELEMENTs, before any per-message SD. */
         size_t SdCount;
         /** Asked, with DiscardPolicyContext, when Service has to decide what a
-         *  refused record means: under Halt the logger stops moving records.
-         *  Give the store the same function at its own Create; the logger's
-         *  answer decides the halt, the store's whether it evicts or refuses,
-         *  and nothing checks that the two agree. NULL applies Oldest. */
+         *  refused record means: under Halt the logger stops moving records,
+         *  and under Oldest it drops a record it holds for the sender once the
+         *  buffer has filled behind it. Give the store and the buffer the same
+         *  function at their own Create; the logger's answer decides those two
+         *  things, the store's and the buffer's whether each evicts or refuses,
+         *  and nothing checks that they agree. NULL applies Oldest. */
         SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
         void* DiscardPolicyContext;
         SolidSyslogHaltCallback OnHalt; /**< @optional nothing is called when NULL. */

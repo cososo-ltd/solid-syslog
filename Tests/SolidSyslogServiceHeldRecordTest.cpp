@@ -13,10 +13,12 @@
 #include "SolidSyslog.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBuffer.h"
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrors.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
@@ -79,7 +81,7 @@ TEST_BASE(ServiceHeldRecordBase)
 
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
-            SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing));
+            SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing), nullptr, nullptr);
     }
 
     void teardownPipeline() const
@@ -266,6 +268,200 @@ static enum SolidSyslogDiscardPolicy AnswersHalt(void* context)
 {
     (void) context;
     return SOLIDSYSLOG_DISCARD_POLICY_HALT;
+}
+
+static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
+{
+    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
+}
+
+static int bufferFullHaltCount;
+
+/* The ring reports its own evictions under the same category, so Service's
+ * reports are told apart by their source. */
+static int HeldRecordDropReports()
+{
+    int count = 0;
+    for (int index = 0; index < ErrorHandlerFake_HandleCallCount(); index++)
+    {
+        if (ErrorHandlerFake_SourceAt(index) == &SolidSyslogErrorSource)
+        {
+            count++;
+        }
+    }
+    return count;
+}
+
+static void CountBufferFullHalt(void* context)
+{
+    (void) context;
+    bufferFullHaltCount++;
+}
+
+/* Service holds "first" for a sender that is down while the ring fills behind
+ * it, and the one policy, on the logger and on the ring, says what happens to
+ * the record Service holds. The 16-byte ring holds "second" (8 bytes framed)
+ * and "third" (7), so "forth" (7) finds no room; under Oldest it costs
+ * "second" alone, since 7 bytes wrap into the 8 that frees. */
+// clang-format off
+TEST_GROUP(SolidSyslogServiceHeldRecordBufferFull)
+{
+    struct SolidSyslog*           solidSyslog = nullptr;
+    struct SolidSyslogSender*     fakeSender  = nullptr;
+    struct SolidSyslogBuffer*     ring        = nullptr;
+    uint8_t                       ringBytes[16] = {};
+    enum SolidSyslogDiscardPolicy policy      = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+
+    void setup() override
+    {
+        fakeSender = SenderFake_Create();
+        ring       = SolidSyslogCircularBuffer_Create(
+            SolidSyslogNullMutex_Get(), ringBytes, sizeof(ringBytes), AnswersConfiguredPolicy, &policy);
+
+        SolidSyslogConfig config    = {};
+        config.Buffer               = ring;
+        config.Sender               = fakeSender;
+        config.Store                = SolidSyslogNullStore_Get();
+        config.GetDiscardPolicy     = AnswersConfiguredPolicy;
+        config.DiscardPolicyContext = &policy;
+        config.OnHalt               = CountBufferFullHalt;
+        solidSyslog = SolidSyslog_Create(&config);
+        bufferFullHaltCount = 0;
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
+        SolidSyslog_Destroy(solidSyslog);
+        SolidSyslogCircularBuffer_Destroy(ring);
+        SenderFake_Destroy(fakeSender);
+    }
+
+    void HoldFirstForADownSender() const
+    {
+        SolidSyslogBuffer_Write(ring, "first", 5);
+        SenderFake_FailNextSend(fakeSender);
+        SolidSyslog_Service(solidSyslog);
+    }
+
+    /* Two fit; the third finds the ring full, and the ring applies the policy. */
+    void FillTheRingBehindIt() const
+    {
+        SolidSyslogBuffer_Write(ring, "second", 6);
+        SolidSyslogBuffer_Write(ring, "third", 5);
+        SolidSyslogBuffer_Write(ring, "forth", 5);
+    }
+
+    void HoldFirstWithTheRingFullBehindIt() const
+    {
+        HoldFirstForADownSender();
+        FillTheRingBehindIt();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, UnderOldestTheHeldRecordIsDroppedAndTheBufferHeadTakenInstead)
+{
+    HoldFirstWithTheRingFullBehindIt();
+
+    SolidSyslog_Service(solidSyslog);
+
+    /* The failed attempt, then "third" and "forth": "first" went, as did
+     * "second" when the ring made room. */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, THRICE);
+    STRCMP_EQUAL("forth", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, UnderOldestDroppingTheHeldRecordIsReportedAsRecordsLost)
+{
+    HoldFirstWithTheRingFullBehindIt();
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED
+    );
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, ARunOfDroppedHeldRecordsIsReportedOnce)
+{
+    HoldFirstWithTheRingFullBehindIt();
+    ErrorHandlerFake_Install(nullptr);
+    SenderFake_FailNextSend(fakeSender);
+    SolidSyslog_Service(solidSyslog); /* drops "first", holds "third" */
+    FillTheRingBehindIt();
+
+    SenderFake_FailNextSend(fakeSender);
+    SolidSyslog_Service(solidSyslog); /* drops "third" */
+
+    LONGS_EQUAL(1, HeldRecordDropReports());
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, AHeldRecordDealtWithEndsTheRunSoTheNextDropIsReportedAgain)
+{
+    HoldFirstWithTheRingFullBehindIt();
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslog_Service(solidSyslog); /* drops "first", delivers the rest */
+    HoldFirstWithTheRingFullBehindIt();
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(2, HeldRecordDropReports());
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, UnderOldestTheHeldRecordIsKeptWhileTheBufferHasRoom)
+{
+    HoldFirstForADownSender();
+    SolidSyslogBuffer_Write(ring, "second", 6);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, THRICE);
+    STRCMP_EQUAL("second", SenderFake_LastBufferAsString(fakeSender));
+    CALLED_FAKE(ErrorHandlerFake_Handle, 0);
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, UnderNewestTheHeldRecordIsKept)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    HoldFirstWithTheRingFullBehindIt();
+
+    SolidSyslog_Service(solidSyslog);
+
+    /* The failed attempt, then "first", "second" and "third"; "forth" was
+     * refused by the ring. */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 4);
+    STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltServiceHaltsWithoutSendingTheHeldRecord)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, SolidSyslog_Service(solidSyslog));
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+    LONGS_EQUAL(1, bufferFullHaltCount);
+}
+
+TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnceThePolicyChanges)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    SolidSyslog_Service(solidSyslog);
+
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 4);
+    STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
 }
 
 static int haltOrder;

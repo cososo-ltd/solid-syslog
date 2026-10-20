@@ -13,6 +13,7 @@ enum
 
 static bool Read(struct SolidSyslogBuffer* self, void* data, size_t maxSize, size_t* bytesRead);
 static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size);
+static bool IsFull(struct SolidSyslogBuffer* self);
 
 struct BufferFake
 {
@@ -29,6 +30,7 @@ struct SolidSyslogBuffer* BufferFake_Create(void)
     instance = (struct BufferFake) {0};
     instance.Base.Write = Write;
     instance.Base.Read = Read;
+    instance.Base.IsFull = IsFull;
     return &instance.Base;
 }
 
@@ -61,4 +63,11 @@ static void Write(struct SolidSyslogBuffer* self, const void* data, size_t size)
     memcpy(fake->Stored, data, copySize);
     fake->StoredSize = copySize;
     fake->Pending = true;
+}
+
+/* One slot that is always overwritten, so it never refuses a record. */
+static bool IsFull(struct SolidSyslogBuffer* self)
+{
+    (void) self;
+    return false;
 }

@@ -33,14 +33,23 @@ static struct SolidSyslogPoolAllocator CircularBuffer_Allocator = {
 struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     struct SolidSyslogMutex* mutex,
     uint8_t* ring,
-    size_t ringBytes
+    size_t ringBytes,
+    SolidSyslogDiscardPolicyFunction getDiscardPolicy,
+    void* discardPolicyContext
 )
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
     {
-        SolidSyslogCircularBuffer_Initialise(&CircularBuffer_Pool[index].Base, mutex, ring, ringBytes);
+        SolidSyslogCircularBuffer_Initialise(
+            &CircularBuffer_Pool[index].Base,
+            mutex,
+            ring,
+            ringBytes,
+            getDiscardPolicy,
+            discardPolicyContext
+        );
         handle = &CircularBuffer_Pool[index].Base;
     }
     else

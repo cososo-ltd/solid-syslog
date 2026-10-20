@@ -11,6 +11,7 @@
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogCircularBufferErrors.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullMutex.h"
@@ -51,6 +52,17 @@ enum
     SMALL_RING_BYTES = 32
 };
 
+/* The policy every ring in this file is created with. Each group's setup
+ * resets it to Newest, so the refusal tests mean what they say; a test that
+ * wants another policy sets it before writing. */
+static enum SolidSyslogDiscardPolicy testPolicy;
+
+static enum SolidSyslogDiscardPolicy AnswersTestPolicy(void* context)
+{
+    (void) context;
+    return testPolicy;
+}
+
 // Shared fixture for any TEST_GROUP_BASE that drives one CircularBuffer through
 // Write/Read. Each derived group supplies its own ring storage and its own
 // setup/teardown (the mutex source differs per group). Test bodies reference
@@ -90,7 +102,8 @@ TEST_GROUP_BASE(SolidSyslogCircularBuffer, CircularBufferFixture)
 
     void setup() override
     {
-        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
+        testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring), AnswersTestPolicy, nullptr);
     }
 
     void teardown() override
@@ -116,7 +129,13 @@ TEST(SolidSyslogCircularBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable)
     CHECK_FALSE(Read());
     LONGS_EQUAL(0, readSize);
 
-    buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring)); // for teardown
+    buffer = SolidSyslogCircularBuffer_Create(
+        SolidSyslogNullMutex_Get(),
+        ring,
+        sizeof(ring),
+        AnswersTestPolicy,
+        nullptr
+    ); // for teardown
 }
 
 TEST(SolidSyslogCircularBuffer, ReadFromEmptyReturnsFalse)
@@ -257,6 +276,152 @@ TEST(SolidSyslogCircularBuffer, ARecordTheRingKeepsEndsTheRunSoTheNextRefusalIsR
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
+TEST(SolidSyslogCircularBuffer, AnEmptyRingIsNotFull)
+{
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, ARingThatRefusedTheLastRecordIsFull)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+
+    Write("extra");
+
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, AReadThatTakesARecordClearsFull)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    Write("extra");
+
+    Read();
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, AWriteThatFitsClearsFull)
+{
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE - 8];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    Write(filler, sizeof(filler)); /* refused */
+
+    Write("fits");
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, UnderOldestAFullRingDropsItsOldestRecordToMakeRoom)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char older[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(older, 'A', sizeof(older));
+    char newer[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(newer, 'B', sizeof(newer));
+    Write(older, sizeof(older));
+
+    Write(newer, sizeof(newer));
+
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(newer, sizeof(newer));
+    CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogCircularBuffer, UnderOldestARingThatMadeRoomIsFull)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+
+    Write(filler, sizeof(filler));
+
+    CHECK_TRUE(SolidSyslogBuffer_IsFull(buffer));
+}
+
+TEST(SolidSyslogCircularBuffer, UnderOldestEvictingIsReportedAsRecordsLost)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    ErrorHandlerFake_Install(nullptr);
+
+    Write(filler, sizeof(filler));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogCircularBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORDS_EVICTED
+    );
+}
+
+TEST(SolidSyslogCircularBuffer, ARunOfEvictionsIsReportedOnce)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    ErrorHandlerFake_Install(nullptr);
+
+    Write(filler, sizeof(filler));
+    Write(filler, sizeof(filler));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogCircularBuffer, AWriteThatEvictsNothingEndsTheRunSoTheNextEvictionIsReportedAgain)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+    ErrorHandlerFake_Install(nullptr);
+    Write(filler, sizeof(filler)); /* evicts */
+    Read();
+    Write(filler, sizeof(filler)); /* fits */
+
+    Write(filler, sizeof(filler)); /* evicts */
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogCircularBuffer, UnderHaltAFullRingRefusesTheRecordAsUnderNewest)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    char filler[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(filler, 'A', sizeof(filler));
+    Write(filler, sizeof(filler));
+
+    Write("extra");
+
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(filler, sizeof(filler));
+    CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogCircularBuffer, NoPolicyInjectedAppliesOldest)
+{
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring), nullptr, nullptr);
+    char older[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(older, 'A', sizeof(older));
+    char newer[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(newer, 'B', sizeof(newer));
+    Write(older, sizeof(older));
+
+    Write(newer, sizeof(newer));
+
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(newer, sizeof(newer));
+}
+
 TEST(SolidSyslogCircularBuffer, WriteAfterDrainAcceptsRecordTooLargeForRemainingTailSpace)
 {
     Write("x");
@@ -333,7 +498,8 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferMutex, CircularBufferFixture)
 
     void setup() override
     {
-        buffer = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring));
+        testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+        buffer = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring), AnswersTestPolicy, nullptr);
     }
 
     void teardown() override
@@ -399,6 +565,33 @@ TEST(SolidSyslogCircularBufferMutex, HandlerRecordsThatFitEndTheRunOnlyUntilThey
     CHECK(LogIntoTheBufferCallCount < ATTEMPTS);
 }
 
+/* An integrator's policy function that logs once, which lands in the same
+ * buffer that asked. */
+static struct SolidSyslogBuffer* policyLogTarget;
+
+static enum SolidSyslogDiscardPolicy PolicyThatLogs(void* context)
+{
+    (void) context;
+    struct SolidSyslogBuffer* target = policyLogTarget;
+    policyLogTarget = nullptr;
+    if (target != nullptr)
+    {
+        SolidSyslogBuffer_Write(target, "nested", 6);
+    }
+    return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+}
+
+TEST(SolidSyslogCircularBufferMutex, APolicyFunctionThatLogsIsNotAskedUnderTheLock)
+{
+    SolidSyslogCircularBuffer_Destroy(buffer);
+    buffer = SolidSyslogCircularBuffer_Create(MutexFake_Create(), ring, sizeof(ring), PolicyThatLogs, nullptr);
+    policyLogTarget = buffer;
+
+    Write("x");
+
+    CHECK_TEXT(strstr(MutexFake_Sequence(), "LL") == nullptr, MutexFake_Sequence());
+}
+
 TEST(SolidSyslogCircularBufferMutex, WriteCallsLockThenUnlockOnce)
 {
     Write("hello");
@@ -420,7 +613,8 @@ TEST_GROUP_BASE(SolidSyslogCircularBufferSmallRing, CircularBufferFixture)
 
     void setup() override
     {
-        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring));
+        testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+        buffer = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring, sizeof(ring), AnswersTestPolicy, nullptr);
     }
 
     void teardown() override
@@ -519,6 +713,84 @@ TEST(SolidSyslogCircularBufferSmallRing, WrappedBufferReadsAllRecordsInOrder)
     CHECK_FALSE(Read());
 }
 
+// 32-byte ring: three 6-byte records take 24 bytes, and a 20-byte record needs
+// 22, which only the room of all three gives.
+TEST(SolidSyslogCircularBufferSmallRing, UnderOldestAsManyRecordsGoAsTheNewOneNeedsRoomFor)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char small[6];
+    memset(small, 's', sizeof(small));
+    char large[20];
+    memset(large, 'L', sizeof(large));
+    Write(small, sizeof(small));
+    Write(small, sizeof(small));
+    Write(small, sizeof(small));
+
+    Write(large, sizeof(large));
+
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(large, sizeof(large));
+    CHECK_FALSE(Read());
+}
+
+// Evicting the head crosses the wrap marker as a Read does: after A, B, read A,
+// C (wraps; tail 8, head 14, marker 28), read B (head 28), D fits at the tail
+// (tail 22), E (8 bytes) does not - under Oldest it costs C, at the marker.
+TEST(SolidSyslogCircularBufferSmallRing, UnderOldestEvictionCrossesTheWrapMarker)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char a[12];
+    char b[12];
+    char c[6];
+    char d[12];
+    char e[6];
+    memset(a, 'a', sizeof(a));
+    memset(b, 'b', sizeof(b));
+    memset(c, 'c', sizeof(c));
+    memset(d, 'd', sizeof(d));
+    memset(e, 'e', sizeof(e));
+    Write(a, sizeof(a));
+    Write(b, sizeof(b));
+    Read();
+    Write(c, sizeof(c));
+    Read();
+    Write(d, sizeof(d));
+
+    Write(e, sizeof(e));
+
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(d, sizeof(d));
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(e, sizeof(e));
+    CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogCircularBufferSmallRing, UnderOldestARecordNoEmptyRingCouldHoldIsRefusedWithoutEvicting)
+{
+    testPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    char rec[12];
+    memset(rec, 'r', sizeof(rec));
+    char tooLarge[SMALL_RING_BYTES];
+    memset(tooLarge, 'L', sizeof(tooLarge));
+    Write(rec, sizeof(rec));
+
+    Write(tooLarge, sizeof(tooLarge));
+
+    CHECK_TRUE(Read());
+    CHECK_LAST_READ_RECORD(rec, sizeof(rec));
+    CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogCircularBufferSmallRing, ARecordNoEmptyRingCouldHoldDoesNotMakeTheRingFull)
+{
+    char tooLarge[SMALL_RING_BYTES];
+    memset(tooLarge, 'L', sizeof(tooLarge));
+
+    Write(tooLarge, sizeof(tooLarge));
+
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogCircularBufferPool)
 {
@@ -529,6 +801,7 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
 
     void setup() override
     {
+        testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
         mutex = SolidSyslogNullMutex_Get();
     }
 
@@ -550,7 +823,7 @@ TEST_GROUP(SolidSyslogCircularBufferPool)
 
     struct SolidSyslogBuffer* MakeBuffer()
     {
-        return SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring));
+        return SolidSyslogCircularBuffer_Create(mutex, ring, sizeof(ring), AnswersTestPolicy, nullptr);
     }
 
     void FillPool()

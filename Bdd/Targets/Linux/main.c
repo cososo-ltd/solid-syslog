@@ -221,7 +221,6 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
         storeConfig.MaxBlocks = options->MaxBlocks;
-        discardPolicy = MapDiscardPolicy(options->DiscardPolicy);
         storeConfig.GetDiscardPolicy = GetDiscardPolicy;
         storeConfig.SecurityPolicy = securityPolicy;
         storeConfig.GetCapacityThreshold = GetCapacityThreshold;
@@ -320,13 +319,22 @@ int main(int argc, char* argv[])
        parity across runners); otherwise derive from argv[0] as before. */
     BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);
 
+    /* One policy for the pipeline: the store, the buffer and the logger ask the
+       same function. */
+    discardPolicy = MapDiscardPolicy(options.DiscardPolicy);
+
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
 
     /* The interactive thread logs while the service thread drains. */
     struct SolidSyslogMutex* bufferMutex = SolidSyslogPosixMutex_Create();
-    struct SolidSyslogBuffer* buffer =
-        SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10);
+    struct SolidSyslogBuffer* buffer = SolidSyslogPosixMessageQueueBuffer_Create(
+        bufferMutex,
+        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+        10,
+        GetDiscardPolicy,
+        NULL
+    );
     struct SolidSyslogAtomicCounter* counter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
