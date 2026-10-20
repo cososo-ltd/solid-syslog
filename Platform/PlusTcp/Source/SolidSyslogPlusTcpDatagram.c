@@ -41,7 +41,7 @@ static void PlusTcpDatagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self);
-static inline void PlusTcpDatagram_WaitForTheNextHop(uint32_t ip);
+static inline bool PlusTcpDatagram_NextHopResolves(uint32_t ip);
 static inline bool PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop);
 static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void);
 
@@ -114,11 +114,13 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
     if (PlusTcpDatagram_IsOpen(self))
     {
         const struct freertos_sockaddr* dest = SolidSyslogPlusTcpAddress_AsConstFreertosSockaddr(addr);
-        PlusTcpDatagram_WaitForTheNextHop(dest->sin_address.ulIP_IPv4);
-        int32_t sent = FreeRTOS_sendto(self->Socket, buffer, size, 0, dest, sizeof(*dest));
-        if (sent > 0)
+        if (PlusTcpDatagram_NextHopResolves(dest->sin_address.ulIP_IPv4))
         {
-            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+            int32_t sent = FreeRTOS_sendto(self->Socket, buffer, size, 0, dest, sizeof(*dest));
+            if (sent > 0)
+            {
+                result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+            }
         }
     }
     return result;
@@ -127,7 +129,7 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
 /* The stack drops a datagram whose next hop it is still resolving, so a
  * record is handed over only once the next hop is resolved. A miss sends one
  * request; the stack's ARP timer repeats it. */
-static inline void PlusTcpDatagram_WaitForTheNextHop(uint32_t ip)
+static inline bool PlusTcpDatagram_NextHopResolves(uint32_t ip)
 {
     uint32_t nextHop = 0U;
     bool resolved = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
@@ -140,6 +142,7 @@ static inline void PlusTcpDatagram_WaitForTheNextHop(uint32_t ip)
         vTaskDelay(1U);
         resolved = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
     }
+    return resolved;
 }
 
 /* The stack names the next hop: the destination when it is on the subnet,

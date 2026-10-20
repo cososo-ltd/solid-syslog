@@ -62,6 +62,7 @@ TEST_GROUP(SolidSyslogPlusTcpDatagram)
         FreeRtosSocketsFake_Reset();
         FreeRtosArpFake_Reset();
         FreeRtosTaskFake_Reset();
+        FreeRtosArpFake_SetCacheHit(true);
         datagram = SolidSyslogPlusTcpDatagram_Create(nullptr);
         addr = SolidSyslogPlusTcpAddress_Create();
         struct freertos_sockaddr* sin = SolidSyslogPlusTcpAddress_AsFreertosSockaddr(addr);
@@ -268,8 +269,6 @@ TEST(SolidSyslogPlusTcpDatagram, SendToSendsBufferToDestinationAfterOpen)
 
 TEST(SolidSyslogPlusTcpDatagram, SendToLooksUpTheNextHopForTheDestination)
 {
-    FreeRtosArpFake_SetCacheHit(true);
-
     openAndSendOnce();
 
     CALLED_FAKE(FreeRtosArpFake_GetCacheEntry, ONCE);
@@ -277,8 +276,9 @@ TEST(SolidSyslogPlusTcpDatagram, SendToLooksUpTheNextHopForTheDestination)
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToFiresArpProbeOnCacheMiss)
-
 {
+    FreeRtosArpFake_SetCacheHit(false);
+
     openAndSendOnce();
 
     CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, ONCE);
@@ -287,6 +287,8 @@ TEST(SolidSyslogPlusTcpDatagram, SendToFiresArpProbeOnCacheMiss)
 
 TEST(SolidSyslogPlusTcpDatagram, SendToChecksForTheReplyEveryTick)
 {
+    FreeRtosArpFake_SetCacheHit(false);
+
     openAndSendOnce();
 
     LONGS_EQUAL(1, FreeRtosTaskFake_LastVTaskDelayTicks());
@@ -294,18 +296,24 @@ TEST(SolidSyslogPlusTcpDatagram, SendToChecksForTheReplyEveryTick)
 
 TEST(SolidSyslogPlusTcpDatagram, SendToKeepsCheckingForTheResolveWait)
 {
+    FreeRtosArpFake_SetCacheHit(false);
+
     openAndSendOnce();
 
     LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS), FreeRtosTaskFake_VTaskDelayCallCount());
 }
 
-TEST(SolidSyslogPlusTcpDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)
-
+TEST(SolidSyslogPlusTcpDatagram, SendToReportsFailedWhenTheNextHopDoesNotResolve)
 {
+    FreeRtosArpFake_SetCacheHit(false);
     SolidSyslogDatagram_Open(datagram);
-    FreeRtosArpFake_SetCacheHit(true);
 
-    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, SolidSyslogDatagram_SendTo(datagram, "x", 1, addr));
+}
+
+TEST(SolidSyslogPlusTcpDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)
+{
+    openAndSendOnce();
 
     CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, NEVER);
     CALLED_FAKE(FreeRtosTaskFake_VTaskDelay, NEVER);
