@@ -357,6 +357,16 @@ TEST(SolidSyslogPlusTcpDatagram, AFailedResolutionReportsTheUnresolvedNextHopAnd
     );
 }
 
+TEST(SolidSyslogPlusTcpDatagram, ADestinationOffTheSubnetAsksForTheGatewayTheStackNames)
+{
+    FreeRtosArpFake_SetGateway(FreeRTOS_inet_addr_quick(10, 0, 2, 2));
+    FreeRtosArpFake_SetCacheHit(false);
+
+    openAndSendOnce();
+
+    LONGS_EQUAL(FreeRTOS_inet_addr_quick(10, 0, 2, 2), FreeRtosArpFake_LastOutputArpRequestArg());
+}
+
 TEST(SolidSyslogPlusTcpDatagram, AFailureStraightAfterAnotherIsNotReportedAgain)
 {
     ErrorHandlerFake_Install(nullptr);

@@ -16,6 +16,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void FreeRtosArpFake_SetCacheHit(bool hit);
     /* The routed lookup misses this many times, then hits. */
     void FreeRtosArpFake_SetLookupsUntilHit(unsigned misses);
+    /* The routed lookup names this gateway as the next hop, as the stack does
+     * for a destination off the subnet. */
+    void FreeRtosArpFake_SetGateway(uint32_t gateway);
 
     unsigned FreeRtosArpFake_IsIpInArpCacheCallCount(void);
     uint32_t FreeRtosArpFake_LastIsIpInArpCacheArg(void);
