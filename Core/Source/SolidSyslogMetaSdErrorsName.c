@@ -4,25 +4,20 @@
 
 #include "SolidSyslogMetaSdErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const MetaSdErrorsName_Names[] = {
-    [SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG] = "NULL_CONFIG",
-    [SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER] = "NULL_COUNTER",
-    [SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(MetaSdErrorsName_Names) / sizeof(MetaSdErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_META_SD_ERROR_MAX,
-    every_meta_sd_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogMetaSdErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(MetaSdErrorsName_Names, (int32_t) SOLIDSYSLOG_META_SD_ERROR_MAX, detail);
+    static const char* const names[SOLIDSYSLOG_META_SD_ERROR_MAX] = {
+        [SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG] = "NULL_CONFIG",
+        [SOLIDSYSLOG_META_SD_ERROR_NULL_COUNTER] = "NULL_COUNTER",
+        [SOLIDSYSLOG_META_SD_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_META_SD_ERROR_MAX, detail);
 }

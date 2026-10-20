@@ -243,31 +243,7 @@ misra-c2012-2.5:Core/Interface/SolidSyslogCircularBuffer.h:49
 
 # D.012 — Rule 8.9: file-scope static const referenced from a file-scope enum + one function
 # See docs/misra-deviations.md#d012
-misra-c2012-8.9:Core/Source/SolidSyslogAddressErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogAesGcmPolicyErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogAtomicCounterErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogBlockStoreErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogCircularBufferErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogDatagramErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogErrorsName.c:13
 misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:27
-misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDeviceErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogFileErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogHmacSha256PolicyErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogMetaSdErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogMutexErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogOriginSdErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogPassthroughBufferErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogResolverErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogSeverityName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogStreamSenderErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogSwitchingSenderErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogTcpStreamErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogTimeQualitySdErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogTlsCredentialsErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogTlsStreamErrorsName.c:13
-misra-c2012-8.9:Core/Source/SolidSyslogUdpSenderErrorsName.c:13
-misra-c2012-8.9:Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferErrorsName.c:13
 
 # D.013 — Rule 11.5: void* <-> a byte pointer at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013

@@ -4,23 +4,18 @@
 
 #include "SolidSyslogAddressErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const AddressErrorsName_Names[] = {
-    [SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(AddressErrorsName_Names) / sizeof(AddressErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_ADDRESS_ERROR_MAX,
-    every_address_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogAddressErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(AddressErrorsName_Names, (int32_t) SOLIDSYSLOG_ADDRESS_ERROR_MAX, detail);
+    static const char* const names[SOLIDSYSLOG_ADDRESS_ERROR_MAX] = {
+        [SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_ADDRESS_ERROR_MAX, detail);
 }

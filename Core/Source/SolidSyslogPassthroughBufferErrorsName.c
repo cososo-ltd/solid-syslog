@@ -4,29 +4,19 @@
 
 #include "SolidSyslogPassthroughBufferErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const PassthroughBufferErrorsName_Names[] = {
-    [SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-    [SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER] = "NULL_SENDER",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(PassthroughBufferErrorsName_Names) / sizeof(PassthroughBufferErrorsName_Names[0])) ==
-        (size_t) SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX,
-    every_passthrough_buffer_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogPassthroughBufferErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(
-        PassthroughBufferErrorsName_Names,
-        (int32_t) SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX,
-        detail
-    );
+    static const char* const names[SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX] = {
+        [SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+        [SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER] = "NULL_SENDER",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX, detail);
 }

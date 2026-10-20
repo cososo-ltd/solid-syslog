@@ -4,28 +4,18 @@
 
 #include "SolidSyslogAtomicCounterErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const AtomicCounterErrorsName_Names[] = {
-    [SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(AtomicCounterErrorsName_Names) / sizeof(AtomicCounterErrorsName_Names[0])) ==
-        (size_t) SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX,
-    every_atomic_counter_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogAtomicCounterErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(
-        AtomicCounterErrorsName_Names,
-        (int32_t) SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX,
-        detail
-    );
+    static const char* const names[SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX] = {
+        [SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX, detail);
 }

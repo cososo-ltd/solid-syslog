@@ -4,27 +4,22 @@
 
 #include "SolidSyslogResolverErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const ResolverErrorsName_Names[] = {
-    [SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-    [SOLIDSYSLOG_RESOLVER_ERROR_RESOLVE_TIMEOUT] = "RESOLVE_TIMEOUT",
-    [SOLIDSYSLOG_RESOLVER_ERROR_NULL_CONFIG] = "NULL_CONFIG",
-    [SOLIDSYSLOG_RESOLVER_ERROR_NULL_SLEEP] = "NULL_SLEEP",
-    [SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED] = "ADDRESS_FAMILY_UNSUPPORTED",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(ResolverErrorsName_Names) / sizeof(ResolverErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_RESOLVER_ERROR_MAX,
-    every_resolver_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogResolverErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(ResolverErrorsName_Names, (int32_t) SOLIDSYSLOG_RESOLVER_ERROR_MAX, detail);
+    static const char* const names[SOLIDSYSLOG_RESOLVER_ERROR_MAX] = {
+        [SOLIDSYSLOG_RESOLVER_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+        [SOLIDSYSLOG_RESOLVER_ERROR_RESOLVE_TIMEOUT] = "RESOLVE_TIMEOUT",
+        [SOLIDSYSLOG_RESOLVER_ERROR_NULL_CONFIG] = "NULL_CONFIG",
+        [SOLIDSYSLOG_RESOLVER_ERROR_NULL_SLEEP] = "NULL_SLEEP",
+        [SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED] = "ADDRESS_FAMILY_UNSUPPORTED",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_RESOLVER_ERROR_MAX, detail);
 }

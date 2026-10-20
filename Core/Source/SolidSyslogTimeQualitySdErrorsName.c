@@ -4,29 +4,19 @@
 
 #include "SolidSyslogTimeQualitySdErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const TimeQualitySdErrorsName_Names[] = {
-    [SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK] = "NULL_CALLBACK",
-    [SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(TimeQualitySdErrorsName_Names) / sizeof(TimeQualitySdErrorsName_Names[0])) ==
-        (size_t) SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX,
-    every_time_quality_sd_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogTimeQualitySdErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(
-        TimeQualitySdErrorsName_Names,
-        (int32_t) SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX,
-        detail
-    );
+    static const char* const names[SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX] = {
+        [SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK] = "NULL_CALLBACK",
+        [SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX, detail);
 }

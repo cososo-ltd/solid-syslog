@@ -4,24 +4,19 @@
 
 #include "SolidSyslogDatagramErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const DatagramErrorsName_Names[] = {
-    [SOLIDSYSLOG_DATAGRAM_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-    [SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED] = "NEXT_HOP_UNRESOLVED",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(DatagramErrorsName_Names) / sizeof(DatagramErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_DATAGRAM_ERROR_MAX,
-    every_datagram_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogDatagramErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(DatagramErrorsName_Names, (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_MAX, detail);
+    static const char* const names[SOLIDSYSLOG_DATAGRAM_ERROR_MAX] = {
+        [SOLIDSYSLOG_DATAGRAM_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+        [SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED] = "NEXT_HOP_UNRESOLVED",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_MAX, detail);
 }

@@ -4,28 +4,18 @@
 
 #include "SolidSyslogFileBlockDeviceErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const FileBlockDeviceErrorsName_Names[] = {
-    [SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
-    [SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(FileBlockDeviceErrorsName_Names) / sizeof(FileBlockDeviceErrorsName_Names[0])) ==
-        (size_t) SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX,
-    every_file_block_device_error_code_has_a_name
-);
-
+/* Sized by the enum and indexed by its members, so a code added without a
+ * name is a NULL the unit tests catch, and no name can shift. */
 const char* SolidSyslogFileBlockDeviceErrors_Name(int32_t detail)
 {
-    return SolidSyslogErrorName_Lookup(
-        FileBlockDeviceErrorsName_Names,
-        (int32_t) SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX,
-        detail
-    );
+    static const char* const names[SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX] = {
+        [SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX, detail);
 }

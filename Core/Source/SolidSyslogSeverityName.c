@@ -4,29 +4,23 @@
 
 #include "SolidSyslogPrival.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
-#include "SolidSyslogMacros.h"
 
-static const char* const SeverityName_Names[] = {
-    [SOLIDSYSLOG_SEVERITY_EMERGENCY] = "EMERGENCY",
-    [SOLIDSYSLOG_SEVERITY_ALERT] = "ALERT",
-    [SOLIDSYSLOG_SEVERITY_CRITICAL] = "CRITICAL",
-    [SOLIDSYSLOG_SEVERITY_ERROR] = "ERROR",
-    [SOLIDSYSLOG_SEVERITY_WARNING] = "WARNING",
-    [SOLIDSYSLOG_SEVERITY_NOTICE] = "NOTICE",
-    [SOLIDSYSLOG_SEVERITY_INFORMATIONAL] = "INFORMATIONAL",
-    [SOLIDSYSLOG_SEVERITY_DEBUG] = "DEBUG",
-};
-
-SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(SeverityName_Names) / sizeof(SeverityName_Names[0])) == ((size_t) SOLIDSYSLOG_SEVERITY_DEBUG + 1U),
-    every_severity_has_a_name
-);
-
+/* Sized by the ladder and indexed by its levels, so no name can shift. */
 const char* SolidSyslogSeverity_Name(int32_t severity)
 {
-    return SolidSyslogErrorName_Lookup(SeverityName_Names, (int32_t) SOLIDSYSLOG_SEVERITY_DEBUG + 1, severity);
+    static const char* const names[SOLIDSYSLOG_SEVERITY_DEBUG + 1] = {
+        [SOLIDSYSLOG_SEVERITY_EMERGENCY] = "EMERGENCY",
+        [SOLIDSYSLOG_SEVERITY_ALERT] = "ALERT",
+        [SOLIDSYSLOG_SEVERITY_CRITICAL] = "CRITICAL",
+        [SOLIDSYSLOG_SEVERITY_ERROR] = "ERROR",
+        [SOLIDSYSLOG_SEVERITY_WARNING] = "WARNING",
+        [SOLIDSYSLOG_SEVERITY_NOTICE] = "NOTICE",
+        [SOLIDSYSLOG_SEVERITY_INFORMATIONAL] = "INFORMATIONAL",
+        [SOLIDSYSLOG_SEVERITY_DEBUG] = "DEBUG",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_SEVERITY_DEBUG + 1, severity);
 }
