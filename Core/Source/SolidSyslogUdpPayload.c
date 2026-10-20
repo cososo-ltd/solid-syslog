@@ -91,7 +91,7 @@ static inline bool UdpPayload_LastCodepointExtendsPastCut(
 }
 
 /* 11110xxx is the only remaining pattern - invalid bytes never reach here
- * because the formatter (S12.10) guarantees valid UTF-8 upstream. */
+ * because the formatter guarantees valid UTF-8 upstream. */
 static inline size_t UdpPayload_ExpectedSequenceLength(uint8_t startByte)
 {
     char b = (char) startByte;

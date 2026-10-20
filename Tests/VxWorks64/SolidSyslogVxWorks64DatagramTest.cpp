@@ -20,7 +20,6 @@ using namespace CososoTesting;
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"

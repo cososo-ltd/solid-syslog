@@ -20,7 +20,6 @@ using namespace CososoTesting;
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogUdpPayload.h"
 
 // clang-format off
 // 6514 rather than 514: 514 is 0x0202, so host and network order are the same

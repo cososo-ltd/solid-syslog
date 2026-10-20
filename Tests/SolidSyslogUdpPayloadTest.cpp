@@ -1,5 +1,6 @@
 #include <cstdint>
 
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "CppUTest/TestHarness.h"
 
@@ -51,7 +52,7 @@ static size_t StatedLimit(void* context)
 
 TEST(SolidSyslogUdpPayload, StatedWithoutACallbackIsTheTunableDefault)
 {
-    LONGS_EQUAL(480, SolidSyslogUdpPayload_Stated(nullptr, nullptr));
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogUdpPayload_Stated(nullptr, nullptr));
 }
 
 TEST(SolidSyslogUdpPayload, StatedIsWhatTheCallbackAnswers)
@@ -71,7 +72,7 @@ TEST(SolidSyslogUdpPayload, StatedPassesTheContextToTheCallback)
 TEST(SolidSyslogUdpPayload, StatedFallsToTheTunableWhenTheCallbackAnswersZero)
 {
     StatedLimit_ReturnValue = 0;
-    LONGS_EQUAL(480, SolidSyslogUdpPayload_Stated(StatedLimit, nullptr));
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogUdpPayload_Stated(StatedLimit, nullptr));
 }
 
 TEST(SolidSyslogUdpPayload, TrimToCodepointBoundaryAsciiCutNeedsNoWalk)

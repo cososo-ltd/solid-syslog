@@ -114,7 +114,7 @@ static enum SolidSyslogDatagramSendResult LwipSocketDatagram_SendTo(
 }
 
 /* lwIP's sockets layer exposes no IP_MTU, so the path MTU cannot be read back
- * and the contract's unknown-path answer is the honest one. */
+ * and the integrator's stated limit is the only honest answer. */
 static size_t LwipSocketDatagram_MaxPayload(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);

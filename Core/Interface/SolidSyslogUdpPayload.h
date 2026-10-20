@@ -47,7 +47,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Returns the largest length' <= length such that buffer[0..length' - 1]
      * ends on a UTF-8 codepoint boundary. Walks back over any partial
      * multi-byte sequence at the cut point. Assumes the bytes preceding the
-     * cut form valid UTF-8 (the formatter guarantees this - S12.10). */
+     * cut form valid UTF-8, which the formatter guarantees. */
     size_t SolidSyslogUdpPayload_TrimToCodepointBoundary(const uint8_t* buffer, size_t length);
 
 SOLIDSYSLOG_EXTERN_C_END

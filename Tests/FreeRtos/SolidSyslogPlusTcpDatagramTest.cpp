@@ -23,7 +23,6 @@ using namespace CososoTesting;
 #include "SolidSyslogPlusTcpDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogUdpPayload.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
