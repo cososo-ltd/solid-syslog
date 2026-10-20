@@ -29,22 +29,44 @@ The resolver forwards what FreeRTOS-Plus-TCP answers. A deployment that cannot
 trust its DNS should give the collector a numeric address rather than a name, so
 that no resolution step exists to be poisoned.
 
-### A first send to an unresolved peer stalls the calling task
+### A record waits for its next hop to resolve
 
-FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves - a
-`FreeRTOS_sendto` to a peer that is not in the ARP cache is dropped at the IP
-layer. The datagram and TCP stream adapters therefore issue an ARP probe on a
-cache miss and then wait, in a `vTaskDelay` of their own, so the reply can land
-before the datagram is sent or the connection opened.
-The wait is the adapter's rather than the stack's, and is 50 ms rounded to the
-resolution your `configTICK_RATE_HZ` gives. Below 20 Hz that rounds to zero
-ticks, and there is no wait.
+FreeRTOS-Plus-TCP does not queue a datagram while it resolves the next hop's
+link address: `FreeRTOS_sendto` accepts it, and the stack drops it to send the
+ARP request in its place. A burst sent before the reply arrives, such as the
+records logged at start-up, would be lost with nothing reported. So before
+each send the datagram asks the stack's ARP cache for the next hop, as the
+[Datagram](../../api/structSolidSyslogDatagram.md) contract requires. A cached
+entry answers at once. Otherwise the datagram sends one ARP request and checks
+for the reply every tick, for up to `SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS`
+(100 ms by default, and never less than one tick), so it sends within a tick
+of the reply arriving. If no reply arrives it fails the send; with a store the
+record is kept for the next pass, and a blocked store ends the pass, so an
+unreachable collector costs one wait per `SolidSyslog_Service` call rather
+than one per record.
 
-That delay is paid by whichever task made the call: the application's own thread
-on an inline wiring, or the servicing thread on a buffered one. It applies to the
-first datagram or connection to a peer, and again once its cache entry ages out under
-`ipconfigMAX_ARP_AGE`, not to steady-state traffic. Budget for it if you are
-logging inline from a task with a deadline.
+The wait falls on the task that calls `SolidSyslog_Service`, or on the logging
+task with an inline wiring. It applies to the first record to a next hop, and
+again once its cache entry ages out under `ipconfigMAX_ARP_AGE`, not to
+steady-state traffic; budget for it if you are logging inline from a task with
+a deadline. A resolution that fails is reported once, as
+`SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` followed by the stack's lookup
+result as `SOLIDSYSLOG_CAT_NATIVE_ERROR`: `eARPCacheMiss` when no reply came,
+`eCantSendPacket` when the stack cannot send to that next hop at all, as for a
+destination off the subnet with no gateway configured. It is not reported again
+until a resolution succeeds.
+
+The next hop is what the stack names: the collector when it is on the subnet,
+otherwise the gateway. UDP's supported shape is a collector or relay on the
+target's own subnet; a datagram that confirms its gateway's entry says nothing
+about the hops beyond it, so for a collector further away choose TCP, which
+retransmits.
+
+The TCP stream does not confirm the next hop. On a cache miss its connect
+sends an ARP request and yields once (50 ms, rounded to a tick) before the
+SYN, and a connection that does not open within its bound fails the send,
+which is reported, rather than losing records silently; the sender connects
+again on its next pass.
 
 ### An over-large datagram is delivered truncated
 
