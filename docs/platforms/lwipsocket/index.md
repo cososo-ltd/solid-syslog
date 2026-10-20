@@ -56,7 +56,7 @@ socket stays writable after a peer closes, so without that check the stack
 would take a record nothing can deliver. When the peek sees the close, the send
 fails, the stream closes itself, and your store replays the record on the next
 connection. The peek sees only a close the stack has already learned of: a peer
-that closes while the record is being sent can still lose that record, because
+that closes while the record is being sent can still cost that record, because
 syslog over TCP has no acknowledgement to say it arrived.
 
 The datagram leaves its socket as the stack makes it, which costs nothing: a UDP
