@@ -1,6 +1,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
@@ -88,14 +89,14 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
     }
 
     /* Drains the queue, answering the last record it held. */
-    const char* LastRecordQueued()
+    std::string LastRecordQueued()
     {
-        readData[0] = '\0';
+        std::string last;
         while (Read())
         {
-            readData[readSize] = '\0';
+            last.assign(readData, readSize);
         }
-        return readData;
+        return last;
     }
 };
 
@@ -250,7 +251,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestAFullQueueDropsItsOldestReco
 
     Write("newest");
 
-    STRCMP_EQUAL("newest", LastRecordQueued());
+    STRCMP_EQUAL("newest", LastRecordQueued().c_str());
 }
 
 TEST(SolidSyslogPosixMessageQueueBuffer, UnderOldestOneRecordGoesForOneWritten)
@@ -417,7 +418,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UnderHaltAFullQueueRefusesTheRecordAsUn
 
     Write("newest");
 
-    STRCMP_EQUAL(TEST_MESSAGE, LastRecordQueued());
+    STRCMP_EQUAL(TEST_MESSAGE, LastRecordQueued().c_str());
 }
 
 TEST(SolidSyslogPosixMessageQueueBuffer, NoPolicyInjectedAppliesOldest)
@@ -434,7 +435,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, NoPolicyInjectedAppliesOldest)
 
     Write("newest");
 
-    STRCMP_EQUAL("newest", LastRecordQueued());
+    STRCMP_EQUAL("newest", LastRecordQueued().c_str());
 }
 
 /* A queue that fills and then breaks must still say it broke: the failure is

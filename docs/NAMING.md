@@ -885,6 +885,7 @@ struct SolidSyslogBuffer
 {
     void (*Write)(struct SolidSyslogBuffer* base, const void* data, size_t size);
     bool (*Read)(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead);
+    bool (*IsFull)(struct SolidSyslogBuffer* base);
 };
 
 /* Core/Interface/SolidSyslogCircularBuffer.h ---------------------------- */

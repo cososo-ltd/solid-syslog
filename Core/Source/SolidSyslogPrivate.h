@@ -44,8 +44,9 @@ struct SolidSyslog
     void* DiscardPolicyContext;
     SolidSyslogHaltCallback OnHalt;
     void* HaltContext;
-    /* Set when a retaining store refuses a record while the policy answers
-     * Halt; Service then moves nothing until the answer changes. */
+    /* Set while the policy answers Halt, when a retaining store refuses a
+     * record or the buffer has filled behind the record Service holds; Service
+     * then moves nothing until the answer changes. */
     bool Halted;
 };
 
