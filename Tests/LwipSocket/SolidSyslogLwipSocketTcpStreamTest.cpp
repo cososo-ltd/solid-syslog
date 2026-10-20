@@ -31,10 +31,7 @@ static const uint16_t TEST_PORT       = 6514U;
 static const uint32_t TEST_IPV4       = 0xC000020AU;
 static const int      TEST_DESCRIPTOR = 7;
 static const uint32_t TEST_CONNECT_TIMEOUT_MS = 20U;
-// The largest deadline the microsecond conversion carries on every target: C99
-// guarantees LONG_MAX is at least 2147483647, and the conversion multiplies by
-// a thousand.
-static const uint32_t TEST_CONNECT_TIMEOUT_MS_MAX = 2147483U;
+static const uint32_t TEST_CONNECT_TIMEOUT_MS_MAX = 300000U;
 static const char     TEST_PAYLOAD[]  = "<14>1 message";
 static const size_t   TEST_PAYLOAD_SIZE = sizeof(TEST_PAYLOAD) - 1U;
 static void* const    TEST_CONTEXT    = reinterpret_cast<void*>(0xABCDU);

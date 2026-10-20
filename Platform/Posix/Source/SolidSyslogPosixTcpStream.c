@@ -240,7 +240,8 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
 static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self)
 {
     uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
-    return (long) ms * 1000L;
+    uint32_t boundedMs = (ms > SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX) ? SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX : ms;
+    return (long) boundedMs * 1000L;
 }
 
 /* Non-blocking connect with bounded wait. connect() returns immediately:

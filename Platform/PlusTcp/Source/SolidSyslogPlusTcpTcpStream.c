@@ -276,7 +276,8 @@ static BaseType_t PlusTcpTcpStream_TryConnect(
  * attempt so a runtime-tunable value takes effect on the next reconnect. */
 static uint32_t PlusTcpTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogPlusTcpTcpStream* self)
 {
-    return self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    return (ms > SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX) ? SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX : ms;
 }
 
 /* On ARP cache miss issue a probe and yield once for the reply to land

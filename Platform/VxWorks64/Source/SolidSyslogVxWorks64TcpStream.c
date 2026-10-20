@@ -218,11 +218,11 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
     return connected;
 }
 
-/* Any 32-bit count of milliseconds fits: its seconds stay below 4294968,
- * inside the range C99 guarantees a long. */
 static struct timeval VxWorks64TcpStream_ResolveConnectTimeout(struct SolidSyslogVxWorks64TcpStream* self)
 {
-    uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    uint32_t requestedMs = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    uint32_t ms =
+        (requestedMs > SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX) ? SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX : requestedMs;
     uint32_t seconds = ms / (uint32_t) MILLISECONDS_PER_SECOND;
     uint32_t microseconds = (ms % (uint32_t) MILLISECONDS_PER_SECOND) * (uint32_t) MICROSECONDS_PER_MILLISECOND;
     struct timeval timeout;
