@@ -37,10 +37,35 @@ using namespace CososoTesting;
 
 static const uint16_t TEST_PORT = 514;
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 TEST_GROUP(SolidSyslogPlusTcpDatagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress* addr = nullptr;
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogPlusTcpDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogPlusTcpDatagram_Destroy(datagram);
+        datagram = SolidSyslogPlusTcpDatagram_Create(&tuned);
+    }
 
     void setup() override
     {
@@ -105,15 +130,6 @@ TEST(SolidSyslogPlusTcpDatagram, OpenIsIdempotent)
     CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
 }
 
-static size_t FakeGetPayloadLimit_ReturnValue;
-static void* FakeGetPayloadLimit_LastContext;
-
-static size_t FakeGetPayloadLimit(void* context)
-{
-    FakeGetPayloadLimit_LastContext = context;
-    return FakeGetPayloadLimit_ReturnValue;
-}
-
 TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
     LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
@@ -121,9 +137,7 @@ TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstalls
 
 TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsWhatTheGetterStates)
 {
-    const struct SolidSyslogPlusTcpDatagramConfig tuned = {FakeGetPayloadLimit, nullptr};
-    SolidSyslogPlusTcpDatagram_Destroy(datagram);
-    datagram = SolidSyslogPlusTcpDatagram_Create(&tuned);
+    recreateWithGetter(nullptr);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
@@ -132,9 +146,7 @@ TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsWhatTheGetterStates)
 TEST(SolidSyslogPlusTcpDatagram, MaxPayloadPassesTheContextToTheGetter)
 {
     int context = 0;
-    const struct SolidSyslogPlusTcpDatagramConfig tuned = {FakeGetPayloadLimit, &context};
-    SolidSyslogPlusTcpDatagram_Destroy(datagram);
-    datagram = SolidSyslogPlusTcpDatagram_Create(&tuned);
+    recreateWithGetter(&context);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     (void) SolidSyslogDatagram_MaxPayload(datagram);

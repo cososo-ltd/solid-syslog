@@ -44,6 +44,21 @@ static const uint16_t TEST_PORT = 514;
 #define CHECK_REPORTED(severity, source, expectedCategory, code) \
     CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 /* Shared fixture: every Datagram lifecycle test needs the fake reset, a fresh
  * datagram + address handle pair, teardown of both, and the leak invariant
  * - every udp_pcb handed out by udp_new must come back via udp_remove by the
@@ -59,6 +74,16 @@ TEST_BASE(LwipRawDatagramTestBase)
      * stays in-bounds. Content is irrelevant - payload-pointer-identity
      * and length are the observable surface. */
     char sendBuffer[SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD] = {};
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogLwipRawDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogLwipRawDatagram_Destroy(datagram);
+        datagram = SolidSyslogLwipRawDatagram_Create(&tuned);
+    }
 
     void createFakesAndHandles()
     {
@@ -168,15 +193,6 @@ TEST(SolidSyslogLwipRawDatagram, OpenReturnsFalseWhenUdpNewFails)
     CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
 }
 
-static size_t FakeGetPayloadLimit_ReturnValue;
-static void* FakeGetPayloadLimit_LastContext;
-
-static size_t FakeGetPayloadLimit(void* context)
-{
-    FakeGetPayloadLimit_LastContext = context;
-    return FakeGetPayloadLimit_ReturnValue;
-}
-
 TEST(SolidSyslogLwipRawDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
     LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
@@ -184,9 +200,7 @@ TEST(SolidSyslogLwipRawDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstalls
 
 TEST(SolidSyslogLwipRawDatagram, MaxPayloadIsWhatTheGetterStates)
 {
-    const struct SolidSyslogLwipRawDatagramConfig tuned = {FakeGetPayloadLimit, nullptr};
-    SolidSyslogLwipRawDatagram_Destroy(datagram);
-    datagram = SolidSyslogLwipRawDatagram_Create(&tuned);
+    recreateWithGetter(nullptr);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
@@ -195,9 +209,7 @@ TEST(SolidSyslogLwipRawDatagram, MaxPayloadIsWhatTheGetterStates)
 TEST(SolidSyslogLwipRawDatagram, MaxPayloadPassesTheContextToTheGetter)
 {
     int context = 0;
-    const struct SolidSyslogLwipRawDatagramConfig tuned = {FakeGetPayloadLimit, &context};
-    SolidSyslogLwipRawDatagram_Destroy(datagram);
-    datagram = SolidSyslogLwipRawDatagram_Create(&tuned);
+    recreateWithGetter(&context);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     (void) SolidSyslogDatagram_MaxPayload(datagram);

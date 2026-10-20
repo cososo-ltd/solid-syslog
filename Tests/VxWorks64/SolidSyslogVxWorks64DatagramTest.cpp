@@ -43,11 +43,36 @@ static const char TEST_MESSAGE[] = "hello";
 // Longer than any payload limit the datagram reports, so a test can send one byte past it.
 static const char TEST_LONG_RECORD[2048] = {0};
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64Datagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress* address   = nullptr;
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogVxWorks64DatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogVxWorks64Datagram_Destroy(datagram);
+        datagram = SolidSyslogVxWorks64Datagram_Create(&tuned);
+    }
 
     void setup() override
     {
@@ -346,15 +371,6 @@ TEST(SolidSyslogVxWorks64Datagram, SendToPassesNoFlags)
     LONGS_EQUAL(0, VxWorks64NetFake_LastSendtoFlags());
 }
 
-static size_t FakeGetPayloadLimit_ReturnValue;
-static void* FakeGetPayloadLimit_LastContext;
-
-static size_t FakeGetPayloadLimit(void* context)
-{
-    FakeGetPayloadLimit_LastContext = context;
-    return FakeGetPayloadLimit_ReturnValue;
-}
-
 TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
     LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
@@ -362,9 +378,7 @@ TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsTheTunableWhenTheIntegratorInstal
 
 TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsWhatTheGetterStates)
 {
-    const struct SolidSyslogVxWorks64DatagramConfig tuned = {FakeGetPayloadLimit, nullptr};
-    SolidSyslogVxWorks64Datagram_Destroy(datagram);
-    datagram = SolidSyslogVxWorks64Datagram_Create(&tuned);
+    recreateWithGetter(nullptr);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
@@ -373,9 +387,7 @@ TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsWhatTheGetterStates)
 TEST(SolidSyslogVxWorks64Datagram, MaxPayloadPassesTheContextToTheGetter)
 {
     int context = 0;
-    const struct SolidSyslogVxWorks64DatagramConfig tuned = {FakeGetPayloadLimit, &context};
-    SolidSyslogVxWorks64Datagram_Destroy(datagram);
-    datagram = SolidSyslogVxWorks64Datagram_Create(&tuned);
+    recreateWithGetter(&context);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     (void) SolidSyslogDatagram_MaxPayload(datagram);

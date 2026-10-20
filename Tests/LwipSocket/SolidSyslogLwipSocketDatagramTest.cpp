@@ -39,11 +39,36 @@ static const int      TEST_DESCRIPTOR   = 7;
     }
 // clang-format on
 
+static size_t FakeGetPayloadLimit_ReturnValue;
+static void* FakeGetPayloadLimit_LastContext;
+
+static void FakeGetPayloadLimit_Reset()
+{
+    FakeGetPayloadLimit_ReturnValue = 0U;
+    FakeGetPayloadLimit_LastContext = nullptr;
+}
+
+static size_t FakeGetPayloadLimit(void* context)
+{
+    FakeGetPayloadLimit_LastContext = context;
+    return FakeGetPayloadLimit_ReturnValue;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagram)
 {
     struct SolidSyslogDatagram* datagram = nullptr;
     struct SolidSyslogAddress*  address  = nullptr;
+
+    /* Replace the fixture's datagram with one configured to ask the fake
+       getter, with the fake's state cleared. */
+    void recreateWithGetter(void* context)
+    {
+        FakeGetPayloadLimit_Reset();
+        const struct SolidSyslogLwipSocketDatagramConfig tuned = {FakeGetPayloadLimit, context};
+        SolidSyslogLwipSocketDatagram_Destroy(datagram);
+        datagram = SolidSyslogLwipSocketDatagram_Create(&tuned);
+    }
 
     void setup() override
     {
@@ -109,15 +134,6 @@ TEST(SolidSyslogLwipSocketDatagram, CloseClosesTheOpenSocket)
     CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
-static size_t FakeGetPayloadLimit_ReturnValue;
-static void* FakeGetPayloadLimit_LastContext;
-
-static size_t FakeGetPayloadLimit(void* context)
-{
-    FakeGetPayloadLimit_LastContext = context;
-    return FakeGetPayloadLimit_ReturnValue;
-}
-
 TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
     LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
@@ -125,9 +141,7 @@ TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInsta
 
 TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsWhatTheGetterStates)
 {
-    const struct SolidSyslogLwipSocketDatagramConfig tuned = {FakeGetPayloadLimit, nullptr};
-    SolidSyslogLwipSocketDatagram_Destroy(datagram);
-    datagram = SolidSyslogLwipSocketDatagram_Create(&tuned);
+    recreateWithGetter(nullptr);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
@@ -136,9 +150,7 @@ TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsWhatTheGetterStates)
 TEST(SolidSyslogLwipSocketDatagram, MaxPayloadPassesTheContextToTheGetter)
 {
     int context = 0;
-    const struct SolidSyslogLwipSocketDatagramConfig tuned = {FakeGetPayloadLimit, &context};
-    SolidSyslogLwipSocketDatagram_Destroy(datagram);
-    datagram = SolidSyslogLwipSocketDatagram_Create(&tuned);
+    recreateWithGetter(&context);
     FakeGetPayloadLimit_ReturnValue = 1472U;
 
     (void) SolidSyslogDatagram_MaxPayload(datagram);
