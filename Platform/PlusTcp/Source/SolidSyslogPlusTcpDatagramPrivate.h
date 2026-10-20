@@ -22,8 +22,9 @@ struct SolidSyslogPlusTcpDatagram
     struct SolidSyslogDatagram Base;
     struct SolidSyslogPlusTcpDatagramConfig Config;
     Socket_t Socket;
-    /* The last resolution failed: while it keeps failing it is not reported
-     * again. */
+    /* The last resolution failed: while it keeps failing it is not waited for
+     * or reported again. The run spans a close and reopen, since neither ends
+     * the outage. */
     bool ResolveFailing;
 };
 

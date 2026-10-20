@@ -10,6 +10,7 @@ static uint32_t lastIsIpInArpCacheArg = 0U;
 static bool cacheHit = false;
 static unsigned lookupsUntilHit = 0U;
 static uint32_t gateway = 0U;
+static bool replyPending = false;
 
 static unsigned getCacheEntryCallCount = 0U;
 static uint32_t lastGetCacheEntryArg = 0U;
@@ -24,6 +25,7 @@ void FreeRtosArpFake_Reset(void)
     cacheHit = false;
     lookupsUntilHit = 0;
     gateway = 0;
+    replyPending = false;
 
     getCacheEntryCallCount = 0;
     lastGetCacheEntryArg = 0;
@@ -46,6 +48,11 @@ void FreeRtosArpFake_SetLookupsUntilHit(unsigned misses)
 void FreeRtosArpFake_SetGateway(uint32_t nextHop)
 {
     gateway = nextHop;
+}
+
+void FreeRtosArpFake_SetReplyPending(bool pending)
+{
+    replyPending = pending;
 }
 
 unsigned FreeRtosArpFake_IsIpInArpCacheCallCount(void)
@@ -96,7 +103,8 @@ eARPLookupResult_t eARPGetCacheEntry(
         hit = false;
         cacheHit = (lookupsUntilHit == 0U);
     }
-    return hit ? eARPCacheHit : eARPCacheMiss;
+    eARPLookupResult_t result = replyPending ? eCantSendPacket : eARPCacheMiss;
+    return hit ? eARPCacheHit : result;
 }
 
 unsigned FreeRtosArpFake_OutputArpRequestCallCount(void)

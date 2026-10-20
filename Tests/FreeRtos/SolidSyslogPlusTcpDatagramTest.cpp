@@ -357,6 +357,67 @@ TEST(SolidSyslogPlusTcpDatagram, AFailedResolutionReportsTheUnresolvedNextHopAnd
     );
 }
 
+TEST(SolidSyslogPlusTcpDatagram, WhileResolutionKeepsFailingASendDoesNotWait)
+{
+    FreeRtosArpFake_SetCacheHit(false);
+    openAndSendOnce();
+
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS), FreeRtosTaskFake_VTaskDelayCallCount());
+}
+
+TEST(SolidSyslogPlusTcpDatagram, WhileResolutionKeepsFailingASendStillAsksForTheNextHop)
+{
+    FreeRtosArpFake_SetCacheHit(false);
+    openAndSendOnce();
+
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, TWICE);
+}
+
+TEST(SolidSyslogPlusTcpDatagram, OnceAResolutionSucceedsAgainTheNextWaits)
+{
+    FreeRtosArpFake_SetCacheHit(false);
+    openAndSendOnce();
+    FreeRtosArpFake_SetCacheHit(true);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    FreeRtosArpFake_SetCacheHit(false);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    LONGS_EQUAL(2 * pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS), FreeRtosTaskFake_VTaskDelayCallCount());
+}
+
+TEST(SolidSyslogPlusTcpDatagram, AnEntryStillWaitingForItsReplyIsWaitedForAndAskedAbout)
+{
+    FreeRtosArpFake_SetCacheHit(false);
+    FreeRtosArpFake_SetReplyPending(true);
+    SolidSyslogDatagram_Open(datagram);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, SolidSyslogDatagram_SendTo(datagram, "x", 1, addr));
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS), FreeRtosTaskFake_VTaskDelayCallCount());
+    CALLED_FAKE(FreeRtosArpFake_OutputArpRequest, ONCE);
+}
+
+TEST(SolidSyslogPlusTcpDatagram, AnEntryStillWaitingForItsReplyIsReportedAsPending)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosArpFake_SetCacheHit(false);
+    FreeRtosArpFake_SetReplyPending(true);
+
+    openAndSendOnce();
+
+    CHECK_ERROR_EVENT_AT(
+        1,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        eCantSendPacket
+    );
+}
+
 TEST(SolidSyslogPlusTcpDatagram, ADestinationOffTheSubnetAsksForTheGatewayTheStackNames)
 {
     FreeRtosArpFake_SetGateway(FreeRTOS_inet_addr_quick(10, 0, 2, 2));

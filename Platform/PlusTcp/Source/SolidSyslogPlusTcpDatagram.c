@@ -28,6 +28,11 @@
 
 const struct SolidSyslogErrorSource SolidSyslogPlusTcpDatagramErrorSource = {"PlusTcpDatagram"};
 
+enum
+{
+    PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND = 1000U
+};
+
 struct SolidSyslogAddress;
 
 static bool PlusTcpDatagram_Open(struct SolidSyslogDatagram* base);
@@ -130,17 +135,23 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
 }
 
 /* The stack drops a datagram whose next hop it is still resolving, so a
- * record is handed over only once the next hop is resolved. A miss sends one
- * request; the stack's ARP timer repeats it. */
+ * record is handed over only once the next hop is resolved. Each send that
+ * finds it unresolved sends one request, which the stack does not repeat, so
+ * a request lost during the wait goes again with the next send. While
+ * resolution keeps failing the send asks but does not wait, so an unreachable
+ * next hop costs one wait, not one per record. The stack's own
+ * xARPWaitResolution is not used: it sleeps 250 ms between checks and does
+ * not wait at all for an entry whose reply is pending. */
 static inline bool PlusTcpDatagram_NextHopResolves(struct SolidSyslogPlusTcpDatagram* self, uint32_t ip)
 {
     uint32_t nextHop = 0U;
     eARPLookupResult_t lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
-    if (lookup == eARPCacheMiss)
+    if (lookup != eARPCacheHit)
     {
         FreeRTOS_OutputARPRequest(nextHop);
     }
-    for (TickType_t tick = 0U; (tick < PlusTcpDatagram_ResolveWaitTicks()) && (lookup != eARPCacheHit); tick++)
+    TickType_t ticksToWait = self->ResolveFailing ? 0U : PlusTcpDatagram_ResolveWaitTicks();
+    for (TickType_t tick = 0U; (tick < ticksToWait) && (lookup != eARPCacheHit); tick++)
     {
         vTaskDelay(1U);
         lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
@@ -167,12 +178,14 @@ static inline eARPLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint
 /* Rounded up, so a wait shorter than a tick is a tick rather than none. */
 static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void)
 {
-    TickType_t ticks = pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS);
-    return (ticks == 0U) ? 1U : ticks;
+    return (TickType_t) ((((uint32_t) SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS * (uint32_t) configTICK_RATE_HZ) +
+                          (PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND - 1U)) /
+                         PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND);
 }
 
-/* The lookup's own answer follows as the native code: a miss, or a next hop
- * the stack cannot send to at all, such as an off-subnet destination with no
+/* The lookup's own answer follows as the native code: a miss, or
+ * eCantSendPacket for an entry whose reply is still pending, or a next hop the
+ * stack cannot send to at all, such as an off-subnet destination with no
  * gateway configured. */
 static inline void PlusTcpDatagram_ReportUnresolved(eARPLookupResult_t lookup)
 {
