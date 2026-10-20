@@ -26,7 +26,6 @@ using namespace CososoTesting;
 #include "SolidSyslogPlusTcpDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
-#include "SolidSyslogDatagramErrors.h"
 #include "SolidSyslogError.h"
 
 // Asserts handle is non-null and not one of the slots in pool.

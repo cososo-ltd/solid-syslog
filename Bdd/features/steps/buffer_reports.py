@@ -13,7 +13,7 @@ _BUFFER_SOURCES = "CircularBuffer|PosixMessageQueueBuffer|SolidSyslog"
 def reported_buffer_losses(process):
     """Every report of records lost at the buffer, as (severity, source, detail)."""
     pattern = re.compile(
-        r"severity=(\d+) \[(" + _BUFFER_SOURCES + r") cat=\d+ detail=(-?\d+)\] buffer records lost"
+        r"severity=(\d+) \[(" + _BUFFER_SOURCES + r") cat=\d+ detail=(-?\d+)\] BUFFER_RECORDS_LOST"
     )
     return [
         (int(severity), source, int(detail))
