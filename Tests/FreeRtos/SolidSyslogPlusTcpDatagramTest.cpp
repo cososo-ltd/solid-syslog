@@ -311,6 +311,16 @@ TEST(SolidSyslogPlusTcpDatagram, SendToReportsFailedWhenTheNextHopDoesNotResolve
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, SolidSyslogDatagram_SendTo(datagram, "x", 1, addr));
 }
 
+TEST(SolidSyslogPlusTcpDatagram, SendToSendsOnceTheNextHopResolvesDuringTheWait)
+{
+    FreeRtosArpFake_SetLookupsUntilHit(3);
+    SolidSyslogDatagram_Open(datagram);
+
+    LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, SolidSyslogDatagram_SendTo(datagram, "x", 1, addr));
+    CALLED_FAKE(FreeRtosSocketsFake_Sendto, ONCE);
+    LONGS_EQUAL(3, FreeRtosTaskFake_VTaskDelayCallCount());
+}
+
 TEST(SolidSyslogPlusTcpDatagram, SendToSendsNothingWhenTheNextHopDoesNotResolve)
 {
     FreeRtosArpFake_SetCacheHit(false);

@@ -14,6 +14,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void FreeRtosArpFake_Reset(void);
 
     void FreeRtosArpFake_SetCacheHit(bool hit);
+    /* The routed lookup misses this many times, then hits. */
+    void FreeRtosArpFake_SetLookupsUntilHit(unsigned misses);
 
     unsigned FreeRtosArpFake_IsIpInArpCacheCallCount(void);
     uint32_t FreeRtosArpFake_LastIsIpInArpCacheArg(void);
