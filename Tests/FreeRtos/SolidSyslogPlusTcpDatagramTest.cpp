@@ -9,13 +9,16 @@ using namespace CososoTesting;
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "FreeRTOS.h"
+#include "FreeRTOS_ARP.h"
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "FreeRtosArpFake.h"
 #include "FreeRtosSocketsFake.h"
 #include "FreeRtosTaskFake.h"
 #include "SolidSyslogDatagram.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogDatagramErrors.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPlusTcpAddress.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
@@ -328,6 +331,55 @@ TEST(SolidSyslogPlusTcpDatagram, SendToSendsNothingWhenTheNextHopDoesNotResolve)
     openAndSendOnce();
 
     CALLED_FAKE(FreeRtosSocketsFake_Sendto, NEVER);
+}
+
+TEST(SolidSyslogPlusTcpDatagram, AFailedResolutionReportsTheUnresolvedNextHopAndTheLookupResult)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosArpFake_SetCacheHit(false);
+
+    openAndSendOnce();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT_AT(
+        0,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
+    );
+    CHECK_ERROR_EVENT_AT(
+        1,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogPlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        eARPCacheMiss
+    );
+}
+
+TEST(SolidSyslogPlusTcpDatagram, AFailureStraightAfterAnotherIsNotReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosArpFake_SetCacheHit(false);
+    openAndSendOnce();
+
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogPlusTcpDatagram, AFailureAfterARecoveryIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosArpFake_SetCacheHit(false);
+    openAndSendOnce();
+    FreeRtosArpFake_SetCacheHit(true);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    FreeRtosArpFake_SetCacheHit(false);
+    SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
+
+    LONGS_EQUAL(4, ErrorHandlerFake_HandleCallCount());
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)

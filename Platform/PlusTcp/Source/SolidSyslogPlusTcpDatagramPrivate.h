@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAMPRIVATE_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAMPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -21,6 +22,9 @@ struct SolidSyslogPlusTcpDatagram
     struct SolidSyslogDatagram Base;
     struct SolidSyslogPlusTcpDatagramConfig Config;
     Socket_t Socket;
+    /* The last resolution failed: while it keeps failing it is not reported
+     * again. */
+    bool ResolveFailing;
 };
 
 void SolidSyslogPlusTcpDatagram_Initialise(
