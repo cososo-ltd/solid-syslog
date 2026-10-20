@@ -11,12 +11,14 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
-#include "SolidSyslogVxWorks64DatagramErrors.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogVxWorks64Datagram.h"
+#include "SolidSyslogVxWorks64DatagramErrors.h"
 
 struct SolidSyslogVxWorks64Datagram
 {
     struct SolidSyslogDatagram Base;
+    struct SolidSyslogVxWorks64DatagramConfig Config;
     int Fd;
     /* The last resolution failed, for FailedDestination (network byte order):
      * while it keeps failing for that destination it is not waited for or
@@ -29,7 +31,10 @@ struct SolidSyslogVxWorks64Datagram
     uint32_t OffSubnetDestination;
 };
 
-void SolidSyslogVxWorks64Datagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogVxWorks64Datagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogVxWorks64DatagramConfig* config
+);
 void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void VxWorks64Datagram_Report(

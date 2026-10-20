@@ -29,13 +29,13 @@ static struct SolidSyslogPoolAllocator VxWorks64Datagram_Allocator = {
     SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
-struct SolidSyslogDatagram* SolidSyslogVxWorks64Datagram_Create(void)
+struct SolidSyslogDatagram* SolidSyslogVxWorks64Datagram_Create(const struct SolidSyslogVxWorks64DatagramConfig* config)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&VxWorks64Datagram_Allocator);
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&VxWorks64Datagram_Allocator, index) == true)
     {
-        SolidSyslogVxWorks64Datagram_Initialise(&VxWorks64Datagram_Pool[index].Base);
+        SolidSyslogVxWorks64Datagram_Initialise(&VxWorks64Datagram_Pool[index].Base, config);
         handle = &VxWorks64Datagram_Pool[index].Base;
     }
     else
