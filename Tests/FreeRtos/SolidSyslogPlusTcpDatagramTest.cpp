@@ -266,13 +266,14 @@ TEST(SolidSyslogPlusTcpDatagram, SendToSendsBufferToDestinationAfterOpen)
     LONGS_EQUAL(sizeof(struct freertos_sockaddr), FreeRtosSocketsFake_LastSendtoDestinationLength());
 }
 
-TEST(SolidSyslogPlusTcpDatagram, SendToChecksIfIpIsInArpCache)
-
+TEST(SolidSyslogPlusTcpDatagram, SendToLooksUpTheNextHopForTheDestination)
 {
+    FreeRtosArpFake_SetCacheHit(true);
+
     openAndSendOnce();
 
-    CALLED_FAKE(FreeRtosArpFake_IsIpInArpCache, ONCE);
-    LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastIsIpInArpCacheArg());
+    CALLED_FAKE(FreeRtosArpFake_GetCacheEntry, ONCE);
+    LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastGetCacheEntryArg());
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToFiresArpProbeOnCacheMiss)

@@ -137,9 +137,12 @@ static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
      * sendto is allowed to fail or be dropped - UDP semantics. */
     static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
 
-    if (xIsIPInARPCache(ip) == pdFALSE)
+    uint32_t nextHop = ip;
+    MACAddress_t linkAddress;
+    NetworkEndPoint_t* endPoint = NULL;
+    if (eARPGetCacheEntry(&nextHop, &linkAddress, &endPoint) != eARPCacheHit)
     {
-        FreeRTOS_OutputARPRequest(ip);
+        FreeRTOS_OutputARPRequest(nextHop);
         vTaskDelay(ARP_RESOLUTION_WAIT_TICKS);
     }
 }
