@@ -147,6 +147,14 @@ TEST(SolidSyslogLwipSocketDatagram, MaxPayloadIsWhatTheGetterStates)
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
 }
 
+TEST(SolidSyslogLwipSocketDatagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 0U;
+
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
 TEST(SolidSyslogLwipSocketDatagram, MaxPayloadPassesTheContextToTheGetter)
 {
     int context = 0;

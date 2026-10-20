@@ -143,6 +143,14 @@ TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsWhatTheGetterStates)
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
 }
 
+TEST(SolidSyslogPlusTcpDatagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 0U;
+
+    LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
 TEST(SolidSyslogPlusTcpDatagram, MaxPayloadPassesTheContextToTheGetter)
 {
     int context = 0;
