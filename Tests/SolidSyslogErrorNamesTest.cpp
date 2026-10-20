@@ -8,7 +8,18 @@
 #include "SolidSyslogAtomicCounterErrors.h"
 #include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogCircularBufferErrors.h"
+#include "SolidSyslogBufferCategories.h"
+#include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogResolverCategories.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogSenderCategories.h"
+#include "SolidSyslogStoreCategories.h"
+#include "SolidSyslogStreamCategories.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogFileBlockDeviceErrors.h"
 #include "SolidSyslogFileErrors.h"
@@ -173,4 +184,77 @@ TEST(SolidSyslogErrorNames, UdpSenderErrorsNamesItsCodes)
 {
     STRCMP_EQUAL("NULL_CONFIG", SolidSyslogUdpSenderErrors_Name(SOLIDSYSLOG_UDP_SENDER_ERROR_NULL_CONFIG));
     CHECK_VOCABULARY_NAMED(SolidSyslogUdpSenderErrors_Name, SOLIDSYSLOG_UDP_SENDER_ERROR_MAX);
+}
+
+TEST(SolidSyslogErrorNames, AUniversalCategoryIsNamedAsTheDocumentationNamesIt)
+{
+    STRCMP_EQUAL("POOL_EXHAUSTED", SolidSyslogErrorCategory_Name(SOLIDSYSLOG_CAT_POOL_EXHAUSTED));
+}
+
+TEST(SolidSyslogErrorNames, ARoleCategoryIsNamedAsTheDocumentationNamesIt)
+{
+    STRCMP_EQUAL(
+        "DATAGRAM_NEXT_HOP_UNRESOLVED",
+        SolidSyslogErrorCategory_Name(SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED)
+    );
+}
+
+TEST(SolidSyslogErrorNames, EveryCategoryHasAName)
+{
+    static const uint16_t categories[] = {
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
+        SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
+        SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
+        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+        SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+    };
+    for (uint16_t category : categories)
+    {
+        CHECK_TEXT(SolidSyslogErrorCategory_Name(category) != nullptr, "a category has no name");
+    }
+}
+
+TEST(SolidSyslogErrorNames, AnUnassignedCategoryValueHasNoName)
+{
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorCategory_Name(0U));
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorCategory_Name((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 2U)));
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorCategory_Name((uint16_t) (SOLIDSYSLOG_CAT_DATAGRAM_BASE + 2U)));
+}
+
+TEST(SolidSyslogErrorNames, AnIntegratorCategoryHasNoLibraryName)
+{
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorCategory_Name(0xC000U));
+}
+
+TEST(SolidSyslogErrorNames, ASeverityIsNamedAsTheDocumentationNamesIt)
+{
+    STRCMP_EQUAL("WARNING", SolidSyslogSeverity_Name(SOLIDSYSLOG_SEVERITY_WARNING));
+}
+
+TEST(SolidSyslogErrorNames, EverySeverityHasANameAndNothingPastDebugDoes)
+{
+    for (int32_t severity = SOLIDSYSLOG_SEVERITY_EMERGENCY; severity <= SOLIDSYSLOG_SEVERITY_DEBUG; severity++)
+    {
+        CHECK_TEXT(SolidSyslogSeverity_Name(severity) != nullptr, "a severity has no name");
+    }
+    POINTERS_EQUAL(nullptr, SolidSyslogSeverity_Name(SOLIDSYSLOG_SEVERITY_DEBUG + 1));
+    POINTERS_EQUAL(nullptr, SolidSyslogSeverity_Name(-1));
 }
