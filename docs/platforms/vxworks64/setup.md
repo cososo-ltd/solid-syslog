@@ -227,8 +227,9 @@ The datagram waits for a collector on the target's own subnet to resolve
 before it sends; `SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS` bounds the wait. For a
 collector on another subnet it cannot, as
 [A record waits for its next hop to resolve](index.md#a-record-waits-for-its-next-hop-to-resolve)
-explains. The supported shape is a collector or relay on the target's own
-subnet, or TCP. If the collector must be off the subnet, resolving the gateway
+explains. The supported shape for UDP is a collector or relay on the target's
+own subnet; a collector further away is a case for TCP. If it must be UDP to
+a collector off the subnet, resolving the gateway
 once at start-up, before the first `SolidSyslog_Service`, narrows the window
 in which the first records are lost; it does not close it, since the entry can
 expire and the window reopen:

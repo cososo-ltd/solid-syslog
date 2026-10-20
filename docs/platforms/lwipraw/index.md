@@ -76,7 +76,8 @@ boot, before any adapter is created.
 ### A burst to an unresolved next hop is held up to a bound
 
 While lwIP resolves a next hop's link address it holds the datagrams sent to
-it, and `udp_sendto` answers success for every one. Without `ARP_QUEUEING` it
+it, and `udp_sendto` answers success for each one it takes into that queue;
+it refuses only when it is out of memory. Without `ARP_QUEUEING` it
 holds only the latest, so a burst sent before the reply arrives, such as the
 records logged at start-up, loses all but its last record with nothing
 reported. With `ARP_QUEUEING=1` it holds `ARP_QUEUE_LEN` of them, three by
@@ -85,8 +86,9 @@ request every `ARP_TMR_INTERVAL` (1 s) and gives up after `ARP_MAXPENDING`
 (5) tries, dropping what it held. The datagram does not check the cache
 itself; set `ARP_QUEUE_LEN` to the number of records you log before the
 first reply can arrive, and remember that a collector that never answers
-loses them whatever the depth. For a collector that must receive the first
-records, use TCP, which retransmits.
+loses them whatever the depth. TCP does not have this loss: a connection
+waits for resolution and retransmits its opening, so the first records after
+boot are held by the stream rather than dropped by the stack.
 
 ## What becomes of an over-large record
 
