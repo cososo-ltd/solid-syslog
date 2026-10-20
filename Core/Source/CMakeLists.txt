@@ -57,6 +57,7 @@ set(SOURCES
     SolidSyslogResolver.c
     SolidSyslogNullResolver.c
     SolidSyslogDatagram.c
+    SolidSyslogDatagramErrorsName.c
     SolidSyslogNullDatagram.c
     SolidSyslogUdpSender.c
     SolidSyslogUdpSenderStatic.c
