@@ -618,6 +618,7 @@ static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogB
 {
     blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
     BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
+    blockSequence->AtCapacity = false;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 

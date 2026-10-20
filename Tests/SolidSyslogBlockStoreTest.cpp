@@ -2754,6 +2754,25 @@ TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesIsStickyAtTotalAfterSizeFailure)
     LONGS_EQUAL(SolidSyslogStore_GetTotalBytes(store), SolidSyslogStore_GetUsedBytes(store));
 }
 
+TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesFollowsOccupancyAgainOnceARefusedStoreIsDrained)
+{
+    static const size_t SLACK = 100;
+    CreateWithCapacity(ONE_MAX_MSG_RECORD + SLACK, 2, SOLIDSYSLOG_DISCARD_POLICY_HALT);
+    WriteMaxMsg();
+    WriteMaxMsg();
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* refused: used bytes pinned at total */
+
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    /* Block 0 is drained and gone; only the write block's one record remains. */
+    LONGS_EQUAL(ONE_MAX_MSG_RECORD, SolidSyslogStore_GetUsedBytes(store));
+}
+
 static int CountThresholdCrossingsCallCount;
 static size_t thresholdReturnValue;
 
