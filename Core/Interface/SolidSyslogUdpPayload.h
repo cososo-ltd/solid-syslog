@@ -37,6 +37,22 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  where its stack cannot report a path MTU. */
     size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6);
 
+    /** States the IPv4 payload limit for a Datagram whose stack cannot
+     *  discover the path MTU. Answer the largest payload the path carries
+     *  unfragmented - SolidSyslogUdpPayload_FromMtu(1500, false) on a plain
+     *  Ethernet path - or zero to leave it to
+     *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT. Never guess high: the sender
+     *  trims to this and retries, so a figure the path cannot carry loses the
+     *  record. Called on each MaxPayload query, so the answer may change at
+     *  run time. */
+    typedef size_t (*SolidSyslogUdpPayloadLimitFunction)(void* context);
+
+    /** The IPv4 payload limit a Datagram answers where its stack cannot
+     *  discover the path MTU: what @p limit states, or
+     *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT where @p limit is NULL or answers
+     *  zero. @p context is passed to @p limit unchanged. */
+    size_t SolidSyslogUdpPayload_Stated(SolidSyslogUdpPayloadLimitFunction limit, void* context);
+
     /* Returns the largest length' <= length such that buffer[0..length' - 1]
      * ends on a UTF-8 codepoint boundary. Walks back over any partial
      * multi-byte sequence at the cut point. Assumes the bytes preceding the
