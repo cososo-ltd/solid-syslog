@@ -28,6 +28,16 @@ void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context)
     currentContext = context;
 }
 
+const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event)
+{
+    const char* name = NULL;
+    if (event->Source->DetailName != NULL)
+    {
+        name = event->Source->DetailName(event->Detail);
+    }
+    return name;
+}
+
 void SolidSyslog_Error(
     enum SolidSyslogSeverity severity,
     const struct SolidSyslogErrorSource* source,

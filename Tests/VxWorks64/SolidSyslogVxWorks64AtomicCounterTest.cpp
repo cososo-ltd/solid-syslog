@@ -6,6 +6,9 @@ using namespace CososoTesting;
 #include "SolidSyslogAtomicCounter.h"
 #include "SolidSyslogAtomicCounterTestHelper.h"
 #include "SolidSyslogVxWorks64AtomicCounter.h"
+#include "SolidSyslogAtomicCounterErrors.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogVxWorks64AtomicCounterErrors.h"
 #include "VxWorks64IntFake.h"
 
 static struct SolidSyslogAtomicCounter* hookedCounter = nullptr;
@@ -77,4 +80,9 @@ TEST(SolidSyslogVxWorks64AtomicCounter, IncrementWritesTheValueBeforeInterruptsA
     VxWorks64IntFake_SetUnlockHook(nullptr);
 
     LONGS_EQUAL(100, SolidSyslogAtomicCounter_Increment(counter));
+}
+
+TEST(SolidSyslogVxWorks64AtomicCounter, TheErrorSourceNamesItsDetailsThroughAtomicCounterErrors)
+{
+    CHECK(SolidSyslogAtomicCounterErrors_Name == SolidSyslogVxWorks64AtomicCounterErrorSource.DetailName);
 }

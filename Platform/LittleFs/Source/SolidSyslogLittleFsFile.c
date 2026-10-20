@@ -14,7 +14,7 @@
 #include "SolidSyslogNullFile.h"
 #include "lfs.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLittleFsFileErrorSource = {"LittleFsFile"};
+const struct SolidSyslogErrorSource SolidSyslogLittleFsFileErrorSource = {"LittleFsFile", SolidSyslogFileErrors_Name};
 
 /* The File contract says Open creates the file when absent and never truncates
  * an existing one. */

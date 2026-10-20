@@ -17,7 +17,7 @@
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStoreDefinition.h"
 
-const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore"};
+const struct SolidSyslogErrorSource SolidSyslogBlockStoreErrorSource = {"BlockStore", SolidSyslogBlockStoreErrors_Name};
 
 /* vtable - forward-declared because BlockStore_InitialiseVtable references them before their definitions */
 static enum SolidSyslogStoreWriteResult BlockStore_Write(struct SolidSyslogStore* base, const void* data, size_t size);

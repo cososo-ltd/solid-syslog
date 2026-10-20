@@ -24,6 +24,8 @@ using namespace CososoTesting;
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogTcpStreamErrors.h"
+#include "SolidSyslogError.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -688,4 +690,9 @@ TEST(SolidSyslogPlusTcpTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 TEST(SolidSyslogPlusTcpTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
 {
     LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogPlusTcpTcpStreamErrorSource.DetailName);
 }

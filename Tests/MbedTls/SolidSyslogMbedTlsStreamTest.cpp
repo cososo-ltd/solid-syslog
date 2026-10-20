@@ -23,6 +23,8 @@ extern "C"
 
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogTlsStreamCategories.h"
+#include "SolidSyslogTlsStreamErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -1513,4 +1515,9 @@ TEST(SolidSyslogMbedTlsStream, OpenLeavesTheCertificateProfileAloneWhenTheProfil
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(0, MbedTlsFake_SslConfCertProfileCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, TheErrorSourceNamesItsDetailsThroughTlsStreamErrors)
+{
+    CHECK(SolidSyslogTlsStreamErrors_Name == SolidSyslogMbedTlsStreamErrorSource.DetailName);
 }

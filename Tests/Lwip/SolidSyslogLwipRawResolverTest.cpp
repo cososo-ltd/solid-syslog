@@ -18,6 +18,8 @@ using namespace CososoTesting;
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 #include "lwip/ip_addr.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -285,4 +287,9 @@ TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)
 
     LONGS_EQUAL(udpIp, ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip)));
     LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipRawResolverErrorSource.DetailName);
 }

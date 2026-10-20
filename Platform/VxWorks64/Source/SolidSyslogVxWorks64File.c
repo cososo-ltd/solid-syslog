@@ -20,7 +20,7 @@
 #include "SolidSyslogVxWorks64FileErrors.h"
 #include "SolidSyslogVxWorks64FilePrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64FileErrorSource = {"VxWorks64File"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64FileErrorSource = {"VxWorks64File", SolidSyslogFileErrors_Name};
 
 /* rw------- : dosFs ignores the mode, HRFS keeps it. Spelled in hex because
  * MISRA 7.1 rules out the octal the permission bits are usually written in. */

@@ -16,7 +16,10 @@
 #include "SolidSyslogMbedTlsPemBufferCredentialsPrivate.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
-const struct SolidSyslogErrorSource SolidSyslogMbedTlsPemBufferCredentialsErrorSource = {"MbedTlsPemBufferCredentials"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsPemBufferCredentialsErrorSource = {
+    "MbedTlsPemBufferCredentials",
+    SolidSyslogTlsCredentialsErrors_Name
+};
 
 static bool MbedTlsPemBufferCredentials_Install(
     struct SolidSyslogMbedTlsCredentials* base,

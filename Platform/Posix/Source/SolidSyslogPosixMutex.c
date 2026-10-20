@@ -13,7 +13,7 @@
 #include "SolidSyslogPosixMutexErrors.h"
 #include "SolidSyslogPosixMutexPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPosixMutexErrorSource = {"PosixMutex"};
+const struct SolidSyslogErrorSource SolidSyslogPosixMutexErrorSource = {"PosixMutex", SolidSyslogMutexErrors_Name};
 
 static void PosixMutex_Lock(struct SolidSyslogMutex* base);
 static void PosixMutex_Unlock(struct SolidSyslogMutex* base);

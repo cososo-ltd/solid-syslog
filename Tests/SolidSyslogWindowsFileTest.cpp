@@ -9,6 +9,8 @@
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWindowsFile.h"
 #include "SolidSyslogWindowsFileErrors.h"
+#include "SolidSyslogFileErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 #include <cstdio>
@@ -296,4 +298,9 @@ TEST(SolidSyslogWindowsFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogWindowsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogWindowsFileErrorSource.DetailName);
 }

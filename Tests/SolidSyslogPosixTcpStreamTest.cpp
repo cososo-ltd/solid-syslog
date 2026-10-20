@@ -24,6 +24,8 @@ using namespace CososoTesting;
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogTcpStreamErrors.h"
+#include "SolidSyslogError.h"
 
 namespace
 {
@@ -836,4 +838,9 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 TEST(SolidSyslogPosixTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
 {
     LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogPosixTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogPosixTcpStreamErrorSource.DetailName);
 }

@@ -24,7 +24,10 @@
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLwipSocketResolverErrorSource = {"LwipSocketResolver"};
+const struct SolidSyslogErrorSource SolidSyslogLwipSocketResolverErrorSource = {
+    "LwipSocketResolver",
+    SolidSyslogResolverErrors_Name
+};
 
 struct SolidSyslogAddress;
 

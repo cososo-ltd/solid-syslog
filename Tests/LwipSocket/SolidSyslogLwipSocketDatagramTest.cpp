@@ -20,6 +20,8 @@ using namespace CososoTesting;
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
 
 // clang-format off
 // 6514 rather than 514: 514 is 0x0202, so host and network order are the same
@@ -382,4 +384,9 @@ TEST(SolidSyslogLwipSocketDatagramPool, SendingAfterDestroyIsASafeNoOp)
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, sent);
     LONGS_EQUAL(0U, LwipSocketsFake_SendToCallCount());
     SolidSyslogLwipSocketAddress_Destroy(address);
+}
+
+TEST(SolidSyslogLwipSocketDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogLwipSocketDatagramErrorSource.DetailName);
 }

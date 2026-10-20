@@ -15,6 +15,8 @@ using namespace CososoTesting;
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -400,4 +402,9 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogPosixDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogPosixDatagramErrorSource.DetailName);
 }

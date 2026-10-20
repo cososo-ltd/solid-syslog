@@ -29,7 +29,10 @@
 #include "SolidSyslogTunables.h"
 #include "task.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPlusTcpTcpStreamErrorSource = {"PlusTcpTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogPlusTcpTcpStreamErrorSource = {
+    "PlusTcpTcpStream",
+    SolidSyslogTcpStreamErrors_Name
+};
 
 struct SolidSyslogAddress;
 

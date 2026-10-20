@@ -23,7 +23,10 @@
 #include "SolidSyslogVxWorks64ResolverErrors.h"
 #include "SolidSyslogVxWorks64ResolverPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64ResolverErrorSource = {"VxWorks64Resolver"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64ResolverErrorSource = {
+    "VxWorks64Resolver",
+    SolidSyslogResolverErrors_Name
+};
 
 struct SolidSyslogAddress;
 

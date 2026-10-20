@@ -24,6 +24,7 @@ extern "C"
 }
 
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsCredentialsErrors.h"
 
 namespace
 {
@@ -532,4 +533,9 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientCredentialWith
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
     );
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, TheErrorSourceNamesItsDetailsThroughTlsCredentialsErrors)
+{
+    CHECK(SolidSyslogTlsCredentialsErrors_Name == SolidSyslogMbedTlsPemBufferCredentialsErrorSource.DetailName);
 }

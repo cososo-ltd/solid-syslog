@@ -20,7 +20,10 @@
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPosixResolverErrorSource = {"PosixResolver"};
+const struct SolidSyslogErrorSource SolidSyslogPosixResolverErrorSource = {
+    "PosixResolver",
+    SolidSyslogResolverErrors_Name
+};
 
 struct SolidSyslogAddress;
 

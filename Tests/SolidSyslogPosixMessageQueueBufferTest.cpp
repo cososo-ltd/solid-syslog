@@ -917,3 +917,8 @@ TEST(SolidSyslogPosixMessageQueueBuffer, PosixMessageQueueBufferErrorsNamesItsCo
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX
     );
 }
+
+TEST(SolidSyslogPosixMessageQueueBuffer, TheErrorSourceNamesItsDetailsThroughPosixMessageQueueBufferErrors)
+{
+    CHECK(SolidSyslogPosixMessageQueueBufferErrors_Name == SolidSyslogPosixMessageQueueBufferErrorSource.DetailName);
+}

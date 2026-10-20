@@ -20,6 +20,7 @@ extern "C"
 }
 
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsCredentialsErrors.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -435,4 +436,9 @@ TEST(SolidSyslogMbedTlsHandleCredentials, ReleaseDoesNotCrash)
     credentials->Install(credentials, &conf, &installed);
 
     credentials->Release(credentials);
+}
+
+TEST(SolidSyslogMbedTlsHandleCredentials, TheErrorSourceNamesItsDetailsThroughTlsCredentialsErrors)
+{
+    CHECK(SolidSyslogTlsCredentialsErrors_Name == SolidSyslogMbedTlsHandleCredentialsErrorSource.DetailName);
 }

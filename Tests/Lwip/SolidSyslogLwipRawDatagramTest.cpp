@@ -22,6 +22,8 @@ using namespace CososoTesting;
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
 #include "lwip/err.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/pbuf.h"
@@ -542,4 +544,9 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogLwipRawDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogLwipRawDatagramErrorSource.DetailName);
 }

@@ -20,6 +20,8 @@ extern "C"
 
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogAesGcmPolicyErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -599,4 +601,9 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfter
     open();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsAesGcmPolicy, TheErrorSourceNamesItsDetailsThroughAesGcmPolicyErrors)
+{
+    CHECK(SolidSyslogAesGcmPolicyErrors_Name == SolidSyslogMbedTlsAesGcmPolicyErrorSource.DetailName);
 }

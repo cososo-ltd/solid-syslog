@@ -29,7 +29,10 @@
 #include "SolidSyslogVxWorks64TcpStreamErrors.h"
 #include "SolidSyslogVxWorks64TcpStreamPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64TcpStreamErrorSource = {"VxWorks64TcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64TcpStreamErrorSource = {
+    "VxWorks64TcpStream",
+    SolidSyslogTcpStreamErrors_Name
+};
 
 struct SolidSyslogAddress;
 

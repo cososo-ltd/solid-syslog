@@ -23,6 +23,8 @@ using namespace CososoTesting;
 #include "SolidSyslogPlusTcpDatagramErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -501,4 +503,9 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogPlusTcpDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogPlusTcpDatagramErrorSource.DetailName);
 }

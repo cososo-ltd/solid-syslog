@@ -9,6 +9,8 @@
 #include "SolidSyslogStdAtomicCounter.h"
 #include "SolidSyslogStdAtomicCounterErrors.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogAtomicCounterErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -175,4 +177,9 @@ TEST(SolidSyslogStdAtomicCounterPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogStdAtomicCounterPool, TheErrorSourceNamesItsDetailsThroughAtomicCounterErrors)
+{
+    CHECK(SolidSyslogAtomicCounterErrors_Name == SolidSyslogStdAtomicCounterErrorSource.DetailName);
 }

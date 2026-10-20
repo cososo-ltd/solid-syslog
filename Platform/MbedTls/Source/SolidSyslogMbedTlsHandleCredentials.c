@@ -16,7 +16,10 @@
 #include "SolidSyslogMbedTlsHandleCredentialsPrivate.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
 
-const struct SolidSyslogErrorSource SolidSyslogMbedTlsHandleCredentialsErrorSource = {"MbedTlsHandleCredentials"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsHandleCredentialsErrorSource = {
+    "MbedTlsHandleCredentials",
+    SolidSyslogTlsCredentialsErrors_Name
+};
 
 static bool MbedTlsHandleCredentials_Install(
     struct SolidSyslogMbedTlsCredentials* base,

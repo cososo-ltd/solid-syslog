@@ -21,7 +21,10 @@
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = {"LwipSocketTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogLwipSocketTcpStreamErrorSource = {
+    "LwipSocketTcpStream",
+    SolidSyslogTcpStreamErrors_Name
+};
 
 struct SolidSyslogAddress;
 

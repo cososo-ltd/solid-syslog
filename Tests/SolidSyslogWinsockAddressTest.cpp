@@ -14,6 +14,8 @@ using namespace CososoTesting;
 #include "SolidSyslogWinsockAddress.h"
 #include "SolidSyslogWinsockAddressErrors.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
+#include "SolidSyslogAddressErrors.h"
+#include "SolidSyslogError.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -208,4 +210,9 @@ TEST(SolidSyslogWinsockAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogWinsockAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogWinsockAddressErrorSource.DetailName);
 }

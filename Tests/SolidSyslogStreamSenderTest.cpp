@@ -20,6 +20,7 @@
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStreamSenderErrors.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "StreamFake.h"
 #include "TestUtils.h"
 
@@ -975,4 +976,9 @@ TEST(SolidSyslogStreamSenderStreamVersion, SendStillSucceedsAcrossTheReconnect)
     Send();
     StreamFake_SetVersion(stream, 1);
     CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogStreamSender, TheErrorSourceNamesItsDetailsThroughStreamSenderErrors)
+{
+    CHECK(SolidSyslogStreamSenderErrors_Name == SolidSyslogStreamSenderErrorSource.DetailName);
 }

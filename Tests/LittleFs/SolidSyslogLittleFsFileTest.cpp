@@ -12,6 +12,7 @@ extern "C"
 #include "SolidSyslogLittleFsFileErrors.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogError.h"
 #include "lfs.h"
 }
 
@@ -281,4 +282,9 @@ TEST(SolidSyslogLittleFsFile, DestroyClosesAFileLeftOpen)
     /* The group's teardown destroys again; the slot is already free and the
        handle already carries the Null vtable, so that is a safe no-op. */
     file = SolidSyslogNullFile_Get();
+}
+
+TEST(SolidSyslogLittleFsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogLittleFsFileErrorSource.DetailName);
 }

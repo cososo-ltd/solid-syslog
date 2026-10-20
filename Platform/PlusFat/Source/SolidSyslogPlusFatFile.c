@@ -13,7 +13,7 @@
 #include "SolidSyslogPlusFatFilePrivate.h"
 #include "ff_stdio.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPlusFatFileErrorSource = {"PlusFatFile"};
+const struct SolidSyslogErrorSource SolidSyslogPlusFatFileErrorSource = {"PlusFatFile", SolidSyslogFileErrors_Name};
 
 static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path);
 static void PlusFatFile_Close(struct SolidSyslogFile* base);

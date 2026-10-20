@@ -24,6 +24,8 @@ using namespace CososoTesting;
 #include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogAddressErrors.h"
+#include "SolidSyslogError.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketAddress)
@@ -206,4 +208,9 @@ TEST(SolidSyslogLwipSocketAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogLwipSocketAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogLwipSocketAddressErrorSource.DetailName);
 }

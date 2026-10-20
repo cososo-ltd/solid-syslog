@@ -17,6 +17,8 @@
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -279,4 +281,9 @@ TEST(SolidSyslogPosixResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogPosixResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogPosixResolverErrorSource.DetailName);
 }

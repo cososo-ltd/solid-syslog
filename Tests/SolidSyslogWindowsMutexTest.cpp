@@ -9,6 +9,8 @@
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWindowsMutex.h"
 #include "SolidSyslogWindowsMutexErrors.h"
+#include "SolidSyslogMutexErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -192,4 +194,9 @@ TEST(SolidSyslogWindowsMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogWindowsMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogWindowsMutexErrorSource.DetailName);
 }

@@ -13,6 +13,7 @@
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -388,4 +389,9 @@ TEST(SolidSyslogMetaSdPool, FillingPoolThenOverflowReturnsDistinctFallback)
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
     }
+}
+
+TEST(SolidSyslogMetaSd, TheErrorSourceNamesItsDetailsThroughMetaSdErrors)
+{
+    CHECK(SolidSyslogMetaSdErrors_Name == SolidSyslogMetaSdErrorSource.DetailName);
 }

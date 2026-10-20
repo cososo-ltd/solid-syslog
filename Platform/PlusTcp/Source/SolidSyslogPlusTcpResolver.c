@@ -21,7 +21,10 @@
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPlusTcpResolverErrorSource = {"PlusTcpResolver"};
+const struct SolidSyslogErrorSource SolidSyslogPlusTcpResolverErrorSource = {
+    "PlusTcpResolver",
+    SolidSyslogResolverErrors_Name
+};
 
 struct SolidSyslogAddress;
 

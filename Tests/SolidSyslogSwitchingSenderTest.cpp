@@ -10,6 +10,7 @@
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogSwitchingSenderErrors.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -452,4 +453,9 @@ TEST(SolidSyslogSwitchingSenderBadSetup, SendOnBadSetupSenderReturnsTrueAndDrops
      * Store. */
     struct SolidSyslogSender* badSender = SolidSyslogSwitchingSender_Create(nullptr);
     CHECK_TRUE(SolidSyslogSender_Send(badSender, "x", 1));
+}
+
+TEST(SolidSyslogSwitchingSender, TheErrorSourceNamesItsDetailsThroughSwitchingSenderErrors)
+{
+    CHECK(SolidSyslogSwitchingSenderErrors_Name == SolidSyslogSwitchingSenderErrorSource.DetailName);
 }

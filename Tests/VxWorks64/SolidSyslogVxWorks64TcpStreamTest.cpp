@@ -25,6 +25,7 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64TcpStream.h"
 #include "SolidSyslogVxWorks64TcpStreamErrors.h"
+#include "SolidSyslogTcpStreamErrors.h"
 #include "VxWorks64IoFake.h"
 #include "VxWorks64NetFake.h"
 
@@ -633,4 +634,9 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfi
         (SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U,
         VxWorks64NetFake_LastConnectTimeoutMicroseconds()
     );
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogVxWorks64TcpStreamErrorSource.DetailName);
 }

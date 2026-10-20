@@ -21,6 +21,8 @@ using namespace CososoTesting;
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogTcpStreamErrors.h"
+#include "SolidSyslogError.h"
 
 static const struct SolidSyslogLwipSocketTcpStreamConfig config = {nullptr, nullptr};
 
@@ -689,4 +691,9 @@ TEST(SolidSyslogLwipSocketTcpStreamPool, SendingAfterDestroyIsASafeNoOp)
     CHECK_TRUE(SolidSyslogStream_Send(stale, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
 
     LONGS_EQUAL(0U, LwipSocketsFake_SendCallCount());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogLwipSocketTcpStreamErrorSource.DetailName);
 }

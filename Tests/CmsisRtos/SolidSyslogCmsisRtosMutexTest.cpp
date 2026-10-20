@@ -14,6 +14,8 @@ using namespace CososoTesting;
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogMutexErrors.h"
+#include "SolidSyslogError.h"
 
 // Stands in for the RTOS mutex control block. Its size is arbitrary because no
 // fake reads it — only a real implementation knows how big one has to be, which
@@ -418,4 +420,9 @@ TEST(SolidSyslogCmsisRtosMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogCmsisRtosMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogCmsisRtosMutexErrorSource.DetailName);
 }

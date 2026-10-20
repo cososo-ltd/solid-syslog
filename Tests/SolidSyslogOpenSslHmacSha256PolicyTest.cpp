@@ -19,6 +19,8 @@ extern "C"
 
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogHmacSha256PolicyErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -546,4 +548,9 @@ TEST(SolidSyslogOpenSslHmacSha256PolicySeal, ANewPolicyReportsItsFirstFaultEvenA
     verify(TEST_RECORD, sizeof TEST_RECORD, tag);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslHmacSha256Policy, TheErrorSourceNamesItsDetailsThroughHmacSha256PolicyErrors)
+{
+    CHECK(SolidSyslogHmacSha256PolicyErrors_Name == SolidSyslogOpenSslHmacSha256PolicyErrorSource.DetailName);
 }

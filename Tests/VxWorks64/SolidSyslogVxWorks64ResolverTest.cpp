@@ -21,6 +21,8 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Resolver.h"
 #include "SolidSyslogVxWorks64ResolverErrors.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 #include "VxWorks64NetFake.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -332,4 +334,9 @@ TEST(SolidSyslogVxWorks64ResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogVxWorks64Resolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogVxWorks64ResolverErrorSource.DetailName);
 }

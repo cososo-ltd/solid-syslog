@@ -19,6 +19,8 @@
 #include "SolidSyslogOpenSslStreamErrors.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogTlsStreamErrors.h"
+#include "SolidSyslogError.h"
 #include "StreamFake.h"
 #include "TestUtils.h"
 
@@ -1850,4 +1852,9 @@ TEST(SolidSyslogOpenSslStream, OpenPullsTheProfile)
     SolidSyslogStream_Open(stream, addr);
 
     LONGS_EQUAL(1, FakeProfile_CallCount);
+}
+
+TEST(SolidSyslogOpenSslStream, TheErrorSourceNamesItsDetailsThroughTlsStreamErrors)
+{
+    CHECK(SolidSyslogTlsStreamErrors_Name == SolidSyslogOpenSslStreamErrorSource.DetailName);
 }

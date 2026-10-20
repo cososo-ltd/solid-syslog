@@ -3136,3 +3136,8 @@ TEST(SolidSyslogBlockStorePool, UseAfterDestroyIsCrashSafeViaNullStoreVtable)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
     SolidSyslogStore_MarkSent(store); /* no-op */
 }
+
+TEST(SolidSyslogBlockStore, TheErrorSourceNamesItsDetailsThroughBlockStoreErrors)
+{
+    CHECK(SolidSyslogBlockStoreErrors_Name == SolidSyslogBlockStoreErrorSource.DetailName);
+}

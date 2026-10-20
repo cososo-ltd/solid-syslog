@@ -42,7 +42,10 @@
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {"MbedTlsStream"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {
+    "MbedTlsStream",
+    SolidSyslogTlsStreamErrors_Name
+};
 
 enum
 {

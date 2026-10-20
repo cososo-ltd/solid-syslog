@@ -16,6 +16,8 @@ using namespace CososoTesting;
 #include "SolidSyslogWinsockTcpStream.h"
 #include "SolidSyslogWinsockTcpStreamErrors.h"
 #include "SolidSyslogWinsockTcpStreamInternal.h"
+#include "SolidSyslogTcpStreamErrors.h"
+#include "SolidSyslogError.h"
 #include "WinsockFake.h"
 #include <cstdint>
 #include <winsock2.h>
@@ -806,4 +808,9 @@ TEST(SolidSyslogWinsockTcpStream, DefaultPortMatchesRfc6587)
 TEST(SolidSyslogWinsockTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
 {
     LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogWinsockTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogWinsockTcpStreamErrorSource.DetailName);
 }

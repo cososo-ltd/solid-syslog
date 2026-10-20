@@ -12,6 +12,7 @@ using namespace CososoTesting;
 #include "SolidSyslogPassthroughBufferErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 
 static const char* const TEST_MESSAGE = "hello";
 static const size_t TEST_MESSAGE_LEN = 5;
@@ -246,4 +247,9 @@ TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderDoesNotConsumeAPoolSl
     {
         CHECK_TEXT(slot != overflow, "Pool slot collided with the NULL-sender fallback handle");
     }
+}
+
+TEST(SolidSyslogPassthroughBuffer, TheErrorSourceNamesItsDetailsThroughPassthroughBufferErrors)
+{
+    CHECK(SolidSyslogPassthroughBufferErrors_Name == SolidSyslogPassthroughBufferErrorSource.DetailName);
 }
