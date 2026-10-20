@@ -2960,6 +2960,41 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, StickyHundredPercentDoesNotRefireTh
     CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
+TEST(SolidSyslogBlockStoreCapacityThreshold, FiresAgainWhenARefusedStoreIsDrainedAndRefusesAgain)
+{
+    static const size_t MAX_MSG_RECORD = SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD;
+    static const size_t SLACK = 100;
+
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+
+    EnsureDeviceBlockSize(MAX_MSG_RECORD + SLACK);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.MaxBlocks = 2;
+    config.GetDiscardPolicy = AnswersHalt;
+    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
+    config.OnThresholdCrossed = CountThresholdCrossings;
+    thresholdReturnValue = 2 * (MAX_MSG_RECORD + SLACK);
+    store = SolidSyslogBlockStore_Create(&config);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* refused - fires */
+
+    char buf[MAX_MSG_RECORD];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 0 drained and gone - re-arms */
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotates; the sent-out block 1 is disposed */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* rotates; at maxBlocks again */
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* refused again - fires again */
+
+    CALLED_FUNCTION(CountThresholdCrossings, TWICE);
+}
+
 /* Given current usage well below threshold,
  * When getCapacityThreshold starts returning a value the current usage already exceeds,
  * Then onThresholdCrossed fires on the next Write. */
