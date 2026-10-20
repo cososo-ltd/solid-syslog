@@ -60,6 +60,17 @@ enum
         LONGS_EQUAL((expectedDetail), ErrorHandlerFake_DetailAt(index));                                \
     }
 
+/* Every code in [0, max) has a name; max and a negative value have none. */
+#define CHECK_VOCABULARY_NAMED(nameFunction, max)                                                     \
+    {                                                                                                 \
+        POINTERS_EQUAL(nullptr, nameFunction(max));                                                   \
+        POINTERS_EQUAL(nullptr, nameFunction(-1));                                                    \
+        for (int32_t code = 0; code < (max); code++)                                                  \
+        {                                                                                             \
+            CHECK_TEXT(nameFunction(code) != nullptr, #nameFunction " leaves a code without a name"); \
+        }                                                                                             \
+    }
+
 /* The same, for the common case where the event is the only one the call under
  * test raised. Kept separate from CHECK_ERROR_EVENT so a site asserting the last
  * of several events cannot pin the count by accident. */

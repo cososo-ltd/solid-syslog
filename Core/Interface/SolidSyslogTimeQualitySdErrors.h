@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGTIMEQUALITYSDERRORS_H
 #define SOLIDSYSLOGTIMEQUALITYSDERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -23,6 +25,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The name the documentation uses for @p detail, without the
+     *  SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_ prefix; NULL for a value outside the enum. */
+    const char* SolidSyslogTimeQualitySdErrors_Name(int32_t detail);
 
     /** The identity for events raised by a TimeQualitySd. A handler matches by
      *  address (event->Source == &SolidSyslogTimeQualitySdErrorSource), then reads

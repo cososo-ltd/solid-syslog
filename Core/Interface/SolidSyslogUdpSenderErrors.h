@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGUDPSENDERERRORS_H
 #define SOLIDSYSLOGUDPSENDERERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -30,6 +32,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The name the documentation uses for @p detail, without the
+     *  SOLIDSYSLOG_UDP_SENDER_ERROR_ prefix; NULL for a value outside the enum. */
+    const char* SolidSyslogUdpSenderErrors_Name(int32_t detail);
 
     /** The identity for events raised by a UdpSender. A handler matches by
      *  address (event->Source == &SolidSyslogUdpSenderErrorSource), then reads

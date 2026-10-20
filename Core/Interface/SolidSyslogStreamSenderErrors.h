@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGSTREAMSENDERERRORS_H
 #define SOLIDSYSLOGSTREAMSENDERERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -28,6 +30,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_STREAM_SENDER_ERROR_DELIVERY_RESTORED,
         SOLIDSYSLOG_STREAM_SENDER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The name the documentation uses for @p detail, without the
+     *  SOLIDSYSLOG_STREAM_SENDER_ERROR_ prefix; NULL for a value outside the enum. */
+    const char* SolidSyslogStreamSenderErrors_Name(int32_t detail);
 
     /** The identity for events raised by a StreamSender. A handler matches by
      *  address (event->Source == &SolidSyslogStreamSenderErrorSource), then reads

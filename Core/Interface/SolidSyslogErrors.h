@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGERRORS_H
 #define SOLIDSYSLOGERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -37,6 +39,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED,
         SOLIDSYSLOG_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The name the documentation uses for @p detail, without the
+     *  SOLIDSYSLOG_ERROR_ prefix; NULL for a value outside the enum. */
+    const char* SolidSyslogErrors_Name(int32_t detail);
 
     /** The identity for events raised by the SolidSyslog singleton. A handler
      *  matches by address (event->Source == &SolidSyslogErrorSource), then reads

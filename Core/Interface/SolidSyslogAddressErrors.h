@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGADDRESSERRORS_H
 #define SOLIDSYSLOGADDRESSERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -26,6 +28,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The name the documentation uses for @p detail, without the
+     *  SOLIDSYSLOG_ADDRESS_ERROR_ prefix; NULL for a value outside the enum. */
+    const char* SolidSyslogAddressErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END
 

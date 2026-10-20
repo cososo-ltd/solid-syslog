@@ -58,6 +58,27 @@ set(SOURCES
     SolidSyslogNullResolver.c
     SolidSyslogDatagram.c
     SolidSyslogDatagramErrorsName.c
+    SolidSyslogAddressErrorsName.c
+    SolidSyslogAesGcmPolicyErrorsName.c
+    SolidSyslogAtomicCounterErrorsName.c
+    SolidSyslogBlockStoreErrorsName.c
+    SolidSyslogCircularBufferErrorsName.c
+    SolidSyslogErrorsName.c
+    SolidSyslogFileBlockDeviceErrorsName.c
+    SolidSyslogFileErrorsName.c
+    SolidSyslogHmacSha256PolicyErrorsName.c
+    SolidSyslogMetaSdErrorsName.c
+    SolidSyslogMutexErrorsName.c
+    SolidSyslogOriginSdErrorsName.c
+    SolidSyslogPassthroughBufferErrorsName.c
+    SolidSyslogResolverErrorsName.c
+    SolidSyslogStreamSenderErrorsName.c
+    SolidSyslogSwitchingSenderErrorsName.c
+    SolidSyslogTcpStreamErrorsName.c
+    SolidSyslogTimeQualitySdErrorsName.c
+    SolidSyslogTlsCredentialsErrorsName.c
+    SolidSyslogTlsStreamErrorsName.c
+    SolidSyslogUdpSenderErrorsName.c
     SolidSyslogNullDatagram.c
     SolidSyslogUdpSender.c
     SolidSyslogUdpSenderStatic.c

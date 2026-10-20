@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGBLOCKSTOREERRORS_H
 #define SOLIDSYSLOGBLOCKSTOREERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -55,6 +57,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The name the documentation uses for @p detail, without the
+     *  SOLIDSYSLOG_BLOCK_STORE_ERROR_ prefix; NULL for a value outside the enum. */
+    const char* SolidSyslogBlockStoreErrors_Name(int32_t detail);
 
     /** The identity for events raised by a BlockStore. A handler matches by
      *  address (event->Source == &SolidSyslogBlockStoreErrorSource), then reads
