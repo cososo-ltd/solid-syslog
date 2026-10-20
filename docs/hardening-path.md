@@ -127,11 +127,10 @@ a code added in a later release cannot shift the others.
 
 For more detail see [error handling and severity](error-severity.md).
 
-**Cost.** Flash ~400 B, RAM ~10 B. The detail names are linked with each class,
-whether or not the handler asks for them. Measured on the Cortex-M3 BDD target,
-which links twenty vocabularies, that is 3.5 KB of flash, about 180 B per
-vocabulary, and no RAM. The category and severity names are linked only when
-called.
+**Cost.** The handler itself: flash ~400 B, RAM ~10 B. The detail names: about
+180 B of flash per vocabulary, linked with each class whether or not the handler
+asks for them, so 3.5 KB on the Cortex-M3 BDD target, which links twenty; no
+RAM. The category and severity names are linked only when called.
 
 ## Stage 3: Create the logger, wired to nothing
 

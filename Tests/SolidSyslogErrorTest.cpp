@@ -62,6 +62,13 @@ TEST(SolidSyslogErrorEx, ANativeErrorEventHasNoDetailName)
     POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
 }
 
+TEST(SolidSyslogErrorEx, AnEventWithoutASourceHasNoDetailName)
+{
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, nullptr, 0U, 2};
+
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
+}
+
 TEST(SolidSyslogErrorEx, AnEventWhoseSourceNamesNothingHasNoDetailName)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};

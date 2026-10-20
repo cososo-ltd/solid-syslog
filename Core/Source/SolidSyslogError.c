@@ -4,6 +4,7 @@
 
 #include "SolidSyslogError.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "SolidSyslogErrorCategory.h"
@@ -30,14 +31,23 @@ void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context)
     currentContext = context;
 }
 
+static inline bool Error_EventHasNamedDetail(const struct SolidSyslogErrorEvent* event);
+
 const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event)
 {
     const char* name = NULL;
-    if ((event->Category != SOLIDSYSLOG_CAT_NATIVE_ERROR) && (event->Source->DetailName != NULL))
+    if (Error_EventHasNamedDetail(event))
     {
         name = event->Source->DetailName(event->Detail);
     }
     return name;
+}
+
+/* An integrator's own SolidSyslog_Error call may carry no source at all. */
+static inline bool Error_EventHasNamedDetail(const struct SolidSyslogErrorEvent* event)
+{
+    return (event->Category != SOLIDSYSLOG_CAT_NATIVE_ERROR) && (event->Source != NULL) &&
+           (event->Source->DetailName != NULL);
 }
 
 void SolidSyslog_Error(

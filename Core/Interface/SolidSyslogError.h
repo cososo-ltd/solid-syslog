@@ -100,9 +100,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     typedef void (*SolidSyslogErrorHandler)(void* context, const struct SolidSyslogErrorEvent* event);
 
     /** The name the documentation uses for the event's Detail, through its
-     *  Source; NULL where the source names nothing, the code is outside its
-     *  vocabulary, or the event is a SOLIDSYSLOG_CAT_NATIVE_ERROR, whose Detail
-     *  is the platform's own code and has no library name. */
+     *  Source; NULL where the event has no source, the source names nothing,
+     *  the code is outside its vocabulary, or the event is a
+     *  SOLIDSYSLOG_CAT_NATIVE_ERROR, whose Detail is the platform's own code
+     *  and has no library name. */
     const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time
