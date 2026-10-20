@@ -14,6 +14,8 @@
  * optional SOLIDSYSLOG_USER_TUNABLES_FILE override gets a chance to win
  * first. */
 
+#include "SolidSyslogTcpConnectTimeoutFunction.h" /* the connect deadline's ceiling */
+
 /*
  * Pool-size tunables are named by ROLE, not by platform or vendor.
  *
@@ -700,7 +702,9 @@
  * the getter is invoked on every connect attempt so live tuning takes effect
  * without rebuilding or recreating the stream.
  *
- * Floor: 1 ms. Sub-floor values rejected at compile time.
+ * Floor: 1 ms. Ceiling: SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX, which the
+ * contract header states. Values outside the range are rejected at compile
+ * time.
  */
 #ifndef SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS
 #define SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS 200U
@@ -708,6 +712,10 @@
 
 #if SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS < 1
 #error "SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS must be >= 1"
+#endif
+
+#if SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS > SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX
+#error "SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS must be <= SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX"
 #endif
 
 /**
