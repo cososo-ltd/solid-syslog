@@ -4,6 +4,7 @@
 
 #include "SolidSyslogAtomicCounterErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -16,7 +17,7 @@ static const char* const AtomicCounterErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(AtomicCounterErrorsName_Names) / sizeof(AtomicCounterErrorsName_Names[0])) ==
-        SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX,
     every_atomic_counter_error_code_has_a_name
 );
 

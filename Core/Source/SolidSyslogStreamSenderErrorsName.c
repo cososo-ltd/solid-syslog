@@ -4,6 +4,7 @@
 
 #include "SolidSyslogStreamSenderErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -22,7 +23,7 @@ static const char* const StreamSenderErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(StreamSenderErrorsName_Names) / sizeof(StreamSenderErrorsName_Names[0])) ==
-        SOLIDSYSLOG_STREAM_SENDER_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_MAX,
     every_stream_sender_error_code_has_a_name
 );
 

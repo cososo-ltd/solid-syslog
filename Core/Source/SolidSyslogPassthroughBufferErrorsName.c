@@ -4,6 +4,7 @@
 
 #include "SolidSyslogPassthroughBufferErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -17,7 +18,7 @@ static const char* const PassthroughBufferErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(PassthroughBufferErrorsName_Names) / sizeof(PassthroughBufferErrorsName_Names[0])) ==
-        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX,
     every_passthrough_buffer_error_code_has_a_name
 );
 

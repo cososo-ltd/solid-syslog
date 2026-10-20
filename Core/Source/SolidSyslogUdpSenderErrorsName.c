@@ -4,6 +4,7 @@
 
 #include "SolidSyslogUdpSenderErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -23,7 +24,8 @@ static const char* const UdpSenderErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(UdpSenderErrorsName_Names) / sizeof(UdpSenderErrorsName_Names[0])) == SOLIDSYSLOG_UDP_SENDER_ERROR_MAX,
+    (sizeof(UdpSenderErrorsName_Names) / sizeof(UdpSenderErrorsName_Names[0])) ==
+        (size_t) SOLIDSYSLOG_UDP_SENDER_ERROR_MAX,
     every_udp_sender_error_code_has_a_name
 );
 

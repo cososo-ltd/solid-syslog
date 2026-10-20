@@ -4,6 +4,7 @@
 
 #include "SolidSyslogErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -25,7 +26,7 @@ static const char* const ErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(ErrorsName_Names) / sizeof(ErrorsName_Names[0])) == SOLIDSYSLOG_ERROR_MAX,
+    (sizeof(ErrorsName_Names) / sizeof(ErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_ERROR_MAX,
     every_error_code_has_a_name
 );
 

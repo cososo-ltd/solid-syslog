@@ -4,6 +4,7 @@
 
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -21,7 +22,7 @@ static const char* const PosixMessageQueueBufferErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(PosixMessageQueueBufferErrorsName_Names) / sizeof(PosixMessageQueueBufferErrorsName_Names[0])) ==
-        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX,
     every_posix_message_queue_buffer_error_code_has_a_name
 );
 

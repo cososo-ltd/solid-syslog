@@ -4,6 +4,7 @@
 
 #include "SolidSyslogTlsCredentialsErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -27,7 +28,7 @@ static const char* const TlsCredentialsErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(TlsCredentialsErrorsName_Names) / sizeof(TlsCredentialsErrorsName_Names[0])) ==
-        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_MAX,
     every_tls_credentials_error_code_has_a_name
 );
 

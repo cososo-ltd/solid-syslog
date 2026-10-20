@@ -1076,7 +1076,7 @@ Raised 2026-05-15, approved 2026-05-16 by the project owner, David Cozens. Recor
 
 ---
 
-## D.012 - Rule 8.9: file-scope `static const` referenced from a file-scope enum + one function
+## D.012 - Rule 8.9: file-scope `static const` referenced from a file-scope enum or static assert + one function
 
 ### Guideline
 
@@ -1109,12 +1109,23 @@ function would break the enum's compile-time `sizeof()` evaluation.
 
 `Core/Source/SolidSyslogFileBlockDevice.c:24` - one declaration.
 
-This entry authorises that one declaration and no other. A future sweep may
+The name tables share the shape, with a file-scope `SOLIDSYSLOG_STATIC_ASSERT`
+in place of the enum: each `Core/Source/SolidSyslog<Vocabulary>ErrorsName.c`,
+`Core/Source/SolidSyslogSeverityName.c` and
+`Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferErrorsName.c` declares
+one `static const char* const` table, read by the assert that binds its length
+to the enum's `_MAX` and by the one `_Name` function. The assert cannot follow
+the table into the function: the C99 polyfill is an `extern` declaration, which
+at block scope every compiler in CI rejects as unused. Accepted 2026-10-20 under
+the review of #830, one declaration per file, 24 in all.
+
+This entry authorises those declarations and no other. A future sweep may
 surface the same shape elsewhere - a file-scope `static const` whose identifier
-is read by a file-scope enum initialiser and exactly one function. Each such
-instance is reviewed on its merits and either amends this entry with the file
-named, or is raised as its own; it is not covered by this record until that
-happens. The rule still catches genuinely single-function-scoped objects.
+is read by a file-scope enum initialiser or static assert and exactly one
+function. Each such instance is reviewed on its merits and either amends this
+entry with the file named, or is raised as its own; it is not covered by this
+record until that happens. The rule still catches genuinely single-function-scoped
+objects.
 
 ### Rationale
 

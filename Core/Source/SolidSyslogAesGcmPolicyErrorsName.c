@@ -4,6 +4,7 @@
 
 #include "SolidSyslogAesGcmPolicyErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -21,7 +22,7 @@ static const char* const AesGcmPolicyErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(AesGcmPolicyErrorsName_Names) / sizeof(AesGcmPolicyErrorsName_Names[0])) ==
-        SOLIDSYSLOG_AES_GCM_POLICY_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_AES_GCM_POLICY_ERROR_MAX,
     every_aes_gcm_policy_error_code_has_a_name
 );
 

@@ -4,6 +4,7 @@
 
 #include "SolidSyslogHmacSha256PolicyErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -20,7 +21,7 @@ static const char* const HmacSha256PolicyErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(HmacSha256PolicyErrorsName_Names) / sizeof(HmacSha256PolicyErrorsName_Names[0])) ==
-        SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_MAX,
     every_hmac_sha256_policy_error_code_has_a_name
 );
 

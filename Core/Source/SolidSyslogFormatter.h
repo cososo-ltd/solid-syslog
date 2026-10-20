@@ -29,7 +29,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     (SOLIDSYSLOG_FORMATTER_OVERHEAD +                  \
      (((bufferSize) + sizeof(SolidSyslogFormatterStorage) - 1U) / sizeof(SolidSyslogFormatterStorage)))
 
-#define SOLIDSYSLOG_ESCAPED_MAX_SIZE(maxDecodedLength) (2U * (maxDecodedLength))
     /* NOLINTEND(cppcoreguidelines-macro-usage) */
 
     struct SolidSyslogFormatter;

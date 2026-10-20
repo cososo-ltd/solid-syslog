@@ -4,6 +4,7 @@
 
 #include "SolidSyslogPrival.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -21,7 +22,7 @@ static const char* const SeverityName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(SeverityName_Names) / sizeof(SeverityName_Names[0])) == (SOLIDSYSLOG_SEVERITY_DEBUG + 1),
+    (sizeof(SeverityName_Names) / sizeof(SeverityName_Names[0])) == ((size_t) SOLIDSYSLOG_SEVERITY_DEBUG + 1U),
     every_severity_has_a_name
 );
 

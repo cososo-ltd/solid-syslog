@@ -4,6 +4,7 @@
 
 #include "SolidSyslogAddressErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -15,7 +16,7 @@ static const char* const AddressErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(AddressErrorsName_Names) / sizeof(AddressErrorsName_Names[0])) == SOLIDSYSLOG_ADDRESS_ERROR_MAX,
+    (sizeof(AddressErrorsName_Names) / sizeof(AddressErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_ADDRESS_ERROR_MAX,
     every_address_error_code_has_a_name
 );
 

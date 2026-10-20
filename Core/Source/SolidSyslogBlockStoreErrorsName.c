@@ -4,6 +4,7 @@
 
 #include "SolidSyslogBlockStoreErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -29,7 +30,8 @@ static const char* const BlockStoreErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(BlockStoreErrorsName_Names) / sizeof(BlockStoreErrorsName_Names[0])) == SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX,
+    (sizeof(BlockStoreErrorsName_Names) / sizeof(BlockStoreErrorsName_Names[0])) ==
+        (size_t) SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX,
     every_block_store_error_code_has_a_name
 );
 

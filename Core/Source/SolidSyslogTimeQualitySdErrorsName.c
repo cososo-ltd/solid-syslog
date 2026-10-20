@@ -4,6 +4,7 @@
 
 #include "SolidSyslogTimeQualitySdErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -17,7 +18,7 @@ static const char* const TimeQualitySdErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(TimeQualitySdErrorsName_Names) / sizeof(TimeQualitySdErrorsName_Names[0])) ==
-        SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX,
     every_time_quality_sd_error_code_has_a_name
 );
 

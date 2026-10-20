@@ -4,6 +4,7 @@
 
 #include "SolidSyslogSwitchingSenderErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -19,7 +20,7 @@ static const char* const SwitchingSenderErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(SwitchingSenderErrorsName_Names) / sizeof(SwitchingSenderErrorsName_Names[0])) ==
-        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_SWITCHING_SENDER_ERROR_MAX,
     every_switching_sender_error_code_has_a_name
 );
 

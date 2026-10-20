@@ -4,6 +4,7 @@
 
 #include "SolidSyslogMetaSdErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -17,7 +18,7 @@ static const char* const MetaSdErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(MetaSdErrorsName_Names) / sizeof(MetaSdErrorsName_Names[0])) == SOLIDSYSLOG_META_SD_ERROR_MAX,
+    (sizeof(MetaSdErrorsName_Names) / sizeof(MetaSdErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_META_SD_ERROR_MAX,
     every_meta_sd_error_code_has_a_name
 );
 

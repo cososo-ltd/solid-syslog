@@ -4,6 +4,7 @@
 
 #include "SolidSyslogTcpStreamErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -22,7 +23,8 @@ static const char* const TcpStreamErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(TcpStreamErrorsName_Names) / sizeof(TcpStreamErrorsName_Names[0])) == SOLIDSYSLOG_TCP_STREAM_ERROR_MAX,
+    (sizeof(TcpStreamErrorsName_Names) / sizeof(TcpStreamErrorsName_Names[0])) ==
+        (size_t) SOLIDSYSLOG_TCP_STREAM_ERROR_MAX,
     every_tcp_stream_error_code_has_a_name
 );
 

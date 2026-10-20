@@ -4,6 +4,7 @@
 
 #include "SolidSyslogMutexErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -16,7 +17,7 @@ static const char* const MutexErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(MutexErrorsName_Names) / sizeof(MutexErrorsName_Names[0])) == SOLIDSYSLOG_MUTEX_ERROR_MAX,
+    (sizeof(MutexErrorsName_Names) / sizeof(MutexErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_MUTEX_ERROR_MAX,
     every_mutex_error_code_has_a_name
 );
 

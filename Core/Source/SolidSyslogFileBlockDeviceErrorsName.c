@@ -4,6 +4,7 @@
 
 #include "SolidSyslogFileBlockDeviceErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -16,7 +17,7 @@ static const char* const FileBlockDeviceErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(FileBlockDeviceErrorsName_Names) / sizeof(FileBlockDeviceErrorsName_Names[0])) ==
-        SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX,
     every_file_block_device_error_code_has_a_name
 );
 

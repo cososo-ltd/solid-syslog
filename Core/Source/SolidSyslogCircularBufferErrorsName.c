@@ -4,6 +4,7 @@
 
 #include "SolidSyslogCircularBufferErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -20,7 +21,7 @@ static const char* const CircularBufferErrorsName_Names[] = {
 
 SOLIDSYSLOG_STATIC_ASSERT(
     (sizeof(CircularBufferErrorsName_Names) / sizeof(CircularBufferErrorsName_Names[0])) ==
-        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_MAX,
+        (size_t) SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_MAX,
     every_circular_buffer_error_code_has_a_name
 );
 

@@ -4,6 +4,7 @@
 
 #include "SolidSyslogDatagramErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -16,7 +17,7 @@ static const char* const DatagramErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(DatagramErrorsName_Names) / sizeof(DatagramErrorsName_Names[0])) == SOLIDSYSLOG_DATAGRAM_ERROR_MAX,
+    (sizeof(DatagramErrorsName_Names) / sizeof(DatagramErrorsName_Names[0])) == (size_t) SOLIDSYSLOG_DATAGRAM_ERROR_MAX,
     every_datagram_error_code_has_a_name
 );
 

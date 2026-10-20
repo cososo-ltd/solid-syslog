@@ -4,6 +4,7 @@
 
 #include "SolidSyslogTlsStreamErrors.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "SolidSyslogErrorName.h"
@@ -38,7 +39,8 @@ static const char* const TlsStreamErrorsName_Names[] = {
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(
-    (sizeof(TlsStreamErrorsName_Names) / sizeof(TlsStreamErrorsName_Names[0])) == SOLIDSYSLOG_TLS_STREAM_ERROR_MAX,
+    (sizeof(TlsStreamErrorsName_Names) / sizeof(TlsStreamErrorsName_Names[0])) ==
+        (size_t) SOLIDSYSLOG_TLS_STREAM_ERROR_MAX,
     every_tls_stream_error_code_has_a_name
 );
 
