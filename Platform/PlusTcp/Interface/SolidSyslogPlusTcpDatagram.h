@@ -11,21 +11,34 @@
  *  because FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves - the
  *  cold-start packet would otherwise be dropped at the IP layer; if the reply
  *  is late the send is left to fail, since UDP is best-effort and retry belongs
- *  in the store-and-forward layer above. MaxPayload is the fixed unknown-path
- *  payload. */
+ *  in the store-and-forward layer above. MaxPayload answers the limit the
+ *  config states, or the SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable: the stack
+ *  exposes no path MTU. */
 #ifndef SOLIDSYSLOGPLUSTCPDATAGRAM_H
 #define SOLIDSYSLOGPLUSTCPDATAGRAM_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogUdpPayloadLimitFunction.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
-    /** Create takes no config; an exhausted pool falls back to the shared
-     *  NullDatagram, whose SendTo reports SENT so undeliverables are dropped
-     *  rather than backing up the Store. */
-    struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(void);
+    /** States what only the integrator can know: the IPv4 payload the path
+     *  carries, which this stack cannot discover. */
+    struct SolidSyslogPlusTcpDatagramConfig
+    {
+        /** The payload limit in bytes; NULL, or an answer of zero, uses the
+         *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable. */
+        SolidSyslogUdpPayloadLimitFunction GetPayloadLimit;
+        void* PayloadLimitContext; /**< Passed back to GetPayloadLimit unchanged; NULL is fine. */
+    };
+
+    /** Draw a datagram from the pool; @p config may be NULL. An exhausted pool
+     *  falls back to the shared NullDatagram, whose SendTo reports SENT so
+     *  undeliverables are dropped rather than backing up the Store. */
+    struct SolidSyslogDatagram* SolidSyslogPlusTcpDatagram_Create(const struct SolidSyslogPlusTcpDatagramConfig* config
+    );
     /** Release the pool slot and close the socket. */
     void SolidSyslogPlusTcpDatagram_Destroy(struct SolidSyslogDatagram * base);
 

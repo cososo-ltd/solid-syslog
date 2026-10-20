@@ -14,14 +14,19 @@
 #include "FreeRTOS_Sockets.h"
 
 #include "SolidSyslogDatagramDefinition.h"
+#include "SolidSyslogPlusTcpDatagram.h"
 
 struct SolidSyslogPlusTcpDatagram
 {
     struct SolidSyslogDatagram Base;
+    struct SolidSyslogPlusTcpDatagramConfig Config;
     Socket_t Socket;
 };
 
-void SolidSyslogPlusTcpDatagram_Initialise(struct SolidSyslogDatagram* base);
+void SolidSyslogPlusTcpDatagram_Initialise(
+    struct SolidSyslogDatagram* base,
+    const struct SolidSyslogPlusTcpDatagramConfig* config
+);
 void SolidSyslogPlusTcpDatagram_Cleanup(struct SolidSyslogDatagram* base);
 
 static inline void PlusTcpDatagram_Report(
