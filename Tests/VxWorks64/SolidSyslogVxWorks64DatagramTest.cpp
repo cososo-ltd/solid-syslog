@@ -384,6 +384,18 @@ TEST(SolidSyslogVxWorks64Datagram, MaxPayloadIsWhatTheGetterStates)
     LONGS_EQUAL(1472, SolidSyslogDatagram_MaxPayload(datagram));
 }
 
+/* The getter is asked on every query, never cached, so an end user can retune
+   the limit at run time without destroying the datagram. */
+TEST(SolidSyslogVxWorks64Datagram, MaxPayloadAsksTheGetterOnEveryQuery)
+{
+    recreateWithGetter(nullptr);
+    FakeGetPayloadLimit_ReturnValue = 1472U;
+    (void) SolidSyslogDatagram_MaxPayload(datagram);
+    FakeGetPayloadLimit_ReturnValue = 1400U;
+
+    LONGS_EQUAL(1400, SolidSyslogDatagram_MaxPayload(datagram));
+}
+
 TEST(SolidSyslogVxWorks64Datagram, MaxPayloadFallsToTheTunableWhenTheGetterAnswersZero)
 {
     recreateWithGetter(nullptr);
