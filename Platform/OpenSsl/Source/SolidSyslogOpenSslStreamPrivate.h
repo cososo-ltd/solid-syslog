@@ -42,6 +42,11 @@ struct SolidSyslogOpenSslStream
      * leave the pin uncompared; whether the objection is forgiven is the
      * leaf's decision, and this is what carries it there. */
     int ChainObjection;
+    /* A validity objection carried past a deeper certificate for the same
+     * reason, and X509_V_OK where there was none. OpenSSL checks dates from
+     * the top of the chain down, so an issuer outside its period would be
+     * refused before the leaf's pin was compared. */
+    int ValidityObjection;
     /* What the pin walk decided at the leaf, recorded there. A pin naming a hash
      * this build cannot compute is the integrator's fault, not the peer's, and
      * nothing in the library's verdict distinguishes the two. */

@@ -74,11 +74,16 @@ static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
 static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
 static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
 static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self);
-static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
+static inline bool OpenSslStream_CarryObjectionToTheLeaf(
     struct SolidSyslogOpenSslStream* self,
     const X509_STORE_CTX* storeCtx
 );
 static inline bool OpenSslStream_CarriedChainObjectionStands(const struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_CarriedValidityObjectionStands(
+    const struct SolidSyslogOpenSslStream* self,
+    int verdict
+);
+static inline bool OpenSslStream_IsValidityError(int error);
 static inline bool OpenSslStream_ChainTrustWasWaivedByPolicy(const struct SolidSyslogOpenSslStream* self, long verdict);
 static inline struct SolidSyslogOpenSslStream* OpenSslStream_SelfFromStoreCtx(X509_STORE_CTX* storeCtx);
 static inline int OpenSslStream_VerifyPinnedLeaf(
@@ -257,6 +262,7 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
     OpenSslStream_PullProfile(self);
     self->ChainObjection = X509_V_OK;
+    self->ValidityObjection = X509_V_OK;
     self->PinVerdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && OpenSslStream_InitSslContext(self) &&
               OpenSslStream_InstallCredentials(self) && OpenSslStream_InitSslSession(self) &&
@@ -453,7 +459,7 @@ static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
             verdict = OpenSslStream_VerifyPinnedLeaf(self, preverifyOk, storeCtx);
         }
     }
-    else if (OpenSslStream_CarryChainObjectionToTheLeaf(self, storeCtx))
+    else if (OpenSslStream_CarryObjectionToTheLeaf(self, storeCtx))
     {
         verdict = 1;
     }
@@ -465,25 +471,39 @@ static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
     return verdict;
 }
 
-/* Wherever pins are configured, a chain-trust objection above the leaf is
- * recorded and carried past rather than refused here. OpenSSL reports an
- * unreachable chain at the top of what the peer presented and abandons
- * verification on the first refusal, so refusing at depth would leave the
- * leaf's pin uncompared - and the contract's order, a fingerprint before a
- * chain that reaches no anchor, would be decided by how many certificates the
- * peer happened to send. Forgiving it is the leaf's decision, not this one. */
-static inline bool OpenSslStream_CarryChainObjectionToTheLeaf(
+/* Wherever pins are configured, an objection above the leaf is recorded and
+ * carried past rather than refused here. OpenSSL reports an unreachable chain
+ * at the top of what the peer presented, checks validity from the top down,
+ * and abandons verification on the first refusal, so refusing at depth would
+ * leave the leaf's pin uncompared - and the contract's order, a fingerprint
+ * before a chain that reaches no anchor or an issuer outside its dates, would
+ * be decided by how many certificates the peer happened to send. Forgiving it
+ * is the leaf's decision, not this one. */
+static inline bool OpenSslStream_CarryObjectionToTheLeaf(
     struct SolidSyslogOpenSslStream* self,
     const X509_STORE_CTX* storeCtx
 )
 {
     int error = X509_STORE_CTX_get_error(storeCtx);
-    bool carry = (self->Installed.FingerprintCount > 0U) && OpenSslStream_IsChainTrustError(error);
-    if (carry)
+    bool carry = self->Installed.FingerprintCount > 0U;
+    if (carry && OpenSslStream_IsChainTrustError(error))
     {
         self->ChainObjection = error;
     }
+    else if (carry && OpenSslStream_IsValidityError(error))
+    {
+        self->ValidityObjection = error;
+    }
+    else
+    {
+        carry = false;
+    }
     return carry;
+}
+
+static inline bool OpenSslStream_IsValidityError(int error)
+{
+    return (error == X509_V_ERR_CERT_HAS_EXPIRED) || (error == X509_V_ERR_CERT_NOT_YET_VALID);
 }
 
 /* OpenSSL files the SSL running the handshake under a well-known ex_data index
@@ -519,17 +539,34 @@ static inline int OpenSslStream_VerifyPinnedLeaf(
     }
     else
     {
-        /* OpenSSL's own verdict stands. */
+        /* OpenSSL's own verdict on the leaf stands. */
+    }
+
+    if (OpenSslStream_CarriedValidityObjectionStands(self, verdict))
+    {
+        X509_STORE_CTX_set_error(storeCtx, self->ValidityObjection);
+        verdict = 0;
     }
     return verdict;
 }
 
-/* An objection carried past a deeper certificate is forgiven only where the pin
- * is the whole of the authorisation. With anchors configured as well, it is the
- * fault that refuses the peer once the pin has been found to match. */
+/* A chain objection carried past a deeper certificate is forgiven only where
+ * the pin is the whole of the authorisation. With anchors configured as well,
+ * it is the fault that refuses the peer once the pin has been found to match. */
 static inline bool OpenSslStream_CarriedChainObjectionStands(const struct SolidSyslogOpenSslStream* self)
 {
     return self->Installed.TrustAnchorsInstalled && (self->ChainObjection != X509_V_OK);
+}
+
+/* A validity objection carried past a deeper certificate is never forgiven: a
+ * pin does not extend an issuer's dates. It is the last fault named, so it
+ * refuses only a leaf that every earlier check would have passed. */
+static inline bool OpenSslStream_CarriedValidityObjectionStands(
+    const struct SolidSyslogOpenSslStream* self,
+    int verdict
+)
+{
+    return (verdict == 1) && (self->ValidityObjection != X509_V_OK);
 }
 
 static inline bool OpenSslStream_LeafMatchesAPin(struct SolidSyslogOpenSslStream* self, X509_STORE_CTX* storeCtx)

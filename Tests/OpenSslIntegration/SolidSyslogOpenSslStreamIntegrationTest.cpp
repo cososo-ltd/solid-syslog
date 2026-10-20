@@ -740,3 +740,42 @@ TEST(OpenSslStreamIntegration, ALeafNameThatDoesNotMatchIsNamedBeforeAnExpiredIs
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
 }
+
+/* OpenSSL checks validity from the top of the chain down and abandons
+   verification on the first refusal, so an expired issuer would be refused
+   before the depth-0 callback - the only place the pin is compared - ran.
+   The contract names a fingerprint that matches nothing first. */
+TEST(OpenSslStreamIntegration, AFingerprintThatMatchesNothingIsNamedBeforeAnExpiredIssuer)
+{
+    givenAnIssuedServerCertificateExpiringInThePast();
+    pinLiteral = UNMATCHABLE_PIN;
+    buildScenario(issuedCertConfig());
+    TlsTestCert_WritePemToFile(&clientCa, caPath);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+}
+
+/* Carrying the objection past the issuer defers it, nothing more: a pin does
+   not extend the issuer's dates, with or without anchors. */
+TEST(OpenSslStreamIntegration, AnExpiredIssuerStillRefusesALeafWhosePinMatchesWithoutTrustAnchors)
+{
+    givenAnIssuedServerCertificateExpiringInThePast();
+    pinLabel = "sha-256";
+    installTrustAnchors = false;
+    buildScenario(issuedCertConfig());
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+}
+
+TEST(OpenSslStreamIntegration, AnExpiredIssuerStillRefusesALeafWhosePinMatchesWithTrustAnchors)
+{
+    givenAnIssuedServerCertificateExpiringInThePast();
+    pinLabel = "sha-256";
+    buildScenario(issuedCertConfig());
+    TlsTestCert_WritePemToFile(&clientCa, caPath);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+}
