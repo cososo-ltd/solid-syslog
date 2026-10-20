@@ -168,6 +168,15 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheConfiguredGetter)
     LONGS_EQUAL(500000, VxWorks64NetFake_LastConnectTimeoutMicroseconds());
 }
 
+TEST(SolidSyslogVxWorks64TcpStream, ADeadlineAboveTheCapIsBoundedToIt)
+{
+    RecreateWithTimeoutGetter(nullptr);
+    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
+    SolidSyslogStream_Open(stream, address);
+    LONGS_EQUAL(300, VxWorks64NetFake_LastConnectTimeoutSeconds());
+    LONGS_EQUAL(0, VxWorks64NetFake_LastConnectTimeoutMicroseconds());
+}
+
 TEST(SolidSyslogVxWorks64TcpStream, OpenPassesTheConfiguredContextToTheGetter)
 {
     int context = 0;

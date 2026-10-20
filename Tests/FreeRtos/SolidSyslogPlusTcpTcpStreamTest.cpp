@@ -228,6 +228,16 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenUsesGetterReturnValueAsConnectTimeout)
     LONGS_EQUAL(pdMS_TO_TICKS(1234), FreeRtosSocketsFake_RcvTimeoAtConnect());
 }
 
+TEST(SolidSyslogPlusTcpTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
+{
+    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
+
+    openStreamWithFakeGetter();
+
+    LONGS_EQUAL(pdMS_TO_TICKS(300000), FreeRtosSocketsFake_RcvTimeoAtConnect());
+    LONGS_EQUAL(pdMS_TO_TICKS(300000), FreeRtosSocketsFake_SndTimeoAtConnect());
+}
+
 TEST(SolidSyslogPlusTcpTcpStream, GetterReceivesNullContextWhenContextNotConfigured)
 
 {

@@ -393,6 +393,16 @@ TEST(SolidSyslogWinsockTcpStream, OpenUsesGetterReturnValueAsConnectTimeout)
     LONGS_EQUAL(234000, WinsockFake_LastSelectTimeoutUsec());
 }
 
+TEST(SolidSyslogWinsockTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
+{
+    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
+
+    OpenStreamWithFakeGetter();
+
+    LONGS_EQUAL(300, WinsockFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(0, WinsockFake_LastSelectTimeoutUsec());
+}
+
 TEST(SolidSyslogWinsockTcpStream, GetterReceivesNullContextWhenContextNotConfigured)
 {
     OpenStreamWithFakeGetter();

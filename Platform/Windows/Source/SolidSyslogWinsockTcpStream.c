@@ -317,7 +317,8 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
  * attempt so a runtime-tunable value takes effect on the next reconnect. */
 static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinsockTcpStream* self)
 {
-    return self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    uint32_t ms = self->Config.GetConnectTimeoutMs(self->Config.ConnectTimeoutContext);
+    return (ms > SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX) ? SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX : ms;
 }
 
 /* Non-blocking connect with bounded wait. Windows' default blocking connect()

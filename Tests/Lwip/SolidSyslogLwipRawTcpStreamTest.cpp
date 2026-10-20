@@ -520,6 +520,20 @@ TEST(SolidSyslogLwipRawTcpStream, OpenRespectsRuntimeTunableConnectTimeout)
     POINTERS_EQUAL(reinterpret_cast<void*>(0xABCDU), FakeGetConnectTimeoutMs_LastContext);
 }
 
+TEST(SolidSyslogLwipRawTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
+{
+    LwipTcpFake_SetConnectCallbackFires(false);
+    SolidSyslogLwipRawTcpStream_Destroy(stream);
+    config.GetConnectTimeoutMs = FakeGetConnectTimeoutMs;
+    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
+    stream = SolidSyslogLwipRawTcpStream_Create(&config);
+
+    SolidSyslogStream_Open(stream, address);
+
+    /* 300 000 ms / 10 ms poll = 30 000 polls. */
+    LONGS_EQUAL(30000, FakeSleep_CallCount);
+}
+
 /* ------------------------------------------------------------------
  * Open-already-called tests
  * ----------------------------------------------------------------*/
