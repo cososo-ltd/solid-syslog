@@ -285,12 +285,18 @@ TEST(SolidSyslogPlusTcpDatagram, SendToFiresArpProbeOnCacheMiss)
     LONGS_EQUAL(FreeRTOS_inet_addr_quick(127, 0, 0, 1), FreeRtosArpFake_LastOutputArpRequestArg());
 }
 
-TEST(SolidSyslogPlusTcpDatagram, SendToYieldsAfterArpProbeOnCacheMiss)
-
+TEST(SolidSyslogPlusTcpDatagram, SendToChecksForTheReplyEveryTick)
 {
     openAndSendOnce();
 
-    CALLED_FAKE(FreeRtosTaskFake_VTaskDelay, ONCE);
+    LONGS_EQUAL(1, FreeRtosTaskFake_LastVTaskDelayTicks());
+}
+
+TEST(SolidSyslogPlusTcpDatagram, SendToKeepsCheckingForTheResolveWait)
+{
+    openAndSendOnce();
+
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS), FreeRtosTaskFake_VTaskDelayCallCount());
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)

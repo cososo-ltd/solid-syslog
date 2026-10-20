@@ -21,6 +21,7 @@
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPlusTcpDatagramErrors.h"
 #include "SolidSyslogPlusTcpDatagramPrivate.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
 #include "task.h"
 
@@ -40,7 +41,9 @@ static void PlusTcpDatagram_Close(struct SolidSyslogDatagram* base);
 
 static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self);
-static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip);
+static inline void PlusTcpDatagram_WaitForTheNextHop(uint32_t ip);
+static inline bool PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop);
+static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void);
 
 void SolidSyslogPlusTcpDatagram_Initialise(
     struct SolidSyslogDatagram* base,
@@ -111,7 +114,7 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
     if (PlusTcpDatagram_IsOpen(self))
     {
         const struct freertos_sockaddr* dest = SolidSyslogPlusTcpAddress_AsConstFreertosSockaddr(addr);
-        PlusTcpDatagram_PrimeArpIfMissing(dest->sin_address.ulIP_IPv4);
+        PlusTcpDatagram_WaitForTheNextHop(dest->sin_address.ulIP_IPv4);
         int32_t sent = FreeRTOS_sendto(self->Socket, buffer, size, 0, dest, sizeof(*dest));
         if (sent > 0)
         {
@@ -121,30 +124,39 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
     return result;
 }
 
-/* FreeRTOS-Plus-TCP does not queue datagrams while ARP resolves: a sendto to
- * an unresolved peer drops at the IP layer. Host-class kernels mask this
- * with internal ARP queuing; this stack does not. So on cache miss we issue a
- * probe and yield once for the reply to land. If the reply hasn't arrived in
- * time the sendto is allowed to fail or be dropped - UDP is best-effort and
- * retry belongs in the store-and-forward layer above, not here. */
-static inline void PlusTcpDatagram_PrimeArpIfMissing(uint32_t ip)
+/* The stack drops a datagram whose next hop it is still resolving, so a
+ * record is handed over only once the next hop is resolved. A miss sends one
+ * request; the stack's ARP timer repeats it. */
+static inline void PlusTcpDatagram_WaitForTheNextHop(uint32_t ip)
 {
-    /* Time the calling task yields after issuing an ARP probe so the IP
-     * task can receive the reply and populate the cache before we
-     * attempt FreeRTOS_sendto. 50 ms is generous against typical
-     * sub-millisecond LAN ARP RTT but short enough that the first send
-     * latency stays tolerable. If the reply hasn't arrived in time the
-     * sendto is allowed to fail or be dropped - UDP semantics. */
-    static const TickType_t ARP_RESOLUTION_WAIT_TICKS = pdMS_TO_TICKS(50);
-
-    uint32_t nextHop = ip;
-    MACAddress_t linkAddress;
-    NetworkEndPoint_t* endPoint = NULL;
-    if (eARPGetCacheEntry(&nextHop, &linkAddress, &endPoint) != eARPCacheHit)
+    uint32_t nextHop = 0U;
+    bool resolved = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
+    if (!resolved)
     {
         FreeRTOS_OutputARPRequest(nextHop);
-        vTaskDelay(ARP_RESOLUTION_WAIT_TICKS);
     }
+    for (TickType_t tick = 0U; (tick < PlusTcpDatagram_ResolveWaitTicks()) && !resolved; tick++)
+    {
+        vTaskDelay(1U);
+        resolved = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
+    }
+}
+
+/* The stack names the next hop: the destination when it is on the subnet,
+ * otherwise the gateway. */
+static inline bool PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop)
+{
+    MACAddress_t linkAddress;
+    NetworkEndPoint_t* endPoint = NULL;
+    *nextHop = ip;
+    return eARPGetCacheEntry(nextHop, &linkAddress, &endPoint) == eARPCacheHit;
+}
+
+/* Rounded up, so a wait shorter than a tick is a tick rather than none. */
+static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void)
+{
+    TickType_t ticks = pdMS_TO_TICKS(SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS);
+    return (ticks == 0U) ? 1U : ticks;
 }
 
 static size_t PlusTcpDatagram_MaxPayload(struct SolidSyslogDatagram* base)
