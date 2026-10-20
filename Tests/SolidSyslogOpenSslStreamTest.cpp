@@ -262,6 +262,13 @@ TEST_GROUP(SolidSyslogOpenSslStream)
        being carried from the first to the second. */
     [[nodiscard]] int OpenThenVerifyIssuerThenLeaf(int issuerError, int leafPreverifyOk) const
     {
+        return OpenThenVerifyIssuerThenLeaf(issuerError, leafPreverifyOk, X509_V_OK);
+    }
+
+    /* As above, with `leafError` the objection OpenSSL raised to the leaf
+       itself. */
+    [[nodiscard]] int OpenThenVerifyIssuerThenLeaf(int issuerError, int leafPreverifyOk, int leafError) const
+    {
         OpenSslFake_SetStoreCtxDepth(1);
         OpenSslFake_SetStoreCtxError(issuerError);
         SolidSyslogStream_Open(stream, addr);
@@ -271,7 +278,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
            never runs in a real handshake however this helper behaves. */
         LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
         OpenSslFake_SetStoreCtxDepth(0);
-        OpenSslFake_SetStoreCtxError(X509_V_OK);
+        OpenSslFake_SetStoreCtxError(leafError);
         return verify(leafPreverifyOk, OpenSslFake_StoreCtx());
     }
 
@@ -1730,11 +1737,77 @@ TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfAnObjectionCarr
     LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
 }
 
-TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveTheCertificatesOwnValidityAboveTheLeaf)
+/* OpenSSL checks validity from the top of the chain down, so an issuer outside
+   its dates is refused before the leaf is reached. The contract names a
+   fingerprint that matches nothing ahead of a validity period that has closed,
+   so the objection is carried to the leaf as a chain-trust one is. */
+TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfAnIssuerOutsideItsDates)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_HAS_EXPIRED, 1));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
+}
+
+/* A pin does not extend the validity period: carrying the objection past the
+   issuer defers it, and the leaf still refuses on it once the pin has matched,
+   whether or not anchors are configured. */
+TEST(SolidSyslogOpenSslStream, AMatchingPinDoesNotForgiveAnIssuerOutsideItsDatesWithoutTrustAnchors)
 {
     OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
 
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_HAS_EXPIRED, 1));
+    LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, AMatchingPinDoesNotForgiveAnIssuerOutsideItsDatesWithTrustAnchors)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_NOT_YET_VALID, 1));
+    LONGS_EQUAL(X509_V_ERR_CERT_NOT_YET_VALID, OpenSslFake_StoreCtxError());
+}
+
+/* The leaf's own objection comes first: a name that does not match is named
+   ahead of a validity period, so OpenSSL's verdict on the leaf stands where it
+   has one, and the carried objection only refuses a leaf that would otherwise
+   have passed. */
+TEST(SolidSyslogOpenSslStream, AnObjectionToTheLeafItselfIsNamedAheadOfAnIssuerOutsideItsDates)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+
+    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_HAS_EXPIRED, 0, X509_V_ERR_HOSTNAME_MISMATCH));
+    LONGS_EQUAL(X509_V_ERR_HOSTNAME_MISMATCH, OpenSslFake_StoreCtxError());
+}
+
+/* A chain that reaches no anchor is named ahead of a validity period, so where
+   both were raised above the leaf the chain objection is the one the leaf
+   refuses on. */
+TEST(SolidSyslogOpenSslStream, AChainObjectionIsNamedAheadOfAnIssuerOutsideItsDatesWhenBothAreCarried)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    OpenSslFake_SetStoreCtxDepth(2);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    SolidSyslogStream_Open(stream, addr);
+    auto* verify = OpenSslFake_LastVerifyCallback();
+    LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+    OpenSslFake_SetStoreCtxDepth(1);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
+    LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+    OpenSslFake_SetStoreCtxDepth(0);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnIssuerOutsideItsDatesToOpenSslWhenNoPeerIsPinned)
+{
     LONGS_EQUAL(0, OpenThenVerifyIssuer(0, X509_V_ERR_CERT_HAS_EXPIRED));
 }
 

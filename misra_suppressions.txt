@@ -78,7 +78,7 @@ misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:94
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:95
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:90
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslPemFileCredentials.c:58
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:156
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:161
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:18
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:27
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:32

@@ -109,8 +109,5 @@ rather than sets.
 
 ## Where it falls short of the contract
 
-Where the collector presents an issuer outside its validity period, that fault is
-reported ahead of a pin that matches nothing, because OpenSSL checks the issuer's
-dates before the leaf is reached ([#919](https://github.com/cososo-ltd/solid-syslog/issues/919)).
-Every other obligation under [TLS obligations](../../tls.md) is met by this pack as
+Every obligation under [TLS obligations](../../tls.md) is met by this pack as
 shipped.
