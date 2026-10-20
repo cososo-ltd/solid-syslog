@@ -562,6 +562,16 @@ TEST(SolidSyslogPosixTcpStream, OpenUsesGetterReturnValueAsConnectTimeout)
     LONGS_EQUAL(234000, SocketFake_LastSelectTimeoutUsec());
 }
 
+TEST(SolidSyslogPosixTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
+{
+    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
+
+    OpenStreamWithFakeGetter();
+
+    LONGS_EQUAL(300, SocketFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(0, SocketFake_LastSelectTimeoutUsec());
+}
+
 TEST(SolidSyslogPosixTcpStream, GetterReceivesNullContextWhenContextNotConfigured)
 {
     OpenStreamWithFakeGetter();
