@@ -147,7 +147,7 @@ it over UDP from the same task.
 ```c
 struct SolidSyslogUdpSenderConfig senderConfig = {
     .Resolver = SolidSyslogLwipRawResolver_Create(),
-    .Datagram = SolidSyslogLwipRawDatagram_Create(),
+    .Datagram = SolidSyslogLwipRawDatagram_Create(NULL),
     .Address  = SolidSyslogLwipRawAddress_Create(),
     .Endpoint = CollectorEndpoint,
 };

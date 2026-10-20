@@ -102,8 +102,10 @@ The pack is IPv4. The resolver asks lwIP for an IPv4 address and refuses
 anything else rather than storing a destination a transport cannot send to,
 reporting through the error handler when it does.
 
-lwIP's sockets layer exposes no path MTU, so the datagram answers the
-unknown-path payload for IPv4 rather than a figure it cannot stand behind. A
+lwIP's sockets layer exposes no path MTU, so the datagram answers the limit
+the integrator states through its config's payload-limit callback, or
+`SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` where none is stated, rather than a figure
+it cannot stand behind. A
 record the stack says is too long is reported as oversize rather than as a
 failure, which is what lets the sender retry it trimmed to that payload instead
 of attempting it whole again.

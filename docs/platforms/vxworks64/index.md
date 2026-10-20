@@ -162,10 +162,11 @@ silently; the sender connects again on its next pass.
 
 The stack offers neither a path-MTU query nor a don't-fragment option for UDP,
 so it would fragment a record too large for the path rather than refuse it. The
-datagram therefore refuses one itself: a record larger than its payload limit,
-the conservative figure for an unknown IPv4 path
-(`SolidSyslogUdpPayload_UnknownPath`), is reported as oversize without reaching
-the stack, and the sender trims it to fit and sends it again. A send the stack
+datagram therefore refuses one itself: a record larger than its payload limit -
+what the integrator states through the datagram config's payload-limit
+callback, or `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` where none is stated - is
+reported as oversize without reaching the stack, and the sender trims it to fit
+and sends it again. A send the stack
 refuses with `EMSGSIZE` is reported as oversize in the same way.
 
 Raising `SOLIDSYSLOG_MAX_MESSAGE_SIZE` above that limit therefore does not
