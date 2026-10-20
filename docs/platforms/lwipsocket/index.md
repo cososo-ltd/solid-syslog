@@ -50,11 +50,14 @@ its config supplies rather than by the stack's own retransmission budget, and
 its send and read answer immediately, so a wedged peer costs a failed call
 rather than a stalled task.
 
-A send establishes that the peer has not closed its end before it writes. A
+A send first peeks at the socket to learn whether the peer has closed its end,
+as the [Stream](../../api/structSolidSyslogStream.md) contract requires. A
 socket stays writable after a peer closes, so without that check the stack
-would take a record nothing can deliver and the record would be gone; instead
-the send fails, the stream closes itself, and your store replays the record on
-the next connection.
+would take a record nothing can deliver. When the peek sees the close, the send
+fails, the stream closes itself, and your store replays the record on the next
+connection. The peek sees only a close the stack has already learned of: a peer
+that closes while the record is being sent can still lose that record, because
+syslog over TCP has no acknowledgement to say it arrived.
 
 The datagram leaves its socket as the stack makes it, which costs nothing: a UDP
 send has no peer to wait for, and returns once the stack has taken the datagram
