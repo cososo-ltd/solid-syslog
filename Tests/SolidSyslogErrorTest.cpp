@@ -3,6 +3,7 @@
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogDatagramErrors.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
 #include "TestUtils.h"
 
@@ -51,6 +52,14 @@ TEST(SolidSyslogErrorEx, AnEventNamesItsDetailThroughItsSource)
         {SOLIDSYSLOG_SEVERITY_WARNING, &source, 0U, SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED};
 
     STRCMP_EQUAL("NEXT_HOP_UNRESOLVED", SolidSyslogErrorEvent_DetailName(&event));
+}
+
+TEST(SolidSyslogErrorEx, ANativeErrorEventHasNoDetailName)
+{
+    static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_NATIVE_ERROR, 2};
+
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
 }
 
 TEST(SolidSyslogErrorEx, AnEventWhoseSourceNamesNothingHasNoDetailName)

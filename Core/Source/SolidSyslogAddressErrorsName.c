@@ -10,8 +10,8 @@
 #include "SolidSyslogMacros.h"
 
 static const char* const AddressErrorsName_Names[] = {
-    "POOL_EXHAUSTED",
-    "UNKNOWN_DESTROY",
+    [SOLIDSYSLOG_ADDRESS_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+    [SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
 };
 
 SOLIDSYSLOG_STATIC_ASSERT(

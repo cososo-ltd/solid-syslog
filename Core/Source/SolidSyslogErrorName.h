@@ -7,9 +7,15 @@
 
 #include <stdint.h>
 
-/* The bounded lookup every name table shares: the name at detail, or NULL when
+#include "SolidSyslogExternC.h"
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    /* The bounded lookup every name table shares: the name at detail, or NULL when
  * detail is outside [0, count). Library-internal; the public functions are the
  * SolidSyslog<Vocabulary>Errors_Name family. */
-const char* SolidSyslogErrorName_Lookup(const char* const * names, int32_t count, int32_t detail);
+    const char* SolidSyslogErrorName_Lookup(const char* const * names, int32_t count, int32_t detail);
+
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGERRORNAME_H */

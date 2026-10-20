@@ -99,28 +99,31 @@ Every axis of an event has a name, the one this documentation uses, so a handler
 can print a diagnostic without a table of its own:
 
 ```c
+static const char* OrDash(const char* name)
+{
+    return (name != NULL) ? name : "-";
+}
+
 static void OnSyslogError(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
-    const char* detail = SolidSyslogErrorEvent_DetailName(event);
     printf(
-        "[syslog] %s %s %s %s (%ld)
-",
-        SolidSyslogSeverity_Name(event->Severity),
+        "[syslog] %s %s %s %s (%ld)\n",
+        OrDash(SolidSyslogSeverity_Name(event->Severity)),
         event->Source->Name,
-        SolidSyslogErrorCategory_Name(event->Category),
-        (detail != NULL) ? detail : "-",
+        OrDash(SolidSyslogErrorCategory_Name(event->Category)),
+        OrDash(SolidSyslogErrorEvent_DetailName(event)),
         (long) event->Detail
     );
 }
 ```
 
 Each name function answers NULL for a value it does not know: a category in the
-integrator range, a severity off the ladder, or a detail outside its source's
-vocabulary. `SolidSyslogErrorEvent_DetailName` goes through the event's source, so
-it is right whichever class spoke; the one detail it cannot name is a
-`NATIVE_ERROR`, whose detail is the platform's own code. The names are bound to
-the enums at compile time, so a code added in a later release cannot shift them.
+integrator range, a severity off the ladder, a detail outside its source's
+vocabulary, or the detail of a `NATIVE_ERROR`, which is the platform's own code.
+`SolidSyslogErrorEvent_DetailName` goes through the event's source, so it is right
+whichever class spoke. Each name is bound to its enumerator, not its position, so
+a code added in a later release cannot shift the others.
 
 For more detail see [error handling and severity](error-severity.md).
 

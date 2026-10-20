@@ -6,6 +6,8 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogErrorCategory.h"
+
 static void Error_NoOpErrorHandler(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
@@ -31,7 +33,7 @@ void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context)
 const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event)
 {
     const char* name = NULL;
-    if (event->Source->DetailName != NULL)
+    if ((event->Category != SOLIDSYSLOG_CAT_NATIVE_ERROR) && (event->Source->DetailName != NULL))
     {
         name = event->Source->DetailName(event->Detail);
     }
