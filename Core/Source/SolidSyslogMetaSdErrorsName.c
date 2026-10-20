@@ -4,9 +4,9 @@
 
 #include "SolidSyslogMetaSdErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const MetaSdErrorsName_Names[] = {
@@ -23,10 +23,5 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogMetaSdErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_META_SD_ERROR_MAX))
-    {
-        name = MetaSdErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(MetaSdErrorsName_Names, (int32_t) SOLIDSYSLOG_META_SD_ERROR_MAX, detail);
 }

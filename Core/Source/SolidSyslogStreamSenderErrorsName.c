@@ -4,9 +4,9 @@
 
 #include "SolidSyslogStreamSenderErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const StreamSenderErrorsName_Names[] = {
@@ -28,10 +28,9 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogStreamSenderErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_MAX))
-    {
-        name = StreamSenderErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(
+        StreamSenderErrorsName_Names,
+        (int32_t) SOLIDSYSLOG_STREAM_SENDER_ERROR_MAX,
+        detail
+    );
 }

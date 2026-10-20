@@ -4,9 +4,9 @@
 
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const PosixMessageQueueBufferErrorsName_Names[] = {
@@ -27,10 +27,9 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogPosixMessageQueueBufferErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX))
-    {
-        name = PosixMessageQueueBufferErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(
+        PosixMessageQueueBufferErrorsName_Names,
+        (int32_t) SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX,
+        detail
+    );
 }

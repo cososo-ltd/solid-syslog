@@ -4,9 +4,9 @@
 
 #include "SolidSyslogTimeQualitySdErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const TimeQualitySdErrorsName_Names[] = {
@@ -23,10 +23,9 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogTimeQualitySdErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX))
-    {
-        name = TimeQualitySdErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(
+        TimeQualitySdErrorsName_Names,
+        (int32_t) SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX,
+        detail
+    );
 }

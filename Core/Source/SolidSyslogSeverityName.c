@@ -4,9 +4,9 @@
 
 #include "SolidSyslogPrival.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const SeverityName_Names[] = {
@@ -27,10 +27,5 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogSeverity_Name(int32_t severity)
 {
-    const char* name = NULL;
-    if ((severity >= (int32_t) SOLIDSYSLOG_SEVERITY_EMERGENCY) && (severity <= (int32_t) SOLIDSYSLOG_SEVERITY_DEBUG))
-    {
-        name = SeverityName_Names[severity];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(SeverityName_Names, (int32_t) SOLIDSYSLOG_SEVERITY_DEBUG + 1, severity);
 }

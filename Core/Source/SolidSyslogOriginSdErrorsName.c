@@ -4,9 +4,9 @@
 
 #include "SolidSyslogOriginSdErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const OriginSdErrorsName_Names[] = {
@@ -21,10 +21,5 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogOriginSdErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_ORIGIN_SD_ERROR_MAX))
-    {
-        name = OriginSdErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(OriginSdErrorsName_Names, (int32_t) SOLIDSYSLOG_ORIGIN_SD_ERROR_MAX, detail);
 }

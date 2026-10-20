@@ -4,9 +4,9 @@
 
 #include "SolidSyslogAtomicCounterErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const AtomicCounterErrorsName_Names[] = {
@@ -22,10 +22,9 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogAtomicCounterErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX))
-    {
-        name = AtomicCounterErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(
+        AtomicCounterErrorsName_Names,
+        (int32_t) SOLIDSYSLOG_ATOMIC_COUNTER_ERROR_MAX,
+        detail
+    );
 }

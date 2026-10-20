@@ -4,9 +4,9 @@
 
 #include "SolidSyslogDatagramErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const DatagramErrorsName_Names[] = {
@@ -22,10 +22,5 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogDatagramErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_MAX))
-    {
-        name = DatagramErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(DatagramErrorsName_Names, (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_MAX, detail);
 }

@@ -4,9 +4,9 @@
 
 #include "SolidSyslogBlockStoreErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const BlockStoreErrorsName_Names[] = {
@@ -35,10 +35,5 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogBlockStoreErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX))
-    {
-        name = BlockStoreErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(BlockStoreErrorsName_Names, (int32_t) SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX, detail);
 }

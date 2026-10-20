@@ -4,9 +4,9 @@
 
 #include "SolidSyslogMutexErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const MutexErrorsName_Names[] = {
@@ -22,10 +22,5 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogMutexErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_MUTEX_ERROR_MAX))
-    {
-        name = MutexErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(MutexErrorsName_Names, (int32_t) SOLIDSYSLOG_MUTEX_ERROR_MAX, detail);
 }

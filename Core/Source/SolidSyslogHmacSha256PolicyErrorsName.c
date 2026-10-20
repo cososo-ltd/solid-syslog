@@ -4,9 +4,9 @@
 
 #include "SolidSyslogHmacSha256PolicyErrors.h"
 
-#include <stddef.h>
 #include <stdint.h>
 
+#include "SolidSyslogErrorName.h"
 #include "SolidSyslogMacros.h"
 
 static const char* const HmacSha256PolicyErrorsName_Names[] = {
@@ -26,10 +26,9 @@ SOLIDSYSLOG_STATIC_ASSERT(
 
 const char* SolidSyslogHmacSha256PolicyErrors_Name(int32_t detail)
 {
-    const char* name = NULL;
-    if ((detail >= 0) && (detail < (int32_t) SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_MAX))
-    {
-        name = HmacSha256PolicyErrorsName_Names[detail];
-    }
-    return name;
+    return SolidSyslogErrorName_Lookup(
+        HmacSha256PolicyErrorsName_Names,
+        (int32_t) SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_MAX,
+        detail
+    );
 }
