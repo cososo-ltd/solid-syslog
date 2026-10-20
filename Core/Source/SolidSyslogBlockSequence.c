@@ -325,7 +325,10 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
 
     if (blockFull && BlockSequence_StoreIsFull(blockSequence))
     {
-        blockSequence->AtCapacity = true; /* sticky 100% - fixes UsedBytes at total */
+        /* Fixes UsedBytes at total while the store is full and refusing, so a
+         * threshold at 100% fires on the refusal even with slack in the blocks.
+         * Cleared once a block drains or a record is accepted. */
+        blockSequence->AtCapacity = true;
         BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
         spaceAvailable = false;
     }
@@ -507,6 +510,7 @@ size_t SolidSyslogBlockSequence_WritePosition(const struct SolidSyslogBlockSeque
 void SolidSyslogBlockSequence_NoteRecordWritten(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize)
 {
     blockSequence->WritePosition += recordSize;
+    blockSequence->AtCapacity = false;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 

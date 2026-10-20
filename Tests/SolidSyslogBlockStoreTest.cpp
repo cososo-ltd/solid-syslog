@@ -2773,6 +2773,21 @@ TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesFollowsOccupancyAgainOnceARefuse
     LONGS_EQUAL(ONE_MAX_MSG_RECORD, SolidSyslogStore_GetUsedBytes(store));
 }
 
+TEST(SolidSyslogBlockStoreCapacity, GetUsedBytesFollowsOccupancyAgainOnceARefusedStoreAcceptsARecord)
+{
+    static const size_t SLACK = 100;
+    CreateWithCapacity(ONE_MAX_MSG_RECORD + SLACK, 2, SOLIDSYSLOG_DISCARD_POLICY_HALT);
+    WriteMaxMsg();
+    WriteMaxMsg();
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* refused: used bytes pinned at total */
+
+    configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+
+    /* Block 0 evicted; block 1 closed at full size plus the new write block's record. */
+    LONGS_EQUAL((ONE_MAX_MSG_RECORD + SLACK) + ONE_MAX_MSG_RECORD, SolidSyslogStore_GetUsedBytes(store));
+}
+
 static int CountThresholdCrossingsCallCount;
 static size_t thresholdReturnValue;
 
