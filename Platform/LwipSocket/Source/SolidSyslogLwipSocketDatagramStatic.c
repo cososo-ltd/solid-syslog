@@ -33,13 +33,15 @@ static struct SolidSyslogPoolAllocator LwipSocketDatagram_Allocator = {
     SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
-struct SolidSyslogDatagram* SolidSyslogLwipSocketDatagram_Create(void)
+struct SolidSyslogDatagram* SolidSyslogLwipSocketDatagram_Create(
+    const struct SolidSyslogLwipSocketDatagramConfig* config
+)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&LwipSocketDatagram_Allocator);
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&LwipSocketDatagram_Allocator, index) == true)
     {
-        SolidSyslogLwipSocketDatagram_Initialise(&LwipSocketDatagram_Pool[index].Base);
+        SolidSyslogLwipSocketDatagram_Initialise(&LwipSocketDatagram_Pool[index].Base, config);
         handle = &LwipSocketDatagram_Pool[index].Base;
     }
     else

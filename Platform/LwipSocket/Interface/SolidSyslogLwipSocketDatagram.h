@@ -12,22 +12,36 @@
  *  - SendTo writes the whole payload to the address it is handed, and reports
  *    SENT, OVERSIZE where the stack says the datagram is too long for one
  *    message, or FAILED for every other refusal.
- *  - MaxPayload answers the unknown-path payload for IPv4: lwIP's sockets
- *    layer exposes no path MTU to read back.
+ *  - MaxPayload answers the limit the config states, or the
+ *    SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable: lwIP's sockets layer exposes
+ *    no path MTU to read back.
  *  - Close releases the socket, and Destroy closes one still open. */
 #ifndef SOLIDSYSLOGLWIPSOCKETDATAGRAM_H
 #define SOLIDSYSLOGLWIPSOCKETDATAGRAM_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogUdpPayloadLimitFunction.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
-    /** Create takes no config; an exhausted pool falls back to the shared
-     *  NullDatagram, whose SendTo reports SENT so undeliverables are dropped
-     *  rather than backing up the Store. */
-    struct SolidSyslogDatagram* SolidSyslogLwipSocketDatagram_Create(void);
+    /** States what only the integrator can know: the IPv4 payload the path
+     *  carries, which this stack cannot discover. */
+    struct SolidSyslogLwipSocketDatagramConfig
+    {
+        /** The payload limit in bytes; NULL, or an answer of zero, uses the
+         *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable. */
+        SolidSyslogUdpPayloadLimitFunction GetPayloadLimit;
+        void* PayloadLimitContext; /**< Passed back to GetPayloadLimit unchanged; NULL is fine. */
+    };
+
+    /** Draw a datagram from the pool; @p config may be NULL. An exhausted pool
+     *  falls back to the shared NullDatagram, whose SendTo reports SENT so
+     *  undeliverables are dropped rather than backing up the Store. */
+    struct SolidSyslogDatagram* SolidSyslogLwipSocketDatagram_Create(
+        const struct SolidSyslogLwipSocketDatagramConfig* config
+    );
     /** Release the pool slot and close the socket. */
     void SolidSyslogLwipSocketDatagram_Destroy(struct SolidSyslogDatagram * base);
 
