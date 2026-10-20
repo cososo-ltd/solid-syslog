@@ -237,6 +237,21 @@ TEST_GROUP_BASE(SolidSyslogLwipRawTcpStream, LwipRawTcpStreamTestBase)
     {
         destroyHandlesAndCheckNoLeak();
     }
+
+    /* Re-creates the stream with the fake getter installed, answering
+     * deadlineMs, and drives Open to its deadline: the default fixture's
+     * stream has no getter and the connect callback would otherwise fire. */
+    void openWithGetterAnswering(uint32_t deadlineMs)
+    {
+        LwipTcpFake_SetConnectCallbackFires(false);
+        SolidSyslogLwipRawTcpStream_Destroy(stream);
+        config.GetConnectTimeoutMs = FakeGetConnectTimeoutMs;
+        config.ConnectTimeoutContext = reinterpret_cast<void*>(0xABCDU);
+        FakeGetConnectTimeoutMs_ReturnValue = deadlineMs;
+        stream = SolidSyslogLwipRawTcpStream_Create(&config);
+
+        SolidSyslogStream_Open(stream, address);
+    }
 };
 
 TEST_GROUP_BASE(SolidSyslogLwipRawTcpStreamConnected, LwipRawTcpStreamTestBase)
@@ -502,17 +517,7 @@ TEST(SolidSyslogLwipRawTcpStream, OpenHappyPathDoesNotSleep)
 
 TEST(SolidSyslogLwipRawTcpStream, OpenRespectsRuntimeTunableConnectTimeout)
 {
-    LwipTcpFake_SetConnectCallbackFires(false);
-    /* Re-create the stream with a getter installed. The default fixture's
-     * stream uses NULL getter (falls back to the compile-time tunable);
-     * we want to verify the getter is honoured on the timeout deadline. */
-    SolidSyslogLwipRawTcpStream_Destroy(stream);
-    config.GetConnectTimeoutMs = FakeGetConnectTimeoutMs;
-    config.ConnectTimeoutContext = reinterpret_cast<void*>(0xABCDU);
-    FakeGetConnectTimeoutMs_ReturnValue = 20U;
-    stream = SolidSyslogLwipRawTcpStream_Create(&config);
-
-    SolidSyslogStream_Open(stream, address);
+    openWithGetterAnswering(20U);
 
     /* 20 ms / 10 ms poll = 2 polls. */
     LONGS_EQUAL(2, FakeSleep_CallCount);
@@ -522,13 +527,7 @@ TEST(SolidSyslogLwipRawTcpStream, OpenRespectsRuntimeTunableConnectTimeout)
 
 TEST(SolidSyslogLwipRawTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
 {
-    LwipTcpFake_SetConnectCallbackFires(false);
-    SolidSyslogLwipRawTcpStream_Destroy(stream);
-    config.GetConnectTimeoutMs = FakeGetConnectTimeoutMs;
-    FakeGetConnectTimeoutMs_ReturnValue = UINT32_MAX;
-    stream = SolidSyslogLwipRawTcpStream_Create(&config);
-
-    SolidSyslogStream_Open(stream, address);
+    openWithGetterAnswering(UINT32_MAX);
 
     /* 300 000 ms / 10 ms poll = 30 000 polls. */
     LONGS_EQUAL(30000, FakeSleep_CallCount);
