@@ -255,7 +255,7 @@ static struct SolidSyslogSender* BuildSender(void)
         .Sleep = BddTargetFreeRtosPipeline_Sleep,
     };
     resolver = SolidSyslogLwipRawDnsResolver_Create(&dnsConfig);
-    datagram = SolidSyslogLwipRawDatagram_Create();
+    datagram = SolidSyslogLwipRawDatagram_Create(NULL);
     udpAddress = SolidSyslogLwipRawAddress_Create();
     struct SolidSyslogUdpSenderConfig udpConfig = {
         .Resolver = resolver,

@@ -34,13 +34,13 @@ static struct SolidSyslogPoolAllocator LwipRawDatagram_Allocator = {
     SOLIDSYSLOG_DATAGRAM_POOL_SIZE
 };
 
-struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void)
+struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(const struct SolidSyslogLwipRawDatagramConfig* config)
 {
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&LwipRawDatagram_Allocator);
     struct SolidSyslogDatagram* handle = SolidSyslogNullDatagram_Get();
     if (SolidSyslogPoolAllocator_IndexIsValid(&LwipRawDatagram_Allocator, index) == true)
     {
-        SolidSyslogLwipRawDatagram_Initialise(&LwipRawDatagram_Pool[index].Base);
+        SolidSyslogLwipRawDatagram_Initialise(&LwipRawDatagram_Pool[index].Base, config);
         handle = &LwipRawDatagram_Pool[index].Base;
     }
     else

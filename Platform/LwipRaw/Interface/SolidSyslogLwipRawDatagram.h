@@ -15,20 +15,33 @@
  *    caller's buffer instead of copying it, safe because the buffer outlives the
  *    synchronous hop. Reports SENT on udp_sendto success, else FAILED. Cache-miss
  *    recovery is left to lwIP's ARP_QUEUEING.
- *  - MaxPayload returns the unknown-path payload. */
+ *  - MaxPayload answers the limit the config states, or the
+ *    SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable: the stack exposes no path MTU. */
 #ifndef SOLIDSYSLOGLWIPRAWDATAGRAM_H
 #define SOLIDSYSLOGLWIPRAWDATAGRAM_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogUdpPayloadLimitFunction.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogDatagram;
 
-    /** Create takes no config; an exhausted pool falls back to the shared
-     *  NullDatagram, whose SendTo reports SENT so undeliverables are dropped
-     *  rather than backing up the Store. */
-    struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(void);
+    /** States what only the integrator can know: the IPv4 payload the path
+     *  carries, which this stack cannot discover. */
+    struct SolidSyslogLwipRawDatagramConfig
+    {
+        /** The payload limit in bytes; NULL, or an answer of zero, uses the
+         *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT tunable. */
+        SolidSyslogUdpPayloadLimitFunction GetPayloadLimit;
+        void* PayloadLimitContext; /**< Passed back to GetPayloadLimit unchanged; NULL is fine. */
+    };
+
+    /** Draw a datagram from the pool; @p config may be NULL. An exhausted pool
+     *  falls back to the shared NullDatagram, whose SendTo reports SENT so
+     *  undeliverables are dropped rather than backing up the Store. */
+    struct SolidSyslogDatagram* SolidSyslogLwipRawDatagram_Create(const struct SolidSyslogLwipRawDatagramConfig* config
+    );
     /** Release the pool slot; removes the udp pcb. */
     void SolidSyslogLwipRawDatagram_Destroy(struct SolidSyslogDatagram * base);
 
