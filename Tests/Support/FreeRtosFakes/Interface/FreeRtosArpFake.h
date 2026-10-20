@@ -18,7 +18,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void FreeRtosArpFake_SetLookupsUntilHit(unsigned misses);
     /* The routed lookup names this gateway as the next hop, as the stack does
      * for a destination off the subnet. */
-    void FreeRtosArpFake_SetGateway(uint32_t gateway);
+    void FreeRtosArpFake_SetGateway(uint32_t nextHop);
     /* The routed lookup answers eCantSendPacket rather than a miss, as the
      * stack does for an entry still waiting for its reply. */
     void FreeRtosArpFake_SetReplyPending(bool pending);

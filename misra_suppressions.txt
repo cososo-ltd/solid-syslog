@@ -178,6 +178,7 @@ misra-c2012-5.7:Core/Source/SolidSyslogTlsFingerprint.c:10
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c:28
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketResolver.c:32
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c:29
+misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpDatagram.c:31
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:29
 misra-c2012-5.7:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:41
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:48
