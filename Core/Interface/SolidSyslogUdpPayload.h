@@ -10,6 +10,7 @@
 #define SOLIDSYSLOGUDPPAYLOAD_H
 
 #include "SolidSyslogExternC.h"
+#include "SolidSyslogUdpPayloadLimitFunction.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -36,16 +37,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  for IPv4 and 1180 for IPv6. A Datagram answers this from MaxPayload
      *  where its stack cannot report a path MTU. */
     size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6);
-
-    /** States the IPv4 payload limit for a Datagram whose stack cannot
-     *  discover the path MTU. Answer the largest payload the path carries
-     *  unfragmented - SolidSyslogUdpPayload_FromMtu(1500, false) on a plain
-     *  Ethernet path - or zero to leave it to
-     *  SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT. Never guess high: the sender
-     *  trims to this and retries, so a figure the path cannot carry loses the
-     *  record. Called on each MaxPayload query, so the answer may change at
-     *  run time. */
-    typedef size_t (*SolidSyslogUdpPayloadLimitFunction)(void* context);
 
     /** The IPv4 payload limit a Datagram answers where its stack cannot
      *  discover the path MTU: what @p limit states, or
