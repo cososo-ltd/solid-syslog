@@ -24,6 +24,8 @@ using namespace CososoTesting;
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogTcpStreamErrors.h"
+#include "SolidSyslogError.h"
 #include "lwip/err.h"
 #include "lwip/ip.h"
 #include "lwip/ip4_addr.h"
@@ -1092,4 +1094,9 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
 TEST(SolidSyslogLwipRawTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
 {
     LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogLwipRawTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogLwipRawTcpStreamErrorSource.DetailName);
 }

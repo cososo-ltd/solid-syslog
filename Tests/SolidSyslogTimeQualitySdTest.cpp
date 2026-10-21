@@ -12,6 +12,7 @@
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogTimeQualitySdErrors.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -269,4 +270,9 @@ TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK
     );
+}
+
+TEST(SolidSyslogTimeQualitySd, TheErrorSourceNamesItsDetailsThroughTimeQualitySdErrors)
+{
+    CHECK(SolidSyslogTimeQualitySdErrors_Name == SolidSyslogTimeQualitySdErrorSource.DetailName);
 }

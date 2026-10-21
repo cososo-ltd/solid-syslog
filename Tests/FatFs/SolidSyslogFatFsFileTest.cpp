@@ -6,6 +6,9 @@ extern "C"
 #include "FatFsFake.h"
 #include "SolidSyslogFatFsFile.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileErrors.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogFatFsFileErrors.h"
 #include "ff.h"
 }
 
@@ -247,4 +250,9 @@ TEST(SolidSyslogFatFsFile, DeleteReportsFalseWhenFUnlinkFails)
 {
     FatFsFake_SetUnlinkResult(FR_DENIED);
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogFatFsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogFatFsFileErrorSource.DetailName);
 }

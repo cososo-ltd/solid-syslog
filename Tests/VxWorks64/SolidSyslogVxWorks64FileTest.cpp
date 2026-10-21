@@ -16,6 +16,7 @@ using namespace CososoTesting;
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogVxWorks64File.h"
 #include "SolidSyslogVxWorks64FileErrors.h"
+#include "SolidSyslogError.h"
 #include "VxWorks64IoFake.h"
 
 static const char* const TEST_PATH = "/ata0a/STORE00.LOG";
@@ -818,4 +819,9 @@ TEST(SolidSyslogVxWorks64FilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogVxWorks64File, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogVxWorks64FileErrorSource.DetailName);
 }

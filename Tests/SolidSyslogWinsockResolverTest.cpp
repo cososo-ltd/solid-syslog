@@ -14,6 +14,8 @@ using namespace CososoTesting;
 #include "SolidSyslogWinsockResolver.h"
 #include "SolidSyslogWinsockResolverErrors.h"
 #include "SolidSyslogWinsockResolverInternal.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 #include "WinsockFake.h"
 #include <cstdint>
 #include <winsock2.h>
@@ -281,4 +283,9 @@ TEST(SolidSyslogWinsockResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogWinsockResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogWinsockResolverErrorSource.DetailName);
 }

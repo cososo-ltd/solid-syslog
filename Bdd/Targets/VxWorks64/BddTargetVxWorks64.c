@@ -192,12 +192,13 @@ static void BddTargetVxWorks64_ReportError(void* context, const struct SolidSysl
     const char* sourceName = (event->Source != NULL) ? event->Source->Name : "<unknown>";
     (void) fprintf(
         BddTargetVxWorks64_Reports(),
-        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s\n",
+        "[solidsyslog] severity=%d [%s cat=%u detail=%ld] %s %s\n",
         (int) event->Severity,
         sourceName,
         (unsigned) event->Category,
         (long) event->Detail,
-        BddTargetErrorText_Category(event->Category)
+        BddTargetErrorText_Category(event->Category),
+        BddTargetErrorText_Detail(event)
     );
 }
 

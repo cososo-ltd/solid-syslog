@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGRESOLVERERRORS_H
 #define SOLIDSYSLOGRESOLVERERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -35,6 +37,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED,
         SOLIDSYSLOG_RESOLVER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The detail's name, read beside the category's: RESOLVE_TIMEOUT for
+     *  SOLIDSYSLOG_RESOLVER_ERROR_RESOLVE_TIMEOUT. NULL for a code outside the enum. */
+    const char* SolidSyslogResolverErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END
 

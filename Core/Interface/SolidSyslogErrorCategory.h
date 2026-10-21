@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 
+#include "SolidSyslogExternC.h"
+
 /**
  * Portable error-category axis, the field a handler switches on without knowing
  * the Source. Categories are library-owned constants organised errno-domain
@@ -53,5 +55,14 @@
 #define SOLIDSYSLOG_CAT_FILE_BASE ((uint16_t) 0x0700U)
 #define SOLIDSYSLOG_CAT_STORE_BASE ((uint16_t) 0x0800U)
 #define SOLIDSYSLOG_CAT_DATAGRAM_BASE ((uint16_t) 0x0900U)
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    /** The category's name, read beside the detail's: POOL_EXHAUSTED for
+     *  SOLIDSYSLOG_CAT_POOL_EXHAUSTED. NULL for a value the library has not
+     *  assigned, which includes the whole integrator range. */
+    const char* SolidSyslogErrorCategory_Name(uint16_t category);
+
+SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGERRORCATEGORY_H */

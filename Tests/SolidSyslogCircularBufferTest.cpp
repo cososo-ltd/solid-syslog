@@ -949,3 +949,8 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY
     );
 }
+
+TEST(SolidSyslogCircularBuffer, TheErrorSourceNamesItsDetailsThroughCircularBufferErrors)
+{
+    CHECK(SolidSyslogCircularBufferErrors_Name == SolidSyslogCircularBufferErrorSource.DetailName);
+}

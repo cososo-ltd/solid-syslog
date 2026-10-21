@@ -8,6 +8,8 @@
 #ifndef SOLIDSYSLOGAESGCMPOLICYERRORS_H
 #define SOLIDSYSLOGAESGCMPOLICYERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -29,6 +31,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED,
         SOLIDSYSLOG_AES_GCM_POLICY_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The detail's name, read beside the category's: BAD_CONFIG for
+     *  SOLIDSYSLOG_AES_GCM_POLICY_ERROR_BAD_CONFIG. NULL for a code outside the enum. */
+    const char* SolidSyslogAesGcmPolicyErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END
 

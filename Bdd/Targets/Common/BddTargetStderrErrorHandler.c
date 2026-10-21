@@ -49,12 +49,13 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
     {
         (void) fprintf(
             stderr,
-            "BDD-TARGET: FATAL: [%s %scat=%u detail=%ld] %s\n",
+            "BDD-TARGET: FATAL: [%s %scat=%u detail=%ld] %s %s\n",
             sourceName,
             role,
             (unsigned) event->Category,
             (long) event->Detail,
-            message
+            message,
+            BddTargetErrorText_Detail(event)
         );
         (void) fflush(stderr);
         _Exit(3);
@@ -63,13 +64,14 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
     {
         (void) fprintf(
             stderr,
-            "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s\n",
+            "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s %s\n",
             (int) event->Severity,
             sourceName,
             role,
             (unsigned) event->Category,
             (long) event->Detail,
-            message
+            message,
+            BddTargetErrorText_Detail(event)
         );
     }
 }

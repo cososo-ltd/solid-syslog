@@ -1,82 +1,21 @@
 #include "BddTargetErrorText.h"
 
-#include "SolidSyslogBufferCategories.h"
-#include "SolidSyslogDatagramCategories.h"
-#include "SolidSyslogErrorCategory.h"
-#include "SolidSyslogFileCategories.h"
-#include "SolidSyslogResolverCategories.h"
-#include "SolidSyslogSecurityPolicyCategories.h"
-#include "SolidSyslogStoreCategories.h"
-#include "SolidSyslogStreamCategories.h"
-#include "SolidSyslogTlsStreamCategories.h"
+#include <stddef.h>
+#include <stdint.h>
 
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+
+/* The library's own names, so the targets' output and the documentation agree;
+   a fixed word where the library has none, so a step never reads a NULL. */
 const char* BddTargetErrorText_Category(uint16_t category)
 {
-    const char* result = "unknown";
-    switch (category)
-    {
-        case SOLIDSYSLOG_CAT_BAD_CONFIG:
-            result = "bad config";
-            break;
-        case SOLIDSYSLOG_CAT_BAD_ARGUMENT:
-            result = "bad argument";
-            break;
-        case SOLIDSYSLOG_CAT_POOL_EXHAUSTED:
-            result = "pool exhausted";
-            break;
-        case SOLIDSYSLOG_CAT_UNKNOWN_DESTROY:
-            result = "unknown destroy";
-            break;
-        case SOLIDSYSLOG_CAT_NATIVE_ERROR:
-            result = "native error";
-            break;
-        case SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED:
-            result = "buffer backend failed";
-            break;
-        case SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST:
-            result = "buffer records lost";
-            break;
-        case SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED:
-            result = "resolve failed";
-            break;
-        case SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE:
-            result = "key unavailable";
-            break;
-        case SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED:
-            result = "seal failed";
-            break;
-        case SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED:
-            result = "open failed";
-            break;
-        case SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED:
-            result = "connect failed";
-            break;
-        case SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED:
-            result = "TLS init failed";
-            break;
-        case SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED:
-            result = "TLS handshake failed";
-            break;
-        case SOLIDSYSLOG_CAT_FILE_IO_FAILED:
-            result = "file I/O failed";
-            break;
-        case SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED:
-            result = "next hop unresolved";
-            break;
-        case SOLIDSYSLOG_CAT_STORE_WRITE_FAILED:
-            result = "store write failed";
-            break;
-        case SOLIDSYSLOG_CAT_STORE_FROZEN:
-            result = "store frozen";
-            break;
-        case SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED:
-            result = "store record discarded";
-            break;
-        case SOLIDSYSLOG_CAT_STORE_RECORDS_LOST:
-            result = "store records lost";
-            break;
-        default:
-            break;
-    }
-    return result;
+    const char* name = SolidSyslogErrorCategory_Name(category);
+    return (name != NULL) ? name : "unknown";
+}
+
+const char* BddTargetErrorText_Detail(const struct SolidSyslogErrorEvent* event)
+{
+    const char* name = SolidSyslogErrorEvent_DetailName(event);
+    return (name != NULL) ? name : "-";
 }

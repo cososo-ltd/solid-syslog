@@ -28,6 +28,7 @@
 #include "SolidSyslogTimeQualitySd.h"
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "StoreFake.h"
 #include "StringFake.h"
 #include "SyslogFieldParser.h"
@@ -1641,4 +1642,9 @@ TEST(SolidSyslogLifecycle, DestroyClearsInitialisedFlagSoCreateSucceedsAgain)
 
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
+}
+
+TEST(SolidSyslog, TheErrorSourceNamesItsDetailsThroughErrors)
+{
+    CHECK(SolidSyslogErrors_Name == SolidSyslogErrorSource.DetailName);
 }

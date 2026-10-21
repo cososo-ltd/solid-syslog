@@ -6,6 +6,9 @@ extern "C"
 #include "PlusFatFake.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogPlusFatFile.h"
+#include "SolidSyslogFileErrors.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPlusFatFileErrors.h"
 #include "ff_stdio.h"
 }
 
@@ -248,4 +251,9 @@ TEST(SolidSyslogPlusFatFile, DeleteReportsFalseWhenFremoveFails)
     PlusFatFake_SetRemoveFails();
 
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogPlusFatFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogPlusFatFileErrorSource.DetailName);
 }

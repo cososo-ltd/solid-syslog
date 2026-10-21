@@ -20,6 +20,8 @@ using namespace CososoTesting;
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 #include "lwip/err.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/ip_addr.h"
@@ -576,4 +578,9 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipRawDnsResolverErrorSource.DetailName);
 }

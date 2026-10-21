@@ -15,6 +15,8 @@ using namespace CososoTesting;
 #include "SolidSyslogWinsockDatagram.h"
 #include "SolidSyslogWinsockDatagramErrors.h"
 #include "SolidSyslogWinsockDatagramInternal.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
 #include "WinsockFake.h"
 #include <cstdint>
 #include <winsock2.h>
@@ -412,4 +414,9 @@ TEST(SolidSyslogWinsockDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogWinsockDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogWinsockDatagramErrorSource.DetailName);
 }

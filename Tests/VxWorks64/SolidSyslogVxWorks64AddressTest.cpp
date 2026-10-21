@@ -16,6 +16,8 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64Address.h"
 #include "SolidSyslogVxWorks64AddressErrors.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
+#include "SolidSyslogAddressErrors.h"
+#include "SolidSyslogError.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -210,4 +212,9 @@ TEST(SolidSyslogVxWorks64AddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogVxWorks64Address, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogVxWorks64AddressErrorSource.DetailName);
 }

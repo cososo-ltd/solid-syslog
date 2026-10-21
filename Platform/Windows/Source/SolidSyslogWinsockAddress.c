@@ -8,7 +8,10 @@
 
 #include <string.h>
 
-const struct SolidSyslogErrorSource SolidSyslogWinsockAddressErrorSource = {"WinsockAddress"};
+const struct SolidSyslogErrorSource SolidSyslogWinsockAddressErrorSource = {
+    "WinsockAddress",
+    SolidSyslogAddressErrors_Name
+};
 
 struct SolidSyslogAddress;
 

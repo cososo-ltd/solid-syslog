@@ -28,7 +28,7 @@
 #include "SolidSyslogTimestamp.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog"};
+const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog", SolidSyslogErrors_Name};
 
 struct SolidSyslogBuffer;
 struct SolidSyslogHeaderField;

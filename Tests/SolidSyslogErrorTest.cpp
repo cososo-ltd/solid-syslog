@@ -1,7 +1,9 @@
 #include "CppUTest/TestHarness.h"
 
 #include "ErrorHandlerFake.h"
+#include "SolidSyslogDatagramErrors.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPrival.h"
 #include "TestUtils.h"
 
@@ -17,13 +19,13 @@ TEST_GROUP(SolidSyslogErrorEx)
 
 TEST(SolidSyslogErrorEx, ErrorExWithDefaultHandlerDoesNotCrash)
 {
-    static const struct SolidSyslogErrorSource source = {"test"};
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, 0U, 0);
 }
 
 TEST(SolidSyslogErrorEx, InstalledHandlerReceivesEventFieldsAndContext)
 {
-    static const struct SolidSyslogErrorSource source = {"test"};
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
     ErrorHandlerFake_Install(&sentinel);
 
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42);
@@ -34,11 +36,43 @@ TEST(SolidSyslogErrorEx, InstalledHandlerReceivesEventFieldsAndContext)
 
 TEST(SolidSyslogErrorEx, SetErrorHandlerExWithNullHandlerRestoresDefault)
 {
-    static const struct SolidSyslogErrorSource source = {"test"};
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
     ErrorHandlerFake_Install(&sentinel);
 
     SolidSyslog_SetErrorHandler(nullptr, &sentinel);
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, 0U, 0);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogErrorEx, AnEventNamesItsDetailThroughItsSource)
+{
+    static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
+    const struct SolidSyslogErrorEvent event =
+        {SOLIDSYSLOG_SEVERITY_WARNING, &source, 0U, SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED};
+
+    STRCMP_EQUAL("NEXT_HOP_UNRESOLVED", SolidSyslogErrorEvent_DetailName(&event));
+}
+
+TEST(SolidSyslogErrorEx, ANativeErrorEventHasNoDetailName)
+{
+    static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_NATIVE_ERROR, 2};
+
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
+}
+
+TEST(SolidSyslogErrorEx, AnEventWithoutASourceHasNoDetailName)
+{
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, nullptr, 0U, 2};
+
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
+}
+
+TEST(SolidSyslogErrorEx, AnEventWhoseSourceNamesNothingHasNoDetailName)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, &source, 0U, 2};
+
+    POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
 }

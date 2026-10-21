@@ -23,6 +23,7 @@
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpSender.h"
 #include "SolidSyslogUdpSenderErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -1056,4 +1057,9 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, NullBufferDoesNotReportDeliveryFailed)
         SOLIDSYSLOG_CAT_BAD_ARGUMENT,
         SOLIDSYSLOG_UDP_SENDER_ERROR_SEND_NULL_BUFFER
     );
+}
+
+TEST(SolidSyslogUdpSender, TheErrorSourceNamesItsDetailsThroughUdpSenderErrors)
+{
+    CHECK(SolidSyslogUdpSenderErrors_Name == SolidSyslogUdpSenderErrorSource.DetailName);
 }

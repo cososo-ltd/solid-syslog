@@ -227,13 +227,14 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
     const struct SolidSyslogErrorSource* tlsSource = BddTargetTlsSender_ErrorSource();
     const char* role = ((tlsSource != NULL) && (source == tlsSource)) ? "role=tls " : "";
     (void) printf(
-        "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s\n",
+        "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s %s\n",
         (int) event->Severity,
         sourceName,
         role,
         (unsigned) event->Category,
         (long) event->Detail,
-        message
+        message,
+        BddTargetErrorText_Detail(event)
     );
 }
 

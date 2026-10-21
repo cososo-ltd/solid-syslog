@@ -21,6 +21,8 @@ using namespace CososoTesting;
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogResolver.h"
 #include "SolidSyslogTransport.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 
 // clang-format off
 // 6514 rather than 514: 514 is 0x0202, so host and network order are the same
@@ -320,4 +322,9 @@ TEST(SolidSyslogLwipSocketResolverPool, ResolvingAfterDestroyIsASafeNoOp)
     CHECK_FALSE(resolved);
     LONGS_EQUAL(0U, LwipNetdbFake_GetAddrInfoCallCount());
     SolidSyslogLwipSocketAddress_Destroy(address);
+}
+
+TEST(SolidSyslogLwipSocketResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipSocketResolverErrorSource.DetailName);
 }

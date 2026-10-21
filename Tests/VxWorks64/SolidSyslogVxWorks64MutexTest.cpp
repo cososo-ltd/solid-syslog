@@ -18,6 +18,7 @@ using namespace CososoTesting;
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogVxWorks64Mutex.h"
 #include "SolidSyslogVxWorks64MutexErrors.h"
+#include "SolidSyslogError.h"
 #include "VxWorks64SemFake.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -322,4 +323,9 @@ TEST(SolidSyslogVxWorks64MutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogVxWorks64Mutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogVxWorks64MutexErrorSource.DetailName);
 }

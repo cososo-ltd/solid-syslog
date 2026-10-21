@@ -10,7 +10,10 @@
 #include "SolidSyslogVxWorks64AddressErrors.h"
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64AddressErrorSource = {"VxWorks64Address"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64AddressErrorSource = {
+    "VxWorks64Address",
+    SolidSyslogAddressErrors_Name
+};
 
 void SolidSyslogVxWorks64Address_Initialise(struct SolidSyslogAddress* base)
 {

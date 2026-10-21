@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGPRIVAL_H
 #define SOLIDSYSLOGPRIVAL_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -56,6 +58,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SEVERITY_INFORMATIONAL = 6,
         SOLIDSYSLOG_SEVERITY_DEBUG = 7
     };
+
+    /** The level's name: WARNING for SOLIDSYSLOG_SEVERITY_WARNING. NULL off the
+     *  ladder. */
+    const char* SolidSyslogSeverity_Name(int32_t severity);
 
 SOLIDSYSLOG_EXTERN_C_END
 

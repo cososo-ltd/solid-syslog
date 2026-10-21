@@ -25,7 +25,10 @@
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLwipRawDatagramErrorSource = {"LwipRawDatagram"};
+const struct SolidSyslogErrorSource SolidSyslogLwipRawDatagramErrorSource = {
+    "LwipRawDatagram",
+    SolidSyslogDatagramErrors_Name
+};
 
 struct SolidSyslogAddress;
 

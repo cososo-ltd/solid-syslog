@@ -22,6 +22,8 @@ using namespace CososoTesting;
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogResolverErrors.h"
+#include "SolidSyslogError.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
 #define CHECK_IS_FALLBACK(handle, pool)                                                \
@@ -280,4 +282,9 @@ TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogPlusTcpResolverTest, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogPlusTcpResolverErrorSource.DetailName);
 }

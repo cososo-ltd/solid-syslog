@@ -13,6 +13,7 @@
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredData.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -615,4 +616,9 @@ TEST(SolidSyslogOriginSdPool, FillingPoolThenOverflowReturnsDistinctFallback)
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
     }
+}
+
+TEST(SolidSyslogOriginSd, TheErrorSourceNamesItsDetailsThroughOriginSdErrors)
+{
+    CHECK(SolidSyslogOriginSdErrors_Name == SolidSyslogOriginSdErrorSource.DetailName);
 }

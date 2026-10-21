@@ -251,7 +251,7 @@ TEST(BddTargetVxWorks64, SetTimeRefusesATimeThatIsNotANumber)
 
 TEST(BddTargetVxWorks64, ALibraryErrorIsReportedOnTheConsole)
 {
-    static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource"};
+    static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource", nullptr};
     BddTargetVxWorks64_Init();
 
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &TEST_SOURCE, 3U, 7);
@@ -272,7 +272,7 @@ TEST(BddTargetVxWorks64, TheBootsCoreOnlyCheckIsNotReportedAsAnError)
 {
     BddTargetVxWorks64_Init();
 
-    CHECK(Reported().find("bad config") == std::string::npos);
+    CHECK(Reported().find("BAD_CONFIG") == std::string::npos);
 }
 
 TEST(BddTargetVxWorks64, TeardownReleasesTheCounterForTheNextBoot)

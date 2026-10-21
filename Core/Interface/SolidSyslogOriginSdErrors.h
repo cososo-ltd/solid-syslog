@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGORIGINSDERRORS_H
 #define SOLIDSYSLOGORIGINSDERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -22,6 +24,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_ORIGIN_SD_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ORIGIN_SD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The detail's name, read beside the category's: POOL_EXHAUSTED for
+     *  SOLIDSYSLOG_ORIGIN_SD_ERROR_POOL_EXHAUSTED. NULL for a code outside the enum. */
+    const char* SolidSyslogOriginSdErrors_Name(int32_t detail);
 
     /** The identity for events raised by an OriginSd. A handler matches by
      *  address (event->Source == &SolidSyslogOriginSdErrorSource), then reads

@@ -20,6 +20,7 @@
 Platform/Posix/Source/SolidSyslogPosixClock.c
 Platform/Posix/Source/SolidSyslogPosixHostname.c
 Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c
+Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferErrorsName.c
 Platform/Posix/Source/SolidSyslogPosixMessageQueueBufferStatic.c
 Platform/Posix/Source/SolidSyslogPosixMutex.c
 Platform/Posix/Source/SolidSyslogPosixMutexStatic.c

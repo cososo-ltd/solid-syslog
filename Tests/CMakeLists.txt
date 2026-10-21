@@ -111,6 +111,7 @@ set(TEST_SOURCES
     SolidSyslogCrc16PolicyTest.cpp
     SolidSyslogPrivalTest.cpp
     SolidSyslogErrorTest.cpp
+    SolidSyslogErrorNamesTest.cpp
     SolidSyslogConfigLockTest.cpp
     SolidSyslogFormatterTest.cpp
     SolidSyslogTimestampFormatterTest.cpp

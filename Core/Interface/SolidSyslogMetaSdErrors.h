@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGMETASDERRORS_H
 #define SOLIDSYSLOGMETASDERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -24,6 +26,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_META_SD_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The detail's name, read beside the category's: NULL_CONFIG for
+     *  SOLIDSYSLOG_META_SD_ERROR_NULL_CONFIG. NULL for a code outside the enum. */
+    const char* SolidSyslogMetaSdErrors_Name(int32_t detail);
 
     /** The identity for events raised by a MetaSd. A handler matches by address
      *  (event->Source == &SolidSyslogMetaSdErrorSource), then reads event->Detail as an

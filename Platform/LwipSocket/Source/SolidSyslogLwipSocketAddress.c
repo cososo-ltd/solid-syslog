@@ -12,7 +12,10 @@
 #include "SolidSyslogLwipSocketAddressErrors.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLwipSocketAddressErrorSource = {"LwipSocketAddress"};
+const struct SolidSyslogErrorSource SolidSyslogLwipSocketAddressErrorSource = {
+    "LwipSocketAddress",
+    SolidSyslogAddressErrors_Name
+};
 
 struct SolidSyslogAddress;
 

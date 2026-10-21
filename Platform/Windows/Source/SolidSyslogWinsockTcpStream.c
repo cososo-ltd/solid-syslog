@@ -23,7 +23,10 @@
 #include "SolidSyslogWinsockTcpStreamInternal.h"
 #include "SolidSyslogWinsockTcpStreamPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogWinsockTcpStreamErrorSource = {"WinsockTcpStream"};
+const struct SolidSyslogErrorSource SolidSyslogWinsockTcpStreamErrorSource = {
+    "WinsockTcpStream",
+    SolidSyslogTcpStreamErrors_Name
+};
 
 /* File-local forwarders. Taking the address of a __declspec(dllimport)
    Winsock function for static initialisation triggers MSVC C4232 (the address

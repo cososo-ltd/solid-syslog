@@ -24,6 +24,8 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64AddressPrivate.h"
 #include "SolidSyslogVxWorks64Datagram.h"
 #include "SolidSyslogVxWorks64DatagramErrors.h"
+#include "SolidSyslogDatagramErrors.h"
+#include "SolidSyslogError.h"
 #include "VxWorks64ArpFake.h"
 #include "VxWorks64IoFake.h"
 #include "VxWorks64NetFake.h"
@@ -604,4 +606,9 @@ TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogVxWorks64Datagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogVxWorks64DatagramErrorSource.DetailName);
 }

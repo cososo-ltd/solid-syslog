@@ -17,7 +17,10 @@
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogVxWorks64MutexPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64MutexErrorSource = {"VxWorks64Mutex"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64MutexErrorSource = {
+    "VxWorks64Mutex",
+    SolidSyslogMutexErrors_Name
+};
 
 static void VxWorks64Mutex_Lock(struct SolidSyslogMutex* base);
 static void VxWorks64Mutex_Unlock(struct SolidSyslogMutex* base);

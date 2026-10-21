@@ -20,7 +20,10 @@
 #include "SolidSyslogStreamSenderPrivate.h"
 #include "SolidSyslogTransport.h"
 
-const struct SolidSyslogErrorSource SolidSyslogStreamSenderErrorSource = {"StreamSender"};
+const struct SolidSyslogErrorSource SolidSyslogStreamSenderErrorSource = {
+    "StreamSender",
+    SolidSyslogStreamSenderErrors_Name
+};
 
 struct SolidSyslogAddress;
 struct SolidSyslogFormatter;

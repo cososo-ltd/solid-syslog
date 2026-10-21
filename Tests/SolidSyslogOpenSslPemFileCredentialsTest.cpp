@@ -15,6 +15,7 @@ extern "C"
 }
 
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsCredentialsErrors.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -381,4 +382,9 @@ TEST(SolidSyslogOpenSslPemFileCredentials, CreateWithAMissingPinInTheListReports
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_PEER_FINGERPRINT
     );
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, TheErrorSourceNamesItsDetailsThroughTlsCredentialsErrors)
+{
+    CHECK(SolidSyslogTlsCredentialsErrors_Name == SolidSyslogOpenSslPemFileCredentialsErrorSource.DetailName);
 }

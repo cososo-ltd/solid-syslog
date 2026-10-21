@@ -20,7 +20,10 @@
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLwipSocketDatagramErrorSource = {"LwipSocketDatagram"};
+const struct SolidSyslogErrorSource SolidSyslogLwipSocketDatagramErrorSource = {
+    "LwipSocketDatagram",
+    SolidSyslogDatagramErrors_Name
+};
 
 struct SolidSyslogAddress;
 

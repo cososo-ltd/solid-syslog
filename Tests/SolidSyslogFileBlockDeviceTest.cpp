@@ -7,6 +7,7 @@
 #include "SolidSyslogFile.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -408,4 +409,9 @@ TEST(SolidSyslogFileBlockDevicePool, FillingPoolThenOverflowReturnsDistinctFallb
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
     }
+}
+
+TEST(SolidSyslogFileBlockDevice, TheErrorSourceNamesItsDetailsThroughFileBlockDeviceErrors)
+{
+    CHECK(SolidSyslogFileBlockDeviceErrors_Name == SolidSyslogFileBlockDeviceErrorSource.DetailName);
 }

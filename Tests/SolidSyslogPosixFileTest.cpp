@@ -9,6 +9,8 @@
 #include "SolidSyslogPosixFileErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
+#include "SolidSyslogFileErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 #include <cstdio>
@@ -280,4 +282,9 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
+}
+
+TEST(SolidSyslogPosixFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogPosixFileErrorSource.DetailName);
 }

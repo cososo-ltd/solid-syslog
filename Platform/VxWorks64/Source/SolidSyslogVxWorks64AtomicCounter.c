@@ -16,7 +16,10 @@
 #include "SolidSyslogNullAtomicCounter.h"
 #include "SolidSyslogVxWorks64AtomicCounterPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64AtomicCounterErrorSource = {"VxWorks64AtomicCounter"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64AtomicCounterErrorSource = {
+    "VxWorks64AtomicCounter",
+    SolidSyslogAtomicCounterErrors_Name
+};
 
 static uint32_t VxWorks64AtomicCounter_Increment(struct SolidSyslogAtomicCounter* base);
 static void VxWorks64AtomicCounter_Init(struct SolidSyslogVxWorks64AtomicCounter* self, uint32_t value);

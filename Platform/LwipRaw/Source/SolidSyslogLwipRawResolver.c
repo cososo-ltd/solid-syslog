@@ -14,7 +14,10 @@
 #include "SolidSyslogTransport.h"
 #include "lwip/ip_addr.h"
 
-const struct SolidSyslogErrorSource SolidSyslogLwipRawResolverErrorSource = {"LwipRawResolver"};
+const struct SolidSyslogErrorSource SolidSyslogLwipRawResolverErrorSource = {
+    "LwipRawResolver",
+    SolidSyslogResolverErrors_Name
+};
 
 struct SolidSyslogAddress;
 

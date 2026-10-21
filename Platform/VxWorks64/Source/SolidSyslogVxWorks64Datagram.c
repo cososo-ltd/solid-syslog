@@ -30,7 +30,10 @@
 #include "SolidSyslogVxWorks64DatagramErrors.h"
 #include "SolidSyslogVxWorks64DatagramPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {"VxWorks64Datagram"};
+const struct SolidSyslogErrorSource SolidSyslogVxWorks64DatagramErrorSource = {
+    "VxWorks64Datagram",
+    SolidSyslogDatagramErrors_Name
+};
 
 enum
 {

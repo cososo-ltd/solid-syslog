@@ -15,7 +15,10 @@
 #include "SolidSyslogTimeQualitySdErrors.h"
 #include "SolidSyslogTimeQualitySdPrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogTimeQualitySdErrorSource = {"TimeQualitySd"};
+const struct SolidSyslogErrorSource SolidSyslogTimeQualitySdErrorSource = {
+    "TimeQualitySd",
+    SolidSyslogTimeQualitySdErrors_Name
+};
 
 static void TimeQualitySd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 

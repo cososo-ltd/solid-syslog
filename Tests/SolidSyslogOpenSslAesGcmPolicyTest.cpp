@@ -17,6 +17,8 @@ extern "C"
 
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogAesGcmPolicyErrors.h"
+#include "SolidSyslogError.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
@@ -636,4 +638,9 @@ TEST(SolidSyslogOpenSslAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfter
     open();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslAesGcmPolicy, TheErrorSourceNamesItsDetailsThroughAesGcmPolicyErrors)
+{
+    CHECK(SolidSyslogAesGcmPolicyErrors_Name == SolidSyslogOpenSslAesGcmPolicyErrorSource.DetailName);
 }

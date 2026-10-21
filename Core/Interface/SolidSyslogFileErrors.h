@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGFILEERRORS_H
 #define SOLIDSYSLOGFILEERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -40,6 +42,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED,
         SOLIDSYSLOG_FILE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The detail's name, read beside the category's: NULL_FILESYSTEM for
+     *  SOLIDSYSLOG_FILE_ERROR_NULL_FILESYSTEM. NULL for a code outside the enum. */
+    const char* SolidSyslogFileErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END
 

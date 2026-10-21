@@ -18,7 +18,7 @@
 #include "SolidSyslogWindowsFileErrors.h"
 #include "SolidSyslogWindowsFilePrivate.h"
 
-const struct SolidSyslogErrorSource SolidSyslogWindowsFileErrorSource = {"WindowsFile"};
+const struct SolidSyslogErrorSource SolidSyslogWindowsFileErrorSource = {"WindowsFile", SolidSyslogFileErrors_Name};
 
 /* _O_BINARY disables the MSVC CRT's CR/LF translation on read/write so
  * arbitrary binary content (e.g. SolidSyslogBlockStore frames) round-trips

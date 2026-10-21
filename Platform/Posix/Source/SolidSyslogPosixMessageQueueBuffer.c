@@ -25,7 +25,10 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPosixMessageQueueBufferErrorSource = {"PosixMessageQueueBuffer"};
+const struct SolidSyslogErrorSource SolidSyslogPosixMessageQueueBufferErrorSource = {
+    "PosixMessageQueueBuffer",
+    SolidSyslogPosixMessageQueueBufferErrors_Name
+};
 
 enum
 {

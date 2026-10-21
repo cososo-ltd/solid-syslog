@@ -19,7 +19,10 @@
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
 
-const struct SolidSyslogErrorSource SolidSyslogFreeRtosMutexErrorSource = {"FreeRtosMutex"};
+const struct SolidSyslogErrorSource SolidSyslogFreeRtosMutexErrorSource = {
+    "FreeRtosMutex",
+    SolidSyslogMutexErrors_Name
+};
 
 static void FreeRtosMutex_Lock(struct SolidSyslogMutex* base);
 static void FreeRtosMutex_Unlock(struct SolidSyslogMutex* base);

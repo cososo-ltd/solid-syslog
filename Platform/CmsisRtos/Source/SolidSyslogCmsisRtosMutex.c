@@ -16,7 +16,10 @@
 #include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
 
-const struct SolidSyslogErrorSource SolidSyslogCmsisRtosMutexErrorSource = {"CmsisRtosMutex"};
+const struct SolidSyslogErrorSource SolidSyslogCmsisRtosMutexErrorSource = {
+    "CmsisRtosMutex",
+    SolidSyslogMutexErrors_Name
+};
 
 static void CmsisRtosMutex_Lock(struct SolidSyslogMutex* base);
 static void CmsisRtosMutex_Unlock(struct SolidSyslogMutex* base);

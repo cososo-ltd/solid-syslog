@@ -95,9 +95,42 @@ routes faults, but not back into SolidSyslog: the
 [handler contract](api/SolidSyslogError_8h.md#typedef-solidsyslogerrorhandler) says
 why, and what to do instead.
 
+Every axis of an event has a name, the one this documentation uses, so a handler
+can print a diagnostic without a table of its own:
+
+```c
+static const char* OrDash(const char* name)
+{
+    return (name != NULL) ? name : "-";
+}
+
+static void OnSyslogError(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    printf(
+        "[syslog] %s %s %s %s (%ld)\n",
+        OrDash(SolidSyslogSeverity_Name(event->Severity)),
+        OrDash((event->Source != NULL) ? event->Source->Name : NULL),
+        OrDash(SolidSyslogErrorCategory_Name(event->Category)),
+        OrDash(SolidSyslogErrorEvent_DetailName(event)),
+        (long) event->Detail
+    );
+}
+```
+
+Each name function answers NULL for a value it does not know: a category in the
+integrator range, a severity off the ladder, a detail outside its source's
+vocabulary, or the detail of a `NATIVE_ERROR`, which is the platform's own code.
+`SolidSyslogErrorEvent_DetailName` goes through the event's source, so it is right
+whichever class spoke. Each name is bound to its enumerator, not its position, so
+a code added in a later release cannot shift the others.
+
 For more detail see [error handling and severity](error-severity.md).
 
-**Cost.** Flash ~400 B, RAM ~10 B.
+**Cost.** The handler itself: flash ~400 B, RAM ~10 B. The detail names: about
+180 B of flash per vocabulary, linked with each class whether or not the handler
+asks for them, so 3.5 KB on the Cortex-M3 BDD target, which links twenty; no
+RAM. The category and severity names are linked only when called.
 
 ## Stage 3: Create the logger, wired to nothing
 
@@ -117,9 +150,9 @@ No `<Class>_Create` fails or returns `NULL` - a missing collaborator is substitu
 its Null object and reported - so the only evidence is what the handler says:
 
 ```text
-[syslog] CRITICAL SolidSyslog bad-config (detail 1)
-[syslog] CRITICAL SolidSyslog bad-config (detail 2)
-[syslog] CRITICAL SolidSyslog bad-config (detail 3)
+[syslog] CRITICAL SolidSyslog BAD_CONFIG CREATE_NULL_BUFFER (1)
+[syslog] CRITICAL SolidSyslog BAD_CONFIG CREATE_NULL_SENDER (2)
+[syslog] CRITICAL SolidSyslog BAD_CONFIG CREATE_NULL_STORE (3)
 ```
 
 The order matters. Wire everything at once and see nothing, and you

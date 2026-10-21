@@ -22,7 +22,10 @@
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogTunables.h"
 
-const struct SolidSyslogErrorSource SolidSyslogMbedTlsAesGcmPolicyErrorSource = {"MbedTlsAesGcmPolicy"};
+const struct SolidSyslogErrorSource SolidSyslogMbedTlsAesGcmPolicyErrorSource = {
+    "MbedTlsAesGcmPolicy",
+    SolidSyslogAesGcmPolicyErrors_Name
+};
 
 enum
 {

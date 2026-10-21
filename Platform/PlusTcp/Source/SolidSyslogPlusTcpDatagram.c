@@ -26,7 +26,10 @@
 #include "SolidSyslogUdpPayload.h"
 #include "task.h"
 
-const struct SolidSyslogErrorSource SolidSyslogPlusTcpDatagramErrorSource = {"PlusTcpDatagram"};
+const struct SolidSyslogErrorSource SolidSyslogPlusTcpDatagramErrorSource = {
+    "PlusTcpDatagram",
+    SolidSyslogDatagramErrors_Name
+};
 
 enum
 {

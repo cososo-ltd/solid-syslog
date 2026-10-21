@@ -7,6 +7,8 @@
 #ifndef SOLIDSYSLOGPASSTHROUGHBUFFERERRORS_H
 #define SOLIDSYSLOGPASSTHROUGHBUFFERERRORS_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -23,6 +25,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER,
         SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
+
+    /** The detail's name, read beside the category's: NULL_SENDER for
+     *  SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER. NULL for a code outside the enum. */
+    const char* SolidSyslogPassthroughBufferErrors_Name(int32_t detail);
 
     /** The identity for events raised by a PassthroughBuffer. A handler matches
      *  by address (event->Source == &SolidSyslogPassthroughBufferErrorSource), then reads

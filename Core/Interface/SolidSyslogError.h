@@ -56,12 +56,19 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
+    /** How a source names its detail codes: the SolidSyslog<Vocabulary>Errors_Name
+     *  of the enum it reports through. */
+    typedef const char* (*SolidSyslogErrorDetailNameFunction)(int32_t detail);
+
     /** The identity of an error-emitting class. There is one extern instance per
      *  class (e.g. SolidSyslogErrorSource); a handler recognises the emitter by
      *  matching Source against that instance's address, not by reading Name. */
     struct SolidSyslogErrorSource
     {
         const char* Name; /**< Human-readable tag for logging; not the match key. */
+        /** Names this source's detail codes. An integrator's own source may
+         *  leave it NULL. */
+        SolidSyslogErrorDetailNameFunction DetailName;
     };
 
     /** What a handler receives. The last three fields are orthogonal axes:
@@ -91,6 +98,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  recurses. Record the event instead - count it, set a flag, or queue a copy
      *  of it - and act on it from your own code once the handler has returned. */
     typedef void (*SolidSyslogErrorHandler)(void* context, const struct SolidSyslogErrorEvent* event);
+
+    /** The detail's name, through the event's source, to read beside the
+     *  category's. NULL when there is nothing to name: no source, a source
+     *  without names, a code outside its vocabulary, or a
+     *  SOLIDSYSLOG_CAT_NATIVE_ERROR, whose detail is the platform's own code. */
+    const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time
      *  configuration: the slot is one shared pointer, not synchronised against

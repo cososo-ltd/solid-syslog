@@ -15,7 +15,7 @@
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
-const struct SolidSyslogErrorSource SolidSyslogMetaSdErrorSource = {"MetaSd"};
+const struct SolidSyslogErrorSource SolidSyslogMetaSdErrorSource = {"MetaSd", SolidSyslogMetaSdErrors_Name};
 
 static void MetaSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 
