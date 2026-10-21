@@ -222,6 +222,16 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
      * struct before CreateTlsStream. */
     struct SolidSyslogMbedTlsStreamConfig BuildBaseConfig(struct SolidSyslogStream* transport)
     {
+        return BuildConfigExpecting(transport, TEST_SERVER_HOSTNAME);
+    }
+
+    /* The same, naming the peer the profile expects - or NULL / "" for the two
+     * ways of not naming one. */
+    struct SolidSyslogMbedTlsStreamConfig BuildConfigExpecting(
+        struct SolidSyslogStream* transport,
+        const char* serverName
+    )
+    {
         credsConfig = {};
         credsConfig.Rng = &rng;
         credsConfig.CaChain = &trustedCa.Cert;
@@ -230,10 +240,18 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         cfg.Transport = transport;
         cfg.Sleep = NoOpSleep;
         cfg.Rng = &rng;
-        profileValues.ServerName = TEST_SERVER_HOSTNAME;
+        profileValues.ServerName = serverName;
         cfg.Profile = IntegrationProfile;
         cfg.ProfileContext = &profileValues;
         return cfg;
+    }
+
+    /* A server presenting the fixture's leaf, and a config expecting the given
+       name of it. */
+    struct SolidSyslogMbedTlsStreamConfig BuildConfigAgainstTheServerExpecting(const char* serverName)
+    {
+        struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
+        return BuildConfigExpecting(transport, serverName);
     }
 
     /* Pin the certificate the server will present, with the named hash. */
@@ -575,14 +593,26 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWhenAPinIsTheOnlyThin
 
 /* The documented ServerName contract, against the real library: left NULL the
  * peer is identified by its pin, with neither the connection is chain-only and
- * a WARNING says so, and "" is the explicit opt-out from the name check. None
- * of the three calls mbedtls_ssl_set_hostname, which is what Mbed TLS 3.6.3
- * started refusing a handshake over. */
+ * a WARNING says so, and "" is the explicit opt-out from the name check. Mbed
+ * TLS 3.6.3 started refusing a chain-verified handshake when the client never
+ * called mbedtls_ssl_set_hostname, and tells that apart from a call naming no
+ * peer; these pin which of the two the stream makes. */
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenAPinIdentifiesTheServer)
 {
-    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
-    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    profileValues.ServerName = nullptr;
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting(nullptr);
+    PinCertificate(&serverCert, "sha-256");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(0, CapturedErrorCount);
+}
+
+/* Pin-only verifies optionally, so this is the other library path through the
+ * same contract. */
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenAPinIsTheOnlyThingAuthorisingTheServer)
+{
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting(nullptr);
+    credsConfig.CaChain = nullptr;
     PinCertificate(&serverCert, "sha-256");
     tlsStream = CreateTlsStream(&config);
 
@@ -592,9 +622,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenA
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWithNoServerNameAndWarns)
 {
-    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
-    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    profileValues.ServerName = nullptr;
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting(nullptr);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
@@ -605,9 +633,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWithNoServer
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWhenServerNameIsEmpty)
 {
-    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
-    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    profileValues.ServerName = "";
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting("");
     tlsStream = CreateTlsStream(&config);
 
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
