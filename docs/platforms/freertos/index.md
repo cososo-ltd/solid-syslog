@@ -15,9 +15,10 @@ Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 FreeRTOS kernel V10.6.0 or later. The uptime callback selects its
 implementation on `configTICK_TYPE_WIDTH_IN_BITS`, which that release
-introduced; an older kernel defines neither it nor the `TICK_TYPE_WIDTH_*`
-constants, so neither implementation compiles in and the callback will not
-link. The pack is tested against V11.1.0.
+introduced. An older kernel defines neither it nor the `TICK_TYPE_WIDTH_*`
+constants, and the preprocessor reads an undefined name as zero, so both
+implementations compile in and the link fails on the duplicate definition. The
+pack is tested against V11.1.0.
 
 ## Security behaviour and obligations
 
