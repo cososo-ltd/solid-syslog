@@ -13,6 +13,12 @@ Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
 
 `configSUPPORT_STATIC_ALLOCATION=1` - the mutex uses static allocation.
 
+FreeRTOS kernel V10.6.0 or later. The uptime callback selects its
+implementation on `configTICK_TYPE_WIDTH_IN_BITS`, which that release
+introduced; an older kernel defines neither it nor the `TICK_TYPE_WIDTH_*`
+constants, so neither implementation compiles in and the callback will not
+link. The pack is tested against V11.1.0.
+
 ## Security behaviour and obligations
 
 ### The mutex guards a buffer shared between tasks
