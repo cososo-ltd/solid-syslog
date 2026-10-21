@@ -101,6 +101,25 @@ static uint32_t Ipv4U32(const ip_addr_t* address)
     return ip4_addr_get_u32(ip_2_ip4(address));
 }
 
+// Records whether the marshal rail was active when the error handler ran.
+unsigned MarshalSpyingHandler_CallCount = 0U;
+bool MarshalSpyingHandler_SawMarshalActive = false;
+
+extern "C" void MarshalSpyingHandler(void* context, const struct SolidSyslogErrorEvent* event)
+{
+    (void) context;
+    (void) event;
+    MarshalSpyingHandler_CallCount++;
+    MarshalSpyingHandler_SawMarshalActive = MarshalSpyingHandler_SawMarshalActive || LwipFakeMarshalGuard_Active;
+}
+
+static ip_addr_t Ipv6Loopback()
+{
+    ip_addr_t address;
+    IP_ADDR6_HOST(&address, 0, 0, 0, 1);
+    return address;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawDnsResolver)
 {
@@ -113,6 +132,8 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
         LwipDnsFake_Reset();
         FakeSleep_Reset();
         Marshal_CallCount = 0;
+        MarshalSpyingHandler_CallCount = 0;
+        MarshalSpyingHandler_SawMarshalActive = false;
         LwipFakeMarshalGuard_Reset();
         SolidSyslogLwipRaw_SetMarshal(CountingTrackingMarshal);
         config.Sleep = FakeSleep;
@@ -126,6 +147,7 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
         SolidSyslogLwipRawDnsResolver_Destroy(resolver);
         LwipFakeMarshalGuard_CheckNoBreach();
         SolidSyslogLwipRaw_SetMarshal(nullptr);
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
     }
 
     bool Resolve(const char* host = TEST_HOST, uint16_t port = TEST_PORT, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
@@ -170,6 +192,91 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesPortFromArgOnSynchronousHit)
     Resolve(TEST_HOST, 9999);
 
     LONGS_EQUAL(9999, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsRefused)
+{
+    ip_addr_t hit = Ipv6Loopback();
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    CHECK_FALSE(Resolve());
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+    ip_addr_t hit = Ipv6Loopback();
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    Resolve();
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerLeavesTheCallersAddressAlone)
+{
+    ip_addr_t earlier = Ipv4(10, 0, 2, 2);
+    LwipDnsFake_SetResult(ERR_OK);
+    LwipDnsFake_SetResolvedIp(&earlier);
+    Resolve(TEST_HOST, TEST_PORT);
+    ip_addr_t hit = Ipv6Loopback();
+    LwipDnsFake_SetResolvedIp(&hit);
+
+    Resolve(TEST_HOST, 9999);
+
+    LONGS_EQUAL(Ipv4U32(&earlier), Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsRefused)
+{
+    LwipDnsFake_SetResult(ERR_INPROGRESS);
+    FakeSleep_FireArmed = true;
+    FakeSleep_FireWithAddr = true;
+    FakeSleep_FireIp = Ipv6Loopback();
+
+    CHECK_FALSE(Resolve());
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipDnsFake_SetResult(ERR_INPROGRESS);
+    FakeSleep_FireArmed = true;
+    FakeSleep_FireWithAddr = true;
+    FakeSleep_FireIp = Ipv6Loopback();
+
+    Resolve();
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsReportedOutsideTheMarshalHop)
+{
+    // The error handler is the integrator's code: it is told on the caller's
+    // thread once the publish hop has returned, never from inside it.
+    SolidSyslog_SetErrorHandler(MarshalSpyingHandler, nullptr);
+    LwipDnsFake_SetResult(ERR_INPROGRESS);
+    FakeSleep_FireArmed = true;
+    FakeSleep_FireWithAddr = true;
+    FakeSleep_FireIp = Ipv6Loopback();
+
+    Resolve();
+
+    LONGS_EQUAL(1, MarshalSpyingHandler_CallCount);
+    CHECK_FALSE(MarshalSpyingHandler_SawMarshalActive);
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolveDoesNotSpinOnSynchronousHit)
