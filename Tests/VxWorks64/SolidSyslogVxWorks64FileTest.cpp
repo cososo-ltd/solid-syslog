@@ -17,6 +17,7 @@ using namespace CososoTesting;
 #include "SolidSyslogVxWorks64File.h"
 #include "SolidSyslogVxWorks64FileErrors.h"
 #include "SolidSyslogError.h"
+#include "VxWorks64FsFake.h"
 #include "VxWorks64IoFake.h"
 
 static const char* const TEST_PATH = "/ata0a/STORE00.LOG";
@@ -24,7 +25,6 @@ static const int ERROR_RESULT = -1;
 
 // The VxWorks 6.4 values. A C++ test cannot include ioLib.h, whose renames are
 // for the C sources it stands in for.
-static const int VX_O_RDONLY = 0;
 static const int VX_O_RDWR_CREAT = 0x0202;
 static const int VX_SEEK_SET = 0;
 static const int VX_SEEK_END = 2;
@@ -84,12 +84,20 @@ TEST_GROUP(SolidSyslogVxWorks64File)
     void setup() override
     {
         VxWorks64IoFake_Reset();
+        VxWorks64FsFake_Reset();
         file = SolidSyslogVxWorks64File_Create();
     }
 
     void teardown() override
     {
         SolidSyslogVxWorks64File_Destroy(file);
+    }
+
+    // A formatted volume with TEST_PATH on it, as stat would find one.
+    static void PutTheFileOnTheVolume()
+    {
+        VxWorks64FsFake_FormatTheVolumeAsHrfs();
+        VxWorks64FsFake_PutFile(TEST_PATH);
     }
 };
 
@@ -593,37 +601,42 @@ TEST(SolidSyslogVxWorks64File, SeekSizeAndTruncateThatSucceedReportNothing)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogVxWorks64File, ExistsProbesThePathReadOnly)
+TEST(SolidSyslogVxWorks64File, ExistsAsksForThePathsStatus)
 {
     SolidSyslogFile_Exists(file, TEST_PATH);
 
-    CALLED_FAKE(VxWorks64IoFake_Open, ONCE);
-    STRCMP_EQUAL(TEST_PATH, VxWorks64IoFake_LastOpenName());
-    LONGS_EQUAL(VX_O_RDONLY, VxWorks64IoFake_LastOpenFlags());
+    CALLED_FAKE(VxWorks64FsFake_Stat, ONCE);
+    STRCMP_EQUAL(TEST_PATH, VxWorks64FsFake_LastStatName());
 }
 
-TEST(SolidSyslogVxWorks64File, ExistsIsTrueWhenThePathOpens)
+TEST(SolidSyslogVxWorks64File, ExistsIsTrueForAFileOnTheVolume)
 {
-    VxWorks64IoFake_PutFile(TEST_PATH);
+    PutTheFileOnTheVolume();
 
     CHECK_TRUE(SolidSyslogFile_Exists(file, TEST_PATH));
 }
 
-TEST(SolidSyslogVxWorks64File, ExistsClosesTheProbe)
+TEST(SolidSyslogVxWorks64File, ExistsIsFalseForAPathNotOnTheVolume)
 {
-    VxWorks64IoFake_PutFile(TEST_PATH);
+    VxWorks64FsFake_FormatTheVolumeAsHrfs();
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, TEST_PATH));
+}
+
+TEST(SolidSyslogVxWorks64File, ExistsIsFalseWhenTheVolumeHasNoFileSystem)
+{
+    CHECK_FALSE(SolidSyslogFile_Exists(file, TEST_PATH));
+}
+
+// The status comes without opening the path, so a scan of the block index
+// space costs no descriptors, and a full descriptor table cannot read as absent.
+TEST(SolidSyslogVxWorks64File, ExistsOpensNothing)
+{
+    PutTheFileOnTheVolume();
 
     SolidSyslogFile_Exists(file, TEST_PATH);
 
-    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
-    LONGS_EQUAL(VxWorks64IoFake_Fd(), VxWorks64IoFake_LastClosedFd());
-}
-
-TEST(SolidSyslogVxWorks64File, ExistsIsFalseWhenThePathDoesNotOpen)
-{
-    VxWorks64IoFake_FailOpens();
-
-    CHECK_FALSE(SolidSyslogFile_Exists(file, TEST_PATH));
+    CALLED_FAKE(VxWorks64IoFake_Open, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64File, ExistsLeavesTheFileClosed)
