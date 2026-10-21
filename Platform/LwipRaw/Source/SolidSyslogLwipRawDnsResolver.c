@@ -107,8 +107,8 @@ static bool LwipRawDnsResolver_Resolve(
     self->Done = false;
     self->ResolvedOk = false;
 
-    /* dns_gethostbyname_addrtype touches lwIP core state (unlike the numeric
-     * resolver's pure ipaddr_aton parse), so it must run under the marshal hop. */
+    /* dns_gethostbyname touches lwIP core state (unlike the numeric resolver's
+     * pure ipaddr_aton parse), so it must run under the marshal hop. */
     struct LwipRawDnsResolverCall call = {
         .Self = self,
         .Host = host,
@@ -179,17 +179,11 @@ static void LwipRawDnsResolver_DoGetHostByName(void* context)
 {
     struct LwipRawDnsResolverCall* call = LwipRawDnsResolverCallFromContext(context);
     struct SolidSyslogLwipRawDnsResolver* self = call->Self;
-    /* The family is asked for up front, so a dual-stack lwIP does not spend
-     * an AAAA round trip and a cache slot on an answer the pack would refuse.
-     * The refusal in Publish stays for a cached or hostlist entry the stack
-     * hands over regardless. */
-    call->Err = dns_gethostbyname_addrtype(
-        call->Host,
-        &self->ResolvedIp,
-        LwipRawDnsResolver_FoundCallback,
-        self,
-        LWIP_DNS_ADDRTYPE_IPV4
-    );
+    /* Asked for lwIP's default family, not IPv4 alone: told IPv4 only, lwIP
+     * keeps an IPv6 literal or entry to itself and queries the name afresh,
+     * so the lookup fails later as a plain miss. Asked for either, it hands
+     * the IPv6 answer over, and Publish refuses it with the family named. */
+    call->Err = dns_gethostbyname(call->Host, &self->ResolvedIp, LwipRawDnsResolver_FoundCallback, self);
 }
 
 /* lwIP fires this on the tcpip thread when an async lookup completes. ipaddr is

@@ -148,10 +148,9 @@ DNS should give the collector a numeric address, so that no resolution step
 exists to be poisoned.
 
 Give that address in IPv4. The datagram and the stream send only to IPv4, so
-the DNS resolver asks lwIP for an IPv4 answer, and on a build with `LWIP_IPV6`
-both resolvers refuse an IPv6 one, whether a literal you configured or an entry
-the stack's cache or hostlist hands over, rather than store a destination every
-send would fail to. The refusal is reported as `ERROR` with the detail
+on a build with `LWIP_IPV6` both resolvers refuse an IPv6 answer, whether a
+literal you configured or one the DNS returned, rather than store a destination
+every send would fail to. The refusal is reported as `ERROR` with the detail
 `ADDRESS_FAMILY_UNSUPPORTED`, and asking again will not change it.
 
 ### Pool sizing is yours, and exhaustion is silent at the stack

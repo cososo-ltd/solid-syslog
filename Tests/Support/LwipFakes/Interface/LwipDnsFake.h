@@ -23,13 +23,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * ERR_OK return. Defaults to 0.0.0.0. */
     void LwipDnsFake_SetResolvedIp(const ip_addr_t* ip);
 
-    /* dns_gethostbyname_addrtype spy. The fake supplies that entry point,
-     * which is the one carrying the family asked for; lwIP's plain
-     * dns_gethostbyname is a wrapper over it that asks for the default. */
+    /* dns_gethostbyname spy. */
     unsigned LwipDnsFake_GetHostByNameCallCount(void);
     const char* LwipDnsFake_LastHostname(void);
     ip_addr_t* LwipDnsFake_LastAddrOut(void);
-    uint8_t LwipDnsFake_LastAddrType(void);
 
     /* True between an ERR_INPROGRESS dns_gethostbyname and the matching
      * FireCallback - i.e. a dns_found_callback is stored and not yet fired. */
