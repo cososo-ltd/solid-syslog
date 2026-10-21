@@ -92,6 +92,13 @@ TEST_GROUP(SolidSyslogVxWorks64File)
     {
         SolidSyslogVxWorks64File_Destroy(file);
     }
+
+    // A formatted volume with TEST_PATH on it, as stat would find one.
+    static void PutTheFileOnTheVolume()
+    {
+        VxWorks64FsFake_FormatTheVolumeAsHrfs();
+        VxWorks64FsFake_PutFile(TEST_PATH);
+    }
 };
 
 // clang-format on
@@ -604,8 +611,7 @@ TEST(SolidSyslogVxWorks64File, ExistsAsksForThePathsStatus)
 
 TEST(SolidSyslogVxWorks64File, ExistsIsTrueForAFileOnTheVolume)
 {
-    VxWorks64FsFake_FormatTheVolumeAsHrfs();
-    VxWorks64FsFake_PutFile(TEST_PATH);
+    PutTheFileOnTheVolume();
 
     CHECK_TRUE(SolidSyslogFile_Exists(file, TEST_PATH));
 }
@@ -626,8 +632,7 @@ TEST(SolidSyslogVxWorks64File, ExistsIsFalseWhenTheVolumeHasNoFileSystem)
 // space costs no descriptors, and a full descriptor table cannot read as absent.
 TEST(SolidSyslogVxWorks64File, ExistsOpensNothing)
 {
-    VxWorks64FsFake_FormatTheVolumeAsHrfs();
-    VxWorks64FsFake_PutFile(TEST_PATH);
+    PutTheFileOnTheVolume();
 
     SolidSyslogFile_Exists(file, TEST_PATH);
 
