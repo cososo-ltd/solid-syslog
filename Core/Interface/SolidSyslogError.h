@@ -72,14 +72,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SolidSyslogErrorDetailNameFunction DetailName;
     };
 
-    /** What a handler receives. The last three fields are orthogonal axes:
+    /** What a handler receives. Source, Category and Detail are orthogonal axes:
      *  Source is the extensible identity (match by pointer against the emitting
      *  class's extern), Category is the portable reaction axis
      *  (SolidSyslogErrorCategory.h) a handler can switch on without knowing the
-     *  Source, and Detail is the fine-grained code within that Source: today the
-     *  per-class enum SolidSyslog<Class>Errors value, later a native code such as
-     *  errno or an X509_V_ERR_*. Severity is an independent urgency axis (how bad,
-     *  now), not who-must-fix; see docs/error-severity.md. */
+     *  Source, and Detail is the fine-grained code within that Source, the
+     *  per-class enum SolidSyslog<Class>Errors value. NativeCode is the
+     *  platform's own code behind the fault, valid only when HasNativeCode is
+     *  set. Severity is an independent urgency axis (how bad, now), not
+     *  who-must-fix; see docs/error-severity.md. */
     struct SolidSyslogErrorEvent
     {
         enum SolidSyslogSeverity Severity;
