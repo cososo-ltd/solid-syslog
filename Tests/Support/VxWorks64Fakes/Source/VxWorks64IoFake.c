@@ -564,9 +564,14 @@ STATUS remove(const char* name)
     {
         VxWorks64IoFake_Files[file].InUse = false;
     }
-    else
+    else if (VxWorks64IoFake_RemovesFail)
     {
         errno = VxWorks64IoFake_FailureErrno;
+    }
+    else
+    {
+        /* A path that was never on the disk, as the target names it. */
+        errno = ENOENT;
     }
     return removed ? OK : ERROR;
 }

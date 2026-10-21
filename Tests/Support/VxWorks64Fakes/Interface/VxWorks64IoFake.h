@@ -21,7 +21,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The errno that open, read, write, lseek, remove and close set when they answer ERROR;
      *  EIO until told otherwise. Every failure sets it, so one left by an
-     *  earlier call never stands in for it. */
+     *  earlier call never stands in for it. The one exception is remove of a
+     *  path that is not on the disk, which sets ENOENT as the target does. */
     void VxWorks64IoFake_FailWithErrno(int errnoValue);
 
     /** Puts an empty file on the disk, as though written by an earlier boot. */

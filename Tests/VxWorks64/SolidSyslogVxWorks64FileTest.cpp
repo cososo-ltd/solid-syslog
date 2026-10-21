@@ -659,6 +659,11 @@ TEST(SolidSyslogVxWorks64File, DeleteNeverProbesThePath)
     CALLED_FAKE(VxWorks64IoFake_Open, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64File, DeleteIsTrueForAPathThatWasNeverThere)
+{
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
 TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSaysThePathWasNotThereOnHrfs)
 {
     VxWorks64IoFake_FailRemoves();
