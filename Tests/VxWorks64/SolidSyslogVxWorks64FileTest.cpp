@@ -656,10 +656,10 @@ TEST(SolidSyslogVxWorks64File, DeleteDoesNotProbeAPathItRemoved)
     CALLED_FAKE(VxWorks64IoFake_Open, NEVER);
 }
 
-TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenThePathWasAlreadyAbsent)
+TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSaysThePathWasNotThere)
 {
     VxWorks64IoFake_FailRemoves();
-    VxWorks64IoFake_FailOpens();
+    VxWorks64IoFake_FailWithErrno(ENOENT);
 
     CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
@@ -668,6 +668,15 @@ TEST(SolidSyslogVxWorks64File, DeleteIsFalseWhenThePathRemains)
 {
     VxWorks64IoFake_PutFile(TEST_PATH);
     VxWorks64IoFake_FailRemoves();
+
+    CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogVxWorks64File, DeleteIsFalseWhenRemoveFailsAndThePathWillNotOpenEither)
+{
+    VxWorks64IoFake_FailRemoves();
+    VxWorks64IoFake_FailWithErrno(EIO);
+    VxWorks64IoFake_FailOpens();
 
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
 }

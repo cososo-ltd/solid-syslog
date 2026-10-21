@@ -252,14 +252,10 @@ static bool VxWorks64File_Exists(struct SolidSyslogFile* base, const char* path)
     return exists;
 }
 
-/* The I/O system names no error for a path that was never there, so an absent
- * path is told apart by looking for it after remove fails. */
 static bool VxWorks64File_Delete(struct SolidSyslogFile* base, const char* path)
 {
-    bool deleted = remove(path) == OK;
-    if (!deleted)
-    {
-        deleted = !VxWorks64File_Exists(base, path);
-    }
-    return deleted;
+    (void) base;
+    STATUS status = remove(path);
+    int removeErrno = (status == ERROR) ? errno : 0;
+    return (status == OK) || (removeErrno == ENOENT);
 }

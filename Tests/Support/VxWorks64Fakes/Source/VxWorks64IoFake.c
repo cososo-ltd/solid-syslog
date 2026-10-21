@@ -564,6 +564,10 @@ STATUS remove(const char* name)
     {
         VxWorks64IoFake_Files[file].InUse = false;
     }
+    else
+    {
+        errno = VxWorks64IoFake_FailureErrno;
+    }
     return removed ? OK : ERROR;
 }
 
