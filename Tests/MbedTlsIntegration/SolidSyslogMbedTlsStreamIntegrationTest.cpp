@@ -573,6 +573,47 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWhenAPinIsTheOnlyThin
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
 }
 
+/* The documented ServerName contract, against the real library: left NULL the
+ * peer is identified by its pin, with neither the connection is chain-only and
+ * a WARNING says so, and "" is the explicit opt-out from the name check. None
+ * of the three calls mbedtls_ssl_set_hostname, which is what Mbed TLS 3.6.3
+ * started refusing a handshake over. */
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenAPinIdentifiesTheServer)
+{
+    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    profileValues.ServerName = nullptr;
+    PinCertificate(&serverCert, "sha-256");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(0, CapturedErrorCount);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWithNoServerNameAndWarns)
+{
+    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    profileValues.ServerName = nullptr;
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET, LastCapturedError.Detail);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWhenServerNameIsEmpty)
+{
+    struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
+    struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
+    profileValues.ServerName = "";
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(0, CapturedErrorCount);
+}
+
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertMatchesNoPin)
 {
     struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);

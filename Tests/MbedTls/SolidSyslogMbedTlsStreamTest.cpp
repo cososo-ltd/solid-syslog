@@ -1039,13 +1039,17 @@ TEST(SolidSyslogMbedTlsStream, OpenSetsHostnameWhenServerNameProvided)
     STRCMP_EQUAL("syslog.example.com", MbedTlsFake_LastSslSetHostnameNameArg());
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameWhenServerNameIsNull)
+TEST(SolidSyslogMbedTlsStream, OpenTellsTheLibraryItNamesNoPeerWhenServerNameIsNull)
 
 {
-    /* The profile leaves ServerName unset. */
+    /* The profile leaves ServerName unset. Mbed TLS 3.6.3 and later refuse a
+     * chain-verified handshake unless told, by a NULL name, that the omission
+     * is deliberate. */
     SolidSyslogStream_Open(handle, addr);
 
-    LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
+    LONGS_EQUAL(1, MbedTlsFake_SslSetHostnameCallCount());
+    POINTERS_EQUAL(MbedTlsFake_LastSslInitArg(), MbedTlsFake_LastSslSetHostnameContextArg());
+    POINTERS_EQUAL(NULL, MbedTlsFake_LastSslSetHostnameNameArg());
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenWarnsWhenServerNameIsNull)
@@ -1083,14 +1087,15 @@ TEST(SolidSyslogMbedTlsStream, OpenDoesNotWarnWhenServerNameIsEmpty)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogMbedTlsStream, OpenSkipsHostnameSetupWhenServerNameIsEmpty)
+TEST(SolidSyslogMbedTlsStream, OpenTellsTheLibraryItNamesNoPeerWhenServerNameIsEmpty)
 
 {
     FakeProfile_Value.ServerName = "";
     ReCreateHandleWithUpdatedConfig();
     SolidSyslogStream_Open(handle, addr);
 
-    LONGS_EQUAL(0, MbedTlsFake_SslSetHostnameCallCount());
+    LONGS_EQUAL(1, MbedTlsFake_SslSetHostnameCallCount());
+    POINTERS_EQUAL(NULL, MbedTlsFake_LastSslSetHostnameNameArg());
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenConnectsWhenServerNameIsEmpty)

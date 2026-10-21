@@ -92,6 +92,7 @@ static inline void MbedTlsStream_ReleaseCredentials(struct SolidSyslogMbedTlsStr
 static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_NameBeginsWithADot(const char* name);
+static inline void MbedTlsStream_DeclareNoPeerName(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_InstallTransportCallbacks(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PeerPassedVerification(struct SolidSyslogMbedTlsStream* self);
@@ -593,6 +594,7 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
          * it. Surface it as a WARNING (still connect, preserving the IP-pinned /
          * closed-network case) rather than swallowing the MITM-class default
          * silently. */
+        MbedTlsStream_DeclareNoPeerName(self);
         if (self->Installed.FingerprintCount == 0U)
         {
             MbedTlsStream_Report(
@@ -633,8 +635,19 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
         /* Empty string is the deliberate opt-out: the integrator has no name to
          * verify against (IP-pinning / private CA) and has said so explicitly, so
          * connect chain-only without a diagnostic. */
+        MbedTlsStream_DeclareNoPeerName(self);
     }
     return ok;
+}
+
+/* Mbed TLS 3.6.3 and later refuse a chain-verified handshake when the client
+ * never called mbedtls_ssl_set_hostname, and read a NULL name as the client
+ * saying the omission is deliberate. Earlier releases take the same call as a
+ * clear of nothing. A NULL name cannot fail: the only failures are a name too
+ * long or an allocation for one. */
+static inline void MbedTlsStream_DeclareNoPeerName(struct SolidSyslogMbedTlsStream* self)
+{
+    (void) mbedtls_ssl_set_hostname(&self->SslContext, NULL);
 }
 
 static inline bool MbedTlsStream_NameBeginsWithADot(const char* name)
