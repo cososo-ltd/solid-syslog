@@ -9,6 +9,7 @@
 #ifndef SOLIDSYSLOGERROR_H
 #define SOLIDSYSLOGERROR_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogExternC.h"
@@ -83,8 +84,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         enum SolidSyslogSeverity Severity;
         uint16_t Category;
+        /** Whether NativeCode means anything: a platform's code can be 0. */
+        bool HasNativeCode;
         const struct SolidSyslogErrorSource* Source;
         int32_t Detail;
+        /** The platform's own code for the fault - errno, an FRESULT, an lfs_*
+         *  error... - read only when HasNativeCode is set. */
         int32_t NativeCode;
     };
 
@@ -123,8 +128,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** As SolidSyslog_Error, with the platform's own code for the fault in the
-     *  event's NativeCode: errno, an FRESULT, an lfs_* error... Pass 0 when the
-     *  platform gave none. */
+     *  event's NativeCode and HasNativeCode set. For a fault the platform gave
+     *  no code for, call SolidSyslog_Error instead. */
     void SolidSyslog_ErrorWithNativeCode(
         enum SolidSyslogSeverity severity,
         const struct SolidSyslogErrorSource* source,

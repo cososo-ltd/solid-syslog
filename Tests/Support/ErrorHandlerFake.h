@@ -1,6 +1,7 @@
 #ifndef ERRORHANDLERFAKE_H
 #define ERRORHANDLERFAKE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogExternC.h"
@@ -16,6 +17,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct SolidSyslogErrorSource* ErrorHandlerFake_LastSource(void);
     uint16_t ErrorHandlerFake_LastCategory(void);
     int32_t ErrorHandlerFake_LastDetail(void);
+    bool ErrorHandlerFake_LastHasNativeCode(void);
     int32_t ErrorHandlerFake_LastNativeCode(void);
     const void* ErrorHandlerFake_LastContext(void);
 

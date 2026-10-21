@@ -21,8 +21,8 @@
 /** The link address of the next hop to the destination did not resolve within
  *  the wait, so the record was not handed to the stack. Raised once when
  *  resolution starts failing, not for every record while it fails.
- *  event->Detail is SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED, and
- *  event->NativeCode the platform's own code when it gave one. */
+ *  event->Detail is SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED; where the
+ *  platform gave a code, HasNativeCode is set and event->NativeCode carries it. */
 #define SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED ((uint16_t) (SOLIDSYSLOG_CAT_DATAGRAM_BASE + 1U))
 
 #endif /* SOLIDSYSLOGDATAGRAMCATEGORIES_H */

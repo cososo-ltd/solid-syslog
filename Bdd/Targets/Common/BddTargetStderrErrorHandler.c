@@ -83,7 +83,7 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
 /* The platform's own code, where the fault came with one, ends the line. */
 static void StderrErrorHandler_EndLine(const struct SolidSyslogErrorEvent* event)
 {
-    if (event->NativeCode != 0)
+    if (event->HasNativeCode)
     {
         (void) fprintf(stderr, " native=%ld", (long) event->NativeCode);
     }

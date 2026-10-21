@@ -245,7 +245,7 @@ under the file's own error source when it fails, as
 with a code naming the call. Where the call set `errno`, the event's
 `NativeCode` carries it: the VxWorks module number in the upper 16 bits and
 the code in the lower, as the shell's `printErrno` decodes it. A short `write`
-sets no `errno`, so the event carries 0 there.
+sets no `errno`, so `HasNativeCode` is clear on its event.
 [Error severity](../../error-severity.md) gives the level of each.
 
 These answers are not failures and raise nothing: a short read, which the store

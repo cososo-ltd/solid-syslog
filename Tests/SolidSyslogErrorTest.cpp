@@ -44,6 +44,16 @@ TEST(SolidSyslogErrorEx, AnEventFromErrorCarriesNoNativeCode)
     LONGS_EQUAL(0, ErrorHandlerFake_LastNativeCode());
 }
 
+TEST(SolidSyslogErrorEx, AnEventFromErrorSaysItHasNoNativeCode)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    ErrorHandlerFake_Install(&sentinel);
+
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42);
+
+    CHECK_FALSE(ErrorHandlerFake_LastHasNativeCode());
+}
+
 TEST(SolidSyslogErrorEx, AnEventFromErrorWithNativeCodeCarriesIt)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
@@ -51,8 +61,7 @@ TEST(SolidSyslogErrorEx, AnEventFromErrorWithNativeCodeCarriesIt)
 
     SolidSyslog_ErrorWithNativeCode(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42, -13);
 
-    CHECK_ERROR_REPORTED_ONCE(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42);
-    LONGS_EQUAL(-13, ErrorHandlerFake_LastNativeCode());
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(SOLIDSYSLOG_SEVERITY_WARNING, &source, 7U, 42, -13);
 }
 
 TEST(SolidSyslogErrorEx, SetErrorHandlerExWithNullHandlerRestoresDefault)
@@ -70,7 +79,7 @@ TEST(SolidSyslogErrorEx, AnEventNamesItsDetailThroughItsSource)
 {
     static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
     const struct SolidSyslogErrorEvent event =
-        {SOLIDSYSLOG_SEVERITY_WARNING, 0U, &source, SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED, 0};
+        {SOLIDSYSLOG_SEVERITY_WARNING, 0U, false, &source, SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED, 0};
 
     STRCMP_EQUAL("NEXT_HOP_UNRESOLVED", SolidSyslogErrorEvent_DetailName(&event));
 }
@@ -79,14 +88,14 @@ TEST(SolidSyslogErrorEx, AnEventWithANativeCodeStillNamesItsDetail)
 {
     static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
     const struct SolidSyslogErrorEvent event =
-        {SOLIDSYSLOG_SEVERITY_WARNING, 0U, &source, SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED, 2};
+        {SOLIDSYSLOG_SEVERITY_WARNING, 0U, true, &source, SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED, 2};
 
     STRCMP_EQUAL("NEXT_HOP_UNRESOLVED", SolidSyslogErrorEvent_DetailName(&event));
 }
 
 TEST(SolidSyslogErrorEx, AnEventWithoutASourceHasNoDetailName)
 {
-    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, 0U, nullptr, 2, 0};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, 0U, false, nullptr, 2, 0};
 
     POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
 }
@@ -94,7 +103,7 @@ TEST(SolidSyslogErrorEx, AnEventWithoutASourceHasNoDetailName)
 TEST(SolidSyslogErrorEx, AnEventWhoseSourceNamesNothingHasNoDetailName)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
-    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, 0U, &source, 2, 0};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, 0U, false, &source, 2, 0};
 
     POINTERS_EQUAL(nullptr, SolidSyslogErrorEvent_DetailName(&event));
 }
