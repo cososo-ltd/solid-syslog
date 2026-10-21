@@ -102,8 +102,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The detail's name, through the event's source, to read beside the
      *  category's. NULL when there is nothing to name: no source, a source
-     *  without names, a code outside its vocabulary, or a
-     *  SOLIDSYSLOG_CAT_NATIVE_ERROR, whose detail is the platform's own code. */
+     *  without names, or a code outside its vocabulary. The NativeCode is the
+     *  platform's own and is never named. */
     const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time

@@ -80,6 +80,20 @@ enum
         CHECK_ERROR_EVENT(expectedSeverity, expectedSource, expectedCategory, expectedDetail);        \
     }
 
+/* As CHECK_ERROR_REPORTED_ONCE, for a fault the platform gave a code for: the
+ * one event carries it in NativeCode. */
+#define CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(                                                    \
+    expectedSeverity,                                                                                  \
+    expectedSource,                                                                                    \
+    expectedCategory,                                                                                  \
+    expectedDetail,                                                                                    \
+    expectedNativeCode                                                                                 \
+)                                                                                                      \
+    {                                                                                                  \
+        CHECK_ERROR_REPORTED_ONCE(expectedSeverity, expectedSource, expectedCategory, expectedDetail); \
+        LONGS_EQUAL((expectedNativeCode), ErrorHandlerFake_LastNativeCode());                          \
+    }
+
 /* Asserts the open SolidSyslogFile reports `expected` bytes. The caller
  * includes SolidSyslogFile.h, as it does ErrorHandlerFake.h for the
  * CHECK_ERROR_* family above. */

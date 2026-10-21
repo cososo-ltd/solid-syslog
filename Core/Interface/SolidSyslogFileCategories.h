@@ -19,8 +19,8 @@
  */
 
 /** A file system call failed. event->Detail is the enum SolidSyslogFileErrors
- *  code naming the operation, and a SOLIDSYSLOG_CAT_NATIVE_ERROR event follows
- *  when the platform gave a code. */
+ *  code naming the operation, and event->NativeCode the platform's own code
+ *  when it gave one. */
 #define SOLIDSYSLOG_CAT_FILE_IO_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_FILE_BASE + 1U))
 
 #endif /* SOLIDSYSLOGFILECATEGORIES_H */

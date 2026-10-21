@@ -186,21 +186,16 @@ static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void)
                          PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND);
 }
 
-/* The lookup's own answer follows as the native code: a miss, or
- * eCantSendPacket for an entry whose reply is still pending, or a next hop the
- * stack cannot send to at all, such as an off-subnet destination with no
- * gateway configured. */
+/* The lookup's own answer is the native code: a miss, or eCantSendPacket for
+ * an entry whose reply is still pending, or a next hop the stack cannot send
+ * to at all, such as an off-subnet destination with no gateway configured. */
 static inline void PlusTcpDatagram_ReportUnresolved(eARPLookupResult_t lookup)
 {
-    PlusTcpDatagram_Report(
-        SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
-        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
-        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
-    );
-    SolidSyslog_Error(
+    SolidSyslog_ErrorWithNativeCode(
         SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
         &SolidSyslogPlusTcpDatagramErrorSource,
-        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
         (int32_t) lookup
     );
 }

@@ -338,19 +338,11 @@ TEST(SolidSyslogPlusTcpDatagram, AFailedResolutionReportsTheUnresolvedNextHopAnd
     ErrorHandlerFake_Install(nullptr);
     openAndSendUnresolved();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-    CHECK_ERROR_EVENT_AT(
-        0,
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPlusTcpDatagramErrorSource,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
-        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
-    );
-    CHECK_ERROR_EVENT_AT(
-        1,
-        SOLIDSYSLOG_SEVERITY_WARNING,
-        &SolidSyslogPlusTcpDatagramErrorSource,
-        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
         eARPCacheMiss
     );
 }
@@ -404,11 +396,11 @@ TEST(SolidSyslogPlusTcpDatagram, AnEntryStillWaitingForItsReplyIsReportedAsPendi
 
     openAndSendOnce();
 
-    CHECK_ERROR_EVENT_AT(
-        1,
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogPlusTcpDatagramErrorSource,
-        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
         eCantSendPacket
     );
 }
@@ -428,7 +420,7 @@ TEST(SolidSyslogPlusTcpDatagram, AFailureStraightAfterAnotherIsNotReportedAgain)
 
     SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
 TEST(SolidSyslogPlusTcpDatagram, AFailureAfterARecoveryIsReportedAgain)
@@ -441,7 +433,7 @@ TEST(SolidSyslogPlusTcpDatagram, AFailureAfterARecoveryIsReportedAgain)
     FreeRtosArpFake_SetCacheHit(false);
     SolidSyslogDatagram_SendTo(datagram, "x", 1, addr);
 
-    LONGS_EQUAL(4, ErrorHandlerFake_HandleCallCount());
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToSkipsArpProbeAndYieldOnCacheHit)
