@@ -85,6 +85,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         const struct SolidSyslogErrorSource* Source;
         uint16_t Category;
         int32_t Detail;
+        int32_t NativeCode;
     };
 
     /** Installed via SolidSyslog_SetErrorHandler; @p context is passed back
@@ -112,12 +113,24 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
 
     /** Emit an event to the installed handler. Called from inside the library at
-     *  fault sites; integrators building their own Sources call it too. */
+     *  fault sites; integrators building their own Sources call it too. The
+     *  event carries no native code. */
     void SolidSyslog_Error(
         enum SolidSyslogSeverity severity,
         const struct SolidSyslogErrorSource* source,
         uint16_t category,
         int32_t detail
+    );
+
+    /** As SolidSyslog_Error, with the platform's own code for the fault in the
+     *  event's NativeCode: errno, an FRESULT, an lfs_* error... Pass 0 when the
+     *  platform gave none. */
+    void SolidSyslog_ErrorWithNativeCode(
+        enum SolidSyslogSeverity severity,
+        const struct SolidSyslogErrorSource* source,
+        uint16_t category,
+        int32_t detail,
+        int32_t nativeCode
     );
 
 SOLIDSYSLOG_EXTERN_C_END

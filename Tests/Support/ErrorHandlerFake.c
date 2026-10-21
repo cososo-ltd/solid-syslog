@@ -15,6 +15,7 @@ static enum SolidSyslogSeverity lastSeverity;
 static const struct SolidSyslogErrorSource* lastSource;
 static uint16_t lastCategory;
 static int32_t lastDetail;
+static int32_t lastNativeCode;
 static const void* lastContext;
 static struct SolidSyslogErrorEvent keptEvents[ERRORHANDLERFAKE_KEPT_EVENTS];
 
@@ -29,6 +30,7 @@ static void Handle(void* context, const struct SolidSyslogErrorEvent* event)
     lastSource = event->Source;
     lastCategory = event->Category;
     lastDetail = event->Detail;
+    lastNativeCode = event->NativeCode;
     lastContext = context;
 }
 
@@ -39,6 +41,7 @@ void ErrorHandlerFake_Install(void* context)
     lastSource = NULL;
     lastCategory = 0U;
     lastDetail = 0;
+    lastNativeCode = 0;
     lastContext = NULL;
     for (int index = 0; index < ERRORHANDLERFAKE_KEPT_EVENTS; index++)
     {
@@ -46,6 +49,7 @@ void ErrorHandlerFake_Install(void* context)
         keptEvents[index].Source = NULL;
         keptEvents[index].Category = 0U;
         keptEvents[index].Detail = 0;
+        keptEvents[index].NativeCode = 0;
     }
     SolidSyslog_SetErrorHandler(Handle, context);
 }
@@ -73,6 +77,11 @@ uint16_t ErrorHandlerFake_LastCategory(void)
 int32_t ErrorHandlerFake_LastDetail(void)
 {
     return lastDetail;
+}
+
+int32_t ErrorHandlerFake_LastNativeCode(void)
+{
+    return lastNativeCode;
 }
 
 const void* ErrorHandlerFake_LastContext(void)

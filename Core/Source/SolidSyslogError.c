@@ -57,6 +57,18 @@ void SolidSyslog_Error(
     int32_t detail
 )
 {
-    const struct SolidSyslogErrorEvent event = {severity, source, category, detail};
+    SolidSyslog_ErrorWithNativeCode(severity, source, category, detail, 0);
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- detail and nativeCode are both codes; every caller passes named values
+void SolidSyslog_ErrorWithNativeCode(
+    enum SolidSyslogSeverity severity,
+    const struct SolidSyslogErrorSource* source,
+    uint16_t category,
+    int32_t detail,
+    int32_t nativeCode
+)
+{
+    const struct SolidSyslogErrorEvent event = {severity, source, category, detail, nativeCode};
     currentHandler(currentContext, &event);
 }

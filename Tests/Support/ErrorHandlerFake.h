@@ -16,6 +16,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct SolidSyslogErrorSource* ErrorHandlerFake_LastSource(void);
     uint16_t ErrorHandlerFake_LastCategory(void);
     int32_t ErrorHandlerFake_LastDetail(void);
+    int32_t ErrorHandlerFake_LastNativeCode(void);
     const void* ErrorHandlerFake_LastContext(void);
 
     /* The index-th event since Install, counting from 0, for a call under test
