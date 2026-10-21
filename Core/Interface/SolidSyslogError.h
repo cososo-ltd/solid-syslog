@@ -82,8 +82,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogErrorEvent
     {
         enum SolidSyslogSeverity Severity;
-        const struct SolidSyslogErrorSource* Source;
         uint16_t Category;
+        const struct SolidSyslogErrorSource* Source;
         int32_t Detail;
         int32_t NativeCode;
     };

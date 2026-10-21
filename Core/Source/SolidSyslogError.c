@@ -66,6 +66,6 @@ void SolidSyslog_ErrorWithNativeCode(
     int32_t nativeCode
 )
 {
-    const struct SolidSyslogErrorEvent event = {severity, source, category, detail, nativeCode};
+    const struct SolidSyslogErrorEvent event = {severity, category, source, detail, nativeCode};
     currentHandler(currentContext, &event);
 }
