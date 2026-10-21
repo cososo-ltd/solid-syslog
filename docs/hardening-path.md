@@ -119,8 +119,8 @@ static void OnSyslogError(void* context, const struct SolidSyslogErrorEvent* eve
 ```
 
 Each name function answers NULL for a value it does not know: a category in the
-integrator range, a severity off the ladder, a detail outside its source's
-vocabulary, or the detail of a `NATIVE_ERROR`, which is the platform's own code.
+integrator range, a severity off the ladder, or a detail outside its source's
+vocabulary. The event's `NativeCode` is the platform's own and has no name.
 `SolidSyslogErrorEvent_DetailName` goes through the event's source, so it is right
 whichever class spoke. Each name is bound to its enumerator, not its position, so
 a code added in a later release cannot shift the others.

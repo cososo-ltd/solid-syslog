@@ -12,6 +12,8 @@
 static bool fatalOnError = true;
 static const struct SolidSyslogErrorSource* tlsStreamSource;
 
+static void StderrErrorHandler_EndLine(const struct SolidSyslogErrorEvent* event);
+
 void BddTargetStderrErrorHandler_SetTlsSource(const struct SolidSyslogErrorSource* source)
 {
     tlsStreamSource = source;
@@ -49,7 +51,7 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
     {
         (void) fprintf(
             stderr,
-            "BDD-TARGET: FATAL: [%s %scat=%u detail=%ld] %s %s\n",
+            "BDD-TARGET: FATAL: [%s %scat=%u detail=%ld] %s %s",
             sourceName,
             role,
             (unsigned) event->Category,
@@ -57,6 +59,7 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
             message,
             BddTargetErrorText_Detail(event)
         );
+        StderrErrorHandler_EndLine(event);
         (void) fflush(stderr);
         _Exit(3);
     }
@@ -64,7 +67,7 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
     {
         (void) fprintf(
             stderr,
-            "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s %s\n",
+            "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s %s",
             (int) event->Severity,
             sourceName,
             role,
@@ -73,7 +76,18 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
             message,
             BddTargetErrorText_Detail(event)
         );
+        StderrErrorHandler_EndLine(event);
     }
+}
+
+/* The platform's own code, where the fault came with one, ends the line. */
+static void StderrErrorHandler_EndLine(const struct SolidSyslogErrorEvent* event)
+{
+    if (event->NativeCode != 0)
+    {
+        (void) fprintf(stderr, " native=%ld", (long) event->NativeCode);
+    }
+    (void) fprintf(stderr, "\n");
 }
 
 void BddTargetStderrErrorHandler_Install(void)

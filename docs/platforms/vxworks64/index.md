@@ -139,8 +139,8 @@ it fails the send; with a store the record is kept for the next pass.
 
 The wait falls on the task that calls `SolidSyslog_Service`, or on the logging
 task with an inline wiring. A resolution that fails is reported once, as
-`SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` followed by its `errno` as
-`SOLIDSYSLOG_CAT_NATIVE_ERROR`. Until a resolution succeeds again, sends do not
+`SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` with its `errno` as the event's
+`NativeCode`. Until a resolution succeeds again, sends do not
 wait and are not reported again, so an unreachable collector costs one wait
 rather than one per record.
 
@@ -242,11 +242,10 @@ reported as `SOLIDSYSLOG_CAT_FILE_IO_FAILED`.
 Each call the file makes on an open file, and the open itself, is reported
 under the file's own error source when it fails, as
 [`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
-with a code naming the call. Where the call set `errno`, the
-[`SOLIDSYSLOG_CAT_NATIVE_ERROR`](../../api/SolidSyslogErrorCategory_8h.md)
-event that follows carries it: the VxWorks module number in the upper 16 bits
-and the code in the lower, as the shell's `printErrno` decodes it. A short
-`write` sets no `errno`, so it raises the fault alone.
+with a code naming the call. Where the call set `errno`, the event's
+`NativeCode` carries it: the VxWorks module number in the upper 16 bits and
+the code in the lower, as the shell's `printErrno` decodes it. A short `write`
+sets no `errno`, so the event carries 0 there.
 [Error severity](../../error-severity.md) gives the level of each.
 
 These answers are not failures and raise nothing: a short read, which the store
