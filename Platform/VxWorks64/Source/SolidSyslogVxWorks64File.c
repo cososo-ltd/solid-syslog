@@ -10,6 +10,7 @@
 
 #include "vxWorks.h"
 
+#include "dosFsLib.h"
 #include "ioLib.h"
 
 #include "SolidSyslogError.h"
@@ -46,6 +47,7 @@ static inline bool VxWorks64File_Commit(int fd);
 static inline bool VxWorks64File_Sync(int fd);
 static inline bool VxWorks64File_CommitFileSystem(int fd);
 static inline void VxWorks64File_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
+static inline bool VxWorks64File_IsNotThere(int removeErrno);
 
 void SolidSyslogVxWorks64File_Initialise(struct SolidSyslogFile* base)
 {
@@ -252,10 +254,20 @@ static bool VxWorks64File_Exists(struct SolidSyslogFile* base, const char* path)
     return exists;
 }
 
+/* True only for a path remove took away or found absent. Any other failure
+ * leaves the file on the volume, and answering false lets the store freeze
+ * rather than forget a block it will find again at its next start-up. */
 static bool VxWorks64File_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
     STATUS status = remove(path);
     int removeErrno = (status == ERROR) ? errno : 0;
-    return (status == OK) || (removeErrno == ENOENT);
+    return (status == OK) || VxWorks64File_IsNotThere(removeErrno);
+}
+
+/* Each file system names an absent path its own way, measured on the target:
+ * HRFS sets ENOENT, dosFs S_dosFsLib_FILE_NOT_FOUND. */
+static inline bool VxWorks64File_IsNotThere(int removeErrno)
+{
+    return (removeErrno == ENOENT) || (removeErrno == S_dosFsLib_FILE_NOT_FOUND);
 }

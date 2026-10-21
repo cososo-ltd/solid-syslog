@@ -31,6 +31,7 @@ static const int VX_SEEK_END = 2;
 static const int VX_FIOSYNC = 21;
 static const int VX_FIOTRUNC = 42;
 static const int VX_FIOCOMMITFS = 56;
+static const int VX_S_DOSFSLIB_FILE_NOT_FOUND = 0x380003;
 static const int OWNER_READ_WRITE = 0x180;
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -647,16 +648,18 @@ TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSucceeds)
     CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
 
-TEST(SolidSyslogVxWorks64File, DeleteDoesNotProbeAPathItRemoved)
+// Whether the path is still there is read from remove's errno, never by
+// opening it: a volume that refuses every open would otherwise read as absent.
+TEST(SolidSyslogVxWorks64File, DeleteNeverProbesThePath)
 {
-    VxWorks64IoFake_PutFile(TEST_PATH);
+    VxWorks64IoFake_FailRemoves();
 
     SolidSyslogFile_Delete(file, TEST_PATH);
 
     CALLED_FAKE(VxWorks64IoFake_Open, NEVER);
 }
 
-TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSaysThePathWasNotThere)
+TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSaysThePathWasNotThereOnHrfs)
 {
     VxWorks64IoFake_FailRemoves();
     VxWorks64IoFake_FailWithErrno(ENOENT);
@@ -664,19 +667,19 @@ TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSaysThePathWasNotThere)
     CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
 
-TEST(SolidSyslogVxWorks64File, DeleteIsFalseWhenThePathRemains)
+TEST(SolidSyslogVxWorks64File, DeleteIsTrueWhenRemoveSaysThePathWasNotThereOnDosFs)
+{
+    VxWorks64IoFake_FailRemoves();
+    VxWorks64IoFake_FailWithErrno(VX_S_DOSFSLIB_FILE_NOT_FOUND);
+
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogVxWorks64File, DeleteIsFalseWhenRemoveFailsForAnyOtherReason)
 {
     VxWorks64IoFake_PutFile(TEST_PATH);
     VxWorks64IoFake_FailRemoves();
-
-    CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
-}
-
-TEST(SolidSyslogVxWorks64File, DeleteIsFalseWhenRemoveFailsAndThePathWillNotOpenEither)
-{
-    VxWorks64IoFake_FailRemoves();
     VxWorks64IoFake_FailWithErrno(EIO);
-    VxWorks64IoFake_FailOpens();
 
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
