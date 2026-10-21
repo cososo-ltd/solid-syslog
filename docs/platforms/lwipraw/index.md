@@ -147,10 +147,11 @@ The DNS resolver forwards what lwIP answers. A deployment that cannot trust its
 DNS should give the collector a numeric address, so that no resolution step
 exists to be poisoned.
 
-Give that address in IPv4. On a build with `LWIP_IPV6`, the numeric resolver
-accepts an IPv6 literal, but the datagram sends only to IPv4, so every send
-fails without saying why
-([#842](https://github.com/cososo-ltd/solid-syslog/issues/842)).
+Give that address in IPv4. The datagram and the stream send only to IPv4, so
+on a build with `LWIP_IPV6` both resolvers refuse an IPv6 answer, whether a
+literal you configured or one the DNS returned, rather than store a destination
+every send would fail to. The refusal is reported as `ERROR` with the detail
+`ADDRESS_FAMILY_UNSUPPORTED`, and asking again will not change it.
 
 ### Pool sizing is yours, and exhaustion is silent at the stack
 

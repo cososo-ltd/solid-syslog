@@ -10,8 +10,11 @@
  *  numeric IP literal, writing it into the destination SolidSyslogAddress;
  *  whatever ipaddr_aton accepts is accepted, whatever it rejects (DNS names,
  *  the empty string, and other non-address text) fails the Resolve, so the caller's
- *  unresolved-host error path runs. The transport is ignored. The parse touches
- *  no lwIP core state, so it takes no marshal hop.
+ *  unresolved-host error path runs. One parse is refused after the fact: an IPv6
+ *  literal on a build with LWIP_IPV6, which the pack's transports cannot send to,
+ *  fails the Resolve and is reported as ADDRESS_FAMILY_UNSUPPORTED. The
+ *  transport is ignored. The parse touches no lwIP core state, so it takes no
+ *  marshal hop.
  *
  *  Choosing between the two: this one where the endpoint is always an address,
  *  since it needs neither LWIP_DNS nor a Sleep;
