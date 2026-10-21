@@ -334,15 +334,6 @@ TEST(BddTargetVxWorks64, SetStoreNullLeavesTheDiskAlone)
     CALLED_FAKE(VxWorks64FsFake_Stat, NEVER);
 }
 
-TEST(BddTargetVxWorks64, SetStoreFileReadiesTheDisk)
-{
-    BddTargetVxWorks64_Init();
-
-    RunConsoleWith("set store file\nquit\n");
-
-    CALLED_FAKE(VxWorks64FsFake_Stat, ONCE);
-}
-
 TEST(BddTargetVxWorks64, SetStoreFileFormatsABlankDiskWithHrfsUnlessToldOtherwise)
 {
     BddTargetVxWorks64_Init();

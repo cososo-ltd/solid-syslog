@@ -20,6 +20,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Make stat answer OK for the root, but as a regular file. */
     void VxWorks64FsFake_MakeTheRootAFile(void);
 
+    /** Put a regular file at @p name, so stat answers for it once the volume is
+     *  formatted. One file at a time; a later put replaces it. */
+    void VxWorks64FsFake_PutFile(const char* name);
+
     /** Make both formatters answer ERROR and leave the volume blank. */
     void VxWorks64FsFake_FailFormats(void);
 

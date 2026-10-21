@@ -190,19 +190,23 @@ else()
     set(BDD_TARGET_VXWORKS64_TEMP_FILE ${CMAKE_SOURCE_DIR}/Tests/Support/TempFileStandard.c)
 endif()
 
+# The file asks sys/stat.h whether a path exists, so it and the file-system fake
+# that answers are shadowed.
 vxworks64_add_test(SolidSyslogVxWorks64FileTest
     SOURCES
         SolidSyslogVxWorks64FileTest.cpp
-        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64FileStatic.c
         ${VXWORKS64_FAKES}/VxWorks64IoFake.c
+    SHADOWED
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
+        ${VXWORKS64_FAKES}/VxWorks64FsFake.c
     LIBRARIES
         ConfigLockFake
         ErrorHandlerFake
 )
 
-# The store's sys/stat.h stand-in shadows the host's, so only the store and its
-# fake see it.
+# The sys/stat.h stand-in shadows the host's, so only the store and its fake
+# see it.
 vxworks64_add_test(BddTargetVxWorks64StoreTest
     SOURCES
         BddTargetVxWorks64StoreTest.cpp
@@ -227,7 +231,6 @@ vxworks64_add_test(BddTargetVxWorks64Test
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
-        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64FileStatic.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Hostname.c
         ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64Address.c
@@ -254,6 +257,7 @@ vxworks64_add_test(BddTargetVxWorks64Test
     SHADOWED
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Clock.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64Store.c
+        ${VXWORKS64_SOURCE}/SolidSyslogVxWorks64File.c
         ${VXWORKS64_CLOCK_SOURCES}
         ${VXWORKS64_FAKES}/VxWorks64FsFake.c
     INCLUDES

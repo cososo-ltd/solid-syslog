@@ -10,6 +10,8 @@
 
 #include "vxWorks.h"
 
+#include <sys/stat.h>
+
 #include "dosFsLib.h"
 #include "ioLib.h"
 
@@ -241,17 +243,15 @@ static void VxWorks64File_Truncate(struct SolidSyslogFile* base)
     }
 }
 
-/* The kernel offers no access(); a path exists if it opens. */
+/* stat answers for the path without opening it, so a scan of the block index
+ * space costs no descriptors. A path without a status answers false whatever
+ * the reason, and reports nothing: the open that follows on the same volume
+ * reports, and the store freezes on it. */
 static bool VxWorks64File_Exists(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    int probe = open(path, O_RDONLY, 0);
-    bool exists = probe != ERROR;
-    if (exists)
-    {
-        (void) close(probe);
-    }
-    return exists;
+    struct stat status;
+    return stat(path, &status) == OK;
 }
 
 /* True only for a path remove took away or found absent. Any other failure

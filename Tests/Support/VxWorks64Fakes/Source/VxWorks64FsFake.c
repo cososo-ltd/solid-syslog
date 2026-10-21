@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "dosFsLib.h"
 #include "hrfsLib.h"
@@ -32,6 +33,7 @@ static int VxWorks64FsFake_FormatOptions = -1;
 static bool VxWorks64FsFake_FormatHadNoPrompt = false;
 static unsigned VxWorks64FsFake_Stats = 0U;
 static const char* VxWorks64FsFake_StatName = NULL;
+static const char* VxWorks64FsFake_FileName = NULL;
 static unsigned VxWorks64FsFake_Formats = 0U;
 static unsigned VxWorks64FsFake_HrfsFormats = 0U;
 static unsigned VxWorks64FsFake_VolDescGets = 0U;
@@ -48,6 +50,7 @@ void VxWorks64FsFake_Reset(void)
     VxWorks64FsFake_FormatHadNoPrompt = false;
     VxWorks64FsFake_Stats = 0U;
     VxWorks64FsFake_StatName = NULL;
+    VxWorks64FsFake_FileName = NULL;
     VxWorks64FsFake_Formats = 0U;
     VxWorks64FsFake_HrfsFormats = 0U;
     VxWorks64FsFake_VolDescGets = 0U;
@@ -131,16 +134,31 @@ int VxWorks64FsFake_LastFormatHadNoPrompt(void)
     return VxWorks64FsFake_FormatHadNoPrompt ? 1 : 0;
 }
 
-/* rawFs answers no file status; a formatted volume's root is a directory. */
+void VxWorks64FsFake_PutFile(const char* name)
+{
+    VxWorks64FsFake_FileName = name;
+}
+
+/* A name ending in a slash asks for a directory, as the mount's root probe does. */
+static bool VxWorks64FsFake_IsADirectoryName(const char* name)
+{
+    size_t length = strlen(name);
+    return (length > 0U) && (name[length - 1U] == '/');
+}
+
+/* rawFs answers no file status. A formatted volume answers for its root, a
+ * directory, and for the file put on it; any other path has no status. */
 STATUS stat(const char* _name, struct stat* _pStat)
 {
     VxWorks64FsFake_Stats++;
     VxWorks64FsFake_StatName = _name;
     bool rootIsAFile = VxWorks64FsFake_TheVolume == VXWORKS64FSFAKE_VOLUME_ROOT_IS_A_FILE;
-    bool answers = VxWorks64FsFake_TheVolume != VXWORKS64FSFAKE_VOLUME_RAWFS;
+    bool formatted = VxWorks64FsFake_TheVolume != VXWORKS64FSFAKE_VOLUME_RAWFS;
+    bool isTheFile = (VxWorks64FsFake_FileName != NULL) && (strcmp(_name, VxWorks64FsFake_FileName) == 0);
+    bool answers = formatted && (VxWorks64FsFake_IsADirectoryName(_name) || isTheFile);
     if (answers)
     {
-        _pStat->st_mode = rootIsAFile ? VXWORKS64FSFAKE_REGULAR_FILE : S_IFDIR;
+        _pStat->st_mode = (rootIsAFile || isTheFile) ? VXWORKS64FSFAKE_REGULAR_FILE : S_IFDIR;
     }
     return answers ? OK : ERROR;
 }

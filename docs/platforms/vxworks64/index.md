@@ -250,8 +250,11 @@ and the code in the lower, as the shell's `printErrno` decodes it. A short
 [Error severity](../../error-severity.md) gives the level of each.
 
 These answers are not failures and raise nothing: a short read, which the store
-judges for itself; `FIOCOMMITFS` answering `ENOTSUP`; and a path that will not
-open when the file is only asked whether it exists.
+judges for itself; `FIOCOMMITFS` answering `ENOTSUP`; and a path `stat` has no
+status for when the file is only asked whether it exists. Whether a path
+exists is asked of `stat`, so the store's scan of its block files costs no
+descriptors; a volume the probe cannot ask reads as holding no blocks, and the
+open that follows on the same volume reports the fault.
 
 ### Delete answers from `remove`'s errno
 
