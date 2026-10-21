@@ -60,14 +60,9 @@ TEST(SolidSyslogLwipRawAddress, IpFieldRoundTripsBytes)
 
 {
     struct SolidSyslogLwipRawAddress* self = SolidSyslogLwipRawAddress_As(address);
-    IP_ADDR4(&self->Ip, 127, 0, 0, 1);
+    ipaddr_aton("127.0.0.1", &self->Ip);
 
-    ip_addr_t expected;
-    IP_ADDR4(&expected, 127, 0, 0, 1);
-    LONGS_EQUAL(
-        ip4_addr_get_u32(ip_2_ip4(&expected)),
-        ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(address)->Ip))
-    );
+    STRCMP_EQUAL("127.0.0.1", ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(address)->Ip));
 }
 
 TEST(SolidSyslogLwipRawAddress, PortFieldRoundTripsValue)
@@ -82,14 +77,14 @@ TEST(SolidSyslogLwipRawAddress, CreateZeroesIpAndPortFromAnyPriorSlotContents)
 
 {
     struct SolidSyslogLwipRawAddress* self = SolidSyslogLwipRawAddress_As(address);
-    IP_ADDR4(&self->Ip, 1, 2, 3, 4);
+    ipaddr_aton("1.2.3.4", &self->Ip);
     self->Port = 9999;
     SolidSyslogLwipRawAddress_Destroy(address);
 
     address = SolidSyslogLwipRawAddress_Create();
 
     const struct SolidSyslogLwipRawAddress* fresh = SolidSyslogLwipRawAddress_AsConst(address);
-    LONGS_EQUAL(0, ip4_addr_get_u32(ip_2_ip4(&fresh->Ip)));
+    STRCMP_EQUAL("0.0.0.0", ipaddr_ntoa(&fresh->Ip));
     LONGS_EQUAL(0, fresh->Port);
 }
 

@@ -73,6 +73,7 @@ target_link_libraries(SolidSyslogLwipRawAddressTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
@@ -138,6 +139,7 @@ target_link_libraries(SolidSyslogLwipRawDnsResolverTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
@@ -167,6 +169,7 @@ target_link_libraries(SolidSyslogLwipRawDatagramTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
@@ -199,6 +202,7 @@ target_link_libraries(SolidSyslogLwipRawTcpStreamTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
