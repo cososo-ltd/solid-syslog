@@ -253,15 +253,13 @@ These answers are not failures and raise nothing: a short read, which the store
 judges for itself; `FIOCOMMITFS` answering `ENOTSUP`; and a path that will not
 open when the file is only asked whether it exists.
 
-### A path that will not open counts as deleted
+### Delete answers from `remove`'s errno
 
-Delete reports success when `remove` succeeds, and also when it fails but the
-path then will not open, which is how an already-absent path shows. A volume
-that has become unavailable shows the same way, so a block file still on it
-counts as deleted: the store forgets the block, and finds it again at its next
-start-up. Nothing is reported either way.
-[#965](https://github.com/cososo-ltd/solid-syslog/issues/965) tracks telling
-the two apart and reporting a delete that fails.
+Delete reports success when `remove` succeeds, and when it fails with the
+file system's own not-found code, which is how an already-absent path shows:
+`ENOENT` on HRFS, `S_dosFsLib_FILE_NOT_FOUND` on dosFs. Any other failure,
+such as a volume that has become unavailable, answers false, and the file
+itself reports nothing: the store reports the failed dispose when it freezes.
 
 ### Mounting and formatting are yours
 
