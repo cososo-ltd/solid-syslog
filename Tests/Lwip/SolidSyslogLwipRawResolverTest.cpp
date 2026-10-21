@@ -15,6 +15,7 @@ using namespace CososoTesting;
 #include "SolidSyslogLwipRawResolverErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
@@ -287,6 +288,35 @@ TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)
 
     LONGS_EQUAL(udpIp, ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip)));
     LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsRefused)
+{
+    CHECK_FALSE(Resolve("::1"));
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    Resolve("::1");
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralLeavesTheCallersAddressAlone)
+{
+    Resolve(TEST_HOST, TEST_PORT);
+
+    Resolve("::1", 9999);
+
+    CHECK_TRUE(IP_IS_V4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
 }
 
 TEST(SolidSyslogLwipRawResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
