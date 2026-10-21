@@ -32,8 +32,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_AES_GCM_POLICY_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_AES_GCM_POLICY_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: BAD_CONFIG for
+     *  SOLIDSYSLOG_AES_GCM_POLICY_ERROR_BAD_CONFIG. NULL for a code outside the enum. */
     const char* SolidSyslogAesGcmPolicyErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END

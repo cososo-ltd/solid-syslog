@@ -38,8 +38,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: MQ_OPEN_FAILED for
+     *  SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED. NULL for a code outside the enum. */
     const char* SolidSyslogPosixMessageQueueBufferErrors_Name(int32_t detail);
 
     /** Identity for events raised by a PosixMessageQueueBuffer. A handler matches

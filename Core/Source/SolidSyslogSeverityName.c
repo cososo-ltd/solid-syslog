@@ -8,7 +8,7 @@
 
 #include "SolidSyslogErrorName.h"
 
-/* Sized by the ladder and indexed by its levels, so no name can shift. */
+/* Indexed by the ladder, so no name can shift. */
 const char* SolidSyslogSeverity_Name(int32_t severity)
 {
     static const char* const names[(int32_t) SOLIDSYSLOG_SEVERITY_DEBUG + 1] = {

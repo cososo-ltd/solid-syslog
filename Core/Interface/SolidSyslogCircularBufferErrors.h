@@ -45,8 +45,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: RECORD_TOO_LARGE for
+     *  SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE. NULL for a code outside the enum. */
     const char* SolidSyslogCircularBufferErrors_Name(int32_t detail);
 
     /** The identity for events raised by a CircularBuffer. A handler matches by

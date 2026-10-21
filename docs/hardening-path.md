@@ -110,7 +110,7 @@ static void OnSyslogError(void* context, const struct SolidSyslogErrorEvent* eve
     printf(
         "[syslog] %s %s %s %s (%ld)\n",
         OrDash(SolidSyslogSeverity_Name(event->Severity)),
-        event->Source->Name,
+        OrDash((event->Source != NULL) ? event->Source->Name : NULL),
         OrDash(SolidSyslogErrorCategory_Name(event->Category)),
         OrDash(SolidSyslogErrorEvent_DetailName(event)),
         (long) event->Detail

@@ -25,8 +25,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: POOL_EXHAUSTED for
+     *  SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_POOL_EXHAUSTED. NULL for a code outside the enum. */
     const char* SolidSyslogFileBlockDeviceErrors_Name(int32_t detail);
 
     /** The identity for events raised by a FileBlockDevice. A handler matches by

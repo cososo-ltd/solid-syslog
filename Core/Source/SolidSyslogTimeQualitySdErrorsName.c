@@ -8,8 +8,7 @@
 
 #include "SolidSyslogErrorName.h"
 
-/* Sized by the enum and indexed by its members, so a code added without a
- * name is a NULL the unit tests catch, and no name can shift. */
+/* Indexed by the enum, so no name can shift; a code without one is NULL. */
 const char* SolidSyslogTimeQualitySdErrors_Name(int32_t detail)
 {
     static const char* const names[SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_MAX] = {

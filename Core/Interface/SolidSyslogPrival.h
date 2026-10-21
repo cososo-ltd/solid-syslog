@@ -59,8 +59,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SEVERITY_DEBUG = 7
     };
 
-    /** The name the documentation uses for @p severity, without the
-     *  SOLIDSYSLOG_SEVERITY_ prefix; NULL outside EMERGENCY..DEBUG. */
+    /** The level's name: WARNING for SOLIDSYSLOG_SEVERITY_WARNING. NULL off the
+     *  ladder. */
     const char* SolidSyslogSeverity_Name(int32_t severity);
 
 SOLIDSYSLOG_EXTERN_C_END

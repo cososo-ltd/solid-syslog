@@ -58,9 +58,9 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /** The name the documentation uses for @p category, without the
-     *  SOLIDSYSLOG_CAT_ prefix; NULL for a value the library has not assigned,
-     *  which includes the whole integrator range. */
+    /** The category's name, read beside the detail's: POOL_EXHAUSTED for
+     *  SOLIDSYSLOG_CAT_POOL_EXHAUSTED. NULL for a value the library has not
+     *  assigned, which includes the whole integrator range. */
     const char* SolidSyslogErrorCategory_Name(uint16_t category);
 
 SOLIDSYSLOG_EXTERN_C_END

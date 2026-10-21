@@ -46,8 +46,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: NULL_CONFIG for
+     *  SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_CONFIG. NULL for a code outside the enum. */
     const char* SolidSyslogTlsCredentialsErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END

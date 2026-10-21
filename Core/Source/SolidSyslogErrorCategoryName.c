@@ -17,8 +17,7 @@
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogTlsStreamCategories.h"
 
-/* A switch rather than a table: the values are sparse, with gaps a role
- * leaves where a category was withdrawn. An unassigned value names nothing. */
+/* A switch rather than a table: the values are sparse. */
 const char* SolidSyslogErrorCategory_Name(uint16_t category)
 {
     const char* name = NULL;

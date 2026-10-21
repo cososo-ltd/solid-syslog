@@ -56,8 +56,8 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /** Names a detail code of one vocabulary: the SolidSyslog<Vocabulary>Errors_Name
-     *  function of the enum this source reports through. */
+    /** How a source names its detail codes: the SolidSyslog<Vocabulary>Errors_Name
+     *  of the enum it reports through. */
     typedef const char* (*SolidSyslogErrorDetailNameFunction)(int32_t detail);
 
     /** The identity of an error-emitting class. There is one extern instance per
@@ -66,8 +66,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogErrorSource
     {
         const char* Name; /**< Human-readable tag for logging; not the match key. */
-        /** Names this source's detail codes; NULL where they have no names, as
-         *  an integrator's own source may leave it. */
+        /** Names this source's detail codes. An integrator's own source may
+         *  leave it NULL. */
         SolidSyslogErrorDetailNameFunction DetailName;
     };
 
@@ -99,11 +99,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  of it - and act on it from your own code once the handler has returned. */
     typedef void (*SolidSyslogErrorHandler)(void* context, const struct SolidSyslogErrorEvent* event);
 
-    /** The name the documentation uses for the event's Detail, through its
-     *  Source; NULL where the event has no source, the source names nothing,
-     *  the code is outside its vocabulary, or the event is a
-     *  SOLIDSYSLOG_CAT_NATIVE_ERROR, whose Detail is the platform's own code
-     *  and has no library name. */
+    /** The detail's name, through the event's source, to read beside the
+     *  category's. NULL when there is nothing to name: no source, a source
+     *  without names, a code outside its vocabulary, or a
+     *  SOLIDSYSLOG_CAT_NATIVE_ERROR, whose detail is the platform's own code. */
     const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time

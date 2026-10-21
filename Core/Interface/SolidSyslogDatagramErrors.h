@@ -30,8 +30,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_DATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_DATAGRAM_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: NEXT_HOP_UNRESOLVED for
+     *  SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED. NULL for a code outside the enum. */
     const char* SolidSyslogDatagramErrors_Name(int32_t detail);
 
 SOLIDSYSLOG_EXTERN_C_END

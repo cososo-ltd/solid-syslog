@@ -26,8 +26,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
-    /** The name the documentation uses for @p detail, without the
-     *  SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_ prefix; NULL for a value outside the enum. */
+    /** The detail's name, read beside the category's: NULL_SENDER for
+     *  SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_NULL_SENDER. NULL for a code outside the enum. */
     const char* SolidSyslogPassthroughBufferErrors_Name(int32_t detail);
 
     /** The identity for events raised by a PassthroughBuffer. A handler matches
