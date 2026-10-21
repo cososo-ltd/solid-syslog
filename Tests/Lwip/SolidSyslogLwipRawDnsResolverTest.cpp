@@ -92,7 +92,7 @@ extern "C" void CountingTrackingMarshal(SolidSyslogLwipRawCallback callback, voi
 static ip_addr_t Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 {
     ip_addr_t address;
-    IP4_ADDR(&address, a, b, c, d);
+    IP_ADDR4(&address, a, b, c, d);
     return address;
 }
 

@@ -85,7 +85,7 @@ TEST(SolidSyslogLwipRawResolver, ResolvePopulatesIpFromLiteralIpv4)
     Resolve("127.0.0.1");
 
     ip_addr_t expected;
-    IP4_ADDR(&expected, 127, 0, 0, 1);
+    IP_ADDR4(&expected, 127, 0, 0, 1);
     LONGS_EQUAL(
         ip4_addr_get_u32(ip_2_ip4(&expected)),
         ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip))

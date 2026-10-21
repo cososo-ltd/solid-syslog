@@ -60,10 +60,10 @@ TEST(SolidSyslogLwipRawAddress, IpFieldRoundTripsBytes)
 
 {
     struct SolidSyslogLwipRawAddress* self = SolidSyslogLwipRawAddress_As(address);
-    IP4_ADDR(&self->Ip, 127, 0, 0, 1);
+    IP_ADDR4(&self->Ip, 127, 0, 0, 1);
 
     ip_addr_t expected;
-    IP4_ADDR(&expected, 127, 0, 0, 1);
+    IP_ADDR4(&expected, 127, 0, 0, 1);
     LONGS_EQUAL(
         ip4_addr_get_u32(ip_2_ip4(&expected)),
         ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(address)->Ip))
@@ -82,7 +82,7 @@ TEST(SolidSyslogLwipRawAddress, CreateZeroesIpAndPortFromAnyPriorSlotContents)
 
 {
     struct SolidSyslogLwipRawAddress* self = SolidSyslogLwipRawAddress_As(address);
-    IP4_ADDR(&self->Ip, 1, 2, 3, 4);
+    IP_ADDR4(&self->Ip, 1, 2, 3, 4);
     self->Port = 9999;
     SolidSyslogLwipRawAddress_Destroy(address);
 

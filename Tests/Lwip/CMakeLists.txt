@@ -44,9 +44,16 @@ set(LWIP_FAKE_SOURCES
 # remain cppchecked because their target's default C_CPPCHECK is honoured.
 add_library(LwipUpstreamParser STATIC
     ${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv4/ip4_addr.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv6/ip6_addr.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/ip.c
     ${SOLIDSYSLOG_LWIP_PATH}/src/core/def.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipFakes/Source/LwipParserStubs.c
 )
 target_include_directories(LwipUpstreamParser PRIVATE ${LWIP_TEST_INCLUDE_DIRS})
+# Upstream lwIP is not held to this tree's warning set; ip6_addr.c does not
+# pass -Wconversion. The parsers reference the stack's input paths without
+# calling them from a parse, and LwipParserStubs.c satisfies the link.
+target_compile_options(LwipUpstreamParser PRIVATE -w)
 set_target_properties(LwipUpstreamParser PROPERTIES
     C_CPPCHECK ""
 )
