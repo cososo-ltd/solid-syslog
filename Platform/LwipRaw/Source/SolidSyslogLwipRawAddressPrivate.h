@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGLWIPRAWADDRESSPRIVATE_H
 #define SOLIDSYSLOGLWIPRAWADDRESSPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
@@ -38,6 +39,15 @@ static inline const struct SolidSyslogLwipRawAddress* SolidSyslogLwipRawAddress_
 )
 {
     return (const struct SolidSyslogLwipRawAddress*) base;
+}
+
+/* The family the pack's transports send to. A dual-stack lwIP parses and
+ * resolves IPv6 too; on an IPv4-only one IP_IS_V4 is the constant 1 and the
+ * address goes unread. */
+static inline bool LwipRawAddress_IsIpv4(const ip_addr_t* address)
+{
+    (void) address;
+    return (IP_IS_V4(address) != 0);
 }
 
 static inline void LwipRawAddress_Report(

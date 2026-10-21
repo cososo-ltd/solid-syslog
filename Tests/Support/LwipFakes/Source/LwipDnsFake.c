@@ -9,6 +9,7 @@
 static unsigned getHostByNameCallCount = 0U;
 static const char* lastHostname = NULL;
 static ip_addr_t* lastAddrOut = NULL;
+static uint8_t lastAddrType = 0U;
 static err_t getHostByNameResult = ERR_OK;
 static ip_addr_t resolvedIp;
 
@@ -20,6 +21,7 @@ void LwipDnsFake_Reset(void)
     getHostByNameCallCount = 0;
     lastHostname = NULL;
     lastAddrOut = NULL;
+    lastAddrType = 0U;
     getHostByNameResult = ERR_OK;
     ip_addr_set_zero(&resolvedIp);
     storedCallback = NULL;
@@ -51,6 +53,11 @@ ip_addr_t* LwipDnsFake_LastAddrOut(void)
     return lastAddrOut;
 }
 
+uint8_t LwipDnsFake_LastAddrType(void)
+{
+    return lastAddrType;
+}
+
 bool LwipDnsFake_HasPendingCallback(void)
 {
     return storedCallback != NULL;
@@ -68,12 +75,19 @@ void LwipDnsFake_FireCallback(const ip_addr_t* ipaddr)
     }
 }
 
-err_t dns_gethostbyname(const char* hostname, ip_addr_t* addr, dns_found_callback found, void* callback_arg)
+err_t dns_gethostbyname_addrtype(
+    const char* hostname,
+    ip_addr_t* addr,
+    dns_found_callback found,
+    void* callback_arg,
+    u8_t dns_addrtype
+)
 {
     LWIP_REQUIRE_MARSHAL_ACTIVE();
     ++getHostByNameCallCount;
     lastHostname = hostname;
     lastAddrOut = addr;
+    lastAddrType = dns_addrtype;
     if (getHostByNameResult == ERR_OK)
     {
         *addr = resolvedIp;

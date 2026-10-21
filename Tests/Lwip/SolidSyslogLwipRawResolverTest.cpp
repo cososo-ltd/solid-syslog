@@ -315,7 +315,12 @@ TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralLeavesTheCallersAddressAlone)
 
     Resolve("::1", 9999);
 
-    CHECK_TRUE(IP_IS_V4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    ip_addr_t expected;
+    IP_ADDR4(&expected, 127, 0, 0, 1);
+    LONGS_EQUAL(
+        ip4_addr_get_u32(ip_2_ip4(&expected)),
+        ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip))
+    );
     LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
 }
 

@@ -69,7 +69,6 @@ static inline struct SolidSyslogLwipRawDnsResolver* LwipRawDnsResolver_SelfFromB
 static inline struct LwipRawDnsResolverCall* LwipRawDnsResolverCallFromContext(void* context);
 static void LwipRawDnsResolver_DoGetHostByName(void* context);
 static void LwipRawDnsResolver_Publish(struct LwipRawDnsResolverCall* call, const ip_addr_t* answer);
-static inline bool LwipRawDnsResolver_IsIpv4(const ip_addr_t* address);
 static void LwipRawDnsResolver_FoundCallback(const char* name, const ip_addr_t* ipaddr, void* arg);
 static bool LwipRawDnsResolver_WaitForCallback(struct SolidSyslogLwipRawDnsResolver* self);
 static void LwipRawDnsResolver_DoPublishResult(void* context);
@@ -108,8 +107,8 @@ static bool LwipRawDnsResolver_Resolve(
     self->Done = false;
     self->ResolvedOk = false;
 
-    /* dns_gethostbyname touches lwIP core state (unlike the numeric resolver's
-     * pure ipaddr_aton parse), so it must run under the marshal hop. */
+    /* dns_gethostbyname_addrtype touches lwIP core state (unlike the numeric
+     * resolver's pure ipaddr_aton parse), so it must run under the marshal hop. */
     struct LwipRawDnsResolverCall call = {
         .Self = self,
         .Host = host,
@@ -164,7 +163,7 @@ static bool LwipRawDnsResolver_Resolve(
  * would give the transports a destination they fail every send to. */
 static void LwipRawDnsResolver_Publish(struct LwipRawDnsResolverCall* call, const ip_addr_t* answer)
 {
-    if (LwipRawDnsResolver_IsIpv4(answer))
+    if (LwipRawAddress_IsIpv4(answer))
     {
         call->Destination->Ip = *answer;
         call->Destination->Port = call->Port;
@@ -176,16 +175,21 @@ static void LwipRawDnsResolver_Publish(struct LwipRawDnsResolverCall* call, cons
     }
 }
 
-static inline bool LwipRawDnsResolver_IsIpv4(const ip_addr_t* address)
-{
-    return IP_IS_V4(address);
-}
-
 static void LwipRawDnsResolver_DoGetHostByName(void* context)
 {
     struct LwipRawDnsResolverCall* call = LwipRawDnsResolverCallFromContext(context);
     struct SolidSyslogLwipRawDnsResolver* self = call->Self;
-    call->Err = dns_gethostbyname(call->Host, &self->ResolvedIp, LwipRawDnsResolver_FoundCallback, self);
+    /* The family is asked for up front, so a dual-stack lwIP does not spend
+     * an AAAA round trip and a cache slot on an answer the pack would refuse.
+     * The refusal in Publish stays for a cached or hostlist entry the stack
+     * hands over regardless. */
+    call->Err = dns_gethostbyname_addrtype(
+        call->Host,
+        &self->ResolvedIp,
+        LwipRawDnsResolver_FoundCallback,
+        self,
+        LWIP_DNS_ADDRTYPE_IPV4
+    );
 }
 
 /* lwIP fires this on the tcpip thread when an async lookup completes. ipaddr is

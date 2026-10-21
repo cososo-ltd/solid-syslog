@@ -12,8 +12,9 @@
  *  which needs neither LWIP_DNS nor a Sleep and takes no marshal hop. A build
  *  wires whichever one its deployment needs.
  *
- *  Resolve wraps lwIP's asynchronous dns_gethostbyname, which touches lwIP core
- *  state and so runs under the SolidSyslogLwipRaw_Marshal hop (unlike the
+ *  Resolve wraps lwIP's asynchronous dns_gethostbyname_addrtype, asking for
+ *  IPv4 since that is what the pack's transports send to. The call touches lwIP
+ *  core state and so runs under the SolidSyslogLwipRaw_Marshal hop (unlike the
  *  numeric resolver's pure ipaddr_aton parse). It bridges that async call to the
  *  synchronous Resolve contract on the caller's thread:
  *
@@ -26,8 +27,8 @@
  *    on), never off the volatile completion flag.
  *  - Any other immediate rejection, or the deadline elapsing, fails the Resolve
  *    so the caller's unresolved-host error path runs.
- *  - An answer in IPv6, which a build with LWIP_IPV6 can return and the pack's
- *    transports cannot send to, fails the Resolve and is reported as
+ *  - An answer in IPv6, which a build with LWIP_IPV6 can still hand over from
+ *    its cache or local hostlist, fails the Resolve and is reported as
  *    ADDRESS_FAMILY_UNSUPPORTED, on the caller's thread once the hop returns.
  *
  *  The transport is ignored. Requires LWIP_DNS=1. See docs/platforms/lwipraw/setup.md. */

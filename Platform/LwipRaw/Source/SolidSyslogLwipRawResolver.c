@@ -30,7 +30,6 @@ static bool LwipRawResolver_Resolve(
     uint16_t port,
     struct SolidSyslogAddress* result
 );
-static inline bool LwipRawResolver_IsIpv4(const ip_addr_t* address);
 
 void SolidSyslogLwipRawResolver_Initialise(struct SolidSyslogResolver* base)
 {
@@ -68,7 +67,7 @@ static bool LwipRawResolver_Resolve(
         /* IPv4 only, which is what the datagram's and stream's pcbs send to.
          * A dual-stack lwIP parses an IPv6 literal too, and storing it would
          * give the transports a destination they fail every send to. */
-        if (LwipRawResolver_IsIpv4(&parsed))
+        if (LwipRawAddress_IsIpv4(&parsed))
         {
             self->Ip = parsed;
             self->Port = port;
@@ -84,9 +83,4 @@ static bool LwipRawResolver_Resolve(
         }
     }
     return resolved;
-}
-
-static inline bool LwipRawResolver_IsIpv4(const ip_addr_t* address)
-{
-    return IP_IS_V4(address);
 }

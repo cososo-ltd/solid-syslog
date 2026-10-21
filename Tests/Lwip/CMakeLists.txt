@@ -50,10 +50,12 @@ add_library(LwipUpstreamParser STATIC
     ${CMAKE_SOURCE_DIR}/Tests/Support/LwipFakes/Source/LwipParserStubs.c
 )
 target_include_directories(LwipUpstreamParser PRIVATE ${LWIP_TEST_INCLUDE_DIRS})
-# Upstream lwIP is not held to this tree's warning set; ip6_addr.c does not
-# pass -Wconversion. The parsers reference the stack's input paths without
-# calling them from a parse, and LwipParserStubs.c satisfies the link.
-target_compile_options(LwipUpstreamParser PRIVATE -w)
+# Upstream lwIP is not held to this tree's warning set, and ip6_addr.c does not
+# pass -Wconversion; the relaxation is per file so our own LwipParserStubs.c,
+# which satisfies the input paths the parsers reference without calling, keeps
+# the full set.
+set_source_files_properties(${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv6/ip6_addr.c
+    PROPERTIES COMPILE_OPTIONS -w)
 set_target_properties(LwipUpstreamParser PROPERTIES
     C_CPPCHECK ""
 )

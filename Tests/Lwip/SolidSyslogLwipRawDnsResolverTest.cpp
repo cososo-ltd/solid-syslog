@@ -22,6 +22,7 @@ using namespace CososoTesting;
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogResolverErrors.h"
 #include "SolidSyslogError.h"
+#include "lwip/dns.h"
 #include "lwip/err.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/ip_addr.h"
@@ -154,6 +155,22 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
     {
         return SolidSyslogResolver_Resolve(resolver, transport, host, port, addr);
     }
+
+    // dns_gethostbyname answers at once with this address.
+    static void ArrangeSynchronousAnswer(const ip_addr_t& answer)
+    {
+        LwipDnsFake_SetResult(ERR_OK);
+        LwipDnsFake_SetResolvedIp(&answer);
+    }
+
+    // dns_gethostbyname queues the query; the first Sleep delivers this address.
+    static void ArmAsyncAnswer(const ip_addr_t& answer)
+    {
+        LwipDnsFake_SetResult(ERR_INPROGRESS);
+        FakeSleep_FireArmed = true;
+        FakeSleep_FireWithAddr = true;
+        FakeSleep_FireIp = answer;
+    }
 };
 
 // clang-format on
@@ -194,11 +211,18 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesPortFromArgOnSynchronousHit)
     LONGS_EQUAL(9999, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
 }
 
+TEST(SolidSyslogLwipRawDnsResolver, ResolveAsksTheStackForIpv4Only)
+{
+    LwipDnsFake_SetResult(ERR_OK);
+
+    Resolve();
+
+    LONGS_EQUAL(LWIP_DNS_ADDRTYPE_IPV4, LwipDnsFake_LastAddrType());
+}
+
 TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsRefused)
 {
-    ip_addr_t hit = Ipv6Loopback();
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Ipv6Loopback());
 
     CHECK_FALSE(Resolve());
 }
@@ -206,9 +230,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsRefused)
 TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsReportedAsUnsupportedFamily)
 {
     ErrorHandlerFake_Install(nullptr);
-    ip_addr_t hit = Ipv6Loopback();
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Ipv6Loopback());
 
     Resolve();
 
@@ -223,11 +245,9 @@ TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsReportedAsUnsupporte
 TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerLeavesTheCallersAddressAlone)
 {
     ip_addr_t earlier = Ipv4(10, 0, 2, 2);
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&earlier);
+    ArrangeSynchronousAnswer(earlier);
     Resolve(TEST_HOST, TEST_PORT);
-    ip_addr_t hit = Ipv6Loopback();
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Ipv6Loopback());
 
     Resolve(TEST_HOST, 9999);
 
@@ -237,10 +257,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerLeavesTheCallersAddres
 
 TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsRefused)
 {
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv6Loopback();
+    ArmAsyncAnswer(Ipv6Loopback());
 
     CHECK_FALSE(Resolve());
 }
@@ -248,10 +265,7 @@ TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsRefused)
 TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsReportedAsUnsupportedFamily)
 {
     ErrorHandlerFake_Install(nullptr);
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv6Loopback();
+    ArmAsyncAnswer(Ipv6Loopback());
 
     Resolve();
 
@@ -268,10 +282,7 @@ TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsReportedOutsideTheMarshal
     // The error handler is the integrator's code: it is told on the caller's
     // thread once the publish hop has returned, never from inside it.
     SolidSyslog_SetErrorHandler(MarshalSpyingHandler, nullptr);
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv6Loopback();
+    ArmAsyncAnswer(Ipv6Loopback());
 
     Resolve();
 
