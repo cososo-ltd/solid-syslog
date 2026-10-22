@@ -74,6 +74,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     unsigned char* MbedTlsFake_LastSslReadBufArg(void);
     size_t MbedTlsFake_LastSslReadLenArg(void);
     void MbedTlsFake_SetSslReadReturn(int value);
+    /* Per-call return sequence, as for the handshake: once exhausted, every
+     * later call returns the last entry. Capped at 8 (silently truncated). */
+    void MbedTlsFake_SetSslReadReturnSequence(const int* values, int count);
 
     int MbedTlsFake_SslCloseNotifyCallCount(void);
     struct mbedtls_ssl_context* MbedTlsFake_LastSslCloseNotifyArg(void);
