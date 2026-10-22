@@ -318,6 +318,8 @@ TEST(SolidSyslogServiceHeldRecordTwoInstances, EachInstanceHoldsItsOwnRecord)
 
     SolidSyslog_Service(solidSyslog);
 
+    CALLED_FAKE_ON(SenderFake_Send, otherSender, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
     STRCMP_EQUAL("first", SenderFake_LastBufferAsString(fakeSender));
 }
 
