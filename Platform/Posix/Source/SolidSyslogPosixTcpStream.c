@@ -81,6 +81,7 @@ static void PosixTcpStream_ReportUnfinishedWait(int fd, int selectResult, int se
 static inline bool PosixTcpStream_IsRemoteConnectError(int connectErrno);
 static inline bool PosixTcpStream_WaitTimedOut(int selectResult);
 static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self);
+static bool PosixTcpStream_PeerIsStillThere(struct SolidSyslogPosixTcpStream* self);
 static bool PosixTcpStream_WroteAllBytes(ssize_t sent, size_t expected);
 static inline bool PosixTcpStream_WouldBlock(int err);
 
@@ -471,14 +472,35 @@ static bool PosixTcpStream_ReadSocketError(int fd, int* code)
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
-    ssize_t sent = send(self->Fd, buffer, size, MSG_NOSIGNAL);
-    bool ok = PosixTcpStream_WroteAllBytes(sent, size);
+    bool ok = PosixTcpStream_PeerIsStillThere(self);
 
+    if (ok)
+    {
+        ssize_t sent = send(self->Fd, buffer, size, MSG_NOSIGNAL);
+        ok = PosixTcpStream_WroteAllBytes(sent, size);
+    }
     if (!ok)
     {
         PosixTcpStream_Close(base);
     }
     return ok;
+}
+
+/* A peer that has closed its end leaves the socket writable, so send takes the
+ * record, and only the peer's reset - a round trip later - says it went
+ * nowhere. By then Send has returned true and the record has left the caller's
+ * hands. A FIN that has arrived reads as end-of-stream, so ask first: a
+ * half-closed connection fails the send and store-and-forward replays the
+ * record instead of losing it. */
+static bool PosixTcpStream_PeerIsStillThere(struct SolidSyslogPosixTcpStream* self)
+{
+    char discard = 0;
+    ssize_t peeked = recv(self->Fd, &discard, sizeof(discard), MSG_PEEK);
+    /* Captured immediately after recv so the test below satisfies MISRA 22.10 -
+     * no intervening library call between the errno-setting function and the
+     * read. */
+    int peekErrno = (peeked < 0) ? errno : 0;
+    return (peeked > 0) || ((peeked < 0) && PosixTcpStream_WouldBlock(peekErrno));
 }
 
 /* Non-blocking single-call contract: short write or any error means the

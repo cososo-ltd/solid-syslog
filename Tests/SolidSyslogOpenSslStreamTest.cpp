@@ -290,6 +290,14 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         SolidSyslogStream_Send(stream, msg, sizeof(msg));
     }
 
+    /* The collector has ended the session: SSL_read reports a clean shutdown. */
+    void OpenWithPeerClosedSession() const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        OpenSslFake_SetReadReturn(0);
+        OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    }
+
     /* Open then arrange SSL_read to return the configured value while
        SSL_get_error reports the configured SSL-level status - together they
        exercise each branch of the Read non-blocking contract. */
@@ -1388,9 +1396,7 @@ TEST(SolidSyslogOpenSslStream, SendReturnsFalseOnShortWrite)
 
 TEST(SolidSyslogOpenSslStream, SendRefusesTheRecordWhenThePeerHasClosedTheSession)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetReadReturn(0);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    OpenWithPeerClosedSession();
     const char msg[] = "hi";
     CHECK_FALSE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
 }
@@ -1407,18 +1413,14 @@ TEST(SolidSyslogOpenSslStream, SendRefusesTheRecordWhenDataWaitsAheadOfThePeerCl
 
 TEST(SolidSyslogOpenSslStream, SendWritesNothingToASessionThePeerHasClosed)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetReadReturn(0);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    OpenWithPeerClosedSession();
     SendShortMessage();
     CALLED_FAKE(OpenSslFake_Write, NEVER);
 }
 
 TEST(SolidSyslogOpenSslStream, SendClosesSslAndTransportWhenThePeerHasClosedTheSession)
 {
-    SolidSyslogStream_Open(stream, addr);
-    OpenSslFake_SetReadReturn(0);
-    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    OpenWithPeerClosedSession();
     SendShortMessage();
     CHECK_SSL_SESSION_CLOSED();
     CHECK_TRANSPORT_CLOSED_ONCE();

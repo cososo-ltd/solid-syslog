@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <sys/socket.h>
 
 #include "SocketFake.h"
@@ -46,4 +47,12 @@ TEST(SocketFake, RecvCapturesFlags)
     char buf[16];
     recv(3, buf, sizeof(buf), 42);
     LONGS_EQUAL(42, SocketFake_LastRecvFlags());
+}
+
+TEST(SocketFake, RecvWouldBlockByDefault)
+{
+    char buf[16];
+    errno = 0;
+    LONGS_EQUAL(-1, recv(3, buf, sizeof(buf), 0));
+    LONGS_EQUAL(EAGAIN, errno);
 }
