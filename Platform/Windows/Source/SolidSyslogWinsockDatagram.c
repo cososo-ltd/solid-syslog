@@ -127,6 +127,9 @@ static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
 static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
+    /* Opening what is already open would otherwise lose the socket it holds,
+     * and Winsock's handle table is finite. */
+    WinsockDatagram_Close(base);
     self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
     self->Connected = false;
     return WinsockDatagram_IsSocketValid(self->Fd);
