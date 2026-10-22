@@ -5,6 +5,7 @@
 #include "ErrorHandlerFake.h"
 #include "SenderFake.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullSender.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogSwitchingSender.h"
@@ -444,6 +445,24 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR
     );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullInnerSenderReportsError)
+{
+    inners[0] = nullptr;
+    SolidSyslogSwitchingSender_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_INNER_SENDER
+    );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullInnerSenderReturnsNullSender)
+{
+    inners[0] = nullptr;
+    POINTERS_EQUAL(SolidSyslogNullSender_Get(), SolidSyslogSwitchingSender_Create(&config));
 }
 
 TEST(SolidSyslogSwitchingSenderBadSetup, SendOnBadSetupSenderReturnsTrueAndDrops)

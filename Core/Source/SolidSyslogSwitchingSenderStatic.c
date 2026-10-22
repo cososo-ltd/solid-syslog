@@ -20,6 +20,7 @@
 struct SolidSyslogSender;
 
 static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSenderConfig* config);
+static inline bool SwitchingSender_HasNullInnerSender(const struct SolidSyslogSwitchingSenderConfig* config);
 static inline size_t SwitchingSender_IndexFromHandle(const struct SolidSyslogSender* base);
 static inline void SwitchingSender_CleanupAtIndex(size_t index, void* context);
 
@@ -80,11 +81,32 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
             SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR
         );
     }
+    else if (SwitchingSender_HasNullInnerSender(config))
+    {
+        SwitchingSender_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_INNER_SENDER
+        );
+    }
     else
     {
         valid = true;
     }
     return valid;
+}
+
+/* The Selector's index is bounds-checked on every Send, but the element it
+ * lands on is not: a NULL there would be called as a vtable. Refusing the
+ * array here keeps that check off the Send path. */
+static inline bool SwitchingSender_HasNullInnerSender(const struct SolidSyslogSwitchingSenderConfig* config)
+{
+    bool hole = false;
+    for (size_t i = 0U; (i < config->SenderCount) && !hole; i++)
+    {
+        hole = config->Senders[i] == NULL;
+    }
+    return hole;
 }
 
 void SolidSyslogSwitchingSender_Destroy(struct SolidSyslogSender* base)

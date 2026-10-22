@@ -34,7 +34,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Wiring for SolidSyslogSwitchingSender_Create, a sender that fronts several
      *  inner senders and picks one per message via Selector (dual-SIEM, failover).
-     *  Senders and Selector are required (NULL makes Create fall back to the shared
+     *  Senders and Selector are required, as is every element of Senders within
+     *  SenderCount (NULL in any of them makes Create fall back to the shared
      *  NullSender). The Senders array and the inner senders it points to must
      *  outlive the created handle, but the config struct itself is copied at Create
      *  and may be transient. Switching away from a sender disconnects it. */
