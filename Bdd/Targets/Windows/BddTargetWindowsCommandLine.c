@@ -2,8 +2,21 @@
 
 #include "BddTargetStoreSettings.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
+enum
+{
+    STORE_OPTION_PREFIX_LENGTH = 2
+};
+
+/* Whether a flag can be a store option: it has the dashes a setting's name
+   lacks. The shared settings say whether the name is one of theirs. */
+static bool IsStoreOption(const char* flag)
+{
+    return strncmp(flag, "--", STORE_OPTION_PREFIX_LENGTH) == 0;
+}
 
 void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetWindowsOptions* options)
 {
@@ -51,25 +64,13 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
         {
             options->Store = argv[++i];
         }
-        else if (((i + 1) < argc) && (strcmp(argv[i], "--max-blocks") == 0))
+        else if (((i + 1) < argc) && IsStoreOption(argv[i]) &&
+                 BddTargetStoreSettings_SetByName(argv[i] + STORE_OPTION_PREFIX_LENGTH, argv[i + 1]))
         {
-            (void) BddTargetStoreSettings_SetByName("max-blocks", argv[++i]);
-        }
-        else if (((i + 1) < argc) && (strcmp(argv[i], "--max-block-size") == 0))
-        {
-            (void) BddTargetStoreSettings_SetByName("max-block-size", argv[++i]);
-        }
-        else if (((i + 1) < argc) && (strcmp(argv[i], "--discard-policy") == 0))
-        {
-            (void) BddTargetStoreSettings_SetByName("discard-policy", argv[++i]);
-        }
-        else if (((i + 1) < argc) && (strcmp(argv[i], "--security-policy") == 0))
-        {
-            (void) BddTargetStoreSettings_SetByName("security-policy", argv[++i]);
-        }
-        else if (((i + 1) < argc) && (strcmp(argv[i], "--capacity-threshold") == 0))
-        {
-            (void) BddTargetStoreSettings_SetByName("capacity-threshold", argv[++i]);
+            /* A store option whose value the shared settings took; the flag
+               is the setting's name after the dashes. A value they refused is
+               ignored like any unknown flag, and its text is looked at next. */
+            i++;
         }
         else if (strcmp(argv[i], "--halt-exit") == 0)
         {

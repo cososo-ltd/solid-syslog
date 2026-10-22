@@ -37,18 +37,20 @@ static int SetIfValid(bool valid, const char* value, const char** field)
     return valid ? 0 : 1;
 }
 
-/* Hands a store option to the shared settings under the name the harness
- * uses for it. Returns 0 when taken, 1 when not - the parse's own result. */
+/* Hands a store option to the shared settings, which know it by the long
+ * option's own name. Returns 0 when taken, 1 when not - the parse's own
+ * result. */
 static int SetStoreSetting(const char* name, const char* value)
 {
     return BddTargetStoreSettings_SetByName(name, value) ? 0 : 1;
 }
 
-/* Applies one parsed option to `options`. Returns 0 on success, 1 if the
- * option's argument is invalid (which fails the whole parse). Split out of
+/* Applies one parsed option to `options`; `name` is the long option's name,
+ * or NULL for a short one. Returns 0 on success, 1 if the option's argument
+ * is invalid (which fails the whole parse). Split out of
  * BddTargetCommandLine_Parse to keep the loop a thin driver and the per-option
  * logic in one place. */
-static int ApplyOption(int opt, const char* value, struct BddTargetOptions* options)
+static int ApplyOption(int opt, const char* name, const char* value, struct BddTargetOptions* options)
 {
     int result = 0;
     switch (opt)
@@ -87,26 +89,16 @@ static int ApplyOption(int opt, const char* value, struct BddTargetOptions* opti
             }
             break;
         case OPT_MAX_BLOCKS:
-            result = SetStoreSetting("max-blocks", value);
-            break;
         case OPT_MAX_BLOCK_SIZE:
-            result = SetStoreSetting("max-block-size", value);
-            break;
         case OPT_DISCARD_POLICY:
-            result = SetStoreSetting("discard-policy", value);
-            break;
         case OPT_SECURITY_POLICY:
-            result = SetStoreSetting("security-policy", value);
-            break;
         case OPT_CAPACITY_THRESHOLD:
-            result = SetStoreSetting("capacity-threshold", value);
+            result = SetStoreSetting(name, value);
             break;
         case OPT_NO_SD:
-            /* A bare flag; the shared settings take every value as a number. */
-            result = SetStoreSetting("no-sd", "1");
-            break;
         case OPT_HALT_EXIT:
-            result = SetStoreSetting("halt-exit", "1");
+            /* Bare flags; the shared settings take every value as a number. */
+            result = SetStoreSetting(name, "1");
             break;
         case OPT_APP_NAME:
             options->AppName = value;
@@ -154,9 +146,13 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
 
     int opt = 0;
     int result = 0;
-    while ((result == 0) && ((opt = getopt_long(argc, argv, "f:s:i:m:t:o:", longOptions, NULL)) != -1))
+    int longIndex = -1;
+    while ((result == 0) && ((opt = getopt_long(argc, argv, "f:s:i:m:t:o:", longOptions, &longIndex)) != -1))
     {
-        result = ApplyOption(opt, optarg, options);
+        /* getopt_long leaves longIndex alone for a short option. */
+        const char* name = (longIndex >= 0) ? longOptions[longIndex].name : NULL;
+        result = ApplyOption(opt, name, optarg, options);
+        longIndex = -1;
     }
 
     return result;
