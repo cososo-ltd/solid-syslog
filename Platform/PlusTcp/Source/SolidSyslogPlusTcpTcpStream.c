@@ -64,7 +64,6 @@ static uint32_t PlusTcpTcpStream_Version(struct SolidSyslogStream* base);
 static inline struct SolidSyslogPlusTcpTcpStream* PlusTcpTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool PlusTcpTcpStream_ConfigProvidesGetter(const struct SolidSyslogPlusTcpTcpStreamConfig* config);
 static inline bool PlusTcpTcpStream_IsOpen(const struct SolidSyslogPlusTcpTcpStream* self);
-static inline bool PlusTcpTcpStream_IsClosed(const struct SolidSyslogPlusTcpTcpStream* self);
 static void PlusTcpTcpStream_OpenSocket(struct SolidSyslogPlusTcpTcpStream* self);
 static void PlusTcpTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogPlusTcpTcpStream* self,
@@ -163,7 +162,16 @@ static bool PlusTcpTcpStream_Open(struct SolidSyslogStream* base, const struct S
 {
     struct SolidSyslogPlusTcpTcpStream* self = PlusTcpTcpStream_SelfFromBase(base);
     bool opened = false;
-    if (PlusTcpTcpStream_IsClosed(self))
+    if (PlusTcpTcpStream_IsOpen(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        PlusTcpTcpStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
     {
         PlusTcpTcpStream_OpenSocket(self);
         if (PlusTcpTcpStream_IsOpen(self))
@@ -179,26 +187,12 @@ static bool PlusTcpTcpStream_Open(struct SolidSyslogStream* base, const struct S
         }
         opened = PlusTcpTcpStream_IsOpen(self);
     }
-    else
-    {
-        /* Refused by contract, not reconnected: what is held stays as it is. */
-        PlusTcpTcpStream_Report(
-            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
-            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
-        );
-    }
     return opened;
 }
 
 static inline bool PlusTcpTcpStream_IsOpen(const struct SolidSyslogPlusTcpTcpStream* self)
 {
     return self->Socket != FREERTOS_INVALID_SOCKET;
-}
-
-static inline bool PlusTcpTcpStream_IsClosed(const struct SolidSyslogPlusTcpTcpStream* self)
-{
-    return !PlusTcpTcpStream_IsOpen(self);
 }
 
 static void PlusTcpTcpStream_OpenSocket(struct SolidSyslogPlusTcpTcpStream* self)
