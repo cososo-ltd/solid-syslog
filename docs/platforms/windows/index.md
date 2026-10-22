@@ -81,6 +81,23 @@ flagging the socket in `select`'s exception set, so a refusal normally carries
 the `SO_ERROR` it left, `WSAECONNREFUSED` among them. The connect budget
 expiring leaves none.
 
+### A collector that closes the connection costs no record
+
+A send first peeks at the socket to learn whether the peer has closed its end,
+as the [Stream](../../api/structSolidSyslogStream.md) contract requires. A
+socket stays writable after a peer closes, so without that check Winsock would
+take a record nothing can deliver, and only the peer's reset would say so, by
+which time the record has been reported as delivered. When the peek sees the
+close, the send fails, the stream closes itself, and your store replays the
+record on the next connection.
+
+The peek sees only a close Winsock has already learned of: a peer that closes
+while the record is being sent can still cost that record, because syslog over
+TCP has no acknowledgement to say it arrived. Nor can it see past bytes the
+peer sent that nothing has read: a close behind them goes unnoticed. A syslog
+collector sends nothing back, so in practice nothing is queued when the peek
+looks.
+
 ### A peer that dies silently is detected, and you size how long that takes
 
 Keepalive probes begin after `SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS` of silence

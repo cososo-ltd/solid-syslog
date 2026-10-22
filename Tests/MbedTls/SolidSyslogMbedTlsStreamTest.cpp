@@ -784,6 +784,63 @@ TEST(SolidSyslogMbedTlsStream, SendClosesSslAndTransportOnShortWrite)
     LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
 }
 
+TEST(SolidSyslogMbedTlsStream, SendRefusesTheRecordWhenThePeerHasClosedTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    MbedTlsFake_SetSslReadReturn(MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY);
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogMbedTlsStream, SendWritesNothingToASessionThePeerHasClosed)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    MbedTlsFake_SetSslReadReturn(MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(0, MbedTlsFake_SslWriteCallCount());
+}
+
+TEST(SolidSyslogMbedTlsStream, SendClosesSslAndTransportWhenThePeerHasClosedTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    MbedTlsFake_SetSslReadReturn(MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogMbedTlsStream, SendRefusesTheRecordWhenDataWaitsAheadOfThePeerClosingTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    const int reads[] = {5, MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY};
+    MbedTlsFake_SetSslReadReturnSequence(reads, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogMbedTlsStream, SendWritesToAPeerThatNeverStopsSending)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    MbedTlsFake_SetSslReadReturn(5);
+
+    CHECK_TRUE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogMbedTlsStream, SendReadsEightTimesSixteenBytesBeforeGivingUpOnAPeerThatNeverStopsSending)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    MbedTlsFake_SetSslReadReturn(5);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(8, MbedTlsFake_SslReadCallCount());
+    LONGS_EQUAL(16, MbedTlsFake_LastSslReadLenArg());
+}
+
 TEST(SolidSyslogMbedTlsStream, ReadForwardsBufferToSslRead)
 
 {

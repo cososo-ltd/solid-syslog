@@ -113,6 +113,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int SocketFake_CloseCallCount(void);
     int SocketFake_LastClosedFd(void);
 
+    /* recv answers -1 with errno EAGAIN until told otherwise - an idle
+     * non-blocking socket. A negative value set here answers EAGAIN too. */
     void SocketFake_SetRecvReturn(ssize_t value);
     void SocketFake_FailNextRecvWithErrno(int errnoValue);
 

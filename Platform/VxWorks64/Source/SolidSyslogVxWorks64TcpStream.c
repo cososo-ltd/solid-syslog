@@ -350,7 +350,9 @@ static inline bool VxWorks64TcpStream_FitsTheStack(size_t size)
 }
 
 /* A peer's FIN leaves the socket writable, so peek first: send would accept a
- * record that cannot arrive. */
+ * record that cannot arrive. Bytes the peer sent that nothing has read stand in
+ * front of its FIN, and the peek sees those instead; a syslog collector sends
+ * nothing back, so the queue is empty when the check runs. */
 static bool VxWorks64TcpStream_PeerIsStillThere(struct SolidSyslogVxWorks64TcpStream* self)
 {
     char discard = 0;

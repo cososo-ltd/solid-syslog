@@ -207,6 +207,13 @@ TEST(WinsockFake, RecvRecordsCall)
     LONGS_EQUAL(0, WinsockFake_LastRecvFlags());
 }
 
+TEST(WinsockFake, RecvWouldBlockByDefault)
+{
+    char buf[16];
+    LONGS_EQUAL(SOCKET_ERROR, WinsockFake_recv(INVALID_SOCKET, buf, sizeof(buf), 0));
+    LONGS_EQUAL(WSAEWOULDBLOCK, WinsockFake_WSAGetLastError());
+}
+
 TEST(WinsockFake, RecvReturnsConfiguredValue)
 {
     char buf[16];

@@ -145,6 +145,15 @@ static unsigned char* lastSslReadBufArg;
 static size_t lastSslReadLenArg;
 static int sslReadReturn;
 
+enum
+{
+    MBEDTLSFAKE_MAX_READ_RETURNS = 8
+};
+
+static int sslReadReturnSequence[MBEDTLSFAKE_MAX_READ_RETURNS];
+static int sslReadReturnSequenceLen;
+static int sslReadReturnSequenceStart;
+
 /* mbedtls_ssl_close_notify */
 static int sslCloseNotifyCallCount;
 static mbedtls_ssl_context* lastSslCloseNotifyArg;
@@ -254,7 +263,9 @@ void MbedTlsFake_Reset(void)
     lastSslReadContextArg = NULL;
     lastSslReadBufArg = NULL;
     lastSslReadLenArg = 0;
-    sslReadReturn = 0;
+    sslReadReturn = MBEDTLS_ERR_SSL_WANT_READ;
+    sslReadReturnSequenceLen = 0;
+    sslReadReturnSequenceStart = 0;
     sslCloseNotifyCallCount = 0;
     lastSslCloseNotifyArg = NULL;
     sslFreeCallCount = 0;
@@ -508,6 +519,17 @@ size_t MbedTlsFake_LastSslReadLenArg(void)
 void MbedTlsFake_SetSslReadReturn(int value)
 {
     sslReadReturn = value;
+}
+
+void MbedTlsFake_SetSslReadReturnSequence(const int* values, int count)
+{
+    int safe = (count < MBEDTLSFAKE_MAX_READ_RETURNS) ? count : MBEDTLSFAKE_MAX_READ_RETURNS;
+    for (int i = 0; i < safe; i++)
+    {
+        sslReadReturnSequence[i] = values[i];
+    }
+    sslReadReturnSequenceLen = safe;
+    sslReadReturnSequenceStart = sslReadCallCount;
 }
 
 int MbedTlsFake_SslCloseNotifyCallCount(void)
@@ -776,11 +798,19 @@ int mbedtls_ssl_write(mbedtls_ssl_context* ssl, const unsigned char* buf, size_t
 
 int mbedtls_ssl_read(mbedtls_ssl_context* ssl, unsigned char* buf, size_t len)
 {
+    int callIndex = sslReadCallCount;
     sslReadCallCount++;
     lastSslReadContextArg = ssl;
     lastSslReadBufArg = buf;
     lastSslReadLenArg = len;
-    return sslReadReturn;
+    int rc = sslReadReturn;
+    if (sslReadReturnSequenceLen > 0)
+    {
+        int step = callIndex - sslReadReturnSequenceStart;
+        int idx = (step < sslReadReturnSequenceLen) ? step : (sslReadReturnSequenceLen - 1);
+        rc = sslReadReturnSequence[idx];
+    }
+    return rc;
 }
 
 int mbedtls_ssl_close_notify(mbedtls_ssl_context* ssl)

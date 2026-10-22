@@ -290,6 +290,14 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         SolidSyslogStream_Send(stream, msg, sizeof(msg));
     }
 
+    /* The collector has ended the session: SSL_read reports a clean shutdown. */
+    void OpenWithPeerClosedSession() const
+    {
+        SolidSyslogStream_Open(stream, addr);
+        OpenSslFake_SetReadReturn(0);
+        OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    }
+
     /* Open then arrange SSL_read to return the configured value while
        SSL_get_error reports the configured SSL-level status - together they
        exercise each branch of the Read non-blocking contract. */
@@ -1379,6 +1387,69 @@ TEST(SolidSyslogOpenSslStream, SendReturnsFalseOnShortWrite)
     OpenSslFake_SetWriteReturn(3);
     const char msg[] = "hello";
     CHECK_FALSE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+/* -------------------------------------------------------------------------
+ * Send reads what the collector sent before writing, so a session the peer
+ * has closed refuses the record rather than taking it.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogOpenSslStream, SendRefusesTheRecordWhenThePeerHasClosedTheSession)
+{
+    OpenWithPeerClosedSession();
+    const char msg[] = "hi";
+    CHECK_FALSE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendRefusesTheRecordWhenDataWaitsAheadOfThePeerClosingTheSession)
+{
+    SolidSyslogStream_Open(stream, addr);
+    const int reads[] = {5, 0};
+    OpenSslFake_SetReadReturnSequence(reads, 2);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    const char msg[] = "hi";
+    CHECK_FALSE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendWritesNothingToASessionThePeerHasClosed)
+{
+    OpenWithPeerClosedSession();
+    SendShortMessage();
+    CALLED_FAKE(OpenSslFake_Write, NEVER);
+}
+
+TEST(SolidSyslogOpenSslStream, SendClosesSslAndTransportWhenThePeerHasClosedTheSession)
+{
+    OpenWithPeerClosedSession();
+    SendShortMessage();
+    CHECK_SSL_SESSION_CLOSED();
+    CHECK_TRANSPORT_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogOpenSslStream, SendWritesWhenNothingIsWaiting)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(-1);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
+    const char msg[] = "hi";
+    CHECK_TRUE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendWritesToAPeerThatNeverStopsSending)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(5);
+    const char msg[] = "hi";
+    CHECK_TRUE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendReadsEightTimesSixteenBytesBeforeGivingUpOnAPeerThatNeverStopsSending)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(5);
+    SendShortMessage();
+    LONGS_EQUAL(8, OpenSslFake_SslReadCallCount());
+    LONGS_EQUAL(16, OpenSslFake_LastSslReadSize());
 }
 
 /* -------------------------------------------------------------------------

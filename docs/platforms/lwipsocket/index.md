@@ -67,7 +67,10 @@ would take a record nothing can deliver. When the peek sees the close, the send
 fails, the stream closes itself, and your store replays the record on the next
 connection. The peek sees only a close the stack has already learned of: a peer
 that closes while the record is being sent can still cost that record, because
-syslog over TCP has no acknowledgement to say it arrived.
+syslog over TCP has no acknowledgement to say it arrived. Nor can the peek see
+past bytes the peer sent that nothing has read: a close behind them goes
+unnoticed. A syslog collector sends nothing back, so in practice nothing is
+queued when the peek looks.
 
 The datagram leaves its socket as the stack makes it, which costs nothing: a UDP
 send has no peer to wait for, and returns once the stack has taken the datagram

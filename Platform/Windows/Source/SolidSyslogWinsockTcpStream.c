@@ -161,6 +161,7 @@ static void WinsockTcpStream_ReportConnectFailure(
 static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError);
 static inline bool WinsockTcpStream_WaitTimedOut(int selectResult);
 static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinsockTcpStream* self);
+static bool WinsockTcpStream_PeerIsStillThere(struct SolidSyslogWinsockTcpStream* self);
 static bool WinsockTcpStream_WroteAllBytes(int sent, size_t expected);
 static inline bool WinsockTcpStream_WouldBlock(int wsaError);
 
@@ -555,14 +556,36 @@ static bool WinsockTcpStream_ReadSocketError(SOCKET fd, int* code)
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
-    int sent = WinsockTcpStream_send(self->Fd, (const char*) buffer, (int) size, 0);
-    bool ok = WinsockTcpStream_WroteAllBytes(sent, size);
+    bool ok = WinsockTcpStream_PeerIsStillThere(self);
 
+    if (ok)
+    {
+        int sent = WinsockTcpStream_send(self->Fd, (const char*) buffer, (int) size, 0);
+        ok = WinsockTcpStream_WroteAllBytes(sent, size);
+    }
     if (!ok)
     {
         WinsockTcpStream_Close(base);
     }
     return ok;
+}
+
+/* A peer that has closed its end leaves the socket writable, so send takes the
+ * record, and only the peer's reset - a round trip later - says it went
+ * nowhere. By then Send has returned true and the record has left the caller's
+ * hands. A graceful close that has arrived reads as end-of-stream, so ask
+ * first: a half-closed connection fails the send and store-and-forward replays
+ * the record instead of losing it. Bytes the peer sent that nothing has read
+ * stand in front of its close, and the peek sees those instead. They are left
+ * for Read rather than discarded: a stream layered over this one may be
+ * mid-handshake, with the peer's reply queued here. A syslog collector sends
+ * nothing back, so the queue is empty when the check runs. */
+static bool WinsockTcpStream_PeerIsStillThere(struct SolidSyslogWinsockTcpStream* self)
+{
+    char discard = 0;
+    int peeked = WinsockTcpStream_recv(self->Fd, &discard, (int) sizeof(discard), MSG_PEEK);
+    return (peeked > 0) ||
+           ((peeked == SOCKET_ERROR) && WinsockTcpStream_WouldBlock(WinsockTcpStream_WSAGetLastError()));
 }
 
 /* Non-blocking single-call contract: short write or any error means the

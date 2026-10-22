@@ -38,7 +38,9 @@ const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource = {
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1U,
-    OPENSSL_STREAM_SECURITY_LEVEL = 2
+    OPENSSL_STREAM_SECURITY_LEVEL = 2,
+    OPENSSL_STREAM_DISCARD_BYTES = 16U,
+    OPENSSL_STREAM_MAX_READS_BEFORE_WRITE = 8U
 };
 
 static uint32_t OpenSslStream_NullHandshakeTimeoutGetter(void* context);
@@ -120,6 +122,7 @@ static inline void OpenSslStream_ReleaseHandshakeState(struct SolidSyslogOpenSsl
 static inline void OpenSslStream_ReleaseSsl(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
+static bool OpenSslStream_SessionIsStillOpen(struct SolidSyslogStream* base);
 static inline int OpenSslStream_TransportBioCreate(BIO* bio);
 static inline long OpenSslStream_TransportBioCtrl(BIO* bio, int cmd, long larg, void* parg);
 static inline int OpenSslStream_TransportBioRead(BIO* bio, char* buffer, int size);
@@ -1083,14 +1086,39 @@ static inline bool OpenSslStream_IsPeerNameMismatch(long verdict)
 static inline bool OpenSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
-    int rc = SSL_write(self->Ssl, buffer, (int) size);
-    bool ok = (rc > 0) && ((size_t) rc == size);
+    bool ok = false;
 
-    if (!ok)
+    if (OpenSslStream_SessionIsStillOpen(base))
     {
-        OpenSslStream_Close(base);
+        int rc = SSL_write(self->Ssl, buffer, (int) size);
+        ok = (rc > 0) && ((size_t) rc == size);
+
+        if (!ok)
+        {
+            OpenSslStream_Close(base);
+        }
     }
     return ok;
+}
+
+/* SSL_write does not look at what the peer has sent, so a collector that has
+ * closed the session - a close_notify and a FIN - still has the record
+ * accepted, and it is lost unless the peer's reset beats the write. Read what
+ * is waiting first: an alert or a closed transport ends the session here, and
+ * Read closes it. A collector sends no application data, so any that arrives is
+ * discarded; a peer that keeps sending is plainly still there, and the record
+ * goes out once the bound is reached. */
+static bool OpenSslStream_SessionIsStillOpen(struct SolidSyslogStream* base)
+{
+    char discard[OPENSSL_STREAM_DISCARD_BYTES];
+    SolidSyslogSsize pending = OpenSslStream_Read(base, discard, sizeof(discard));
+    uint32_t reads = 1U;
+    while ((pending > 0) && (reads < OPENSSL_STREAM_MAX_READS_BEFORE_WRITE))
+    {
+        pending = OpenSslStream_Read(base, discard, sizeof(discard));
+        reads++;
+    }
+    return pending >= 0;
 }
 
 /* SSL_read has two distinct modes worth keeping straight:

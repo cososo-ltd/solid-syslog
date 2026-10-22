@@ -50,7 +50,9 @@ const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1U,
-    MBEDTLS_STREAM_DHM_MIN_BITLEN = 2048U
+    MBEDTLS_STREAM_DHM_MIN_BITLEN = 2048U,
+    MBEDTLS_STREAM_DISCARD_BYTES = 16U,
+    MBEDTLS_STREAM_MAX_READS_BEFORE_WRITE = 8U
 };
 
 struct SolidSyslogAddress;
@@ -110,6 +112,7 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_InitDetail(
 static inline bool MbedTlsStream_IsAllocationFailure(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
+static bool MbedTlsStream_SessionIsStillOpen(struct SolidSyslogStream* base);
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static inline void MbedTlsStream_Close(struct SolidSyslogStream* base);
 static uint32_t MbedTlsStream_Version(struct SolidSyslogStream* base);
@@ -882,13 +885,37 @@ static int MbedTlsStream_BioRecv(void* ctx, unsigned char* buf, size_t len)
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
-    int rc = mbedtls_ssl_write(&self->SslContext, (const unsigned char*) buffer, size);
-    bool ok = (rc > 0) && ((size_t) rc == size);
-    if (!ok)
+    bool ok = false;
+    if (MbedTlsStream_SessionIsStillOpen(base))
     {
-        MbedTlsStream_Close(base);
+        int rc = mbedtls_ssl_write(&self->SslContext, (const unsigned char*) buffer, size);
+        ok = (rc > 0) && ((size_t) rc == size);
+        if (!ok)
+        {
+            MbedTlsStream_Close(base);
+        }
     }
     return ok;
+}
+
+/* mbedtls_ssl_write does not look at what the peer has sent, so a collector
+ * that has closed the session - a close_notify and a FIN - still has the record
+ * accepted, and the transport beneath may not see the FIN behind the unread
+ * alert. Read what is waiting first: an alert or a closed transport ends the
+ * session here, and Read closes it. A collector sends no application data, so
+ * any that arrives is discarded; a peer that keeps sending is plainly still
+ * there, and the record goes out once the bound is reached. */
+static bool MbedTlsStream_SessionIsStillOpen(struct SolidSyslogStream* base)
+{
+    unsigned char discard[MBEDTLS_STREAM_DISCARD_BYTES];
+    SolidSyslogSsize pending = MbedTlsStream_Read(base, discard, sizeof(discard));
+    uint32_t reads = 1U;
+    while ((pending > 0) && (reads < MBEDTLS_STREAM_MAX_READS_BEFORE_WRITE))
+    {
+        pending = MbedTlsStream_Read(base, discard, sizeof(discard));
+        reads++;
+    }
+    return pending >= 0;
 }
 
 /* mbedtls_ssl_read has two distinct outcomes worth keeping straight:

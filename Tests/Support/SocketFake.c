@@ -201,7 +201,7 @@ void SocketFake_Reset(void)
     lastClosedFd = -1;
     nextCloseErrno = 0;
     recvCallCount = 0;
-    recvReturn = 0;
+    recvReturn = -1;
     lastRecvFd = -1;
     lastRecvBuf = NULL;
     lastRecvLen = 0;
@@ -838,6 +838,10 @@ ssize_t recv(int sockfd, void* buf, size_t len, int flags)
         errno = nextRecvErrno;
         nextRecvShouldFailWithErrno = false;
         return (ssize_t) -1;
+    }
+    if (recvReturn < 0)
+    {
+        errno = EAGAIN;
     }
     return recvReturn;
 }

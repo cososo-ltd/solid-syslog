@@ -533,6 +533,43 @@ TEST(SolidSyslogPosixTcpStream, SendReturnsFalseOnSendFailure)
     CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
 }
 
+TEST(SolidSyslogPosixTcpStream, SendRefusesTheRecordWhenThePeerHasClosedItsEnd)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SocketFake_SetRecvReturn(0);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+
+    CALLED_FAKE(SocketFake_Send, NEVER);
+    CHECK_SOCKET_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogPosixTcpStream, SendRefusesTheRecordWhenTheStackReportsAFault)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SocketFake_FailNextRecvWithErrno(ECONNRESET);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+
+    CALLED_FAKE(SocketFake_Send, NEVER);
+    CHECK_SOCKET_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogPosixTcpStream, SendWritesWhenThePeerHasSentData)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SocketFake_SetRecvReturn(3);
+
+    CHECK_TRUE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogPosixTcpStream, SendLeavesWhatThePeerSentForAReadToCollect)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(MSG_PEEK, SocketFake_LastRecvFlags());
+}
+
 TEST(SolidSyslogPosixTcpStream, CloseCallsCloseOnce)
 {
     SolidSyslogStream_Open(stream, addr);

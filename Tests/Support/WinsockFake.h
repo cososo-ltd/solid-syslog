@@ -51,6 +51,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int WinsockFake_SendFlags(int callIndex);
     SOCKET WinsockFake_LastSendFd(void);
 
+    /* recv answers SOCKET_ERROR with WSAGetLastError WSAEWOULDBLOCK until told
+       otherwise - an idle non-blocking socket. A negative value set here answers
+       WSAEWOULDBLOCK too. */
     void WinsockFake_SetRecvReturn(int value);
     /* When set, the next recv returns SOCKET_ERROR with WSAGetLastError == wsaError
        (e.g. WSAEWOULDBLOCK for the non-blocking would-block path). One-shot. */
