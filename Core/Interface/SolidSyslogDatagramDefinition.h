@@ -55,7 +55,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *    no check. Loss in transit is outside this contract: UDP cannot
      *    detect it (RFC 5426 section 4.1).
      *  - **Open and Close are the whole lifecycle.** Close is idempotent and safe
-     *    on an unopened datagram, because the caller's failure paths call it. */
+     *    on an unopened datagram, because the caller's failure paths call it.
+     *  - **Refuse Open on a datagram that is already open.** Nothing in the
+     *    library does it, so a second Open is a caller's fault rather than a
+     *    reconnect: return false, leave what is held exactly as it was, and
+     *    report SOLIDSYSLOG_CAT_BAD_ARGUMENT with
+     *    SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN at
+     *    SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY, so the fault is seen rather than
+     *    papered over. */
     struct SolidSyslogDatagram
     {
         bool (*Open)(struct SolidSyslogDatagram* base);

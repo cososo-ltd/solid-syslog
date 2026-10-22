@@ -296,6 +296,7 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 | stream config NULL, or `Transport`, `Sleep`, `Rng` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_RNG`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
 | credentials config NULL, `Rng` left NULL, or a pin list with a NULL entry | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_RNG`, `NULL_PEER_FINGERPRINT` | Null credentials returned; every connection refused as `NO_PEER_AUTHORISATION` |
 | `mbedtls_ssl_config_defaults` or `mbedtls_ssl_setup` failed | `ERROR` | `INIT_FAILED` | `DEFAULTS_NOT_APPLIED`, `SESSION_INIT_FAILED` | refused |
+| `Open` on a stream that is already open | `CRITICAL` | `BAD_ARGUMENT` | `ALREADY_OPEN` | refused; the open connection stays as it was |
 | Mbed TLS reported an allocation failure | `ERROR` | the phase's own: `INIT_FAILED`, `BAD_CONFIG` or `HANDSHAKE_FAILED` | `LIBRARY_OUT_OF_MEMORY` | refused. Your Mbed TLS pool, not a fault in the peer - see [Memory](#memory) |
 | a PEM length that does not count the NUL | `ERROR` for the CA, `WARNING` for the client | `BAD_CONFIG` | `PEM_NOT_TERMINATED` | CA: refused. Client: continues without it |
 | CA PEM will not parse | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_PARSED` | refused |

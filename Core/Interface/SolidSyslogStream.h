@@ -30,10 +30,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Connect to @p addr, bounded (a stream implementation caps the connect,
      *  and any TLS handshake, so the servicing thread cannot hang on an
      *  unresponsive peer). On failure the underlying socket is already closed
-     *  internally, so a bare Open retries cleanly.
+     *  internally, so a bare Open retries cleanly. Open on a stream that is
+     *  already open is refused: it returns false, reports the misuse to the
+     *  error handler, and the connection stays as it was.
      *
      *  @retval true  connected and ready for Send / Read.
-     *  @retval false not connected; call Open again to retry. */
+     *  @retval false this call did not connect: the connect failed, so call Open
+     *                again to retry, or the stream was already open and still is. */
     bool SolidSyslogStream_Open(struct SolidSyslogStream * stream, const struct SolidSyslogAddress* addr);
 
     /** Non-blocking, all-or-nothing send of @p buffer[0..size). A short write or

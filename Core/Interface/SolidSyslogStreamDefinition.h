@@ -29,7 +29,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Bound the connect, and any handshake above it. One servicing pass
          *  drives every sender, so a connect that blocks stalls the whole drain,
          *  not just this stream. Leave nothing open on a failed path: the caller
-         *  retries with a bare Open and never calls Close first. */
+         *  retries with a bare Open and never calls Close first.
+         *
+         *  Refuse Open on a stream that is already open. Nothing in the library
+         *  does it, so a second Open is a caller's fault rather than a
+         *  reconnect: return false, leave the connection held exactly as it was
+         *  (the one failed path that closes nothing), and report
+         *  SOLIDSYSLOG_CAT_BAD_ARGUMENT with
+         *  SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN, or a TLS stream's
+         *  SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN, at
+         *  SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY, so the fault is seen rather than
+         *  papered over. */
         bool (*Open)(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
         /** All-or-nothing. Never report a partial write as success - the record
          *  is gone from the caller's hands once you return true. If the whole

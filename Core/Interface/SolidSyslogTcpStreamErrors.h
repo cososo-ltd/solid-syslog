@@ -48,6 +48,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  the option bought - prompt detection of a dead peer, or a latency
          *  setting - does not. */
         SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED,
+        /** Open was called on a stream that is already open. The call is
+         *  refused and the connection held stays as it was. */
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN,
         SOLIDSYSLOG_TCP_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
