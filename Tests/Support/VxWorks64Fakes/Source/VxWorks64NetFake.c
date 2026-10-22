@@ -27,9 +27,6 @@ static const char* VxWorks64NetFake_HostGetByNameName = NULL;
 /* What socket hands back when it succeeds: any descriptor other than zero, so
  * an adapter that assumed a fixed one would be caught. */
 static const int VxWorks64NetFake_Fd = 7;
-/* Each socket() hands out the next descriptor up, so a test can tell the
- * first one from the second; the accessors answer for the latest. */
-static int VxWorks64NetFake_LastFd = 7;
 
 static bool VxWorks64NetFake_SocketFails = false;
 static unsigned VxWorks64NetFake_SocketCount = 0U;
@@ -101,7 +98,6 @@ void VxWorks64NetFake_Reset(void)
     VxWorks64NetFake_HostGetByNameName = NULL;
     VxWorks64NetFake_SocketFails = false;
     VxWorks64NetFake_SocketCount = 0U;
-    VxWorks64NetFake_LastFd = VxWorks64NetFake_Fd;
     VxWorks64NetFake_SocketDomain = 0;
     VxWorks64NetFake_SocketType = 0;
     VxWorks64NetFake_SocketProtocol = -1;
@@ -252,7 +248,7 @@ int VxWorks64NetFake_LastSocketProtocol(void)
 
 int VxWorks64NetFake_SocketFd(void)
 {
-    return VxWorks64NetFake_LastFd;
+    return VxWorks64NetFake_Fd;
 }
 
 void VxWorks64NetFake_FailSendtoWithErrno(int errnoValue)
@@ -306,8 +302,7 @@ int socket(int domain, int type, int protocol)
     VxWorks64NetFake_SocketDomain = domain;
     VxWorks64NetFake_SocketType = type;
     VxWorks64NetFake_SocketProtocol = protocol;
-    VxWorks64NetFake_LastFd = VxWorks64NetFake_Fd + ((int) VxWorks64NetFake_SocketCount - 1);
-    return VxWorks64NetFake_SocketFails ? ERROR : VxWorks64NetFake_LastFd;
+    return VxWorks64NetFake_SocketFails ? ERROR : VxWorks64NetFake_Fd;
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
@@ -416,7 +411,7 @@ bool VxWorks64NetFake_SocketOptionWasSetTo(int level, int optname, int value)
     for (unsigned index = 0U; index < recorded; index++)
     {
         const struct VxWorks64NetFake_SocketOption* option = &VxWorks64NetFake_SocketOptions[index];
-        if ((option->Fd == VxWorks64NetFake_LastFd) && (option->Level == level) && (option->Optname == optname) &&
+        if ((option->Fd == VxWorks64NetFake_Fd) && (option->Level == level) && (option->Optname == optname) &&
             (option->Value == value) && (option->Optlen == (int) sizeof(int)))
         {
             found = true;

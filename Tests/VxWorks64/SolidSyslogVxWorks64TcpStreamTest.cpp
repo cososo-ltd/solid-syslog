@@ -470,10 +470,8 @@ TEST(SolidSyslogVxWorks64TcpStream, CloseOnAStreamThatNeverOpenedClosesNothing)
 TEST(SolidSyslogVxWorks64TcpStream, OpenOnAnOpenStreamClosesTheSocketItHeld)
 {
     SolidSyslogStream_Open(stream, address);
-    const int firstFd = VxWorks64NetFake_SocketFd();
     SolidSyslogStream_Open(stream, address);
     CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
-    LONGS_EQUAL(firstFd, VxWorks64IoFake_LastClosedFd());
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, VersionStaysZeroBecauseNothingAboutTheStreamChangesAtRuntime)

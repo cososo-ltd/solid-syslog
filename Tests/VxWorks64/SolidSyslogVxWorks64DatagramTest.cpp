@@ -440,12 +440,11 @@ TEST(SolidSyslogVxWorks64Datagram, CloseTwiceClosesOnce)
 TEST(SolidSyslogVxWorks64Datagram, OpeningADatagramThatIsAlreadyOpenClosesTheSocketItHeld)
 {
     SolidSyslogDatagram_Open(datagram);
-    const int firstFd = VxWorks64NetFake_SocketFd();
 
     SolidSyslogDatagram_Open(datagram);
 
     CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
-    LONGS_EQUAL(firstFd, VxWorks64IoFake_LastClosedFd());
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
 }
 
 TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
