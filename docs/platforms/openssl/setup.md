@@ -201,8 +201,8 @@ prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 |---|---|---|---|---|
 | stream config NULL, or `Transport`, `Sleep` or `Credentials` left NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_TRANSPORT`, `NULL_SLEEP`, `NULL_CREDENTIALS` | Null stream returned; nothing delivered |
 | credentials config NULL, or a pin list with a NULL entry | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_PEER_FINGERPRINT` | Null credentials returned; every connection refused as `NO_PEER_AUTHORISATION` |
-| OpenSSL could not create the context or the session | `ERROR` | `INIT_FAILED` | `CONTEXT_INIT_FAILED`, `SESSION_INIT_FAILED` | refused |
 | `Open` on a stream that is already open | `CRITICAL` | `BAD_ARGUMENT` | `ALREADY_OPEN` | refused; the open connection stays as it was |
+| OpenSSL could not create the context or the session | `ERROR` | `INIT_FAILED` | `CONTEXT_INIT_FAILED`, `SESSION_INIT_FAILED` | refused |
 | CA bundle will not load | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_LOADED` | connection refused |
 | neither a CA bundle nor a pin, or a cipher policy that let the collector present no certificate | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | refused |
 | a pin not in the RFC 5425 form | `ERROR` | `BAD_CONFIG` | `FINGERPRINT_MALFORMED` | refused |
