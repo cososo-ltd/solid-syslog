@@ -132,6 +132,8 @@ void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
+    /* Reopening must not leak the descriptor already held. */
+    VxWorks64Datagram_Close(base);
     self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
     return VxWorks64Datagram_HasSocket(self);
 }

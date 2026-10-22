@@ -437,6 +437,16 @@ TEST(SolidSyslogVxWorks64Datagram, CloseTwiceClosesOnce)
     CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
+TEST(SolidSyslogVxWorks64Datagram, OpeningADatagramThatIsAlreadyOpenClosesTheSocketItHeld)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+    LONGS_EQUAL(VxWorks64NetFake_SocketFd(), VxWorks64IoFake_LastClosedFd());
+}
+
 TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
 {
     SolidSyslogDatagram_Open(datagram);
