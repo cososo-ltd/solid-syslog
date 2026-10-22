@@ -1,14 +1,15 @@
 #include "BddTargetCommandLine.h"
 
+#include "BddTargetStoreSettings.h"
+
 #include <getopt.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 enum
 {
-    DEFAULT_MAX_BLOCKS = 10,
-    DEFAULT_MAX_BLOCK_SIZE = 65536,
     OPT_MAX_BLOCKS = 256,
     OPT_MAX_BLOCK_SIZE = 257,
     OPT_DISCARD_POLICY = 258,
@@ -19,31 +20,6 @@ enum
     OPT_SECURITY_POLICY = 263,
     OPT_ERRORS_FATAL = 264
 };
-
-static bool ParsePositiveNumber(const char* str, size_t* result)
-{
-    char* end = NULL;
-    long value = strtol(str, &end, 10);
-
-    if ((*str == '\0') || (*end != '\0') || (value < 0))
-    {
-        return false;
-    }
-
-    *result = (size_t) value;
-    return true;
-}
-
-static bool IsValidDiscardPolicy(const char* policy)
-{
-    return (strcmp(policy, "oldest") == 0) || (strcmp(policy, "newest") == 0) || (strcmp(policy, "halt") == 0);
-}
-
-static bool IsValidSecurityPolicy(const char* policy)
-{
-    return (strcmp(policy, "crc16") == 0) || (strcmp(policy, "hmac-sha256") == 0) ||
-           (strcmp(policy, "aes-256-gcm") == 0) || (strcmp(policy, "null") == 0);
-}
 
 static bool IsValidErrorsFatal(const char* value)
 {
@@ -59,6 +35,13 @@ static int SetIfValid(bool valid, const char* value, const char** field)
         *field = value;
     }
     return valid ? 0 : 1;
+}
+
+/* Hands a store option to the shared settings under the name the harness
+ * uses for it. Returns 0 when taken, 1 when not - the parse's own result. */
+static int SetStoreSetting(const char* name, const char* value)
+{
+    return BddTargetStoreSettings_SetByName(name, value) ? 0 : 1;
 }
 
 /* Applies one parsed option to `options`. Returns 0 on success, 1 if the
@@ -104,25 +87,26 @@ static int ApplyOption(int opt, const char* value, struct BddTargetOptions* opti
             }
             break;
         case OPT_MAX_BLOCKS:
-            result = ParsePositiveNumber(value, &options->MaxBlocks) ? 0 : 1;
+            result = SetStoreSetting("max-blocks", value);
             break;
         case OPT_MAX_BLOCK_SIZE:
-            result = ParsePositiveNumber(value, &options->MaxBlockSize) ? 0 : 1;
+            result = SetStoreSetting("max-block-size", value);
             break;
         case OPT_DISCARD_POLICY:
-            result = SetIfValid(IsValidDiscardPolicy(value), value, &options->DiscardPolicy);
+            result = SetStoreSetting("discard-policy", value);
             break;
         case OPT_SECURITY_POLICY:
-            result = SetIfValid(IsValidSecurityPolicy(value), value, &options->SecurityPolicy);
+            result = SetStoreSetting("security-policy", value);
             break;
         case OPT_CAPACITY_THRESHOLD:
-            result = ParsePositiveNumber(value, &options->CapacityThreshold) ? 0 : 1;
+            result = SetStoreSetting("capacity-threshold", value);
             break;
         case OPT_NO_SD:
-            options->NoSd = true;
+            /* A bare flag; the shared settings take every value as a number. */
+            result = SetStoreSetting("no-sd", "1");
             break;
         case OPT_HALT_EXIT:
-            options->HaltExit = true;
+            result = SetStoreSetting("halt-exit", "1");
             break;
         case OPT_APP_NAME:
             options->AppName = value;
@@ -146,14 +130,8 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
     options->AppName = NULL;
     options->Transport = "udp";
     options->Store = "null";
-    options->MaxBlocks = DEFAULT_MAX_BLOCKS;
-    options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
-    options->DiscardPolicy = "oldest";
-    options->SecurityPolicy = "crc16";
-    options->CapacityThreshold = 0;
-    options->NoSd = false;
-    options->HaltExit = false;
     options->ErrorsFatal = "1";
+    BddTargetStoreSettings_Reset();
 
     static struct option longOptions[] = {
         {"facility", required_argument, NULL, 'f'},
