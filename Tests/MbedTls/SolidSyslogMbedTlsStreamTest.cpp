@@ -905,6 +905,15 @@ TEST(SolidSyslogMbedTlsStream, OpeningAStreamThatIsAlreadyOpenFreesTheSessionItH
     LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());
 }
 
+TEST(SolidSyslogMbedTlsStream, OpeningAStreamThatIsAlreadyOpenClosesTheTransportItHeld)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
 TEST(SolidSyslogMbedTlsStream, CloseDelegatesToInjectedTransport)
 
 {

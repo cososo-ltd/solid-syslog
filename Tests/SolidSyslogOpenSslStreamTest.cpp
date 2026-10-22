@@ -734,6 +734,15 @@ TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenFreesTheContextItH
     CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
 }
 
+TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenClosesTheTransportItHeld)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
+}
+
 TEST(SolidSyslogOpenSslStream, DestroyFreesSslContext)
 {
     SolidSyslogStream_Open(stream, addr);
