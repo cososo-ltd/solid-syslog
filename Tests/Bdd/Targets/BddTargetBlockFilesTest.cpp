@@ -27,13 +27,13 @@ bool ExistsInList(struct SolidSyslogFile* base, const char* path)
 
 struct SolidSyslogFile listFile = {};
 
-std::string PrintBlockFiles(struct SolidSyslogFile* file, const char* prefix, size_t maxBlocks)
+std::string PrintBlockFiles(struct SolidSyslogFile* file, const char* prefix)
 {
     char* buffer = nullptr;
     size_t length = 0U;
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- open_memstream/fclose is POSIX C; buffer freed below
     FILE* out = open_memstream(&buffer, &length);
-    BddTargetBlockFiles_Print(out, file, prefix, maxBlocks);
+    BddTargetBlockFiles_Print(out, file, prefix);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- see above
     fclose(out);
     std::string captured(buffer, length);
@@ -42,6 +42,8 @@ std::string PrintBlockFiles(struct SolidSyslogFile* file, const char* prefix, si
     return captured;
 }
 } // namespace
+
+#define CHECK_BLOCKS_LISTED(expected, file, prefix) STRCMP_EQUAL(expected, PrintBlockFiles(file, prefix).c_str())
 
 // clang-format off
 TEST_GROUP(BddTargetBlockFiles)
@@ -56,14 +58,14 @@ TEST_GROUP(BddTargetBlockFiles)
 
 TEST(BddTargetBlockFiles, NoBlocksPrintsTheBareHeader)
 {
-    STRCMP_EQUAL("BLOCKS:\n", PrintBlockFiles(nullptr, "/STORE", 0U).c_str());
+    CHECK_BLOCKS_LISTED("BLOCKS:\n", &listFile, "/STORE");
 }
 
 TEST(BddTargetBlockFiles, OnePresentBlockIsListedByItsIndex)
 {
     presentPaths[0] = "/STORE00.log";
 
-    STRCMP_EQUAL("BLOCKS: 00\n", PrintBlockFiles(&listFile, "/STORE", 1U).c_str());
+    CHECK_BLOCKS_LISTED("BLOCKS: 00\n", &listFile, "/STORE");
 }
 
 TEST(BddTargetBlockFiles, PresentBlocksAreListedInIndexOrderWithGapsLeftOut)
@@ -71,27 +73,27 @@ TEST(BddTargetBlockFiles, PresentBlocksAreListedInIndexOrderWithGapsLeftOut)
     presentPaths[0] = "/STORE02.log";
     presentPaths[1] = "/STORE00.log";
 
-    STRCMP_EQUAL("BLOCKS: 00 02\n", PrintBlockFiles(&listFile, "/STORE", 4U).c_str());
+    CHECK_BLOCKS_LISTED("BLOCKS: 00 02\n", &listFile, "/STORE");
 }
 
-TEST(BddTargetBlockFiles, ABlockAtOrBeyondMaxBlocksIsNotAskedFor)
+TEST(BddTargetBlockFiles, TheLastIndexTheSequenceCanUseIsListed)
 {
-    presentPaths[0] = "/STORE03.log";
+    presentPaths[0] = "/STORE99.log";
 
-    STRCMP_EQUAL("BLOCKS:\n", PrintBlockFiles(&listFile, "/STORE", 3U).c_str());
+    CHECK_BLOCKS_LISTED("BLOCKS: 99\n", &listFile, "/STORE");
 }
 
 TEST(BddTargetBlockFiles, AnIndexOfTenOrMoreKeepsTwoDigits)
 {
     presentPaths[0] = "/ata0a/STORE10.log";
 
-    STRCMP_EQUAL("BLOCKS: 10\n", PrintBlockFiles(&listFile, "/ata0a/STORE", 11U).c_str());
+    CHECK_BLOCKS_LISTED("BLOCKS: 10\n", &listFile, "/ata0a/STORE");
 }
 
 /* Test list (ZOMBIES order):
  *  Z  [x] NoBlocksPrintsTheBareHeader
  *  O  [x] OnePresentBlockIsListedByItsIndex
  *  M  [x] PresentBlocksAreListedInIndexOrderWithGapsLeftOut
- *  B  [x] ABlockAtOrBeyondMaxBlocksIsNotAskedFor
+ *  B  [x] TheLastIndexTheSequenceCanUseIsListed
  *  B  [x] AnIndexOfTenOrMoreKeepsTwoDigits
  */

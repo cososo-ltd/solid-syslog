@@ -417,7 +417,7 @@ static void OnBlocks(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
     struct SolidSyslogFile* file = currentStoreIsFile ? storeFile : SolidSyslogNullFile_Get();
-    BddTargetBlockFiles_Print(stdout, file, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlocks());
+    BddTargetBlockFiles_Print(stdout, file, STORE_PATH_PREFIX);
     SolidSyslogMutex_Unlock(lifecycleMutex);
 }
 

@@ -579,12 +579,7 @@ static void BddTargetVxWorks64_OnBlocks(void)
 {
     (void) semTake(loggerLock, WAIT_FOREVER);
     struct SolidSyslogFile* file = storeIsFile ? storeFile : SolidSyslogNullFile_Get();
-    BddTargetBlockFiles_Print(
-        BddTargetVxWorks64_Reports(),
-        file,
-        STORE_PATH_PREFIX,
-        BddTargetStoreSettings_MaxBlocks()
-    );
+    BddTargetBlockFiles_Print(BddTargetVxWorks64_Reports(), file, STORE_PATH_PREFIX);
     (void) semGive(loggerLock);
 }
 
