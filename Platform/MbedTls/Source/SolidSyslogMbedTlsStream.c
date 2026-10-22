@@ -67,6 +67,7 @@ static inline bool MbedTlsStream_ConfigProvidesProfile(const struct SolidSyslogM
 static inline uint32_t MbedTlsStream_ResolveHandshakeTimeoutMs(struct SolidSyslogMbedTlsStream* self);
 static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool MbedTlsStream_IsOpen(const struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStream* self);
@@ -245,6 +246,13 @@ static uint32_t MbedTlsStream_Version(struct SolidSyslogStream* base)
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
+    /* Opening what is already open would otherwise strand the session it
+     * holds: the credentials it installed, the transport's socket, and
+     * whatever mbedTLS allocated for the handshake. */
+    if (MbedTlsStream_IsOpen(self))
+    {
+        MbedTlsStream_Close(base);
+    }
     MbedTlsStream_PullProfile(self);
     self->RefusedVerdict = 0U;
     self->PinVerdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
@@ -267,6 +275,13 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
         MbedTlsStream_Close(base);
     }
     return ok;
+}
+
+/* Every Open that succeeds installs the credentials and every Close releases
+ * them, so holding them is the one mark of a session still open. */
+static inline bool MbedTlsStream_IsOpen(const struct SolidSyslogMbedTlsStream* self)
+{
+    return self->CredentialsInstalled;
 }
 
 /* One snapshot per connection: every later step reads the same answer, however

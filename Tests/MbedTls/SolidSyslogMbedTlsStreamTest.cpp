@@ -896,6 +896,15 @@ TEST(SolidSyslogMbedTlsStream, CloseFreesSslContextAndSslConfigFromOpen)
     POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfigFreeArg());
 }
 
+TEST(SolidSyslogMbedTlsStream, OpeningAStreamThatIsAlreadyOpenFreesTheSessionItHeld)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslFreeCallCount());
+}
+
 TEST(SolidSyslogMbedTlsStream, CloseDelegatesToInjectedTransport)
 
 {
