@@ -1,6 +1,6 @@
 # What to fold into your threat model
 
-In threat-modelling terms SolidSyslog is not a component. It is not a process, a
+In a threat model SolidSyslog is not an element of its own. It is not a process, a
 device or a data store, and it has no privileges, identity or trust boundary of
 its own. It is compiled into your product and runs with your trust and your
 privileges, so the threat model that matters is the one you write for that
@@ -34,17 +34,19 @@ transport.
 
 [TLS obligations](../tls.md) is the contract every TLS platform meets, including
 where it departs from general TLS practice and why. Each platform's page records
-where it falls short of that contract today.
+where it falls short of that contract.
 
 ## The storage edge
 
-With store and forward configured, records come to rest on a medium that outlives
+With store-and-forward configured, records come to rest on a medium that outlives
 the process and may be physically accessible.
 
 A SecurityPolicy seals each stored record, and
 [at-rest cryptography](at-rest-cryptography.md) states what each one gives you.
 No policy is wired unless you wire one, so physical extraction of the medium
-discloses whatever was stored until you choose.
+discloses whatever was stored until you choose. A seal covers each record, not the
+store as a whole, and [what a seal covers](at-rest-cryptography.md#what-a-seal-covers)
+says what that leaves undetected.
 
 ## What you supply and decide
 
@@ -57,11 +59,15 @@ discloses whatever was stored until you choose.
 | A mutex and a config lock where concurrency exists | The synchronisation primitives are injected and default to no-ops |
 | The storage medium, its permissions, and an at-rest policy if the content is sensitive | The library seals records. Access, retention and deletion on the medium are the platform's |
 | The TLS and crypto libraries, including patching and CVE response | SolidSyslog rolls no crypto. It links yours |
+| The wall clock, and whatever sets it | Certificate validity is judged against it, and it stamps every record. Whoever can set it can bring an expired collector certificate back into its dates, stop delivery by moving the clock past them, or misdate records |
+| The channel that delivers certificates, keys, pins and the peer name, at commissioning and after | The library trusts whatever material it is handed at the next connection. A pin taken from a connection to the collector, or one any task can install, trusts whoever is on the other end |
 
 If you wire a Buffer whose producer and consumer sit in different processes or
 privilege domains, you own authenticity and integrity across that gap. The
-library treats whatever it reads back as trusted. The shipped buffers stay within
-one address space, and the POSIX message queue is created owner-only.
+library treats whatever it reads back as trusted. The circular and passthrough
+buffers stay within one address space. The POSIX message-queue buffer does not: its
+queue is a kernel object reachable by name, and
+[its platform page](../platforms/posix/index.md) says who can reach it.
 
 ## What the library does not do
 
@@ -76,11 +82,16 @@ rather than left out.
   de-duplication on the sequence number and timestamp is the mitigation; the
   sequence number is informational, not cryptographically bound.
 - **Certificate revocation.** No shipped backend checks a revocation list or an
-  online responder. Configure it in your TLS library if your assessment needs it.
+  online responder. Configure it in your TLS library if your assessment needs it;
+  [TLS obligations](../tls.md#do-not-require-revocation-checking) says why it is
+  outside the contract.
+- **Integrity of the store as a whole.** A seal protects each record's content.
+  Removing records, or changing which are marked sent, is not detected on the device;
+  [what a seal covers](at-rest-cryptography.md#what-a-seal-covers) says what shows it.
 - **Constant-time formatting.** Formatting is not constant-time. Syslog content
   is not usually secret-bearing, but treat it as residual if yours is.
 - **Anything about a compromised caller.** The library trusts the process it runs
-  in. If that process is owned, so is anything it logs.
+  in. If that process is compromised, so is anything it logs.
 
 ## Related
 

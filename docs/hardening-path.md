@@ -674,7 +674,9 @@ connection, so a change has to reach them on that task. The example queues each 
 and applies it before each call to `SolidSyslog_Service`; making the change on the
 service task directly works as well. A queued request can be refused, so check it: a
 dropped provisioning leaves the device unable to reconnect after the renewal, and a
-dropped retirement leaves the old pin accepted.
+dropped retirement leaves the old pin accepted. Whoever can call these chooses which
+collector the device trusts, so take a pin only from a source you would trust with
+commissioning.
 
 Crossing a renewal, the handler sees delivery fail and recover: the collector restarts
 with its renewed certificate and drops the session, the record logged at that moment is
@@ -693,11 +695,17 @@ is the example's renewal sequence rather than the library.
 ## Stage 15: Protect what is at rest
 
 Replace the CRC-16 from stage 10 with a keyed HMAC. The checksum told you a record came
-back the way it went in; the HMAC tells you nobody has changed it since. An edit made
-without the key fails verification, so stored records become tamper-*evident* rather
-than merely intact. The store discards such a record, reports it, and carries on with
-the ones behind it. A key that is briefly unavailable is not a verdict: the policy
-reports that instead, and the record waits in the store until it can be checked.
+back the way it went in; the HMAC tells you nobody without the key has changed it
+since. An edit made without the key fails verification, so stored records become
+tamper-*evident* rather than merely intact. The store discards such a record, reports
+it, and carries on with the ones behind it. The seal covers each record's content, not
+the store: [what a seal covers](security/at-rest-cryptography.md#what-a-seal-covers)
+says what it leaves undetected.
+
+A key that is briefly unavailable is not a verdict on what is already stored: the
+policy reports it, and stored records wait until they can be checked. A record raised
+meanwhile cannot be sealed, so it is not stored; it is lost, and the store reports
+that.
 
 ```c
 struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {.GetKey = SyslogStoreKey};
@@ -725,9 +733,11 @@ protecting stored records:
 [logPipeline@32473 transport="tls" atRest="hmac-sha256"]
 ```
 
-The standard elements say what any device can say; a private one says what only your
-product knows. A collector can use it to confirm a record really did arrive over TLS and
-really was sealed at rest, and to alert on a device whose pipeline has weakened.
+The standard elements carry what RFC 5424 defines for any device; a private element
+carries what is specific to your product. A collector can use it to see the protection
+the device reports for each record, and to alert on a device that reports a weaker
+pipeline. It is the device's own statement, not proof: a relay passes it on unchanged,
+whatever its next hop.
 
 Those are the values in force at this stage. They change as the remaining stages land -
 `transport="mtls"` at stage 17, `atRest="aes-256-gcm"` at stage 18, and a
@@ -737,8 +747,8 @@ leaves the device less protected than its configuration suggests, and an element
 claiming protection that is not in force is worse than no element at all, because that
 claim is exactly what a collector is watching for.
 
-**When you need it.** If a collector has to verify the protection a record travelled and
-rested under, rather than assume it. It is also the cheapest way to detect a fleet
+**When you need it.** If a collector has to know the protection a device reports for
+each record, rather than assume it. It is also the cheapest way to detect a fleet
 member whose pipeline has silently degraded.
 
 **Cost.** Flash ~125 B, RAM negligible.
