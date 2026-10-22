@@ -144,10 +144,12 @@ static mbedtls_ssl_context* lastSslReadContextArg;
 static unsigned char* lastSslReadBufArg;
 static size_t lastSslReadLenArg;
 static int sslReadReturn;
+
 enum
 {
     MBEDTLSFAKE_MAX_READ_RETURNS = 8
 };
+
 static int sslReadReturnSequence[MBEDTLSFAKE_MAX_READ_RETURNS];
 static int sslReadReturnSequenceLen;
 
