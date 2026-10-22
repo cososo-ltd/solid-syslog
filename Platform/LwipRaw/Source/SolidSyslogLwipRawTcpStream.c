@@ -52,6 +52,11 @@ struct LwipRawTcpStreamCall
     void* ReadBuffer;
     size_t Length;
     err_t ConnectErr;
+    /* What ended a failed attempt, read on the lwIP thread by the abort hop:
+       the callbacks write Errored and LastError there, and the hop is what
+       carries both to the caller's thread together. */
+    bool EndedByPeer;
+    err_t PeerError;
     bool SendResult;
     SolidSyslogSsize ReadResult;
 };
@@ -83,8 +88,7 @@ static void LwipRawTcpStream_ReportConnectFailureWithCode(
     enum SolidSyslogTcpStreamErrors detail,
     err_t nativeCode
 );
-static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRawTcpStream* self, err_t connectErr);
-static inline bool LwipRawTcpStream_EndedByPeer(const struct SolidSyslogLwipRawTcpStream* self);
+static void LwipRawTcpStream_ReportFailedAttempt(const struct LwipRawTcpStreamCall* call);
 static void LwipRawTcpStream_DoOpenAndConnect(void* context);
 static void LwipRawTcpStream_DoAbort(void* context);
 static void LwipRawTcpStream_DoSend(void* context);
@@ -216,8 +220,9 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
             }
             if (!connected)
             {
-                LwipRawTcpStream_ReportFailedAttempt(self, call.ConnectErr);
+                /* Abort first: the hop also reads what ended the attempt. */
                 SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoAbort, &call);
+                LwipRawTcpStream_ReportFailedAttempt(&call);
             }
         }
         else
@@ -264,26 +269,26 @@ static void LwipRawTcpStream_ReportConnectFailureWithCode(
 
 /* Names which step of a failed attempt gave up. A non-ERR_OK from tcp_connect
  * is the local stack declining to start - no memory for the SYN, no route -
- * so no packet was ever sent. Otherwise the bounded wait ended, and Errored
- * separates a reset that arrived from a budget that simply ran out. The code
- * is the one tcp_connect answered, or the one the callback that ended the
- * wait was handed; a budget that ran out has none. */
-static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRawTcpStream* self, err_t connectErr)
+ * so no packet was ever sent. Otherwise the bounded wait ended, and the abort
+ * hop's reading separates a reset that arrived from a budget that simply ran
+ * out. The code is the one tcp_connect answered, or the one the callback that
+ * ended the attempt was handed; a budget that ran out has none. */
+static void LwipRawTcpStream_ReportFailedAttempt(const struct LwipRawTcpStreamCall* call)
 {
-    if (connectErr != ERR_OK)
+    if (call->ConnectErr != ERR_OK)
     {
         LwipRawTcpStream_ReportConnectFailureWithCode(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
-            connectErr
+            call->ConnectErr
         );
     }
-    else if (LwipRawTcpStream_EndedByPeer(self))
+    else if (call->EndedByPeer)
     {
         LwipRawTcpStream_ReportConnectFailureWithCode(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            self->LastError
+            call->PeerError
         );
     }
     else
@@ -293,13 +298,6 @@ static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRaw
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
         );
     }
-}
-
-/* Errored at this point means tcp_err fired or the connected callback reported
- * a failure - the attempt was answered, just not with a connection. */
-static inline bool LwipRawTcpStream_EndedByPeer(const struct SolidSyslogLwipRawTcpStream* self)
-{
-    return self->Errored;
 }
 
 /* The setup-and-connect hop: tcp_new + pcb configuration + tcp_connect all
@@ -390,9 +388,15 @@ static uint32_t LwipRawTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogLwipR
 
 /* Connect failed or timed out - release the pcb cleanly on the lwIP thread.
  * tcp_abort (not tcp_close) because a half-open pcb has no graceful close. */
+/* Errored here means tcp_err fired or the connected callback reported a
+ * failure - the attempt was answered, just not with a connection. Both it and
+ * the code behind it are read on the lwIP thread that wrote them. */
 static void LwipRawTcpStream_DoAbort(void* context)
 {
-    struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStreamCallFromContext(context)->Self;
+    struct LwipRawTcpStreamCall* call = LwipRawTcpStreamCallFromContext(context);
+    struct SolidSyslogLwipRawTcpStream* self = call->Self;
+    call->EndedByPeer = self->Errored;
+    call->PeerError = self->LastError;
     tcp_abort(self->Pcb);
     self->Pcb = NULL;
 }
@@ -636,8 +640,6 @@ static err_t LwipRawTcpStream_ConnectedCallback(void* arg, struct tcp_pcb* pcb, 
     }
     else
     {
-        /* The code before the flag: the caller's thread polls Errored and
-         * reads LastError the moment it sees it. */
         self->LastError = err;
         self->Errored = true;
     }
@@ -658,8 +660,7 @@ static err_t LwipRawTcpStream_RecvCallback(void* arg, struct tcp_pcb* tpcb, stru
     if (p == NULL)
     {
         /* lwIP signals the close with a NULL pbuf rather than an err_t;
-         * ERR_CLSD is its name for that state. The code before the flag, as
-         * the other callbacks keep it. */
+         * ERR_CLSD is its name for that state. */
         self->LastError = ERR_CLSD;
         self->Errored = true;
     }
@@ -693,8 +694,6 @@ static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromArg(arg);
     self->Pcb = NULL;
-    /* The code before the flag: the caller's thread polls Errored and reads
-     * LastError the moment it sees it. */
     self->LastError = err;
     self->Errored = true;
 }

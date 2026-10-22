@@ -65,6 +65,7 @@ static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* s
 static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd);
+static bool LwipSocketTcpStream_ReadSocketError(int fd, int* code);
 static void LwipSocketTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
@@ -74,7 +75,7 @@ static void LwipSocketTcpStream_ReportConnectFailureWithErrno(
     enum SolidSyslogTcpStreamErrors detail,
     int nativeErrno
 );
-static void LwipSocketTcpStream_ReportUnfinishedWait(int selectResult, int selectErrno);
+static void LwipSocketTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno);
 static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult);
 static inline bool LwipSocketTcpStream_IsRemoteConnectError(int connectErrno);
 
@@ -421,16 +422,16 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMic
 
     if (!ready)
     {
-        LwipSocketTcpStream_ReportUnfinishedWait(rc, selectErrno);
+        LwipSocketTcpStream_ReportUnfinishedWait(fd, rc, selectErrno);
     }
     return ready;
 }
 
 /* The budget expiring is nothing to report a code for. A select that failed
- * left its errno; a socket flagged in the exception set is the stack's own
- * answer, and carries none. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the errno it left; distinct semantics
-static void LwipSocketTcpStream_ReportUnfinishedWait(int selectResult, int selectErrno)
+ * left its errno. A socket lwip_select answered for, flagged in the exception
+ * set, holds the failure in SO_ERROR. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a descriptor, a select result and the errno it left; distinct semantics
+static void LwipSocketTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno)
 {
     if (LwipSocketTcpStream_WaitTimedOut(selectResult))
     {
@@ -441,10 +442,15 @@ static void LwipSocketTcpStream_ReportUnfinishedWait(int selectResult, int selec
     }
     else
     {
+        int nativeErrno = selectErrno;
+        if (selectResult > 0)
+        {
+            (void) LwipSocketTcpStream_ReadSocketError(fd, &nativeErrno);
+        }
         LwipSocketTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            selectErrno
+            nativeErrno
         );
     }
 }
@@ -470,26 +476,34 @@ static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult)
  * its outcome through SO_ERROR, and a failed one becomes writable too. */
 static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd)
 {
-    int err = 0;
-    socklen_t errlen = (socklen_t) sizeof(err);
-    int rc = lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
-    /* Captured immediately after lwip_getsockopt so the report below satisfies
-     * MISRA 22.10 - no intervening library call between the errno-setting
-     * function and the read. */
-    int lookupErrno = (rc != 0) ? errno : 0;
-    bool connected = (rc == 0) && (err == 0);
+    int code = 0;
+    bool asked = LwipSocketTcpStream_ReadSocketError(fd, &code);
+    bool connected = asked && (code == 0);
 
     if (!connected)
     {
-        /* The code is the one the socket holds, or, when it cannot be asked,
-         * the lookup's own. */
         LwipSocketTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            (rc == 0) ? err : lookupErrno
+            code
         );
     }
     return connected;
+}
+
+/* The error the socket holds, or, when it cannot be asked, the lookup's own:
+ * true when the socket answered. */
+static bool LwipSocketTcpStream_ReadSocketError(int fd, int* code)
+{
+    int err = 0;
+    socklen_t errlen = (socklen_t) sizeof(err);
+    int rc = lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
+    /* Captured immediately after lwip_getsockopt so the report satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int lookupErrno = (rc != 0) ? errno : 0;
+    *code = (rc == 0) ? err : lookupErrno;
+    return rc == 0;
 }
 
 /* Every connect failure is one category with the detail naming which step

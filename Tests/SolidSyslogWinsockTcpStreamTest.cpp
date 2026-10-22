@@ -396,6 +396,24 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenSelectFlagsTheErr
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
+// The exception set is how Winsock answers a refused non-blocking connect, so
+// this is the common path for a refusal here.
+TEST(SolidSyslogWinsockTcpStream, OpenReportsThePendingSocketErrorWhenSelectFlagsTheErrorSet)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectError(true);
+    WinsockFake_SetSoError(WSAECONNREFUSED);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        WSAECONNREFUSED
+    );
+}
+
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenTheDeferredSocketErrorIsSet)
 {
     ErrorHandlerFake_Install(nullptr);

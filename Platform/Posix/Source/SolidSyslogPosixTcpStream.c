@@ -67,6 +67,7 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
 static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long timeoutMicros);
 static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static bool PosixTcpStream_ReadDeferredConnectError(int fd);
+static bool PosixTcpStream_ReadSocketError(int fd, int* code);
 static void PosixTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
@@ -76,7 +77,7 @@ static void PosixTcpStream_ReportConnectFailureWithErrno(
     enum SolidSyslogTcpStreamErrors detail,
     int nativeErrno
 );
-static void PosixTcpStream_ReportUnfinishedWait(int selectResult, int selectErrno);
+static void PosixTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno);
 static inline bool PosixTcpStream_IsRemoteConnectError(int connectErrno);
 static inline bool PosixTcpStream_WaitTimedOut(int selectResult);
 static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self);
@@ -397,16 +398,16 @@ static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros)
     bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
     if (!ready)
     {
-        PosixTcpStream_ReportUnfinishedWait(rc, selectErrno);
+        PosixTcpStream_ReportUnfinishedWait(fd, rc, selectErrno);
     }
     return ready;
 }
 
 /* The budget expiring is nothing to report a code for. A select that failed
- * left its errno; a socket flagged in the exception set is the kernel's own
- * answer, and carries none. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the errno it left; distinct semantics
-static void PosixTcpStream_ReportUnfinishedWait(int selectResult, int selectErrno)
+ * left its errno. A socket select answered for, flagged in the exception set,
+ * holds the failure in SO_ERROR. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a descriptor, a select result and the errno it left; distinct semantics
+static void PosixTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno)
 {
     if (PosixTcpStream_WaitTimedOut(selectResult))
     {
@@ -417,10 +418,15 @@ static void PosixTcpStream_ReportUnfinishedWait(int selectResult, int selectErrn
     }
     else
     {
+        int nativeErrno = selectErrno;
+        if (selectResult > 0)
+        {
+            (void) PosixTcpStream_ReadSocketError(fd, &nativeErrno);
+        }
         PosixTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            selectErrno
+            nativeErrno
         );
     }
 }
@@ -435,23 +441,31 @@ static inline bool PosixTcpStream_WaitTimedOut(int selectResult)
 
 static bool PosixTcpStream_ReadDeferredConnectError(int fd)
 {
+    int code = 0;
+    bool asked = PosixTcpStream_ReadSocketError(fd, &code);
+    bool connected = asked && (code == 0);
+    if (!connected)
+    {
+        PosixTcpStream_ReportConnectFailureWithErrno(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            code
+        );
+    }
+    return connected;
+}
+
+/* The error the socket holds, or, when it cannot be asked, the lookup's own:
+ * true when the socket answered. */
+static bool PosixTcpStream_ReadSocketError(int fd, int* code)
+{
     int err = 0;
     socklen_t errlen = (socklen_t) sizeof(err);
     int rc = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
     /* Capture errno immediately after getsockopt (MISRA 22.10). */
     int lookupErrno = (rc != 0) ? errno : 0;
-    bool connected = (rc == 0) && (err == 0);
-    if (!connected)
-    {
-        /* The code is the one the socket holds, or, when it cannot be asked,
-         * the lookup's own. */
-        PosixTcpStream_ReportConnectFailureWithErrno(
-            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            (rc == 0) ? err : lookupErrno
-        );
-    }
-    return connected;
+    *code = (rc == 0) ? err : lookupErrno;
+    return rc == 0;
 }
 
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)

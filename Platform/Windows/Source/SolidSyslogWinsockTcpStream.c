@@ -138,7 +138,7 @@ static void WinsockTcpStream_ReportConnectFailureWithLastError(
     enum SolidSyslogTcpStreamErrors detail,
     int lastError
 );
-static void WinsockTcpStream_ReportUnfinishedWait(int selectResult, int selectLastError);
+static void WinsockTcpStream_ReportUnfinishedWait(SOCKET fd, int selectResult, int selectLastError);
 
 static SOCKET WinsockTcpStream_OpenAndConfigureSocket(void);
 static bool WinsockTcpStream_ConfigureSocket(SOCKET fd);
@@ -153,6 +153,7 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
 static bool WinsockTcpStream_SetNonBlocking(SOCKET fd);
 static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connectTimeoutMs);
 static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd);
+static bool WinsockTcpStream_ReadSocketError(SOCKET fd, int* code);
 static void WinsockTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
@@ -481,16 +482,17 @@ static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connec
     bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
     if (!ready)
     {
-        WinsockTcpStream_ReportUnfinishedWait(rc, selectLastError);
+        WinsockTcpStream_ReportUnfinishedWait(fd, rc, selectLastError);
     }
     return ready;
 }
 
 /* The budget expiring is nothing to report a code for. A select that failed
- * left its error; a socket flagged in the exception set is Winsock's own
- * answer, and carries none. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the error it left; distinct semantics
-static void WinsockTcpStream_ReportUnfinishedWait(int selectResult, int selectLastError)
+ * left its error. A socket select answered for, flagged in the exception set,
+ * is how Winsock reports a refused non-blocking connect, and the socket holds
+ * the failure in SO_ERROR. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a socket, a select result and the error it left; distinct semantics
+static void WinsockTcpStream_ReportUnfinishedWait(SOCKET fd, int selectResult, int selectLastError)
 {
     if (WinsockTcpStream_WaitTimedOut(selectResult))
     {
@@ -501,10 +503,15 @@ static void WinsockTcpStream_ReportUnfinishedWait(int selectResult, int selectLa
     }
     else
     {
+        int lastError = selectLastError;
+        if (selectResult > 0)
+        {
+            (void) WinsockTcpStream_ReadSocketError(fd, &lastError);
+        }
         WinsockTcpStream_ReportConnectFailureWithLastError(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            selectLastError
+            lastError
         );
     }
 }
@@ -519,22 +526,30 @@ static inline bool WinsockTcpStream_WaitTimedOut(int selectResult)
 
 static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd)
 {
+    int code = 0;
+    bool asked = WinsockTcpStream_ReadSocketError(fd, &code);
+    bool connected = asked && (code == 0);
+    if (!connected)
+    {
+        WinsockTcpStream_ReportConnectFailureWithLastError(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            code
+        );
+    }
+    return connected;
+}
+
+/* The error the socket holds, or, when it cannot be asked, the lookup's own:
+ * true when the socket answered. */
+static bool WinsockTcpStream_ReadSocketError(SOCKET fd, int* code)
+{
     int err = 0;
     int errlen = (int) sizeof(err);
     int rc = WinsockTcpStream_getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*) &err, &errlen);
     int lookupLastError = (rc == SOCKET_ERROR) ? WinsockTcpStream_WSAGetLastError() : 0;
-    bool connected = (rc != SOCKET_ERROR) && (err == 0);
-    if (!connected)
-    {
-        /* The code is the one the socket holds, or, when it cannot be asked,
-         * the lookup's own. */
-        WinsockTcpStream_ReportConnectFailureWithLastError(
-            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
-            (rc != SOCKET_ERROR) ? err : lookupLastError
-        );
-    }
-    return connected;
+    *code = (rc != SOCKET_ERROR) ? err : lookupLastError;
+    return rc != SOCKET_ERROR;
 }
 
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)

@@ -80,7 +80,8 @@ source, with the detail naming the step, as
 [`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
 Where the stack gave an `err_t` - the one `tcp_connect` answered, or the one it
 handed the connected or error callback that ended the attempt - the event's
-`NativeCode` carries it. A `tcp_new` that answers no pcb, and a connect budget
+`NativeCode` carries it. A peer that closed the attempt rather than refusing
+it carries `ERR_CLSD`. A `tcp_new` that answers no pcb, and a connect budget
 that expires with no answer from the peer, leave none.
 
 ### A burst to an unresolved next hop is held up to a bound

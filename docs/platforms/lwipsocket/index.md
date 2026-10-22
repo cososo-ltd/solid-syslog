@@ -81,11 +81,12 @@ Each step of a TCP connect that fails is reported under the stream's own error
 source, with the detail naming the step, as
 [`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
 Where the stack left an `errno` - from `lwip_socket`, `lwip_fcntl`,
-`lwip_connect` or `lwip_select`, the pending `SO_ERROR` the connect completed
-with, or the `errno` of the `lwip_getsockopt` that could not read it - the
-event's `NativeCode` carries it, as whichever `errno` definitions your build
-enabled above number it. The connect budget expiring, and `lwip_select`
-flagging the socket in its exception set, leave none.
+`lwip_connect` or `lwip_select`, the pending `SO_ERROR` of a socket the wait
+ended on unconnected, or the `errno` of the `lwip_getsockopt` that could not
+read it - the event's `NativeCode` carries it, as whichever `errno` definitions
+your build enabled above number it. The connect budget expiring leaves none,
+nor does a socket `lwip_select` flags in its exception set with no pending
+error.
 
 ## Dead-peer detection is yours to size
 

@@ -51,7 +51,14 @@ failure and raises nothing: the store judges it for itself. Nor is a path
 A close whose sync fails leaves the file open, because `f_close` then returns
 without releasing the file object and, under `FF_FS_LOCK`, its lock entry. The
 next Close, or the next Open, retries it, and the store opens the file again
-for every block it moves to, so a disk error that clears costs one report. A file
+for every block it moves to, so a disk error that clears costs one report. An
+Open whose retry fails again answers false without opening anything, and the
+file stays open on the file it held, so `IsOpen` answers true until a close
+succeeds. That departs from the
+[File](../../api/structSolidSyslogFile.md) contract, under which a failed open
+leaves the file closed: `f_open` would otherwise discard the held file and its
+lock entry. The store treats the refused open as a failed device and freezes,
+as it does for any open that fails. A file
 destroyed while its close is still failing gives its slot back regardless, and
 under `FF_FS_LOCK` FatFs holds the lock entry until the volume is mounted
 again: a write-mode open of that path answers `FR_LOCKED` until then.

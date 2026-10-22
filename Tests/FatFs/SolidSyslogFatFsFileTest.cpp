@@ -333,17 +333,39 @@ TEST(SolidSyslogFatFsFile, AnOpenAfterAFailedCloseRetriesTheCloseFirst)
     CHECK_OPEN_PATH("next.log");
 }
 
-TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainReportsItAndStillOpens)
+TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainReportsTheClose)
 {
     Open();
     FatFsFake_SetCloseResult(FR_DISK_ERR);
     Close();
     ErrorHandlerFake_Install(nullptr);
 
-    Open("next.log");
+    SolidSyslogFile_Open(file, "next.log");
 
     CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, FR_DISK_ERR);
-    CHECK_OPEN_PATH("next.log");
+}
+
+TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainIsRefused)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    Close();
+
+    CHECK_FALSE(SolidSyslogFile_Open(file, "next.log"));
+}
+
+// f_open would discard the old file, and the FF_FS_LOCK entry with it, so the
+// file object is left holding it for the next retry.
+TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainKeepsTheOldFileOpen)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    Close();
+
+    SolidSyslogFile_Open(file, "next.log");
+
+    CALLED_FAKE(FatFsFake_Open, ONCE);
+    CHECK_FILE_IS_OPEN();
 }
 
 TEST(SolidSyslogFatFsFile, AnOpenOfAClosedFileClosesNothing)

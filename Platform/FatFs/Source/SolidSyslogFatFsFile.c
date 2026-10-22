@@ -106,17 +106,23 @@ static inline void FatFsFile_ReportFailure(enum SolidSyslogFileErrors code, FRES
 static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
+    bool opened = false;
     /* A close that failed earlier is retried before the file object is
-     * reused; if it fails again it is reported again, and the open goes
-     * ahead regardless. */
+     * reused. If it fails again the file object still holds the old file, and
+     * f_open would discard it along with any FF_FS_LOCK entry, so the open is
+     * refused and the old file kept for the next retry. */
     FatFsFile_Close(base);
-    FRESULT result = f_open(&self->Fp, path, FATFSFILE_READ_WRITE_OR_CREATE);
-    self->IsOpen = (result == FR_OK);
     if (!self->IsOpen)
     {
-        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, result);
+        FRESULT result = f_open(&self->Fp, path, FATFSFILE_READ_WRITE_OR_CREATE);
+        self->IsOpen = (result == FR_OK);
+        if (!self->IsOpen)
+        {
+            FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, result);
+        }
+        opened = self->IsOpen;
     }
-    return self->IsOpen;
+    return opened;
 }
 
 static bool FatFsFile_IsOpen(struct SolidSyslogFile* base)
