@@ -811,10 +811,12 @@ code should follow them; reviewers should call out drift.
   `Create` - it arrives through a vtable, a callback, or a public entry point
   an integrator's backend can call directly - check at that boundary instead,
   as `SolidSyslog_LogWithSd` and `SolidSyslogTlsFingerprint_InspectList` do.
-  A per-call array may skip NULL elements where it is walked rather than
-  refuse the call, as the message-SD walk does, with a comment saying why.
-  The check lives in one place; a walk that assumes it was done does not
-  repeat it.
+  The one exception is an array whose holes are legitimate: structured data
+  checks only the pairing, at `Create` and at `LogWithSd`, and the SD walk
+  skips a NULL element in either array because a per-message array is built
+  at the call site where an absent SD is naturally NULL. That skip carries a
+  comment saying so. Whichever shape applies, the check lives in one place;
+  a walk that assumes it was done does not repeat it.
 
 ### Test code
 

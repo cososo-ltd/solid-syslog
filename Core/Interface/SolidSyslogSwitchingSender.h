@@ -37,8 +37,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Senders and Selector are required, as is every element of Senders within
      *  SenderCount (NULL in any of them makes Create fall back to the shared
      *  NullSender). The Senders array and the inner senders it points to must
-     *  outlive the created handle, but the config struct itself is copied at Create
-     *  and may be transient. Switching away from a sender disconnects it. */
+     *  outlive the created handle, and the elements are checked at Create only:
+     *  the array is read on every Send, so one set to NULL afterwards is called
+     *  as a vtable. Swap an element for its replacement, never for NULL. The
+     *  config struct itself is copied at Create and may be transient. Switching away from a sender disconnects it. */
     struct SolidSyslogSwitchingSenderConfig
     {
         struct SolidSyslogSender** Senders;

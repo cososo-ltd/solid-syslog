@@ -392,7 +392,7 @@ TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallb
 TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
 {
     struct SolidSyslogSender*               innerA = nullptr;
-    struct SolidSyslogSender*               inners[1] = {nullptr};
+    struct SolidSyslogSender*               inners[2] = {nullptr, nullptr};
     int                                     sentinel = 0;
     SolidSyslogSwitchingSenderConfig        config;
 
@@ -400,7 +400,8 @@ TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
-        config   = {inners, 1, TestSelector, nullptr};
+        inners[1] = innerA;
+        config   = {inners, 2, TestSelector, nullptr};
         ErrorHandlerFake_Install(&sentinel);
     }
 
