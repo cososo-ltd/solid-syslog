@@ -1382,6 +1382,66 @@ TEST(SolidSyslogOpenSslStream, SendReturnsFalseOnShortWrite)
 }
 
 /* -------------------------------------------------------------------------
+ * Send reads what the collector sent before writing, so a session the peer
+ * has closed refuses the record rather than taking it.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogOpenSslStream, SendRefusesTheRecordWhenThePeerHasClosedTheSession)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(0);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    const char msg[] = "hi";
+    CHECK_FALSE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendRefusesTheRecordWhenDataWaitsAheadOfThePeerClosingTheSession)
+{
+    SolidSyslogStream_Open(stream, addr);
+    const int reads[] = {5, 0};
+    OpenSslFake_SetReadReturnSequence(reads, 2);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    const char msg[] = "hi";
+    CHECK_FALSE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendWritesNothingToASessionThePeerHasClosed)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(0);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    SendShortMessage();
+    CALLED_FAKE(OpenSslFake_Write, NEVER);
+}
+
+TEST(SolidSyslogOpenSslStream, SendClosesSslAndTransportWhenThePeerHasClosedTheSession)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(0);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_ZERO_RETURN);
+    SendShortMessage();
+    CHECK_SSL_SESSION_CLOSED();
+    CHECK_TRANSPORT_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogOpenSslStream, SendWritesWhenNothingIsWaiting)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(-1);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
+    const char msg[] = "hi";
+    CHECK_TRUE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+TEST(SolidSyslogOpenSslStream, SendWritesToAPeerThatNeverStopsSending)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(5);
+    const char msg[] = "hi";
+    CHECK_TRUE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
+}
+
+/* -------------------------------------------------------------------------
  * Read non-blocking contract.
  * ------------------------------------------------------------------------- */
 

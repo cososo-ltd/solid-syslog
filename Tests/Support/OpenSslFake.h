@@ -39,12 +39,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* SSL return-value injection - drive non-blocking I/O paths */
     enum
     {
-        OPENSSLFAKE_MAX_CONNECT_RETURNS = 8
+        OPENSSLFAKE_MAX_CONNECT_RETURNS = 8,
+        OPENSSLFAKE_MAX_READ_RETURNS = 8
     };
 
     void OpenSslFake_SetConnectReturnSequence(const int* values, int count);
     void OpenSslFake_SetWriteReturn(int value);
     void OpenSslFake_SetReadReturn(int value);
+    /* Per-call SSL_read returns; once exhausted, every later call returns the
+     * last entry. Capped at OPENSSLFAKE_MAX_READ_RETURNS (silently truncated). */
+    void OpenSslFake_SetReadReturnSequence(const int* values, int count);
     void OpenSslFake_SetGetErrorReturn(int err);
     int OpenSslFake_GetErrorCallCount(void);
 
