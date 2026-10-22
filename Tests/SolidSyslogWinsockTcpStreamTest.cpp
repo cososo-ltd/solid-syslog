@@ -645,6 +645,43 @@ TEST(SolidSyslogWinsockTcpStream, SendClosesSocketOnFailure)
     CHECK_SOCKET_CLOSED_ONCE();
 }
 
+TEST(SolidSyslogWinsockTcpStream, SendRefusesTheRecordWhenThePeerHasClosedItsEnd)
+{
+    SolidSyslogStream_Open(stream, addr);
+    WinsockFake_SetRecvReturn(0);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+
+    CALLED_FAKE(WinsockFake_Send, NEVER);
+    CHECK_SOCKET_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogWinsockTcpStream, SendRefusesTheRecordWhenTheStackReportsAFault)
+{
+    SolidSyslogStream_Open(stream, addr);
+    WinsockFake_FailNextRecvWithLastError(WSAECONNRESET);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+
+    CALLED_FAKE(WinsockFake_Send, NEVER);
+    CHECK_SOCKET_CLOSED_ONCE();
+}
+
+TEST(SolidSyslogWinsockTcpStream, SendWritesWhenThePeerHasSentData)
+{
+    SolidSyslogStream_Open(stream, addr);
+    WinsockFake_SetRecvReturn(3);
+
+    CHECK_TRUE(SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN));
+}
+
+TEST(SolidSyslogWinsockTcpStream, SendLeavesWhatThePeerSentForAReadToCollect)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SolidSyslogStream_Send(stream, TEST_MESSAGE, TEST_MESSAGE_LEN);
+    LONGS_EQUAL(MSG_PEEK, WinsockFake_LastRecvFlags());
+}
+
 TEST(SolidSyslogWinsockTcpStream, CloseCallsCloseOnce)
 {
     SolidSyslogStream_Open(stream, addr);

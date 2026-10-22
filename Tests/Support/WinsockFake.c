@@ -142,7 +142,7 @@ void WinsockFake_Reset(void)
     lastSendFd = INVALID_SOCKET;
 
     recvCallCount = 0;
-    recvReturn = 0;
+    recvReturn = SOCKET_ERROR;
     lastRecvFd = INVALID_SOCKET;
     lastRecvBuf = NULL;
     lastRecvLen = 0;
@@ -727,6 +727,10 @@ int WSAAPI WinsockFake_recv(SOCKET s, char* buf, int len, int flags)
         WSASetLastError(nextRecvLastError);
         nextRecvShouldFailWithLastError = false;
         return SOCKET_ERROR;
+    }
+    if (recvReturn < 0)
+    {
+        WSASetLastError(WSAEWOULDBLOCK);
     }
     return recvReturn;
 }
