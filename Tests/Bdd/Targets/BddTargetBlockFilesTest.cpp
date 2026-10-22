@@ -66,3 +66,33 @@ TEST(BddTargetBlockFiles, OnePresentBlockIsListedByItsIndex)
 
     STRCMP_EQUAL("BLOCKS: 00\n", PrintBlockFiles(&listFile, "/STORE", 1U).c_str());
 }
+
+TEST(BddTargetBlockFiles, PresentBlocksAreListedInIndexOrderWithGapsLeftOut)
+{
+    presentPaths[0] = "/STORE02.log";
+    presentPaths[1] = "/STORE00.log";
+
+    STRCMP_EQUAL("BLOCKS: 00 02\n", PrintBlockFiles(&listFile, "/STORE", 4U).c_str());
+}
+
+TEST(BddTargetBlockFiles, ABlockAtOrBeyondMaxBlocksIsNotAskedFor)
+{
+    presentPaths[0] = "/STORE03.log";
+
+    STRCMP_EQUAL("BLOCKS:\n", PrintBlockFiles(&listFile, "/STORE", 3U).c_str());
+}
+
+TEST(BddTargetBlockFiles, AnIndexOfTenOrMoreKeepsTwoDigits)
+{
+    presentPaths[0] = "/ata0a/STORE10.log";
+
+    STRCMP_EQUAL("BLOCKS: 10\n", PrintBlockFiles(&listFile, "/ata0a/STORE", 11U).c_str());
+}
+
+/* Test list (ZOMBIES order):
+ *  Z  [x] NoBlocksPrintsTheBareHeader
+ *  O  [x] OnePresentBlockIsListedByItsIndex
+ *  M  [x] PresentBlocksAreListedInIndexOrderWithGapsLeftOut
+ *  B  [x] ABlockAtOrBeyondMaxBlocksIsNotAskedFor
+ *  B  [x] AnIndexOfTenOrMoreKeepsTwoDigits
+ */
