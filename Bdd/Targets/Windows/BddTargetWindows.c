@@ -8,6 +8,7 @@
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetServiceThread.h"
 #include "BddTargetStderrErrorHandler.h"
+#include "BddTargetStoreSettings.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "BddTargetTlsSender.h"
@@ -21,6 +22,7 @@
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullSecurityPolicy.h"
+#include "SolidSyslogOpenSslAesGcmPolicy.h"
 #include "SolidSyslogOpenSslHmacSha256Policy.h"
 #include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogMetaSd.h"
@@ -87,8 +89,9 @@ static struct SolidSyslogSender* switchingSender;
 static struct SolidSyslogFile* storeFile;
 static struct SolidSyslogBlockDevice* storeBlockDevice;
 /* Holds the created at-rest SecurityPolicy handle so DestroyStore can release
- * it. Only the keyed hmac-sha256 policy needs the handle to destroy; crc16 and
- * null are dispatched by name. */
+ * it. The keyed policies (hmac-sha256, aes-256-gcm) need the handle to destroy;
+ * crc16 is dispatched by name to its singleton Destroy, and null needs no
+ * cleanup. */
 static struct SolidSyslogSecurityPolicy* securityPolicy;
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
@@ -144,41 +147,13 @@ static const char* GetEnvVar(char* buffer, size_t bufferSize, const char* name)
     return buffer;
 }
 
-static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
-{
-    if (strcmp(policy, "newest") == 0)
-    {
-        return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-    }
-    if (strcmp(policy, "halt") == 0)
-    {
-        return SOLIDSYSLOG_DISCARD_POLICY_HALT;
-    }
-    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-}
-
-static enum SolidSyslogDiscardPolicy discardPolicy;
-
-static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
-{
-    (void) context;
-    return discardPolicy;
-}
-
-static volatile bool haltExit;
-
 static void OnHalt(void* context)
 {
     (void) context;
-    if (haltExit)
+    if (BddTargetStoreSettings_HaltExit())
     {
         _exit(2);
     }
-}
-
-static size_t GetCapacityThreshold(void* context)
-{
-    return *(const size_t*) context;
 }
 
 static void OnThresholdCrossed(void* context)
@@ -251,15 +226,21 @@ static void DestroySender(void)
     SolidSyslogWinsockResolver_Destroy(resolver);
 }
 
-static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(const struct BddTargetWindowsOptions* options)
+static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
 {
     struct SolidSyslogSecurityPolicy* policy = NULL;
-    if (strcmp(options->SecurityPolicy, "hmac-sha256") == 0)
+    enum BddTargetSecurityPolicy kind = BddTargetStoreSettings_SecurityPolicy();
+    if (kind == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
     {
         static const struct SolidSyslogOpenSslHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
         policy = SolidSyslogOpenSslHmacSha256Policy_Create(&hmacConfig);
     }
-    else if (strcmp(options->SecurityPolicy, "null") == 0)
+    else if (kind == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
+    {
+        static const struct SolidSyslogOpenSslAesGcmPolicyConfig aesConfig = {BddTargetKey_Get, NULL};
+        policy = SolidSyslogOpenSslAesGcmPolicy_Create(&aesConfig);
+    }
+    else if (kind == BDD_TARGET_SECURITY_POLICY_NULL)
     {
         policy = SolidSyslogNullSecurityPolicy_Get();
     }
@@ -278,19 +259,18 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
     {
         storeFile = SolidSyslogWindowsFile_Create();
 
-        storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, options->MaxBlockSize);
+        storeBlockDevice =
+            SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
 
-        static size_t capacityThreshold;
-        capacityThreshold = options->CapacityThreshold;
-        securityPolicy = CreateSecurityPolicy(options);
+        securityPolicy = CreateSecurityPolicy();
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
-        storeConfig.MaxBlocks = options->MaxBlocks;
-        storeConfig.GetDiscardPolicy = GetDiscardPolicy;
+        storeConfig.MaxBlocks = BddTargetStoreSettings_MaxBlocks();
+        storeConfig.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
         storeConfig.SecurityPolicy = securityPolicy;
-        storeConfig.GetCapacityThreshold = GetCapacityThreshold;
+        storeConfig.GetCapacityThreshold = BddTargetStoreSettings_GetCapacityThreshold;
         storeConfig.OnThresholdCrossed = OnThresholdCrossed;
-        storeConfig.ThresholdContext = &capacityThreshold;
+        storeConfig.ThresholdContext = NULL;
 
         return SolidSyslogBlockStore_Create(&storeConfig);
     }
@@ -298,13 +278,20 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetWindowsOptions
     return SolidSyslogNullStore_Get();
 }
 
-static void DestroySecurityPolicy(const struct BddTargetWindowsOptions* options)
+/* The settings are fixed once the command line is parsed, so the policy to
+ * destroy is the one the same setting named at create. */
+static void DestroySecurityPolicy(void)
 {
-    if (strcmp(options->SecurityPolicy, "hmac-sha256") == 0)
+    enum BddTargetSecurityPolicy kind = BddTargetStoreSettings_SecurityPolicy();
+    if (kind == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
     {
         SolidSyslogOpenSslHmacSha256Policy_Destroy(securityPolicy);
     }
-    else if (strcmp(options->SecurityPolicy, "crc16") == 0)
+    else if (kind == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
+    {
+        SolidSyslogOpenSslAesGcmPolicy_Destroy(securityPolicy);
+    }
+    else if (kind == BDD_TARGET_SECURITY_POLICY_CRC16)
     {
         SolidSyslogCrc16Policy_Destroy();
     }
@@ -320,7 +307,7 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetW
     {
         SolidSyslogBlockStore_Destroy(store);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        DestroySecurityPolicy(options);
+        DestroySecurityPolicy();
         SolidSyslogWindowsFile_Destroy(storeFile);
     }
     /* else: NullStore is shared and immutable - nothing to destroy. */
@@ -377,17 +364,17 @@ int BddTargetWindows_Run(int argc, char* argv[])
        parity across runners); otherwise derive from argv[0] as before. */
     BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);
 
-    haltExit = options.HaltExit;
-    /* One policy for the pipeline: the store, the buffer and the logger ask the
-       same function. */
-    discardPolicy = MapDiscardPolicy(options.DiscardPolicy);
-
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
 
     struct SolidSyslogMutex* mutex = SolidSyslogWindowsMutex_Create();
-    struct SolidSyslogBuffer* buffer =
-        SolidSyslogCircularBuffer_Create(mutex, bufferRing, sizeof(bufferRing), GetDiscardPolicy, NULL);
+    struct SolidSyslogBuffer* buffer = SolidSyslogCircularBuffer_Create(
+        mutex,
+        bufferRing,
+        sizeof(bufferRing),
+        BddTargetStoreSettings_GetDiscardPolicy,
+        NULL
+    );
     struct SolidSyslogAtomicCounter* counter = SolidSyslogWindowsAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
@@ -410,7 +397,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
        optional timeQuality and origin SDs to keep records under the
        BlockStore's per-block packing budget for store-capacity tests. */
     struct SolidSyslogStructuredData* sdList[3] = {metaSd, timeQuality, originSd};
-    size_t sdCount = options.NoSd ? 1 : 3;
+    size_t sdCount = BddTargetStoreSettings_NoSd() ? 1 : 3;
 
     struct SolidSyslogConfig config = {
         .Buffer = buffer,
@@ -422,7 +409,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
         .Store = store,
         .Sd = sdList,
         .SdCount = sdCount,
-        .GetDiscardPolicy = GetDiscardPolicy,
+        .GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy,
         .OnHalt = OnHalt,
     };
     solidSyslog = SolidSyslog_Create(&config);

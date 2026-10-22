@@ -143,7 +143,7 @@ etc.) without rewriting feature tags.
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the FreeRTOS and CMSIS-RTOS2 targets; excluded on Linux, Windows and VxWorks 6.4. The complementary pair of `@rtc`. |
 | `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes - used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the QEMU targets run at the default, so the gate skips the feature there. |
 | `@hmac` | Needs an HMAC-SHA256 at-rest policy wired in the target, so a record sealed on write is verified on replay-read. Carried alongside `@store`, and excluded on VxWorks 6.4, which carries no TLS library to provide the policy. |
-| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on Windows, which wires no AES-GCM policy, and on VxWorks 6.4, which carries no TLS library to provide it. |
+| `@aesgcm` | Needs an AES-256-GCM at-rest policy wired in the target - authenticated encryption rather than integrity alone. Carried alongside `@store`, and excluded on VxWorks 6.4, which carries no TLS library to provide it. |
 | `@tls13` | Scenario asserts the handshake against a server that refuses everything below TLS 1.3, so delivery alone proves the version negotiated. |
 
 Rollout markers are also used (temporary; remove once the scenario passes):
@@ -204,7 +204,7 @@ cmake --build --preset msvc-tunable-override --target SolidSyslogBddTarget
 EXAMPLE_BINARY=build/msvc-tunable-override/Bdd/Targets/Debug/SolidSyslogBddTarget.exe \
 RECEIVED_LOG=Bdd/output/received.jsonl \
 ORACLE_FORMAT=otel-jsonl \
-behave --tags='not @wip and not @windows_wip and not @no_rtc and not @aesgcm' Bdd/features/
+behave --tags='not @wip and not @windows_wip and not @no_rtc' Bdd/features/
 ```
 
 If port 5514 is busy, stop the dev-container's syslog-ng:

@@ -1,14 +1,15 @@
 #include "BddTargetCommandLine.h"
 
+#include "BddTargetStoreSettings.h"
+
 #include <getopt.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 enum
 {
-    DEFAULT_MAX_BLOCKS = 10,
-    DEFAULT_MAX_BLOCK_SIZE = 65536,
     OPT_MAX_BLOCKS = 256,
     OPT_MAX_BLOCK_SIZE = 257,
     OPT_DISCARD_POLICY = 258,
@@ -19,31 +20,6 @@ enum
     OPT_SECURITY_POLICY = 263,
     OPT_ERRORS_FATAL = 264
 };
-
-static bool ParsePositiveNumber(const char* str, size_t* result)
-{
-    char* end = NULL;
-    long value = strtol(str, &end, 10);
-
-    if ((*str == '\0') || (*end != '\0') || (value < 0))
-    {
-        return false;
-    }
-
-    *result = (size_t) value;
-    return true;
-}
-
-static bool IsValidDiscardPolicy(const char* policy)
-{
-    return (strcmp(policy, "oldest") == 0) || (strcmp(policy, "newest") == 0) || (strcmp(policy, "halt") == 0);
-}
-
-static bool IsValidSecurityPolicy(const char* policy)
-{
-    return (strcmp(policy, "crc16") == 0) || (strcmp(policy, "hmac-sha256") == 0) ||
-           (strcmp(policy, "aes-256-gcm") == 0) || (strcmp(policy, "null") == 0);
-}
 
 static bool IsValidErrorsFatal(const char* value)
 {
@@ -61,11 +37,20 @@ static int SetIfValid(bool valid, const char* value, const char** field)
     return valid ? 0 : 1;
 }
 
-/* Applies one parsed option to `options`. Returns 0 on success, 1 if the
- * option's argument is invalid (which fails the whole parse). Split out of
+/* Hands a store option to the shared settings, which know it by the long
+ * option's own name. Returns 0 when taken, 1 when not - the parse's own
+ * result. */
+static int SetStoreSetting(const char* name, const char* value)
+{
+    return BddTargetStoreSettings_SetByName(name, value) ? 0 : 1;
+}
+
+/* Applies one parsed option to `options`; `name` is the long option's name,
+ * or NULL for a short one. Returns 0 on success, 1 if the option's argument
+ * is invalid (which fails the whole parse). Split out of
  * BddTargetCommandLine_Parse to keep the loop a thin driver and the per-option
  * logic in one place. */
-static int ApplyOption(int opt, const char* value, struct BddTargetOptions* options)
+static int ApplyOption(int opt, const char* name, const char* value, struct BddTargetOptions* options)
 {
     int result = 0;
     switch (opt)
@@ -104,25 +89,16 @@ static int ApplyOption(int opt, const char* value, struct BddTargetOptions* opti
             }
             break;
         case OPT_MAX_BLOCKS:
-            result = ParsePositiveNumber(value, &options->MaxBlocks) ? 0 : 1;
-            break;
         case OPT_MAX_BLOCK_SIZE:
-            result = ParsePositiveNumber(value, &options->MaxBlockSize) ? 0 : 1;
-            break;
         case OPT_DISCARD_POLICY:
-            result = SetIfValid(IsValidDiscardPolicy(value), value, &options->DiscardPolicy);
-            break;
         case OPT_SECURITY_POLICY:
-            result = SetIfValid(IsValidSecurityPolicy(value), value, &options->SecurityPolicy);
-            break;
         case OPT_CAPACITY_THRESHOLD:
-            result = ParsePositiveNumber(value, &options->CapacityThreshold) ? 0 : 1;
+            result = SetStoreSetting(name, value);
             break;
         case OPT_NO_SD:
-            options->NoSd = true;
-            break;
         case OPT_HALT_EXIT:
-            options->HaltExit = true;
+            /* Bare flags; the shared settings take every value as a number. */
+            result = SetStoreSetting(name, "1");
             break;
         case OPT_APP_NAME:
             options->AppName = value;
@@ -146,14 +122,8 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
     options->AppName = NULL;
     options->Transport = "udp";
     options->Store = "null";
-    options->MaxBlocks = DEFAULT_MAX_BLOCKS;
-    options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
-    options->DiscardPolicy = "oldest";
-    options->SecurityPolicy = "crc16";
-    options->CapacityThreshold = 0;
-    options->NoSd = false;
-    options->HaltExit = false;
     options->ErrorsFatal = "1";
+    BddTargetStoreSettings_Reset();
 
     static struct option longOptions[] = {
         {"facility", required_argument, NULL, 'f'},
@@ -176,9 +146,13 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
 
     int opt = 0;
     int result = 0;
-    while ((result == 0) && ((opt = getopt_long(argc, argv, "f:s:i:m:t:o:", longOptions, NULL)) != -1))
+    int longIndex = -1;
+    while ((result == 0) && ((opt = getopt_long(argc, argv, "f:s:i:m:t:o:", longOptions, &longIndex)) != -1))
     {
-        result = ApplyOption(opt, optarg, options);
+        /* getopt_long leaves longIndex alone for a short option. */
+        const char* name = (longIndex >= 0) ? longOptions[longIndex].name : NULL;
+        result = ApplyOption(opt, name, optarg, options);
+        longIndex = -1;
     }
 
     return result;

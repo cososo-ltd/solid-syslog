@@ -1,6 +1,7 @@
 #include <unistd.h>
 
 #include "BddTargetCommandLine.h"
+#include "BddTargetStoreSettings.h"
 #include "CppUTest/TestHarness.h"
 
 // clang-format off
@@ -26,7 +27,7 @@ TEST(BddTargetCommandLine, DefaultMaxBlocks)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(10, options.MaxBlocks);
+    LONGS_EQUAL(10, BddTargetStoreSettings_MaxBlocks());
 }
 
 TEST(BddTargetCommandLine, DefaultMaxBlockSize)
@@ -34,7 +35,7 @@ TEST(BddTargetCommandLine, DefaultMaxBlockSize)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    LONGS_EQUAL(65536, options.MaxBlockSize);
+    LONGS_EQUAL(65536, BddTargetStoreSettings_MaxBlockSize());
 }
 
 TEST(BddTargetCommandLine, DefaultDiscardPolicy)
@@ -42,7 +43,7 @@ TEST(BddTargetCommandLine, DefaultDiscardPolicy)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    STRCMP_EQUAL("oldest", options.DiscardPolicy);
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_OLDEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetCommandLine, DefaultNoSd)
@@ -50,7 +51,7 @@ TEST(BddTargetCommandLine, DefaultNoSd)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    CHECK_FALSE(options.NoSd);
+    CHECK_FALSE(BddTargetStoreSettings_NoSd());
 }
 
 TEST(BddTargetCommandLine, MaxBlocksFlag)
@@ -60,7 +61,7 @@ TEST(BddTargetCommandLine, MaxBlocksFlag)
     char arg2[] = "5";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    LONGS_EQUAL(5, options.MaxBlocks);
+    LONGS_EQUAL(5, BddTargetStoreSettings_MaxBlocks());
 }
 
 TEST(BddTargetCommandLine, MaxBlockSizeFlag)
@@ -70,7 +71,7 @@ TEST(BddTargetCommandLine, MaxBlockSizeFlag)
     char arg2[] = "1024";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    LONGS_EQUAL(1024, options.MaxBlockSize);
+    LONGS_EQUAL(1024, BddTargetStoreSettings_MaxBlockSize());
 }
 
 TEST(BddTargetCommandLine, DiscardPolicyOldest)
@@ -80,7 +81,7 @@ TEST(BddTargetCommandLine, DiscardPolicyOldest)
     char arg2[] = "oldest";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("oldest", options.DiscardPolicy);
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_OLDEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetCommandLine, DiscardPolicyNewest)
@@ -90,7 +91,7 @@ TEST(BddTargetCommandLine, DiscardPolicyNewest)
     char arg2[] = "newest";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("newest", options.DiscardPolicy);
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_NEWEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetCommandLine, DiscardPolicyHalt)
@@ -100,7 +101,7 @@ TEST(BddTargetCommandLine, DiscardPolicyHalt)
     char arg2[] = "halt";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("halt", options.DiscardPolicy);
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_HALT, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
 }
 
 TEST(BddTargetCommandLine, InvalidDiscardPolicyReturnsOne)
@@ -117,7 +118,7 @@ TEST(BddTargetCommandLine, DefaultSecurityPolicy)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    STRCMP_EQUAL("crc16", options.SecurityPolicy);
+    LONGS_EQUAL(BDD_TARGET_SECURITY_POLICY_CRC16, BddTargetStoreSettings_SecurityPolicy());
 }
 
 TEST(BddTargetCommandLine, SecurityPolicyCrc16)
@@ -127,7 +128,7 @@ TEST(BddTargetCommandLine, SecurityPolicyCrc16)
     char arg2[] = "crc16";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("crc16", options.SecurityPolicy);
+    LONGS_EQUAL(BDD_TARGET_SECURITY_POLICY_CRC16, BddTargetStoreSettings_SecurityPolicy());
 }
 
 TEST(BddTargetCommandLine, SecurityPolicyHmacSha256)
@@ -137,7 +138,7 @@ TEST(BddTargetCommandLine, SecurityPolicyHmacSha256)
     char arg2[] = "hmac-sha256";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("hmac-sha256", options.SecurityPolicy);
+    LONGS_EQUAL(BDD_TARGET_SECURITY_POLICY_HMAC_SHA256, BddTargetStoreSettings_SecurityPolicy());
 }
 
 TEST(BddTargetCommandLine, SecurityPolicyAes256Gcm)
@@ -147,7 +148,7 @@ TEST(BddTargetCommandLine, SecurityPolicyAes256Gcm)
     char arg2[] = "aes-256-gcm";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("aes-256-gcm", options.SecurityPolicy);
+    LONGS_EQUAL(BDD_TARGET_SECURITY_POLICY_AES_256_GCM, BddTargetStoreSettings_SecurityPolicy());
 }
 
 TEST(BddTargetCommandLine, SecurityPolicyNull)
@@ -157,7 +158,7 @@ TEST(BddTargetCommandLine, SecurityPolicyNull)
     char arg2[] = "null";
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(0, Parse(3, argv));
-    STRCMP_EQUAL("null", options.SecurityPolicy);
+    LONGS_EQUAL(BDD_TARGET_SECURITY_POLICY_NULL, BddTargetStoreSettings_SecurityPolicy());
 }
 
 TEST(BddTargetCommandLine, InvalidSecurityPolicyReturnsOne)
@@ -239,7 +240,34 @@ TEST(BddTargetCommandLine, NoSdFlag)
     char arg1[] = "--no-sd";
     char* argv[] = {arg0, arg1, nullptr};
     LONGS_EQUAL(0, Parse(2, argv));
-    CHECK_TRUE(options.NoSd);
+    CHECK_TRUE(BddTargetStoreSettings_NoSd());
+}
+
+TEST(BddTargetCommandLine, DefaultHaltExitIsOff)
+{
+    char arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    LONGS_EQUAL(0, Parse(1, argv));
+    CHECK_FALSE(BddTargetStoreSettings_HaltExit());
+}
+
+TEST(BddTargetCommandLine, HaltExitFlag)
+{
+    char arg0[] = "test";
+    char arg1[] = "--halt-exit";
+    char* argv[] = {arg0, arg1, nullptr};
+    LONGS_EQUAL(0, Parse(2, argv));
+    CHECK_TRUE(BddTargetStoreSettings_HaltExit());
+}
+
+TEST(BddTargetCommandLine, CapacityThresholdFlag)
+{
+    char arg0[] = "test";
+    char arg1[] = "--capacity-threshold";
+    char arg2[] = "200";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    LONGS_EQUAL(200, BddTargetStoreSettings_GetCapacityThreshold(nullptr));
 }
 
 TEST(BddTargetCommandLine, DefaultAppNameIsNull)
