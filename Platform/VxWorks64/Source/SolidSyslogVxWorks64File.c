@@ -94,19 +94,23 @@ static bool VxWorks64File_Open(struct SolidSyslogFile* base, const char* path)
     return opened;
 }
 
-/* The fault, then the errno behind it when the call left one. */
+/* The fault, with the errno behind it when the call left one. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- every caller passes a named code and the errno it read
 static inline void VxWorks64File_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno)
 {
-    VxWorks64File_Report(SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code);
     if (nativeErrno != 0)
     {
-        SolidSyslog_Error(
+        SolidSyslog_ErrorWithNativeCode(
             SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY,
             &SolidSyslogVxWorks64FileErrorSource,
-            SOLIDSYSLOG_CAT_NATIVE_ERROR,
+            SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+            (int32_t) code,
             (int32_t) nativeErrno
         );
+    }
+    else
+    {
+        VxWorks64File_Report(SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code);
     }
 }
 

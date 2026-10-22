@@ -35,9 +35,6 @@ const char* SolidSyslogErrorCategory_Name(uint16_t category)
         case SOLIDSYSLOG_CAT_UNKNOWN_DESTROY:
             name = "UNKNOWN_DESTROY";
             break;
-        case SOLIDSYSLOG_CAT_NATIVE_ERROR:
-            name = "NATIVE_ERROR";
-            break;
         case SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED:
             name = "SENDER_DELIVERY_FAILED";
             break;

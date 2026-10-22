@@ -78,6 +78,23 @@ enum
     {                                                                                                 \
         CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                                   \
         CHECK_ERROR_EVENT(expectedSeverity, expectedSource, expectedCategory, expectedDetail);        \
+        CHECK_FALSE(ErrorHandlerFake_LastHasNativeCode());                                            \
+    }
+
+/* As CHECK_ERROR_REPORTED_ONCE, for a fault the platform gave a code for: the
+ * one event says so and carries it in NativeCode. */
+#define CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(                                            \
+    expectedSeverity,                                                                          \
+    expectedSource,                                                                            \
+    expectedCategory,                                                                          \
+    expectedDetail,                                                                            \
+    expectedNativeCode                                                                         \
+)                                                                                              \
+    {                                                                                          \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                                            \
+        CHECK_ERROR_EVENT(expectedSeverity, expectedSource, expectedCategory, expectedDetail); \
+        CHECK_TRUE(ErrorHandlerFake_LastHasNativeCode());                                      \
+        LONGS_EQUAL((expectedNativeCode), ErrorHandlerFake_LastNativeCode());                  \
     }
 
 /* Asserts the open SolidSyslogFile reports `expected` bytes. The caller

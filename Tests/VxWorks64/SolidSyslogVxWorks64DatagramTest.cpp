@@ -241,19 +241,11 @@ TEST(SolidSyslogVxWorks64Datagram, AFailedResolutionReportsTheUnresolvedNextHopA
 
     (void) OpenAndSend();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-    CHECK_ERROR_EVENT_AT(
-        0,
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogVxWorks64DatagramErrorSource,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
-        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
-    );
-    CHECK_ERROR_EVENT_AT(
-        1,
-        SOLIDSYSLOG_SEVERITY_WARNING,
-        &SolidSyslogVxWorks64DatagramErrorSource,
-        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
         EHOSTUNREACH
     );
 }
@@ -266,7 +258,7 @@ TEST(SolidSyslogVxWorks64Datagram, AFailureStraightAfterAnotherIsNotReportedAgai
 
     (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, AfterAFailedResolutionTheNextTriesOnceWithoutWaiting)
@@ -311,7 +303,7 @@ TEST(SolidSyslogVxWorks64Datagram, ANewDestinationThatFailsIsReportedAfterAnothe
 
     (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, 4);
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, AFailureAfterARecoveryIsReportedAgain)
@@ -325,7 +317,7 @@ TEST(SolidSyslogVxWorks64Datagram, AFailureAfterARecoveryIsReportedAgain)
 
     (void) SolidSyslogDatagram_SendTo(datagram, TEST_MESSAGE, sizeof(TEST_MESSAGE) - 1U, address);
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, 4);
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogVxWorks64Datagram, ADestinationOffTheSubnetIsSentTo)

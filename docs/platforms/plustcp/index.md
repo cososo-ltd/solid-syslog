@@ -50,8 +50,8 @@ task with an inline wiring. It applies to the first record to a next hop, and
 again once its cache entry ages out under `ipconfigMAX_ARP_AGE`, not to
 steady-state traffic; budget for it if you are logging inline from a task with
 a deadline. A resolution that fails is reported once, as
-`SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` followed by the stack's lookup
-result as `SOLIDSYSLOG_CAT_NATIVE_ERROR`: `eARPCacheMiss` when the cache has
+`SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` with the stack's lookup
+result as the event's `NativeCode`: `eARPCacheMiss` when the cache has
 no entry for the next hop, `eCantSendPacket` when it has one still waiting for
 its reply, or when the stack cannot send to that next hop at all, as for a
 destination off the subnet with no gateway configured. Until a resolution

@@ -9,6 +9,7 @@
 #ifndef SOLIDSYSLOGERROR_H
 #define SOLIDSYSLOGERROR_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogExternC.h"
@@ -71,20 +72,26 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SolidSyslogErrorDetailNameFunction DetailName;
     };
 
-    /** What a handler receives. The last three fields are orthogonal axes:
+    /** What a handler receives. Source, Category and Detail are orthogonal axes:
      *  Source is the extensible identity (match by pointer against the emitting
      *  class's extern), Category is the portable reaction axis
      *  (SolidSyslogErrorCategory.h) a handler can switch on without knowing the
-     *  Source, and Detail is the fine-grained code within that Source: today the
-     *  per-class enum SolidSyslog<Class>Errors value, later a native code such as
-     *  errno or an X509_V_ERR_*. Severity is an independent urgency axis (how bad,
-     *  now), not who-must-fix; see docs/error-severity.md. */
+     *  Source, and Detail is the fine-grained code within that Source, the
+     *  per-class enum SolidSyslog<Class>Errors value. NativeCode is the
+     *  platform's own code behind the fault, valid only when HasNativeCode is
+     *  set. Severity is an independent urgency axis (how bad, now), not
+     *  who-must-fix; see docs/error-severity.md. */
     struct SolidSyslogErrorEvent
     {
         enum SolidSyslogSeverity Severity;
-        const struct SolidSyslogErrorSource* Source;
         uint16_t Category;
+        /** Whether NativeCode means anything: a platform's code can be 0. */
+        bool HasNativeCode;
+        const struct SolidSyslogErrorSource* Source;
         int32_t Detail;
+        /** The platform's own code for the fault - errno, an FRESULT, an lfs_*
+         *  error... - read only when HasNativeCode is set. */
+        int32_t NativeCode;
     };
 
     /** Installed via SolidSyslog_SetErrorHandler; @p context is passed back
@@ -101,8 +108,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The detail's name, through the event's source, to read beside the
      *  category's. NULL when there is nothing to name: no source, a source
-     *  without names, a code outside its vocabulary, or a
-     *  SOLIDSYSLOG_CAT_NATIVE_ERROR, whose detail is the platform's own code. */
+     *  without names, or a code outside its vocabulary. The NativeCode is the
+     *  platform's own and is never named. */
     const char* SolidSyslogErrorEvent_DetailName(const struct SolidSyslogErrorEvent* event);
 
     /** Install the single global error handler. Intended for setup-time
@@ -112,12 +119,24 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void SolidSyslog_SetErrorHandler(SolidSyslogErrorHandler handler, void* context);
 
     /** Emit an event to the installed handler. Called from inside the library at
-     *  fault sites; integrators building their own Sources call it too. */
+     *  fault sites; integrators building their own Sources call it too. The
+     *  event carries no native code. */
     void SolidSyslog_Error(
         enum SolidSyslogSeverity severity,
         const struct SolidSyslogErrorSource* source,
         uint16_t category,
         int32_t detail
+    );
+
+    /** As SolidSyslog_Error, with the platform's own code for the fault in the
+     *  event's NativeCode and HasNativeCode set. For a fault the platform gave
+     *  no code for, call SolidSyslog_Error instead. */
+    void SolidSyslog_ErrorWithNativeCode(
+        enum SolidSyslogSeverity severity,
+        const struct SolidSyslogErrorSource* source,
+        uint16_t category,
+        int32_t detail,
+        int32_t nativeCode
     );
 
 SOLIDSYSLOG_EXTERN_C_END

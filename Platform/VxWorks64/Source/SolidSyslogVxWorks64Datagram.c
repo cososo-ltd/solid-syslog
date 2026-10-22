@@ -248,16 +248,11 @@ static inline bool VxWorks64Datagram_IsOffTheSubnet(STATUS status, int resolveEr
 
 static inline void VxWorks64Datagram_ReportUnresolved(int resolveErrno)
 {
-    SolidSyslog_Error(
+    SolidSyslog_ErrorWithNativeCode(
         SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
         &SolidSyslogVxWorks64DatagramErrorSource,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
-        (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
-    );
-    SolidSyslog_Error(
-        SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,
-        &SolidSyslogVxWorks64DatagramErrorSource,
-        SOLIDSYSLOG_CAT_NATIVE_ERROR,
+        (int32_t) SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
         (int32_t) resolveErrno
     );
 }

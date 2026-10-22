@@ -25,9 +25,11 @@ TEST(BddTargetErrorText, ADetailIsNamedThroughItsSource)
     static const struct SolidSyslogErrorSource source = {"test", SolidSyslogDatagramErrors_Name};
     const struct SolidSyslogErrorEvent event = {
         SOLIDSYSLOG_SEVERITY_WARNING,
-        &source,
         SOLIDSYSLOG_CAT_DATAGRAM_BASE,
-        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED
+        false,
+        &source,
+        SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
+        0
     };
 
     STRCMP_EQUAL("NEXT_HOP_UNRESOLVED", BddTargetErrorText_Detail(&event));
@@ -36,7 +38,7 @@ TEST(BddTargetErrorText, ADetailIsNamedThroughItsSource)
 TEST(BddTargetErrorText, ADetailWithoutANameIsADash)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
-    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, &source, 0U, 7};
+    const struct SolidSyslogErrorEvent event = {SOLIDSYSLOG_SEVERITY_WARNING, 0U, false, &source, 7, 0};
 
     STRCMP_EQUAL("-", BddTargetErrorText_Detail(&event));
 }
