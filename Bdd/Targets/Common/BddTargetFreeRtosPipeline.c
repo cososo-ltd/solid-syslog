@@ -1,10 +1,7 @@
 /* Shared FreeRTOS BDD-target pipeline - see BddTargetFreeRtosPipeline.h.
  *
- * Extracted from the two near-identical FreeRTOS target main.c files
- * (Bdd/Targets/FreeRtos = FreeRTOS-Plus-TCP, Bdd/Targets/FreeRtosLwip = lwIP)
- * in SolidSyslog S29.03. Everything here is platform-independent; the network
- * backend each target wires stays in its main.c behind the
- * BddTargetFreeRtosPipelineConfig seam. */
+ * Everything here is platform-independent; the network backend each target
+ * wires stays in its main.c behind the BddTargetFreeRtosPipelineConfig seam. */
 
 #include "BddTargetFreeRtosPipeline.h"
 
