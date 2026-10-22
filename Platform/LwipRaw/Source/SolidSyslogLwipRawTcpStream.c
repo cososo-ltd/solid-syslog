@@ -232,27 +232,22 @@ static void LwipRawTcpStream_ReportConnectFailure(
     LwipRawTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
-/* The fault, with the err_t behind it when the stack gave one. */
+/* The fault, with the err_t behind it. Every caller has one: tcp_connect
+ * declined with it, or a callback was handed it, and each callback that sets
+ * Errored records one. */
 static void LwipRawTcpStream_ReportConnectFailureWithCode(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     err_t nativeCode
 )
 {
-    if (nativeCode != ERR_OK)
-    {
-        SolidSyslog_ErrorWithNativeCode(
-            severity,
-            &SolidSyslogLwipRawTcpStreamErrorSource,
-            SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-            (int32_t) detail,
-            (int32_t) nativeCode
-        );
-    }
-    else
-    {
-        LwipRawTcpStream_ReportConnectFailure(severity, detail);
-    }
+    SolidSyslog_ErrorWithNativeCode(
+        severity,
+        &SolidSyslogLwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        (int32_t) detail,
+        (int32_t) nativeCode
+    );
 }
 
 /* Names which step of a failed attempt gave up. A non-ERR_OK from tcp_connect
@@ -629,8 +624,10 @@ static err_t LwipRawTcpStream_ConnectedCallback(void* arg, struct tcp_pcb* pcb, 
     }
     else
     {
-        self->Errored = true;
+        /* The code before the flag: the caller's thread polls Errored and
+         * reads LastError the moment it sees it. */
         self->LastError = err;
+        self->Errored = true;
     }
     return ERR_OK;
 }
@@ -648,6 +645,10 @@ static err_t LwipRawTcpStream_RecvCallback(void* arg, struct tcp_pcb* tpcb, stru
     err_t result = ERR_OK;
     if (p == NULL)
     {
+        /* lwIP signals the close with a NULL pbuf rather than an err_t;
+         * ERR_CLSD is its name for that state. The code before the flag, as
+         * the other callbacks keep it. */
+        self->LastError = ERR_CLSD;
         self->Errored = true;
     }
     else if (LwipRawTcpStream_RxQueueIsFull(self))
@@ -680,8 +681,10 @@ static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromArg(arg);
     self->Pcb = NULL;
-    self->Errored = true;
+    /* The code before the flag: the caller's thread polls Errored and reads
+     * LastError the moment it sees it. */
     self->LastError = err;
+    self->Errored = true;
 }
 
 #else

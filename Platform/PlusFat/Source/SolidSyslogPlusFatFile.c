@@ -243,12 +243,12 @@ static void PlusFatFile_Truncate(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPlusFatFile* self = PlusFatFile_SelfFromBase(base);
     int status = ff_fseek(self->Fp, 0, SEEK_SET);
-    int truncateErrno = (status != 0) ? stdioGET_ERRNO() : 0;
     if (status == 0)
     {
         status = ff_seteof(self->Fp);
-        truncateErrno = (status != 0) ? stdioGET_ERRNO() : 0;
     }
+    /* Nothing runs between whichever call failed and this read of its errno. */
+    int truncateErrno = (status != 0) ? stdioGET_ERRNO() : 0;
     if (status != 0)
     {
         PlusFatFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, truncateErrno);

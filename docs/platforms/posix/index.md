@@ -80,10 +80,11 @@ is not there when the file is only asked whether it exists.
 Each step of a TCP connect that fails is reported under the stream's own error
 source, with the detail naming the step, as
 [`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
-Where the kernel left an `errno` - from `socket`, `fcntl`, `connect`, `select`
-or the pending `SO_ERROR` the connect completed with - the event's `NativeCode`
-carries it. The connect budget expiring, and `select` flagging the socket in
-its exception set, leave none.
+Where the kernel left an `errno` - from `socket`, `fcntl`, `connect` or
+`select`, the pending `SO_ERROR` the connect completed with, or the `errno` of
+the `getsockopt` that could not read it - the event's `NativeCode` carries it.
+The connect budget expiring, and `select` flagging the socket in its exception
+set, leave none.
 
 ### A peer that dies silently is detected, and you size how long that takes
 

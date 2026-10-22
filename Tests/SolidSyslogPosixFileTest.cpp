@@ -16,6 +16,7 @@
 
 #include <cerrno>
 #include <cstdio>
+#include <sys/resource.h>
 #include <sys/stat.h>
 
 using namespace CososoTesting;
@@ -43,6 +44,16 @@ static const char* const TEST_FIFO_PATH = "/tmp/test_posix_file.fifo";
         SOLIDSYSLOG_CAT_FILE_IO_FAILED,                      \
         code,                                                \
         nativeErrno                                          \
+    )
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// no errno behind it.
+#define CHECK_FAILURE_REPORTED_ALONE(code) \
+    CHECK_ERROR_REPORTED_ONCE(             \
+        SOLIDSYSLOG_SEVERITY_ERROR,        \
+        &SolidSyslogPosixFileErrorSource,  \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,    \
+        code                               \
     )
 
 // clang-format off
@@ -197,6 +208,27 @@ TEST(SolidSyslogPosixFile, WriteThatFailsReportsTheFailedWriteAndItsErrno)
     SolidSyslogFile_Write(file, "hello", 5);
 
     CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, EBADF);
+}
+
+// A regular file takes a write short, with no errno, only when the process's
+// file-size limit falls inside it. The limit is the soft one, lowered for the
+// write and restored straight after; nothing else in the process writes a
+// file in between, and a write that fits under the limit entirely is not
+// affected.
+TEST(SolidSyslogPosixFile, AShortWriteReportsTheFailedWriteAlone)
+{
+    struct rlimit previous = {};
+    LONGS_EQUAL(0, getrlimit(RLIMIT_FSIZE, &previous));
+    struct rlimit threeBytes = {3, previous.rlim_max};
+    OpenTestFile();
+    ErrorHandlerFake_Install(nullptr);
+    LONGS_EQUAL(0, setrlimit(RLIMIT_FSIZE, &threeBytes));
+
+    bool wrote = SolidSyslogFile_Write(file, "hello", 5);
+
+    LONGS_EQUAL(0, setrlimit(RLIMIT_FSIZE, &previous));
+    CHECK_FALSE(wrote);
+    CHECK_FAILURE_REPORTED_ALONE(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED);
 }
 
 TEST(SolidSyslogPosixFile, SeekToThatFailsReportsTheFailedSeekAndItsErrno)

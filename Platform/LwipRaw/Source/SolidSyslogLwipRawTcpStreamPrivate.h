@@ -28,8 +28,9 @@ struct SolidSyslogLwipRawTcpStream
     struct tcp_pcb* Pcb;
     bool Connected;
     bool Errored;
-    /* The err_t the stack handed the connected or error callback that set
-       Errored, ERR_OK until one does. */
+    /* The err_t behind Errored: the one the stack handed the connected or
+       error callback, or ERR_CLSD for the close the receive callback saw.
+       Written before Errored, so a reader that sees the flag sees the code. */
     err_t LastError;
     struct pbuf* RxQueue[SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE];
     size_t RxQueueHead;
