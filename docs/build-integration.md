@@ -312,7 +312,7 @@ nothing rather than failing, and nothing has to be excluded by hand.
 Set `SOLIDSYSLOG_DIR` before the `include` if the library does not sit where the fragment
 does - by default it locates itself.
 
-[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0) is
+[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0) is
 a worked consumer of this shape, cross-building FreeRTOS, lwIP, Mbed TLS and FatFs.
 
 ---

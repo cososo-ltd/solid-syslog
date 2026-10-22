@@ -20,9 +20,9 @@ device would already have. Measured on a Cortex-M3 under QEMU, a representative
 device rather than a specification.
 
 Both are measured by a worked integration, published in full as
-[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) (consumed
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.3.0) (consumed
 with CMake) and
-[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0)
+[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0)
 (the same integration, consumed with Make). Each stage is one commit; `git show`
 gives the diff and the measured cost.
 
