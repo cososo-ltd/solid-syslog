@@ -16,6 +16,7 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTunables.h"
+#include "lwip/err.h"
 
 struct tcp_pcb;
 struct pbuf;
@@ -27,6 +28,9 @@ struct SolidSyslogLwipRawTcpStream
     struct tcp_pcb* Pcb;
     bool Connected;
     bool Errored;
+    /* The err_t the stack handed the connected or error callback that set
+       Errored, ERR_OK until one does. */
+    err_t LastError;
     struct pbuf* RxQueue[SOLIDSYSLOG_LWIP_RAW_TCP_RX_QUEUE_SIZE];
     size_t RxQueueHead;
     size_t RxQueueCount;

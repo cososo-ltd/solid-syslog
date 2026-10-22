@@ -77,6 +77,11 @@ static void LwipRawTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static void LwipRawTcpStream_ReportConnectFailureWithCode(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    err_t nativeCode
+);
 static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRawTcpStream* self, err_t connectErr);
 static inline bool LwipRawTcpStream_EndedByPeer(const struct SolidSyslogLwipRawTcpStream* self);
 static void LwipRawTcpStream_DoOpenAndConnect(void* context);
@@ -123,6 +128,7 @@ void SolidSyslogLwipRawTcpStream_Initialise(
         .Pcb = NULL,
         .Connected = false,
         .Errored = false,
+        .LastError = ERR_OK,
         .RxQueue = {0},
         .RxQueueHead = 0,
         .RxQueueCount = 0,
@@ -226,25 +232,58 @@ static void LwipRawTcpStream_ReportConnectFailure(
     LwipRawTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
+/* The fault, with the err_t behind it when the stack gave one. */
+static void LwipRawTcpStream_ReportConnectFailureWithCode(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    err_t nativeCode
+)
+{
+    if (nativeCode != ERR_OK)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            severity,
+            &SolidSyslogLwipRawTcpStreamErrorSource,
+            SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+            (int32_t) detail,
+            (int32_t) nativeCode
+        );
+    }
+    else
+    {
+        LwipRawTcpStream_ReportConnectFailure(severity, detail);
+    }
+}
+
 /* Names which step of a failed attempt gave up. A non-ERR_OK from tcp_connect
  * is the local stack declining to start - no memory for the SYN, no route -
  * so no packet was ever sent. Otherwise the bounded wait ended, and Errored
- * separates a reset that arrived from a budget that simply ran out. */
+ * separates a reset that arrived from a budget that simply ran out. The code
+ * is the one tcp_connect answered, or the one the callback that ended the
+ * wait was handed; a budget that ran out has none. */
 static void LwipRawTcpStream_ReportFailedAttempt(const struct SolidSyslogLwipRawTcpStream* self, err_t connectErr)
 {
     if (connectErr != ERR_OK)
     {
-        LwipRawTcpStream_ReportConnectFailure(
+        LwipRawTcpStream_ReportConnectFailureWithCode(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+            connectErr
+        );
+    }
+    else if (LwipRawTcpStream_EndedByPeer(self))
+    {
+        LwipRawTcpStream_ReportConnectFailureWithCode(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            self->LastError
         );
     }
     else
     {
         LwipRawTcpStream_ReportConnectFailure(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            LwipRawTcpStream_EndedByPeer(self) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
-                                               : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
         );
     }
 }
@@ -270,6 +309,7 @@ static void LwipRawTcpStream_DoOpenAndConnect(void* context)
     {
         self->Connected = false;
         self->Errored = false;
+        self->LastError = ERR_OK;
         call->ConnectErr = tcp_connect(self->Pcb, &call->Dst->Ip, call->Dst->Port, LwipRawTcpStream_ConnectedCallback);
     }
 }
@@ -590,6 +630,7 @@ static err_t LwipRawTcpStream_ConnectedCallback(void* arg, struct tcp_pcb* pcb, 
     else
     {
         self->Errored = true;
+        self->LastError = err;
     }
     return ERR_OK;
 }
@@ -637,10 +678,10 @@ static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_
  * lwIP thread, touches no lwIP API. */
 static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)
 {
-    (void) err;
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromArg(arg);
     self->Pcb = NULL;
     self->Errored = true;
+    self->LastError = err;
 }
 
 #else

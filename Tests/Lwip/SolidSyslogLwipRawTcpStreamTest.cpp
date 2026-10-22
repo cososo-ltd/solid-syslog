@@ -55,6 +55,17 @@ static const uint16_t TEST_PORT = 514;
 #define CHECK_CONNECT_FAILURE_REPORTED(severity, detail) \
     CHECK_REPORTED((severity), SolidSyslogLwipRawTcpStreamErrorSource, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, (detail))
 
+// As above, for a failure the stack gave an err_t for, carried as the event's
+// native code.
+#define CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(severity, detail, code) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(                          \
+        (severity),                                                      \
+        &SolidSyslogLwipRawTcpStreamErrorSource,                         \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,                           \
+        (detail),                                                        \
+        (code)                                                           \
+    )
+
 // Asserts the lwIP API call recorded the pcb the wrapper got back from
 // tcp_new - proves the wrapper forwarded the right handle. `getter` is
 // the LwipTcpFake_LastXxxPcb accessor function (zero-arg).
@@ -386,7 +397,11 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectNotStartedWhenTcpConnectFail
 
     SolidSyslogStream_Open(stream, address);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        ERR_VAL
+    );
 }
 
 /* ERR_RTE is lwIP's routing lookup failing, which is the same condition Posix
@@ -399,7 +414,11 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectNotStartedWhenThereIsNoRoute
 
     SolidSyslogStream_Open(stream, address);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        ERR_RTE
+    );
 }
 
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsResetBeforeTheDeadline)
@@ -409,7 +428,11 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsRe
 
     SolidSyslogStream_Open(stream, address);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ERR_RST
+    );
 }
 
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectTimedOutWhenNoAnswerArrivesWithinTheBudget)
