@@ -103,6 +103,7 @@ static int setSockOptValues[SOCKETFAKE_MAX_SETSOCKOPT_CALLS];
 
 static int closeCallCount;
 static int lastClosedFd;
+static int nextCloseErrno;
 
 static int recvCallCount;
 static ssize_t recvReturn;
@@ -198,6 +199,7 @@ void SocketFake_Reset(void)
     lastSocketType = 0;
     closeCallCount = 0;
     lastClosedFd = -1;
+    nextCloseErrno = 0;
     recvCallCount = 0;
     recvReturn = 0;
     lastRecvFd = -1;
@@ -647,6 +649,7 @@ int socket(int domain, int type, int protocol)
     lastSocketType = type;
     if (socketFails)
     {
+        errno = ENFILE;
         socketFd = -1;
     }
     else
@@ -713,6 +716,7 @@ int getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optl
     {
         if (soErrorLookupFails)
         {
+            errno = ENOTSOCK;
             return -1;
         }
         if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
@@ -804,7 +808,19 @@ int close(int fd)
 {
     closeCallCount++;
     lastClosedFd = fd;
-    return 0;
+    int result = 0;
+    if (nextCloseErrno != 0)
+    {
+        errno = nextCloseErrno;
+        nextCloseErrno = 0;
+        result = -1;
+    }
+    return result;
+}
+
+void SocketFake_FailNextCloseWithErrno(int errnoValue)
+{
+    nextCloseErrno = errnoValue;
 }
 
 // clang-format off
@@ -836,6 +852,10 @@ int fcntl(int fd, int cmd, ...)
     lastFcntlCmd = cmd;
     if (cmd == F_GETFL)
     {
+        if (fcntlGetFlReturn < 0)
+        {
+            errno = EINVAL;
+        }
         return fcntlGetFlReturn;
     }
     if (cmd == F_SETFL)
@@ -844,10 +864,16 @@ int fcntl(int fd, int cmd, ...)
         va_start(ap, cmd);
         lastFcntlSetFlags = va_arg(ap, int);
         va_end(ap);
+        if (fcntlSetFlFails)
+        {
+            errno = EINVAL;
+        }
         return fcntlSetFlFails ? -1 : 0;
     }
     return 0;
 }
+
+static int SocketFake_SelectResult(void);
 
 // clang-format off
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name,bugprone-easily-swappable-parameters) -- POSIX API
@@ -884,11 +910,23 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
             FD_ZERO(exceptfds);
         }
     }
+    return SocketFake_SelectResult();
+}
+
+/* The value select answers: the override when one is set, which leaves errno
+   EINTR when it is a failure, else one ready descriptor or none. */
+static int SocketFake_SelectResult(void)
+{
+    int result = selectReady ? 1 : 0;
     if (selectReturnOverride)
     {
-        return selectReturnValue;
+        result = selectReturnValue;
+        if (result < 0)
+        {
+            errno = EINTR;
+        }
     }
-    return selectReady ? 1 : 0;
+    return result;
 }
 
 // clang-format off

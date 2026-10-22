@@ -4,6 +4,7 @@
 
 #include "SolidSyslogPosixFile.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,6 +13,8 @@
 #include <unistd.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogPosixFileErrors.h"
@@ -39,6 +42,8 @@ static bool PosixFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogPosixFile* PosixFile_SelfFromBase(struct SolidSyslogFile* base);
+static inline void PosixFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
+static inline bool PosixFile_IsWholeTransfer(ssize_t transferred, size_t count);
 
 void SolidSyslogPosixFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -58,12 +63,7 @@ void SolidSyslogPosixFile_Initialise(struct SolidSyslogFile* base)
 
 void SolidSyslogPosixFile_Cleanup(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    if (self->Fd != INVALID_FD)
-    {
-        close(self->Fd);
-        self->Fd = INVALID_FD;
-    }
+    PosixFile_Close(base);
     /* Overwrite the abstract base with the shared NullFile vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullFile_Get();
@@ -78,16 +78,50 @@ static bool PosixFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
     self->Fd = open(path, O_RDWR | O_CREAT, POSIXFILE_DEFAULT_PERMISSIONS);
-    return self->Fd != INVALID_FD;
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int openErrno = (self->Fd == INVALID_FD) ? errno : 0;
+    bool opened = self->Fd != INVALID_FD;
+    if (!opened)
+    {
+        PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, openErrno);
+    }
+    return opened;
+}
+
+/* The fault, with the errno behind it when the call left one. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- every caller passes a named code and the errno it read
+static inline void PosixFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno)
+{
+    if (nativeErrno != 0)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY,
+            &SolidSyslogPosixFileErrorSource,
+            SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+            (int32_t) code,
+            (int32_t) nativeErrno
+        );
+    }
+    else
+    {
+        PosixFile_Report(SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code);
+    }
 }
 
 static void PosixFile_Close(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    if (self->Fd != INVALID_FD)
+    if (PosixFile_IsOpen(base))
     {
-        close(self->Fd);
+        int status = close(self->Fd);
+        int closeErrno = (status != 0) ? errno : 0;
+        /* The descriptor is released whether or not the close could flush. */
         self->Fd = INVALID_FD;
+        if (status != 0)
+        {
+            PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, closeErrno);
+        }
     }
 }
 
@@ -100,19 +134,45 @@ static bool PosixFile_IsOpen(struct SolidSyslogFile* base)
 static bool PosixFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    return read(self->Fd, buf, count) == (ssize_t) count;
+    ssize_t transferred = read(self->Fd, buf, count);
+    /* A short read sets no errno; the store judges it. */
+    int readErrno = (transferred < 0) ? errno : 0;
+    if (transferred < 0)
+    {
+        PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, readErrno);
+    }
+    return PosixFile_IsWholeTransfer(transferred, count);
+}
+
+/* read and write answer -1, or how many bytes moved. */
+static inline bool PosixFile_IsWholeTransfer(ssize_t transferred, size_t count)
+{
+    return (transferred >= 0) && ((size_t) transferred == count);
 }
 
 static bool PosixFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    return write(self->Fd, buf, count) == (ssize_t) count;
+    ssize_t written = write(self->Fd, buf, count);
+    /* A short write sets no errno. */
+    int writeErrno = (written < 0) ? errno : 0;
+    bool wrote = PosixFile_IsWholeTransfer(written, count);
+    if (!wrote)
+    {
+        PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, writeErrno);
+    }
+    return wrote;
 }
 
 static void PosixFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    lseek(self->Fd, (off_t) offset, SEEK_SET);
+    off_t position = lseek(self->Fd, (off_t) offset, SEEK_SET);
+    int seekErrno = (position < 0) ? errno : 0;
+    if (position < 0)
+    {
+        PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, seekErrno);
+    }
 }
 
 static bool PosixFile_Size(struct SolidSyslogFile* base, size_t* size)
@@ -120,6 +180,11 @@ static bool PosixFile_Size(struct SolidSyslogFile* base, size_t* size)
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
     off_t end = lseek(self->Fd, 0, SEEK_END);
     bool known = end >= 0;
+    int sizeErrno = known ? 0 : errno;
+    if (!known)
+    {
+        PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, sizeErrno);
+    }
     *size = known ? (size_t) end : 0U;
     return known;
 }
@@ -127,9 +192,15 @@ static bool PosixFile_Size(struct SolidSyslogFile* base, size_t* size)
 static void PosixFile_Truncate(struct SolidSyslogFile* base)
 {
     struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
-    ftruncate(self->Fd, 0);
+    int status = ftruncate(self->Fd, 0);
+    int truncateErrno = (status != 0) ? errno : 0;
+    if (status != 0)
+    {
+        PosixFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, truncateErrno);
+    }
 }
 
+/* A path that is not there is the answer, not a fault, so nothing is reported. */
 static bool PosixFile_Exists(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;

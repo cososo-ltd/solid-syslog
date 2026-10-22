@@ -75,6 +75,19 @@ or refused it.
 
 The resolve below is the one call in the pack that waits on the network.
 
+## A failed connect is reported, with its errno
+
+Each step of a TCP connect that fails is reported under the stream's own error
+source, with the detail naming the step, as
+[`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
+Where the stack left an `errno` - from `lwip_socket`, `lwip_fcntl`,
+`lwip_connect` or `lwip_select`, the pending `SO_ERROR` of a socket the wait
+ended on unconnected, or the `errno` of the `lwip_getsockopt` that could not
+read it - the event's `NativeCode` carries it, as whichever `errno` definitions
+your build enabled above number it. The connect budget expiring leaves none,
+nor does a socket `lwip_select` flags in its exception set with no pending
+error.
+
 ## Dead-peer detection is yours to size
 
 The stream turns keepalive on for its own connection and sets the idle period

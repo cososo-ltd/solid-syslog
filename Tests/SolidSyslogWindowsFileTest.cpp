@@ -4,6 +4,7 @@
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -13,7 +14,10 @@
 #include "SolidSyslogError.h"
 #include "TestUtils.h"
 
+#include <cerrno>
+#include <crtdbg.h>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 #define WIN32_LEAN_AND_MEAN
@@ -32,6 +36,17 @@ using namespace CososoTesting;
         }                                                                              \
     }
 
+// Asserts the call raised exactly the File fault naming this operation, with
+// the CRT errno behind it.
+#define CHECK_FAILURE_REPORTED_WITH_ERRNO(code, nativeErrno) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(              \
+        SOLIDSYSLOG_SEVERITY_ERROR,                          \
+        &SolidSyslogWindowsFileErrorSource,                  \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,                      \
+        code,                                                \
+        nativeErrno                                          \
+    )
+
 // clang-format off
 
 static std::string MakeTempPath(const char* filename)
@@ -41,13 +56,25 @@ static std::string MakeTempPath(const char* filename)
     return std::string(tempDir, len) + filename;
 }
 
+// The CRT answers a call on a descriptor that is not open with -1 and EBADF
+// only after reporting it as an invalid parameter, which in a debug CRT
+// asserts and aborts the process. A handler that does nothing lets the call
+// return, which is what happens in a release CRT.
+static void IgnoreInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned int, uintptr_t)
+{
+}
+
 TEST_GROUP(SolidSyslogWindowsFile)
 {
     struct SolidSyslogFile* file = nullptr;
     std::string testPath;
+    _invalid_parameter_handler previousHandler = nullptr;
+    int previousAssertMode = 0;
 
     void setup() override
     {
+        previousHandler = _set_invalid_parameter_handler(IgnoreInvalidParameter);
+        previousAssertMode = _CrtSetReportMode(_CRT_ASSERT, 0);
         testPath = MakeTempPath("test_windows_file.dat");
         std::remove(testPath.c_str());
         file = SolidSyslogWindowsFile_Create();
@@ -57,6 +84,8 @@ TEST_GROUP(SolidSyslogWindowsFile)
     {
         SolidSyslogWindowsFile_Destroy(file);
         std::remove(testPath.c_str());
+        _CrtSetReportMode(_CRT_ASSERT, previousAssertMode);
+        _set_invalid_parameter_handler(previousHandler);
     }
 
     void OpenTestFile() const
@@ -106,9 +135,6 @@ TEST(SolidSyslogWindowsFile, WriteAndReadRoundTrip)
     MEMCMP_EQUAL("hello", buf, 5);
 }
 
-/* There is no failing-Size test: the CRT's _lseeki64 succeeds on every
- * descriptor _sopen_s can hand out, NUL and pipes included, and a closed
- * descriptor trips the CRT's invalid-parameter handler rather than returning. */
 TEST(SolidSyslogWindowsFile, SizeReturnsFileSize)
 {
     OpenTestFile();
@@ -157,6 +183,97 @@ TEST(SolidSyslogWindowsFile, DeleteRemovesFile)
 TEST(SolidSyslogWindowsFile, DeleteReturnsFalseForNonexistentFile)
 {
     CHECK_FALSE(SolidSyslogFile_Delete(file, MakeTempPath("nonexistent_windows_file.dat").c_str()));
+}
+
+TEST(SolidSyslogWindowsFile, OpenThatFailsReportsTheFailedOpenAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Open(file, "C:\\nonexistent_dir_solidsyslog_test\\file.dat");
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, ENOENT);
+}
+
+// Every call on a file that is not open fails with EBADF, which is how each
+// failing call is driven: the CRT's _lseeki64 succeeds on every descriptor
+// _sopen_s can hand out, NUL and pipes included, and the real file system
+// refuses nothing else on demand.
+TEST(SolidSyslogWindowsFile, ReadThatFailsReportsTheFailedReadAndItsErrno)
+{
+    char buf[5] = {};
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Read(file, buf, sizeof(buf));
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, EBADF);
+}
+
+TEST(SolidSyslogWindowsFile, AShortReadReportsNothing)
+{
+    char buf[16] = {};
+    OpenTestFile();
+    CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
+    SolidSyslogFile_SeekTo(file, 0);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogFile_Read(file, buf, sizeof(buf)));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogWindowsFile, WriteThatFailsReportsTheFailedWriteAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, EBADF);
+}
+
+TEST(SolidSyslogWindowsFile, SeekToThatFailsReportsTheFailedSeekAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_SeekTo(file, 42);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, EBADF);
+}
+
+TEST(SolidSyslogWindowsFile, SizeThatFailsReportsTheFailedSizeAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    size_t size = 42U;
+    CHECK_FALSE(SolidSyslogFile_Size(file, &size));
+
+    LONGS_EQUAL(0, size);
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, EBADF);
+}
+
+TEST(SolidSyslogWindowsFile, TruncateThatFailsReportsTheFailedTruncateAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, EBADF);
+}
+
+TEST(SolidSyslogWindowsFile, CallsThatSucceedReportNothing)
+{
+    char buf[5] = {};
+    ErrorHandlerFake_Install(nullptr);
+    OpenTestFile();
+
+    size_t size = 0U;
+    SolidSyslogFile_Write(file, "hello", 5);
+    SolidSyslogFile_Size(file, &size);
+    SolidSyslogFile_SeekTo(file, 0);
+    SolidSyslogFile_Read(file, buf, sizeof(buf));
+    SolidSyslogFile_Truncate(file);
+    SolidSyslogFile_Close(file);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 // clang-format off

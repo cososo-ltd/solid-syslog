@@ -112,6 +112,17 @@ TEST_GROUP(SolidSyslogVxWorks64TcpStream)
         (detail)                                         \
     )
 
+// As above, for a failure the stack left an errno behind, carried as the
+// event's native code.
+#define CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(severity, detail, nativeErrno) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(                                  \
+        (severity),                                                              \
+        &SolidSyslogVxWorks64TcpStreamErrorSource,                               \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,                                   \
+        (detail),                                                                \
+        (nativeErrno)                                                            \
+    )
+
 // Asserts Open reported exactly one refused option, which is a warning: the
 // connection stands either way.
 #define CHECK_OPTION_REFUSED_REPORTED()                    \
@@ -197,9 +208,10 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheEndpointUnavailableWhenNoSocke
     ErrorHandlerFake_Install(nullptr);
     VxWorks64NetFake_SetSocketFails(true);
     SolidSyslogStream_Open(stream, address);
-    CHECK_CONNECT_FAILURE_REPORTED(
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
         SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+        EMFILE
     );
 }
 
@@ -214,36 +226,40 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenClosesTheSocketWhenTheConnectFails)
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectTimedOutWhenTheBoundExpires)
 {
     OpenAfterConnectFails(EINPROGRESS);
-    CHECK_CONNECT_FAILURE_REPORTED(
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
         SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
+        EINPROGRESS
     );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectRefusedWhenThePeerRefuses)
 {
     OpenAfterConnectFails(ECONNREFUSED);
-    CHECK_CONNECT_FAILURE_REPORTED(
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
         SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ECONNREFUSED
     );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectRefusedWhenTheStackGivesUpOnThePeer)
 {
     OpenAfterConnectFails(ETIMEDOUT);
-    CHECK_CONNECT_FAILURE_REPORTED(
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
         SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ETIMEDOUT
     );
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectNotStartedWhenItFailsForALocalReason)
 {
     OpenAfterConnectFails(ENETUNREACH);
-    CHECK_CONNECT_FAILURE_REPORTED(
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
         SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        ENETUNREACH
     );
 }
 

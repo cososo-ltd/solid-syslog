@@ -302,6 +302,10 @@ int socket(int domain, int type, int protocol)
     VxWorks64NetFake_SocketDomain = domain;
     VxWorks64NetFake_SocketType = type;
     VxWorks64NetFake_SocketProtocol = protocol;
+    if (VxWorks64NetFake_SocketFails)
+    {
+        errno = EMFILE;
+    }
     return VxWorks64NetFake_SocketFails ? ERROR : VxWorks64NetFake_Fd;
 }
 

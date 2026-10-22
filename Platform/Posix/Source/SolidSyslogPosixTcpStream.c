@@ -67,10 +67,17 @@ static bool PosixTcpStream_ConnectOrCloseOnFailure(
 static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long timeoutMicros);
 static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static bool PosixTcpStream_ReadDeferredConnectError(int fd);
+static bool PosixTcpStream_ReadSocketError(int fd, int* code);
 static void PosixTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static void PosixTcpStream_ReportConnectFailureWithErrno(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    int nativeErrno
+);
+static void PosixTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno);
 static inline bool PosixTcpStream_IsRemoteConnectError(int connectErrno);
 static inline bool PosixTcpStream_WaitTimedOut(int selectResult);
 static long PosixTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogPosixTcpStream* self);
@@ -166,20 +173,14 @@ static bool PosixTcpStream_TakeSocketAndConnect(struct SolidSyslogPosixTcpStream
     {
         connected = PosixTcpStream_ConnectOrCloseOnFailure(self, sin);
     }
-    else
-    {
-        PosixTcpStream_ReportConnectFailure(
-            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
-        );
-    }
     return connected;
 }
 
 /* Every connect failure is one category with the detail naming which step
  * failed, so a portable handler reacts to "no connection" without knowing
  * POSIX. Each failing step reports its own, because each is the only place
- * that knows which one it was. */
+ * that knows which one it was, and the only place the errno it left can be
+ * read. */
 static void PosixTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
@@ -188,16 +189,53 @@ static void PosixTcpStream_ReportConnectFailure(
     PosixTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
+/* The fault, with the errno behind it when the call left one. */
+static void PosixTcpStream_ReportConnectFailureWithErrno(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    int nativeErrno
+)
+{
+    if (nativeErrno != 0)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            severity,
+            &SolidSyslogPosixTcpStreamErrorSource,
+            SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+            (int32_t) detail,
+            (int32_t) nativeErrno
+        );
+    }
+    else
+    {
+        PosixTcpStream_ReportConnectFailure(severity, detail);
+    }
+}
+
 /* Non-blocking from the start: connect() reports EINPROGRESS, the wait is
  * bounded by select(), and PosixTcpStream_Send/PosixTcpStream_Read never block the service thread on a
  * wedged peer or a full kernel send buffer. */
 static int PosixTcpStream_OpenAndConfigureSocket(void)
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (PosixTcpStream_IsFileDescriptorValid(fd) && !PosixTcpStream_ConfigureSocket(fd))
+    /* Capture errno immediately after socket (MISRA 22.10). */
+    int socketErrno = (fd < 0) ? errno : 0;
+    if (!PosixTcpStream_IsFileDescriptorValid(fd))
+    {
+        PosixTcpStream_ReportConnectFailureWithErrno(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+            socketErrno
+        );
+    }
+    else if (!PosixTcpStream_ConfigureSocket(fd))
     {
         close(fd);
         fd = INVALID_FD;
+    }
+    else
+    {
+        /* configured - ready to connect */
     }
     return fd;
 }
@@ -235,10 +273,30 @@ static void PosixTcpStream_EnableKeepalive(int fd)
     setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &userTimeout, sizeof(userTimeout));
 }
 
+/* A socket the kernel will not make non-blocking is of no use: the bounded
+ * connect, and Send and Read never blocking the service thread, all rest on
+ * it. The attempt is given up here, and this is the step that reports it. */
 static bool PosixTcpStream_SetNonBlocking(int fd)
 {
+    bool nonBlocking = false;
     int flags = fcntl(fd, F_GETFL, 0);
-    return (flags >= 0) && (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1);
+    /* Capture errno immediately after each fcntl (MISRA 22.10). */
+    int fcntlErrno = (flags < 0) ? errno : 0;
+    if (flags >= 0)
+    {
+        int rc = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+        fcntlErrno = (rc == -1) ? errno : 0;
+        nonBlocking = (rc != -1);
+    }
+    if (!nonBlocking)
+    {
+        PosixTcpStream_ReportConnectFailureWithErrno(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+            fcntlErrno
+        );
+    }
+    return nonBlocking;
 }
 
 static bool PosixTcpStream_ConnectOrCloseOnFailure(
@@ -292,16 +350,18 @@ static bool PosixTcpStream_Connect(int fd, const struct sockaddr_in* sin, long t
     }
     else if (PosixTcpStream_IsRemoteConnectError(connectErrno))
     {
-        PosixTcpStream_ReportConnectFailure(
+        PosixTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            connectErrno
         );
     }
     else
     {
-        PosixTcpStream_ReportConnectFailure(
+        PosixTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+            connectErrno
         );
     }
     return connected;
@@ -333,16 +393,42 @@ static bool PosixTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros)
     struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     int rc = select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
+    /* Capture errno immediately after select (MISRA 22.10). */
+    int selectErrno = (rc < 0) ? errno : 0;
     bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
     if (!ready)
     {
-        PosixTcpStream_ReportConnectFailure(
-            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            PosixTcpStream_WaitTimedOut(rc) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
-                                            : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
-        );
+        PosixTcpStream_ReportUnfinishedWait(fd, rc, selectErrno);
     }
     return ready;
+}
+
+/* The budget expiring is nothing to report a code for. A select that failed
+ * left its errno. A socket select answered for, flagged in the exception set,
+ * holds the failure in SO_ERROR. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a descriptor, a select result and the errno it left; distinct semantics
+static void PosixTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno)
+{
+    if (PosixTcpStream_WaitTimedOut(selectResult))
+    {
+        PosixTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+        );
+    }
+    else
+    {
+        int nativeErrno = selectErrno;
+        if (selectResult > 0)
+        {
+            (void) PosixTcpStream_ReadSocketError(fd, &nativeErrno);
+        }
+        PosixTcpStream_ReportConnectFailureWithErrno(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            nativeErrno
+        );
+    }
 }
 
 /* select() returning zero is the budget expiring with nothing to report. Any
@@ -355,18 +441,31 @@ static inline bool PosixTcpStream_WaitTimedOut(int selectResult)
 
 static bool PosixTcpStream_ReadDeferredConnectError(int fd)
 {
-    int err = 0;
-    socklen_t errlen = (socklen_t) sizeof(err);
-    int rc = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
-    bool connected = (rc == 0) && (err == 0);
+    int code = 0;
+    bool asked = PosixTcpStream_ReadSocketError(fd, &code);
+    bool connected = asked && (code == 0);
     if (!connected)
     {
-        PosixTcpStream_ReportConnectFailure(
+        PosixTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            code
         );
     }
     return connected;
+}
+
+/* The error the socket holds, or, when it cannot be asked, the lookup's own:
+ * true when the socket answered. */
+static bool PosixTcpStream_ReadSocketError(int fd, int* code)
+{
+    int err = 0;
+    socklen_t errlen = (socklen_t) sizeof(err);
+    int rc = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
+    /* Capture errno immediately after getsockopt (MISRA 22.10). */
+    int lookupErrno = (rc != 0) ? errno : 0;
+    *code = (rc == 0) ? err : lookupErrno;
+    return rc == 0;
 }
 
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)

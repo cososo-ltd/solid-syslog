@@ -784,8 +784,9 @@ jobs:
       # moment the surrounding text names a second class, and the header tables
       # name several per row. See docs/NAMING.md, "Writing identifiers in prose".
       #
-      # The sed neutralises the reserved identifiers that legitimately begin _X
-      # before the second grep, so filtering is per match rather than per line —
+      # The sed neutralises the reserved identifiers that legitimately begin _X,
+      # and the MSVC CRT's own _Crt* debug-report functions, before the second
+      # grep, so filtering is per match rather than per line —
       # one line can carry both a legitimate _Atomic and a bare _Destroy, and
       # discarding the whole line would hide the second. Tracked files only, so
       # an untracked local `site/` build never trips it. NAMING.md is exempt: it
@@ -795,7 +796,7 @@ jobs:
           violations=$(git ls-files '*.md' '*.c' '*.h' '*.cpp' \
             | grep -v '^docs/NAMING\.md$' \
             | xargs -r grep -nE '(^|[^A-Za-z0-9_>])_[A-Z][a-z]' \
-            | sed -E 's/_(Atomic|Bool|Static_assert|Noreturn|Thread_local|Generic|Alignas|Alignof|Complex|Imaginary|Pragma|Exit)\b/KEYWORD/g' \
+            | sed -E 's/_(Atomic|Bool|Static_assert|Noreturn|Thread_local|Generic|Alignas|Alignof|Complex|Imaginary|Pragma|Exit|Crt[A-Za-z]+)\b/KEYWORD/g' \
             | grep -E '(^|[^A-Za-z0-9_>])_[A-Z][a-z]' \
             | cut -d: -f1,2)
           if [ -n "$violations" ]; then

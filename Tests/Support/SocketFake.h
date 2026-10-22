@@ -26,6 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     socklen_t SocketFake_LastAddrLen(void);
     int SocketFake_LastSendtoFd(void);
 
+    /* A failing socket answers -1 with errno ENFILE. */
     void SocketFake_SetSocketFails(bool fails);
 
     int SocketFake_SocketCallCount(void);
@@ -69,12 +70,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* SOL_SOCKET / SO_ERROR - read by the non-blocking-connect completion path.
        Defaults to 0 (success) until set. */
     void SocketFake_SetSoError(int err);
+    /* A failing lookup answers -1 with errno ENOTSOCK. */
     void SocketFake_SetSoErrorLookupFails(bool fails);
 
     int SocketFake_GetSockOptCallCount(void);
     int SocketFake_LastGetSockOptLevel(void);
     int SocketFake_LastGetSockOptOptname(void);
 
+    /* A failing fcntl, F_SETFL made to fail or F_GETFL given a negative return,
+       leaves errno EINVAL. */
     void SocketFake_SetFcntlSetFlFails(bool fails);
     void SocketFake_SetFcntlGetFlReturn(int flags);
 
@@ -94,7 +98,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
            via FD_ISSET on errorSet, even though typical kernels surface
            connect failures via simulation (2) rather than exceptfds.
        SetSelectReturn overrides the syscall return value (1 ready, 0 timeout,
-       -1 syscall failure). Default: returns 1 (one fd ready, no error). */
+       -1 syscall failure, which leaves errno EINTR). Default: returns 1 (one
+       fd ready, no error). */
     void SocketFake_SetSelectWritable(bool ready);
     void SocketFake_SetSelectError(bool hasError);
     void SocketFake_SetSelectReturn(int value);
@@ -103,6 +108,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     long SocketFake_LastSelectTimeoutSec(void);
     long SocketFake_LastSelectTimeoutUsec(void);
 
+    /* The next close answers -1 with this errno, then close succeeds again. */
+    void SocketFake_FailNextCloseWithErrno(int errnoValue);
     int SocketFake_CloseCallCount(void);
     int SocketFake_LastClosedFd(void);
 

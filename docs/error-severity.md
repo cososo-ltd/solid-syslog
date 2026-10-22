@@ -75,8 +75,8 @@ category's header doc comment is the home of its detail.
    operation that fails freezes the store, which reports once and does not touch the
    device again; delivery continues without store-and-forward.
 3. **The faulty component reports the cause; the store or buffer reports the cost.** A
-   security policy reports its key or its backend, a File its native code, and the store
-   or buffer the records that were lost.
+   security policy reports its key or its backend, a File or a stream the platform's
+   native code, and the store or buffer the records that were lost.
 4. **"Could not check" is not evidence of corruption.** A policy that cannot run on read
    leaves the record in the store to be tried again. It is never taken for a rejection.
 
