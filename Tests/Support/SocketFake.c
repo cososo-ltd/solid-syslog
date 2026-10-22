@@ -873,6 +873,8 @@ int fcntl(int fd, int cmd, ...)
     return 0;
 }
 
+static int SocketFake_SelectResult(void);
+
 // clang-format off
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name,bugprone-easily-swappable-parameters) -- POSIX API
 int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout)
@@ -908,15 +910,23 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
             FD_ZERO(exceptfds);
         }
     }
+    return SocketFake_SelectResult();
+}
+
+/* The value select answers: the override when one is set, which leaves errno
+   EINTR when it is a failure, else one ready descriptor or none. */
+static int SocketFake_SelectResult(void)
+{
+    int result = selectReady ? 1 : 0;
     if (selectReturnOverride)
     {
-        if (selectReturnValue < 0)
+        result = selectReturnValue;
+        if (result < 0)
         {
             errno = EINTR;
         }
-        return selectReturnValue;
     }
-    return selectReady ? 1 : 0;
+    return result;
 }
 
 // clang-format off
