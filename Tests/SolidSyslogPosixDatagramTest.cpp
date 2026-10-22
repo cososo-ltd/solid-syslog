@@ -186,6 +186,17 @@ TEST(SolidSyslogPosixDatagram, CloseCalledWithSocketFd)
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
 
+TEST(SolidSyslogPosixDatagram, OpeningADatagramThatIsAlreadyOpenClosesTheSocketItHeld)
+{
+    SolidSyslogDatagram_Open(datagram);
+    const int firstFd = SocketFake_SocketFd();
+
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(SocketFake_Close, ONCE);
+    LONGS_EQUAL(firstFd, SocketFake_LastClosedFd());
+}
+
 TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackToUnknownPathPayload)
 {
     LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));

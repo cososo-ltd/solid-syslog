@@ -88,6 +88,9 @@ static inline bool PosixDatagram_IsFileDescriptorValid(int fd)
 static bool PosixDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
+    /* Opening what is already open would otherwise lose the descriptor it
+     * holds, and the process's descriptor table is finite. */
+    PosixDatagram_Close(base);
     self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
     self->Connected = false;
     return PosixDatagram_IsFileDescriptorValid(self->Fd);
