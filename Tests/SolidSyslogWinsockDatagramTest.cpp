@@ -192,15 +192,29 @@ TEST(SolidSyslogWinsockDatagram, CloseCalledWithSocketFd)
     CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
 }
 
-TEST(SolidSyslogWinsockDatagram, OpeningADatagramThatIsAlreadyOpenClosesTheSocketItHeld)
+TEST(SolidSyslogWinsockDatagram, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
 {
     SolidSyslogDatagram_Open(datagram);
-    const SOCKET firstFd = WinsockFake_SocketFd();
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogWinsockDatagramErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogWinsockDatagram, OpeningADatagramThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogDatagram_Open(datagram);
 
     SolidSyslogDatagram_Open(datagram);
 
-    CALLED_FAKE(WinsockFake_Close, ONCE);
-    CHECK(firstFd == WinsockFake_LastClosedFd());
+    CALLED_FAKE(WinsockFake_Socket, ONCE);
+    CALLED_FAKE(WinsockFake_Close, NEVER);
 }
 
 TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackToUnknownPathPayload)

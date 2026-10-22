@@ -10,6 +10,7 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
@@ -121,11 +122,22 @@ static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
 static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
-    /* Opening what is already open would otherwise lose the socket it holds,
-     * and Winsock's handle table is finite. */
-    WinsockDatagram_Close(base);
-    self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
-    return WinsockDatagram_IsSocketValid(self->Fd);
+    bool opened = false;
+    if (WinsockDatagram_IsSocketValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        WinsockDatagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
+        opened = WinsockDatagram_IsSocketValid(self->Fd);
+    }
+    return opened;
 }
 
 static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(

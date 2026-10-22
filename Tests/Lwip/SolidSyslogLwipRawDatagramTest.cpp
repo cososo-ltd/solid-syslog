@@ -257,13 +257,6 @@ TEST(SolidSyslogLwipRawDatagramOpen, CloseCallsUdpRemoveOnOpenPcb)
     POINTERS_EQUAL(LwipUdpFake_LastUdpRemovePcb(), LwipUdpFake_LastUdpNewReturned());
 }
 
-TEST(SolidSyslogLwipRawDatagramOpen, ReopenDoesNotAllocateNewPcb)
-{
-    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
-
-    CALLED_FAKE(LwipUdpFake_UdpNew, ONCE);
-}
-
 TEST(SolidSyslogLwipRawDatagramOpen, SecondCloseDoesNotRemoveAgain)
 {
     SolidSyslogDatagram_Close(datagram);
@@ -271,6 +264,29 @@ TEST(SolidSyslogLwipRawDatagramOpen, SecondCloseDoesNotRemoveAgain)
     SolidSyslogDatagram_Close(datagram);
 
     CALLED_FAKE(LwipUdpFake_UdpRemove, ONCE);
+}
+
+TEST(SolidSyslogLwipRawDatagramOpen, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogDatagram_Open(datagram);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        SolidSyslogLwipRawDatagramErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogLwipRawDatagramOpen, OpeningADatagramThatIsAlreadyOpenLeavesThePcbItHoldsUntouched)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(LwipUdpFake_UdpNew, ONCE);
+    CALLED_FAKE(LwipUdpFake_UdpRemove, NEVER);
 }
 
 TEST(SolidSyslogLwipRawDatagramOpen, CloseThenOpenAllocatesFreshPcb)

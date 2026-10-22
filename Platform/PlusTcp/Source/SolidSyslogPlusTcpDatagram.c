@@ -18,6 +18,7 @@
 #include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPlusTcpAddressPrivate.h"
 #include "SolidSyslogPlusTcpDatagramErrors.h"
@@ -101,11 +102,22 @@ static void PlusTcpDatagram_Close(struct SolidSyslogDatagram* base)
 static bool PlusTcpDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPlusTcpDatagram* self = PlusTcpDatagram_SelfFromBase(base);
-    if (!PlusTcpDatagram_IsOpen(self))
+    bool opened = false;
+    if (PlusTcpDatagram_IsOpen(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        PlusTcpDatagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
     {
         self->Socket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
+        opened = PlusTcpDatagram_IsOpen(self);
     }
-    return PlusTcpDatagram_IsOpen(self);
+    return opened;
 }
 
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self)
