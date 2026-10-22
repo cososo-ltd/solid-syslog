@@ -103,6 +103,7 @@ static int setSockOptValues[SOCKETFAKE_MAX_SETSOCKOPT_CALLS];
 
 static int closeCallCount;
 static int lastClosedFd;
+static int nextCloseErrno;
 
 static int recvCallCount;
 static ssize_t recvReturn;
@@ -198,6 +199,7 @@ void SocketFake_Reset(void)
     lastSocketType = 0;
     closeCallCount = 0;
     lastClosedFd = -1;
+    nextCloseErrno = 0;
     recvCallCount = 0;
     recvReturn = 0;
     lastRecvFd = -1;
@@ -804,7 +806,19 @@ int close(int fd)
 {
     closeCallCount++;
     lastClosedFd = fd;
-    return 0;
+    int result = 0;
+    if (nextCloseErrno != 0)
+    {
+        errno = nextCloseErrno;
+        nextCloseErrno = 0;
+        result = -1;
+    }
+    return result;
+}
+
+void SocketFake_FailNextCloseWithErrno(int errnoValue)
+{
+    nextCloseErrno = errnoValue;
 }
 
 // clang-format off

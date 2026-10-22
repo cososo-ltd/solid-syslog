@@ -103,6 +103,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     long SocketFake_LastSelectTimeoutSec(void);
     long SocketFake_LastSelectTimeoutUsec(void);
 
+    /* The next close answers -1 with this errno, then close succeeds again. */
+    void SocketFake_FailNextCloseWithErrno(int errnoValue);
     int SocketFake_CloseCallCount(void);
     int SocketFake_LastClosedFd(void);
 

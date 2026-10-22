@@ -4,6 +4,7 @@
 #include "SocketFake.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogPosixFile.h"
 #include "SolidSyslogPosixFileErrors.h"
@@ -13,6 +14,7 @@
 #include "SolidSyslogError.h"
 #include "TestUtils.h"
 
+#include <cerrno>
 #include <cstdio>
 #include <sys/stat.h>
 
@@ -31,6 +33,17 @@ static const char* const TEST_FIFO_PATH = "/tmp/test_posix_file.fifo";
             CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
         }                                                                              \
     }
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// the errno behind it.
+#define CHECK_FAILURE_REPORTED_WITH_ERRNO(code, nativeErrno) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(              \
+        SOLIDSYSLOG_SEVERITY_ERROR,                          \
+        &SolidSyslogPosixFileErrorSource,                    \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,                      \
+        code,                                                \
+        nativeErrno                                          \
+    )
 
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFile)
@@ -141,6 +154,117 @@ TEST(SolidSyslogPosixFile, DeleteRemovesFile)
 TEST(SolidSyslogPosixFile, DeleteReturnsFalseForNonexistentFile)
 {
     CHECK_FALSE(SolidSyslogFile_Delete(file, "/tmp/nonexistent_posix_file.dat"));
+}
+
+TEST(SolidSyslogPosixFile, OpenThatFailsReportsTheFailedOpenAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Open(file, "/nonexistent/dir/file.dat");
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, ENOENT);
+}
+
+// Every call on a file that is not open fails with EBADF, which is how each
+// failing call is driven: the real file system refuses nothing else on demand.
+TEST(SolidSyslogPosixFile, ReadThatFailsReportsTheFailedReadAndItsErrno)
+{
+    char buf[5] = {};
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Read(file, buf, sizeof(buf));
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, EBADF);
+}
+
+TEST(SolidSyslogPosixFile, AShortReadReportsNothing)
+{
+    char buf[16] = {};
+    OpenTestFile();
+    CHECK_TRUE(SolidSyslogFile_Write(file, "hello", 5));
+    SolidSyslogFile_SeekTo(file, 0);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogFile_Read(file, buf, sizeof(buf)));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogPosixFile, WriteThatFailsReportsTheFailedWriteAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Write(file, "hello", 5);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, EBADF);
+}
+
+TEST(SolidSyslogPosixFile, SeekToThatFailsReportsTheFailedSeekAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_SeekTo(file, 42);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, EBADF);
+}
+
+TEST(SolidSyslogPosixFile, SizeThatFailsReportsTheFailedSizeAndItsErrno)
+{
+    LONGS_EQUAL(0, mkfifo(TEST_FIFO_PATH, S_IRUSR | S_IWUSR));
+    CHECK_TRUE(SolidSyslogFile_Open(file, TEST_FIFO_PATH));
+    ErrorHandlerFake_Install(nullptr);
+
+    size_t size = 0U;
+    SolidSyslogFile_Size(file, &size);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, ESPIPE);
+}
+
+TEST(SolidSyslogPosixFile, TruncateThatFailsReportsTheFailedTruncateAndItsErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, EBADF);
+}
+
+TEST(SolidSyslogPosixFile, CloseThatFailsReportsTheFailedCloseAndItsErrno)
+{
+    OpenTestFile();
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_FailNextCloseWithErrno(EIO);
+
+    SolidSyslogFile_Close(file);
+
+    CHECK_FAILURE_REPORTED_WITH_ERRNO(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, EIO);
+}
+
+TEST(SolidSyslogPosixFile, CloseThatFailsStillLeavesTheFileClosed)
+{
+    OpenTestFile();
+    SocketFake_FailNextCloseWithErrno(EIO);
+
+    SolidSyslogFile_Close(file);
+
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogPosixFile, CallsThatSucceedReportNothing)
+{
+    char buf[5] = {};
+    ErrorHandlerFake_Install(nullptr);
+    OpenTestFile();
+
+    size_t size = 0U;
+    SolidSyslogFile_Write(file, "hello", 5);
+    SolidSyslogFile_Size(file, &size);
+    SolidSyslogFile_SeekTo(file, 0);
+    SolidSyslogFile_Read(file, buf, sizeof(buf));
+    SolidSyslogFile_Truncate(file);
+    SolidSyslogFile_Close(file);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 // clang-format off
