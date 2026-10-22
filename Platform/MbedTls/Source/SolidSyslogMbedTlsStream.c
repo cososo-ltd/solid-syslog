@@ -278,7 +278,9 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
 }
 
 /* Every Open that succeeds installs the credentials and every Close releases
- * them, so holding them is the one mark of a session still open. */
+ * them, so holding them is the one mark of a session still open. Open asks
+ * before closing because Close on a stream that never opened is not free: it
+ * still sends close_notify and closes the transport beneath. */
 static inline bool MbedTlsStream_IsOpen(const struct SolidSyslogMbedTlsStream* self)
 {
     return self->CredentialsInstalled;

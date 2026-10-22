@@ -287,7 +287,9 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
 }
 
 /* Every Open that succeeds leaves a context behind and every Close frees it,
- * so holding one is the one mark of a session still open. */
+ * so holding one is the one mark of a session still open. Open asks before
+ * closing because Close on a stream that never opened is not free: it still
+ * closes the transport beneath. */
 static inline bool OpenSslStream_IsOpen(const struct SolidSyslogOpenSslStream* self)
 {
     return self->Ctx != NULL;
