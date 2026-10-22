@@ -92,6 +92,17 @@ applies where the tunable has been raised past what the datagram reports -
 noting that the tunable is library-wide rather than per-transport, so a value
 chosen for this path applies to every transport the instance uses.
 
+### A failed connect is reported, with the stack's answer
+
+Each step of a TCP connect that fails is reported under the stream's own error
+source, with the detail naming the step, as
+[`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
+When `FreeRTOS_connect` fails, the event's `NativeCode` is the value it
+answered: the negated FreeRTOS `errno`, `-pdFREERTOS_ERRNO_ETIMEDOUT` for the
+budget expiring, `-pdFREERTOS_ERRNO_ENOTCONN` for the socket closed under the
+attempt, and whatever `prvTCPConnectStart` declined with otherwise. A
+`FreeRTOS_socket` that answers no socket gives no code, so that event has none.
+
 ### Dead-peer detection is the stack's, not ours
 
 Keepalive is `ipconfigTCP_KEEP_ALIVE` in your `FreeRTOSIPConfig.h`, off unless

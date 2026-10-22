@@ -36,6 +36,22 @@ durability primitive. Whether that reaches the medium is a property of your
 filesystem, and a partially written directory entry is possible on a device that
 loses power mid-update.
 
+### A failed file call is reported, with its errno
+
+Each call the file makes on an open file, and the open itself, is reported
+under the file's own error source when it fails, as
+[`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
+with a code naming the call: open, read, write, sync, seek, size, truncate or
+close. Nothing here commits, so that code is never raised. The event's
+`NativeCode` is the FreeRTOS `errno` the `ff_stdio` call left in the task,
+`pdFREERTOS_ERRNO_EIO` and its siblings, except for the sync, which is the
+`FF_Error_t` that `FF_FlushCache` answered. An incomplete `ff_fwrite` leaves no
+`errno`, so `HasNativeCode` is clear on its event. A read that reaches the end
+of the file is not a failure and raises nothing: the store judges it for
+itself. Nor is a path `ff_stat` does not find when the file is only asked
+whether it exists, nor an open that creates the file because `r+` found none.
+[Error severity](../../error-severity.md) gives the level of each.
+
 ### The media driver is yours
 
 The `FF_Disk_t` implementation is supplied by you, and so is any wear levelling:

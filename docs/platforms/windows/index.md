@@ -54,6 +54,30 @@ the store believes is stored survives the process exiting and may not survive th
 machine losing power, so durability is a property of the volume you point the
 store at.
 
+### A failed file call is reported, with its errno
+
+Each call the file makes on an open file, and the open itself, is reported
+under the file's own error source when it fails, as
+[`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
+with a code naming the call: open, read, write, seek, size, truncate or close.
+Nothing here syncs, so the sync and commit codes are never raised. The event's
+`NativeCode` is the C run-time `errno`: the value `_sopen_s` and `_chsize_s`
+answer directly, and the one the other calls leave behind. A short `_write`
+sets none, so `HasNativeCode` is clear on its event. A short read is not a
+failure and raises nothing: the store judges it for itself. Nor is a path that
+is not there when the file is only asked whether it exists.
+[Error severity](../../error-severity.md) gives the level of each.
+
+### A failed connect is reported, with its Winsock error
+
+Each step of a TCP connect that fails is reported under the stream's own error
+source, with the detail naming the step, as
+[`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
+Where Winsock left an error - `WSAGetLastError` after `socket`, `ioctlsocket`,
+`connect` or `select`, or the pending `SO_ERROR` the connect completed with -
+the event's `NativeCode` carries it. The connect budget expiring, and `select`
+flagging the socket in its exception set, leave none.
+
 ### A peer that dies silently is detected, and you size how long that takes
 
 Keepalive probes begin after `SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS` of silence

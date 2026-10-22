@@ -73,6 +73,16 @@ are read the moment the hop returns. An asynchronous marshal, or none at all,
 corrupts lwIP's internal state rather than failing cleanly. Install it once at
 boot, before any adapter is created.
 
+### A failed connect is reported, with its err_t
+
+Each step of a TCP connect that fails is reported under the stream's own error
+source, with the detail naming the step, as
+[`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
+Where the stack gave an `err_t` - the one `tcp_connect` answered, or the one it
+handed the connected or error callback that ended the attempt - the event's
+`NativeCode` carries it. A `tcp_new` that answers no pcb, and a connect budget
+that expires with no answer from the peer, leave none.
+
 ### A burst to an unresolved next hop is held up to a bound
 
 While lwIP resolves a next hop's link address it holds the datagrams sent to

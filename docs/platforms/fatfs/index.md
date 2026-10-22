@@ -33,6 +33,21 @@ driver and the hardware under it. FAT is not a journalling filesystem, and a
 partially written directory entry is possible on a device that loses power
 mid-update.
 
+### A failed file call is reported, with its FRESULT
+
+Each call the file makes on an open file, and the open itself, is reported
+under the file's own error source when it fails, as
+[`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
+with a code naming the call: open, read, write, sync, seek, truncate or close.
+The size comes from the file object and cannot fail, and nothing here commits,
+so those two codes are never raised. Where the call answered an `FRESULT`
+other than `FR_OK`, the event's `NativeCode` carries it. A full volume is a
+write that `f_write` answers `FR_OK` for with fewer bytes than asked: that is
+reported as a failed write with `HasNativeCode` clear. A short read is not a
+failure and raises nothing: the store judges it for itself. Nor is a path
+`f_stat` does not find when the file is only asked whether it exists.
+[Error severity](../../error-severity.md) gives the level of each.
+
 ### The media driver is yours
 
 `diskio.c`, and `ffsystem.c` where `FF_FS_REENTRANT=1`, are supplied by you. So
