@@ -20,6 +20,11 @@ struct SolidSyslogFatFsFile
     struct SolidSyslogFile Base;
     FIL Fp;
     bool IsOpen;
+    /* A close FatFs did not complete: f_close returns without releasing the
+       file object or its FF_FS_LOCK entry when its sync fails, and only a
+       later f_close on Fp can. The File reports itself closed regardless;
+       this is the debt the next Open settles first. */
+    bool CloseOwed;
 };
 
 void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base);

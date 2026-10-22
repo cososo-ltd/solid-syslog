@@ -70,6 +70,14 @@ TEST_GROUP(SolidSyslogFatFsFile)
     void Open() const                 { CHECK_TRUE(SolidSyslogFile_Open(file, TEST_PATH)); }
     void Open(const char* path) const { CHECK_TRUE(SolidSyslogFile_Open(file, path)); }
     void Close() const                { SolidSyslogFile_Close(file); }
+
+    // An open file whose close fails in its sync, which leaves the close owed.
+    void LeaveACloseOwed() const
+    {
+        Open();
+        FatFsFake_SetCloseResult(FR_DISK_ERR);
+        Close();
+    }
 };
 
 // clang-format on
@@ -297,34 +305,25 @@ TEST(SolidSyslogFatFsFile, CloseThatFailsReportsTheFailedCloseAndItsResult)
     CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, FR_DISK_ERR);
 }
 
-TEST(SolidSyslogFatFsFile, CloseThatFailsLeavesTheFileOpenForARetry)
+TEST(SolidSyslogFatFsFile, CloseThatFailsStillLeavesTheFileClosed)
 {
-    Open();
-    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    LeaveACloseOwed();
 
-    Close();
-
-    CHECK_FILE_IS_OPEN();
-}
-
-TEST(SolidSyslogFatFsFile, ACloseAfterAFailedCloseRetriesIt)
-{
-    Open();
-    FatFsFake_SetCloseResult(FR_DISK_ERR);
-    Close();
-    FatFsFake_SetCloseResult(FR_OK);
-
-    Close();
-
-    CALLED_FAKE(FatFsFake_Close, TWICE);
     CHECK_FILE_CLOSED();
 }
 
-TEST(SolidSyslogFatFsFile, AnOpenAfterAFailedCloseRetriesTheCloseFirst)
+TEST(SolidSyslogFatFsFile, ACloseAfterAFailedCloseClosesNothingMore)
 {
-    Open();
-    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    LeaveACloseOwed();
+
     Close();
+
+    CALLED_FAKE(FatFsFake_Close, ONCE);
+}
+
+TEST(SolidSyslogFatFsFile, AnOpenAfterAFailedCloseSettlesTheCloseFirst)
+{
+    LeaveACloseOwed();
     FatFsFake_SetCloseResult(FR_OK);
 
     Open("next.log");
@@ -333,11 +332,9 @@ TEST(SolidSyslogFatFsFile, AnOpenAfterAFailedCloseRetriesTheCloseFirst)
     CHECK_OPEN_PATH("next.log");
 }
 
-TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainReportsTheClose)
+TEST(SolidSyslogFatFsFile, AnOpenWhoseOwedCloseFailsAgainReportsTheClose)
 {
-    Open();
-    FatFsFake_SetCloseResult(FR_DISK_ERR);
-    Close();
+    LeaveACloseOwed();
     ErrorHandlerFake_Install(nullptr);
 
     SolidSyslogFile_Open(file, "next.log");
@@ -345,27 +342,51 @@ TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainReportsTheClose)
     CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, FR_DISK_ERR);
 }
 
-TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainIsRefused)
+// f_open would discard what FatFs still holds in the file object, and the
+// FF_FS_LOCK entry with it.
+TEST(SolidSyslogFatFsFile, AnOpenWhoseOwedCloseFailsAgainIsRefusedWithoutOpening)
 {
-    Open();
-    FatFsFake_SetCloseResult(FR_DISK_ERR);
-    Close();
+    LeaveACloseOwed();
 
     CHECK_FALSE(SolidSyslogFile_Open(file, "next.log"));
-}
-
-// f_open would discard the old file, and the FF_FS_LOCK entry with it, so the
-// file object is left holding it for the next retry.
-TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainKeepsTheOldFileOpen)
-{
-    Open();
-    FatFsFake_SetCloseResult(FR_DISK_ERR);
-    Close();
-
-    SolidSyslogFile_Open(file, "next.log");
 
     CALLED_FAKE(FatFsFake_Open, ONCE);
-    CHECK_FILE_IS_OPEN();
+    CHECK_FILE_CLOSED();
+}
+
+TEST(SolidSyslogFatFsFile, ACloseStillOwedAfterARefusedOpenIsSettledByTheNext)
+{
+    LeaveACloseOwed();
+    SolidSyslogFile_Open(file, "next.log");
+    FatFsFake_SetCloseResult(FR_OK);
+
+    Open("next.log");
+
+    CALLED_FAKE(FatFsFake_Close, 3);
+}
+
+// A remount discards every file object, and its lock entry with it, so FatFs
+// no longer knowing the object leaves nothing to release.
+TEST(SolidSyslogFatFsFile, ACloseFatFsNoLongerKnowsOwesNothing)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_INVALID_OBJECT);
+    Close();
+
+    Open("next.log");
+
+    CALLED_FAKE(FatFsFake_Close, ONCE);
+}
+
+TEST(SolidSyslogFatFsFile, AnOwedCloseFatFsNoLongerKnowsLetsTheOpenProceed)
+{
+    LeaveACloseOwed();
+    FatFsFake_SetCloseResult(FR_INVALID_OBJECT);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_TRUE(SolidSyslogFile_Open(file, "next.log"));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 TEST(SolidSyslogFatFsFile, AnOpenOfAClosedFileClosesNothing)
@@ -373,6 +394,27 @@ TEST(SolidSyslogFatFsFile, AnOpenOfAClosedFileClosesNothing)
     Open();
 
     CALLED_FAKE(FatFsFake_Close, NEVER);
+}
+
+TEST(SolidSyslogFatFsFile, DestroyTriesAnOwedCloseOnceMore)
+{
+    LeaveACloseOwed();
+
+    SolidSyslogFatFsFile_Destroy(file);
+    file = nullptr;
+
+    CALLED_FAKE(FatFsFake_Close, TWICE);
+}
+
+TEST(SolidSyslogFatFsFile, DestroyOfAFileWhoseCloseFailsTriesTheCloseOnlyOnce)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+
+    SolidSyslogFatFsFile_Destroy(file);
+    file = nullptr;
+
+    CALLED_FAKE(FatFsFake_Close, ONCE);
 }
 
 TEST(SolidSyslogFatFsFile, ReadThatFailsReportsTheFailedReadAndItsResult)

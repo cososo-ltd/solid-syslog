@@ -36,6 +36,8 @@ static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSy
 static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* base);
 static inline void FatFsFile_ReportFailure(enum SolidSyslogFileErrors code, FRESULT result);
 static inline bool FatFsFile_Sync(struct SolidSyslogFile* base);
+static inline bool FatFsFile_IsCloseStillOwed(FRESULT result);
+static bool FatFsFile_SettleOwedClose(struct SolidSyslogFatFsFile* self);
 
 void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -51,6 +53,7 @@ void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base)
     self->Base.Exists = FatFsFile_Exists;
     self->Base.Delete = FatFsFile_Delete;
     self->IsOpen = false;
+    self->CloseOwed = false;
 }
 
 static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base)
@@ -58,9 +61,24 @@ static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSy
     return (struct SolidSyslogFatFsFile*) base;
 }
 
+/* A close still owed is tried once more; the slot is given back whatever it
+ * answers. */
 void SolidSyslogFatFsFile_Cleanup(struct SolidSyslogFile* base)
 {
-    FatFsFile_Close(base);
+    struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
+    if (self->IsOpen)
+    {
+        FatFsFile_Close(base);
+    }
+    else if (self->CloseOwed)
+    {
+        (void) FatFsFile_SettleOwedClose(self);
+    }
+    else
+    {
+        /* closed, and nothing owed */
+    }
+    self->CloseOwed = false;
     /* Overwrite the abstract base with the shared NullFile vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullFile_Get();
@@ -72,15 +90,23 @@ static void FatFsFile_Close(struct SolidSyslogFile* base)
     if (self->IsOpen)
     {
         FRESULT result = f_close(&self->Fp);
-        /* f_close syncs first and, when the sync fails, returns without
-         * releasing the file object or, under FF_FS_LOCK, its lock entry. The
-         * file stays open so the next Close or Open retries it. */
-        self->IsOpen = (result != FR_OK);
+        /* Closed, as the contract says, whatever f_close answers. A failed
+         * sync leaves FatFs holding the file object, so the close is owed. */
+        self->IsOpen = false;
+        self->CloseOwed = FatFsFile_IsCloseStillOwed(result);
         if (result != FR_OK)
         {
             FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, result);
         }
     }
+}
+
+/* FR_INVALID_OBJECT is FatFs saying it no longer knows the file object - a
+ * remount discards every one, and its locks with them - so there is nothing
+ * left for a later f_close to release. */
+static inline bool FatFsFile_IsCloseStillOwed(FRESULT result)
+{
+    return (result != FR_OK) && (result != FR_INVALID_OBJECT);
 }
 
 /* The fault, with the FRESULT behind it when the call answered one. A short
@@ -107,12 +133,11 @@ static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
     bool opened = false;
-    /* A close that failed earlier is retried before the file object is
-     * reused. If it fails again the file object still holds the old file, and
-     * f_open would discard it along with any FF_FS_LOCK entry, so the open is
-     * refused and the old file kept for the next retry. */
-    FatFsFile_Close(base);
-    if (!self->IsOpen)
+    /* An owed close is settled before the file object is reused: f_open would
+     * discard what FatFs still holds in it, and its FF_FS_LOCK entry with it.
+     * One that cannot be settled refuses the open, and the file stays closed
+     * with the close still owed for the next one. */
+    if (FatFsFile_SettleOwedClose(self))
     {
         FRESULT result = f_open(&self->Fp, path, FATFSFILE_READ_WRITE_OR_CREATE);
         self->IsOpen = (result == FR_OK);
@@ -123,6 +148,22 @@ static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
         opened = self->IsOpen;
     }
     return opened;
+}
+
+/* True when nothing is owed, or the owed close has now gone through. A retry
+ * that fails again is reported again. */
+static bool FatFsFile_SettleOwedClose(struct SolidSyslogFatFsFile* self)
+{
+    if (self->CloseOwed)
+    {
+        FRESULT result = f_close(&self->Fp);
+        self->CloseOwed = FatFsFile_IsCloseStillOwed(result);
+        if (self->CloseOwed)
+        {
+            FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, result);
+        }
+    }
+    return !self->CloseOwed;
 }
 
 static bool FatFsFile_IsOpen(struct SolidSyslogFile* base)

@@ -48,19 +48,19 @@ failure and raises nothing: the store judges it for itself. Nor is a path
 `f_stat` does not find when the file is only asked whether it exists.
 [Error severity](../../error-severity.md) gives the level of each.
 
-A close whose sync fails leaves the file open, because `f_close` then returns
-without releasing the file object and, under `FF_FS_LOCK`, its lock entry. The
-next Close, or the next Open, retries it, and the store opens the file again
-for every block it moves to, so a disk error that clears costs one report. An
-Open whose retry fails again answers false without opening anything, and the
-file stays open on the file it held, so `IsOpen` answers true until a close
-succeeds. That departs from the
-[File](../../api/structSolidSyslogFile.md) contract, under which a failed open
-leaves the file closed: `f_open` would otherwise discard the held file and its
-lock entry. The store treats the refused open as a failed device and freezes,
-as it does for any open that fails. A file
-destroyed while its close is still failing gives its slot back regardless, and
-under `FF_FS_LOCK` FatFs holds the lock entry until the volume is mounted
+A close is always reported closed, as the
+[File](../../api/structSolidSyslogFile.md) contract requires. When its sync
+fails, though, `f_close` returns without releasing the file object and, under
+`FF_FS_LOCK`, its lock entry, so the file owes FatFs that close. The next Open
+settles it first, and the store opens the file again for every block it moves
+to, so a disk error that clears costs one report. An Open whose owed close
+fails again reports it, answers false and opens nothing, because `f_open`
+would discard what FatFs still holds; the store treats that as a failed
+device and freezes, as it does for any open that fails. A close that answers
+`FR_INVALID_OBJECT` owes nothing: FatFs no longer knows the object, as after a
+remount, which releases its locks. A file destroyed with a close still owed
+tries it once more and gives its slot back regardless, and under
+`FF_FS_LOCK` FatFs then holds the lock entry until the volume is mounted
 again: a write-mode open of that path answers `FR_LOCKED` until then.
 
 ### The media driver is yours
