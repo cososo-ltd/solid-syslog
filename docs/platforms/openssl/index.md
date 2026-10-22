@@ -115,8 +115,9 @@ close_notify waiting unread. When the read meets the close, or the transport
 beneath has gone, the send fails, the stream closes itself, and your store
 replays the record on the next connection. Syslog over TLS carries nothing from
 collector to device, so the read normally finds nothing; application data it
-does meet is discarded, not kept for a later read, and the read gives up after
-128 bytes, so a close behind more than that goes unnoticed.
+does meet is discarded, not kept for a later read, and the probe makes at most
+eight reads of up to 16 bytes each, so a close behind more than that goes
+unnoticed.
 
 ## Where it falls short of the contract
 
