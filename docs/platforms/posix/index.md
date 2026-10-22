@@ -122,7 +122,21 @@ idle link.
 `fs/mqueue/msg_max` and `fs/mqueue/msgsize_max` - 10 messages and 8192 bytes on a
 default Linux, where asking for 11 already fails. A failed open reports `ERROR`
 and returns the Null buffer, so nothing is delivered through it. Size the queue
-within the limits, or raise them for the deployment.
+within the limits, or raise them for the deployment. Pass
+`SOLIDSYSLOG_MAX_MESSAGE_SIZE` as `maxMessageSize`: `SolidSyslog_Service` reads
+each record into a buffer of that size, and `mq_receive` refuses a buffer
+smaller than the queue's message size, so a larger value fails every read and a
+smaller one refuses every longer record.
+
+### The message-queue buffer is reachable by name
+
+The queue is a kernel object named `/solidsyslog_<pid>_<slot>`, created readable
+and writable by its owner alone. Any other process running as that user can open
+it by that name, read the records waiting in it and add records of its own, which
+the library then stores, seals and delivers as this device's. The buffer opens a
+queue that already exists under that name rather than refusing it, so a queue
+another user created first keeps that user's owner and mode. Run nothing else as
+that user, or use a buffer that stays in the process.
 
 ### The blocking surface is bounded but not zero
 

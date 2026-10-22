@@ -30,8 +30,11 @@ read.
 - A platform supplying the TCP stream, the address and the resolver. The
   [capability matrix](../index.md) says which fills each role on your target,
   and that platform's setup page shows how to create them.
-- A `SolidSyslogSleepFunction`. The handshake polls and sleeps between polls.
-  Your platform pack supplies one, or wrap your OS sleep in one line.
+- A `SolidSyslogSleepFunction` that waits at least the time asked. The handshake
+  polls every millisecond and counts its budget as the sleeps it asked for, not
+  from a clock, so a sleep that returns early shortens the budget and one that
+  rounds up to a scheduler tick lengthens it. On an RTOS, wrap its delay and
+  round a non-zero request up to one tick.
 
 The adapter sources compile in your target, so add them to your build as
 [adding it to your build](../../build-integration.md) describes. Include the
@@ -253,8 +256,11 @@ different collector at runtime, `ServerName` has to change with it: move
 
 ## Rotation
 
-With the PEM-buffer source, point the config at the new PEM and increment the
-stream's version; the next connection parses it. With the handle source the old
+With the PEM-buffer source, Create copied each buffer's address and length, so
+pointing your configuration at new PEM afterwards changes nothing. Write the new
+PEM over the bytes the source was created with, at the length it was created
+with, terminating NUL included, then increment the stream's version; the next
+connection parses it. With the handle source the old
 handles are still being read by an open connection, so free and re-parse them
 only after it has closed: call `SolidSyslogSender_Disconnect` from the task
 that services the library and re-parse when it returns, or do it in a

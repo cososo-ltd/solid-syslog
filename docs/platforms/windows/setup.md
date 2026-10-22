@@ -7,7 +7,9 @@ structs themselves.
 ## What to link
 
 Win32 and Winsock are stable system interfaces, so the adapters compile
-straight into the static library and there is nothing extra to link:
+straight into the static library. `ws2_32`, which the Winsock adapters need, is
+on the library's public link interface, so a CMake consumer has nothing extra to
+link; a consumer building the sources itself adds `ws2_32.lib`:
 
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "Windows")

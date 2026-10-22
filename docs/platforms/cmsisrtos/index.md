@@ -3,10 +3,14 @@
 `Platform/CmsisRtos/` wraps the CMSIS-RTOS2 API
 ([CMSIS-RTOS2 documentation](https://arm-software.github.io/CMSIS_6/latest/RTOS2/index.html)).
 It targets the API rather than any one kernel, so the same adapter serves every
-kernel that implements it. Networking, storage and time come from separate
-platforms; the [capability matrix](../index.md) shows which fill them.
+kernel that implements it. Networking and storage come from separate
+platforms, and the wall clock from you; the [capability matrix](../index.md)
+shows which platforms fill what.
 
-Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
+Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback. It ships
+no clock and no sleep callback. Where a backend takes a
+`SolidSyslogSleepFunction`, wrap `osDelay` and round a non-zero request up to one
+tick, converting through `osKernelGetTickFreq()`.
 
 ## What it ships
 
@@ -79,7 +83,8 @@ bound, confirm your implementation honours it.
 
 ### Uptime is a tick count, not a clock
 
-The sysUpTime callback reports kernel ticks since boot. It is not wall-clock
+The sysUpTime callback reports hundredths of a second since boot, counted from
+kernel ticks. It is not wall-clock
 time and carries no timezone or synchronisation quality - the clock callback is
 a separate injection point.
 

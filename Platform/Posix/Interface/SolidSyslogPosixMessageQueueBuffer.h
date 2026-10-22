@@ -28,8 +28,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBuffer;
     struct SolidSyslogMutex;
 
-    /** @p maxMessageSize and @p maxMessages size the queue; an exhausted pool
-     *  falls back to the shared NullBuffer. @p mutex makes Write safe for tasks
+    /** @p maxMessageSize must be SOLIDSYSLOG_MAX_MESSAGE_SIZE: SolidSyslog_Service
+     *  reads each record into a buffer of that size, and mq_receive refuses a
+     *  buffer smaller than the queue's message size, so a larger value fails every
+     *  read and a smaller one refuses every longer record. @p maxMessages sizes the
+     *  queue; an exhausted pool falls back to the shared NullBuffer. @p mutex makes Write safe for tasks
      *  logging at once, and guards what Read and IsFull share with it, so
      *  inject SolidSyslogNullMutex_Get() only when one task both logs and calls
      *  SolidSyslog_Service. It must outlive the buffer. It guards this
@@ -41,9 +44,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  the logger has, so the pipeline applies one policy. NULL applies Oldest.
      *  Under Oldest the buffer receives one record out of the queue and sends
      *  again, once; the record it takes out lands in a scratch of
-     *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes on the logging task's stack, so a
-     *  @p maxMessageSize above that leaves Oldest unable to make room, and the
-     *  record is refused as under Newest. Newest and Halt refuse the record
+     *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes on the logging task's stack. Newest and
+     *  Halt refuse the record
      *  being written. */
     struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
         struct SolidSyslogMutex * mutex,

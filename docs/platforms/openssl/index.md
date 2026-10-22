@@ -8,8 +8,7 @@ integrity and confidentiality.
 
 What a TLS stream must do is the same whichever library provides it, and is
 stated once under [TLS obligations](../../tls.md). This page covers what this
-adapter needs, how credentials reach it, and where it does not yet meet that
-contract.
+adapter needs, how credentials reach it, and how it meets that contract.
 
 ## What it ships
 

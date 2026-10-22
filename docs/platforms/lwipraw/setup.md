@@ -133,8 +133,11 @@ most ports compare the current task handle against the one given to
 `tcpip_init`. Without that guard, an adapter call made from inside a callback
 lwIP itself invoked will deadlock.
 
-Here `Sleep` is only a yield - the lwIP thread is running concurrently - so
-whatever your RTOS offers is right.
+Here `Sleep` does not drive lwIP - the lwIP thread is running concurrently - but
+it must still wait at least the time asked: the connect and resolve deadlines are
+the sum of the sleeps requested, not a clock reading, so a `Sleep` that only
+yields spends the whole deadline at once. Wrap your RTOS delay and round a
+non-zero request up to one tick.
 
 Marshal at the individual lwIP call, which is what this seam gives you. Wrapping
 `SolidSyslog_Service` instead puts file I/O, crypto, buffer locking and record
@@ -173,8 +176,9 @@ The pack is IPv4. Both resolvers refuse an IPv6 answer rather than store a
 destination the datagram and the stream cannot send to, and report through the
 error handler when they do. Neither the datagram nor the TCP stream
 selects an output interface - lwIP's routing table decides - and the datagram
-reports a fixed conservative maximum payload rather than discovering the path
-maximum transmission unit.
+cannot discover the path maximum transmission unit, so it answers the payload
+limit its config states, or `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` where none is
+stated.
 
 ## When it does not work
 

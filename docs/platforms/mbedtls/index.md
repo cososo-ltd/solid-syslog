@@ -9,7 +9,7 @@ integrity and confidentiality.
 What a TLS stream must do is the same whichever library provides it, and is
 stated once under [TLS obligations](../../tls.md). This page covers what this
 adapter needs, how credentials reach it, the coexistence guarantee it makes, and
-where it does not yet meet that contract.
+where it falls short of that contract.
 
 ## What it ships
 
@@ -72,9 +72,9 @@ opening while another still holds the source is reported and its attempt fails,
 rather than parsing over material the live connection is using, and its sender
 connects on a later pass once the first stream has closed.
 
-With the PEM-buffer source, replacing the buffer and moving the stream's
-configuration version is enough - nothing is freed, and the next connection
-parses whatever the buffer then points at.
+With the PEM-buffer source, writing the new PEM over the buffer the source was
+created with, at the same length, and moving the stream's configuration version
+is enough - nothing is freed, and the next connection parses the new bytes.
 
 The handle source is different, because rotating it means freeing material the
 open connection is still reading. Moving the version applies the change but does

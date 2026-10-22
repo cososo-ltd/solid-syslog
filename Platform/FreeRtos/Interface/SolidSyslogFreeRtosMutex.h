@@ -4,8 +4,8 @@
 
 /** @file
  *  A Mutex wrapping a statically-allocated FreeRTOS mutex semaphore, for
- *  thread-safe buffers and pools on a FreeRTOS target. Requires
- *  configSUPPORT_STATIC_ALLOCATION=1. */
+ *  buffers shared between tasks on a FreeRTOS target. Requires
+ *  configSUPPORT_STATIC_ALLOCATION=1 and configUSE_MUTEXES=1. */
 #ifndef SOLIDSYSLOGFREERTOSMUTEX_H
 #define SOLIDSYSLOGFREERTOSMUTEX_H
 
@@ -15,10 +15,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogMutex;
 
-    /** Create takes no config; an exhausted pool - or a build without
-     *  configSUPPORT_STATIC_ALLOCATION=1, where xSemaphoreCreateMutexStatic
-     *  yields no handle - falls back to the shared NullMutex, whose Lock and
-     *  Unlock are no-ops. */
+    /** Create takes no config; an exhausted pool falls back to the shared
+     *  NullMutex, whose Lock and Unlock are no-ops. Without
+     *  configSUPPORT_STATIC_ALLOCATION=1 and configUSE_MUTEXES=1 the adapter
+     *  compiles to nothing, so the build fails to link rather than falling back. */
     struct SolidSyslogMutex* SolidSyslogFreeRtosMutex_Create(void);
     /** Release the pool slot; deletes the underlying FreeRTOS mutex semaphore. */
     void SolidSyslogFreeRtosMutex_Destroy(struct SolidSyslogMutex * base);

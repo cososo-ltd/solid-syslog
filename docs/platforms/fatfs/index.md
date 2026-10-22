@@ -12,7 +12,10 @@ BlockDevice.
 ## Requirements
 
 Your `ffconf.h`, a `diskio.c` media driver, and - if `FF_FS_REENTRANT=1` - an
-`ffsystem.c`.
+`ffsystem.c`. The adapter writes, syncs, truncates, stats and unlinks, so
+`FF_FS_READONLY` and `FF_FS_MINIMIZE` must both be 0; any other value compiles
+those calls out and the build fails. With `FF_USE_LFN=0` names are 8.3, so the
+file part of the block-device prefix can be at most six characters.
 
 ## Security behaviour and obligations
 

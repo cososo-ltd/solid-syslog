@@ -5,13 +5,19 @@
 Networking comes from a separate platform; the
 [platform × capability matrix](../index.md) shows which fill it.
 
-Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback.
+Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback. It ships
+no clock and no sleep callback. Where a backend takes a
+`SolidSyslogSleepFunction`, wrap `vTaskDelay` and round a non-zero request up to
+one tick: `pdMS_TO_TICKS` rounds down, and below 1000 Hz a 1 ms request becomes
+`vTaskDelay(0)`, which only yields.
 
 ## What it ships
 
 ## Requirements
 
-`configSUPPORT_STATIC_ALLOCATION=1` - the mutex uses static allocation.
+`configSUPPORT_STATIC_ALLOCATION=1` and `configUSE_MUTEXES=1` - the mutex is a
+statically allocated mutex semaphore. Without both, the mutex compiles to nothing
+and `SolidSyslogFreeRtosMutex_Create` does not link.
 
 FreeRTOS kernel V10.6.0 or later. The uptime callback selects its
 implementation on `configTICK_TYPE_WIDTH_IN_BITS`, which that release
@@ -36,7 +42,8 @@ nothing at run time and cannot fail for want of heap.
 
 ### Uptime is a tick count, not a clock
 
-The sysUpTime callback reports kernel ticks since boot. It is not wall-clock
+The sysUpTime callback reports hundredths of a second since boot, counted from
+kernel ticks. It is not wall-clock
 time and carries no timezone or synchronisation quality - the clock callback is
 a separate injection point.
 

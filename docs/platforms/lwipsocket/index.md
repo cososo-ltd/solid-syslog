@@ -157,5 +157,7 @@ one. [Error severity](../../error-severity.md) covers what each level means.
 - **A socket option the stack declines raises `WARNING`**, once per connection
   attempt however many were declined. The connection carries records; what the
   option bought, usually prompt detection of a dead peer, does not.
-- **A `CRITICAL` at create time** means the component fell back to its Null
-  object, so nothing will be delivered at all.
+- **A `CRITICAL` at create time** means a pool ran out. A datagram, stream or
+  resolver then falls back to its Null object and nothing is delivered through
+  it; an address falls back to a slot every overflowing draw shares, so records
+  may go to another sender's destination.

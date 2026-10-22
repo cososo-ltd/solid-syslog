@@ -411,7 +411,7 @@ For this stack that comes to:
 > The header-configured upstreams take their other settings from your config
 > headers, not from `-D`s: `lwipopts.h` (incl. `NO_SYS`, `LWIP_UDP`/`TCP`),
 > `mbedtls_config.h`, `FreeRTOSConfig.h` (with
-> `configSUPPORT_STATIC_ALLOCATION=1` for the mutex), `ffconf.h`.
+> `configSUPPORT_STATIC_ALLOCATION=1` and `configUSE_MUTEXES=1` for the mutex), `ffconf.h`.
 
 ### 3. Language standard
 
@@ -440,7 +440,7 @@ you.
 |---|---|
 | `lwipopts.h` | lwIP feature set + sizing (`NO_SYS`, raw/UDP/TCP, PBUF pools) |
 | `mbedtls_config.h` | Mbed TLS feature set (ciphersuites, TLS 1.2+) |
-| `FreeRTOSConfig.h` | FreeRTOS kernel config (`configSUPPORT_STATIC_ALLOCATION=1`) |
+| `FreeRTOSConfig.h` | FreeRTOS kernel config (`configSUPPORT_STATIC_ALLOCATION=1`, `configUSE_MUTEXES=1`) |
 | `ffconf.h` | FatFs feature set |
 | `my_tunables.h` | SolidSyslog pool sizes / limits (see below) |
 

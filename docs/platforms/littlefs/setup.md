@@ -57,9 +57,10 @@ from the same constant you mount with rather than a number typed twice.
 and `-1` disables dynamic wear levelling - which a store that rewrites records in
 rotation needs. Set it to a few hundred.
 
-**A mount is not the adapter's to make.** If the filesystem is unmounted while a
-file is open, every later call fails through LittleFS rather than through the
-library, and the library has nothing to report.
+**A mount is not the adapter's to make.** Keep the filesystem mounted for as long
+as any file created from it exists. The adapter cannot tell that it was
+unmounted: what a call then does is LittleFS's, and any call that answers an lfs
+error is reported with that code, as every other failure is.
 
 ## When it does not work
 

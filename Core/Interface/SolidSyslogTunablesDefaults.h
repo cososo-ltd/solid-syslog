@@ -270,10 +270,8 @@
  * an mqd_t plus the per-process queue name (Formatter storage).
  *
  * Default 1 - almost all integrators wire a single MQ-backed buffer.
- * The queue name derives from the process ID, so bumping above 1 in
- * the same process would race multiple slots onto the same
- * `/solidsyslog_<pid>` name; an integrator needing N > 1 must
- * additionally distinguish the names (out of scope today).
+ * Each slot opens its own queue, `/solidsyslog_<pid>_<slot>`, so
+ * instances in one process never share one.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */

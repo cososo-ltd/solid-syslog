@@ -32,10 +32,13 @@ The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
 unkeyed CRC-16 policy is Core.
 
 OS primitives is what a kernel supplies: a mutex, an atomic counter, and the tick
-count an uptime callback reports. Time & host is wall-clock time and host
-identity, which is the clock, hostname, process-id and sleep callbacks. An RTOS
-gives the first without the second, so a FreeRTOS or CMSIS-RTOS2 target still
-needs a clock from its integrator.
+count an uptime callback reports, though a dot there need not include an atomic
+counter - only Windows, VxWorks 6.4 and C11 atomics ship one. Time & host is
+wall-clock time and host identity, which is the clock, hostname, process-id and
+sleep callbacks; VxWorks 6.4 has no process-id callback. A bare kernel such as
+FreeRTOS or CMSIS-RTOS2 gives the first without the second, so a target on one
+still needs a clock, and a sleep wherever a backend takes one, from its
+integrator.
 
 The Buffer column is a platform-backed Buffer, which today means the POSIX
 message queue. Core ships the Passthrough and Circular buffers, so an unmarked
