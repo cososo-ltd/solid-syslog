@@ -268,7 +268,6 @@ TEST(SolidSyslogLwipRawDatagramOpen, SecondCloseDoesNotRemoveAgain)
 
 TEST(SolidSyslogLwipRawDatagramOpen, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
 {
-    SolidSyslogDatagram_Open(datagram);
     ErrorHandlerFake_Install(nullptr);
 
     CHECK_FALSE(SolidSyslogDatagram_Open(datagram));

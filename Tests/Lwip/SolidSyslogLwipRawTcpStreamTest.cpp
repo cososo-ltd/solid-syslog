@@ -558,7 +558,6 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, SecondCloseDoesNotCloseAgain)
 
 TEST(SolidSyslogLwipRawTcpStreamConnected, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
 {
-    SolidSyslogStream_Open(stream, address);
     ErrorHandlerFake_Install(nullptr);
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, address));
