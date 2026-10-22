@@ -835,6 +835,12 @@ def existing_block_indexes(context):
 @given("the set of existing block files is recorded")
 def step_record_block_files(context):
     context.recorded_block_files = existing_block_indexes(context)
+    # The store acquires block 00 at cold start, so an empty set here means
+    # nothing is where this step looks, and the later check would pass on two
+    # empty replies.
+    assert context.recorded_block_files, (
+        "No block file is present at all; the store is not where the step looks"
+    )
 
 
 @then("no recorded block file has been disposed")
