@@ -93,9 +93,16 @@ static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCal
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
-void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config)
+void SolidSyslog_Initialise(
+    struct SolidSyslog* self,
+    const struct SolidSyslogConfig* config,
+    char* record,
+    size_t recordCapacity
+)
 {
     SolidSyslog_ResetToDefaults(self);
+    self->Record = record;
+    self->RecordCapacity = recordCapacity;
     SolidSyslog_InstallBuffer(self, config->Buffer);
     SolidSyslog_InstallSender(self, config->Sender);
     SolidSyslog_InstallStore(self, config->Store);
@@ -130,6 +137,8 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
+    self->Record = NULL;
+    self->RecordCapacity = 0U;
     self->RecordLength = 0U;
     self->HoldsRecord = false;
     self->HeldRecordLossReported = false;
@@ -445,7 +454,7 @@ static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self)
  * there to take. */
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self)
 {
-    self->HoldsRecord = SolidSyslogBuffer_Read(self->Buffer, self->Record, sizeof(self->Record), &self->RecordLength);
+    self->HoldsRecord = SolidSyslogBuffer_Read(self->Buffer, self->Record, self->RecordCapacity, &self->RecordLength);
 
     return self->HoldsRecord;
 }
@@ -540,7 +549,7 @@ static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self)
 {
     return !self->HoldsRecord &&
-           SolidSyslogStore_ReadNextUnsent(self->Store, self->Record, sizeof(self->Record), &self->RecordLength);
+           SolidSyslogStore_ReadNextUnsent(self->Store, self->Record, self->RecordCapacity, &self->RecordLength);
 }
 
 /* A record held for a failed direct send blocks the pass outright: the buffer

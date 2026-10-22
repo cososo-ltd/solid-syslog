@@ -22,6 +22,9 @@ static void SolidSyslog_EnsureNullInstancePopulated(void);
 
 static bool SolidSyslog_InUse[SOLIDSYSLOG_POOL_SIZE];
 static struct SolidSyslog SolidSyslog_Pool[SOLIDSYSLOG_POOL_SIZE];
+/* Each pool entry's record slot, kept beside the pool rather than in the
+ * struct so that the fallback below carries none. */
+static char SolidSyslog_Records[SOLIDSYSLOG_POOL_SIZE][SOLIDSYSLOG_MAX_MESSAGE_SIZE];
 static struct SolidSyslogPoolAllocator SolidSyslog_Allocator = {SolidSyslog_InUse, SOLIDSYSLOG_POOL_SIZE};
 
 /* Exhaustion-fallback handle. Populated lazily on first reach because
@@ -50,7 +53,12 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&SolidSyslog_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index))
         {
-            SolidSyslog_Initialise(&SolidSyslog_Pool[index], config);
+            SolidSyslog_Initialise(
+                &SolidSyslog_Pool[index],
+                config,
+                SolidSyslog_Records[index],
+                sizeof(SolidSyslog_Records[index])
+            );
             result = &SolidSyslog_Pool[index];
         }
         else
