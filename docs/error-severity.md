@@ -62,8 +62,8 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 ## When a record is lost
 
-Where a `SolidSyslogMetaSd` carries the sequence number, a record the library loses shows
-at the collector as a gap in it, once a later record arrives. The handler is there to say
+Every record the library loses shows at the collector as a gap in the sequence number
+`SolidSyslogMetaSd` carries, once a later record arrives. The handler is there to say
 why, and four rules decide what it is told. The table under
 [Policy by category](#policy-by-category) applies them category by category, and each
 category's header doc comment is the home of its detail.

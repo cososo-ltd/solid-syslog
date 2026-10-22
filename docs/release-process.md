@@ -35,10 +35,13 @@ sections are added by hand in the release pull request.
    merged stories, not from the generated list. When nothing breaks, say so in one
    line.
 
-   It is written by hand because nothing else lists the breaks. Before 1.0 a
-   commit that breaks the API is not marked with `!` or a `BREAKING CHANGE`
-   trailer, so release-please generates no breaking-changes section. The 0.2.0
-   entry has one because eight of its commits were still marked.
+   It is written by hand because the generated list names each break by its
+   commit subject and says nothing about what to change. A commit that breaks
+   the API carries `!` or a `BREAKING CHANGE` trailer, so release-please lists it
+   in a breaking-changes section; with `bump-minor-pre-major` a break before 1.0
+   bumps the minor version, not the major. A break that went in unmarked appears
+   in no generated section, so take the list from the interface diff rather than
+   from the generated one.
 
    It also lists the documentation corrected in the release, where acting on the
    old text would have cost an integrator something, since `docs` commits do not
@@ -121,8 +124,8 @@ the other three never reach the consumer at all.
 
 A commit marked as breaking surfaces in a breaking-changes section whatever its
 type, and in its type's own section even where that type is hidden, which is where
-0.2.0's Refactoring section came from. Before 1.0 no commit is marked, so the
-breaks are listed by hand under *Before you upgrade*.
+0.2.0's Refactoring section came from. Mark every break, whatever its type;
+*Before you upgrade* then describes each one.
 
 The Conventional Commit type is therefore a statement about consumer impact, not
 only about which files were touched. A change that alters what an integrator
@@ -135,8 +138,8 @@ generated section is built by release-please from the Conventional Commit types
 listed above; the written sections are added by hand in the release pull request.
 
 1. Conventional Commits land on `main`. `feat` and `fix` map to a generated
-   CHANGELOG section; the hidden types above produce no entry. A commit marked as
-   breaking would be listed whatever its type, but before 1.0 none is.
+   CHANGELOG section; the hidden types above produce no entry, and a commit marked
+   as breaking is listed whatever its type.
 2. release-please maintains a release PR that bumps the version and
    `CHANGELOG.md`. Write the written sections of the release notes into that PR
    before merging it, per *Getting the written parts into both places* above.
