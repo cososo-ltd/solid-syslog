@@ -60,6 +60,13 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
         LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
     }
 
+/* A connection the stream made without anything to say about it. */
+#define CHECK_OPENS_WITHOUT_A_REPORT(stream, address)            \
+    {                                                            \
+        CHECK_TRUE(SolidSyslogStream_Open((stream), (address))); \
+        LONGS_EQUAL(0, CapturedErrorCount);                      \
+    }
+
 // clang-format off
 /* What the scenario under construction wants the connection made with. Held per
  * test on the fixture and reached through ProfileContext, so nothing leaks
@@ -603,8 +610,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenA
     PinCertificate(&serverCert, "sha-256");
     tlsStream = CreateTlsStream(&config);
 
-    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
-    LONGS_EQUAL(0, CapturedErrorCount);
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
 }
 
 /* Pin-only verifies optionally, so this is the other library path through the
@@ -616,8 +622,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenA
     PinCertificate(&serverCert, "sha-256");
     tlsStream = CreateTlsStream(&config);
 
-    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
-    LONGS_EQUAL(0, CapturedErrorCount);
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWithNoServerNameAndWarns)
@@ -636,8 +641,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWhenServerNa
     struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting("");
     tlsStream = CreateTlsStream(&config);
 
-    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
-    LONGS_EQUAL(0, CapturedErrorCount);
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertMatchesNoPin)
