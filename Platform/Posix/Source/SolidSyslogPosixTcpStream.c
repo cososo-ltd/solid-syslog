@@ -491,7 +491,12 @@ static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buff
  * nowhere. By then Send has returned true and the record has left the caller's
  * hands. A FIN that has arrived reads as end-of-stream, so ask first: a
  * half-closed connection fails the send and store-and-forward replays the
- * record instead of losing it. */
+ * record instead of losing it. Bytes the peer sent that nothing has read stand
+ * in front of its FIN, and the peek sees those instead. They are left for Read
+ * rather than discarded, because a TLS stream layered on this one writes its
+ * handshake while the server's reply is still queued. A syslog collector sends
+ * nothing back, and a TLS stream reads what is waiting before it writes, so the
+ * queue is empty when the check runs. */
 static bool PosixTcpStream_PeerIsStillThere(struct SolidSyslogPosixTcpStream* self)
 {
     char discard = 0;

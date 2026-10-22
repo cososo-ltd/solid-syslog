@@ -100,7 +100,10 @@ A send first peeks at the socket to learn whether the peer has closed its end,
 as the [Stream](../../api/structSolidSyslogStream.md) contract requires. The
 peek sees only a close the stack has already learned of: a peer that closes
 while the record is being sent can still lose that record, because syslog over
-TCP has no acknowledgement to say it arrived.
+TCP has no acknowledgement to say it arrived. Nor can the peek see past bytes
+the peer sent that nothing has read: a close behind them goes unnoticed. A
+syslog collector sends nothing back, so in practice nothing is queued when the
+peek looks.
 
 A connect that fails is reported under the stream's own error source, with the
 detail naming which step failed and the event's `NativeCode` carrying the

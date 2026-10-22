@@ -251,10 +251,10 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:891
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:930
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:157
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:563
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:597
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:602
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:285
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:336
-misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:377
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:379
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:142
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:162
 
