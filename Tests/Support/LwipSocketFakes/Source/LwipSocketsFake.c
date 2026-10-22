@@ -459,6 +459,10 @@ int lwip_socket(int domain, int type, int protocol)
     lastSocketDomain = domain;
     lastSocketType = type;
     lastSocketProtocol = protocol;
+    if (socketResult < 0)
+    {
+        errno = ENFILE;
+    }
     return socketResult;
 }
 
@@ -500,6 +504,10 @@ int lwip_fcntl(int s, int cmd, int val)
     lastFcntlSocket = s;
     lastFcntlCommand = cmd;
     lastFcntlValue = val;
+    if (fcntlResult != 0)
+    {
+        errno = EINVAL;
+    }
     return fcntlResult;
 }
 
@@ -568,6 +576,10 @@ int lwip_select(int maxfdp1, fd_set* readset, fd_set* writeset, fd_set* exceptse
         {
             /* nothing to report back */
         }
+    }
+    if (selectResult < 0)
+    {
+        errno = EINTR;
     }
     return selectResult;
 }

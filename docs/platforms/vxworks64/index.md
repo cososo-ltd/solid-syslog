@@ -103,8 +103,11 @@ while the record is being sent can still lose that record, because syslog over
 TCP has no acknowledgement to say it arrived.
 
 A connect that fails is reported under the stream's own error source, with the
-detail naming which step failed. The stack refusing a socket option is
-reported as a warning, and the connection stands without it.
+detail naming which step failed and the event's `NativeCode` carrying the
+`errno` the step left: `socket`'s when no socket can be taken, and
+`connectWithTimeout`'s otherwise, which is `EINPROGRESS` when the deadline
+passed. The stack refusing a socket option is reported as a warning, and the
+connection stands without it.
 
 ### Dead-peer detection is yours to size
 

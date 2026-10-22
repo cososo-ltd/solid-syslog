@@ -12,12 +12,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * caller's file buffer against. The storage lives in the fake. */
     lfs_t* LittleFsFake_MountedWithCacheSize(lfs_size_t cacheSize);
 
+    void LittleFsFake_SetCloseResult(int result);
     int LittleFsFake_CloseCallCount(void);
 
     /* Bytes lfs_file_read hands back, and how many of them. A read asking for
        more than this returns the short count, which is how the adapter's
        short-read path is driven. */
     void LittleFsFake_SetReadSource(const void* bytes, lfs_size_t count);
+    /* The negative code every lfs_file_read answers, in place of a count. */
+    void LittleFsFake_SetReadError(int error);
     int LittleFsFake_ReadCallCount(void);
     lfs_size_t LittleFsFake_LastReadCount(void);
 
@@ -28,12 +31,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void LittleFsFake_SetSyncResult(int result);
     int LittleFsFake_SyncCallCount(void);
 
+    /* The negative code every lfs_file_seek answers, in place of the position. */
+    void LittleFsFake_SetSeekError(int error);
     lfs_soff_t LittleFsFake_LastSeekOffset(void);
     int LittleFsFake_LastSeekWhence(void);
 
     void LittleFsFake_SetFileSize(lfs_soff_t size);
     void LittleFsFake_SetFileSizeError(int error);
 
+    void LittleFsFake_SetTruncateResult(int result);
     lfs_off_t LittleFsFake_LastTruncateSize(void);
 
     void LittleFsFake_SetStatResult(int result);

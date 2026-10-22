@@ -11,6 +11,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void WinsockFake_Reset(void);
 
+    /* A failing socket answers INVALID_SOCKET with WSAGetLastError WSAENOBUFS. */
     void WinsockFake_SetSocketFails(bool fails);
 
     int WinsockFake_SocketCallCount(void);
@@ -75,6 +76,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* SOL_SOCKET / SO_ERROR - read by the non-blocking-connect completion
        path. Defaults to 0 (success) until set. */
     void WinsockFake_SetSoError(int err);
+    /* A failing lookup answers SOCKET_ERROR with WSAGetLastError WSAENOTSOCK. */
     void WinsockFake_SetSoErrorLookupFails(bool fails);
 
     int WinsockFake_GetSockOptCallCount(void);
@@ -92,6 +94,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     int WinsockFake_FreeAddrInfoCallCount(void);
 
+    /* A failing ioctlsocket answers SOCKET_ERROR with WSAGetLastError WSAEINVAL. */
     void WinsockFake_SetIoctlSocketFails(bool fails);
 
     int WinsockFake_IoctlSocketCallCount(void);
@@ -109,8 +112,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* select configuration. ready=true makes select() report fd writable in
        writefds; ready=false leaves writefds empty (timeout). hasError=true
        additionally sets fd in exceptfds. returnValue overrides the int return:
-       1 for ready, 0 for timeout, SOCKET_ERROR for error. By default select
-       returns 1 (one fd ready: writable, no error). */
+       1 for ready, 0 for timeout, SOCKET_ERROR for error, which leaves
+       WSAGetLastError WSAEINTR. By default select returns 1 (one fd ready:
+       writable, no error). */
     void WinsockFake_SetSelectWritable(bool ready);
     void WinsockFake_SetSelectError(bool hasError);
     void WinsockFake_SetSelectReturn(int value);

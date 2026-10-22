@@ -44,6 +44,7 @@ void* pvTaskGetThreadLocalStoragePointer(TaskHandle_t xTaskToQuery, BaseType_t x
 
 /* ff_fclose state */
 static int closeCallCount;
+static int closeErrno;
 
 /* ff_fread state */
 static unsigned char readSource[READ_SOURCE_CAPACITY];
@@ -51,12 +52,14 @@ static size_t readSourceCount;
 static int readCallCount;
 static size_t lastReadSize;
 static size_t lastReadItems;
+static int readErrno;
 
 /* ff_fwrite state */
 static int writeCallCount;
 static unsigned char lastWriteBytes[WRITE_CAPTURE_CAPACITY];
 static size_t lastWriteItems;
 static bool writeIncomplete;
+static int writeErrno;
 
 /* FF_FlushCache state */
 static int flushCacheCallCount;
@@ -66,6 +69,7 @@ static int flushCacheResult;
 static int seekCallCount;
 static long lastSeekOffset;
 static int lastSeekWhence;
+static int seekErrno;
 
 /* ff_filelength state */
 static size_t fileLength;
@@ -73,6 +77,7 @@ static int fileLengthErrno;
 
 /* ff_seteof state */
 static int seteofCallCount;
+static int seteofErrno;
 
 /* ff_stat state */
 static int statCallCount;
@@ -100,23 +105,28 @@ void PlusFatFake_Reset(void)
         threadLocalStorage[slotIndex] = NULL;
     }
     closeCallCount = 0;
+    closeErrno = 0;
     memset(readSource, 0, sizeof(readSource));
     readSourceCount = 0;
     readCallCount = 0;
     lastReadSize = 0;
     lastReadItems = 0;
+    readErrno = 0;
     writeCallCount = 0;
     memset(lastWriteBytes, 0, sizeof(lastWriteBytes));
     lastWriteItems = 0;
     writeIncomplete = false;
+    writeErrno = 0;
     flushCacheCallCount = 0;
     flushCacheResult = 0;
     seekCallCount = 0;
     lastSeekOffset = 0;
     lastSeekWhence = 0;
+    seekErrno = 0;
     fileLength = 0;
     fileLengthErrno = 0;
     seteofCallCount = 0;
+    seteofErrno = 0;
     statCallCount = 0;
     lastStatPath = NULL;
     statResult = 0;
@@ -180,11 +190,22 @@ int PlusFatFake_CloseCallCount(void)
     return closeCallCount;
 }
 
+void PlusFatFake_SetCloseErrno(int errnoValue)
+{
+    closeErrno = errnoValue;
+}
+
 int ff_fclose(FF_FILE* pxStream)
 {
     (void) pxStream;
     closeCallCount++;
-    return 0;
+    stdioSET_ERRNO(closeErrno);
+    return (closeErrno == 0) ? 0 : -1;
+}
+
+void PlusFatFake_SetReadErrno(int errnoValue)
+{
+    readErrno = errnoValue;
 }
 
 void PlusFatFake_SetReadSource(const void* bytes, unsigned long count)
@@ -220,12 +241,20 @@ size_t ff_fread(void* pvBuffer, size_t xSize, size_t xItems, FF_FILE* pxStream)
     lastReadItems = xItems;
     size_t itemsDelivered = (xItems <= readSourceCount) ? xItems : readSourceCount;
     memcpy(pvBuffer, readSource, itemsDelivered);
-    return itemsDelivered;
+    /* As the real ff_fread: a failure delivers nothing and leaves its errno;
+     * anything else, the end of the file included, leaves none. */
+    stdioSET_ERRNO(readErrno);
+    return (readErrno == 0) ? itemsDelivered : 0U;
 }
 
 void PlusFatFake_SetWriteIncomplete(void)
 {
     writeIncomplete = true;
+}
+
+void PlusFatFake_SetWriteErrno(int errnoValue)
+{
+    writeErrno = errnoValue;
 }
 
 int PlusFatFake_WriteCallCount(void)
@@ -256,7 +285,10 @@ size_t ff_fwrite(const void* pvBuffer, size_t xSize, size_t xItems, FF_FILE* pxS
     {
         itemsWritten = xItems - 1;
     }
-    return itemsWritten;
+    /* As the real ff_fwrite: a failure writes nothing and leaves its errno; an
+     * incomplete write leaves none. */
+    stdioSET_ERRNO(writeErrno);
+    return (writeErrno == 0) ? itemsWritten : 0U;
 }
 
 void PlusFatFake_SetFlushCacheFails(void)
@@ -264,6 +296,11 @@ void PlusFatFake_SetFlushCacheFails(void)
     /* Any error code with the FF_ERRFLAG bit set is non-FF_ERR_NONE - the
      * adapter treats it as a flush failure. */
     flushCacheResult = (int) (FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG);
+}
+
+int PlusFatFake_FlushCacheFailureCode(void)
+{
+    return (int) (FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG);
 }
 
 int PlusFatFake_FlushCacheCallCount(void)
@@ -293,13 +330,19 @@ int PlusFatFake_LastSeekWhence(void)
     return lastSeekWhence;
 }
 
+void PlusFatFake_SetSeekErrno(int errnoValue)
+{
+    seekErrno = errnoValue;
+}
+
 int ff_fseek(FF_FILE* pxStream, long lOffset, int iWhence)
 {
     (void) pxStream;
     seekCallCount++;
     lastSeekOffset = lOffset;
     lastSeekWhence = iWhence;
-    return 0;
+    stdioSET_ERRNO(seekErrno);
+    return (seekErrno == 0) ? 0 : -1;
 }
 
 void PlusFatFake_SetFileLength(unsigned long length)
@@ -326,11 +369,17 @@ int PlusFatFake_SeteofCallCount(void)
     return seteofCallCount;
 }
 
+void PlusFatFake_SetSeteofErrno(int errnoValue)
+{
+    seteofErrno = errnoValue;
+}
+
 int ff_seteof(FF_FILE* pxStream)
 {
     (void) pxStream;
     seteofCallCount++;
-    return 0;
+    stdioSET_ERRNO(seteofErrno);
+    return (seteofErrno == 0) ? 0 : -1;
 }
 
 void PlusFatFake_SetStatFails(void)

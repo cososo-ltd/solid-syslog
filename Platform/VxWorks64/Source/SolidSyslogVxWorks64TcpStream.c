@@ -69,6 +69,11 @@ static void VxWorks64TcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static void VxWorks64TcpStream_ReportConnectFailureWithErrno(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    int nativeErrno
+);
 static bool VxWorks64TcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogVxWorks64TcpStream* self,
     const struct sockaddr_in* sin
@@ -150,15 +155,19 @@ static bool VxWorks64TcpStream_TakeSocketAndConnect(
 {
     bool connected = false;
     self->Fd = socket(AF_INET, SOCK_STREAM, 0);
+    /* Read errno straight after the call that set it, with nothing between
+     * (MISRA 22.10). */
+    int socketErrno = VxWorks64TcpStream_IsSocketValid(self->Fd) ? 0 : errno;
     if (VxWorks64TcpStream_IsSocketValid(self->Fd))
     {
         connected = VxWorks64TcpStream_ConnectOrCloseOnFailure(self, sin);
     }
     else
     {
-        VxWorks64TcpStream_ReportConnectFailure(
+        VxWorks64TcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+            socketErrno
         );
     }
     return connected;
@@ -185,6 +194,29 @@ static void VxWorks64TcpStream_ReportConnectFailure(
 )
 {
     VxWorks64TcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+}
+
+/* The fault, with the errno behind it when the call left one. */
+static void VxWorks64TcpStream_ReportConnectFailureWithErrno(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    int nativeErrno
+)
+{
+    if (nativeErrno != 0)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            severity,
+            &SolidSyslogVxWorks64TcpStreamErrorSource,
+            SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+            (int32_t) detail,
+            (int32_t) nativeErrno
+        );
+    }
+    else
+    {
+        VxWorks64TcpStream_ReportConnectFailure(severity, detail);
+    }
 }
 
 /* A failed connect closes its socket, which would otherwise be held until
@@ -217,25 +249,30 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
      * (MISRA 22.10). */
     int connectErrno = (status == ERROR) ? errno : 0;
     bool connected = (status == OK);
+    /* Each failure carries the errno connectWithTimeout left, the bound
+     * expiring included: EINPROGRESS is how it says so. */
     if (connectErrno == EINPROGRESS)
     {
-        VxWorks64TcpStream_ReportConnectFailure(
+        VxWorks64TcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
+            connectErrno
         );
     }
     else if (VxWorks64TcpStream_IsRemoteConnectError(connectErrno))
     {
-        VxWorks64TcpStream_ReportConnectFailure(
+        VxWorks64TcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            connectErrno
         );
     }
     else if (!connected)
     {
-        VxWorks64TcpStream_ReportConnectFailure(
+        VxWorks64TcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+            connectErrno
         );
     }
     else

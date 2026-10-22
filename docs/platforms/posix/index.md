@@ -62,6 +62,30 @@ believes is stored survives the process exiting and may not survive the machine
 losing power, so durability is a property of the filesystem and volume you point
 the store at.
 
+### A failed file call is reported, with its errno
+
+Each call the file makes on an open file, and the open itself, is reported
+under the file's own error source when it fails, as
+[`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
+with a code naming the call: open, read, write, seek, size, truncate or close.
+Nothing here syncs, so the sync and commit codes are never raised. Where the
+call set `errno`, the event's `NativeCode` carries it. A short `write` sets no
+`errno`, so `HasNativeCode` is clear on its event. A short read is not a
+failure and raises nothing: the store judges it for itself. Nor is a path that
+is not there when the file is only asked whether it exists.
+[Error severity](../../error-severity.md) gives the level of each.
+
+### A failed connect is reported, with its errno
+
+Each step of a TCP connect that fails is reported under the stream's own error
+source, with the detail naming the step, as
+[`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
+Where the kernel left an `errno` - from `socket`, `fcntl`, `connect` or
+`select`, the pending `SO_ERROR` of a socket the wait ended on unconnected,
+or the `errno` of the `getsockopt` that could not read it - the event's
+`NativeCode` carries it. The connect budget expiring leaves none, nor does a
+socket `select` flags in its exception set with no pending error.
+
 ### A peer that dies silently is detected, and you size how long that takes
 
 Keepalive probes begin after `SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS` of silence

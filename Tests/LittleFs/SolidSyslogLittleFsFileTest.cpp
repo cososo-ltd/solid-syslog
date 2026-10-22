@@ -7,6 +7,7 @@ extern "C"
 #include "LittleFsFake.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileErrors.h"
 #include "SolidSyslogLittleFsFile.h"
 #include "SolidSyslogLittleFsFileErrors.h"
@@ -19,6 +20,27 @@ extern "C"
 using namespace CososoTesting;
 
 static const lfs_size_t TEST_CACHE_SIZE = 64;
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// the negative lfs code behind it.
+#define CHECK_FAILURE_REPORTED_WITH_CODE(code, lfsError) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(          \
+        SOLIDSYSLOG_SEVERITY_ERROR,                      \
+        &SolidSyslogLittleFsFileErrorSource,             \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,                  \
+        code,                                            \
+        lfsError                                         \
+    )
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// no code behind it.
+#define CHECK_FAILURE_REPORTED_ALONE(code)   \
+    CHECK_ERROR_REPORTED_ONCE(               \
+        SOLIDSYSLOG_SEVERITY_ERROR,          \
+        &SolidSyslogLittleFsFileErrorSource, \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,      \
+        code                                 \
+    )
 
 // clang-format off
 TEST_GROUP(SolidSyslogLittleFsFile)
@@ -190,6 +212,162 @@ TEST(SolidSyslogLittleFsFile, DeleteFailsOnAnyOtherError)
 {
     LittleFsFake_SetRemoveResult(LFS_ERR_IO);
     CHECK_FALSE(SolidSyslogFile_Delete(file, "locked.log"));
+}
+
+TEST(SolidSyslogLittleFsFile, OpenThatFailsReportsTheFailedOpenAndItsCode)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetOpenResult(LFS_ERR_NOSPC);
+
+    SolidSyslogFile_Open(file, "test.log");
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, LFS_ERR_NOSPC);
+}
+
+TEST(SolidSyslogLittleFsFile, CloseThatFailsReportsTheFailedCloseAndItsCode)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetCloseResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Close(file);
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, LFS_ERR_IO);
+}
+
+TEST(SolidSyslogLittleFsFile, CloseThatFailsStillLeavesTheFileClosed)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    LittleFsFake_SetCloseResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Close(file);
+
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogLittleFsFile, ReadThatFailsReportsTheFailedReadAndItsCode)
+{
+    unsigned char into[3] = {};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetReadError(LFS_ERR_CORRUPT);
+
+    SolidSyslogFile_Read(file, into, sizeof(into));
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, LFS_ERR_CORRUPT);
+}
+
+TEST(SolidSyslogLittleFsFile, AShortReadReportsNothing)
+{
+    const unsigned char stored[] = {'a', 'b'};
+    unsigned char into[3] = {};
+    LittleFsFake_SetReadSource(stored, sizeof(stored));
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogFile_Read(file, into, sizeof(into));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogLittleFsFile, WriteThatFailsReportsTheFailedWriteAndItsCode)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetWriteBytesAccepted(LFS_ERR_NOSPC);
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, LFS_ERR_NOSPC);
+}
+
+TEST(SolidSyslogLittleFsFile, AShortWriteReportsTheFailedWriteAlone)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetWriteBytesAccepted(2);
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    CHECK_FAILURE_REPORTED_ALONE(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED);
+}
+
+TEST(SolidSyslogLittleFsFile, SyncThatFailsReportsTheFailedSyncAndItsCode)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetSyncResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_SYNC_FAILED, LFS_ERR_IO);
+}
+
+TEST(SolidSyslogLittleFsFile, SeekToThatFailsReportsTheFailedSeekAndItsCode)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetSeekError(LFS_ERR_INVAL);
+
+    SolidSyslogFile_SeekTo(file, 42);
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, LFS_ERR_INVAL);
+}
+
+TEST(SolidSyslogLittleFsFile, SizeThatFailsReportsTheFailedSizeAndItsCode)
+{
+    LittleFsFake_SetFileSizeError(LFS_ERR_IO);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+
+    size_t size = 0U;
+    SolidSyslogFile_Size(file, &size);
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, LFS_ERR_IO);
+}
+
+TEST(SolidSyslogLittleFsFile, TruncateThatFailsReportsTheFailedTruncateAndItsCode)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetTruncateResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, LFS_ERR_IO);
+}
+
+TEST(SolidSyslogLittleFsFile, TruncateWhoseSeekFailsReportsTheFailedTruncateAndItsCode)
+{
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetSeekError(LFS_ERR_INVAL);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, LFS_ERR_INVAL);
+}
+
+TEST(SolidSyslogLittleFsFile, CallsThatSucceedReportNothing)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    unsigned char into[3] = {};
+    LittleFsFake_SetReadSource(record, sizeof(record));
+    ErrorHandlerFake_Install(nullptr);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    size_t size = 0U;
+    SolidSyslogFile_Write(file, record, sizeof(record));
+    SolidSyslogFile_Size(file, &size);
+    SolidSyslogFile_SeekTo(file, 0);
+    SolidSyslogFile_Read(file, into, sizeof(into));
+    SolidSyslogFile_Truncate(file);
+    SolidSyslogFile_Close(file);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 // clang-format off

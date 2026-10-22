@@ -20,13 +20,16 @@ static FIL* lastOpenedFp;
 
 /* f_close state */
 static int closeCallCount;
+static FRESULT closeResult;
 
 /* f_lseek state */
 static int lseekCallCount;
 static FSIZE_t lastLseekOffset;
+static FRESULT lseekResult;
 
 /* f_truncate state */
 static int truncateCallCount;
+static FRESULT truncateResult;
 
 /* f_read state */
 static int readCallCount;
@@ -67,9 +70,12 @@ void FatFsFake_Reset(void)
     openResult = FR_OK;
     lastOpenedFp = NULL;
     closeCallCount = 0;
+    closeResult = FR_OK;
     lseekCallCount = 0;
     lastLseekOffset = 0;
+    lseekResult = FR_OK;
     truncateCallCount = 0;
+    truncateResult = FR_OK;
     readCallCount = 0;
     lastReadCount = 0;
     readResult = FR_OK;
@@ -127,11 +133,21 @@ int FatFsFake_CloseCallCount(void)
     return closeCallCount;
 }
 
+void FatFsFake_SetCloseResult(FRESULT result)
+{
+    closeResult = result;
+}
+
 FRESULT f_close(FIL* fp)
 {
     (void) fp;
     closeCallCount++;
-    return FR_OK;
+    return closeResult;
+}
+
+void FatFsFake_SetLseekResult(FRESULT result)
+{
+    lseekResult = result;
 }
 
 int FatFsFake_LseekCallCount(void)
@@ -149,7 +165,7 @@ FRESULT f_lseek(FIL* fp, FSIZE_t ofs)
     (void) fp;
     lseekCallCount++;
     lastLseekOffset = ofs;
-    return FR_OK;
+    return lseekResult;
 }
 
 int FatFsFake_TruncateCallCount(void)
@@ -157,11 +173,16 @@ int FatFsFake_TruncateCallCount(void)
     return truncateCallCount;
 }
 
+void FatFsFake_SetTruncateResult(FRESULT result)
+{
+    truncateResult = result;
+}
+
 FRESULT f_truncate(FIL* fp)
 {
     (void) fp;
     truncateCallCount++;
-    return FR_OK;
+    return truncateResult;
 }
 
 void FatFsFake_SetFileSize(unsigned long size)

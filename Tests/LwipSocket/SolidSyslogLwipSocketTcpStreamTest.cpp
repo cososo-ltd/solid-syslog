@@ -116,11 +116,12 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackThatWillNotMakeTheSocketNonBlockingIs
 
     LONGS_EQUAL(0U, LwipSocketsFake_ConnectCallCount());
     CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+        EINVAL
     );
 }
 
@@ -232,11 +233,28 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailedAfterTheSynIsRefusedAndRe
 
     CHECK_FALSE(Open());
 
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ECONNREFUSED
+    );
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackCannotKeepIsRefusedWithTheStacksErrno)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSelectResult(-1);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        EINTR
     );
 }
 
@@ -270,6 +288,23 @@ TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsInTheExceptionSetIsRefused
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsInTheExceptionSetCarriesThePendingSocketError)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSelectSignalsException();
+    LwipSocketsFake_SetSocketError(ECONNRESET);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ECONNRESET
+    );
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, ADestinationThatRefusesImmediatelyIsReportedAsRefused)
 {
     LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
@@ -277,11 +312,12 @@ TEST(SolidSyslogLwipSocketTcpStream, ADestinationThatRefusesImmediatelyIsReporte
     CHECK_FALSE(Open());
 
     LONGS_EQUAL(0U, LwipSocketsFake_SelectCallCount());
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ECONNREFUSED
     );
 }
 
@@ -291,11 +327,12 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackThatWillNotStartTheAttemptIsALocalFai
 
     CHECK_FALSE(Open());
 
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        ENOBUFS
     );
 }
 
@@ -307,11 +344,12 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackWithNoSocketToGiveIsReportedAndNothin
 
     LONGS_EQUAL(0U, LwipSocketsFake_ConnectCallCount());
     LONGS_EQUAL(0U, LwipSocketsFake_CloseCallCount());
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+        ENFILE
     );
 }
 
@@ -537,11 +575,12 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailsReportsOnlyTheConnectFailu
 
     CHECK_FALSE(Open());
 
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
         &SolidSyslogLwipSocketTcpStreamErrorSource,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
-        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ECONNREFUSED
     );
 }
 

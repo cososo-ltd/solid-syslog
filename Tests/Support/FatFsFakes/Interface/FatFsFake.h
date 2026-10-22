@@ -13,11 +13,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const char* FatFsFake_LastOpenPath(void);
     unsigned char FatFsFake_LastOpenMode(void);
 
+    void FatFsFake_SetCloseResult(FRESULT result);
     int FatFsFake_CloseCallCount(void);
 
+    void FatFsFake_SetLseekResult(FRESULT result);
     int FatFsFake_LseekCallCount(void);
     unsigned long FatFsFake_LastLseekOffset(void);
 
+    void FatFsFake_SetTruncateResult(FRESULT result);
     int FatFsFake_TruncateCallCount(void);
 
     void FatFsFake_SetReadResult(FRESULT result);

@@ -38,7 +38,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** The buffer length the last gethostname was given. */
     int VxWorks64NetFake_LastGethostnameLength(void);
 
-    /** Make socket answer ERROR, as the stack does when it cannot make one. */
+    /** Make socket answer ERROR with errno EMFILE, as the stack does when it
+     *  cannot make one. */
     void VxWorks64NetFake_SetSocketFails(bool fails);
 
     unsigned VxWorks64NetFake_SocketCallCount(void);

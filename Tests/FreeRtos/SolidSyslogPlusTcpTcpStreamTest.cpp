@@ -131,6 +131,17 @@ TEST_GROUP(SolidSyslogPlusTcpTcpStream)
         (detail)                                         \
     )
 
+// As above, for a failure FreeRTOS_connect answered a code for, carried as the
+// event's native code exactly as the stack returned it.
+#define CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(severity, detail, code) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(                          \
+        (severity),                                                      \
+        &SolidSyslogPlusTcpTcpStreamErrorSource,                         \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,                           \
+        (detail),                                                        \
+        (code)                                                           \
+    )
+
 #define CHECK_SOCKET_CLOSED_ONCE()                                                                             \
     {                                                                                                          \
         CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);                                                    \
@@ -320,7 +331,11 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectTimedOutWhenTheConnectBudget
 
     SolidSyslogStream_Open(stream, addr);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
+        -pdFREERTOS_ERRNO_ETIMEDOUT
+    );
 }
 
 TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectRefusedWhenTheSocketIsClosedDuringConnect)
@@ -330,7 +345,11 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectRefusedWhenTheSocketIsClosed
 
     SolidSyslogStream_Open(stream, addr);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        -pdFREERTOS_ERRNO_ENOTCONN
+    );
 }
 
 TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectNotStartedWhenTheStackRejectsTheAttempt)
@@ -340,7 +359,11 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectNotStartedWhenTheStackReject
 
     SolidSyslogStream_Open(stream, addr);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        -pdFREERTOS_ERRNO_EINVAL
+    );
 }
 
 TEST(SolidSyslogPlusTcpTcpStream, SendFailsBeforeOpen)

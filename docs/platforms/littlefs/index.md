@@ -68,6 +68,20 @@ guarantee still rests on your block-device callbacks reporting a program or eras
 as complete only once it is, and on the flash part behaving as its datasheet says
 through a power cut.
 
+### A failed file call is reported, with its lfs code
+
+Each call the file makes on an open file, and the open itself, is reported
+under the file's own error source when it fails, as
+[`SOLIDSYSLOG_CAT_FILE_IO_FAILED`](../../api/SolidSyslogFileCategories_8h.md)
+with a code naming the call: open, read, write, sync, seek, size, truncate or
+close. Nothing here commits, so that code is never raised. Where the call
+answered a negative `lfs_error`, `LFS_ERR_IO` and its siblings, the event's
+`NativeCode` carries it. A write LittleFS accepts only part of answers a count,
+not a code, so `HasNativeCode` is clear on its event. A short read is not a
+failure and raises nothing: the store judges it for itself. Nor is a path
+`lfs_stat` does not find when the file is only asked whether it exists.
+[Error severity](../../error-severity.md) gives the level of each.
+
 ### What the pack has been tested against
 
 The durability claim is tested, not asserted. An integration suite runs the whole store

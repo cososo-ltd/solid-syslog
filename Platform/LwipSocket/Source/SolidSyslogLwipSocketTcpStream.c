@@ -65,10 +65,17 @@ static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* s
 static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMicros);
 static long LwipSocketTcpStream_ResolveConnectTimeoutMicros(struct SolidSyslogLwipSocketTcpStream* self);
 static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd);
+static bool LwipSocketTcpStream_ReadSocketError(int fd, int* code);
 static void LwipSocketTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static void LwipSocketTcpStream_ReportConnectFailureWithErrno(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    int nativeErrno
+);
+static void LwipSocketTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno);
 static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult);
 static inline bool LwipSocketTcpStream_IsRemoteConnectError(int connectErrno);
 
@@ -145,13 +152,6 @@ static bool LwipSocketTcpStream_TakeSocketAndConnect(
     {
         connected = LwipSocketTcpStream_ConnectOrCloseOnFailure(self, sin);
     }
-    else
-    {
-        LwipSocketTcpStream_ReportConnectFailure(
-            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
-        );
-    }
     return connected;
 }
 
@@ -166,13 +166,35 @@ static inline struct SolidSyslogLwipSocketTcpStream* LwipSocketTcpStream_SelfFro
 static int LwipSocketTcpStream_TakeSocket(void)
 {
     int fd = lwip_socket(AF_INET, SOCK_STREAM, 0);
-    /* A socket the stack will not make non-blocking is no use to us: the
-     * bounded connect, and Send and Read never blocking the service thread,
-     * all rest on it. Give it back rather than proceed with a blocking one. */
-    if (LwipSocketTcpStream_IsSocketValid(fd) && (lwip_fcntl(fd, F_SETFL, O_NONBLOCK) != 0))
+    /* Captured immediately after lwip_socket so the report below satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int socketErrno = LwipSocketTcpStream_IsSocketValid(fd) ? 0 : errno;
+    if (!LwipSocketTcpStream_IsSocketValid(fd))
     {
-        (void) lwip_close(fd);
-        fd = INVALID_SOCKET;
+        LwipSocketTcpStream_ReportConnectFailureWithErrno(
+            SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+            socketErrno
+        );
+    }
+    else
+    {
+        /* A socket the stack will not make non-blocking is no use to us: the
+         * bounded connect, and Send and Read never blocking the service thread,
+         * all rest on it. Give it back rather than proceed with a blocking one. */
+        int rc = lwip_fcntl(fd, F_SETFL, O_NONBLOCK);
+        int fcntlErrno = (rc != 0) ? errno : 0;
+        if (rc != 0)
+        {
+            LwipSocketTcpStream_ReportConnectFailureWithErrno(
+                SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+                SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+                fcntlErrno
+            );
+            (void) lwip_close(fd);
+            fd = INVALID_SOCKET;
+        }
     }
     return fd;
 }
@@ -252,16 +274,18 @@ static bool LwipSocketTcpStream_Connect(struct SolidSyslogLwipSocketTcpStream* s
     }
     else if (LwipSocketTcpStream_IsRemoteConnectError(connectErrno))
     {
-        LwipSocketTcpStream_ReportConnectFailure(
+        LwipSocketTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            connectErrno
         );
     }
     else if (rc < 0)
     {
-        LwipSocketTcpStream_ReportConnectFailure(
+        LwipSocketTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+            connectErrno
         );
     }
     else
@@ -390,17 +414,45 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(int fd, long timeoutMic
     struct timeval timeout = {.tv_sec = timeoutMicros / 1000000L, .tv_usec = timeoutMicros % 1000000L};
 
     int rc = lwip_select(fd + 1, NULL, &writeSet, &errorSet, &timeout);
+    /* Captured immediately after lwip_select so the report below satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int selectErrno = (rc < 0) ? errno : 0;
     bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
 
     if (!ready)
     {
-        LwipSocketTcpStream_ReportConnectFailure(
-            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            LwipSocketTcpStream_WaitTimedOut(rc) ? SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
-                                                 : SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
-        );
+        LwipSocketTcpStream_ReportUnfinishedWait(fd, rc, selectErrno);
     }
     return ready;
+}
+
+/* The budget expiring is nothing to report a code for. A select that failed
+ * left its errno. A socket lwip_select answered for, flagged in the exception
+ * set, holds the failure in SO_ERROR. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a descriptor, a select result and the errno it left; distinct semantics
+static void LwipSocketTcpStream_ReportUnfinishedWait(int fd, int selectResult, int selectErrno)
+{
+    if (LwipSocketTcpStream_WaitTimedOut(selectResult))
+    {
+        LwipSocketTcpStream_ReportConnectFailure(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+        );
+    }
+    else
+    {
+        int nativeErrno = selectErrno;
+        if (selectResult > 0)
+        {
+            (void) LwipSocketTcpStream_ReadSocketError(fd, &nativeErrno);
+        }
+        LwipSocketTcpStream_ReportConnectFailureWithErrno(
+            SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            nativeErrno
+        );
+    }
 }
 
 /* Remote means the destination or the network answered, or failed to. Every
@@ -424,31 +476,69 @@ static inline bool LwipSocketTcpStream_WaitTimedOut(int selectResult)
  * its outcome through SO_ERROR, and a failed one becomes writable too. */
 static bool LwipSocketTcpStream_ReadDeferredConnectError(int fd)
 {
-    int err = 0;
-    socklen_t errlen = (socklen_t) sizeof(err);
-    int rc = lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
-    bool connected = (rc == 0) && (err == 0);
+    int code = 0;
+    bool asked = LwipSocketTcpStream_ReadSocketError(fd, &code);
+    bool connected = asked && (code == 0);
 
     if (!connected)
     {
-        LwipSocketTcpStream_ReportConnectFailure(
+        LwipSocketTcpStream_ReportConnectFailureWithErrno(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            code
         );
     }
     return connected;
 }
 
+/* The error the socket holds, or, when it cannot be asked, the lookup's own:
+ * true when the socket answered. */
+static bool LwipSocketTcpStream_ReadSocketError(int fd, int* code)
+{
+    int err = 0;
+    socklen_t errlen = (socklen_t) sizeof(err);
+    int rc = lwip_getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
+    /* Captured immediately after lwip_getsockopt so the report satisfies
+     * MISRA 22.10 - no intervening library call between the errno-setting
+     * function and the read. */
+    int lookupErrno = (rc != 0) ? errno : 0;
+    *code = (rc == 0) ? err : lookupErrno;
+    return rc == 0;
+}
+
 /* Every connect failure is one category with the detail naming which step
  * failed, so a portable handler reacts to "no connection" without knowing
  * lwIP. Each failing step reports its own, because each is the only place that
- * knows which one it was. */
+ * knows which one it was, and the only place the errno it left can be read. */
 static void LwipSocketTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 )
 {
     LwipSocketTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+}
+
+/* The fault, with the errno behind it when the call left one. */
+static void LwipSocketTcpStream_ReportConnectFailureWithErrno(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    int nativeErrno
+)
+{
+    if (nativeErrno != 0)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            severity,
+            &SolidSyslogLwipSocketTcpStreamErrorSource,
+            SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+            (int32_t) detail,
+            (int32_t) nativeErrno
+        );
+    }
+    else
+    {
+        LwipSocketTcpStream_ReportConnectFailure(severity, detail);
+    }
 }
 
 #else
