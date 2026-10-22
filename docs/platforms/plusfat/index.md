@@ -31,7 +31,10 @@ size excludes, and the store will not read those back.
 
 It flushes the IO manager's cache rather than the file: `ff_stdio.h` declares
 `ff_fflush` but the library never defines it, so `FF_FlushCache` is the real
-durability primitive. Whether that reaches the medium is a property of your
+durability primitive. That holds of the upstream tree as of June 2026 - the
+declaration is still there and no source file defines it - and the pack is
+tested against an April 2026 checkout of it, Plus-FAT having no tagged
+releases. Whether the flush reaches the medium is a property of your
 `FF_Disk_t` driver and the hardware under it. FAT is not a journalling
 filesystem, and a partially written directory entry is possible on a device that
 loses power mid-update.
