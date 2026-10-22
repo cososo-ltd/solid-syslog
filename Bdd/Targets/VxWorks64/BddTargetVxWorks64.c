@@ -399,7 +399,8 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
         BddTargetMessageSettings_Message(),
         input,
         BddTargetSwitchConfig_SetByName,
-        BddTargetVxWorks64_SetByName
+        BddTargetVxWorks64_SetByName,
+        NULL
     );
     consoleEnded = true;
 }

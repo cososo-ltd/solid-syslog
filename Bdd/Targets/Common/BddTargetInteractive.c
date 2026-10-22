@@ -113,7 +113,8 @@ void BddTargetInteractive_Run(
     const struct SolidSyslogMessage* message,
     FILE* input,
     BddTargetInteractiveSwitchHandler onSwitch,
-    BddTargetInteractiveSetHandler onSet
+    BddTargetInteractiveSetHandler onSet,
+    BddTargetInteractiveBlocksHandler onBlocks
 )
 {
     char line[MAX_LINE_LENGTH];
@@ -145,6 +146,10 @@ void BddTargetInteractive_Run(
         else if (onSet != NULL && MatchCommand(line, "set", &args))
         {
             HandleSet(args, onSet);
+        }
+        else if (onBlocks != NULL && MatchCommand(line, "blocks", &args))
+        {
+            onBlocks();
         }
 
         PrintPrompt();

@@ -18,6 +18,12 @@ struct SetHandlerSpy
 };
 
 SetHandlerSpy spy;
+int blocksCallCount = 0;
+
+void RecordBlocks()
+{
+    blocksCallCount++;
+}
 
 bool RecordSet(const char* name, const char* value)
 {
@@ -65,7 +71,11 @@ std::string EndStdoutCapture()
     return content;
 }
 
-void RunWithInput(const char* input, BddTargetInteractiveSetHandler onSet)
+void RunWithInput(
+    const char* input,
+    BddTargetInteractiveSetHandler onSet,
+    BddTargetInteractiveBlocksHandler onBlocks = nullptr
+)
 {
     /* fmemopen takes a non-const void*; with mode "r" it never writes to
      * the buffer, so dropping const here is safe in practice. */
@@ -74,7 +84,7 @@ void RunWithInput(const char* input, BddTargetInteractiveSetHandler onSet)
     struct SolidSyslogMessage message = {};
     /* These tests only exercise the set/switch/quit input paths, never `send`,
        so the SolidSyslog handle is never dereferenced - nullptr is safe. */
-    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet);
+    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet, onBlocks);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is POSIX C; no owning memory concern
     fclose(in);
 }
@@ -94,6 +104,7 @@ TEST_GROUP(BddTargetInteractive)
     {
         spy             = SetHandlerSpy{};
         spy.returnValue = true;
+        blocksCallCount = 0;
     }
 };
 // clang-format on
@@ -188,6 +199,20 @@ TEST(BddTargetInteractive, SendCustomCommandIsDispatchedAndCounted)
     CHECK(captured.find("Sent 2 custom messages") != std::string::npos);
 }
 
+TEST(BddTargetInteractive, BlocksCommandCallsTheBlocksHandlerOnce)
+{
+    RunWithInput("blocks\nquit\n", RecordSet, RecordBlocks);
+
+    LONGS_EQUAL(1, blocksCallCount);
+}
+
+TEST(BddTargetInteractive, NullBlocksHandlerSilentlyIgnoresBlocksLine)
+{
+    RunWithInput("blocks\nquit\n", RecordSet, nullptr);
+
+    LONGS_EQUAL(0, blocksCallCount);
+}
+
 /* Test list (ZOMBIES order):
  *  Z  [x] SetHandlerNotCalledWithQuitOnly
  *  O  [x] SetCommandCallsHandlerOnce
@@ -198,4 +223,6 @@ TEST(BddTargetInteractive, SendCustomCommandIsDispatchedAndCounted)
  *  E  [x] NullSetHandlerSilentlyIgnoresSetLine (locked in)
  *  I  [x] SetCommandPrintsEchoOnHandlerSuccess
  *  I  [x] SetCommandPrintsInvalidOnHandlerFailure
+ *  O  [x] BlocksCommandCallsTheBlocksHandlerOnce
+ *  E  [x] NullBlocksHandlerSilentlyIgnoresBlocksLine
  */

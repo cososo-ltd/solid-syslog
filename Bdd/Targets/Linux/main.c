@@ -355,7 +355,7 @@ int main(int argc, char* argv[])
         .Msg = options.Msg,
     };
 
-    BddTargetInteractive_Run(solidSyslog, &message, stdin, BddTargetSwitchConfig_SetByName, OnSet);
+    BddTargetInteractive_Run(solidSyslog, &message, stdin, BddTargetSwitchConfig_SetByName, OnSet, NULL);
 
     shutdown_flag = true;
     pthread_join(serviceThread, NULL);
