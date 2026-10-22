@@ -69,7 +69,7 @@ misra-c2012-11.3:Platform/CmsisRtos/Source/SolidSyslogCmsisRtosMutex.c:74
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64Mutex.c:55
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounter.c:42
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:51
-misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:141
+misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:140
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:211
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:62
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:79
