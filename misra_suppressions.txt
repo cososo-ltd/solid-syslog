@@ -70,7 +70,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64Mutex.c:55
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounter.c:42
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:51
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:140
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:209
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:210
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:62
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:92
@@ -78,7 +78,7 @@ misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:97
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:98
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:93
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslPemFileCredentials.c:61
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:164
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:165
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:21
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:27
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:32
@@ -112,9 +112,9 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:195
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:255
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:167
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:175
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:454
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:819
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:831
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:469
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:834
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:846
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -146,7 +146,7 @@ misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:122
 misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:147
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:180
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:103
-misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:270
+misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:272
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:65
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Resolver.c:68
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:191
@@ -247,12 +247,12 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:27
 
 # D.013 — Rule 11.5: void* <-> a byte pointer at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:856
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:874
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:149
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:441
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:461
-misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:270
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:871
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:889
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:152
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:444
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:464
+misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:272
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:275
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:316
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:142
