@@ -539,13 +539,6 @@ TEST(SolidSyslogLwipRawTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
  * Open-already-called tests
  * ----------------------------------------------------------------*/
 
-TEST(SolidSyslogLwipRawTcpStreamConnected, ReopenDoesNotAllocateNewPcb)
-{
-    CHECK_TRUE(SolidSyslogStream_Open(stream, address));
-
-    CALLED_FAKE(LwipTcpFake_TcpNew, ONCE);
-}
-
 TEST(SolidSyslogLwipRawTcpStreamConnected, CloseCallsTcpCloseOnOpenPcb)
 {
     SolidSyslogStream_Close(stream);
@@ -561,6 +554,29 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, SecondCloseDoesNotCloseAgain)
     SolidSyslogStream_Close(stream);
 
     CALLED_FAKE(LwipTcpFake_TcpClose, ONCE);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, address));
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        SolidSyslogLwipRawTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, OpeningAStreamThatIsAlreadyOpenLeavesThePcbItHoldsUntouched)
+{
+    SolidSyslogStream_Open(stream, address);
+
+    CALLED_FAKE(LwipTcpFake_TcpNew, ONCE);
+    CALLED_FAKE(LwipTcpFake_TcpClose, NEVER);
+    CALLED_FAKE(LwipTcpFake_TcpAbort, NEVER);
 }
 
 TEST(SolidSyslogLwipRawTcpStreamConnected, CloseThenOpenAllocatesFreshPcb)

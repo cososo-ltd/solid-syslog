@@ -27,6 +27,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_DATAGRAM_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
+        /** Open was called on a datagram that is already open. The call is
+         *  refused and the datagram keeps what it holds. */
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN,
         SOLIDSYSLOG_DATAGRAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

@@ -10,6 +10,7 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogUdpPayload.h"
 #include "SolidSyslogWinsockAddressPrivate.h"
@@ -107,13 +108,7 @@ static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(st
 
 void SolidSyslogWinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
-    if (WinsockDatagram_IsSocketValid(self->Fd))
-    {
-        Winsock_closesocket(self->Fd);
-        self->Fd = INVALID_SOCKET;
-        self->Connected = false;
-    }
+    WinsockDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullDatagram_Get();
@@ -127,9 +122,22 @@ static inline bool WinsockDatagram_IsSocketValid(SOCKET fd)
 static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
-    self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
-    self->Connected = false;
-    return WinsockDatagram_IsSocketValid(self->Fd);
+    bool opened = false;
+    if (WinsockDatagram_IsSocketValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        WinsockDatagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
+        opened = WinsockDatagram_IsSocketValid(self->Fd);
+    }
+    return opened;
 }
 
 static enum SolidSyslogDatagramSendResult WinsockDatagram_SendTo(

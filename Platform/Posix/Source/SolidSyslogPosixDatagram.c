@@ -15,6 +15,7 @@
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixDatagramErrors.h"
@@ -68,13 +69,7 @@ static inline struct SolidSyslogPosixDatagram* PosixDatagram_SelfFromBase(struct
 
 void SolidSyslogPosixDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
-    if (PosixDatagram_IsFileDescriptorValid(self->Fd))
-    {
-        close(self->Fd);
-        self->Fd = INVALID_FD;
-        self->Connected = false;
-    }
+    PosixDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullDatagram_Get();
@@ -88,9 +83,22 @@ static inline bool PosixDatagram_IsFileDescriptorValid(int fd)
 static bool PosixDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
-    self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
-    self->Connected = false;
-    return PosixDatagram_IsFileDescriptorValid(self->Fd);
+    bool opened = false;
+    if (PosixDatagram_IsFileDescriptorValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        PosixDatagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
+        opened = PosixDatagram_IsFileDescriptorValid(self->Fd);
+    }
+    return opened;
 }
 
 static enum SolidSyslogDatagramSendResult PosixDatagram_SendTo(

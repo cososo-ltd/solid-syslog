@@ -186,6 +186,31 @@ TEST(SolidSyslogPosixDatagram, CloseCalledWithSocketFd)
     LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
 }
 
+TEST(SolidSyslogPosixDatagram, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogDatagram_Open(datagram);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogPosixDatagramErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogPosixDatagram, OpeningADatagramThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(SocketFake_Socket, ONCE);
+    CALLED_FAKE(SocketFake_Close, NEVER);
+}
+
 TEST(SolidSyslogPosixDatagram, MaxPayloadFallsBackToUnknownPathPayload)
 {
     LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));

@@ -204,6 +204,7 @@ TEST(SolidSyslogLwipSocketTcpStream, TheWaitIsBoundedByTheInstalledGetterReadOnE
     LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
 
     CHECK_TRUE(Open());
+    SolidSyslogStream_Close(stream);
     CHECK_TRUE(Open());
 
     LONGS_EQUAL(TEST_CONNECT_TIMEOUT_MS, LwipSocketsFake_LastSelectTimeoutMs());
@@ -322,6 +323,31 @@ TEST(SolidSyslogLwipSocketTcpStream, AConnectThatFailsLeavesNoSocketOpen)
     CHECK_FALSE(Open());
 
     CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
+{
+    (void) Open();
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    (void) Open();
+
+    (void) Open();
+
+    CALLED_FAKE(LwipSocketsFake_Socket, ONCE);
+    CALLED_FAKE(LwipSocketsFake_Close, NEVER);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, AConnectBudgetThatExpiresLeavesNoSocketOpen)
@@ -458,16 +484,6 @@ TEST(SolidSyslogLwipSocketTcpStream, ReadTearsTheConnectionDownWhenTheStackRepor
     LONGS_EQUAL(-1, SolidSyslogStream_Read(stream, buffer, sizeof(buffer)));
 
     LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
-}
-
-TEST(SolidSyslogLwipSocketTcpStream, OpeningAStreamThatIsAlreadyOpenClosesTheSocketItHeld)
-{
-    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
-    CHECK_TRUE(Open());
-
-    CHECK_TRUE(Open());
-
-    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
 }
 
 TEST(SolidSyslogLwipSocketTcpStream, CloseWithNothingOpenClosesNoDescriptor)

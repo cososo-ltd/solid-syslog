@@ -67,6 +67,8 @@ static inline bool MbedTlsStream_ConfigProvidesProfile(const struct SolidSyslogM
 static inline uint32_t MbedTlsStream_ResolveHandshakeTimeoutMs(struct SolidSyslogMbedTlsStream* self);
 static inline struct SolidSyslogMbedTlsStream* MbedTlsStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool MbedTlsStream_IsOpen(const struct SolidSyslogMbedTlsStream* self);
+static inline bool MbedTlsStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStream* self);
@@ -243,6 +245,33 @@ static uint32_t MbedTlsStream_Version(struct SolidSyslogStream* base)
 }
 
 static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
+{
+    struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
+    bool ok = false;
+    if (MbedTlsStream_IsOpen(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        MbedTlsStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        ok = MbedTlsStream_Establish(base, addr);
+    }
+    return ok;
+}
+
+/* Every Open that succeeds installs the credentials and every Close releases
+ * them, so holding them is the one mark of a session still open. */
+static inline bool MbedTlsStream_IsOpen(const struct SolidSyslogMbedTlsStream* self)
+{
+    return self->CredentialsInstalled;
+}
+
+static inline bool MbedTlsStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogMbedTlsStream* self = MbedTlsStream_SelfFromBase(base);
     MbedTlsStream_PullProfile(self);

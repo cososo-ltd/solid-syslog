@@ -896,6 +896,33 @@ TEST(SolidSyslogMbedTlsStream, CloseFreesSslContextAndSslConfigFromOpen)
     POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfigFreeArg());
 }
 
+TEST(SolidSyslogMbedTlsStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogStream_Open(handle, addr);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogMbedTlsStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSessionItHoldsUntouched)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, MbedTlsFake_SslSetupCallCount());
+    LONGS_EQUAL(0, MbedTlsFake_SslFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_OpenCallCount(transport));
+    LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
+}
+
 TEST(SolidSyslogMbedTlsStream, CloseDelegatesToInjectedTransport)
 
 {

@@ -21,6 +21,7 @@
 #include "sockLib.h"
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -47,6 +48,10 @@ static uint32_t VxWorks64TcpStream_NullConnectTimeoutGetter(void* context);
 static inline bool VxWorks64TcpStream_ConfigProvidesGetter(const struct SolidSyslogVxWorks64TcpStreamConfig* config);
 
 static bool VxWorks64TcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static bool VxWorks64TcpStream_TakeSocketAndConnect(
+    struct SolidSyslogVxWorks64TcpStream* self,
+    const struct sockaddr_in* sin
+);
 static bool VxWorks64TcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static inline bool VxWorks64TcpStream_FitsTheStack(size_t size);
 static bool VxWorks64TcpStream_PeerIsStillThere(struct SolidSyslogVxWorks64TcpStream* self);
@@ -121,10 +126,29 @@ void SolidSyslogVxWorks64TcpStream_Cleanup(struct SolidSyslogStream* base)
 static bool VxWorks64TcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogVxWorks64TcpStream* self = VxWorks64TcpStream_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr);
     bool connected = false;
-    /* Reopening must not leak the descriptor already held. */
-    VxWorks64TcpStream_CloseSocket(self);
+    if (VxWorks64TcpStream_IsSocketValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        VxWorks64TcpStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        connected = VxWorks64TcpStream_TakeSocketAndConnect(self, SolidSyslogVxWorks64Address_AsConstSockaddrIn(addr));
+    }
+    return connected;
+}
+
+static bool VxWorks64TcpStream_TakeSocketAndConnect(
+    struct SolidSyslogVxWorks64TcpStream* self,
+    const struct sockaddr_in* sin
+)
+{
+    bool connected = false;
     self->Fd = socket(AF_INET, SOCK_STREAM, 0);
     if (VxWorks64TcpStream_IsSocketValid(self->Fd))
     {

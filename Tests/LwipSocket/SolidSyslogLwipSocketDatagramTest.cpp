@@ -202,16 +202,6 @@ TEST(SolidSyslogLwipSocketDatagram, SendToReportsFailureWhenTheStackHasNoBufferF
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED, SendTo());
 }
 
-TEST(SolidSyslogLwipSocketDatagram, OpeningADatagramThatIsAlreadyOpenClosesTheSocketItHeld)
-{
-    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
-    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
-
-    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
-
-    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
-}
-
 TEST(SolidSyslogLwipSocketDatagram, CloseWithNothingOpenClosesNoDescriptor)
 {
     SolidSyslogDatagram_Close(datagram);
@@ -227,6 +217,31 @@ TEST(SolidSyslogLwipSocketDatagram, ASecondCloseDoesNotCloseTheDescriptorAgain)
     SolidSyslogDatagram_Close(datagram);
 
     LONGS_EQUAL(1U, LwipSocketsFake_CloseCallCount());
+}
+
+TEST(SolidSyslogLwipSocketDatagram, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogDatagram_Open(datagram);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogLwipSocketDatagramErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogLwipSocketDatagram, OpeningADatagramThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(LwipSocketsFake_Socket, ONCE);
+    CALLED_FAKE(LwipSocketsFake_Close, NEVER);
 }
 
 // clang-format off

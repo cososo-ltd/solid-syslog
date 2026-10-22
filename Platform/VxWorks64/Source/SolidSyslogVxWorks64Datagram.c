@@ -23,6 +23,7 @@
 #include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullDatagram.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogUdpPayload.h"
@@ -132,8 +133,22 @@ void SolidSyslogVxWorks64Datagram_Cleanup(struct SolidSyslogDatagram* base)
 static bool VxWorks64Datagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogVxWorks64Datagram* self = VxWorks64Datagram_SelfFromBase(base);
-    self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
-    return VxWorks64Datagram_HasSocket(self);
+    bool opened = false;
+    if (VxWorks64Datagram_HasSocket(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        VxWorks64Datagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
+        opened = VxWorks64Datagram_HasSocket(self);
+    }
+    return opened;
 }
 
 static enum SolidSyslogDatagramSendResult VxWorks64Datagram_SendTo(

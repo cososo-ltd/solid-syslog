@@ -437,6 +437,31 @@ TEST(SolidSyslogVxWorks64Datagram, CloseTwiceClosesOnce)
     CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
 }
 
+TEST(SolidSyslogVxWorks64Datagram, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogDatagram_Open(datagram);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogVxWorks64DatagramErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogVxWorks64Datagram, OpeningADatagramThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(VxWorks64NetFake_Socket, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, NEVER);
+}
+
 TEST(SolidSyslogVxWorks64Datagram, DestroyClosesAnOpenSocket)
 {
     SolidSyslogDatagram_Open(datagram);
