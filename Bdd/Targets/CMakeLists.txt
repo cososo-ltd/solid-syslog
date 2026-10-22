@@ -64,8 +64,10 @@ elseif(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
         Common/BddTargetIps.c
         Common/BddTargetKey.c
         Common/BddTargetLanguage.c
+        Common/BddTargetMessageSettings.c
         Common/BddTargetServiceThread.c
         Common/BddTargetStderrErrorHandler.c
+        Common/BddTargetStoreSettings.c
         Common/BddTargetSwitchConfig.c
     )
     if(SOLIDSYSLOG_OPENSSL)

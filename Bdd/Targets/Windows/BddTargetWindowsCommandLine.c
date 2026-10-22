@@ -1,40 +1,9 @@
 #include "BddTargetWindowsCommandLine.h"
 
-#include <errno.h>
+#include "BddTargetStoreSettings.h"
+
 #include <stdlib.h>
 #include <string.h>
-
-enum
-{
-    /* Mirrors the Linux Threaded example defaults. The block store is sized
-       so a single block holds a few records, so several scenarios involving
-       store rotation / discard policies trigger inside one BDD scenario. */
-    DEFAULT_MAX_BLOCKS = 4,
-    DEFAULT_MAX_BLOCK_SIZE = 1024
-};
-
-static bool ParsePositiveSize(const char* text, size_t* out)
-{
-    if ((text == NULL) || (text[0] == '\0'))
-    {
-        return false;
-    }
-    /* Reject leading sign - strtoul silently wraps "-1" to ULONG_MAX, which
-       would let "--max-blocks -1" produce a huge size_t. */
-    if ((text[0] == '-') || (text[0] == '+'))
-    {
-        return false;
-    }
-    char* end = NULL;
-    errno = 0;
-    unsigned long value = strtoul(text, &end, 10);
-    if ((end == text) || (*end != '\0') || (errno == ERANGE) || (value == 0))
-    {
-        return false;
-    }
-    *out = (size_t) value;
-    return true;
-}
 
 void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetWindowsOptions* options)
 {
@@ -45,14 +14,8 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
     options->Msg = NULL;
     options->AppName = NULL;
     options->Store = "null";
-    options->MaxBlocks = DEFAULT_MAX_BLOCKS;
-    options->MaxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
-    options->DiscardPolicy = "oldest";
-    options->SecurityPolicy = "crc16";
-    options->CapacityThreshold = 0;
-    options->HaltExit = false;
-    options->NoSd = false;
     options->ErrorsFatal = "1";
+    BddTargetStoreSettings_Reset();
 
     for (int i = 1; i < argc; i++)
     {
@@ -90,31 +53,31 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--max-blocks") == 0))
         {
-            (void) ParsePositiveSize(argv[++i], &options->MaxBlocks);
+            (void) BddTargetStoreSettings_SetByName("max-blocks", argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--max-block-size") == 0))
         {
-            (void) ParsePositiveSize(argv[++i], &options->MaxBlockSize);
+            (void) BddTargetStoreSettings_SetByName("max-block-size", argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--discard-policy") == 0))
         {
-            options->DiscardPolicy = argv[++i];
+            (void) BddTargetStoreSettings_SetByName("discard-policy", argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--security-policy") == 0))
         {
-            options->SecurityPolicy = argv[++i];
+            (void) BddTargetStoreSettings_SetByName("security-policy", argv[++i]);
         }
         else if (((i + 1) < argc) && (strcmp(argv[i], "--capacity-threshold") == 0))
         {
-            (void) ParsePositiveSize(argv[++i], &options->CapacityThreshold);
+            (void) BddTargetStoreSettings_SetByName("capacity-threshold", argv[++i]);
         }
         else if (strcmp(argv[i], "--halt-exit") == 0)
         {
-            options->HaltExit = true;
+            (void) BddTargetStoreSettings_SetByName("halt-exit", "1");
         }
         else if (strcmp(argv[i], "--no-sd") == 0)
         {
-            options->NoSd = true;
+            (void) BddTargetStoreSettings_SetByName("no-sd", "1");
         }
     }
 }

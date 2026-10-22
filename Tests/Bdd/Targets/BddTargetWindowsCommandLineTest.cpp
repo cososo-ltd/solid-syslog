@@ -1,4 +1,5 @@
 #include "CppUTest/TestHarness.h"
+#include "BddTargetStoreSettings.h"
 #include "BddTargetWindowsCommandLine.h"
 
 // clang-format off
@@ -166,7 +167,7 @@ TEST(BddTargetWindowsCommandLine, DefaultHaltExitIsFalse)
     char arg0[] = "test";
     char* argv[] = {arg0, nullptr};
     Parse(1, argv);
-    CHECK_FALSE(options.HaltExit);
+    CHECK_FALSE(BddTargetStoreSettings_HaltExit());
 }
 
 TEST(BddTargetWindowsCommandLine, HaltExitFlagSetsHaltExit)
@@ -175,7 +176,84 @@ TEST(BddTargetWindowsCommandLine, HaltExitFlagSetsHaltExit)
     char arg1[] = "--halt-exit";
     char* argv[] = {arg0, arg1, nullptr};
     Parse(2, argv);
-    CHECK_TRUE(options.HaltExit);
+    CHECK_TRUE(BddTargetStoreSettings_HaltExit());
+}
+
+TEST(BddTargetWindowsCommandLine, DefaultMaxBlocksIsTheSharedDefault)
+{
+    char arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    Parse(1, argv);
+    LONGS_EQUAL(10, BddTargetStoreSettings_MaxBlocks());
+}
+
+TEST(BddTargetWindowsCommandLine, MaxBlocksFlagSetsMaxBlocks)
+{
+    char arg0[] = "test";
+    char arg1[] = "--max-blocks";
+    char arg2[] = "5";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    LONGS_EQUAL(5, BddTargetStoreSettings_MaxBlocks());
+}
+
+TEST(BddTargetWindowsCommandLine, MaxBlockSizeFlagSetsMaxBlockSize)
+{
+    char arg0[] = "test";
+    char arg1[] = "--max-block-size";
+    char arg2[] = "1024";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    LONGS_EQUAL(1024, BddTargetStoreSettings_MaxBlockSize());
+}
+
+TEST(BddTargetWindowsCommandLine, MaxBlocksThatIsNotANumberIsIgnored)
+{
+    char arg0[] = "test";
+    char arg1[] = "--max-blocks";
+    char arg2[] = "five";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    LONGS_EQUAL(10, BddTargetStoreSettings_MaxBlocks());
+}
+
+TEST(BddTargetWindowsCommandLine, DiscardPolicyFlagSetsDiscardPolicy)
+{
+    char arg0[] = "test";
+    char arg1[] = "--discard-policy";
+    char arg2[] = "newest";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    LONGS_EQUAL(SOLIDSYSLOG_DISCARD_POLICY_NEWEST, BddTargetStoreSettings_GetDiscardPolicy(nullptr));
+}
+
+TEST(BddTargetWindowsCommandLine, SecurityPolicyFlagSetsSecurityPolicy)
+{
+    char arg0[] = "test";
+    char arg1[] = "--security-policy";
+    char arg2[] = "hmac-sha256";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    LONGS_EQUAL(BDD_TARGET_SECURITY_POLICY_HMAC_SHA256, BddTargetStoreSettings_SecurityPolicy());
+}
+
+TEST(BddTargetWindowsCommandLine, CapacityThresholdFlagSetsCapacityThreshold)
+{
+    char arg0[] = "test";
+    char arg1[] = "--capacity-threshold";
+    char arg2[] = "200";
+    char* argv[] = {arg0, arg1, arg2, nullptr};
+    Parse(3, argv);
+    LONGS_EQUAL(200, BddTargetStoreSettings_GetCapacityThreshold(nullptr));
+}
+
+TEST(BddTargetWindowsCommandLine, NoSdFlagSetsNoSd)
+{
+    char arg0[] = "test";
+    char arg1[] = "--no-sd";
+    char* argv[] = {arg0, arg1, nullptr};
+    Parse(2, argv);
+    CHECK_TRUE(BddTargetStoreSettings_NoSd());
 }
 
 TEST(BddTargetWindowsCommandLine, DefaultErrorsFatalIsOn)
