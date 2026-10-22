@@ -800,6 +800,21 @@ code should follow them; reviewers should call out drift.
 - **No null-pointer checks where the type's null object exists.** Use
   `SolidSyslogNullSecurityPolicy`, `SolidSyslogNullStore` rather than
   `if (policy != NULL) policy->Compute(...)`.
+- **Caller-supplied arrays are checked once, at the boundary they cross.** The
+  rule above covers a pointer the library can substitute a Null object for; an
+  array the caller hands in with a count is the case it cannot. Check the
+  pairing (a count with no array behind it) and the elements (a hole in an
+  otherwise valid array) at `Create`, where the class holds the config and can
+  report and return its Null object - `SolidSyslogSwitchingSender_Create`
+  walks `Senders`, and the credentials backends call
+  `SolidSyslogTlsFingerprint_ListIsPresent`. Where the array does not reach a
+  `Create` - it arrives through a vtable, a callback, or a public entry point
+  an integrator's backend can call directly - check at that boundary instead,
+  as `SolidSyslog_LogWithSd` and `SolidSyslogTlsFingerprint_InspectList` do.
+  A per-call array may skip NULL elements where it is walked rather than
+  refuse the call, as the message-SD walk does, with a comment saying why.
+  The check lives in one place; a walk that assumes it was done does not
+  repeat it.
 
 ### Test code
 
