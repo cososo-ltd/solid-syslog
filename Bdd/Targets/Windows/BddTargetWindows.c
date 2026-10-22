@@ -22,6 +22,7 @@
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogNullSecurityPolicy.h"
+#include "SolidSyslogOpenSslAesGcmPolicy.h"
 #include "SolidSyslogOpenSslHmacSha256Policy.h"
 #include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogMetaSd.h"
@@ -88,8 +89,9 @@ static struct SolidSyslogSender* switchingSender;
 static struct SolidSyslogFile* storeFile;
 static struct SolidSyslogBlockDevice* storeBlockDevice;
 /* Holds the created at-rest SecurityPolicy handle so DestroyStore can release
- * it. Only the keyed hmac-sha256 policy needs the handle to destroy; crc16 and
- * null are dispatched by name. */
+ * it. The keyed policies (hmac-sha256, aes-256-gcm) need the handle to destroy;
+ * crc16 is dispatched by name to its singleton Destroy, and null needs no
+ * cleanup. */
 static struct SolidSyslogSecurityPolicy* securityPolicy;
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- _beginthreadex thread-entry signature requires void*
@@ -224,13 +226,6 @@ static void DestroySender(void)
     SolidSyslogWinsockResolver_Destroy(resolver);
 }
 
-/* No AES-GCM policy is wired on this target, so that name is refused at
-   startup rather than quietly replaced. */
-static bool CarriesThePolicy(void)
-{
-    return BddTargetStoreSettings_SecurityPolicy() != BDD_TARGET_SECURITY_POLICY_AES_256_GCM;
-}
-
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
 {
     struct SolidSyslogSecurityPolicy* policy = NULL;
@@ -239,6 +234,11 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
     {
         static const struct SolidSyslogOpenSslHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
         policy = SolidSyslogOpenSslHmacSha256Policy_Create(&hmacConfig);
+    }
+    else if (kind == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
+    {
+        static const struct SolidSyslogOpenSslAesGcmPolicyConfig aesConfig = {BddTargetKey_Get, NULL};
+        policy = SolidSyslogOpenSslAesGcmPolicy_Create(&aesConfig);
     }
     else if (kind == BDD_TARGET_SECURITY_POLICY_NULL)
     {
@@ -286,6 +286,10 @@ static void DestroySecurityPolicy(void)
     if (kind == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
     {
         SolidSyslogOpenSslHmacSha256Policy_Destroy(securityPolicy);
+    }
+    else if (kind == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
+    {
+        SolidSyslogOpenSslAesGcmPolicy_Destroy(securityPolicy);
     }
     else if (kind == BDD_TARGET_SECURITY_POLICY_CRC16)
     {
@@ -359,13 +363,6 @@ int BddTargetWindows_Run(int argc, char* argv[])
     /* Honour --app-name when supplied (BDD scenarios pin it for record-size
        parity across runners); otherwise derive from argv[0] as before. */
     BddTargetAppName_Set((options.AppName != NULL) ? options.AppName : argv[0]);
-
-    if (!CarriesThePolicy())
-    {
-        (void) fprintf(stderr, "BDD-TARGET: --security-policy aes-256-gcm is not carried by this target\n");
-        WSACleanup();
-        return 1;
-    }
 
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
