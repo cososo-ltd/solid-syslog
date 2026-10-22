@@ -483,11 +483,29 @@ TEST(SolidSyslogVxWorks64TcpStream, CloseOnAStreamThatNeverOpenedClosesNothing)
     CALLED_FAKE(VxWorks64IoFake_Close, NEVER);
 }
 
-TEST(SolidSyslogVxWorks64TcpStream, OpenOnAnOpenStreamClosesTheSocketItHeld)
+TEST(SolidSyslogVxWorks64TcpStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
 {
     SolidSyslogStream_Open(stream, address);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, address));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogVxWorks64TcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
     SolidSyslogStream_Open(stream, address);
-    CALLED_FAKE(VxWorks64IoFake_Close, ONCE);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CALLED_FAKE(VxWorks64NetFake_Socket, ONCE);
+    CALLED_FAKE(VxWorks64IoFake_Close, NEVER);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, VersionStaysZeroBecauseNothingAboutTheStreamChangesAtRuntime)

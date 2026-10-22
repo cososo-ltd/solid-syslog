@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawMarshalPrivate.h"
 #include "SolidSyslogLwipRawTcpStreamErrors.h"
@@ -192,7 +193,17 @@ void SolidSyslogLwipRawTcpStream_Cleanup(struct SolidSyslogStream* base)
 static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromBase(base);
-    if (!LwipRawTcpStream_IsOpen(self))
+    bool opened = false;
+    if (LwipRawTcpStream_IsOpen(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        LwipRawTcpStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
     {
         struct LwipRawTcpStreamCall call = {.Self = self, .Dst = SolidSyslogLwipRawAddress_AsConst(addr)};
         SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoOpenAndConnect, &call);
@@ -216,8 +227,9 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
                 SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
             );
         }
+        opened = LwipRawTcpStream_IsOpen(self);
     }
-    return LwipRawTcpStream_IsOpen(self);
+    return opened;
 }
 
 /* Every connect failure is one category with the detail naming which step

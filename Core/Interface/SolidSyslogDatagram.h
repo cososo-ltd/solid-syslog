@@ -31,7 +31,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Ready the transport for SendTo (acquire the socket). Failure leaves the
-     *  datagram unopened; the sender retries on the next servicing pass. */
+     *  datagram unopened; the sender retries on the next servicing pass. Open
+     *  on a datagram that is already open is refused: it returns false, reports
+     *  the misuse to the error handler, and the datagram stays open as it was. */
     bool SolidSyslogDatagram_Open(struct SolidSyslogDatagram * datagram);
 
     /** Send @p size bytes of @p buffer to @p addr as one datagram. @p addr is

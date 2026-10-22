@@ -14,6 +14,7 @@
 
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogLwipSocketDatagramErrors.h"
 #include "SolidSyslogLwipSocketDatagramPrivate.h"
@@ -75,11 +76,22 @@ void SolidSyslogLwipSocketDatagram_Cleanup(struct SolidSyslogDatagram* base)
 static bool LwipSocketDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipSocketDatagram* self = LwipSocketDatagram_SelfFromBase(base);
-    /* Opening what is already open would otherwise lose the descriptor it
-     * holds, and the stack's socket table is finite. */
-    LwipSocketDatagram_Close(base);
-    self->Fd = lwip_socket(AF_INET, SOCK_DGRAM, 0);
-    return LwipSocketDatagram_IsSocketValid(self->Fd);
+    bool opened = false;
+    if (LwipSocketDatagram_IsSocketValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        LwipSocketDatagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        self->Fd = lwip_socket(AF_INET, SOCK_DGRAM, 0);
+        opened = LwipSocketDatagram_IsSocketValid(self->Fd);
+    }
+    return opened;
 }
 
 static inline bool LwipSocketDatagram_IsSocketValid(int fd)

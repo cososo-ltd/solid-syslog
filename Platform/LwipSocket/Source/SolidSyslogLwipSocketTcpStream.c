@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipSocketAddressPrivate.h"
 #include "SolidSyslogLwipSocketTcpStreamErrors.h"
 #include "SolidSyslogLwipSocketTcpStreamPrivate.h"
@@ -38,6 +39,10 @@ static uint32_t LwipSocketTcpStream_NullConnectTimeoutGetter(void* context);
 static inline bool LwipSocketTcpStream_ConfigProvidesGetter(const struct SolidSyslogLwipSocketTcpStreamConfig* config);
 
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static bool LwipSocketTcpStream_TakeSocketAndConnect(
+    struct SolidSyslogLwipSocketTcpStream* self,
+    const struct sockaddr_in* sin
+);
 static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize LwipSocketTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void LwipSocketTcpStream_Close(struct SolidSyslogStream* base);
@@ -117,12 +122,30 @@ void SolidSyslogLwipSocketTcpStream_Cleanup(struct SolidSyslogStream* base)
 static bool LwipSocketTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogLwipSocketTcpStream* self = LwipSocketTcpStream_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr);
     bool connected = false;
+    if (LwipSocketTcpStream_IsSocketValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        LwipSocketTcpStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        connected =
+            LwipSocketTcpStream_TakeSocketAndConnect(self, SolidSyslogLwipSocketAddress_AsConstSockaddrIn(addr));
+    }
+    return connected;
+}
 
-    /* Opening what is already open would otherwise lose the descriptor it
-     * holds, and the stack's socket table is finite. */
-    LwipSocketTcpStream_CloseSocket(self);
+static bool LwipSocketTcpStream_TakeSocketAndConnect(
+    struct SolidSyslogLwipSocketTcpStream* self,
+    const struct sockaddr_in* sin
+)
+{
+    bool connected = false;
     self->Fd = LwipSocketTcpStream_TakeSocket();
     if (LwipSocketTcpStream_IsSocketValid(self->Fd))
     {

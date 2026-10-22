@@ -60,6 +60,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED,
         SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID,
         SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED,
+        /** Open was called on a stream that is already open. The call is
+         *  refused and the session held stays as it was. */
+        SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN,
         SOLIDSYSLOG_TLS_STREAM_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

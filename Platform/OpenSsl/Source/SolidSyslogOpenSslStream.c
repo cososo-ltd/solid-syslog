@@ -109,6 +109,8 @@ static inline bool OpenSslStream_IsChainTrustWaived(
 static inline bool OpenSslStream_IsChainTrustError(int error);
 static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool OpenSslStream_IsOpen(const struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self);
 static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_IsPeerNameMismatch(long verdict);
@@ -261,6 +263,33 @@ static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStre
 }
 
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
+{
+    struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
+    bool ok = false;
+    if (OpenSslStream_IsOpen(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        OpenSslStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        ok = OpenSslStream_Establish(base, addr);
+    }
+    return ok;
+}
+
+/* Every Open that succeeds leaves a context behind and every Close frees it,
+ * so holding one is the one mark of a session still open. */
+static inline bool OpenSslStream_IsOpen(const struct SolidSyslogOpenSslStream* self)
+{
+    return self->Ctx != NULL;
+}
+
+static inline bool OpenSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
     OpenSslStream_PullProfile(self);

@@ -5,6 +5,7 @@
 #include "ErrorHandlerFake.h"
 #include "SenderFake.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullSender.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogSwitchingSender.h"
@@ -391,7 +392,7 @@ TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallb
 TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
 {
     struct SolidSyslogSender*               innerA = nullptr;
-    struct SolidSyslogSender*               inners[1] = {nullptr};
+    struct SolidSyslogSender*               inners[2] = {nullptr, nullptr};
     int                                     sentinel = 0;
     SolidSyslogSwitchingSenderConfig        config;
 
@@ -399,7 +400,8 @@ TEST_GROUP(SolidSyslogSwitchingSenderBadSetup)
     {
         innerA   = SenderFake_Create();
         inners[0] = innerA;
-        config   = {inners, 1, TestSelector, nullptr};
+        inners[1] = innerA;
+        config   = {inners, 2, TestSelector, nullptr};
         ErrorHandlerFake_Install(&sentinel);
     }
 
@@ -444,6 +446,36 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SELECTOR
     );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullInnerSenderReportsError)
+{
+    inners[0] = nullptr;
+    SolidSyslogSwitchingSender_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_INNER_SENDER
+    );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullLastInnerSenderReportsError)
+{
+    inners[1] = nullptr;
+    SolidSyslogSwitchingSender_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_INNER_SENDER
+    );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullInnerSenderReturnsNullSender)
+{
+    inners[0] = nullptr;
+    POINTERS_EQUAL(SolidSyslogNullSender_Get(), SolidSyslogSwitchingSender_Create(&config));
 }
 
 TEST(SolidSyslogSwitchingSenderBadSetup, SendOnBadSetupSenderReturnsTrueAndDrops)

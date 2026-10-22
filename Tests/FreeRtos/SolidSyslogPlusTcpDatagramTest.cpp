@@ -134,14 +134,6 @@ TEST(SolidSyslogPlusTcpDatagram, OpenReturnsFalseWhenSocketFails)
     CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
 }
 
-TEST(SolidSyslogPlusTcpDatagram, OpenIsIdempotent)
-
-{
-    SolidSyslogDatagram_Open(datagram);
-    CHECK_TRUE(SolidSyslogDatagram_Open(datagram));
-    CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
-}
-
 TEST(SolidSyslogPlusTcpDatagram, MaxPayloadIsTheTunableWhenTheIntegratorInstallsNoGetter)
 {
     LONGS_EQUAL(SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT, SolidSyslogDatagram_MaxPayload(datagram));
@@ -253,6 +245,31 @@ TEST(SolidSyslogPlusTcpDatagram, DestroyAfterCloseDoesNotCloseAgain)
     SolidSyslogPlusTcpDatagram_Destroy(datagram);
     datagram = nullptr;
     CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
+}
+
+TEST(SolidSyslogPlusTcpDatagram, OpeningADatagramThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogDatagram_Open(datagram);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogDatagram_Open(datagram));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogPlusTcpDatagramErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogPlusTcpDatagram, OpeningADatagramThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogDatagram_Open(datagram);
+
+    SolidSyslogDatagram_Open(datagram);
+
+    CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, NEVER);
 }
 
 TEST(SolidSyslogPlusTcpDatagram, SendToSendsBufferToDestinationAfterOpen)

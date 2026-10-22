@@ -15,6 +15,7 @@
 #include "SolidSyslogDatagram.h"
 #include "SolidSyslogDatagramDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogLwipRawAddressPrivate.h"
 #include "SolidSyslogLwipRawDatagramErrors.h"
 #include "SolidSyslogLwipRawMarshalPrivate.h"
@@ -123,12 +124,23 @@ static void LwipRawDatagram_DoClose(void* context)
 static bool LwipRawDatagram_Open(struct SolidSyslogDatagram* base)
 {
     struct SolidSyslogLwipRawDatagram* self = LwipRawDatagram_SelfFromBase(base);
-    if (!LwipRawDatagram_IsOpen(self))
+    bool opened = false;
+    if (LwipRawDatagram_IsOpen(self))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        LwipRawDatagram_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_DATAGRAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
     {
         struct LwipRawDatagramCall call = {.Self = self};
         SolidSyslogLwipRaw_Marshal(LwipRawDatagram_DoOpen, &call);
+        opened = LwipRawDatagram_IsOpen(self);
     }
-    return LwipRawDatagram_IsOpen(self);
+    return opened;
 }
 
 static void LwipRawDatagram_DoOpen(void* context)
