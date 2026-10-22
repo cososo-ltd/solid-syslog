@@ -25,8 +25,8 @@ Mbed TLS 3.6. The pack is tested against 3.6.2 in CI, and its handling of a
 profile that names no peer has been checked against 3.6.7: from 3.6.3 the
 library refuses a chain-verified handshake unless the client has said it is
 deliberately not naming the peer, and the stream says so, so a NULL or empty
-`ServerName` behaves as [the profile](setup.md#3-a-profile) describes on every
-3.6.x release.
+`ServerName` behaves as [the profile](setup.md#3-a-profile) describes on both,
+the releases either side of that change.
 
 A `SolidSyslogSleepFunction` is required and has no default.
 

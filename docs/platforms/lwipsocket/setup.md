@@ -40,9 +40,8 @@ configuration: lwIP compiles `api/sockets.c`, `api/api_lib.c`, `api/api_msg.c`,
 Cortex-M3. Budget for it before choosing this tier.
 
 That figure is measured, not estimated: the five files compiled from lwIP 2.2.1
-with GCC 12.2 at `-Os` against `Bdd/Targets/CmsisLwip/lwipopts.h`, the
-CMSIS-RTOS2 target's configuration, total 12.1 KB of code, and 14.3 KB at
-`-O2`. Your own options move it - every `LWIP_*` feature
+with GCC 12.2 at `-Os` against the options in `Bdd/Targets/CmsisLwip/lwipopts.h`
+total 12.1 KB of code, and 14.3 KB at `-O2`. Your own options move it - every `LWIP_*` feature
 the sockets layer wraps adds or removes code - so read it as the scale rather
 than the number.
 
