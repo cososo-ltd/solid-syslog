@@ -100,9 +100,8 @@ The peek sees only a close the kernel has already learned of: a peer that
 closes while the record is being sent can still cost that record, because
 syslog over TCP has no acknowledgement to say it arrived. Nor can it see past
 bytes the peer sent that nothing has read: a close behind them goes unnoticed.
-A syslog collector sends nothing back, and a TLS stream layered on this one
-reads what is waiting before every write, so in practice nothing is queued when
-the peek looks.
+A syslog collector sends nothing back, so in practice nothing is queued when the
+peek looks.
 
 ### A peer that dies silently is detected, and you size how long that takes
 

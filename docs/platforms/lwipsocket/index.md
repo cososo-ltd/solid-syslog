@@ -69,8 +69,7 @@ connection. The peek sees only a close the stack has already learned of: a peer
 that closes while the record is being sent can still cost that record, because
 syslog over TCP has no acknowledgement to say it arrived. Nor can the peek see
 past bytes the peer sent that nothing has read: a close behind them goes
-unnoticed. A syslog collector sends nothing back, and a TLS stream layered on
-this one reads what is waiting before every write, so in practice nothing is
+unnoticed. A syslog collector sends nothing back, so in practice nothing is
 queued when the peek looks.
 
 The datagram leaves its socket as the stack makes it, which costs nothing: a UDP

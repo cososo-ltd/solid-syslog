@@ -318,10 +318,10 @@ static bool LwipSocketTcpStream_Send(struct SolidSyslogStream* base, const void*
  * moment Send returns true. Ask first, so a half-closed connection fails the
  * send and store-and-forward replays the record instead of losing it. Bytes the
  * peer sent that nothing has read stand in front of its FIN, and the peek sees
- * those instead. They are left for Read rather than discarded, because a TLS
- * stream layered on this one writes its handshake while the server's reply is
- * still queued. A syslog collector sends nothing back, and a TLS stream reads
- * what is waiting before it writes, so the queue is empty when the check runs. */
+ * those instead. They are left for Read rather than discarded: a stream layered
+ * over this one may be mid-handshake, with the peer's reply queued here. A
+ * syslog collector sends nothing back, so the queue is empty when the check
+ * runs. */
 static bool LwipSocketTcpStream_PeerIsStillThere(struct SolidSyslogLwipSocketTcpStream* self)
 {
     char discard = 0;
