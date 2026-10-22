@@ -19,6 +19,7 @@
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "BddTargetMessageSettings.h"
+#include "BddTargetStoreSettings.h"
 #include "BddTargetTlsSender.h"
 #include "CmsdkUart.h"
 
@@ -49,7 +50,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /* The injected platform seam - set once via BddTargetFreeRtosPipeline_SetConfig
@@ -90,33 +90,14 @@ static struct SolidSyslogBlockDevice* storeBlockDevice = NULL;
 static struct SolidSyslogStore* currentStore = NULL;
 static bool currentStoreIsFile = false;
 
-/* Pending values populated by the `set max-blocks` / `max-block-size` /
- * `discard-policy` / `halt-exit` / `capacity-threshold` / `security-policy` /
- * `no-sd` commands and consumed by `set store file`. */
-enum
-{
-    DEFAULT_PENDING_MAX_BLOCKS = 10,
-    DEFAULT_PENDING_MAX_BLOCK_SIZE = 65536,
-};
-
-static size_t pendingMaxBlocks = DEFAULT_PENDING_MAX_BLOCKS;
-static size_t pendingMaxBlockSize = DEFAULT_PENDING_MAX_BLOCK_SIZE;
-static const char* pendingDiscardPolicy = "oldest";
-static volatile bool pendingHaltExit = false;
-static size_t pendingCapacityThreshold = 0U;
-/* At-rest integrity policy for the file store: "crc16" (default), "hmac-sha256"
- * (mbedTLS), "aes-256-gcm" (mbedTLS AEAD), or "null". Set before `store file`;
- * consumed by RebuildWithFileStore. currentPolicy holds the created handle so
- * DestroyCurrentStore can release it. */
-static const char* pendingSecurityPolicy = "crc16";
-static struct SolidSyslogSecurityPolicy* currentPolicy = NULL;
-/* The policy kind captured when currentPolicy was built - DestroySecurityPolicy
- * must dispatch on this, NOT pendingSecurityPolicy, which a later `set
+/* The store settings the harness sends before `set store file` live in
+ * BddTargetStoreSettings. currentPolicy holds the at-rest policy
+ * RebuildWithFileStore created so DestroyCurrentStore can release it.
+ * DestroySecurityPolicy must dispatch on installedSecurityPolicy, the kind
+ * captured when currentPolicy was built, NOT the setting, which a later `set
  * security-policy` can change out from under the installed policy. */
-static const char* installedSecurityPolicy = "crc16";
-/* When true, SolidSyslog gets only the meta SD - timeQuality and origin are
- * dropped. Mirrors Linux's --no-sd. */
-static volatile bool pendingNoSd = false;
+static struct SolidSyslogSecurityPolicy* currentPolicy = NULL;
+static enum BddTargetSecurityPolicy installedSecurityPolicy = BDD_TARGET_SECURITY_POLICY_CRC16;
 
 /* Holds the final SolidSyslog config so the rebuild path can rewrite .Store and
  * pass the same struct back into SolidSyslog_Create. */
@@ -144,16 +125,12 @@ enum
     SERVICE_STOP_TIMEOUT_MS = 1000,
 };
 
-static bool TryParseUInt(const char* value, unsigned long* out);
 static bool OnSet(const char* name, const char* value);
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void);
 static void DestroySecurityPolicy(void);
 static bool RebuildWithFileStore(void);
 static void DestroyCurrentStore(void);
-static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy);
-static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
 static void OnHalt(void* context);
-static size_t GetCapacityThreshold(void* context);
 static void OnThresholdCrossed(void* context);
 static void TeardownAll(void);
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
@@ -240,107 +217,16 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
 
 static bool OnSet(const char* name, const char* value)
 {
-    /* The message and destination settings, and the demo key, are shared with
-       every BDD target. */
-    if (BddTargetMessageSettings_SetByName(name, value) || BddTargetKey_SetByName(name, value))
+    /* The message and destination settings, the demo key, and the store
+       settings consumed by `set store file` are shared with every BDD target. */
+    if (BddTargetMessageSettings_SetByName(name, value) || BddTargetKey_SetByName(name, value) ||
+        BddTargetStoreSettings_SetByName(name, value))
     {
         return true;
     }
     if (strcmp(name, "transport") == 0)
     {
         BddTargetSwitchConfig_SetByName(value);
-        return true;
-    }
-    if (strcmp(name, "max-blocks") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        pendingMaxBlocks = (size_t) parsed;
-        return true;
-    }
-    if (strcmp(name, "max-block-size") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        pendingMaxBlockSize = (size_t) parsed;
-        return true;
-    }
-    if (strcmp(name, "discard-policy") == 0)
-    {
-        if ((strcmp(value, "oldest") != 0) && (strcmp(value, "newest") != 0) && (strcmp(value, "halt") != 0))
-        {
-            return false;
-        }
-        /* String literal storage - target_driver.py emits one of the three
-         * literals so the pointer stays valid (no copy needed). */
-        pendingDiscardPolicy =
-            (strcmp(value, "newest") == 0) ? "newest" : ((strcmp(value, "halt") == 0) ? "halt" : "oldest");
-        return true;
-    }
-    if (strcmp(name, "security-policy") == 0)
-    {
-        if ((strcmp(value, "crc16") != 0) && (strcmp(value, "hmac-sha256") != 0) &&
-            (strcmp(value, "aes-256-gcm") != 0) && (strcmp(value, "null") != 0))
-        {
-            return false;
-        }
-        /* String literal storage - see discard-policy above. */
-        if (strcmp(value, "hmac-sha256") == 0)
-        {
-            pendingSecurityPolicy = "hmac-sha256";
-        }
-        else if (strcmp(value, "aes-256-gcm") == 0)
-        {
-            pendingSecurityPolicy = "aes-256-gcm";
-        }
-        else if (strcmp(value, "null") == 0)
-        {
-            pendingSecurityPolicy = "null";
-        }
-        else
-        {
-            pendingSecurityPolicy = "crc16";
-        }
-        return true;
-    }
-    if (strcmp(name, "capacity-threshold") == 0)
-    {
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        pendingCapacityThreshold = (size_t) parsed;
-        return true;
-    }
-    if (strcmp(name, "halt-exit") == 0)
-    {
-        /* Harness emits `set halt-exit 1` (or `0`); anything non-zero trips the
-         * halt path. Mirrors Linux's bare --halt-exit flag. */
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        pendingHaltExit = (parsed != 0U);
-        return true;
-    }
-    if (strcmp(name, "no-sd") == 0)
-    {
-        /* `set no-sd 1` drops the SD list to only metaSd - mirrors Linux's
-         * --no-sd. Takes effect via SolidSyslog re-Create. */
-        unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
-        {
-            return false;
-        }
-        pendingNoSd = (parsed != 0U);
         return true;
     }
     if (strcmp(name, "store") == 0)
@@ -363,7 +249,7 @@ static bool OnSet(const char* name, const char* value)
         /* Any non-zero value triggers a full teardown then exits QEMU. The BDD
          * `the client is killed` step on freertos sends `set shutdown 1`. */
         unsigned long parsed = 0U;
-        if (!TryParseUInt(value, &parsed))
+        if (!BddTargetMessageSettings_TryParseNumber(value, &parsed))
         {
             return false;
         }
@@ -386,38 +272,18 @@ static bool OnSet(const char* name, const char* value)
     return BddTargetTlsConfig_SetByName(name, value);
 }
 
-static bool TryParseUInt(const char* value, unsigned long* out)
-{
-    if (*value == '\0')
-    {
-        return false;
-    }
-    char* end = NULL;
-    unsigned long parsed = strtoul(value, &end, 10);
-    /* strtoul accepts a leading '-' and wraps to a huge unsigned. The port call
-     * site bounds-checks; facility/severity intentionally don't, mirroring the
-     * Linux example's atoi-and-cast so wrapped values encode as PRIVAL 43. */
-    if (*end != '\0')
-    {
-        return false;
-    }
-    *out = parsed;
-    return true;
-}
-
 static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
 {
     /* Latch the kind now so teardown destroys against what we actually built,
-     * not whatever `set security-policy` may set afterwards. pendingSecurityPolicy
-     * is always one of the four validated string literals. */
-    installedSecurityPolicy = pendingSecurityPolicy;
+     * not whatever `set security-policy` may set afterwards. */
+    installedSecurityPolicy = BddTargetStoreSettings_SecurityPolicy();
     struct SolidSyslogSecurityPolicy* policy = NULL;
-    if (strcmp(pendingSecurityPolicy, "hmac-sha256") == 0)
+    if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
     {
         static const struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
         policy = SolidSyslogMbedTlsHmacSha256Policy_Create(&hmacConfig);
     }
-    else if (strcmp(pendingSecurityPolicy, "aes-256-gcm") == 0)
+    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
     {
         /* Reuse the TLS module's already-seeded CTR-DRBG as the AEAD nonce
          * source - see BddTargetTlsSender_GetRng. Not static const: Rng is a
@@ -426,7 +292,7 @@ static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
             {BddTargetKey_Get, NULL, BddTargetTlsSender_GetRng()};
         policy = SolidSyslogMbedTlsAesGcmPolicy_Create(&aesConfig);
     }
-    else if (strcmp(pendingSecurityPolicy, "null") == 0)
+    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_NULL)
     {
         policy = SolidSyslogNullSecurityPolicy_Get();
     }
@@ -462,28 +328,29 @@ static bool RebuildWithFileStore(void)
     DestroyCurrentStore();
 
     storeFile = g_config->CreateStoreFile();
-    storeBlockDevice = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, pendingMaxBlockSize);
+    storeBlockDevice =
+        SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
 
     struct SolidSyslogSecurityPolicy* policy = CreateSecurityPolicy();
     currentPolicy = policy;
     struct SolidSyslogBlockStoreConfig storeConfig = {
         .BlockDevice = storeBlockDevice,
-        .MaxBlocks = pendingMaxBlocks,
-        .GetDiscardPolicy = GetDiscardPolicy,
+        .MaxBlocks = BddTargetStoreSettings_MaxBlocks(),
+        .GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy,
         .SecurityPolicy = policy,
-        .GetCapacityThreshold = GetCapacityThreshold,
+        .GetCapacityThreshold = BddTargetStoreSettings_GetCapacityThreshold,
         .OnThresholdCrossed = OnThresholdCrossed,
-        .ThresholdContext = &pendingCapacityThreshold,
+        .ThresholdContext = NULL,
     };
     currentStore = SolidSyslogBlockStore_Create(&storeConfig);
     currentStoreIsFile = true;
 
     solidSyslogConfig.Store = currentStore;
-    solidSyslogConfig.GetDiscardPolicy = GetDiscardPolicy;
+    solidSyslogConfig.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
     solidSyslogConfig.OnHalt = OnHalt;
     /* Re-honour `set no-sd 1` if it arrived before this rebuild - target_driver.py
      * sorts `set no-sd` before `set store file`, so the value is final here. */
-    solidSyslogConfig.SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
+    solidSyslogConfig.SdCount = BddTargetStoreSettings_NoSd() ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
@@ -492,15 +359,15 @@ static bool RebuildWithFileStore(void)
 
 static void DestroySecurityPolicy(void)
 {
-    if (strcmp(installedSecurityPolicy, "hmac-sha256") == 0)
+    if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
     {
         SolidSyslogMbedTlsHmacSha256Policy_Destroy(currentPolicy);
     }
-    else if (strcmp(installedSecurityPolicy, "aes-256-gcm") == 0)
+    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
     {
         SolidSyslogMbedTlsAesGcmPolicy_Destroy(currentPolicy);
     }
-    else if (strcmp(installedSecurityPolicy, "crc16") == 0)
+    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_CRC16)
     {
         SolidSyslogCrc16Policy_Destroy();
     }
@@ -523,42 +390,16 @@ static void DestroyCurrentStore(void)
     /* else: NullStore is shared and immutable - nothing to destroy. */
 }
 
-static enum SolidSyslogDiscardPolicy MapDiscardPolicy(const char* policy)
-{
-    if (strcmp(policy, "newest") == 0)
-    {
-        return SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-    }
-    if (strcmp(policy, "halt") == 0)
-    {
-        return SOLIDSYSLOG_DISCARD_POLICY_HALT;
-    }
-    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-}
-
-/* The store asks when it is full, so the policy is the pending name as it
- * stands then. */
-static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context)
-{
-    (void) context;
-    return MapDiscardPolicy(pendingDiscardPolicy);
-}
-
 static void OnHalt(void* context)
 {
     (void) context;
-    if (pendingHaltExit)
+    if (BddTargetStoreSettings_HaltExit())
     {
         /* Semihosting SYS_EXIT - terminates QEMU with status 2 so the BDD
          * harness sees the run end deterministically. Mirrors the Linux
          * example's _exit(2). */
         BddTargetFreeRtosPipeline_Exit(2);
     }
-}
-
-static size_t GetCapacityThreshold(void* context)
-{
-    return *(const size_t*) context;
 }
 
 /* Stdout marker the behave harness watches for. The Linux equivalent writes a
@@ -649,6 +490,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
        and start with the demo key available. */
     BddTargetMessageSettings_Reset(g_config->DefaultHost);
     BddTargetKey_Reset();
+    BddTargetStoreSettings_Reset();
 
     /* Platform brings up its network and hands back a ready-to-use sender with
      * the default transport already selected. */
@@ -657,7 +499,13 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     /* CircularBuffer drained by ServiceTask, with a mutex gating concurrent
      * producers. */
     bufferMutex = BddTargetOsPrimitives_CreateMutex(BDD_TARGET_MUTEX_BUFFER);
-    buffer = SolidSyslogCircularBuffer_Create(bufferMutex, bufferRing, sizeof(bufferRing), GetDiscardPolicy, NULL);
+    buffer = SolidSyslogCircularBuffer_Create(
+        bufferMutex,
+        bufferRing,
+        sizeof(bufferRing),
+        BddTargetStoreSettings_GetDiscardPolicy,
+        NULL
+    );
 
     /* Lifecycle mutex created up front so the Service task can take it from its
      * very first iteration without a NULL check. */
@@ -698,7 +546,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .GetProcessId = NULL,
         .Store = currentStore,
         .Sd = sdList,
-        .SdCount = pendingNoSd ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
+        .SdCount = BddTargetStoreSettings_NoSd() ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
     };
     SolidSyslog_SetErrorHandler(ErrorHandlerEx, NULL);
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
