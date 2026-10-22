@@ -48,6 +48,14 @@ failure and raises nothing: the store judges it for itself. Nor is a path
 `f_stat` does not find when the file is only asked whether it exists.
 [Error severity](../../error-severity.md) gives the level of each.
 
+A close whose sync fails leaves the file open, because `f_close` then returns
+without releasing the file object and, under `FF_FS_LOCK`, its lock entry. The
+next Close, or the next Open, retries it, and the store opens the file again
+for every block it moves to, so a disk error that clears costs one report. A file
+destroyed while its close is still failing gives its slot back regardless, and
+under `FF_FS_LOCK` FatFs holds the lock entry until the volume is mounted
+again: a write-mode open of that path answers `FR_LOCKED` until then.
+
 ### The media driver is yours
 
 `diskio.c`, and `ffsystem.c` where `FF_FS_REENTRANT=1`, are supplied by you. So

@@ -72,8 +72,10 @@ static void FatFsFile_Close(struct SolidSyslogFile* base)
     if (self->IsOpen)
     {
         FRESULT result = f_close(&self->Fp);
-        /* The file object is released whether or not the close could flush. */
-        self->IsOpen = false;
+        /* f_close syncs first and, when the sync fails, returns without
+         * releasing the file object or, under FF_FS_LOCK, its lock entry. The
+         * file stays open so the next Close or Open retries it. */
+        self->IsOpen = (result != FR_OK);
         if (result != FR_OK)
         {
             FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, result);
@@ -104,6 +106,10 @@ static inline void FatFsFile_ReportFailure(enum SolidSyslogFileErrors code, FRES
 static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
+    /* A close that failed earlier is retried before the file object is
+     * reused; if it fails again it is reported again, and the open goes
+     * ahead regardless. */
+    FatFsFile_Close(base);
     FRESULT result = f_open(&self->Fp, path, FATFSFILE_READ_WRITE_OR_CREATE);
     self->IsOpen = (result == FR_OK);
     if (!self->IsOpen)

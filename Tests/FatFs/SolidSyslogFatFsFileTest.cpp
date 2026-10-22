@@ -297,14 +297,60 @@ TEST(SolidSyslogFatFsFile, CloseThatFailsReportsTheFailedCloseAndItsResult)
     CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, FR_DISK_ERR);
 }
 
-TEST(SolidSyslogFatFsFile, CloseThatFailsStillLeavesTheFileClosed)
+TEST(SolidSyslogFatFsFile, CloseThatFailsLeavesTheFileOpenForARetry)
 {
     Open();
     FatFsFake_SetCloseResult(FR_DISK_ERR);
 
     Close();
 
+    CHECK_FILE_IS_OPEN();
+}
+
+TEST(SolidSyslogFatFsFile, ACloseAfterAFailedCloseRetriesIt)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    Close();
+    FatFsFake_SetCloseResult(FR_OK);
+
+    Close();
+
+    CALLED_FAKE(FatFsFake_Close, TWICE);
     CHECK_FILE_CLOSED();
+}
+
+TEST(SolidSyslogFatFsFile, AnOpenAfterAFailedCloseRetriesTheCloseFirst)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    Close();
+    FatFsFake_SetCloseResult(FR_OK);
+
+    Open("next.log");
+
+    CALLED_FAKE(FatFsFake_Close, TWICE);
+    CHECK_OPEN_PATH("next.log");
+}
+
+TEST(SolidSyslogFatFsFile, AnOpenWhoseRetriedCloseFailsAgainReportsItAndStillOpens)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+    Close();
+    ErrorHandlerFake_Install(nullptr);
+
+    Open("next.log");
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, FR_DISK_ERR);
+    CHECK_OPEN_PATH("next.log");
+}
+
+TEST(SolidSyslogFatFsFile, AnOpenOfAClosedFileClosesNothing)
+{
+    Open();
+
+    CALLED_FAKE(FatFsFake_Close, NEVER);
 }
 
 TEST(SolidSyslogFatFsFile, ReadThatFailsReportsTheFailedReadAndItsResult)
