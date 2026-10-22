@@ -137,6 +137,17 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
         (detail)                                         \
     )
 
+// As above, for a failure Winsock left an error code behind, carried as the
+// event's native code.
+#define CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(severity, detail, lastError) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(                                     \
+        (severity),                                                                 \
+        &SolidSyslogWinsockTcpStreamErrorSource,                                    \
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,                                      \
+        (detail),                                                                   \
+        (lastError)                                                                 \
+    )
+
 #define CHECK_SOCKET_CLOSED_ONCE()                                   \
     {                                                                \
         CALLED_FAKE(WinsockFake_Close, ONCE);                        \
@@ -256,7 +267,11 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsEndpointUnavailableWhenSocketCannot
 
     SolidSyslogStream_Open(stream, addr);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+        WSAENOBUFS
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsEndpointUnavailableWhenTheSocketCannotBeMadeNonBlocking)
@@ -266,42 +281,97 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsEndpointUnavailableWhenTheSocketCan
 
     SolidSyslogStream_Open(stream, addr);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
+        WSAEINVAL
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmediately)
 {
     openAfterConnectFails(WSAECONNREFUSED);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        WSAECONNREFUSED
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
 {
     openAfterConnectFails(WSAEINVAL);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        WSAEINVAL
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenTheNetworkIsUnreachable)
 {
     openAfterConnectFails(WSAENETUNREACH);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        WSAENETUNREACH
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenTheHostIsUnreachable)
 {
     openAfterConnectFails(WSAEHOSTUNREACH);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        WSAEHOSTUNREACH
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenTheInterfaceIsDown)
 {
     openAfterConnectFails(WSAENETDOWN);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+        WSAENETDOWN
+    );
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWithTheErrorWhenSelectFails)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectReturn(SOCKET_ERROR);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        WSAEINTR
+    );
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWithTheErrorWhenTheDeferredSocketErrorCannotBeRead)
+{
+    ErrorHandlerFake_Install(nullptr);
+    WinsockFake_SetConnectFailsWithLastError(WSAEWOULDBLOCK);
+    WinsockFake_SetSelectWritable(true);
+    WinsockFake_SetSoErrorLookupFails(true);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        WSAENOTSOCK
+    );
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
@@ -335,7 +405,11 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenTheDeferredSocket
 
     SolidSyslogStream_Open(stream, addr);
 
-    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_LAST_ERROR(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        WSAECONNREFUSED
+    );
 }
 
 /* ----------------------------------------------------------------------

@@ -634,6 +634,7 @@ SOCKET WSAAPI WinsockFake_socket(int af, int type, int protocol)
     lastSocketType = type;
     if (socketFails)
     {
+        WSASetLastError(WSAENOBUFS);
         socketFd = INVALID_SOCKET;
     }
     else
@@ -773,6 +774,7 @@ int WSAAPI WinsockFake_getsockopt(SOCKET s, int level, int optname, char* optval
     {
         if (soErrorLookupFails)
         {
+            WSASetLastError(WSAENOTSOCK);
             return SOCKET_ERROR;
         }
         if ((optval != NULL) && (optlen != NULL) && (*optlen >= (int) sizeof(int)))
@@ -838,6 +840,10 @@ int WSAAPI WinsockFake_ioctlsocket(SOCKET s, long cmd, u_long* argp)
     {
         fionbioCallCount++;
     }
+    if (ioctlSocketFails)
+    {
+        WSASetLastError(WSAEINVAL);
+    }
     return ioctlSocketFails ? SOCKET_ERROR : 0;
 }
 
@@ -862,6 +868,10 @@ WinsockFake_select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfd
     }
     if (selectReturnOverride)
     {
+        if (selectReturnValue == SOCKET_ERROR)
+        {
+            WSASetLastError(WSAEINTR);
+        }
         return selectReturnValue;
     }
     if (selectError)
