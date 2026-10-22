@@ -19,11 +19,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBuffer;
 
     /** Producer side: hand one formatted record to the buffer. @p data is copied
-     *  as needed and need not outlive the call. There is no back-pressure signal:
-     *  whether this blocks (PassthroughBuffer sends inline) or returns at once
-     *  (CircularBuffer enqueues) is the buffer's choice, and a record that does
-     *  not fit is dropped; the first drop of each run is reported through the
-     *  error handler. */
+     *  as needed and need not outlive the call. Write returns nothing: whether it
+     *  blocks (PassthroughBuffer sends inline) or returns at once (CircularBuffer
+     *  enqueues) is the buffer's choice. A queueing buffer that is full applies
+     *  its discard policy - evicting its oldest records under Oldest, refusing
+     *  this one under Newest or Halt - and reports the first loss of each run
+     *  through the error handler. */
     void SolidSyslogBuffer_Write(struct SolidSyslogBuffer * buffer, const void* data, size_t size);
 
     /** Consumer side, called by SolidSyslog_Service to drain the buffer. Returns

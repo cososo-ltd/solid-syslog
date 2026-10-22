@@ -19,26 +19,30 @@
 /*
  * Pool-size tunables are named by ROLE, not by platform or vendor.
  *
- * A build links exactly one implementation of each platform/vendor-selected
- * role (one TCP stream backend, one datagram backend, one mutex, one crypto
- * vendor...), so a single role tunable serves whichever implementation is
- * compiled in - the integrator reasons about "how many TCP streams", never
- * "how many POSIX streams". SOLIDSYSLOG_ADDRESS_POOL_SIZE established this
- * pattern; the role blocks below follow it.
+ * A single role tunable serves whichever implementation of a platform- or
+ * vendor-selected role is compiled in (a TCP stream backend, a datagram
+ * backend, a mutex, a crypto vendor...), so the integrator reasons about "how
+ * many TCP streams", never "how many POSIX streams".
+ * SOLIDSYSLOG_ADDRESS_POOL_SIZE established this pattern; the role blocks
+ * below follow it.
  *
- * The pool counts INSTANCES, not implementations. If a future build ever
- * wires two implementations of the same role into one executable (e.g. a
- * numeric AND a DNS resolver, or two crypto vendors), size that role's pool
- * to the SUM of the concurrent instances.
+ * The pool counts INSTANCES, not implementations, and each implementation
+ * keeps a pool of its own sized by the role tunable. A build that links two
+ * implementations of a role - the lwIP Raw pack's numeric and DNS resolvers -
+ * holds that many of each, so size the role for the most instances any one
+ * implementation must supply, not their sum. docs/NAMING.md states the rule.
  */
 
 /**
  * Maximum bytes the library will format for a single syslog message.
  *
- * Caps the per-Log Formatter buffer (stack-allocated inside SolidSyslog_Log),
- * the FileStore record size, and the minimum BlockStore block size. A longer
- * message is truncated, not dropped. Lower values save stack and store
- * footprint; higher values reduce truncation.
+ * Sizes the record SolidSyslog_Log formats on the stack of the task that
+ * logs, the record slot each logger instance holds for SolidSyslog_Service
+ * (one per SOLIDSYSLOG_POOL_SIZE slot, plus the shared Null instance), each
+ * record a CircularBuffer ring is sized for, and the BlockStore's record
+ * buffer and minimum block size. A longer message is truncated, not dropped.
+ * Lower values save stack, static RAM and store footprint; higher values
+ * reduce truncation.
  *
  * The default is the length RFC 5424 section 6.1 requires every transport
  * receiver to accept, and so the largest a sender can emit with certainty of
@@ -81,12 +85,13 @@
  * Maximum bytes of integrity-tag the library will reserve per record.
  * Drives the RecordStore per-record buffer width - every record carries
  * a tag this wide regardless of the active SolidSyslogSecurityPolicy.
- * Default 32 is large enough for HMAC-SHA256; CRC-16 uses 2 of those
- * bytes; the rest is unused slack the integrator can recover by
- * dropping this in their tunables override.
+ * Default 32 fits HMAC-SHA256 (32 bytes) and AES-256-GCM (28); CRC-16
+ * uses 2. Never set it below the trailer of the policy you configure:
+ * SolidSyslogBlockStore_Create replaces such a policy with the Null policy,
+ * and records are then stored with no integrity check and no encryption,
+ * and nothing reports it.
  *
- * Floor: 4. Enough for CRC-32 or a truncated MAC. Sub-floor values
- * rejected at compile time.
+ * Floor: 4. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MAX_INTEGRITY_SIZE
 #define SOLIDSYSLOG_MAX_INTEGRITY_SIZE 32U
@@ -146,9 +151,9 @@
 /**
  * Number of SolidSyslogCircularBuffer instances the library's internal
  * static pool can simultaneously hold. Each instance is a small
- * bookkeeping struct (vtable, mutex pointer, ring pointer, head/tail/wrap)
- * - roughly 64 bytes on a 64-bit target, 32 on a 32-bit target. The
- * caller's ring memory is separate (passed to SolidSyslogCircularBuffer_Create).
+ * bookkeeping struct (vtable, mutex and ring pointers, positions, and the
+ * discard policy). The caller's ring memory is separate (passed to
+ * SolidSyslogCircularBuffer_Create).
  *
  * Most integrators only ever create one CircularBuffer per process;
  * default 1. Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if the integrator
@@ -684,21 +689,19 @@
  * fails here instead of waiting for the retry, and the next servicing pass
  * attempts a fresh connect.
  *
- * That is safe where a store is configured: a failed send leaves the record
- * unsent and the store replays it. Where no store is configured the record
- * is not retained anywhere, so one lost SYN loses one record. If you send
- * over TCP or TLS without a store, and losing a record matters, raise this
- * above your stack's initial SYN retransmission timeout so a lost SYN is
- * retried inside the budget.
+ * That is safe wherever a failed send keeps the record: a store replays it,
+ * and with no store Service holds it and retries it on its next pass. Only an
+ * inline wiring - a PassthroughBuffer, which sends from inside
+ * SolidSyslog_Log - has nowhere to keep it, so there one lost SYN loses one
+ * record. If you send inline over TCP or TLS and losing a record matters,
+ * raise this above your stack's initial SYN retransmission timeout so a lost
+ * SYN is retried inside the budget.
  *
- * Weigh that against what a longer deadline costs, which differs by
- * configuration. With a store, one record is sent per servicing pass, so an
- * unreachable destination stalls a pass by one deadline. Without one, every
- * buffered record is sent in the same pass and each attempts its own
- * connect, so the stall is the deadline multiplied by how many records are
- * waiting. Raising it therefore costs most in exactly the configuration that
- * needs it: service often enough that few records accumulate, or accept the
- * loss and keep the deadline short.
+ * Weigh that against what a longer deadline costs. Service stops at the
+ * first send that fails, store or no store, so an unreachable destination
+ * stalls each servicing pass by one deadline; an inline wiring pays it on
+ * the logging task instead, once for every record logged while the
+ * destination is down.
  *
  * Runtime override: install GetConnectTimeoutMs on the per-Stream config -
  * the getter is invoked on every connect attempt so live tuning takes effect
@@ -729,8 +732,10 @@
  * The wait is paid by the task that calls SolidSyslog_Service, or by the task
  * that logs on an inline wiring, and only when the next hop is not already
  * resolved: typically the first record after start-up or after the stack's
- * entry has expired. A wait that ends unresolved returns FAILED; with a store
- * the record is kept for the next pass, without one it is lost and reported.
+ * entry has expired. A wait that ends unresolved returns FAILED, and the
+ * record waits for a later pass - in the store, or held by Service where there
+ * is none; an inline wiring has nowhere to keep it, so there it is lost and
+ * reported.
  * After a failed resolution a backend does not wait again until one
  * succeeds, so an unreachable next hop costs one wait, not one per record.
  *

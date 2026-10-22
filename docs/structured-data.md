@@ -13,8 +13,8 @@ change) with the library's safe authoring API.
 
 You write only the *content*. The library owns the *framing*: the brackets, the `SD-ID`
 spelling, the `PARAM-NAME="..."` punctuation, and the RFC 5424 section 6.3.3 value escaping. A
-custom element therefore cannot produce malformed structured data, and a value can never
-break out of its quotes; whatever bytes you hand it stay inside the `"..."`.
+value can never break out of its quotes; whatever bytes you hand it stay inside the
+`"..."`. The names are yours to keep valid, as described below.
 
 The complete worked example below is drawn from the BDD target source at
 `Bdd/Targets/Common/BddTargetCustomSd.c`, which is test infrastructure rather
@@ -96,8 +96,9 @@ correct placeholder.
 
 Keep your `SD-ID` and `PARAM-NAME`s within RFC 5424 section 6.3.2: printable US-ASCII excluding
 `=`, `]`, `"`, and space. You write these as compile-time constants, so this is yours to get
-right. The library bounds each name to 32 bytes and a `NULL` name suppresses the element (or
-skips that parameter), but an otherwise-valid name is emitted as written.
+right. The library bounds each name to 32 bytes and substitutes non-printable bytes and
+spaces, and a `NULL` name suppresses the element (or skips that parameter). It writes `=`,
+`]` and `"` as given, and a `]` in a name breaks the framing.
 
 ## Registering your SD
 
@@ -107,8 +108,12 @@ first, then per-message ones.
 Per-instance, on every message. Put it in the config `Sd[]` array at create time:
 
 ```c
-struct SolidSyslogStructuredData* sds[] = {metaSd, &exampleSd};
-struct SolidSyslogConfig config = { /* … */ .Sd = sds, .SdCount = 2 };
+/* read on every record, so it must outlive the logger */
+static struct SolidSyslogStructuredData* sds[2];
+
+sds[0] = metaSd;
+sds[1] = &exampleSd;
+struct SolidSyslogConfig config = { /* ... */ .Sd = sds, .SdCount = 2 };
 ```
 
 Per-message, on one call. Pass it to `SolidSyslog_LogWithSd`, which attaches the array

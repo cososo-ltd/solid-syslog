@@ -59,8 +59,9 @@ in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 ## When a record is lost
 
-Every record the library loses shows at the collector as a gap in the sequence number,
-once a later record arrives. The handler is there to say why, and four rules decide what it is told. The table under
+Where a `SolidSyslogMetaSd` carries the sequence number, a record the library loses shows
+at the collector as a gap in it, once a later record arrives. The handler is there to say
+why, and four rules decide what it is told. The table under
 [Policy by category](#policy-by-category) applies them category by category, and each
 category's header doc comment is the home of its detail.
 
@@ -91,7 +92,7 @@ block that still holds unsent records each raise one `WARNING` when the run star
 | `POOL_EXHAUSTED` | `CRITICAL` | always: `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY`. |
 | `BAD_ARGUMENT` | `CRITICAL` | always: caller code bug. Single-sourced via `SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY`. |
 | `BAD_CONFIG` - fatal | `CRITICAL` | `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
-| `BAD_CONFIG` - degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
+| `BAD_CONFIG` - degraded | `WARNING` | component still constructs and delivers (e.g. block-too-small, TLS chain-only, a `sha-1` pin). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
 | `BAD_CONFIG` - refused | `ERROR` | the component stands but this connection attempt fails on material or policy the deployment supplied (trust anchors that will not load, a malformed pin, nothing that authorises the peer). The sender retries on its next pass, so it clears once what was deployed changes. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - local | `ERROR` | the device could not obtain an endpoint, or its stack declined to start the attempt, so no packet was sent. Waiting does not clear it. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY`. |

@@ -20,9 +20,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Largest UDP payload guaranteed to fit an unfragmented IPv6 datagram:
      *  IPv6 minimum MTU 1280 - 40-byte IPv6 header - 8-byte UDP header
-     *  (RFC 8200 section 5). This is the derived figure for that MTU; what a Datagram
-     *  answers where no path MTU is available is
-     *  SolidSyslogUdpPayload_UnknownPath. */
+     *  (RFC 8200 section 5). This is the derived figure for that MTU; a Datagram
+     *  whose stack reports a path MTU answers SolidSyslogUdpPayload_UnknownPath
+     *  until it has one. */
     enum
     {
         SOLIDSYSLOG_UDP_IPV6_SAFE_PAYLOAD = 1232
@@ -34,8 +34,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Largest message to send where the path MTU is not known: the size
      *  RFC 5426 section 3.2 calls the safest assumption for the family, 480 octets
-     *  for IPv4 and 1180 for IPv6. A Datagram answers this from MaxPayload
-     *  where its stack cannot report a path MTU. */
+     *  for IPv4 and 1180 for IPv6. A Datagram whose stack reports a path MTU
+     *  answers this from MaxPayload until it has one; one whose stack cannot
+     *  discover it answers SolidSyslogUdpPayload_Stated instead. */
     size_t SolidSyslogUdpPayload_UnknownPath(bool isIpv6);
 
     /** The IPv4 payload limit a Datagram answers where its stack cannot

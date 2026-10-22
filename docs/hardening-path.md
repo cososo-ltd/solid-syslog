@@ -2,10 +2,9 @@
 
 Neither the EU Cyber Resilience Act (CRA) nor IEC 62443 mandates syslog; instead they
 state capabilities - auditable events, integrity, confidentiality, availability,
-non-repudiation - and leave the realisation to you. IEC 62443 certifies systems rather
-than components, and CRA obligations attach to the manufacturer and are scoped by the
-product's documented intended use. Two devices running this library can need very
-different things from it.
+non-repudiation - and leave the realisation to you. Both judge the product you ship
+rather than a library inside it, as [compliance in one page](overview.md) explains, so
+two devices running this library can need very different things from it.
 
 This page is a path, not a design to copy. Start from the system you already have, add
 one capability at a time, and stop where your threat model, your requirements and your
@@ -89,9 +88,8 @@ SolidSyslog_SetErrorHandler(OnSyslogError, NULL);
 This is not only an integration aid. The handler is the seam into your product's own
 error and health reporting, and it stays valuable at run time: the sender raises an
 edge-triggered warning when the collector becomes unreachable and a notice when delivery
-recovers, the ring buffer raises an error for a record too large to enqueue and a
-warning when it starts turning records away. Route it wherever your device already
-routes faults, but not back into SolidSyslog: the
+recovers, and the ring buffer raises a warning when it starts losing records. Route it
+wherever your device already routes faults, but not back into SolidSyslog: the
 [handler contract](api/SolidSyslogError_8h.md#typedef-solidsyslogerrorhandler) says
 why, and what to do instead.
 
@@ -285,8 +283,8 @@ replacing them.
 
 Add the first structured-data element,
 [`SolidSyslogMetaSd`](api/SolidSyslogMetaSd_8h.md), carrying a sequence number. Elements
-are supplied to the logger as an array and read on every record, so they must outlive
-the call that creates the logger.
+are supplied to the logger as an array and read on every record, so the elements and the
+array must outlive the logger, not just the call that creates it.
 
 ```c
 struct SolidSyslogMetaSdConfig metaConfig = {

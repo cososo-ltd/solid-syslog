@@ -105,8 +105,9 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 
 <!-- /platforms -->
 
-`Posix` and `Windows` each carry more than the roles above - hostname and
-process-id callbacks, a sleep wrapper, and on POSIX a message-queue buffer.
+`Posix`, `Windows` and `VxWorks64` each carry more than the roles above - a
+hostname callback and a sleep wrapper, a process-id callback on the two hosts,
+and on POSIX a message-queue buffer.
 Those are extras rather than roles, because nothing forces you to pick a
 platform for them: the core ships buffers of its own, and the callbacks have
 bring-your-own seams.
@@ -164,8 +165,9 @@ into *your* target against *your* config.
 
 Stable system APIs - POSIX, Win32/Winsock, OpenSSL, C11 atomics - have no such
 hazard and compile straight into `libSolidSyslog.a`. Linking `SolidSyslog` is
-all they need, except that OpenSSL itself is linked alongside it
-(`OpenSSL::SSL OpenSSL::Crypto`).
+all they need, except OpenSSL itself, which your project finds and links
+alongside it: `find_package(OpenSSL 3.0 REQUIRED)`, then
+`OpenSSL::SSL OpenSSL::Crypto`.
 
 <!-- /platforms -->
 
@@ -222,6 +224,7 @@ counter.
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "Windows;OpenSsl")   # or "Posix;OpenSsl"
 FetchContent_MakeAvailable(SolidSyslog)
+find_package(OpenSSL 3.0 REQUIRED)
 
 add_executable(my_logger main.c)
 target_link_libraries(my_logger PRIVATE SolidSyslog OpenSSL::SSL OpenSSL::Crypto)
@@ -381,8 +384,8 @@ Platforms selected by a toolchain capability probe - `StdAtomic`, `Posix`,
 `Windows`, `OpenSsl` - get their own section. A CMake consumer receives them
 inside `libSolidSyslog.a`, but a manifest build has no such library, so compile
 them alongside everything else. `StdAtomic` is the one that matters on a
-cross-toolchain: without it there is no atomic counter, and every RFC 5424
-`sequenceId` is `1`.
+cross-toolchain: it is the counter behind the meta element's `sequenceId`, and
+[C11 atomics setup](platforms/stdatomic/setup.md) says what you get without one.
 
 <!-- /platforms -->
 
@@ -477,10 +480,13 @@ every one `#ifndef`-guarded so you override without editing the library. Two equ
   ```
 
 Pool-size tunables are named by role, not by platform (e.g.
-`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-vendor name): a build links one
-implementation per role, so you size "how many TCP streams", never "how many
-POSIX streams". The pool counts concurrent instances. See the header's
-top-of-file comment for the full rationale.
+`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-vendor name), so you size "how
+many TCP streams", never "how many POSIX streams". The pool counts concurrent
+instances, and each implementation keeps a pool of its own at that size: a build
+that links two implementations of one role - the lwIP Raw pack's numeric and DNS
+resolvers - holds that many of each.
+[Naming conventions](NAMING.md#pool-size-tunables-are-named-by-role-not-platform)
+states the rule.
 
 ### The override must reach every translation unit
 
