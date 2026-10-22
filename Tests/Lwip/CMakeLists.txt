@@ -44,9 +44,18 @@ set(LWIP_FAKE_SOURCES
 # remain cppchecked because their target's default C_CPPCHECK is honoured.
 add_library(LwipUpstreamParser STATIC
     ${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv4/ip4_addr.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv6/ip6_addr.c
+    ${SOLIDSYSLOG_LWIP_PATH}/src/core/ip.c
     ${SOLIDSYSLOG_LWIP_PATH}/src/core/def.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/LwipFakes/Source/LwipParserStubs.c
 )
 target_include_directories(LwipUpstreamParser PRIVATE ${LWIP_TEST_INCLUDE_DIRS})
+# Upstream lwIP is not held to this tree's warning set, and ip6_addr.c does not
+# pass -Wconversion; the relaxation is per file so our own LwipParserStubs.c,
+# which satisfies the input paths the parsers reference without calling, keeps
+# the full set.
+set_source_files_properties(${SOLIDSYSLOG_LWIP_PATH}/src/core/ipv6/ip6_addr.c
+    PROPERTIES COMPILE_OPTIONS -w)
 set_target_properties(LwipUpstreamParser PROPERTIES
     C_CPPCHECK ""
 )
@@ -64,6 +73,7 @@ target_link_libraries(SolidSyslogLwipRawAddressTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
@@ -129,6 +139,7 @@ target_link_libraries(SolidSyslogLwipRawDnsResolverTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
@@ -158,6 +169,7 @@ target_link_libraries(SolidSyslogLwipRawDatagramTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )
@@ -190,6 +202,7 @@ target_link_libraries(SolidSyslogLwipRawTcpStreamTest PRIVATE
     ${PROJECT_NAME}
     ConfigLockFake
     ErrorHandlerFake
+    LwipUpstreamParser
     CppUTest
     CppUTestExt
 )

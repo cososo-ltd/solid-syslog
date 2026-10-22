@@ -1,10 +1,10 @@
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
-#include "lwip/ip4_addr.h"
 
 using namespace CososoTesting;
 
 #include <cstdint>
+#include <string>
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
@@ -15,6 +15,7 @@ using namespace CososoTesting;
 #include "SolidSyslogLwipRawResolverErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogResolverDefinition.h"
 #include "SolidSyslogTransport.h"
 #include "SolidSyslogTunables.h"
@@ -84,12 +85,7 @@ TEST(SolidSyslogLwipRawResolver, ResolvePopulatesIpFromLiteralIpv4)
 {
     Resolve("127.0.0.1");
 
-    ip_addr_t expected;
-    IP4_ADDR(&expected, 127, 0, 0, 1);
-    LONGS_EQUAL(
-        ip4_addr_get_u32(ip_2_ip4(&expected)),
-        ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip))
-    );
+    STRCMP_EQUAL("127.0.0.1", ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
 }
 
 TEST(SolidSyslogLwipRawResolver, ResolvePopulatesPortFromArg)
@@ -280,13 +276,42 @@ TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)
     // Locks in that the literal-IPv4 resolver does not dispatch on transport -
     // a future reader must not add transport-typed pcb selection here.
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
-    uint32_t udpIp = ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    std::string udpIp = ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip);
     uint16_t udpPort = SolidSyslogLwipRawAddress_AsConst(addr)->Port;
 
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
 
-    LONGS_EQUAL(udpIp, ip4_addr_get_u32(ip_2_ip4(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip)));
+    STRCMP_EQUAL(udpIp.c_str(), ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
     LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsRefused)
+{
+    CHECK_FALSE(Resolve("::1"));
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    Resolve("::1");
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralLeavesTheCallersAddressAlone)
+{
+    Resolve(TEST_HOST, TEST_PORT);
+
+    Resolve("::1", 9999);
+
+    STRCMP_EQUAL(TEST_HOST, ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
 }
 
 TEST(SolidSyslogLwipRawResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)

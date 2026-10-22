@@ -169,7 +169,9 @@ in [Adding it to your build](../../build-integration.md#tunables).
 
 ## Limits
 
-The address and resolver are IPv4 only. Neither the datagram nor the TCP stream
+The pack is IPv4. Both resolvers refuse an IPv6 answer rather than store a
+destination the datagram and the stream cannot send to, and report through the
+error handler when they do. Neither the datagram nor the TCP stream
 selects an output interface - lwIP's routing table decides - and the datagram
 reports a fixed conservative maximum payload rather than discovering the path
 maximum transmission unit.
@@ -178,3 +180,11 @@ maximum transmission unit.
 
 Install an error handler before you start; [error severity](../../error-severity.md)
 says what each level is telling you.
+
+- **A lookup that does not answer raises nothing from the numeric resolver**,
+  and `WARNING` from the DNS resolver only when its deadline passes. An
+  unparseable literal, an unknown name or a rejected query fails the resolve
+  and reports no event; what you see is the delivery failure the sender raises
+  once records stop getting through.
+- **A lookup refused for its address family raises `ERROR`.** The destination
+  cannot be served as asked, and retrying will not change that.

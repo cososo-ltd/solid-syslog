@@ -4,6 +4,7 @@
 using namespace CososoTesting;
 
 #include <cstdint>
+#include <string>
 
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
@@ -23,7 +24,6 @@ using namespace CososoTesting;
 #include "SolidSyslogResolverErrors.h"
 #include "SolidSyslogError.h"
 #include "lwip/err.h"
-#include "lwip/ip4_addr.h"
 #include "lwip/ip_addr.h"
 
 // Asserts handle is non-null and not one of the slots in pool.
@@ -61,7 +61,7 @@ void FakeSleep_Reset()
     FakeSleep_LastMs = 0;
     FakeSleep_FireArmed = false;
     FakeSleep_FireWithAddr = false;
-    ip_addr_set_zero(&FakeSleep_FireIp);
+    FakeSleep_FireIp = ip_addr_t{};
 }
 
 extern "C" void FakeSleep(uint32_t milliseconds)
@@ -89,16 +89,28 @@ extern "C" void CountingTrackingMarshal(SolidSyslogLwipRawCallback callback, voi
     LwipFakeMarshalGuard_Active = false;
 }
 
-static ip_addr_t Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
+static ip_addr_t Address(const char* literal)
 {
-    ip_addr_t address;
-    IP4_ADDR(&address, a, b, c, d);
+    ip_addr_t address{};
+    ipaddr_aton(literal, &address);
     return address;
 }
 
-static uint32_t Ipv4U32(const ip_addr_t* address)
+// Records whether the marshal rail was active when the error handler ran.
+unsigned MarshalSpyingHandler_CallCount = 0U;
+bool MarshalSpyingHandler_SawMarshalActive = false;
+
+extern "C" void MarshalSpyingHandler(void* context, const struct SolidSyslogErrorEvent* event)
 {
-    return ip4_addr_get_u32(ip_2_ip4(address));
+    (void) context;
+    (void) event;
+    MarshalSpyingHandler_CallCount++;
+    MarshalSpyingHandler_SawMarshalActive = MarshalSpyingHandler_SawMarshalActive || LwipFakeMarshalGuard_Active;
+}
+
+static ip_addr_t Ipv6Loopback()
+{
+    return Address("::1");
 }
 
 // clang-format off
@@ -113,6 +125,8 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
         LwipDnsFake_Reset();
         FakeSleep_Reset();
         Marshal_CallCount = 0;
+        MarshalSpyingHandler_CallCount = 0;
+        MarshalSpyingHandler_SawMarshalActive = false;
         LwipFakeMarshalGuard_Reset();
         SolidSyslogLwipRaw_SetMarshal(CountingTrackingMarshal);
         config.Sleep = FakeSleep;
@@ -126,11 +140,28 @@ TEST_GROUP(SolidSyslogLwipRawDnsResolver)
         SolidSyslogLwipRawDnsResolver_Destroy(resolver);
         LwipFakeMarshalGuard_CheckNoBreach();
         SolidSyslogLwipRaw_SetMarshal(nullptr);
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
     }
 
     bool Resolve(const char* host = TEST_HOST, uint16_t port = TEST_PORT, enum SolidSyslogTransport transport = SOLIDSYSLOG_TRANSPORT_UDP) const
     {
         return SolidSyslogResolver_Resolve(resolver, transport, host, port, addr);
+    }
+
+    // dns_gethostbyname answers at once with this address.
+    static void ArrangeSynchronousAnswer(const ip_addr_t& answer)
+    {
+        LwipDnsFake_SetResult(ERR_OK);
+        LwipDnsFake_SetResolvedIp(&answer);
+    }
+
+    // dns_gethostbyname queues the query; the first Sleep delivers this address.
+    static void ArmAsyncAnswer(const ip_addr_t& answer)
+    {
+        LwipDnsFake_SetResult(ERR_INPROGRESS);
+        FakeSleep_FireArmed = true;
+        FakeSleep_FireWithAddr = true;
+        FakeSleep_FireIp = answer;
     }
 };
 
@@ -143,33 +174,96 @@ TEST(SolidSyslogLwipRawDnsResolver, CreateSucceeds)
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolveReturnsTrueOnSynchronousHit)
 {
-    ip_addr_t hit = Ipv4(10, 0, 2, 2);
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Address("10.0.2.2"));
 
     CHECK_TRUE(Resolve());
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesIpFromSynchronousHit)
 {
-    ip_addr_t hit = Ipv4(10, 0, 2, 2);
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Address("10.0.2.2"));
 
     Resolve();
 
-    LONGS_EQUAL(Ipv4U32(&hit), Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    STRCMP_EQUAL("10.0.2.2", ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesPortFromArgOnSynchronousHit)
 {
-    ip_addr_t hit = Ipv4(10, 0, 2, 2);
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Address("10.0.2.2"));
 
     Resolve(TEST_HOST, 9999);
 
     LONGS_EQUAL(9999, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsRefused)
+{
+    ArrangeSynchronousAnswer(Ipv6Loopback());
+
+    CHECK_FALSE(Resolve());
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+    ArrangeSynchronousAnswer(Ipv6Loopback());
+
+    Resolve();
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, ASynchronousIpv6AnswerLeavesTheCallersAddressAlone)
+{
+    ArrangeSynchronousAnswer(Address("10.0.2.2"));
+    Resolve(TEST_HOST, TEST_PORT);
+    ArrangeSynchronousAnswer(Ipv6Loopback());
+
+    Resolve(TEST_HOST, 9999);
+
+    STRCMP_EQUAL("10.0.2.2", ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsRefused)
+{
+    ArmAsyncAnswer(Ipv6Loopback());
+
+    CHECK_FALSE(Resolve());
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+    ArmAsyncAnswer(Ipv6Loopback());
+
+    Resolve();
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawDnsResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawDnsResolver, AnAsyncIpv6AnswerIsReportedOutsideTheMarshalHop)
+{
+    // The error handler is the integrator's code: it is told on the caller's
+    // thread once the publish hop has returned, never from inside it.
+    SolidSyslog_SetErrorHandler(MarshalSpyingHandler, nullptr);
+    ArmAsyncAnswer(Ipv6Loopback());
+
+    Resolve();
+
+    LONGS_EQUAL(1, MarshalSpyingHandler_CallCount);
+    CHECK_FALSE(MarshalSpyingHandler_SawMarshalActive);
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolveDoesNotSpinOnSynchronousHit)
@@ -192,33 +286,23 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolvePassesHostToDnsGetHostByName)
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolveReturnsTrueWhenAsyncCallbackDeliversAddress)
 {
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv4(10, 0, 2, 2);
+    ArmAsyncAnswer(Address("10.0.2.2"));
 
     CHECK_TRUE(Resolve());
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesIpFromAsyncCallback)
 {
-    ip_addr_t delivered = Ipv4(192, 0, 2, 7);
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = delivered;
+    ArmAsyncAnswer(Address("192.0.2.7"));
 
     Resolve();
 
-    LONGS_EQUAL(Ipv4U32(&delivered), Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    STRCMP_EQUAL("192.0.2.7", ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
 }
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesPortFromArgOnAsyncCallback)
 {
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv4(10, 0, 2, 2);
+    ArmAsyncAnswer(Address("10.0.2.2"));
 
     Resolve(TEST_HOST, 6514);
 
@@ -227,10 +311,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolvePopulatesPortFromArgOnAsyncCallback)
 
 TEST(SolidSyslogLwipRawDnsResolver, ResolveSpinsUntilAsyncCallbackFires)
 {
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv4(10, 0, 2, 2);
+    ArmAsyncAnswer(Address("10.0.2.2"));
 
     Resolve();
 
@@ -256,10 +337,7 @@ TEST(SolidSyslogLwipRawDnsResolver, AsyncSuccessReadsResultUnderASecondMarshalHo
     // non-volatile ResolvedIp / ResolvedOk are read back on the lwIP thread via a
     // SECOND marshal hop (DoPublishResult) - never off the flag on the caller's
     // thread. Two hops total: dns_gethostbyname + publish.
-    LwipDnsFake_SetResult(ERR_INPROGRESS);
-    FakeSleep_FireArmed = true;
-    FakeSleep_FireWithAddr = true;
-    FakeSleep_FireIp = Ipv4(10, 0, 2, 2);
+    ArmAsyncAnswer(Address("10.0.2.2"));
 
     Resolve();
 
@@ -351,17 +429,15 @@ TEST(SolidSyslogLwipRawDnsResolver, UdpTransportResolvesIdenticallyToTcp)
 {
     // Locks in that the DNS resolver does not dispatch on transport - a future
     // reader must not add transport-typed lookup behaviour here.
-    ip_addr_t hit = Ipv4(10, 0, 2, 2);
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Address("10.0.2.2"));
 
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
-    uint32_t udpIp = Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip);
+    std::string udpIp = ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip);
     uint16_t udpPort = SolidSyslogLwipRawAddress_AsConst(addr)->Port;
 
     Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
 
-    LONGS_EQUAL(udpIp, Ipv4U32(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    STRCMP_EQUAL(udpIp.c_str(), ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
     LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
 }
 
@@ -372,9 +448,7 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveAcceptsNumericLiteralAsSynchronousHit
     // hosts still resolve through this class. Here the fake stands in for that
     // ERR_OK return; the contract under test is that the literal host string
     // flows through unchanged and the resolve succeeds.
-    ip_addr_t hit = Ipv4(10, 0, 2, 2);
-    LwipDnsFake_SetResult(ERR_OK);
-    LwipDnsFake_SetResolvedIp(&hit);
+    ArrangeSynchronousAnswer(Address("10.0.2.2"));
 
     CHECK_TRUE(Resolve("10.0.2.2"));
     STRCMP_EQUAL("10.0.2.2", LwipDnsFake_LastHostname());

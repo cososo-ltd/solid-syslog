@@ -26,6 +26,9 @@
  *    on), never off the volatile completion flag.
  *  - Any other immediate rejection, or the deadline elapsing, fails the Resolve
  *    so the caller's unresolved-host error path runs.
+ *  - An answer in IPv6, which a build with LWIP_IPV6 can return and the pack's
+ *    transports cannot send to, fails the Resolve and is reported as
+ *    ADDRESS_FAMILY_UNSUPPORTED, on the caller's thread once the hop returns.
  *
  *  The transport is ignored. Requires LWIP_DNS=1. See docs/platforms/lwipraw/setup.md. */
 #ifndef SOLIDSYSLOGLWIPRAWDNSRESOLVER_H

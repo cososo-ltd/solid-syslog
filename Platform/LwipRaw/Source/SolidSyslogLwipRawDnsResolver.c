@@ -41,8 +41,11 @@ struct SolidSyslogAddress;
  * reports the outcome in Resolved - so the multi-byte ResolvedIp / ResolvedOk
  * fields the dns_found_callback wrote are read on the thread that wrote them
  * (race-free, with the marshal providing the cross-thread barrier) rather than
- * on the caller's thread off the back of the volatile Done flag. One struct so
- * the void*-context recovery has a single cast site. */
+ * on the caller's thread off the back of the volatile Done flag. An answer in
+ * a family the transports cannot send to is noted in FamilyUnsupported under
+ * the same hop and reported once the caller's thread has it back, so the
+ * error handler is never entered from the lwIP thread. One struct so the
+ * void*-context recovery has a single cast site. */
 struct LwipRawDnsResolverCall
 {
     struct SolidSyslogLwipRawDnsResolver* Self;
@@ -51,6 +54,7 @@ struct LwipRawDnsResolverCall
     uint16_t Port;
     err_t Err;
     bool Resolved;
+    bool FamilyUnsupported;
 };
 
 static bool LwipRawDnsResolver_Resolve(
@@ -64,6 +68,7 @@ static bool LwipRawDnsResolver_Resolve(
 static inline struct SolidSyslogLwipRawDnsResolver* LwipRawDnsResolver_SelfFromBase(struct SolidSyslogResolver* base);
 static inline struct LwipRawDnsResolverCall* LwipRawDnsResolverCallFromContext(void* context);
 static void LwipRawDnsResolver_DoGetHostByName(void* context);
+static void LwipRawDnsResolver_Publish(struct LwipRawDnsResolverCall* call, const ip_addr_t* answer);
 static void LwipRawDnsResolver_FoundCallback(const char* name, const ip_addr_t* ipaddr, void* arg);
 static bool LwipRawDnsResolver_WaitForCallback(struct SolidSyslogLwipRawDnsResolver* self);
 static void LwipRawDnsResolver_DoPublishResult(void* context);
@@ -111,6 +116,7 @@ static bool LwipRawDnsResolver_Resolve(
         .Port = port,
         .Err = ERR_OK,
         .Resolved = false,
+        .FamilyUnsupported = false,
     };
     SolidSyslogLwipRaw_Marshal(LwipRawDnsResolver_DoGetHostByName, &call);
 
@@ -120,9 +126,7 @@ static bool LwipRawDnsResolver_Resolve(
          * dns_gethostbyname wrote ResolvedIp under the marshal hop above and the
          * found_callback never fired, so reading it here (ordered after the
          * marshal returned) is safe and on a single thread. */
-        destination->Ip = self->ResolvedIp;
-        destination->Port = port;
-        call.Resolved = true;
+        LwipRawDnsResolver_Publish(&call, &self->ResolvedIp);
     }
     else if (call.Err == ERR_INPROGRESS)
     {
@@ -142,13 +146,43 @@ static bool LwipRawDnsResolver_Resolve(
         /* ERR_ARG / any other immediate rejection - Resolved stays false.
          * Terminating else per MISRA 15.7. */
     }
+
+    if (call.FamilyUnsupported)
+    {
+        LwipRawDnsResolver_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+            SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+        );
+    }
     return call.Resolved;
+}
+
+/* IPv4 only, which is what the datagram's and stream's pcbs send to. A stack
+ * built with LWIP_IPV6 can answer a name with an IPv6 address, and storing it
+ * would give the transports a destination they fail every send to. */
+static void LwipRawDnsResolver_Publish(struct LwipRawDnsResolverCall* call, const ip_addr_t* answer)
+{
+    if (LwipRawAddress_IsIpv4(answer))
+    {
+        call->Destination->Ip = *answer;
+        call->Destination->Port = call->Port;
+        call->Resolved = true;
+    }
+    else
+    {
+        call->FamilyUnsupported = true;
+    }
 }
 
 static void LwipRawDnsResolver_DoGetHostByName(void* context)
 {
     struct LwipRawDnsResolverCall* call = LwipRawDnsResolverCallFromContext(context);
     struct SolidSyslogLwipRawDnsResolver* self = call->Self;
+    /* Asked for lwIP's default family, not IPv4 alone: told IPv4 only, lwIP
+     * keeps an IPv6 literal or entry to itself and queries the name afresh,
+     * so the lookup fails later as a plain miss. Asked for either, it hands
+     * the IPv6 answer over, and Publish refuses it with the family named. */
     call->Err = dns_gethostbyname(call->Host, &self->ResolvedIp, LwipRawDnsResolver_FoundCallback, self);
 }
 
@@ -205,11 +239,9 @@ static void LwipRawDnsResolver_DoPublishResult(void* context)
 {
     struct LwipRawDnsResolverCall* call = LwipRawDnsResolverCallFromContext(context);
     struct SolidSyslogLwipRawDnsResolver* self = call->Self;
-    call->Resolved = self->ResolvedOk;
     if (self->ResolvedOk)
     {
-        call->Destination->Ip = self->ResolvedIp;
-        call->Destination->Port = call->Port;
+        LwipRawDnsResolver_Publish(call, &self->ResolvedIp);
     }
 }
 

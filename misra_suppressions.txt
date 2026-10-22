@@ -12,8 +12,8 @@
 # D.002 — Rules 11.2 / 11.3 / 11.5: vtable downcasts + Formatter
 # See docs/misra-deviations.md#d002
 misra-c2012-11.2:Core/Source/SolidSyslogFormatter.h:38
-misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:33
-misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:40
+misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:34
+misra-c2012-11.2:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:41
 misra-c2012-11.2:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c:24
 misra-c2012-11.2:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.h:28
 misra-c2012-11.2:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressPrivate.h:35
@@ -44,8 +44,8 @@ misra-c2012-11.3:Platform/StdAtomic/Source/SolidSyslogStdAtomicCounter.c:36
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:53
 misra-c2012-11.3:Platform/LittleFs/Source/SolidSyslogLittleFsFile.c:70
 misra-c2012-11.3:Platform/PlusFat/Source/SolidSyslogPlusFatFile.c:52
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:33
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:40
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:34
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressPrivate.h:41
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:39
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawAddressStatic.c:59
 misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddress.c:24
@@ -56,7 +56,7 @@ misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketAddressStatic.c
 misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c:92
 misra-c2012-11.3:Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c:137
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:86
-misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:218
+misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:250
 misra-c2012-11.3:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:158
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddress.c:21
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpAddressPrivate.h:28
@@ -108,8 +108,8 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:105
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:195
 misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:249
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:95
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:161
-misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:223
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:195
+misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:255
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:167
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:175
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:453

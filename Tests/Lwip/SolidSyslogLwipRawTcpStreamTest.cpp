@@ -124,7 +124,7 @@ TEST_BASE(LwipRawTcpStreamTestBase)
         stream = SolidSyslogLwipRawTcpStream_Create(&config);
         address = SolidSyslogLwipRawAddress_Create();
         struct SolidSyslogLwipRawAddress* lwipAddress = SolidSyslogLwipRawAddress_As(address);
-        IP4_ADDR(&lwipAddress->Ip, 127, 0, 0, 1);
+        ipaddr_aton("127.0.0.1", &lwipAddress->Ip);
         lwipAddress->Port = TEST_PORT;
     }
 

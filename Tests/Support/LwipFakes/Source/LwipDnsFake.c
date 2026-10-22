@@ -11,6 +11,8 @@ static const char* lastHostname = NULL;
 static ip_addr_t* lastAddrOut = NULL;
 static err_t getHostByNameResult = ERR_OK;
 static ip_addr_t resolvedIp;
+/* Zero-initialised, which on either stack shape is IPv4 0.0.0.0. */
+static const ip_addr_t unresolvedIp;
 
 static dns_found_callback storedCallback = NULL;
 static void* storedCallbackArg = NULL;
@@ -21,7 +23,7 @@ void LwipDnsFake_Reset(void)
     lastHostname = NULL;
     lastAddrOut = NULL;
     getHostByNameResult = ERR_OK;
-    ip_addr_set_zero(&resolvedIp);
+    resolvedIp = unresolvedIp;
     storedCallback = NULL;
     storedCallbackArg = NULL;
 }

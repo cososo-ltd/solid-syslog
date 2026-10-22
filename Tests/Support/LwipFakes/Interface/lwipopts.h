@@ -6,6 +6,10 @@
  *    so the LwipDnsFake can define them for SolidSyslogLwipRawDnsResolver tests.
  *    No real dns.c is compiled into any host test exe; the fake supplies the
  *    symbols. The numeric SolidSyslogLwipRawResolver ignores DNS entirely.
+ *  - LWIP_IPV6 on, even though the pack is IPv4. A stack built for both
+ *    families is the environment the resolvers' family refusal exists for:
+ *    with IPv6 off, ipaddr_aton cannot parse an IPv6 literal and a DNS
+ *    answer can only be IPv4, so no test could reach the refusal.
  *  - MEM_LIBC_MALLOC=1 - host tests can use libc; production wrappers
  *    must not depend on lwIP's mem pool. */
 #ifndef SOLIDSYSLOG_TEST_LWIPOPTS_H
@@ -21,7 +25,7 @@
 #define LWIP_DHCP 0
 #define LWIP_ARP 0
 #define LWIP_IPV4 1
-#define LWIP_IPV6 0
+#define LWIP_IPV6 1
 #define MEM_LIBC_MALLOC 1
 #define MEMP_MEM_MALLOC 1
 #define SYS_LIGHTWEIGHT_PROT 0
