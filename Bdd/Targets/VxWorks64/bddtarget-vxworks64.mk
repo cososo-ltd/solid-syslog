@@ -30,6 +30,7 @@ BDD_TARGET_SRCS := $(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetIps.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetLanguage.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetMessageSettings.c \
+	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetBlockFiles.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetStoreSettings.c \
 	$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common/BddTargetSwitchConfig.c
 BDD_TARGET_INCLUDES := -I$(SOLIDSYSLOG_DIR)/Bdd/Targets/VxWorks64 -I$(SOLIDSYSLOG_DIR)/Bdd/Targets/Common

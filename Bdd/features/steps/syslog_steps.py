@@ -98,6 +98,12 @@ VXWORKS64_HOSTNAME = "SolidSyslogVxWorks64"
 # section 6.2.6): FreeRTOS tasks, and the VxWorks 6.4 target's kernel tasks.
 NO_PROCESS_MODEL_TARGETS = ("freertos", "vxworks64")
 
+# Targets whose store is not on the file system behave runs on, so their
+# block files are read over the console rather than from STORE_PATH_PREFIX:
+# FreeRTOS on a FAT volume inside the semihosting disk image, and the
+# VxWorks 6.4 target on a disk image attached to QEMU on the build machine.
+REMOTE_STORE_TARGETS = ("freertos", "vxworks64")
+
 
 def line_count(path):
     """Return the number of lines in a file, or 0 if it doesn't exist."""
@@ -803,23 +809,57 @@ def step_threshold_callback_not_invoked(context):
     )
 
 
+_BLOCKS_REPLY = re.compile(r"^BLOCKS:(.*)$", re.MULTILINE)
+
+
+def existing_block_indexes(context):
+    """The two-digit index of every block file present now, as a set.
+
+    Linux and Windows keep the store under STORE_PATH_PREFIX on this file
+    system, so the prefix is globbed. A REMOTE_STORE_TARGETS target answers the
+    `blocks` console command with one `BLOCKS: 00 01` line, listing what the
+    pack's own File finds on the target's volume.
+    """
+    if context.target in REMOTE_STORE_TARGETS:
+        reply = send_command(context.interactive_process, "blocks")
+        match = _BLOCKS_REPLY.search(reply)
+        assert match, f"Expected a BLOCKS: line in the reply to blocks, got {reply!r}"
+        return set(match.group(1).split())
+    suffix = ".log"
+    return {
+        path[len(STORE_PATH_PREFIX) : -len(suffix)]
+        for path in glob.glob(STORE_PATH_PREFIX + "*" + suffix)
+    }
+
+
 @given("the set of existing block files is recorded")
 def step_record_block_files(context):
-    context.recorded_block_files = set(glob.glob(STORE_PATH_PREFIX + "*.log"))
+    context.recorded_block_files = existing_block_indexes(context)
 
 
 @then("no recorded block file has been disposed")
 def step_no_block_disposed(context):
-    missing = sorted(p for p in context.recorded_block_files if not os.path.exists(p))
+    missing = sorted(context.recorded_block_files - existing_block_indexes(context))
     assert not missing, f"Block files disposed unexpectedly: {missing}"
 
 
 @then("block file {index} has been disposed")
 def step_block_file_disposed(context, index):
-    path = f"{STORE_PATH_PREFIX}{index}.log"
-    assert not os.path.exists(path), (
-        f"Expected block file {path} to have been disposed but it is still on disk"
+    # The Dispose follows the acknowledged send asynchronously, inside the
+    # Service task's drain, so poll a bounded deadline. The negative step above
+    # asserts once, so a disposal that never happens is not masked by this wait.
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
+    present = existing_block_indexes(context)
+    while index in present and time.monotonic() < deadline:
+        time.sleep(0.1)
+        present = existing_block_indexes(context)
+    assert index not in present, (
+        f"Expected block file {index} to have been disposed but it is still present: {sorted(present)}"
     )
+    # A store that has just drained five messages across 520-byte blocks holds a
+    # live active block, so an empty listing means the files are not where this
+    # step looks for them, not that the block was disposed.
+    assert present, "No block file is present at all; the store is not where the step looks"
 
 
 @when("the client sends a message")

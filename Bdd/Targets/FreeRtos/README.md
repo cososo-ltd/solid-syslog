@@ -16,7 +16,9 @@ drives the target. Drive identity / endpoint / PRIVAL fields over the
 UART command channel with `set NAME VALUE`, flip the active transport at
 runtime with `switch udp` / `switch tcp` / `switch tls` / `switch mtls`
 (routed through `BddTargetSwitchConfig`), emit N RFC 5424 messages with
-`send N`, exit cleanly with `quit`. See
+`send N`, list the block files on the store volume with `blocks` (one
+`BLOCKS: 00 01` line, asked of the FatFs File, since Behave cannot see the
+disk image), exit cleanly with `quit`. See
 [`Bdd/README.md`](../../../Bdd/README.md) for how Behave pipes these
 commands through `qemu-system-arm`'s stdio UART.
 

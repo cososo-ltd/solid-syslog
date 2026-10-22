@@ -7,6 +7,7 @@
 
 #include "BddTargetOsPrimitives.h"
 
+#include "BddTargetBlockFiles.h"
 #include "BddTargetEnterpriseId.h"
 #include "BddTargetErrorText.h"
 #include "BddTargetInteractive.h"
@@ -35,6 +36,7 @@
 #include "SolidSyslogMbedTlsHmacSha256Policy.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMutex.h"
+#include "SolidSyslogNullFile.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
@@ -129,6 +131,7 @@ static bool RebuildWithFileStore(void);
 static void DestroyCurrentStore(void);
 static void OnHalt(void* context);
 static void OnThresholdCrossed(void* context);
+static void OnBlocks(void);
 static void TeardownAll(void);
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event);
@@ -408,6 +411,16 @@ static void OnThresholdCrossed(void* context)
     (void) printf("[THRESHOLD-CROSSED]\r\n");
 }
 
+/* The harness's `blocks` command. The lifecycle mutex keeps the Service task's
+ * drain, and any Dispose inside it, off the volume while the walk reads it. */
+static void OnBlocks(void)
+{
+    SolidSyslogMutex_Lock(lifecycleMutex);
+    struct SolidSyslogFile* file = currentStoreIsFile ? storeFile : SolidSyslogNullFile_Get();
+    BddTargetBlockFiles_Print(stdout, file, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlocks());
+    SolidSyslogMutex_Unlock(lifecycleMutex);
+}
+
 /* Full teardown of every shared resource. Two entry points - `quit` (falls
  * through after BddTargetInteractive_Run returns) and `set shutdown 1` - both
  * route through here. The platform UnmountStore hook fires regardless so the
@@ -555,7 +568,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         stdin,
         BddTargetSwitchConfig_SetByName,
         OnSet,
-        NULL
+        OnBlocks
     );
 
     /* Peak stack headroom report on `quit`. A Service task that never started

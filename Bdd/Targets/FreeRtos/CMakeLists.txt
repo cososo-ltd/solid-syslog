@@ -291,6 +291,7 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMtlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetBlockFiles.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
