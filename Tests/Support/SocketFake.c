@@ -649,6 +649,7 @@ int socket(int domain, int type, int protocol)
     lastSocketType = type;
     if (socketFails)
     {
+        errno = ENFILE;
         socketFd = -1;
     }
     else
@@ -715,6 +716,7 @@ int getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optl
     {
         if (soErrorLookupFails)
         {
+            errno = ENOTSOCK;
             return -1;
         }
         if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
@@ -850,6 +852,10 @@ int fcntl(int fd, int cmd, ...)
     lastFcntlCmd = cmd;
     if (cmd == F_GETFL)
     {
+        if (fcntlGetFlReturn < 0)
+        {
+            errno = EINVAL;
+        }
         return fcntlGetFlReturn;
     }
     if (cmd == F_SETFL)
@@ -858,6 +864,10 @@ int fcntl(int fd, int cmd, ...)
         va_start(ap, cmd);
         lastFcntlSetFlags = va_arg(ap, int);
         va_end(ap);
+        if (fcntlSetFlFails)
+        {
+            errno = EINVAL;
+        }
         return fcntlSetFlFails ? -1 : 0;
     }
     return 0;
@@ -900,6 +910,10 @@ int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struc
     }
     if (selectReturnOverride)
     {
+        if (selectReturnValue < 0)
+        {
+            errno = EINTR;
+        }
         return selectReturnValue;
     }
     return selectReady ? 1 : 0;
