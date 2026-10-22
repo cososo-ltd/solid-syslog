@@ -102,9 +102,9 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
 static inline bool SwitchingSender_HasNullInnerSender(const struct SolidSyslogSwitchingSenderConfig* config)
 {
     bool hole = false;
-    for (size_t i = 0U; (i < config->SenderCount) && !hole; i++)
+    for (size_t index = 0U; (index < config->SenderCount) && !hole; index++)
     {
-        hole = config->Senders[i] == NULL;
+        hole = config->Senders[index] == NULL;
     }
     return hole;
 }

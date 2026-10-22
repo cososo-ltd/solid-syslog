@@ -460,6 +460,18 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullInnerSenderReportsError)
     );
 }
 
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullLastInnerSenderReportsError)
+{
+    inners[1] = nullptr;
+    SolidSyslogSwitchingSender_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_INNER_SENDER
+    );
+}
+
 TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullInnerSenderReturnsNullSender)
 {
     inners[0] = nullptr;
