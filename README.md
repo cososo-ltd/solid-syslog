@@ -11,9 +11,9 @@ Cyber Resilience Act and IEC 62443 expect: a component you add, not a redesign.
 
 ## What it costs
 
-**+5 KB flash** for a valid, timestamped RFC 5424 record on the wire, and **1.9 KB
-of RAM**. **+16.4 KB flash** for the whole path - store-and-forward, device identity,
-mutual TLS and AES-GCM encryption at rest - and **36.3 KB of RAM**, mainly TLS buffers.
+**+7.0 KB flash** for a valid, timestamped RFC 5424 record on the wire, and **2.9 KB
+of RAM**. **+22.0 KB flash** for the whole path - store-and-forward, device identity,
+mutual TLS and AES-GCM encryption at rest - and **36.6 KB of RAM**, mainly TLS buffers.
 Each figure is what SolidSyslog adds to a device already running FreeRTOS, lwIP,
 FatFs and Mbed TLS: a baseline built to carry the third-party code a real-world
 device would already have. Measured on a Cortex-M3 under QEMU, a representative
@@ -51,8 +51,10 @@ Which upstream fills which capability is in the
 [platform matrix](https://docs.cososo.co.uk/solid-syslog/platforms/). Bring your
 own stack and the same Core runs unchanged.
 
-TLS revocation (CRL / OCSP) is not performed by the library. Whether it is
-enforced depends on the TLS backend and platform you configure.
+TLS revocation (CRL / OCSP) is outside the library's contract, and no shipped
+backend checks it; a deployment that needs it configures it in its TLS library.
+[TLS obligations](https://docs.cososo.co.uk/solid-syslog/tls/#do-not-require-revocation-checking)
+explains why.
 
 ## Documentation
 
@@ -62,6 +64,11 @@ around what you came to do: **Core**, **Integrate**, **Platforms**,
 **Compliance**, **API reference**, and **Maintaining**. New here?
 [Compliance in one page](https://docs.cososo.co.uk/solid-syslog/overview/) is the
 fastest orientation for evaluators.
+
+What changed in each release, and what to change in your code when you upgrade, is
+in [`CHANGELOG.md`](CHANGELOG.md); each
+[GitHub release](https://github.com/cososo-ltd/solid-syslog/releases) carries the
+same notes.
 
 ## Integrating it
 

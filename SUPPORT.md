@@ -5,7 +5,7 @@ Thanks for using SolidSyslog. Here is where to get help.
 ## Documentation first
 
 - **Integration guides and API reference** live in [`docs/`](docs/) and on the
-  published documentation site.
+  [published documentation site](https://docs.cososo.co.uk/solid-syslog/).
 - **The public headers** under `Core/Interface/` are the API boundary and are
   documented at the declaration.
 

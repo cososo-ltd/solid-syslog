@@ -1,9 +1,12 @@
 # Error-event severity policy
 
-`SolidSyslog_Error(severity, source, category, detail)` carries a `severity` drawn from
-`enum SolidSyslogSeverity` (`SolidSyslogPrival.h`). This document is the single source of
-truth for which level an emit site picks. It exists because the ladder is easy to drift:
-two faults can sit at the same level that an error handler needs to tell apart.
+Every event the library raises carries a `severity` from `enum SolidSyslogSeverity`
+(`SolidSyslogPrival.h`), whether it comes from `SolidSyslog_Error` or, where the
+platform gave a code of its own, `SolidSyslog_ErrorWithNativeCode`. This page is for
+whoever writes the handler that reacts to those events and whoever writes an adapter
+that raises them, and is the single source of truth for which level an emit site
+picks. It exists because the ladder is easy to drift: two faults can sit at the same
+level that an error handler needs to tell apart.
 
 ## The ladder is an *urgency* axis, not a *who-fixes-it* axis
 

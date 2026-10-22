@@ -56,6 +56,7 @@ nothing needs a NULL guard. See [Roles](../roles/index.md).
 | Header | Provides |
 |---|---|
 | [`SolidSyslogError.h`](../api/SolidSyslogError_8h.md) | install a handler for library-internal errors; the default is a silent no-op. Every axis of an event names itself: the severity, the category and, through its source, the detail |
+| [`SolidSyslogDiscardPolicy.h`](../api/SolidSyslogDiscardPolicy_8h.md) | what a full queue does with the record that does not fit - Oldest, Newest or Halt - answered by one function you give the logger, the buffer and the store; Oldest where none is given |
 | [`SolidSyslogConfigLock.h`](../api/SolidSyslogConfigLock_8h.md) | inject a lock pair around the pool slot walks; no-ops by default, single-task safe. It does not make `SolidSyslog_Service` safe to share across tasks - see [its threading contract](../api/SolidSyslog_8h.md#function-solidsyslog_service) |
 | [`SolidSyslogTunablesDefaults.h`](../api/SolidSyslogTunablesDefaults_8h.md) | every compile-time limit, each `#ifndef`-guarded so you override without editing the library |
 

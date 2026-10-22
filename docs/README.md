@@ -33,7 +33,8 @@ Everything you need to consume SolidSyslog in your product.
 - [Adding it to your build](build-integration.md): the build detail. The capability matrix, the three ways to consume the library (CMake, Make, and a source manifest for an IDE project), and the compile-time tunables.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [TLS obligations](tls.md): what the library does for a TLS connection and what it leaves to you.
-- [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
+- [Error handling](error-severity.md): what each severity and category tells a handler, and what is reported when a record is lost. Installing the handler, and printing an event by the names of its fields, is [stage 2 of the integration path](hardening-path.md#stage-2-make-failures-visible).
+- [Release notes](../CHANGELOG.md): what each release changed, and what to change in your code when you upgrade from the one before.
 - Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md).
 
 ## Platforms

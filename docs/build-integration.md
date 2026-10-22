@@ -189,7 +189,7 @@ project(my_logger C)
 include(FetchContent)
 FetchContent_Declare(SolidSyslog
     GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
-    GIT_TAG        main)
+    GIT_TAG        v0.3.0)
 
 set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic")
 FetchContent_MakeAvailable(SolidSyslog)
