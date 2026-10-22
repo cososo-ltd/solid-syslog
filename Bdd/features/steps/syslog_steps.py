@@ -856,9 +856,9 @@ def step_block_file_disposed(context, index):
     assert index not in present, (
         f"Expected block file {index} to have been disposed but it is still present: {sorted(present)}"
     )
-    # A store that has just drained five messages across 520-byte blocks holds a
-    # live active block, so an empty listing means the files are not where this
-    # step looks for them, not that the block was disposed.
+    # The active write block is never disposed, so a store that has just
+    # drained still holds a block. An empty listing means nothing is where this
+    # step looks, which must not pass as a disposal.
     assert present, "No block file is present at all; the store is not where the step looks"
 
 

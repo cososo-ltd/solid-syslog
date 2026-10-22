@@ -8,6 +8,8 @@
 
 void BddTargetBlockFiles_Print(FILE* out, struct SolidSyslogFile* file, const char* pathPrefix, size_t maxBlocks)
 {
+    /* The name SolidSyslogFileBlockDevice gives a block: prefix, two-digit
+       index, .log. */
     (void) fprintf(out, "BLOCKS:");
     for (size_t index = 0U; index < maxBlocks; index++)
     {

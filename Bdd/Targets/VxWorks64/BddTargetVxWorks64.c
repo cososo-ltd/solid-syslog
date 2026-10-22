@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "BddTargetBlockFiles.h"
 #include "BddTargetEnterpriseId.h"
 #include "BddTargetVxWorks64Clock.h"
 #include "BddTargetErrorText.h"
@@ -39,6 +40,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogMetaSd.h"
+#include "SolidSyslogNullFile.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
@@ -86,6 +88,7 @@ static int BddTargetVxWorks64_InteractiveTask(void);
 static int BddTargetVxWorks64_ServiceTask(void);
 static void BddTargetVxWorks64_GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static bool BddTargetVxWorks64_SetByName(const char* name, const char* value);
+static void BddTargetVxWorks64_OnBlocks(void);
 static bool BddTargetVxWorks64_SetTime(const char* value);
 static bool BddTargetVxWorks64_SetFileSystem(const char* value);
 static bool BddTargetVxWorks64_SetStore(const char* value);
@@ -400,7 +403,7 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
         input,
         BddTargetSwitchConfig_SetByName,
         BddTargetVxWorks64_SetByName,
-        NULL
+        BddTargetVxWorks64_OnBlocks
     );
     consoleEnded = true;
 }
@@ -568,6 +571,21 @@ static void BddTargetVxWorks64_OnThresholdCrossed(void* context)
 {
     (void) context;
     (void) fprintf(BddTargetVxWorks64_Reports(), "[THRESHOLD-CROSSED]\n");
+}
+
+/* The harness's `blocks` command. The logger lock keeps the Service task's
+ * drain, and any Dispose inside it, off the volume while the walk reads it. */
+static void BddTargetVxWorks64_OnBlocks(void)
+{
+    (void) semTake(loggerLock, WAIT_FOREVER);
+    struct SolidSyslogFile* file = storeIsFile ? storeFile : SolidSyslogNullFile_Get();
+    BddTargetBlockFiles_Print(
+        BddTargetVxWorks64_Reports(),
+        file,
+        STORE_PATH_PREFIX,
+        BddTargetStoreSettings_MaxBlocks()
+    );
+    (void) semGive(loggerLock);
 }
 
 static void BddTargetVxWorks64_DestroyStore(void)
