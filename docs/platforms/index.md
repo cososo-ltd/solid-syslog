@@ -9,7 +9,7 @@ capability. Capabilities are coarser than [roles](../roles/index.md): TLS is the
 Stream role with a TLS backend, and time / host are plain callbacks rather than a
 vtable.
 
-## Platform × capability matrix
+## Capability matrix
 
 | Platform | Wraps | Network | TLS | At-rest crypto | Files | Buffer | OS primitives | Time & host |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|

@@ -98,12 +98,12 @@ fingerprint, not only by a chain and a name. A fingerprint pins one
 certificate, which suits a closed network with no PKI.
 
 The form is RFC 5425 section 4.2.2: an IANA hash label, a colon, then the hash of the
-DER-encoded certificate as colon-separated hex pairs. section 4.2.2 publishes the pairs
+DER-encoded certificate as colon-separated hex pairs. Section 4.2.2 publishes the pairs
 in upper case; a `Stream` accepts the pairs in either case, because a pin reaches
 a device through an engineer transcribing it. The label is matched exactly, in
 lower case: `SHA-256:` does not parse. Labels are from the IANA
 [Hash Function Textual Names](https://www.iana.org/assignments/hash-function-text-names/hash-function-text-names.xhtml)
-registry, hyphenated: `sha-256` and `sha-1`. Both are accepted. section 4.2.2 makes
+registry, hyphenated: `sha-256` and `sha-1`. Both are accepted. Section 4.2.2 makes
 SHA-1 mandatory to support; `sha-256` is the one to configure where the
 collector offers a choice, and a `sha-1` pin is reported on every connection
 that uses one.
@@ -393,7 +393,7 @@ its dates. And the code names **the fault, not which certificate carries it**:
 an issuer whose own dates have lapsed is reported as an expired certificate
 even where the leaf is current.
 
-**A peer that rejects us reports nothing more than that it did.** Where the
+**A collector that rejects the device reports nothing more than that it did.** Where the
 collector refuses the device - a client certificate it will not accept, or none
 where it required one - the refusal arrives as a TLS alert, and what that alert
 says is not portably knowable. The refusal is reported as a rejected handshake.

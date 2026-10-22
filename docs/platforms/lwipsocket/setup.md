@@ -111,7 +111,7 @@ inside it is safe.
 One where lwIP is built with `NO_SYS=0` and a task can afford to block while the
 stack answers. That is what buys the absence of a marshal seam and of any
 per-call hop. Where your build cannot host the sockets layer, the
-[platform x capability matrix](../index.md) is the place to choose from.
+[capability matrix](../index.md) is the place to choose from.
 
 ## When it does not work
 

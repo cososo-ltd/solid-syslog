@@ -35,7 +35,7 @@ running against a well-behaved do-nothing. So porting is additive: you provide
 the roles your deployment needs and leave the rest to their Nulls. You never edit
 Core, and you never touch a role you don't use.
 
-The [platform × capability matrix](platforms/index.md) lists every role and the
+The [capability matrix](platforms/index.md) lists every role and the
 adapters that ship for it; this page is what you write when none of the shipped
 adapters fits your platform.
 
@@ -174,9 +174,9 @@ allow it.
   into a process already using that upstream elsewhere.
 - A Null must be safe to call. Whatever your role's Null returns - each is
   documented in its own header - it must let Core's algorithm
-  proceed sanely: drop-on-the-floor where a drop is harmless, `false` where the
+  proceed: discard where discarding is harmless, `false` where the
   caller has an error path to run.
-- Bounded blocking. Anything that can wedge (a `connect`, a handshake) is
+- Bounded blocking. Anything that can block indefinitely (a `connect`, a handshake) is
   bounded by an explicit timeout or deadline: a timeout tunable (e.g.
   `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS`) or a caller-supplied deadline. A
   `SolidSyslogSleepFunction`, where one is used, only paces the poll loop between

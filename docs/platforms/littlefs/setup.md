@@ -1,4 +1,4 @@
-# Setting up LittleFS
+# LittleFS setup
 
 ## What you provide
 

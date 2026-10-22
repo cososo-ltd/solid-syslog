@@ -10,7 +10,7 @@ Fills the [AtomicCounter](../../api/structSolidSyslogAtomicCounter.md) role.
 ## Requirements
 
 A C11 compiler with `<stdatomic.h>`. Where a toolchain lacks it, the
-[platform × capability matrix](../index.md) shows which other platforms fill
+[capability matrix](../index.md) shows which other platforms fill
 the AtomicCounter role.
 
 ## Security behaviour and obligations

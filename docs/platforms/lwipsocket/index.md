@@ -7,7 +7,7 @@ configuration.
 
 Fills the Datagram, Stream and Resolver [roles](../../roles/index.md), plus the
 address handle a transport reads back to send. The
-[platform x capability matrix](../index.md) shows which platform fills what.
+[capability matrix](../index.md) shows which platform fills what.
 
 ## What it ships
 

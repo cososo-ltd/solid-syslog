@@ -69,7 +69,7 @@ anatomy of an adapter and the invariants every one honours, and links each
 contract to the backends that already realise it.
 
 Which platform fills a role on your target is the
-[platform × capability matrix](../platforms/index.md).
+[capability matrix](../platforms/index.md).
 
 <!-- markdownlint-disable MD033 - the sticky is styled HTML (.postit-note in brand.css); md_in_html keeps its body as Markdown. -->
 

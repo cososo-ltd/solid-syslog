@@ -41,7 +41,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         /** NULL omits the software PARAM. Truncated to this library's 48 decoded-byte
          *  bound; RFC 5424 section 7.2.3 allows 48 characters, so multi-byte UTF-8 truncates
-         *  earlier, never later. section 7.2.3 asks that it name the generating software
+         *  earlier, never later. Section 7.2.3 asks that it name the generating software
          *  rather than repeat APP-NAME. */
         const char* Software;
         /** The version of the software Software names - your product's, not this

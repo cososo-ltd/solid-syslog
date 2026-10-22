@@ -7,7 +7,7 @@ configuration.
 
 Fills the Resolver, Datagram and Stream [roles](../../roles/index.md), plus the
 address handle they share. A TLS platform layers over the TCP stream; the
-[platform × capability matrix](../index.md) shows which provide it.
+[capability matrix](../index.md) shows which provide it.
 
 ## What it ships
 
@@ -62,7 +62,7 @@ below.
 
 Neither the datagram nor the TCP stream provides confidentiality, integrity or
 peer authentication. TLS is a separate role filled by a different platform - the
-[platform × capability matrix](../index.md) shows which - layered over this
+[capability matrix](../index.md) shows which - layered over this
 stream rather than replacing it.
 
 ### The marshal is a correctness requirement, not a tuning knob
@@ -111,7 +111,7 @@ none is stated, because the stack exposes no path MTU.
 
 A record above that size is offered to lwIP whole, and what happens to that
 first attempt is `IP_FRAG`'s decision rather than the adapter's. Only the
-outcome where lwIP tells us the send failed is recoverable: the sender then
+outcome where lwIP reports that the send failed is recoverable: the sender then
 recognises a record that could not have fitted, trims it on a UTF-8 codepoint
 boundary and sends again.
 

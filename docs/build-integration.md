@@ -26,7 +26,7 @@ You assemble the stack you need from three layers:
    sleep) and your tunables.
 
 Every role has a Core Null fallback, so omitting an adapter degrades
-safely: its `<Class>_Create` is simply never called, and nothing dangles at link
+safely: its `<Class>_Create` is never called, and nothing dangles at link
 time. You only compile the adapters you actually wire.
 
 Two facts decide everything below:
@@ -48,7 +48,7 @@ Two facts decide everything below:
 
 Choose one provider per role you need; leave the rest out and Core's Null
 object stands in. Which platform fills which role is the
-[platform × capability matrix](platforms/index.md), and each platform's own
+[capability matrix](platforms/index.md), and each platform's own
 page states what its adapters need from your build.
 
 Two things are build-specific rather than platform-specific, and belong here.
@@ -155,7 +155,7 @@ Header-configured upstreams cannot be precompiled, because `lwipopts.h`,
 `FreeRTOSConfig.h`, `mbedtls_config.h`, `ffconf.h` and their siblings change
 layout and behaviour and we cannot see your copy. These are lwIP's Raw API and
 its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel, CMSIS-RTOS2, VxWorks
-6.4, Mbed TLS, ChaN FatFs, FreeRTOS-Plus-FAT and littlefs. Each is a
+6.4, Mbed TLS, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS. Each is a
 `SolidSyslog::<Platform>` target carrying its adapter sources, which compile
 into *your* target against *your* config.
 
@@ -236,7 +236,7 @@ stack; declare it when you would rather the build state its platforms than
 infer them.
 
 `ci/consumer-smoke/` is a working consumer of this
-shape, kept honest by CI: it cross-builds with the environment scrubbed, so
+shape, and CI builds it: it cross-builds with the environment scrubbed, so
 `SOLIDSYSLOG_PLATFORMS` is the only thing that can select a platform, and it
 links them rather than merely checking the targets exist.
 
@@ -470,7 +470,7 @@ every one `#ifndef`-guarded so you override without editing the library. Two equ
   -DSOLIDSYSLOG_USER_TUNABLES_FILE="/abs/path/to/my_tunables.h"
   ```
 
-  Your `my_tunables.h` just `#define`s the values you want to change; the
+  Your `my_tunables.h` `#define`s only the values you want to change; the
   defaults header fills in the rest.
 
 - Per-value on the command line:

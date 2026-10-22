@@ -48,7 +48,7 @@ a vtable, so the library ports to an embedded OS by filling roles rather
 than editing Core. Platform packs ship for hosted and embedded targets alike,
 the hosted ones fully supported as development, test, and edge / gateway hosts.
 Which upstream fills which capability is in the
-[platform matrix](https://docs.cososo.co.uk/solid-syslog/platforms/). Bring your
+[capability matrix](https://docs.cososo.co.uk/solid-syslog/platforms/). Bring your
 own stack and the same Core runs unchanged.
 
 TLS revocation (CRL / OCSP) is outside the library's contract, and no shipped
@@ -61,7 +61,7 @@ explains why.
 Full documentation lives at
 [docs.cososo.co.uk/solid-syslog](https://docs.cososo.co.uk/solid-syslog/), organised
 around what you came to do: **Core**, **Integrate**, **Platforms**,
-**Compliance**, **API reference**, and **Maintaining**. New here?
+**Compliance**, **API reference**, and **Maintaining**.
 [Compliance in one page](https://docs.cososo.co.uk/solid-syslog/overview/) is the
 fastest orientation for evaluators.
 
@@ -84,7 +84,7 @@ and the compile-time tunables.
 
 ## Building and testing
 
-Developing the library itself? See
+To develop the library itself, see
 [Building and testing](https://docs.cososo.co.uk/solid-syslog/builds/) - the
 contributor/maintainer preset catalogue - alongside the pre-PR check budget, the BDD
 infrastructure, the CI pipeline, and the container images, all under **Maintaining**
@@ -109,7 +109,7 @@ leave unfilled.
 
 [`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per target
 configuration, on the host and under QEMU alike, each exercising the library end
-to end against a real syslog server; see
+to end against a real syslog collector; see
 [BDD testing](https://docs.cososo.co.uk/solid-syslog/bdd/).
 
 ## Compliance

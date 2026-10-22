@@ -1,6 +1,6 @@
 # Core
 
-`Core/` is the guts of SolidSyslog: it implements the syslog protocol and manages the assembly, buffering, storage and sending of log messages.
+`Core/` implements the syslog protocol and manages the assembly, buffering, storage and sending of log messages.
 
 `Core/` depends on nothing external: always compiled, typically as a library. It holds the facade you call, the pipeline that formats a record and drains it, and portable implementations for several roles. Where access to a network stack, encryption, filesystem or OS is required, an interface is declared. Platform components that satisfy those interfaces let Core build with no platform dependencies.
 
@@ -40,7 +40,7 @@ Portable [role](../roles/index.md) implementations - no platform required:
 | [`SolidSyslogSwitchingSender`](../api/SolidSyslogSwitchingSender_8h.md) | Sender - delegates to one of several inners |
 | [`SolidSyslogBlockStore`](../api/SolidSyslogBlockStore_8h.md) | Store - store-and-forward over rotating blocks |
 | [`SolidSyslogFileBlockDevice`](../api/SolidSyslogFileBlockDevice_8h.md) | BlockDevice - sequence-numbered files over a File |
-| [`SolidSyslogCrc16Policy`](../api/SolidSyslogCrc16Policy_8h.md) | SecurityPolicy - CRC-16 integrity (accidental corruption, not tamper) |
+| [`SolidSyslogCrc16Policy`](../api/SolidSyslogCrc16Policy_8h.md) | SecurityPolicy - CRC-16 integrity (accidental corruption, not tampering) |
 | [`SolidSyslogMetaSd`](../api/SolidSyslogMetaSd_8h.md) | StructuredData - sequenceId, sysUpTime, language |
 | [`SolidSyslogTimeQualitySd`](../api/SolidSyslogTimeQualitySd_8h.md) | StructuredData - tzKnown, isSynced, syncAccuracy |
 | [`SolidSyslogOriginSd`](../api/SolidSyslogOriginSd_8h.md) | StructuredData - software, swVersion, enterpriseId, ip |

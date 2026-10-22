@@ -1,4 +1,4 @@
-# Release Process
+# Release process
 
 How a SolidSyslog release is cut, for the maintainer. Releases are source-only
 (no binary artefacts) with a signed SBOM, a reproducible source-tree hash and a
@@ -53,7 +53,7 @@ sections are added by hand in the release pull request.
    against two *current-state* copies drifting apart. A release note is not a
    copy - it is a frozen record with a different lifetime. The
    [compliance matrix](rfc-compliance.md) and the
-   [platform matrix](platforms/index.md) answer *where are we now*; the release
+   [capability matrix](platforms/index.md) answer *where are we now*; the release
    note answers *where were we at this version*, which nothing else records. The
    site publishes from `main` only, so a link out of an old release resolves to
    today's state and silently loses what that release actually shipped.

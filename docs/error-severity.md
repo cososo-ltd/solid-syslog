@@ -45,19 +45,19 @@ The `CRITICAL` / `WARNING` line for setup faults is mechanically checkable:
 - `CRITICAL`: the component could not be built. `<Class>_Create` returned the shared Null
   sibling (pool exhausted, or a hard misconfig with no usable fallback). Also: a public-API
   call handed a NULL handle / argument, a caller code bug.
-- `WARNING`: the component was built and is delivering, just degraded (soft
+- `WARNING`: the component was built and is delivering, but degraded (soft
   misconfig), or the fault is an environmental / transient delivery condition that may
   clear on its own.
 
 A degraded-but-delivering component stays `WARNING` even though its fix is a code change;
 rating it `CRITICAL` would fire a handler's "everything is broken" reaction at a logger that
-is, in fact, working. The `BAD_CONFIG` category already tells the integrator a code change is
+is working. The `BAD_CONFIG` category already tells the integrator a code change is
 needed.
 
 `CRITICAL` vs `ERROR` is a *what has to change* distinction. `CRITICAL` is reserved for faults
 that clear only with a change to code or build settings: a NULL dependency, a pool sized too
 small, a wiring bug. `ERROR` is a fault that persists until something deployed changes, with no
-code change: a rejected certificate, a missing or too-short key, an unreachable server. A missing key is provisioned
+code change: a rejected certificate, a missing or too-short key, an unreachable collector. A missing key is provisioned
 in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 ## When a record is lost
@@ -129,6 +129,6 @@ codes from `SolidSyslogTcpStreamErrors.h`, so a literal per site would restate o
 once per backend. `FILE_IO_FAILED` has one for the same reason: its codes in
 `SolidSyslogFileErrors.h` are shared by every File backend. Each of these
 macros stands for one level. `BAD_CONFIG` is split: the fatal subset uses a macro, the
-degraded subset keeps an explicit `WARNING` literal (the two are genuinely different
-severities, so a single macro would be a footgun). Tests assert the concrete expected level
+degraded subset keeps an explicit `WARNING` literal (the two are different
+severities, so one macro cannot express both). Tests assert the concrete expected level
 as a literal, never the macro, so a wrong policy value is caught.

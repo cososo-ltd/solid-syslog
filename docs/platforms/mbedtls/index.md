@@ -41,7 +41,7 @@ Where trust anchors, pinned peer fingerprints and the mutual-TLS client
 credential come from is the integrator's choice rather than this adapter's. The
 stream is wired to a `SolidSyslogMbedTlsCredentials`, asked once per connection
 to install its material on the `mbedtls_ssl_config` and told once per connection
-when that material is no longer needed. A source backed by a security element, a
+when that material is no longer needed. A source backed by a secure element, a
 PSA opaque key or an encrypted store is a class implementing that role, and needs
 no change here.
 

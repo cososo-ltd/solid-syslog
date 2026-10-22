@@ -161,10 +161,10 @@ its Null object and reported - so the only evidence is what the handler says:
 [syslog] CRITICAL SolidSyslog BAD_CONFIG CREATE_NULL_STORE (3)
 ```
 
-The order matters. Wire everything at once and see nothing, and you
-cannot tell a working logger from a silent one. Seeing the faults first, then watching
-them go quiet as each collaborator arrives, is the difference between believing it works
-and knowing.
+The order matters. Wired all at once, a logger whose handler prints nothing cannot
+be told apart from one whose faults are never reported. Seeing these three faults
+first, and each one stop as its collaborator is wired in, shows that the handler is
+reached and that each collaborator was accepted.
 
 A convention worth adopting now: `NULL` as a parameter means "not supplied" and is
 reported, while a collaborator you have deliberately done without is passed as its Null
@@ -204,8 +204,8 @@ struct SolidSyslogConfig config = {
 struct SolidSyslog* logger = SolidSyslog_Create(&config);
 ```
 
-The logging itself is done as shown below. In this configuration SolidSyslog is **NOT**
-reentrant and should only be called from a single task.
+The logging itself is done as shown below. In this configuration SolidSyslog is not
+reentrant, so call it from one task only.
 
 ```c
 struct SolidSyslogMessage message = {
@@ -231,7 +231,7 @@ cannot discover for itself. `NULL` leaves it at `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LI
 480 octets by default, the size RFC 5426 section 3.2 requires every receiver to accept;
 the example's records stay under it.
 
-Most of the RAM is stack, and not where it looks. The record is built on the stack of
+Most of the RAM is stack on the logging task. The record is built on the stack of
 whichever task calls `SolidSyslog_Log`, sized by `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so that
 task has to be deep enough to hold one. In the example the logging task was still at the
 RTOS minimum inherited from the baseline and had to grow. Stage 21 fits the cap and the
@@ -306,7 +306,7 @@ struct SolidSyslogConfig config = {
 The sequence number is incremented once per record formatted, not once per record
 delivered. A record that never arrives therefore leaves a gap in the sequence rather
 than no trace at all, which is why it is worth adding before any buffering or storage
-that could drop one. Instrument first, then introduce the failure mode.
+that could drop one.
 
 Unlike a header field, an SD PARAM has no nil value: one that is unset is omitted
 entirely rather than written as `-`.
@@ -362,7 +362,7 @@ The mutex comes from your RTOS, so add its platform to the list from stage 1.
 
 UDP to TCP, by putting a [`SolidSyslogStreamSender`](api/SolidSyslogStreamSender_8h.md)
 over a TCP stream. The network retransmits rather than dropping, and a send fails when
-the collector is gone instead of succeeding into a void. Records are framed by octet
+the collector is gone instead of appearing to succeed. Records are framed by octet
 count per RFC 6587.
 
 ```c
@@ -375,7 +375,7 @@ struct SolidSyslogStreamSenderConfig senderConfig = {
 struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig);
 ```
 
-With stage 6 this completes the loss story: the transport detects loss where it happens,
+With stage 6 this completes loss detection: the transport detects loss where it happens,
 and the sequence number reveals afterwards anything the transport could not. It is also
 what makes the delivery-failed and delivery-restored events from stage 2 meaningful.
 
@@ -411,7 +411,7 @@ this element tells the collector whether that is so, and how closely. The uptime
 alongside it distinguishes a reboot from a counter wrap when the sequence restarts at
 one.
 
-It lands here, immediately before the store, for a reason. Until now a record reached
+It is added here, immediately before the store. Until now a record reached
 the collector shortly after it was raised, so its timestamp and its arrival time were
 much the same. Store-and-forward breaks that: a record can arrive hours later. The
 device should say what its clock is actually worth before that assumption goes.
@@ -492,7 +492,7 @@ sd[2] = SolidSyslogOriginSd_Create(&originConfig);
 `SwVersion` is your product's version, not SolidSyslog's. Take it from wherever your
 build already keeps it; the example passes in its CMake `project()` version.
 
-This lands after storage for a reason. While records went straight out,
+It is added after storage. While records went straight out,
 "who sent this" was implied by the connection they arrived on. Once records can replay
 hours later that stops being true, and the record has to say so itself.
 
@@ -593,13 +593,13 @@ that run one.
 library; the rest is a second concurrent TLS session: the Mbed TLS memory pool grows from
 32 to 53 KiB, and the service task's stack grows for the handshake.
 
-**Upstream is where the real cost lives.** If your device does not already run TLS,
+**Upstream.** If your device does not already run TLS,
 the library and its trust material will dominate everything on this page - expect an
 order of magnitude or more above the adapter that drives it, and read the footprint
-guidance for the specific TLS library you are considering, because it varies enormously
+guidance for the specific TLS library you are considering, because it varies widely
 with the features and ciphersuites you enable. If your device *already* holds a TLS
-session for something else - a cloud connection, OTA, a vendor framework - you paid that
-long ago, and this stage adds the adapter and a second session. That is the case the
+session for something else - a cloud connection, OTA, a vendor framework - that cost is
+already paid, and this stage adds the adapter and a second session. That is the case the
 worked integration measures, and the common one on a device with a reason to care about
 audit logging.
 
@@ -794,14 +794,14 @@ exposure in full.
 its word - a collector that requires client certificates, or a deployment where the
 device reaches the collector directly and origin has to be provable. It is not a free
 upgrade. Mutual TLS needs a certificate per device, somewhere safe to keep the private
-key, and an issuing and revocation process behind both. A device that keeps its key in
-readable flash gains the appearance of attribution without the substance. Where devices
+key, and an issuing and revocation process behind both. A key kept in readable flash can be
+copied, and a copy lets another device authenticate as this one. Where devices
 are already identified at another layer, or where there is no device PKI to build on,
-server-authenticated TLS is an honest place to stop.
+server-authenticated TLS is a reasonable place to stop.
 
 **Cost.** Flash ~75 B, RAM ~2.1k. Presenting a certificate costs almost no code; the RAM
 is the TLS library's memory pool, grown to keep the example's margin for fragmentation
-once the client certificate is carried through the handshake. Note that the example
+once the client certificate is carried through the handshake. The example
 device already holds a client certificate for its own broker session, so this is the cost
 of *using* credentials, not of provisioning them - a device reaching for mutual TLS from
 a standing start also has to store and parse them.
@@ -967,7 +967,7 @@ stack are only trustworthy when everything that runs on it is there.
 
 ## Where to go next
 
-- [Adding it to your build](build-integration.md): the build detail behind the nods on this page, plus the tunables.
+- [Adding it to your build](build-integration.md): the build detail behind this page, plus the tunables.
 - [Structured data](structured-data.md): authoring the evidence elements, and your own.
 - [Error handling and severity](error-severity.md): reading the events from stage 2.
 - [TLS](tls.md): what each TLS pack checks, including a peer authorised by its fingerprint.

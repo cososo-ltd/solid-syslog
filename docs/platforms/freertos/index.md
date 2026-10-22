@@ -3,7 +3,7 @@
 `Platform/FreeRtos/` wraps FreeRTOS kernel primitives
 ([FreeRTOS documentation](https://www.freertos.org/Documentation/00-Overview)).
 Networking comes from a separate platform; the
-[platform × capability matrix](../index.md) shows which fill it.
+[capability matrix](../index.md) shows which fill it.
 
 Fills the Mutex [role](../../roles/index.md), plus a sysUpTime callback. It ships
 no clock and no sleep callback. Where a backend takes a

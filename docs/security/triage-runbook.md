@@ -1,4 +1,4 @@
-# Vulnerability Triage Runbook
+# Vulnerability triage runbook
 
 This is the maintainer's operational counterpart to [Security policy](../../SECURITY.md):
 how a vulnerability report is handled end-to-end, from receipt to retrospective.

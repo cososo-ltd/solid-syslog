@@ -4,7 +4,7 @@ Wiring `SolidSyslogMbedTlsStream` so a `SolidSyslogStreamSender` delivers
 RFC 5425 syslog over TLS. What any TLS stream must do is under
 [TLS obligations](../../tls.md); what this pack needs and reports is on the
 [Mbed TLS](index.md) page. Every config field is documented on its struct. This
-page is the order to wire them in, and what bites on the way.
+page is the order to wire them in, and what commonly goes wrong on the way.
 
 ## What to link
 
@@ -81,7 +81,7 @@ These then fail in ways that are hard to read:
 Without one, `mbedtls_entropy_func` never reaches its threshold and every
 `mbedtls_ctr_drbg_seed` returns `MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED`.
 Production entropy is a hardware question: a true random number generator, a
-security element, or a board-specific source.
+secure element, or a board-specific source.
 
 **Call `psa_crypto_init()` after the DRBG is seeded.** Mbed TLS 3.6 routes
 TLS 1.3 through PSA; uninitialised, the first handshake state transition returns

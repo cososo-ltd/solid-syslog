@@ -1,4 +1,4 @@
-# Container Images
+# Container images
 
 ## Images in use
 

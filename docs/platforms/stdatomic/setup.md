@@ -19,7 +19,7 @@ build needs. See
 read.
 
 The compiler must support C11 atomics. Where a toolchain does not, the
-[platform × capability matrix](../index.md) shows which other platforms fill
+[capability matrix](../index.md) shows which other platforms fill
 the same role.
 
 ## Wiring it

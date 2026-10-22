@@ -10,7 +10,7 @@ See a complete integration, one commit at a time, with every byte measured:
 and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0)
 (Make).
 
-Pick a lane:
+The documentation is in six sections:
 
 - [Core](#core): the library itself - the protocol, the pipeline, and the portable pieces that run the same everywhere.
 - [Integrate it](#integrate): get a syslog stack compiling and sending in your product.
@@ -23,7 +23,7 @@ Pick a lane:
 
 ## Core
 
-- [Core](core/index.md): what is always compiled and depends on nothing external - the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations. Where a platform exists to reach your hardware, Core exists to be the same everywhere.
+- [Core](core/index.md): what is always compiled and depends on nothing external - the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations.
 
 ## Integrate
 
@@ -44,7 +44,7 @@ TLS library, a filesystem, an OS - behind the library's vtables. Each page says
 what that platform ships and what wiring it needs; the pages above speak of them
 in the general case.
 
-- [Platform × capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
+- [capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
 - [Porting guide](porting.md): nothing shipped fits your target. The role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the vtable role contracts, each with its shipped reference implementation.
 - [Port a TLS stream](tls-porting.md): wrapping a TLS library the shipped platforms do not cover, and what a port gets wrong that the contract does not spell out.
 - [The roles](roles/index.md): each role's vtable contract, and the backends that realise it.

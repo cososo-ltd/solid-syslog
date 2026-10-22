@@ -1,4 +1,4 @@
-# Release Verification Guide
+# Release verification guide
 
 You have a SolidSyslog release on disk and want to convince yourself, or an
 auditor, that it was produced by the repo it claims to come from. This guide

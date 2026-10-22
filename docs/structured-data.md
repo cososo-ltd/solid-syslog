@@ -157,6 +157,6 @@ message buffer, so a value can never overrun it.
 | The library owns | You own |
 |---|---|
 | Brackets, `SD-ID`, `PARAM-NAME="..."` punctuation | The element and parameter *names* |
-| section 6.3.3 value escaping + UTF-8 validation | The parameter *values* |
+| Section 6.3.3 value escaping + UTF-8 validation | The parameter *values* |
 | Name length bound + `NULL`-name suppression | Valid name characters (section 6.3.2) |
 | Buffer bounding | Registering the SD (`Config.Sd[]` or `LogWithSd`), and its storage/lifetime |

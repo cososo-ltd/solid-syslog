@@ -15,9 +15,9 @@ Thanks for using SolidSyslog. Here is where to get help.
   [Discussions Q&A](https://github.com/cososo-ltd/solid-syslog/discussions/categories/q-a).
   Ideas and show-and-tell posts are welcome in
   [Discussions](https://github.com/cososo-ltd/solid-syslog/discussions) too.
-- **Found a bug or want a concrete feature?** Open an issue using the templates —
+- **Found a bug or want a concrete feature?** Open an issue using the templates -
   a clear, reproducible report is the fastest route to a fix.
-- Please search existing discussions and issues first — someone may already have
+- Please search existing discussions and issues first - someone may already have
   asked.
 
 ## Security issues
