@@ -33,6 +33,7 @@ set(BDD_TARGET_TEST_INCLUDE_DIRS
 
 if(SOLIDSYSLOG_POSIX)
     list(APPEND BDD_TARGET_TEST_SOURCES
+        BddTargetBlockFilesTest.cpp
         BddTargetCommandLineTest.cpp
         BddTargetInteractiveTest.cpp
         BddTargetServiceThreadTest.cpp
@@ -40,6 +41,7 @@ if(SOLIDSYSLOG_POSIX)
         BddTargetSwitchConfigTest.cpp
     )
     list(APPEND BDD_TARGET_PRODUCTION_SOURCES
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetBlockFiles.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Linux/BddTargetCommandLine.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetServiceThread.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStderrErrorHandler.c

@@ -223,6 +223,7 @@ vxworks64_add_test(BddTargetVxWorks64Test
     SOURCES
         BddTargetVxWorks64Test.cpp
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/VxWorks64/BddTargetVxWorks64.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetBlockFiles.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetInteractive.c
