@@ -573,6 +573,17 @@ TEST(SolidSyslogWinsockTcpStream, CloseIsNoOpWhenNotOpen)
     CALLED_FAKE(WinsockFake_Close, NEVER);
 }
 
+TEST(SolidSyslogWinsockTcpStream, OpeningAStreamThatIsAlreadyOpenClosesTheSocketItHeld)
+{
+    SolidSyslogStream_Open(stream, addr);
+    const SOCKET firstFd = WinsockFake_SocketFd();
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE(WinsockFake_Close, ONCE);
+    CHECK(firstFd == WinsockFake_LastClosedFd());
+}
+
 TEST(SolidSyslogWinsockTcpStream, ReadCallsRecvOnce)
 {
     SolidSyslogStream_Open(stream, addr);

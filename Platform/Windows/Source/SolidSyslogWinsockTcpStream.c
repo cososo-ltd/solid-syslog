@@ -225,6 +225,9 @@ static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct S
     const struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
+    /* Opening what is already open would otherwise lose the socket it holds,
+     * and Winsock's handle table is finite. */
+    WinsockTcpStream_Close(base);
     self->Fd = WinsockTcpStream_OpenAndConfigureSocket();
     if (WinsockTcpStream_IsSocketValid(self->Fd))
     {
