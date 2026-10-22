@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <algorithm>
+#include <iterator>
 #include <string>
 
 namespace
@@ -16,14 +18,11 @@ const char* presentPaths[4] = {};
 bool ExistsInList(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    for (const char* present : presentPaths)
-    {
-        if ((present != nullptr) && (strcmp(present, path) == 0))
-        {
-            return true;
-        }
-    }
-    return false;
+    return std::any_of(
+        std::begin(presentPaths),
+        std::end(presentPaths),
+        [path](const char* present) { return (present != nullptr) && (strcmp(present, path) == 0); }
+    );
 }
 
 struct SolidSyslogFile listFile = {};
@@ -49,7 +48,7 @@ TEST_GROUP(BddTargetBlockFiles)
 {
     void setup() override
     {
-        memset(presentPaths, 0, sizeof(presentPaths));
+        std::fill(std::begin(presentPaths), std::end(presentPaths), nullptr);
         listFile.Exists = ExistsInList;
     }
 };
