@@ -107,13 +107,7 @@ static inline struct SolidSyslogWinsockDatagram* WinsockDatagram_SelfFromBase(st
 
 void SolidSyslogWinsockDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogWinsockDatagram* self = WinsockDatagram_SelfFromBase(base);
-    if (WinsockDatagram_IsSocketValid(self->Fd))
-    {
-        Winsock_closesocket(self->Fd);
-        self->Fd = INVALID_SOCKET;
-        self->Connected = false;
-    }
+    WinsockDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullDatagram_Get();
@@ -131,7 +125,6 @@ static bool WinsockDatagram_Open(struct SolidSyslogDatagram* base)
      * and Winsock's handle table is finite. */
     WinsockDatagram_Close(base);
     self->Fd = Winsock_socket(AF_INET, SOCK_DGRAM, 0);
-    self->Connected = false;
     return WinsockDatagram_IsSocketValid(self->Fd);
 }
 

@@ -68,13 +68,7 @@ static inline struct SolidSyslogPosixDatagram* PosixDatagram_SelfFromBase(struct
 
 void SolidSyslogPosixDatagram_Cleanup(struct SolidSyslogDatagram* base)
 {
-    struct SolidSyslogPosixDatagram* self = PosixDatagram_SelfFromBase(base);
-    if (PosixDatagram_IsFileDescriptorValid(self->Fd))
-    {
-        close(self->Fd);
-        self->Fd = INVALID_FD;
-        self->Connected = false;
-    }
+    PosixDatagram_Close(base);
     /* Overwrite the abstract base with the shared NullDatagram vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullDatagram_Get();
@@ -92,7 +86,6 @@ static bool PosixDatagram_Open(struct SolidSyslogDatagram* base)
      * holds, and the process's descriptor table is finite. */
     PosixDatagram_Close(base);
     self->Fd = socket(AF_INET, SOCK_DGRAM, 0);
-    self->Connected = false;
     return PosixDatagram_IsFileDescriptorValid(self->Fd);
 }
 
