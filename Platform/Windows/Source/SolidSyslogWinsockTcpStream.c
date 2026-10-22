@@ -14,6 +14,7 @@
 #include <ws2tcpip.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogStreamCategories.h"
 #include "SolidSyslogStreamDefinition.h"
@@ -121,6 +122,10 @@ enum
 static uint32_t WinsockTcpStream_NullConnectTimeoutGetter(void* context);
 
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static bool WinsockTcpStream_TakeSocketAndConnect(
+    struct SolidSyslogWinsockTcpStream* self,
+    const struct sockaddr_in* sin
+);
 static bool WinsockTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize WinsockTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void WinsockTcpStream_Close(struct SolidSyslogStream* base);
@@ -222,12 +227,29 @@ static uint32_t WinsockTcpStream_Version(struct SolidSyslogStream* base)
 static bool WinsockTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogWinsockTcpStream* self = WinsockTcpStream_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogWinsockAddress_AsConstSockaddrIn(addr);
     bool connected = false;
+    if (WinsockTcpStream_IsSocketValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        WinsockTcpStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        connected = WinsockTcpStream_TakeSocketAndConnect(self, SolidSyslogWinsockAddress_AsConstSockaddrIn(addr));
+    }
+    return connected;
+}
 
-    /* Opening what is already open would otherwise lose the socket it holds,
-     * and Winsock's handle table is finite. */
-    WinsockTcpStream_Close(base);
+static bool WinsockTcpStream_TakeSocketAndConnect(
+    struct SolidSyslogWinsockTcpStream* self,
+    const struct sockaddr_in* sin
+)
+{
+    bool connected = false;
     self->Fd = WinsockTcpStream_OpenAndConfigureSocket();
     if (WinsockTcpStream_IsSocketValid(self->Fd))
     {

@@ -725,22 +725,31 @@ TEST(SolidSyslogOpenSslStream, CloseFreesBioMethod)
     CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
 }
 
-TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenFreesTheContextItHeld)
+TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
 {
     SolidSyslogStream_Open(stream, addr);
+    ErrorHandlerFake_Install(nullptr);
 
-    SolidSyslogStream_Open(stream, addr);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
 
-    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogOpenSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN
+    );
 }
 
-TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenClosesTheTransportItHeld)
+TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSessionItHoldsUntouched)
 {
     SolidSyslogStream_Open(stream, addr);
 
     SolidSyslogStream_Open(stream, addr);
 
-    CALLED_FAKE_ON(StreamFake_Close, transport, ONCE);
+    CALLED_FAKE(OpenSslFake_CtxNew, ONCE);
+    CALLED_FAKE(OpenSslFake_CtxFree, NEVER);
+    CALLED_FAKE_ON(StreamFake_Open, transport, ONCE);
+    CALLED_FAKE_ON(StreamFake_Close, transport, NEVER);
 }
 
 TEST(SolidSyslogOpenSslStream, DestroyFreesSslContext)

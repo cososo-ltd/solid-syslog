@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStream.h"
 #include "SolidSyslogPosixAddressPrivate.h"
 #include "SolidSyslogPosixTcpStreamErrors.h"
@@ -44,6 +45,7 @@ enum
 static uint32_t PosixTcpStream_NullConnectTimeoutGetter(void* context);
 
 static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static bool PosixTcpStream_TakeSocketAndConnect(struct SolidSyslogPosixTcpStream* self, const struct sockaddr_in* sin);
 static bool PosixTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static SolidSyslogSsize PosixTcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static void PosixTcpStream_Close(struct SolidSyslogStream* base);
@@ -139,12 +141,26 @@ static inline bool PosixTcpStream_IsFileDescriptorValid(int fd)
 static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogPosixTcpStream* self = PosixTcpStream_SelfFromBase(base);
-    const struct sockaddr_in* sin = SolidSyslogPosixAddress_AsConstSockaddrIn(addr);
     bool connected = false;
+    if (PosixTcpStream_IsFileDescriptorValid(self->Fd))
+    {
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        PosixTcpStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        connected = PosixTcpStream_TakeSocketAndConnect(self, SolidSyslogPosixAddress_AsConstSockaddrIn(addr));
+    }
+    return connected;
+}
 
-    /* Opening what is already open would otherwise lose the descriptor it
-     * holds, and the process's descriptor table is finite. */
-    PosixTcpStream_Close(base);
+static bool PosixTcpStream_TakeSocketAndConnect(struct SolidSyslogPosixTcpStream* self, const struct sockaddr_in* sin)
+{
+    bool connected = false;
     self->Fd = PosixTcpStream_OpenAndConfigureSocket();
     if (PosixTcpStream_IsFileDescriptorValid(self->Fd))
     {

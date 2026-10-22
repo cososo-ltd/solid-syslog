@@ -573,15 +573,29 @@ TEST(SolidSyslogWinsockTcpStream, CloseIsNoOpWhenNotOpen)
     CALLED_FAKE(WinsockFake_Close, NEVER);
 }
 
-TEST(SolidSyslogWinsockTcpStream, OpeningAStreamThatIsAlreadyOpenClosesTheSocketItHeld)
+TEST(SolidSyslogWinsockTcpStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
 {
     SolidSyslogStream_Open(stream, addr);
-    const SOCKET firstFd = WinsockFake_SocketFd();
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogWinsockTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogStream_Open(stream, addr);
 
     SolidSyslogStream_Open(stream, addr);
 
-    CALLED_FAKE(WinsockFake_Close, ONCE);
-    CHECK(firstFd == WinsockFake_LastClosedFd());
+    CALLED_FAKE(WinsockFake_Socket, ONCE);
+    CALLED_FAKE(WinsockFake_Close, NEVER);
 }
 
 TEST(SolidSyslogWinsockTcpStream, ReadCallsRecvOnce)

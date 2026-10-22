@@ -343,15 +343,6 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectNotStartedWhenTheStackReject
     CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED);
 }
 
-TEST(SolidSyslogPlusTcpTcpStream, OpenIsIdempotent)
-
-{
-    openStream();
-    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
-    CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
-    CALLED_FAKE(FreeRtosSocketsFake_Connect, ONCE);
-}
-
 TEST(SolidSyslogPlusTcpTcpStream, SendFailsBeforeOpen)
 
 {
@@ -515,6 +506,32 @@ TEST(SolidSyslogPlusTcpTcpStream, DestroyAfterCloseDoesNotCloseAgain)
     SolidSyslogPlusTcpTcpStream_Destroy(stream);
     stream = nullptr;
     CALLED_FAKE(FreeRtosSocketsFake_Closesocket, ONCE);
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogStream_Open(stream, addr);
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogPlusTcpTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE(FreeRtosSocketsFake_Socket, ONCE);
+    CALLED_FAKE(FreeRtosSocketsFake_Connect, ONCE);
+    CALLED_FAKE(FreeRtosSocketsFake_Closesocket, NEVER);
 }
 
 // clang-format off

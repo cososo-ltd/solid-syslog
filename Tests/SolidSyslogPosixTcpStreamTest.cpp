@@ -449,15 +449,29 @@ TEST(SolidSyslogPosixTcpStream, CloseIsNoOpWhenNotOpen)
     CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
-TEST(SolidSyslogPosixTcpStream, OpeningAStreamThatIsAlreadyOpenClosesTheSocketItHeld)
+TEST(SolidSyslogPosixTcpStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
 {
     SolidSyslogStream_Open(stream, addr);
-    const int firstFd = SocketFake_SocketFd();
+    ErrorHandlerFake_Install(nullptr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogPosixTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogPosixTcpStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSocketItHoldsUntouched)
+{
+    SolidSyslogStream_Open(stream, addr);
 
     SolidSyslogStream_Open(stream, addr);
 
-    CALLED_FAKE(SocketFake_Close, ONCE);
-    LONGS_EQUAL(firstFd, SocketFake_LastClosedFd());
+    CALLED_FAKE(SocketFake_Socket, ONCE);
+    CALLED_FAKE(SocketFake_Close, NEVER);
 }
 
 TEST(SolidSyslogPosixTcpStream, ReadCallsRecvOnce)
