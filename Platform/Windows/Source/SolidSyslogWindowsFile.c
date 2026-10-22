@@ -4,6 +4,7 @@
 
 #include "SolidSyslogWindowsFile.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <io.h>
 #include <share.h>
@@ -13,6 +14,8 @@
 #include <sys/stat.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogWindowsFileErrors.h"
@@ -46,6 +49,8 @@ static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path);
 static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base);
+static inline void WindowsFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
+static inline bool WindowsFile_IsWholeTransfer(int transferred, size_t count);
 
 void SolidSyslogWindowsFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -65,12 +70,7 @@ void SolidSyslogWindowsFile_Initialise(struct SolidSyslogFile* base)
 
 void SolidSyslogWindowsFile_Cleanup(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    if (self->Fd != INVALID_FD)
-    {
-        _close(self->Fd);
-        self->Fd = INVALID_FD;
-    }
+    WindowsFile_Close(base);
     /* Overwrite the abstract base with the shared NullFile vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullFile_Get();
@@ -81,6 +81,7 @@ static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct Sol
     return (struct SolidSyslogWindowsFile*) base;
 }
 
+/* _sopen_s answers the errno itself rather than setting it. */
 static bool WindowsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
@@ -89,18 +90,46 @@ static bool WindowsFile_Open(struct SolidSyslogFile* base, const char* path)
     if (err != 0)
     {
         self->Fd = INVALID_FD;
+        WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, (int) err);
     }
     return self->Fd != INVALID_FD;
+}
+
+/* The fault, with the CRT errno behind it when the call left one. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- every caller passes a named code and the errno it read
+static inline void WindowsFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno)
+{
+    if (nativeErrno != 0)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY,
+            &SolidSyslogWindowsFileErrorSource,
+            SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+            (int32_t) code,
+            (int32_t) nativeErrno
+        );
+    }
+    else
+    {
+        WindowsFile_Report(SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code);
+    }
 }
 
 static void WindowsFile_Close(struct SolidSyslogFile* base)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-
-    if (self->Fd != INVALID_FD)
+    if (WindowsFile_IsOpen(base))
     {
-        _close(self->Fd);
+        int status = _close(self->Fd);
+        /* Read errno straight after the call that set it, with nothing between
+         * (MISRA 22.10). */
+        int closeErrno = (status != 0) ? errno : 0;
+        /* The descriptor is released whether or not the close could flush. */
         self->Fd = INVALID_FD;
+        if (status != 0)
+        {
+            WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, closeErrno);
+        }
     }
 }
 
@@ -113,19 +142,45 @@ static bool WindowsFile_IsOpen(struct SolidSyslogFile* base)
 static bool WindowsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    return _read(self->Fd, buf, (unsigned int) count) == (int) count;
+    int transferred = _read(self->Fd, buf, (unsigned int) count);
+    /* A short read sets no errno; the store judges it. */
+    int readErrno = (transferred < 0) ? errno : 0;
+    if (transferred < 0)
+    {
+        WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, readErrno);
+    }
+    return WindowsFile_IsWholeTransfer(transferred, count);
+}
+
+/* The CRT's _read and _write answer -1, or how many bytes moved. */
+static inline bool WindowsFile_IsWholeTransfer(int transferred, size_t count)
+{
+    return (transferred >= 0) && ((size_t) transferred == count);
 }
 
 static bool WindowsFile_Write(struct SolidSyslogFile* base, const void* buf, size_t count)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    return _write(self->Fd, buf, (unsigned int) count) == (int) count;
+    int written = _write(self->Fd, buf, (unsigned int) count);
+    /* A short write sets no errno. */
+    int writeErrno = (written < 0) ? errno : 0;
+    bool wrote = WindowsFile_IsWholeTransfer(written, count);
+    if (!wrote)
+    {
+        WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, writeErrno);
+    }
+    return wrote;
 }
 
 static void WindowsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    _lseeki64(self->Fd, (__int64) offset, SEEK_SET);
+    __int64 position = _lseeki64(self->Fd, (__int64) offset, SEEK_SET);
+    int seekErrno = (position < 0) ? errno : 0;
+    if (position < 0)
+    {
+        WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, seekErrno);
+    }
 }
 
 static bool WindowsFile_Size(struct SolidSyslogFile* base, size_t* size)
@@ -133,16 +188,27 @@ static bool WindowsFile_Size(struct SolidSyslogFile* base, size_t* size)
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
     __int64 end = _lseeki64(self->Fd, 0, SEEK_END);
     bool known = end >= 0;
+    int sizeErrno = known ? 0 : errno;
+    if (!known)
+    {
+        WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SIZE_FAILED, sizeErrno);
+    }
     *size = known ? (size_t) end : 0U;
     return known;
 }
 
+/* _chsize_s answers the errno itself rather than setting it. */
 static void WindowsFile_Truncate(struct SolidSyslogFile* base)
 {
     struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
-    _chsize_s(self->Fd, 0);
+    errno_t err = _chsize_s(self->Fd, 0);
+    if (err != 0)
+    {
+        WindowsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, (int) err);
+    }
 }
 
+/* A path that is not there is the answer, not a fault, so nothing is reported. */
 static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
