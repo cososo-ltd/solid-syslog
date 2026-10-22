@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void LwipSocketsFake_Reset(void);
 
     /* The descriptor lwip_socket answers with. Defaults to a valid one; set a
-     * negative value to make the stack refuse the socket. */
+     * negative value to make the stack refuse the socket, with errno ENFILE. */
     void LwipSocketsFake_SetSocketResult(int result);
 
     /* lwip_socket spy. */
@@ -37,7 +37,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const struct sockaddr_in* LwipSocketsFake_LastSendToAddress(void);
     socklen_t LwipSocketsFake_LastSendToAddressLength(void);
 
-    /* What lwip_fcntl answers. Defaults to 0, the command accepted. */
+    /* What lwip_fcntl answers. Defaults to 0, the command accepted; anything
+     * else is a refusal, with errno EINVAL. */
     void LwipSocketsFake_SetFcntlResult(int result);
 
     /* lwip_fcntl spy. FcntlCallsBeforeConnect is the count as it stood when
@@ -83,7 +84,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int LwipSocketsFake_LastRecvFlags(void);
 
     /* What lwip_select answers: the number of ready descriptors, or 0 for the
-     * budget expiring, or -1. Defaults to one ready descriptor, and on a
+     * budget expiring, or -1 with errno EINTR. Defaults to one ready descriptor, and on a
      * positive answer the descriptor the caller watched for writing stays set.
      * LwipSocketsFake_SetSelectSignalsException puts it in the exception set
      * instead. */
