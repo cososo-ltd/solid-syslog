@@ -142,6 +142,9 @@ static bool PosixTcpStream_Open(struct SolidSyslogStream* base, const struct Sol
     const struct sockaddr_in* sin = SolidSyslogPosixAddress_AsConstSockaddrIn(addr);
     bool connected = false;
 
+    /* Opening what is already open would otherwise lose the descriptor it
+     * holds, and the process's descriptor table is finite. */
+    PosixTcpStream_Close(base);
     self->Fd = PosixTcpStream_OpenAndConfigureSocket();
     if (PosixTcpStream_IsFileDescriptorValid(self->Fd))
     {
