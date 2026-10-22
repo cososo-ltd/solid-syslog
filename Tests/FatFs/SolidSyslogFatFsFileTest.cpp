@@ -3,18 +3,42 @@
 
 extern "C"
 {
+#include "ErrorHandlerFake.h"
 #include "FatFsFake.h"
 #include "SolidSyslogFatFsFile.h"
 #include "SolidSyslogFile.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileErrors.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFatFsFileErrors.h"
+#include "SolidSyslogPrival.h"
 #include "ff.h"
 }
 
 using namespace CososoTesting;
 
 static const char* const TEST_PATH = "test.log";
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// the FRESULT behind it.
+#define CHECK_FAILURE_REPORTED_WITH_RESULT(code, result) \
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(          \
+        SOLIDSYSLOG_SEVERITY_ERROR,                      \
+        &SolidSyslogFatFsFileErrorSource,                \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,                  \
+        code,                                            \
+        result                                           \
+    )
+
+// Asserts the call raised exactly the File fault naming this operation, with
+// no code behind it.
+#define CHECK_FAILURE_REPORTED_ALONE(code) \
+    CHECK_ERROR_REPORTED_ONCE(             \
+        SOLIDSYSLOG_SEVERITY_ERROR,        \
+        &SolidSyslogFatFsFileErrorSource,  \
+        SOLIDSYSLOG_CAT_FILE_IO_FAILED,    \
+        code                               \
+    )
 
 #define CHECK_FILE_IS_OPEN() CHECK_TRUE(SolidSyslogFile_IsOpen(file))
 #define CHECK_FILE_CLOSED() CHECK_FALSE(SolidSyslogFile_IsOpen(file))
@@ -250,6 +274,142 @@ TEST(SolidSyslogFatFsFile, DeleteReportsFalseWhenFUnlinkFails)
 {
     FatFsFake_SetUnlinkResult(FR_DENIED);
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogFatFsFile, OpenThatFailsReportsTheFailedOpenAndItsResult)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetOpenResult(FR_NO_PATH);
+
+    SolidSyslogFile_Open(file, TEST_PATH);
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, FR_NO_PATH);
+}
+
+TEST(SolidSyslogFatFsFile, CloseThatFailsReportsTheFailedCloseAndItsResult)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+
+    Close();
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, FR_DISK_ERR);
+}
+
+TEST(SolidSyslogFatFsFile, CloseThatFailsStillLeavesTheFileClosed)
+{
+    Open();
+    FatFsFake_SetCloseResult(FR_DISK_ERR);
+
+    Close();
+
+    CHECK_FILE_CLOSED();
+}
+
+TEST(SolidSyslogFatFsFile, ReadThatFailsReportsTheFailedReadAndItsResult)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetReadResult(FR_DISK_ERR);
+
+    SolidSyslogFile_Read(file, buffer, sizeof(buffer));
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, FR_DISK_ERR);
+}
+
+TEST(SolidSyslogFatFsFile, AShortReadReportsNothing)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetReadBytesReturned(3);
+
+    SolidSyslogFile_Read(file, buffer, sizeof(buffer));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogFatFsFile, WriteThatFailsReportsTheFailedWriteAndItsResult)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetWriteResult(FR_DISK_ERR);
+
+    SolidSyslogFile_Write(file, buffer, sizeof(buffer));
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, FR_DISK_ERR);
+}
+
+TEST(SolidSyslogFatFsFile, AShortWriteReportsTheFailedWriteAlone)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetWriteBytesReturned(3);
+
+    SolidSyslogFile_Write(file, buffer, sizeof(buffer));
+
+    CHECK_FAILURE_REPORTED_ALONE(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED);
+}
+
+TEST(SolidSyslogFatFsFile, SyncThatFailsReportsTheFailedSyncAndItsResult)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetSyncResult(FR_DISK_ERR);
+
+    SolidSyslogFile_Write(file, buffer, sizeof(buffer));
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_SYNC_FAILED, FR_DISK_ERR);
+}
+
+TEST(SolidSyslogFatFsFile, SeekToThatFailsReportsTheFailedSeekAndItsResult)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetLseekResult(FR_DISK_ERR);
+
+    SolidSyslogFile_SeekTo(file, 42);
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, FR_DISK_ERR);
+}
+
+TEST(SolidSyslogFatFsFile, TruncateThatFailsReportsTheFailedTruncateAndItsResult)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetTruncateResult(FR_DENIED);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, FR_DENIED);
+}
+
+TEST(SolidSyslogFatFsFile, TruncateWhoseSeekFailsReportsTheFailedTruncateAndTruncatesNothing)
+{
+    Open();
+    ErrorHandlerFake_Install(nullptr);
+    FatFsFake_SetLseekResult(FR_DISK_ERR);
+
+    SolidSyslogFile_Truncate(file);
+
+    CHECK_FAILURE_REPORTED_WITH_RESULT(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, FR_DISK_ERR);
+    CALLED_FAKE(FatFsFake_Truncate, NEVER);
+}
+
+TEST(SolidSyslogFatFsFile, CallsThatSucceedReportNothing)
+{
+    ErrorHandlerFake_Install(nullptr);
+    Open();
+
+    size_t size = 0U;
+    SolidSyslogFile_Write(file, buffer, sizeof(buffer));
+    SolidSyslogFile_Size(file, &size);
+    SolidSyslogFile_SeekTo(file, 0);
+    SolidSyslogFile_Read(file, buffer, 0);
+    SolidSyslogFile_Truncate(file);
+    Close();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
 TEST(SolidSyslogFatFsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)

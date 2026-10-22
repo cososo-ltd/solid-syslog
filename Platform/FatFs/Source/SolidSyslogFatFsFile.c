@@ -6,10 +6,13 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFatFsFileErrors.h"
 #include "SolidSyslogFatFsFilePrivate.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogNullFile.h"
 #include "ff.h"
@@ -31,6 +34,8 @@ static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogFatFsFile* FatFsFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline FIL* FatFsFile_Handle(struct SolidSyslogFile* base);
+static inline void FatFsFile_ReportFailure(enum SolidSyslogFileErrors code, FRESULT result);
+static inline bool FatFsFile_Sync(struct SolidSyslogFile* base);
 
 void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -66,8 +71,33 @@ static void FatFsFile_Close(struct SolidSyslogFile* base)
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
     if (self->IsOpen)
     {
-        f_close(&self->Fp);
+        FRESULT result = f_close(&self->Fp);
+        /* The file object is released whether or not the close could flush. */
         self->IsOpen = false;
+        if (result != FR_OK)
+        {
+            FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_CLOSE_FAILED, result);
+        }
+    }
+}
+
+/* The fault, with the FRESULT behind it when the call answered one. A short
+ * transfer that FatFs answers FR_OK leaves no code. */
+static inline void FatFsFile_ReportFailure(enum SolidSyslogFileErrors code, FRESULT result)
+{
+    if (result != FR_OK)
+    {
+        SolidSyslog_ErrorWithNativeCode(
+            SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY,
+            &SolidSyslogFatFsFileErrorSource,
+            SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+            (int32_t) code,
+            (int32_t) result
+        );
+    }
+    else
+    {
+        FatFsFile_Report(SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_FILE_IO_FAILED, code);
     }
 }
 
@@ -76,6 +106,10 @@ static bool FatFsFile_Open(struct SolidSyslogFile* base, const char* path)
     struct SolidSyslogFatFsFile* self = FatFsFile_SelfFromBase(base);
     FRESULT result = f_open(&self->Fp, path, FATFSFILE_READ_WRITE_OR_CREATE);
     self->IsOpen = (result == FR_OK);
+    if (!self->IsOpen)
+    {
+        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, result);
+    }
     return self->IsOpen;
 }
 
@@ -88,6 +122,11 @@ static bool FatFsFile_Read(struct SolidSyslogFile* base, void* buf, size_t count
 {
     UINT bytesRead = 0U;
     FRESULT result = f_read(FatFsFile_Handle(base), buf, (UINT) count, &bytesRead);
+    /* A short read is FR_OK with fewer bytes; the store judges it. */
+    if (result != FR_OK)
+    {
+        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_READ_FAILED, result);
+    }
     return (result == FR_OK) && (bytesRead == count);
 }
 
@@ -100,13 +139,36 @@ static bool FatFsFile_Write(struct SolidSyslogFile* base, const void* buf, size_
 {
     UINT bytesWritten = 0U;
     FRESULT result = f_write(FatFsFile_Handle(base), buf, (UINT) count, &bytesWritten);
+    /* A full volume is FR_OK with fewer bytes: a failed write with no code. */
     bool wroteAllData = (result == FR_OK) && (bytesWritten == count);
-    return wroteAllData && (f_sync(FatFsFile_Handle(base)) == FR_OK);
+    if (wroteAllData)
+    {
+        wroteAllData = FatFsFile_Sync(base);
+    }
+    else
+    {
+        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, result);
+    }
+    return wroteAllData;
+}
+
+static inline bool FatFsFile_Sync(struct SolidSyslogFile* base)
+{
+    FRESULT result = f_sync(FatFsFile_Handle(base));
+    if (result != FR_OK)
+    {
+        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SYNC_FAILED, result);
+    }
+    return result == FR_OK;
 }
 
 static void FatFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)
 {
-    f_lseek(FatFsFile_Handle(base), (FSIZE_t) offset);
+    FRESULT result = f_lseek(FatFsFile_Handle(base), (FSIZE_t) offset);
+    if (result != FR_OK)
+    {
+        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SEEK_FAILED, result);
+    }
 }
 
 static bool FatFsFile_Size(struct SolidSyslogFile* base, size_t* size)
@@ -116,12 +178,23 @@ static bool FatFsFile_Size(struct SolidSyslogFile* base, size_t* size)
     return true;
 }
 
+/* f_truncate cuts the file at its current position, so the seek to the start
+ * is part of the truncate: a seek that fails leaves the file where it was,
+ * and is reported as the truncate failing. */
 static void FatFsFile_Truncate(struct SolidSyslogFile* base)
 {
-    f_lseek(FatFsFile_Handle(base), 0);
-    f_truncate(FatFsFile_Handle(base));
+    FRESULT result = f_lseek(FatFsFile_Handle(base), 0);
+    if (result == FR_OK)
+    {
+        result = f_truncate(FatFsFile_Handle(base));
+    }
+    if (result != FR_OK)
+    {
+        FatFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_TRUNCATE_FAILED, result);
+    }
 }
 
+/* A path that is not there is the answer, not a fault, so nothing is reported. */
 static bool FatFsFile_Exists(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
