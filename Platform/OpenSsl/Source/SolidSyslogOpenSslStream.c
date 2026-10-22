@@ -109,6 +109,7 @@ static inline bool OpenSslStream_IsChainTrustWaived(
 static inline bool OpenSslStream_IsChainTrustError(int error);
 static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool OpenSslStream_IsOpen(const struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self);
 static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_IsPeerNameMismatch(long verdict);
@@ -263,6 +264,13 @@ static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStre
 static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogOpenSslStream* self = OpenSslStream_SelfFromBase(base);
+    /* Opening what is already open would otherwise strand the session it
+     * holds: the context, the SSL object and its BIO method, the credentials
+     * it installed, and the transport's socket. */
+    if (OpenSslStream_IsOpen(self))
+    {
+        OpenSslStream_Close(base);
+    }
     OpenSslStream_PullProfile(self);
     self->ChainObjection = X509_V_OK;
     self->ValidityObjection = X509_V_OK;
@@ -276,6 +284,13 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
         OpenSslStream_Close(base);
     }
     return ok;
+}
+
+/* Every Open that succeeds leaves a context behind and every Close frees it,
+ * so holding one is the one mark of a session still open. */
+static inline bool OpenSslStream_IsOpen(const struct SolidSyslogOpenSslStream* self)
+{
+    return self->Ctx != NULL;
 }
 
 /* One snapshot per connection: every later step reads the same answer, however

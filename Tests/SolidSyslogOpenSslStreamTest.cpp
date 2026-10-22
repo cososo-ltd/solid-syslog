@@ -725,6 +725,15 @@ TEST(SolidSyslogOpenSslStream, CloseFreesBioMethod)
     CALLED_FAKE(OpenSslFake_BioMethFree, ONCE);
 }
 
+TEST(SolidSyslogOpenSslStream, OpeningAStreamThatIsAlreadyOpenFreesTheContextItHeld)
+{
+    SolidSyslogStream_Open(stream, addr);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE(OpenSslFake_CtxFree, ONCE);
+}
+
 TEST(SolidSyslogOpenSslStream, DestroyFreesSslContext)
 {
     SolidSyslogStream_Open(stream, addr);
