@@ -60,6 +60,13 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
         LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
     }
 
+/* A connection the stream made without anything to say about it. */
+#define CHECK_OPENS_WITHOUT_A_REPORT(stream, address)            \
+    {                                                            \
+        CHECK_TRUE(SolidSyslogStream_Open((stream), (address))); \
+        LONGS_EQUAL(0, CapturedErrorCount);                      \
+    }
+
 // clang-format off
 /* What the scenario under construction wants the connection made with. Held per
  * test on the fixture and reached through ProfileContext, so nothing leaks
@@ -222,6 +229,16 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
      * struct before CreateTlsStream. */
     struct SolidSyslogMbedTlsStreamConfig BuildBaseConfig(struct SolidSyslogStream* transport)
     {
+        return BuildConfigExpecting(transport, TEST_SERVER_HOSTNAME);
+    }
+
+    /* The same, naming the peer the profile expects - or NULL / "" for the two
+     * ways of not naming one. */
+    struct SolidSyslogMbedTlsStreamConfig BuildConfigExpecting(
+        struct SolidSyslogStream* transport,
+        const char* serverName
+    )
+    {
         credsConfig = {};
         credsConfig.Rng = &rng;
         credsConfig.CaChain = &trustedCa.Cert;
@@ -230,10 +247,18 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         cfg.Transport = transport;
         cfg.Sleep = NoOpSleep;
         cfg.Rng = &rng;
-        profileValues.ServerName = TEST_SERVER_HOSTNAME;
+        profileValues.ServerName = serverName;
         cfg.Profile = IntegrationProfile;
         cfg.ProfileContext = &profileValues;
         return cfg;
+    }
+
+    /* A server presenting the fixture's leaf, and a config expecting the given
+       name of it. */
+    struct SolidSyslogMbedTlsStreamConfig BuildConfigAgainstTheServerExpecting(const char* serverName)
+    {
+        struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
+        return BuildConfigExpecting(transport, serverName);
     }
 
     /* Pin the certificate the server will present, with the named hash. */
@@ -571,6 +596,52 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWhenAPinIsTheOnlyThin
     tlsStream = CreateTlsStream(&config);
 
     CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+}
+
+/* The documented ServerName contract, against the real library: left NULL the
+ * peer is identified by its pin, with neither the connection is chain-only and
+ * a WARNING says so, and "" is the explicit opt-out from the name check. Mbed
+ * TLS 3.6.3 started refusing a chain-verified handshake when the client never
+ * called mbedtls_ssl_set_hostname, and tells that apart from a call naming no
+ * peer; these pin which of the two the stream makes. */
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenAPinIdentifiesTheServer)
+{
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting(nullptr);
+    PinCertificate(&serverCert, "sha-256");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+}
+
+/* Pin-only verifies optionally, so this is the other library path through the
+ * same contract. */
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsWithNoServerNameWhenAPinIsTheOnlyThingAuthorisingTheServer)
+{
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting(nullptr);
+    credsConfig.CaChain = nullptr;
+    PinCertificate(&serverCert, "sha-256");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWithNoServerNameAndWarns)
+{
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting(nullptr);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET, LastCapturedError.Detail);
+}
+
+TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeSucceedsChainOnlyWhenServerNameIsEmpty)
+{
+    struct SolidSyslogMbedTlsStreamConfig config = BuildConfigAgainstTheServerExpecting("");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertMatchesNoPin)

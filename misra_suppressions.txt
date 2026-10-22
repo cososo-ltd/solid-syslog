@@ -70,7 +70,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64Mutex.c:55
 misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64AtomicCounter.c:42
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpResolver.c:51
 misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:145
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:208
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:209
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:62
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:92
@@ -112,9 +112,9 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:195
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:255
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:173
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:181
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:453
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:806
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:818
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:454
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:819
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:831
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -247,8 +247,8 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:27
 
 # D.013 — Rule 11.5: void* <-> a byte pointer at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:843
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:861
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:856
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:874
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:149
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:518
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:538
