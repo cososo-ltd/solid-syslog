@@ -124,8 +124,10 @@
 
 /**
  * Number of SolidSyslog instances the library's internal static pool
- * can simultaneously hold. Each instance is a small bookkeeping struct
- * (collaborator pointers + SD array pointer + count).
+ * can simultaneously hold. Each instance costs a record slot of
+ * SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes, for the record SolidSyslog_Service
+ * is dealing with, plus a struct of collaborator pointers, callbacks and
+ * flags.
  *
  * Most integrators only ever create one SolidSyslog per process; default 1.
  * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if the integrator needs multiple

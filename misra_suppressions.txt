@@ -126,16 +126,16 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/SolidSyslog.c:99
-misra-c2012-11.8:Core/Source/SolidSyslog.c:100
-misra-c2012-11.8:Core/Source/SolidSyslog.c:101
-misra-c2012-11.8:Core/Source/SolidSyslog.c:102
-misra-c2012-11.8:Core/Source/SolidSyslog.c:103
-misra-c2012-11.8:Core/Source/SolidSyslog.c:104
-misra-c2012-11.8:Core/Source/SolidSyslog.c:105
 misra-c2012-11.8:Core/Source/SolidSyslog.c:106
 misra-c2012-11.8:Core/Source/SolidSyslog.c:107
 misra-c2012-11.8:Core/Source/SolidSyslog.c:108
+misra-c2012-11.8:Core/Source/SolidSyslog.c:109
+misra-c2012-11.8:Core/Source/SolidSyslog.c:110
+misra-c2012-11.8:Core/Source/SolidSyslog.c:111
+misra-c2012-11.8:Core/Source/SolidSyslog.c:112
+misra-c2012-11.8:Core/Source/SolidSyslog.c:113
+misra-c2012-11.8:Core/Source/SolidSyslog.c:114
+misra-c2012-11.8:Core/Source/SolidSyslog.c:115
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85

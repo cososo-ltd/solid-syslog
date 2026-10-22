@@ -14,7 +14,6 @@
 #include "SolidSyslogMessageFormatter.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTimestamp.h"
-#include "SolidSyslogTunables.h"
 
 struct SolidSyslogBuffer;
 struct SolidSyslogConfig;
@@ -29,12 +28,20 @@ struct SolidSyslog
     struct SolidSyslogStore* Store;
     struct SolidSyslogMessageFormatterContext Format;
     /* The one record Service works on at a time: taken from the buffer, or read
-     * from the store to send. It lives in the instance so that a record no store
-     * will take can be kept across Service passes; HoldsRecord is true while one
-     * is kept that way, and Service reads neither the buffer nor the store until
-     * it has gone. Service alone uses the slot, from the one task that calls it;
-     * Create and Destroy only empty it. */
-    char Record[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+     * from the store to send. It outlives a Service pass so that a record no
+     * store will take can be kept for the next; HoldsRecord is true while one is
+     * kept that way, and Service reads neither the buffer nor the store until it
+     * has gone. Service alone puts a record in the slot, from the one task that
+     * calls it.
+     *
+     * The storage is the pool entry's, not the instance's: Create points Record
+     * at it, and Cleanup takes it away, leaving Record NULL and RecordCapacity
+     * 0. Destroy and the fallback SolidSyslog_Create returns both go through
+     * Cleanup, so the fallback carries no slot. Cleanup also installs the Null
+     * buffer and store, which deliver no record, so a NULL Record never meets a
+     * Read that could write into it. */
+    char* Record;
+    size_t RecordCapacity;
     size_t RecordLength;
     bool HoldsRecord;
     /* A report stands for a run of held records dropped because the buffer
@@ -50,7 +57,12 @@ struct SolidSyslog
     bool Halted;
 };
 
-void SolidSyslog_Initialise(struct SolidSyslog* self, const struct SolidSyslogConfig* config);
+void SolidSyslog_Initialise(
+    struct SolidSyslog* self,
+    const struct SolidSyslogConfig* config,
+    char* record,
+    size_t recordCapacity
+);
 void SolidSyslog_Cleanup(struct SolidSyslog* self);
 
 static inline void SolidSyslog_Report(enum SolidSyslogSeverity severity, uint16_t category, enum SolidSyslogErrors code)

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "BufferFake.h"
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
 #include "FileFake.h"
@@ -63,6 +64,13 @@ struct SolidSyslogStore;
         CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);                   \
         STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender)); \
         CHECK_BUFFER_EMPTY();                                             \
+    }
+
+/* One failed attempt, then a retry that sent the record expected. */
+#define CHECK_RETRY_SENT(sender, expected)                               \
+    {                                                                    \
+        CALLED_FAKE_ON(SenderFake_Send, (sender), TWICE);                \
+        STRCMP_EQUAL((expected), SenderFake_LastBufferAsString(sender)); \
     }
 
 /* Shared fixture - a CircularBuffer feeding a SenderFake, with the store left
@@ -165,6 +173,44 @@ TEST_GROUP_BASE(SolidSyslogServiceHeldRecordFrozenStore, ServiceHeldRecordBase)
     }
 };
 
+/* A second instance from the pool, with a buffer and sender of its own, so
+ * that each instance can hold a record at the same time. */
+TEST_GROUP_BASE(SolidSyslogServiceHeldRecordTwoInstances, ServiceHeldRecordBase)
+{
+    struct SolidSyslog*       other       = nullptr;
+    struct SolidSyslogSender* otherSender = nullptr;
+    struct SolidSyslogBuffer* otherBuffer = nullptr;
+
+    void setup() override
+    {
+        setupPipeline();
+        CreateOver(SolidSyslogNullStore_Get());
+        otherSender = SenderFake_Create();
+        otherBuffer = BufferFake_Create();
+
+        SolidSyslogConfig config = {};
+        config.Buffer            = otherBuffer;
+        config.Sender            = otherSender;
+        config.Store             = SolidSyslogNullStore_Get();
+        other = SolidSyslog_Create(&config);
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_Destroy(other);
+        BufferFake_Destroy();
+        SenderFake_Destroy(otherSender);
+        teardownPipeline();
+    }
+
+    void OtherHoldsARecordForADownSender() const
+    {
+        SolidSyslogBuffer_Write(otherBuffer, "other", 5);
+        SenderFake_FailNextSend(otherSender);
+        SolidSyslog_Service(other);
+    }
+};
+
 // clang-format on
 
 TEST(SolidSyslogServiceHeldRecord, ServiceReturnsBlockedWhenADirectSendFails)
@@ -262,6 +308,26 @@ TEST(SolidSyslogServiceHeldRecordFrozenStore, NothingIsLostAcrossAnOutageWithAFr
     SolidSyslog_Service(solidSyslog);
 
     CHECK_ALL_THREE_DELIVERED();
+}
+
+/* At pool size 1 the second Create gets the fallback, which never holds a
+ * record, so the test exits rather than being compiled out. */
+TEST(SolidSyslogServiceHeldRecordTwoInstances, EachInstanceHoldsItsOwnRecord)
+{
+    if (SOLIDSYSLOG_POOL_SIZE < 2U)
+    {
+        UT_PRINT("Pool size < 2 - two held records only observable under tunable-override-debug");
+        TEST_EXIT;
+    }
+    SolidSyslogBuffer_Write(circularBuffer, "first", 5);
+    ServiceWhileTheSenderIsDown();
+    OtherHoldsARecordForADownSender();
+
+    SolidSyslog_Service(solidSyslog);
+    SolidSyslog_Service(other);
+
+    CHECK_RETRY_SENT(fakeSender, "first");
+    CHECK_RETRY_SENT(otherSender, "other");
 }
 
 static enum SolidSyslogDiscardPolicy AnswersHalt(void* context)

@@ -50,7 +50,10 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&SolidSyslog_Allocator);
         if (SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index))
         {
-            SolidSyslog_Initialise(&SolidSyslog_Pool[index], config);
+            /* Each pool entry's record slot, kept beside the pool rather than
+             * in the struct so that the fallback carries none. */
+            static char records[SOLIDSYSLOG_POOL_SIZE][SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+            SolidSyslog_Initialise(&SolidSyslog_Pool[index], config, records[index], sizeof(records[index]));
             result = &SolidSyslog_Pool[index];
         }
         else
