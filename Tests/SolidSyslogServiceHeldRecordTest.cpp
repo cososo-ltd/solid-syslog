@@ -66,6 +66,13 @@ struct SolidSyslogStore;
         CHECK_BUFFER_EMPTY();                                             \
     }
 
+/* One failed attempt, then a retry that sent the record expected. */
+#define CHECK_RETRY_SENT(sender, expected)                               \
+    {                                                                    \
+        CALLED_FAKE_ON(SenderFake_Send, (sender), TWICE);                \
+        STRCMP_EQUAL((expected), SenderFake_LastBufferAsString(sender)); \
+    }
+
 /* Shared fixture - a CircularBuffer feeding a SenderFake, with the store left
  * to each group. Service over a store that keeps nothing sends a buffered
  * record directly, and holds one the sender refuses for the next pass. */
@@ -317,10 +324,10 @@ TEST(SolidSyslogServiceHeldRecordTwoInstances, EachInstanceHoldsItsOwnRecord)
     OtherHoldsARecordForADownSender();
 
     SolidSyslog_Service(solidSyslog);
+    SolidSyslog_Service(other);
 
-    CALLED_FAKE_ON(SenderFake_Send, otherSender, ONCE);
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
-    STRCMP_EQUAL("first", SenderFake_LastBufferAsString(fakeSender));
+    CHECK_RETRY_SENT(fakeSender, "first");
+    CHECK_RETRY_SENT(otherSender, "other");
 }
 
 static enum SolidSyslogDiscardPolicy AnswersHalt(void* context)
