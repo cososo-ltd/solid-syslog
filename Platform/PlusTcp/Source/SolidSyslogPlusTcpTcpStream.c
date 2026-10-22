@@ -77,6 +77,11 @@ static void PlusTcpTcpStream_ReportConnectFailure(
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
+static void PlusTcpTcpStream_ReportConnectFailureWithCode(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    BaseType_t connectResult
+);
 static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult);
 static inline void PlusTcpTcpStream_PrimeArpIfMissing(uint32_t ip);
 static void PlusTcpTcpStream_ClearTimeouts(Socket_t socket);
@@ -222,32 +227,52 @@ static void PlusTcpTcpStream_ReportConnectFailure(
     PlusTcpTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
 }
 
+/* The fault, with the value FreeRTOS_connect answered behind it: the negated
+ * FreeRTOS errno, as the stack returns it. */
+static void PlusTcpTcpStream_ReportConnectFailureWithCode(
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTcpStreamErrors detail,
+    BaseType_t connectResult
+)
+{
+    SolidSyslog_ErrorWithNativeCode(
+        severity,
+        &SolidSyslogPlusTcpTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        (int32_t) detail,
+        (int32_t) connectResult
+    );
+}
+
 /* FreeRTOS_connect distinguishes three outcomes in its return: ETIMEDOUT is
  * the bounded wait expiring, ENOTCONN is the socket being closed under it -
  * the destination answering with something other than a connection - and any
  * other error comes from prvTCPConnectStart, which means the stack declined
- * to begin and no SYN was sent. */
+ * to begin and no SYN was sent. Each carries that return as its code. */
 static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult)
 {
     if (connectResult == -pdFREERTOS_ERRNO_ETIMEDOUT)
     {
-        PlusTcpTcpStream_ReportConnectFailure(
+        PlusTcpTcpStream_ReportConnectFailureWithCode(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
+            connectResult
         );
     }
     else if (connectResult == -pdFREERTOS_ERRNO_ENOTCONN)
     {
-        PlusTcpTcpStream_ReportConnectFailure(
+        PlusTcpTcpStream_ReportConnectFailureWithCode(
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+            connectResult
         );
     }
     else
     {
-        PlusTcpTcpStream_ReportConnectFailure(
+        PlusTcpTcpStream_ReportConnectFailureWithCode(
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
-            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+            SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
+            connectResult
         );
     }
 }
