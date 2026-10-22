@@ -95,7 +95,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:79
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:74
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:348
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:55
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:127
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:128
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:20
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:27
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:34
@@ -105,7 +105,7 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsAtomicCounter.c:40
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:81
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:42
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:106
-misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:207
+misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:208
 misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:249
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:96
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:195
@@ -250,8 +250,8 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:27
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:891
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:930
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:157
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:558
-misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:578
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:563
+misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:597
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:285
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:336
 misra-c2012-11.5:Platform/VxWorks64/Source/SolidSyslogVxWorks64TcpStream.c:377
