@@ -152,6 +152,7 @@ enum
 
 static int sslReadReturnSequence[MBEDTLSFAKE_MAX_READ_RETURNS];
 static int sslReadReturnSequenceLen;
+static int sslReadReturnSequenceStart;
 
 /* mbedtls_ssl_close_notify */
 static int sslCloseNotifyCallCount;
@@ -264,6 +265,7 @@ void MbedTlsFake_Reset(void)
     lastSslReadLenArg = 0;
     sslReadReturn = MBEDTLS_ERR_SSL_WANT_READ;
     sslReadReturnSequenceLen = 0;
+    sslReadReturnSequenceStart = 0;
     sslCloseNotifyCallCount = 0;
     lastSslCloseNotifyArg = NULL;
     sslFreeCallCount = 0;
@@ -527,6 +529,7 @@ void MbedTlsFake_SetSslReadReturnSequence(const int* values, int count)
         sslReadReturnSequence[i] = values[i];
     }
     sslReadReturnSequenceLen = safe;
+    sslReadReturnSequenceStart = sslReadCallCount;
 }
 
 int MbedTlsFake_SslCloseNotifyCallCount(void)
@@ -803,7 +806,8 @@ int mbedtls_ssl_read(mbedtls_ssl_context* ssl, unsigned char* buf, size_t len)
     int rc = sslReadReturn;
     if (sslReadReturnSequenceLen > 0)
     {
-        int idx = (callIndex < sslReadReturnSequenceLen) ? callIndex : (sslReadReturnSequenceLen - 1);
+        int step = callIndex - sslReadReturnSequenceStart;
+        int idx = (step < sslReadReturnSequenceLen) ? step : (sslReadReturnSequenceLen - 1);
         rc = sslReadReturnSequence[idx];
     }
     return rc;

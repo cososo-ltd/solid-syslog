@@ -830,6 +830,17 @@ TEST(SolidSyslogMbedTlsStream, SendWritesToAPeerThatNeverStopsSending)
     CHECK_TRUE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
 }
 
+TEST(SolidSyslogMbedTlsStream, SendReadsEightTimesSixteenBytesBeforeGivingUpOnAPeerThatNeverStopsSending)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    MbedTlsFake_SetSslReadReturn(5);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(8, MbedTlsFake_SslReadCallCount());
+    LONGS_EQUAL(16, MbedTlsFake_LastSslReadLenArg());
+}
+
 TEST(SolidSyslogMbedTlsStream, ReadForwardsBufferToSslRead)
 
 {

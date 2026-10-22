@@ -249,6 +249,7 @@ static bool readReturnOverride;
 static int readReturnValue;
 static int readReturnSequence[OPENSSLFAKE_MAX_READ_RETURNS];
 static int readReturnSequenceLen;
+static int readReturnSequenceStart;
 
 /* SSL_get_error */
 static int getErrorCallCount;
@@ -387,6 +388,7 @@ void OpenSslFake_Reset(void)
     readReturnOverride = false;
     readReturnValue = 0;
     readReturnSequenceLen = 0;
+    readReturnSequenceStart = 0;
     getErrorCallCount = 0;
     getErrorReturnValue = 0;
     verifyResultValue = X509_V_OK;
@@ -1223,7 +1225,8 @@ int SSL_read(SSL* ssl, void* buf, int num)
     int rc = num;
     if (readReturnSequenceLen > 0)
     {
-        int idx = (callIndex < readReturnSequenceLen) ? callIndex : (readReturnSequenceLen - 1);
+        int step = callIndex - readReturnSequenceStart;
+        int idx = (step < readReturnSequenceLen) ? step : (readReturnSequenceLen - 1);
         rc = readReturnSequence[idx];
     }
     else if (readReturnOverride)
@@ -1247,6 +1250,7 @@ void OpenSslFake_SetReadReturnSequence(const int* values, int count)
         readReturnSequence[i] = values[i];
     }
     readReturnSequenceLen = safe;
+    readReturnSequenceStart = sslReadCallCount;
 }
 
 int SSL_get_error(const SSL* ssl, int ret)

@@ -1443,6 +1443,15 @@ TEST(SolidSyslogOpenSslStream, SendWritesToAPeerThatNeverStopsSending)
     CHECK_TRUE(SolidSyslogStream_Send(stream, msg, sizeof(msg)));
 }
 
+TEST(SolidSyslogOpenSslStream, SendReadsEightTimesSixteenBytesBeforeGivingUpOnAPeerThatNeverStopsSending)
+{
+    SolidSyslogStream_Open(stream, addr);
+    OpenSslFake_SetReadReturn(5);
+    SendShortMessage();
+    LONGS_EQUAL(8, OpenSslFake_SslReadCallCount());
+    LONGS_EQUAL(16, OpenSslFake_LastSslReadSize());
+}
+
 /* -------------------------------------------------------------------------
  * Read non-blocking contract.
  * ------------------------------------------------------------------------- */

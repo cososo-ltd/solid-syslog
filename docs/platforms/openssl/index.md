@@ -107,6 +107,17 @@ spelling the same digits. Refusing a TLS 1.2 peer that does not acknowledge secu
 renegotiation is OpenSSL's own default from 3.0, which the stream relies on
 rather than sets.
 
+A send first reads what the collector has sent, so that a session the collector
+has closed refuses the record rather than taking it, as the
+[Stream](../../api/structSolidSyslogStream.md) contract requires. A write alone
+would not notice: OpenSSL takes the record into the session regardless of the
+close_notify waiting unread. When the read meets the close, or the transport
+beneath has gone, the send fails, the stream closes itself, and your store
+replays the record on the next connection. Syslog over TLS carries nothing from
+collector to device, so the read normally finds nothing; application data it
+does meet is discarded, not kept for a later read, and the read gives up after
+128 bytes, so a close behind more than that goes unnoticed.
+
 ## Where it falls short of the contract
 
 Every obligation under [TLS obligations](../../tls.md) is met by this pack as

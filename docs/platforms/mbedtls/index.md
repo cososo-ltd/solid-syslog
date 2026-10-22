@@ -156,6 +156,18 @@ never enables early data or renegotiation, so it meets the contract's
 resumption and early-data obligations by construction and declines a request
 from the collector to renegotiate.
 
+A send first reads what the collector has sent, so that a session the collector
+has closed refuses the record rather than taking it, as the
+[Stream](../../api/structSolidSyslogStream.md) contract requires. A write alone
+would not notice: Mbed TLS takes the record into the session regardless of the
+close_notify waiting unread, and the transport beneath may not see the
+collector's close behind that unread alert. When the read meets the close, or
+the transport has gone, the send fails, the stream closes itself, and your store
+replays the record on the next connection. Syslog over TLS carries nothing from
+collector to device, so the read normally finds nothing; application data it
+does meet is discarded, not kept for a later read, and the read gives up after
+128 bytes, so a close behind more than that goes unnoticed.
+
 ## Where it falls short of the contract
 
 Certificate validity is checked only where the build carries a clock, below.
