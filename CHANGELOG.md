@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.3.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.2.0...v0.3.0) (2026-10-24)
+
+
+### Features
+
+* every axis of an error event names itself ([#1039](https://github.com/cososo-ltd/solid-syslog/issues/1039)) ([5e96a25](https://github.com/cososo-ltd/solid-syslog/commit/5e96a2595b1c936c1e5356f15c1bca706b12576a))
+* every File and network pack reports the failing call and its native code ([#1052](https://github.com/cososo-ltd/solid-syslog/issues/1052)) ([cce9a8f](https://github.com/cososo-ltd/solid-syslog/commit/cce9a8f995d2a8d08eabb5df2fbe0dd0865b25e6))
+* S41.01 Core builds for VxWorks 6.4 and boots in QEMU Malta ([#937](https://github.com/cososo-ltd/solid-syslog/issues/937)) ([02115ab](https://github.com/cososo-ltd/solid-syslog/commit/02115abbddde9084a14fce35d0b662553a7cb8ce))
+* S41.02 VxWorks 6.4 pack skeleton and mutex ([#932](https://github.com/cososo-ltd/solid-syslog/issues/932)) ([2bcd6c8](https://github.com/cososo-ltd/solid-syslog/commit/2bcd6c818bb066e1eb72747f8d2c389b6a5230d3))
+* S41.03 VxWorks 6.4 UDP datagram and IPv4 resolver ([#939](https://github.com/cososo-ltd/solid-syslog/issues/939)) ([ca677f0](https://github.com/cososo-ltd/solid-syslog/commit/ca677f0489dcebda627eb2fde8a209b25e168df8))
+* S41.07 remote runner for the VxWorks 6.4 QEMU target ([#940](https://github.com/cososo-ltd/solid-syslog/issues/940)) ([f5399cb](https://github.com/cososo-ltd/solid-syslog/commit/f5399cb235550aad035d60f2c51eee63c4a7f29a))
+* S41.09 VxWorks 6.4 atomic counter ([#960](https://github.com/cososo-ltd/solid-syslog/issues/960)) ([23ee76e](https://github.com/cososo-ltd/solid-syslog/commit/23ee76e51aa6ff7e5327b98e912ca152284d2794))
+* S41.10 VxWorks 6.4 clock, uptime, hostname and sleep ([#956](https://github.com/cososo-ltd/solid-syslog/issues/956)) ([f27408d](https://github.com/cososo-ltd/solid-syslog/commit/f27408d10cbf998d17736358045cc47f0c51d5f8))
+* S41.11 VxWorks 6.4 TCP stream ([#961](https://github.com/cososo-ltd/solid-syslog/issues/961)) ([67a86c3](https://github.com/cososo-ltd/solid-syslog/commit/67a86c3e4913a94289f68b7309fbff667f3713ca))
+* S41.12 VxWorks 6.4 file, for the store ([#968](https://github.com/cososo-ltd/solid-syslog/issues/968)) ([b45e937](https://github.com/cososo-ltd/solid-syslog/commit/b45e937b2aebbdd6f99121ad9f8825cc8680b72f))
+* S41.14 VxWorks 6.4 store on HRFS as well as dosFs ([#970](https://github.com/cososo-ltd/solid-syslog/issues/970)) ([195d3e7](https://github.com/cososo-ltd/solid-syslog/commit/195d3e79319794a669fefe2d6f1285ef931bbfe9))
+* S41.15 VxWorks 6.4 file and store report the file system call that failed ([#976](https://github.com/cososo-ltd/solid-syslog/issues/976)) ([87da5fb](https://github.com/cososo-ltd/solid-syslog/commit/87da5fb396e7ece92b639febe1a9b331c0aae1bc))
+* S41.16 VxWorks 6.4 datagram returns SENT only once the next hop is resolved ([#988](https://github.com/cososo-ltd/solid-syslog/issues/988)) ([4d15707](https://github.com/cososo-ltd/solid-syslog/commit/4d15707a27fe2ecc55997446bab06b370455decd))
+* S42.01 the Plus-TCP datagram returns SENT only once the next hop is resolved ([#1036](https://github.com/cososo-ltd/solid-syslog/issues/1036)) ([69d4fe6](https://github.com/cososo-ltd/solid-syslog/commit/69d4fe66c80c4637f966c477c6b23fcf73b0151e))
+* S43.01 the store freezes on its first media fault ([#1011](https://github.com/cososo-ltd/solid-syslog/issues/1011)) ([697a99d](https://github.com/cososo-ltd/solid-syslog/commit/697a99d76d7e6a9af3e047f69f5cd434f00ecb11))
+* S43.02 the store discards a record that fails verification and carries on ([#1013](https://github.com/cososo-ltd/solid-syslog/issues/1013)) ([14f3da9](https://github.com/cososo-ltd/solid-syslog/commit/14f3da92db35b2b168dd3084ad47e54e9199d582))
+* S43.03 a security policy's OpenRecord says whether it opened, rejected, or could not run ([#1014](https://github.com/cososo-ltd/solid-syslog/issues/1014)) ([57ea219](https://github.com/cososo-ltd/solid-syslog/commit/57ea21966bee69a86bbf6172d20e22e39b2704c3))
+* S43.04 the store reports once when records start being lost ([#1015](https://github.com/cososo-ltd/solid-syslog/issues/1015)) ([8561254](https://github.com/cososo-ltd/solid-syslog/commit/85612548b28781f010711baf252bd58913f607c3))
+* S43.05 buffers report once when records start being lost ([#1016](https://github.com/cososo-ltd/solid-syslog/issues/1016)) ([9dfdf91](https://github.com/cososo-ltd/solid-syslog/commit/9dfdf919c988a0043d569bad2b3d991ddb30d4d1))
+* S43.07 with a store that keeps nothing, Service stops at the first failed send ([#1022](https://github.com/cososo-ltd/solid-syslog/issues/1022)) ([cfef5f1](https://github.com/cososo-ltd/solid-syslog/commit/cfef5f1fe7fa14b88c93fc2e4332a679f545504e))
+* S43.08 the discard policy is set once, on the logger ([#1025](https://github.com/cososo-ltd/solid-syslog/issues/1025)) ([b1d8d59](https://github.com/cososo-ltd/solid-syslog/commit/b1d8d59bf844152631081bd4d003b44290d27637))
+* S43.10 File Size reports failure rather than an empty file ([#1027](https://github.com/cososo-ltd/solid-syslog/issues/1027)) ([212fc60](https://github.com/cososo-ltd/solid-syslog/commit/212fc602f22e0879e4f7540b935ae10f178f6d6a))
+* S43.11 buffers apply the discard policy ([#1028](https://github.com/cososo-ltd/solid-syslog/issues/1028)) ([20ea7f8](https://github.com/cososo-ltd/solid-syslog/commit/20ea7f8e9db6160682227b9b1befad0aae8713c8))
+* the error event carries the platform's native code as a field ([#1042](https://github.com/cososo-ltd/solid-syslog/issues/1042)) ([436454d](https://github.com/cososo-ltd/solid-syslog/commit/436454d320f71dc5a64dc2f1d74432f2708e6f97))
+* the integrator states the IPv4 payload limit where the stack cannot discover the path MTU ([#1035](https://github.com/cososo-ltd/solid-syslog/issues/1035)) ([4c73ade](https://github.com/cososo-ltd/solid-syslog/commit/4c73adee8a53b42ede28dd5957c7ee715a254d17))
+* VxWorks 6.4 platform support ([6819c2b](https://github.com/cososo-ltd/solid-syslog/commit/6819c2b4f7f5752822424624bdb18eac1c3292bf))
+
+
+### Bug Fixes
+
+* every TCP stream bounds the connect deadline at five minutes ([#1031](https://github.com/cososo-ltd/solid-syslog/issues/1031)) ([fa83da7](https://github.com/cososo-ltd/solid-syslog/commit/fa83da757b10d24eb80bae4752f825b68d7c5b77))
+* every transport refuses Open while it is already open, and reports it ([#1049](https://github.com/cososo-ltd/solid-syslog/issues/1049)) ([a01cc8e](https://github.com/cososo-ltd/solid-syslog/commit/a01cc8ed3f1bfdecef9ae0a409510739b9998cba))
+* no stream takes a record after the collector has closed the connection ([#1053](https://github.com/cososo-ltd/solid-syslog/issues/1053)) ([dac9961](https://github.com/cososo-ltd/solid-syslog/commit/dac9961493f6d1acc300e2059c450666f87213ee))
+* the block store's used bytes follow occupancy again after a refusal ([#1032](https://github.com/cososo-ltd/solid-syslog/issues/1032)) ([7b6c76b](https://github.com/cososo-ltd/solid-syslog/commit/7b6c76b5274c5c67e11fd5e95ed052c0cd906b48))
+* the lwIP Raw resolvers refuse an IPv6 answer the transports cannot send to ([#1045](https://github.com/cososo-ltd/solid-syslog/issues/1045)) ([a70d9ad](https://github.com/cososo-ltd/solid-syslog/commit/a70d9ada5600f52d944aaef19ef5371199754c0a))
+* the Mbed TLS stream tells the library it is deliberately not naming the peer ([#1044](https://github.com/cososo-ltd/solid-syslog/issues/1044)) ([89a6d99](https://github.com/cososo-ltd/solid-syslog/commit/89a6d99ea649e123a6e04d3369613429618683b6))
+* the OpenSSL stream names a fingerprint mismatch ahead of an expired issuer ([#1034](https://github.com/cososo-ltd/solid-syslog/issues/1034)) ([29631ed](https://github.com/cososo-ltd/solid-syslog/commit/29631ed3ee497e65681f6441c9f26a0fc5853eeb)), closes [#919](https://github.com/cososo-ltd/solid-syslog/issues/919)
+* VxWorks 6.4 Delete answers removed only for a removed or absent path ([#1040](https://github.com/cososo-ltd/solid-syslog/issues/1040)) ([44f243f](https://github.com/cososo-ltd/solid-syslog/commit/44f243f72cd907ec3c2dbecaef4a0db12524291d))
+* VxWorks 6.4 Exists asks stat, not open, whether a path is there ([#1041](https://github.com/cososo-ltd/solid-syslog/issues/1041)) ([7019a30](https://github.com/cososo-ltd/solid-syslog/commit/7019a30dbbb07d31e7371879ba99b034b2c83d1d))
+* VxWorks 6.4 review sweep - resolver, runner hardening, and comments and docs said once ([#981](https://github.com/cososo-ltd/solid-syslog/issues/981)) ([bd687bc](https://github.com/cososo-ltd/solid-syslog/commit/bd687bc3918b525c1f5efb26eed82e585cce9614))
+
 ## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-28)
 
 The TLS release. 0.2.0 lets a device authorise its collector by certificate
