@@ -19,8 +19,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogAddress;
 
     /** Draw one per sender from the pool (SOLIDSYSLOG_ADDRESS_POOL_SIZE); on
-     *  exhaustion Create returns a shared TU-private singleton, so integrators
-     *  that overflow the pool share that storage and race on it. */
+     *  exhaustion SolidSyslogPlusTcpAddress_Create returns a shared fallback
+     *  instead; raise the pool size so that no sender draws it. */
     struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void);
     /** Release the pool slot. */
     void SolidSyslogPlusTcpAddress_Destroy(struct SolidSyslogAddress * base);

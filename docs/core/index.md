@@ -1,6 +1,6 @@
 # Core
 
-`Core/` is the guts of SolidSyslog: it implements the syslog protocol and manages the assembly, buffering, storage and sending of log messages.
+`Core/` implements the syslog protocol and manages the assembly, buffering, storage and sending of log messages.
 
 `Core/` depends on nothing external: always compiled, typically as a library. It holds the facade you call, the pipeline that formats a record and drains it, and portable implementations for several roles. Where access to a network stack, encryption, filesystem or OS is required, an interface is declared. Platform components that satisfy those interfaces let Core build with no platform dependencies.
 
@@ -40,7 +40,7 @@ Portable [role](../roles/index.md) implementations - no platform required:
 | [`SolidSyslogSwitchingSender`](../api/SolidSyslogSwitchingSender_8h.md) | Sender - delegates to one of several inners |
 | [`SolidSyslogBlockStore`](../api/SolidSyslogBlockStore_8h.md) | Store - store-and-forward over rotating blocks |
 | [`SolidSyslogFileBlockDevice`](../api/SolidSyslogFileBlockDevice_8h.md) | BlockDevice - sequence-numbered files over a File |
-| [`SolidSyslogCrc16Policy`](../api/SolidSyslogCrc16Policy_8h.md) | SecurityPolicy - CRC-16 integrity (accidental corruption, not tamper) |
+| [`SolidSyslogCrc16Policy`](../api/SolidSyslogCrc16Policy_8h.md) | SecurityPolicy - CRC-16 integrity (accidental corruption, not tampering) |
 | [`SolidSyslogMetaSd`](../api/SolidSyslogMetaSd_8h.md) | StructuredData - sequenceId, sysUpTime, language |
 | [`SolidSyslogTimeQualitySd`](../api/SolidSyslogTimeQualitySd_8h.md) | StructuredData - tzKnown, isSynced, syncAccuracy |
 | [`SolidSyslogOriginSd`](../api/SolidSyslogOriginSd_8h.md) | StructuredData - software, swVersion, enterpriseId, ip |
@@ -56,6 +56,7 @@ nothing needs a NULL guard. See [Roles](../roles/index.md).
 | Header | Provides |
 |---|---|
 | [`SolidSyslogError.h`](../api/SolidSyslogError_8h.md) | install a handler for library-internal errors; the default is a silent no-op. Every axis of an event names itself: the severity, the category and, through its source, the detail |
+| [`SolidSyslogDiscardPolicy.h`](../api/SolidSyslogDiscardPolicy_8h.md) | what a full queue does with the record that does not fit - Oldest, Newest or Halt - answered by one function you give the logger, the buffer and the store; Oldest where none is given |
 | [`SolidSyslogConfigLock.h`](../api/SolidSyslogConfigLock_8h.md) | inject a lock pair around the pool slot walks; no-ops by default, single-task safe. It does not make `SolidSyslog_Service` safe to share across tasks - see [its threading contract](../api/SolidSyslog_8h.md#function-solidsyslog_service) |
 | [`SolidSyslogTunablesDefaults.h`](../api/SolidSyslogTunablesDefaults_8h.md) | every compile-time limit, each `#ifndef`-guarded so you override without editing the library |
 

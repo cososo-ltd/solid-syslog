@@ -6,11 +6,11 @@ Act and IEC 62443 expect. This documentation is organised around what you came
 to do.
 
 See a complete integration, one commit at a time, with every byte measured:
-[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) (CMake)
-and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0)
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.3.0) (CMake)
+and [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0)
 (Make).
 
-Pick a lane:
+The documentation is in six sections:
 
 - [Core](#core): the library itself - the protocol, the pipeline, and the portable pieces that run the same everywhere.
 - [Integrate it](#integrate): get a syslog stack compiling and sending in your product.
@@ -23,7 +23,7 @@ Pick a lane:
 
 ## Core
 
-- [Core](core/index.md): what is always compiled and depends on nothing external - the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations. Where a platform exists to reach your hardware, Core exists to be the same everywhere.
+- [Core](core/index.md): what is always compiled and depends on nothing external - the syslog protocol, the assembly, buffering, storage and sending pipeline, and the portable role implementations.
 
 ## Integrate
 
@@ -33,7 +33,8 @@ Everything you need to consume SolidSyslog in your product.
 - [Adding it to your build](build-integration.md): the build detail. The capability matrix, the three ways to consume the library (CMake, Make, and a source manifest for an IDE project), and the compile-time tunables.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [TLS obligations](tls.md): what the library does for a TLS connection and what it leaves to you.
-- [Error-event severity policy](error-severity.md): installing an error handler and reading the event axes.
+- [Error handling](error-severity.md): what each severity and category tells a handler, and what is reported when a record is lost. Installing the handler, and printing an event by the names of its fields, is [stage 2 of the integration path](hardening-path.md#stage-2-make-failures-visible).
+- [Release notes](../CHANGELOG.md): what each release changed, and what to change in your code when you upgrade from the one before.
 - Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md).
 
 ## Platforms
@@ -43,7 +44,7 @@ TLS library, a filesystem, an OS - behind the library's vtables. Each page says
 what that platform ships and what wiring it needs; the pages above speak of them
 in the general case.
 
-- [Platform × capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
+- [capability matrix](platforms/index.md): start here. Read across a row for what a platform gives you, down a column for who provides a capability.
 - [Porting guide](porting.md): nothing shipped fits your target. The role model, the anatomy of an adapter (instance shape, the no-`malloc` static pool, the error convention), the invariants every adapter must honour, and the vtable role contracts, each with its shipped reference implementation.
 - [Port a TLS stream](tls-porting.md): wrapping a TLS library the shipped platforms do not cover, and what a port gets wrong that the contract does not spell out.
 - [The roles](roles/index.md): each role's vtable contract, and the backends that realise it.

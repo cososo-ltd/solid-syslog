@@ -2,10 +2,9 @@
 
 Neither the EU Cyber Resilience Act (CRA) nor IEC 62443 mandates syslog; instead they
 state capabilities - auditable events, integrity, confidentiality, availability,
-non-repudiation - and leave the realisation to you. IEC 62443 certifies systems rather
-than components, and CRA obligations attach to the manufacturer and are scoped by the
-product's documented intended use. Two devices running this library can need very
-different things from it.
+non-repudiation - and leave the realisation to you. Both judge the product you ship
+rather than a library inside it, as [compliance in one page](overview.md) explains, so
+two devices running this library can need very different things from it.
 
 This page is a path, not a design to copy. Start from the system you already have, add
 one capability at a time, and stop where your threat model, your requirements and your
@@ -16,8 +15,8 @@ resources say to stop.
 Every code snippet and every figure below comes from a worked integration, published in
 full for this release:
 
-- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) - consumed with CMake.
-- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0) - the same integration, consumed with Make.
+- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.3.0) - consumed with CMake.
+- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0) - the same integration, consumed with Make.
 
 The baseline is constructed to carry the third-party platform code a real-world device
 would already have - an RTOS, a network stack, and cryptography. A device that needs
@@ -44,8 +43,8 @@ repositories carry the exact figures, every stage's run report, the diff that pr
 each, and the reasoning behind it.
 
 Rounded stage by stage, the figures do not sum exactly to the cost of the whole path.
-Measured cumulatively against the same baseline, the path costs about 16.4 KB of flash and
-36.3 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
+Measured cumulatively against the same baseline, the path costs about 22.0 KB of flash and
+36.6 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
 stage's figure as the cost of that step and the example's own measurements as the cost of
 the path.
 
@@ -89,9 +88,8 @@ SolidSyslog_SetErrorHandler(OnSyslogError, NULL);
 This is not only an integration aid. The handler is the seam into your product's own
 error and health reporting, and it stays valuable at run time: the sender raises an
 edge-triggered warning when the collector becomes unreachable and a notice when delivery
-recovers, the ring buffer raises an error for a record too large to enqueue and a
-warning when it starts turning records away. Route it wherever your device already
-routes faults, but not back into SolidSyslog: the
+recovers, and the ring buffer raises a warning when it starts losing records. Route it
+wherever your device already routes faults, but not back into SolidSyslog: the
 [handler contract](api/SolidSyslogError_8h.md#typedef-solidsyslogerrorhandler) says
 why, and what to do instead.
 
@@ -107,30 +105,38 @@ static const char* OrDash(const char* name)
 static void OnSyslogError(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
-    printf(
-        "[syslog] %s %s %s %s (%ld)\n",
-        OrDash(SolidSyslogSeverity_Name(event->Severity)),
+    (void) printf(
+        "[syslog] %s %s %s %s (%ld)",
+        OrDash(SolidSyslogSeverity_Name((int32_t) event->Severity)),
         OrDash((event->Source != NULL) ? event->Source->Name : NULL),
         OrDash(SolidSyslogErrorCategory_Name(event->Category)),
         OrDash(SolidSyslogErrorEvent_DetailName(event)),
         (long) event->Detail
     );
+    if (event->HasNativeCode)
+    {
+        (void) printf(" native %ld", (long) event->NativeCode);
+    }
+    (void) printf("\n");
 }
 ```
 
 Each name function answers NULL for a value it does not know: a category in the
 integrator range, a severity off the ladder, or a detail outside its source's
-vocabulary. The event's `NativeCode` is the platform's own and has no name.
-`SolidSyslogErrorEvent_DetailName` goes through the event's source, so it is right
-whichever class spoke. Each name is bound to its enumerator, not its position, so
-a code added in a later release cannot shift the others.
+vocabulary. `SolidSyslogErrorEvent_DetailName` goes through the event's source, so it
+is right whichever class spoke. Each name is bound to its enumerator, not its position,
+so a code added in a later release cannot shift the others.
+
+Where the platform has a code of its own for the fault - an errno, an `FRESULT` - the
+event carries it in `NativeCode`. That code has no name, and 0 can be a real one, so
+read it only when `HasNativeCode` is set.
 
 For more detail see [error handling and severity](error-severity.md).
 
-**Cost.** The handler itself: flash ~400 B, RAM ~10 B. The detail names: about
-180 B of flash per vocabulary, linked with each class whether or not the handler
-asks for them, so 3.5 KB on the Cortex-M3 BDD target, which links twenty; no
-RAM. The category and severity names are linked only when called.
+**Cost.** Flash ~1.6k, RAM ~10 B, for the handler shown. The category and severity
+names are linked only when called, and this handler calls both. Each class brings its
+own detail names whether or not the handler asks for them, so those arrive in the
+figures of the stages that link the classes.
 
 ## Stage 3: Create the logger, wired to nothing
 
@@ -155,17 +161,19 @@ its Null object and reported - so the only evidence is what the handler says:
 [syslog] CRITICAL SolidSyslog BAD_CONFIG CREATE_NULL_STORE (3)
 ```
 
-The order matters. Wire everything at once and see nothing, and you
-cannot tell a working logger from a silent one. Seeing the faults first, then watching
-them go quiet as each collaborator arrives, is the difference between believing it works
-and knowing.
+The order matters. Wired all at once, a logger whose handler prints nothing cannot
+be told apart from one whose faults are never reported. Seeing these three faults
+first, and each one stop as its collaborator is wired in, shows that the handler is
+reached and that each collaborator was accepted.
 
 A convention worth adopting now: `NULL` as a parameter means "not supplied" and is
 reported, while a collaborator you have deliberately done without is passed as its Null
 object. The library distinguishes the two, and so should anyone reading your wiring
 later.
 
-**Cost.** Flash ~650 B, RAM ~175 B.
+**Cost.** Flash ~1.0k, RAM ~1.2k. Most of the RAM is the record slot the logger keeps
+for the record `SolidSyslog_Service` is dealing with, `SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes.
+Stage 21 fits the cap to the device.
 
 ## Stage 4: A first record on the wire
 
@@ -195,8 +203,8 @@ struct SolidSyslogConfig config = {
 struct SolidSyslog* logger = SolidSyslog_Create(&config);
 ```
 
-The logging itself is done as shown below. In this configuration SolidSyslog is **NOT**
-reentrant and should only be called from a single task.
+The logging itself is done as shown below. In this configuration SolidSyslog is not
+reentrant, so call it from one task only.
 
 ```c
 struct SolidSyslogMessage message = {
@@ -217,10 +225,15 @@ What arrives is a valid RFC 5424 record any collector will parse:
 Timestamp, hostname, app-name and process-id are the RFC's nil value. The record is
 valid without them; filling them in is the next stage, with a cost of its own.
 
-Most of the RAM is stack, and not where it looks. The record is built on the stack of
+The datagram's config states the largest IPv4 payload the path carries, which lwIP
+cannot discover for itself. `NULL` leaves it at `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT`,
+480 octets by default, the size RFC 5426 section 3.2 requires every receiver to accept;
+the example's records stay under it.
+
+Most of the RAM is stack on the logging task. The record is built on the stack of
 whichever task calls `SolidSyslog_Log`, sized by `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so that
 task has to be deep enough to hold one. In the example the logging task was still at the
-RTOS minimum inherited from the baseline and had to grow. Stage 20 fits the cap and the
+RTOS minimum inherited from the baseline and had to grow. Stage 21 fits the cap and the
 stacks to the device, once every collaborator is in place and the high-water marks are
 worth trusting.
 
@@ -229,7 +242,7 @@ enough: it drops records silently, and anyone on the path can read them. Stage 8
 the first, stage 13 the second - treat UDP as a stepping stone to whichever your threat
 model needs.
 
-**Cost.** Flash ~3.7k, RAM ~1.7k, nearly all of it stack depth on the logging task.
+**Cost.** Flash ~4.1k, RAM ~1.7k, nearly all of it stack depth on the logging task.
 
 ## Stage 5: Name it and time it
 
@@ -269,8 +282,8 @@ replacing them.
 
 Add the first structured-data element,
 [`SolidSyslogMetaSd`](api/SolidSyslogMetaSd_8h.md), carrying a sequence number. Elements
-are supplied to the logger as an array and read on every record, so they must outlive
-the call that creates the logger.
+are supplied to the logger as an array and read on every record, so the elements and the
+array must outlive the logger, not just the call that creates it.
 
 ```c
 struct SolidSyslogMetaSdConfig metaConfig = {
@@ -292,7 +305,7 @@ struct SolidSyslogConfig config = {
 The sequence number is incremented once per record formatted, not once per record
 delivered. A record that never arrives therefore leaves a gap in the sequence rather
 than no trace at all, which is why it is worth adding before any buffering or storage
-that could drop one. Instrument first, then introduce the failure mode.
+that could drop one.
 
 Unlike a header field, an SD PARAM has no nil value: one that is unset is omitted
 entirely rather than written as `-`.
@@ -306,7 +319,7 @@ The counter comes from C11 atomics, so add its platform to the list from stage 1
 
 **When you need it.** If anyone needs to know that records have gone missing.
 
-**Cost.** Flash ~950 B, RAM ~65 B.
+**Cost.** Flash ~1.0k, RAM ~65 B.
 
 ## Stage 7: Decouple logging from sending
 
@@ -326,28 +339,30 @@ This separates logging an event from sending it.
 enough to call from the place the event actually happens rather than from somewhere
 convenient later. Nothing that logs waits on the network.
 
-A ring that fills applies the discard policy its last two arguments inject; NULL is
-Oldest, which drops the oldest records to make room, and stage 10 chooses. The buffer
-reports once when a run of losses starts, and again only after a write has lost nothing
-since; the sequence number from stage 6 says how many went. The store from stage 10 reports loss under the same
-rules, stated once under [when a record is lost](error-severity.md#when-a-record-is-lost).
+A ring that fills applies the discard policy its last two arguments inject. `NULL`
+applies Oldest, which drops the oldest records to make room, and stage 20 makes the
+policy the device's own. The buffer reports once when a run of losses starts, and again
+only after a write has lost nothing since; the sequence number from stage 6 says how
+many went. The store from stage 10 reports loss under the same rules, stated once under
+[when a record is lost](error-severity.md#when-a-record-is-lost).
 
 **When you need it.** Once logging and sending are decoupled, the buffer has to absorb
 however many events can be logged before it is next serviced. It also makes logging from
 multiple tasks safe.
 
-**Cost.** Flash ~750 B, RAM ~5.5k - the ring, the service task's stack, and the record
-slot the instance keeps for the record it is dealing with. You choose the ring size, and
-stage 20 revisits it once the store is there to hold a backlog.
+**Cost.** Flash ~1.5k, RAM ~5.5k - the ring and the service task's stack. That stack
+holds the send beneath `SolidSyslog_Service` but not the record being sent, which lives
+in the logger and was counted at stage 3. You choose the ring size, and stage 21
+revisits it once the store is there to hold a backlog.
 
 The mutex comes from your RTOS, so add its platform to the list from stage 1.
 
 ## Stage 8: Detect loss where it happens
 
 UDP to TCP, by putting a [`SolidSyslogStreamSender`](api/SolidSyslogStreamSender_8h.md)
-over a TCP stream. The network retransmits rather than dropping, and a send fails when
-the collector is gone instead of succeeding into a void. Records are framed by octet
-count per RFC 6587.
+over a TCP stream. The network retransmits rather than dropping, and a send fails once
+the stack knows the collector is gone, instead of appearing to succeed. Records are
+framed by octet count per RFC 6587.
 
 ```c
 struct SolidSyslogStreamSenderConfig senderConfig = {
@@ -359,14 +374,14 @@ struct SolidSyslogStreamSenderConfig senderConfig = {
 struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig);
 ```
 
-With stage 6 this completes the loss story: the transport detects loss where it happens,
+With stage 6 this completes loss detection: the transport reports the losses it observes,
 and the sequence number reveals afterwards anything the transport could not. It is also
 what makes the delivery-failed and delivery-restored events from stage 2 meaningful.
 
 **When you need it.** If the device must know that delivery is failing - to raise an
 alarm, to fall back, to start storing. Over UDP it never finds out.
 
-**Cost.** Flash ~700 B, RAM ~200 B.
+**Cost.** Flash ~750 B, RAM ~190 B.
 
 > RFC 6587 is Historic, and the IESG recommends TLS (stage 13) over plain TCP for new
 > deployments. Plain TCP is here for collectors you do not control, and as the step
@@ -395,7 +410,7 @@ this element tells the collector whether that is so, and how closely. The uptime
 alongside it distinguishes a reboot from a counter wrap when the sequence restarts at
 one.
 
-It lands here, immediately before the store, for a reason. Until now a record reached
+It is added here, immediately before the store. Until now a record reached
 the collector shortly after it was raised, so its timestamp and its arrival time were
 much the same. Store-and-forward breaks that: a record can arrive hours later. The
 device should say what its clock is actually worth before that assumption goes.
@@ -403,7 +418,7 @@ device should say what its clock is actually worth before that assumption goes.
 **When you need it.** If events from this device will be ordered against events from
 others, or if a record's timestamp will be relied on after a delay.
 
-**Cost.** Flash ~350 B, RAM ~30 B.
+**Cost.** Flash ~400 B, RAM ~30 B.
 
 ## Stage 10: Survive an outage
 
@@ -412,35 +427,37 @@ drains the ring into storage and sends from there, so a failed send costs a retr
 than the record.
 
 ```c
-static enum SolidSyslogDiscardPolicy ChooseDiscardPolicy(void* context)
-{
-    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-}
-
 struct SolidSyslogBlockStoreConfig storeConfig = {
     .BlockDevice    = SolidSyslogFileBlockDevice_Create(SolidSyslogFatFsFile_Create(), SYSLOG_STORE_PREFIX, 0U),
     .MaxBlocks      = SYSLOG_STORE_BLOCKS,
-    .GetDiscardPolicy = ChooseDiscardPolicy,
     .SecurityPolicy = SolidSyslogCrc16Policy_Create(),
 };
+
+.Store = SolidSyslogBlockStore_Create(&storeConfig),
 ```
 
 Three decisions come with it: how much you can store, which is capacity on the medium
 rather than RAM; what happens when it fills - discard oldest, discard newest, or halt;
 and whether you want warning before that point, via the capacity-threshold callback.
-
-The discard policy is a function of yours, asked at the moment a queue has to decide,
-so you can change the answer on a running device. Give the same function to the store,
-to the ring from stage 7 and to the logger's `SolidSyslogConfig`, which is where a halt
-is decided: under halt the logger stops at the first record a full store refuses, or
-when the ring has filled behind a record Service is still holding from its last pass;
-it calls its `OnHalt` once, and moves nothing more until your function answers
-otherwise or the device restarts.
+Left unset, as the ring's was, the discard policy is Oldest; stage 20 makes it the
+device's choice.
 
 What the store loses it reports as the buffer does: a run of records turned away or
 evicted unsent raises one warning when it starts. A medium that fails is different in
 kind. The store reports it once and never uses the device again, and delivery continues
 without storage, so route that event somewhere it will be acted on.
+
+The store opens its device when it is created, so create it once the volume is mounted,
+and the logger after it, since the logger's config carries the store. A store created
+before the mount stops using the device at once, and because records still reach the
+collector, only the handler shows it:
+
+```text
+[syslog] ERROR BlockStore STORE_FROZEN OPEN_FAILED (4)
+```
+
+The example met it here: it created the logger before starting the scheduler and mounts
+its volume from a task, so creating the logger moved to that task, after the mount.
 
 The file layer comes from your filesystem, so add its platform to the list from stage 1.
 
@@ -452,7 +469,7 @@ Making stored records tamper-*evident* is stage 15.
 **When you need it.** What is your audit-loss budget? If the collector is unreachable
 for an hour, is losing that hour acceptable? Must records survive a reboot?
 
-**Cost.** Flash ~4.0k, RAM ~1.4k - handles and one record buffer, not capacity.
+**Cost.** Flash ~5.6k, RAM ~1.4k - handles and one record buffer, not capacity.
 **Upstream:** files on your filesystem. Both the number of files and the size of each are
 tunable.
 
@@ -474,7 +491,7 @@ sd[2] = SolidSyslogOriginSd_Create(&originConfig);
 `SwVersion` is your product's version, not SolidSyslog's. Take it from wherever your
 build already keeps it; the example passes in its CMake `project()` version.
 
-This lands after storage for a reason. While records went straight out,
+It is added after storage. While records went straight out,
 "who sent this" was implied by the connection they arrived on. Once records can replay
 hours later that stops being true, and the record has to say so itself.
 
@@ -571,17 +588,17 @@ host with no site PKI behind it, and a fingerprint provisioned at commissioning 
 none - which is why this path pins first, and adds a CA chain only at stage 19, for sites
 that run one.
 
-**Cost.** Flash ~2.3k. RAM ~28k on the example device - but only ~730 B of that is the
+**Cost.** Flash ~3.2k. RAM ~28k on the example device - but only ~730 B of that is the
 library; the rest is a second concurrent TLS session: the Mbed TLS memory pool grows from
 32 to 53 KiB, and the service task's stack grows for the handshake.
 
-**Upstream is where the real cost lives.** If your device does not already run TLS,
+**Upstream.** If your device does not already run TLS,
 the library and its trust material will dominate everything on this page - expect an
 order of magnitude or more above the adapter that drives it, and read the footprint
-guidance for the specific TLS library you are considering, because it varies enormously
+guidance for the specific TLS library you are considering, because it varies widely
 with the features and ciphersuites you enable. If your device *already* holds a TLS
-session for something else - a cloud connection, OTA, a vendor framework - you paid that
-long ago, and this stage adds the adapter and a second session. That is the case the
+session for something else - a cloud connection, OTA, a vendor framework - that cost is
+already paid, and this stage adds the adapter and a second session. That is the case the
 worked integration measures, and the common one on a device with a reason to care about
 audit logging.
 
@@ -656,7 +673,9 @@ connection, so a change has to reach them on that task. The example queues each 
 and applies it before each call to `SolidSyslog_Service`; making the change on the
 service task directly works as well. A queued request can be refused, so check it: a
 dropped provisioning leaves the device unable to reconnect after the renewal, and a
-dropped retirement leaves the old pin accepted.
+dropped retirement leaves the old pin accepted. Whoever can call these chooses which
+collector the device trusts, so take a pin only from a source you would trust with
+commissioning.
 
 Crossing a renewal, the handler sees delivery fail and recover: the collector restarts
 with its renewed certificate and drops the session, the record logged at that moment is
@@ -675,11 +694,17 @@ is the example's renewal sequence rather than the library.
 ## Stage 15: Protect what is at rest
 
 Replace the CRC-16 from stage 10 with a keyed HMAC. The checksum told you a record came
-back the way it went in; the HMAC tells you nobody has changed it since. An edit made
-without the key fails verification, so stored records become tamper-*evident* rather
-than merely intact. The store discards such a record, reports it, and carries on with
-the ones behind it. A key that is briefly unavailable is not a verdict: the policy
-reports that instead, and the record waits in the store until it can be checked.
+back the way it went in; the HMAC tells you nobody without the key has changed it
+since. An edit made without the key fails verification, so stored records become
+tamper-*evident* rather than merely intact. The store discards such a record, reports
+it, and carries on with the ones behind it. The seal covers each record's content, not
+the store: [what a seal covers](security/at-rest-cryptography.md#what-a-seal-covers)
+says what it leaves undetected.
+
+A key that is briefly unavailable is not a verdict on what is already stored: the
+policy reports it, and stored records wait until they can be checked. A record raised
+meanwhile cannot be sealed, so it is not stored; it is lost, and the store reports
+that.
 
 ```c
 struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {.GetKey = SyslogStoreKey};
@@ -693,7 +718,7 @@ and never stores one. See [at-rest cryptography](security/at-rest-cryptography.m
 **When you need it.** If an attacker could reach the medium - removable, unattended, or
 stealable - and stored records must be provably unaltered.
 
-**Cost.** Flash ~350 B, RAM ~20 B. **Upstream:** a crypto primitive, which your TLS
+**Cost.** Flash ~450 B, RAM ~25 B. **Upstream:** a crypto primitive, which your TLS
 library already provides and has already linked if you took stage 13. Reaching for
 at-rest protection *without* TLS is where this stage carries an upstream cost of its
 own.
@@ -707,9 +732,11 @@ protecting stored records:
 [logPipeline@32473 transport="tls" atRest="hmac-sha256"]
 ```
 
-The standard elements say what any device can say; a private one says what only your
-product knows. A collector can use it to confirm a record really did arrive over TLS and
-really was sealed at rest, and to alert on a device whose pipeline has weakened.
+The standard elements carry what RFC 5424 defines for any device; a private element
+carries what is specific to your product. A collector can use it to see the protection
+the device reports for each record, and to alert on a device that reports a weaker
+pipeline. It is the device's own statement, not proof: a relay passes it on unchanged,
+whatever its next hop.
 
 Those are the values in force at this stage. They change as the remaining stages land -
 `transport="mtls"` at stage 17, `atRest="aes-256-gcm"` at stage 18, and a
@@ -719,11 +746,11 @@ leaves the device less protected than its configuration suggests, and an element
 claiming protection that is not in force is worse than no element at all, because that
 claim is exactly what a collector is watching for.
 
-**When you need it.** If a collector has to verify the protection a record travelled and
-rested under, rather than assume it. It is also the cheapest way to detect a fleet
+**When you need it.** If a collector has to know the protection a device reports for
+each record, rather than assume it. It is also the cheapest way to detect a fleet
 member whose pipeline has silently degraded.
 
-**Cost.** Flash ~150 B, RAM negligible.
+**Cost.** Flash ~125 B, RAM negligible.
 
 ## Stage 17: Prove which device sent it
 
@@ -766,14 +793,14 @@ exposure in full.
 its word - a collector that requires client certificates, or a deployment where the
 device reaches the collector directly and origin has to be provable. It is not a free
 upgrade. Mutual TLS needs a certificate per device, somewhere safe to keep the private
-key, and an issuing and revocation process behind both. A device that keeps its key in
-readable flash gains the appearance of attribution without the substance. Where devices
+key, and an issuing and revocation process behind both. A key kept in readable flash can be
+copied, and a copy lets another device authenticate as this one. Where devices
 are already identified at another layer, or where there is no device PKI to build on,
-server-authenticated TLS is an honest place to stop.
+server-authenticated TLS is a reasonable place to stop.
 
-**Cost.** Flash ~70 B, RAM ~2.1k. Presenting a certificate costs almost no code; the RAM
+**Cost.** Flash ~75 B, RAM ~2.1k. Presenting a certificate costs almost no code; the RAM
 is the TLS library's memory pool, grown to keep the example's margin for fragmentation
-once the client certificate is carried through the handshake. Note that the example
+once the client certificate is carried through the handshake. The example
 device already holds a client certificate for its own broker session, so this is the cost
 of *using* credentials, not of provisioning them - a device reaching for mutual TLS from
 a standing start also has to store and parse them.
@@ -842,7 +869,62 @@ example: the collector's certificate is already parsed to compute its fingerprin
 CA is one the device already holds for its broker session. The flash is the pipeline
 element's new parameter.
 
-## Stage 20: Fit the sizes to the device
+## Stage 20: Decide what a full queue does
+
+The ring and the store were given no discard policy, and neither was the logger, so
+each applies the library's default, Oldest, which suits most devices. Give all three one
+function of yours instead, a
+[`SolidSyslogDiscardPolicyFunction`](api/SolidSyslogDiscardPolicy_8h.md). Each asks it
+at the moment it has to decide, so the device chooses what a full queue gives up and can
+change its answer while it runs.
+
+```c
+static volatile enum SolidSyslogDiscardPolicy s_discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+
+static enum SolidSyslogDiscardPolicy SyslogDiscardPolicy(void* context)
+{
+    (void) context;
+    return s_discardPolicy;
+}
+
+.Buffer = SolidSyslogCircularBuffer_Create(SolidSyslogFreeRtosMutex_Create(), s_ring, sizeof(s_ring), SyslogDiscardPolicy, NULL),
+
+/* on the store */
+.GetDiscardPolicy = SyslogDiscardPolicy,
+
+/* on the logger */
+.GetDiscardPolicy = SyslogDiscardPolicy,
+.OnHalt           = SyslogHalted,
+```
+
+Three places can be full. The ring asks on the task that logs; the store asks on the
+service task; and the logger, which holds a record for the sender between passes, asks
+when the ring fills behind it. One function serves all three, so the pipeline applies
+one policy; nothing checks that they agree.
+
+Oldest drops the oldest records to make room, so the newest survive. Newest refuses the
+record being written. Halt refuses it too, and stops the logger at the first record a
+full store refuses, or when the ring has filled behind a record Service is still holding
+from its last pass. The logger calls its `OnHalt` once, on the service task, after the
+refusal has been reported, and moves nothing more until your function answers otherwise
+or the device restarts. Whichever policy applies, lost records are reported once when a
+run of losses starts, by the queue that lost them, as
+[when a record is lost](error-severity.md#when-a-record-is-lost) describes.
+
+The example stays on Oldest. Its `Syslog_SetDiscardPolicy` changes the answer from any
+task, and the next record to meet a full queue sees it. `OnHalt` is the device's own
+reaction: in the example, a line on the console; on a device whose records must not be
+lost, where the device stops.
+
+**When you need it.** If what a full queue does is for the site or the commissioning
+engineer to decide rather than the firmware, or if the device must stop rather than lose
+a record. A device content to keep the newest records can leave every policy argument
+`NULL`.
+
+**Cost.** Flash ~110 B, all of it the example's own code, and no RAM: the queues already
+carried the pointers.
+
+## Stage 21: Fit the sizes to the device
 
 Every collaborator is in place, so the compile-time sizes can come down to what the
 device actually uses.
@@ -856,13 +938,13 @@ device actually uses.
 #define SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE 1U
 ```
 
-The message cap comes first, because the ring, the record slot in the instance, the
-store's record buffer and the formatter frame on both task stacks all follow it. The
-worst case measured on the example is 379 octets - four SD-ELEMENTs with both counters at
-full 32-bit width and both addresses at fifteen characters, plus a short message - so 400
-leaves room for longer messages on that device. Anything longer is truncated rather than
-dropped. RFC 5424 section 6.1 says a receiver should accept 2048 octets; over UDP, RFC
-5426 section 3.2 guarantees only 480.
+The message cap comes first, because the ring, the record slot from stage 3, the
+store's record buffer and the formatter frame on the logging task's stack all follow it.
+The worst case measured on the example is 379 octets - four SD-ELEMENTs with both
+counters at full 32-bit width and both addresses at fifteen characters, plus a short
+message - so 400 leaves room for longer messages on that device. Anything longer is
+truncated rather than dropped. RFC 5424 section 6.1 says a receiver should accept 2048
+octets; over UDP, RFC 5426 section 3.2 guarantees only 480.
 
 The pools follow. Their defaults suit a device running several transports at once; this
 one runs a single sender, over a single stream, to a single destination. Then the ring,
@@ -878,13 +960,13 @@ mechanism and the way it is most often got wrong.
 a device that is still missing collaborators, and the high-water marks that justify a
 stack are only trustworthy when everything that runs on it is there.
 
-**Cost.** No flash. RAM ~3.5k **returned**.
+**Cost.** No flash. RAM ~4.2k **returned**.
 
 ---
 
 ## Where to go next
 
-- [Adding it to your build](build-integration.md): the build detail behind the nods on this page, plus the tunables.
+- [Adding it to your build](build-integration.md): the build detail behind this page, plus the tunables.
 - [Structured data](structured-data.md): authoring the evidence elements, and your own.
 - [Error handling and severity](error-severity.md): reading the events from stage 2.
 - [TLS](tls.md): what each TLS pack checks, including a peer authorised by its fingerprint.

@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  A Mutex over the CMSIS-RTOS2 API, for thread-safe buffers and pools on any
+ *  A Mutex over the CMSIS-RTOS2 API, for buffers shared between tasks on any
  *  kernel that implements it. */
 #ifndef SOLIDSYSLOGCMSISRTOSMUTEX_H
 #define SOLIDSYSLOGCMSISRTOSMUTEX_H

@@ -26,7 +26,7 @@ You assemble the stack you need from three layers:
    sleep) and your tunables.
 
 Every role has a Core Null fallback, so omitting an adapter degrades
-safely: its `<Class>_Create` is simply never called, and nothing dangles at link
+safely: its `<Class>_Create` is never called, and nothing dangles at link
 time. You only compile the adapters you actually wire.
 
 Two facts decide everything below:
@@ -48,7 +48,7 @@ Two facts decide everything below:
 
 Choose one provider per role you need; leave the rest out and Core's Null
 object stands in. Which platform fills which role is the
-[platform × capability matrix](platforms/index.md), and each platform's own
+[capability matrix](platforms/index.md), and each platform's own
 page states what its adapters need from your build.
 
 Two things are build-specific rather than platform-specific, and belong here.
@@ -105,8 +105,9 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 
 <!-- /platforms -->
 
-`Posix` and `Windows` each carry more than the roles above - hostname and
-process-id callbacks, a sleep wrapper, and on POSIX a message-queue buffer.
+`Posix`, `Windows` and `VxWorks64` each carry more than the roles above - a
+hostname callback and a sleep wrapper, a process-id callback on the two hosts,
+and on POSIX a message-queue buffer.
 Those are extras rather than roles, because nothing forces you to pick a
 platform for them: the core ships buffers of its own, and the callbacks have
 bring-your-own seams.
@@ -154,7 +155,7 @@ Header-configured upstreams cannot be precompiled, because `lwipopts.h`,
 `FreeRTOSConfig.h`, `mbedtls_config.h`, `ffconf.h` and their siblings change
 layout and behaviour and we cannot see your copy. These are lwIP's Raw API and
 its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel, CMSIS-RTOS2, VxWorks
-6.4, Mbed TLS, ChaN FatFs, FreeRTOS-Plus-FAT and littlefs. Each is a
+6.4, Mbed TLS, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS. Each is a
 `SolidSyslog::<Platform>` target carrying its adapter sources, which compile
 into *your* target against *your* config.
 
@@ -164,8 +165,9 @@ into *your* target against *your* config.
 
 Stable system APIs - POSIX, Win32/Winsock, OpenSSL, C11 atomics - have no such
 hazard and compile straight into `libSolidSyslog.a`. Linking `SolidSyslog` is
-all they need, except that OpenSSL itself is linked alongside it
-(`OpenSSL::SSL OpenSSL::Crypto`).
+all they need, except OpenSSL itself, which your project finds and links
+alongside it: `find_package(OpenSSL 3.0 REQUIRED)`, then
+`OpenSSL::SSL OpenSSL::Crypto`.
 
 <!-- /platforms -->
 
@@ -187,7 +189,7 @@ project(my_logger C)
 include(FetchContent)
 FetchContent_Declare(SolidSyslog
     GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
-    GIT_TAG        main)
+    GIT_TAG        v0.3.0)
 
 set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic")
 FetchContent_MakeAvailable(SolidSyslog)
@@ -222,6 +224,7 @@ counter.
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "Windows;OpenSsl")   # or "Posix;OpenSsl"
 FetchContent_MakeAvailable(SolidSyslog)
+find_package(OpenSSL 3.0 REQUIRED)
 
 add_executable(my_logger main.c)
 target_link_libraries(my_logger PRIVATE SolidSyslog OpenSSL::SSL OpenSSL::Crypto)
@@ -233,7 +236,7 @@ stack; declare it when you would rather the build state its platforms than
 infer them.
 
 `ci/consumer-smoke/` is a working consumer of this
-shape, kept honest by CI: it cross-builds with the environment scrubbed, so
+shape, and CI builds it: it cross-builds with the environment scrubbed, so
 `SOLIDSYSLOG_PLATFORMS` is the only thing that can select a platform, and it
 links them rather than merely checking the targets exist.
 
@@ -312,7 +315,7 @@ nothing rather than failing, and nothing has to be excluded by hand.
 Set `SOLIDSYSLOG_DIR` before the `include` if the library does not sit where the fragment
 does - by default it locates itself.
 
-[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0) is
+[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0) is
 a worked consumer of this shape, cross-building FreeRTOS, lwIP, Mbed TLS and FatFs.
 
 ---
@@ -381,8 +384,8 @@ Platforms selected by a toolchain capability probe - `StdAtomic`, `Posix`,
 `Windows`, `OpenSsl` - get their own section. A CMake consumer receives them
 inside `libSolidSyslog.a`, but a manifest build has no such library, so compile
 them alongside everything else. `StdAtomic` is the one that matters on a
-cross-toolchain: without it there is no atomic counter, and every RFC 5424
-`sequenceId` is `1`.
+cross-toolchain: it is the counter behind the meta element's `sequenceId`, and
+[C11 atomics setup](platforms/stdatomic/setup.md) says what you get without one.
 
 <!-- /platforms -->
 
@@ -408,7 +411,7 @@ For this stack that comes to:
 > The header-configured upstreams take their other settings from your config
 > headers, not from `-D`s: `lwipopts.h` (incl. `NO_SYS`, `LWIP_UDP`/`TCP`),
 > `mbedtls_config.h`, `FreeRTOSConfig.h` (with
-> `configSUPPORT_STATIC_ALLOCATION=1` for the mutex), `ffconf.h`.
+> `configSUPPORT_STATIC_ALLOCATION=1` and `configUSE_MUTEXES=1` for the mutex), `ffconf.h`.
 
 ### 3. Language standard
 
@@ -437,7 +440,7 @@ you.
 |---|---|
 | `lwipopts.h` | lwIP feature set + sizing (`NO_SYS`, raw/UDP/TCP, PBUF pools) |
 | `mbedtls_config.h` | Mbed TLS feature set (ciphersuites, TLS 1.2+) |
-| `FreeRTOSConfig.h` | FreeRTOS kernel config (`configSUPPORT_STATIC_ALLOCATION=1`) |
+| `FreeRTOSConfig.h` | FreeRTOS kernel config (`configSUPPORT_STATIC_ALLOCATION=1`, `configUSE_MUTEXES=1`) |
 | `ffconf.h` | FatFs feature set |
 | `my_tunables.h` | SolidSyslog pool sizes / limits (see below) |
 
@@ -467,7 +470,7 @@ every one `#ifndef`-guarded so you override without editing the library. Two equ
   -DSOLIDSYSLOG_USER_TUNABLES_FILE="/abs/path/to/my_tunables.h"
   ```
 
-  Your `my_tunables.h` just `#define`s the values you want to change; the
+  Your `my_tunables.h` `#define`s only the values you want to change; the
   defaults header fills in the rest.
 
 - Per-value on the command line:
@@ -477,10 +480,13 @@ every one `#ifndef`-guarded so you override without editing the library. Two equ
   ```
 
 Pool-size tunables are named by role, not by platform (e.g.
-`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-vendor name): a build links one
-implementation per role, so you size "how many TCP streams", never "how many
-POSIX streams". The pool counts concurrent instances. See the header's
-top-of-file comment for the full rationale.
+`SOLIDSYSLOG_TCP_STREAM_POOL_SIZE`, not a per-vendor name), so you size "how
+many TCP streams", never "how many POSIX streams". The pool counts concurrent
+instances, and each implementation keeps a pool of its own at that size: a build
+that links two implementations of one role - the lwIP Raw pack's numeric and DNS
+resolvers - holds that many of each.
+[Naming conventions](NAMING.md#pool-size-tunables-are-named-by-role-not-platform)
+states the rule.
 
 ### The override must reach every translation unit
 

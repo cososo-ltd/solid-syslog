@@ -158,7 +158,7 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
   bash -c 'cmake --preset iwyu && cmake --build --preset iwyu --target iwyu'
 ```
 
-For FreeRTOS / Plus-TCP / lwIP / MbedTLS / FatFs trees, use `freertos-host`
+For FreeRTOS / Plus-TCP / lwIP / Mbed TLS / FatFs trees, use `freertos-host`
 with the clang-19 overrides instead:
 
 ```bash

@@ -4,7 +4,7 @@ Wiring `SolidSyslogMbedTlsStream` so a `SolidSyslogStreamSender` delivers
 RFC 5425 syslog over TLS. What any TLS stream must do is under
 [TLS obligations](../../tls.md); what this pack needs and reports is on the
 [Mbed TLS](index.md) page. Every config field is documented on its struct. This
-page is the order to wire them in, and what bites on the way.
+page is the order to wire them in, and what commonly goes wrong on the way.
 
 ## What to link
 
@@ -30,8 +30,9 @@ read.
 - A platform supplying the TCP stream, the address and the resolver. The
   [capability matrix](../index.md) says which fills each role on your target,
   and that platform's setup page shows how to create them.
-- A `SolidSyslogSleepFunction`. The handshake polls and sleeps between polls.
-  Your platform pack supplies one, or wrap your OS sleep in one line.
+- A `SolidSyslogSleepFunction` that waits at least the time asked, as
+  [`SolidSyslogSleep.h`](../../api/SolidSyslogSleep_8h.md) requires. The
+  handshake budget is counted in the sleeps it asks for.
 
 The adapter sources compile in your target, so add them to your build as
 [adding it to your build](../../build-integration.md) describes. Include the
@@ -78,7 +79,7 @@ These then fail in ways that are hard to read:
 Without one, `mbedtls_entropy_func` never reaches its threshold and every
 `mbedtls_ctr_drbg_seed` returns `MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED`.
 Production entropy is a hardware question: a true random number generator, a
-security element, or a board-specific source.
+secure element, or a board-specific source.
 
 **Call `psa_crypto_init()` after the DRBG is seeded.** Mbed TLS 3.6 routes
 TLS 1.3 through PSA; uninitialised, the first handshake state transition returns
@@ -253,8 +254,16 @@ different collector at runtime, `ServerName` has to change with it: move
 
 ## Rotation
 
-With the PEM-buffer source, point the config at the new PEM and increment the
-stream's version; the next connection parses it. With the handle source the old
+With the PEM-buffer source, Create copied each buffer's address and length, so
+pointing your configuration at new PEM afterwards changes nothing. A PEM that
+cannot be rewritten - a `const` array like the one above, or one in flash - cannot
+be rotated this way: hold material you will rotate in writable memory, or use the
+handle source. Where the PEM is writable, write the new PEM over the bytes the
+source was created with, at the length it was created
+with, terminating NUL included, then increment the stream's version; the next
+connection parses it. Make the change on the task that calls
+`SolidSyslog_Service`, or with that task held off, so a connection never parses a
+half-written buffer. With the handle source the old
 handles are still being read by an open connection, so free and re-parse them
 only after it has closed: call `SolidSyslogSender_Disconnect` from the task
 that services the library and re-parse when it returns, or do it in a

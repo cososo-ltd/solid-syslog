@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  A Mutex wrapping pthread_mutex_t, for thread-safe buffers and pools on a
+ *  A Mutex wrapping pthread_mutex_t, for buffers shared between tasks on a
  *  POSIX host. */
 #ifndef SOLIDSYSLOGPOSIXMUTEX_H
 #define SOLIDSYSLOGPOSIXMUTEX_H

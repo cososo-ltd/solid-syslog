@@ -1,4 +1,4 @@
-# Security Policy
+# Security policy
 
 Cozens Software Solutions Limited (COSOSO) takes the security of SolidSyslog
 seriously. This policy explains how to report a vulnerability and what to
@@ -15,8 +15,8 @@ requests, or discussions.** Use one of the private channels below:
    or from this repository's **Security** tab → **Report a vulnerability**.
    This opens a private advisory visible only to you and the maintainer.
 2. **Email.** Write to **<security@cososo.co.uk>**. Use this if you have
-   something to attach — a proof of concept, a crash dump, a packet capture, a
-   patch — which the web form cannot take.
+   something to attach - a proof of concept, a crash dump, a packet capture, a
+   patch - which the web form cannot take.
 3. **Web form.** Submit the form at
    **<https://cososo.co.uk/security/report>**. It routes to a private inbox, and
    needs neither a GitHub account nor a working mail client.
@@ -24,7 +24,7 @@ requests, or discussions.** Use one of the private channels below:
 **Email is not encrypted in transit beyond what our providers negotiate.** For
 anything you need protected, use GitHub private vulnerability reporting: it is
 the reason that channel is listed first. We do not currently publish a PGP key,
-and would rather say so than leave you guessing — if you need material encrypted
+and would rather say so than leave you guessing - if you need material encrypted
 in transit, that is the channel to use.
 
 All three routes reach the maintainer privately.
@@ -33,7 +33,7 @@ All three routes reach the maintainer privately.
 
 The more of this you can provide, the faster we can triage:
 
-- Affected component — **Core**, **Platform**, or **Bdd** (see *Scope* below)
+- Affected component - **Core**, **Platform**, or **Bdd** (see *Scope* below)
 - Affected version, tag, or commit SHA
 - A description of the issue and its impact
 - Reproduction steps or a proof of concept (attach it if you are writing by
@@ -43,7 +43,7 @@ The more of this you can provide, the faster we can triage:
 
 ## Our commitments
 
-For the free tier — either of the two free licences in
+For the free tier - either of the two free licences in
 [`LICENSE.md`](LICENSE.md):
 
 - **Acknowledgement** within **72 hours** of receipt.
@@ -61,7 +61,7 @@ acknowledged and acted on as soon as is practicable.
 
 We follow coordinated disclosure with a **90-day** window from the date of
 report, plus a **14-day grace period** if a fix is imminent at day 90. We
-will credit reporters who wish to be named — just tell us your preference in
+will credit reporters who wish to be named - tell us your preference in
 your report.
 
 Advisories are published as **GitHub Security Advisories**. For

@@ -3,8 +3,9 @@
  */
 
 /** @file
- *  The no-op SecurityPolicy Null object: pass-through integrity - Seal and Open both return
- *  true without touching the record, adding no integrity data and accepting every record. */
+ *  The no-op SecurityPolicy Null object: pass-through integrity - SealRecord returns true and
+ *  OpenRecord answers SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED without touching the record,
+ *  adding no integrity data and accepting every record. */
 #ifndef SOLIDSYSLOGNULLSECURITYPOLICY_H
 #define SOLIDSYSLOGNULLSECURITYPOLICY_H
 
@@ -12,8 +13,9 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /** Pass-through: Seal and Open both return true without touching the record, adding
-     *  no integrity data and accepting every record as valid. */
+    /** Pass-through: SealRecord returns true and OpenRecord answers
+     *  SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED without touching the record, adding no
+     *  integrity data and accepting every record as valid. */
     struct SolidSyslogSecurityPolicy* SolidSyslogNullSecurityPolicy_Get(void);
 
 SOLIDSYSLOG_EXTERN_C_END

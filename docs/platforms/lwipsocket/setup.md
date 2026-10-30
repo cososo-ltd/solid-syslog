@@ -74,8 +74,10 @@ pack has anything only you can decide. One address, one resolver and one
 transport serve one sender. The pool sizes that
 bound how many you may draw are in
 [Adding it to your build](../../build-integration.md#tunables); drawing past them
-hands back a Null object and reports `CRITICAL`, so a sender wired from an
-exhausted pool delivers nothing rather than misbehaving.
+reports `CRITICAL`. A datagram, stream or resolver drawn past its pool is the
+Null object, so a sender wired with one delivers nothing. An address drawn past
+its pool is a shared fallback instead; raise `SOLIDSYSLOG_ADDRESS_POOL_SIZE` so
+that no sender draws it.
 
 ## Resolving by name
 
@@ -108,7 +110,7 @@ inside it is safe.
 One where lwIP is built with `NO_SYS=0` and a task can afford to block while the
 stack answers. That is what buys the absence of a marshal seam and of any
 per-call hop. Where your build cannot host the sockets layer, the
-[platform x capability matrix](../index.md) is the place to choose from.
+[capability matrix](../index.md) is the place to choose from.
 
 ## When it does not work
 

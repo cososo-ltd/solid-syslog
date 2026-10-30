@@ -7,7 +7,7 @@ configuration.
 
 Fills the Resolver, Datagram and Stream [roles](../../roles/index.md), plus the
 address handle they share. A TLS platform layers over the TCP stream; the
-[platform × capability matrix](../index.md) shows which provide it.
+[capability matrix](../index.md) shows which provide it.
 
 ## What it ships
 
@@ -62,7 +62,7 @@ below.
 
 Neither the datagram nor the TCP stream provides confidentiality, integrity or
 peer authentication. TLS is a separate role filled by a different platform - the
-[platform × capability matrix](../index.md) shows which - layered over this
+[capability matrix](../index.md) shows which - layered over this
 stream rather than replacing it.
 
 ### The marshal is a correctness requirement, not a tuning knob
@@ -111,7 +111,7 @@ none is stated, because the stack exposes no path MTU.
 
 A record above that size is offered to lwIP whole, and what happens to that
 first attempt is `IP_FRAG`'s decision rather than the adapter's. Only the
-outcome where lwIP tells us the send failed is recoverable: the sender then
+outcome where lwIP reports that the send failed is recoverable: the sender then
 recognises a record that could not have fitted, trims it on a UTF-8 codepoint
 boundary and sends again.
 
@@ -167,7 +167,9 @@ every send would fail to. The refusal is reported as `ERROR` with the detail
 ### Pool sizing is yours, and exhaustion is silent at the stack
 
 `PBUF_POOL_SIZE`, `MEMP_NUM_TCP_PCB` and `MEMP_NUM_UDP_PCB` must cover the
-instances you create alongside everything else using the stack. lwIP reports
-nothing when it runs out; what you see is the send failing, which reaches you as
-a delivery failure through the error handler rather than as anything naming the
-pool that was exhausted.
+instances you create alongside everything else using the stack. lwIP itself
+reports nothing when a pool runs out. A `MEMP_NUM_TCP_PCB` shortage is the one
+the adapter names: `tcp_new` answers no pcb, and the stream reports
+`ENDPOINT_UNAVAILABLE` at `ERROR` on each attempt to connect. A shortage of UDP
+pcbs or pbufs fails the datagram's open or a send with no event of the adapter's
+own, and reaches you as the sender's delivery failure.

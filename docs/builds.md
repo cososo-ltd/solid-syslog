@@ -1,4 +1,4 @@
-# Building and Testing
+# Building and testing
 
 > This is the contributor / maintainer build doc: the CMake preset catalogue
 > for developing the library and reproducing CI lanes locally. If you are

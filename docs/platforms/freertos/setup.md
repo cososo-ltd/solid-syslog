@@ -23,7 +23,7 @@ read.
 Your target supplies the kernel's include path, because it is your kernel and
 your configuration.
 
-`configSUPPORT_STATIC_ALLOCATION` must be 1. The mutex is created from storage
+`configSUPPORT_STATIC_ALLOCATION` and `configUSE_MUTEXES` must both be 1. The mutex is created from storage
 inside the library's own pool, so nothing is allocated at run time and creation
 cannot fail for want of heap.
 

@@ -7,7 +7,7 @@ configuration.
 
 Fills the Datagram, Stream and Resolver [roles](../../roles/index.md), plus the
 address handle a transport reads back to send. The
-[platform x capability matrix](../index.md) shows which platform fills what.
+[capability matrix](../index.md) shows which platform fills what.
 
 ## What it ships
 
@@ -157,5 +157,7 @@ one. [Error severity](../../error-severity.md) covers what each level means.
 - **A socket option the stack declines raises `WARNING`**, once per connection
   attempt however many were declined. The connection carries records; what the
   option bought, usually prompt detection of a dead peer, does not.
-- **A `CRITICAL` at create time** means the component fell back to its Null
-  object, so nothing will be delivered at all.
+- **A `CRITICAL` at create time** means a pool ran out. A datagram, stream or
+  resolver then falls back to its Null object and nothing is delivered through
+  it; an address falls back to a shared slot. Raise the pool size that
+  reported it.

@@ -12,8 +12,9 @@ page is the order to wire them in.
 - A platform supplying the TCP stream, the address and the resolver. The
   [capability matrix](../index.md) says which fills each role on your target,
   and that platform's setup page shows how to create them.
-- A `SolidSyslogSleepFunction`. The handshake polls and sleeps between polls.
-  Your platform pack supplies one, or wrap your OS sleep in one line.
+- A `SolidSyslogSleepFunction` that waits at least the time asked, as
+  [`SolidSyslogSleep.h`](../../api/SolidSyslogSleep_8h.md) requires. The
+  handshake budget is counted in the sleeps it asks for.
 
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")

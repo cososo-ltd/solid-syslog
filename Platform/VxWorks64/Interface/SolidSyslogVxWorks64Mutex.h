@@ -3,8 +3,7 @@
  */
 
 /** @file
- *  A Mutex over the VxWorks 6.4 mutual-exclusion semaphore, for thread-safe
- *  buffers and pools in a kernel (VIP) build. */
+ *  A Mutex over the VxWorks 6.4 mutual-exclusion semaphore, for buffers shared between tasks in a kernel (VIP) build. */
 #ifndef SOLIDSYSLOGVXWORKS64MUTEX_H
 #define SOLIDSYSLOGVXWORKS64MUTEX_H
 

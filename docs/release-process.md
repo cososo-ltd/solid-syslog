@@ -1,4 +1,4 @@
-# Release Process
+# Release process
 
 How a SolidSyslog release is cut, for the maintainer. Releases are source-only
 (no binary artefacts) with a signed SBOM, a reproducible source-tree hash and a
@@ -10,30 +10,53 @@ provenance and keep the documentation for the version they pinned (per
 
 ## Versioning
 
-- Semantic Versioning. Pre-1.0 (`0.x`), breaking changes bump the minor,
-  not the major (`bump-minor-pre-major`), no premature 1.0 signal while the API
-  is still settling.
+- Semantic Versioning. Pre-1.0 (`0.x`), a breaking change bumps the minor, not
+  the major (`bump-minor-pre-major`). The 0.x label describes the breadth of
+  platform coverage and the absence of field integration so far, not the maturity
+  of the code; `1.0.0` is the commitment that the public API is stable, after
+  which a breaking change costs a major version.
 - release-please derives the version from the Conventional Commit types merged
   since the last release.
 
 ## What the release notes contain
 
-Every release carries three parts, in this order. The first two are written; the
-third is generated.
+A release's notes open with a sentence or two on what the release is for, then
+carry five written sections and the generated list, in this order. The written
+sections are added by hand in the release pull request.
 
-1. **What's in this release** - prose, plus a compliance and platform snapshot.
-   What the release is for, and what changed that an integrator would act on.
+1. **What's in this release** - what changed that an integrator would act on, in
+   prose. Then the platforms: name what was added, and give the full list.
+   "Unchanged" is rarely true of the rest, since most releases touch them.
+2. **Before you upgrade** - every change that stops code written for the previous
+   release building, or changes what it does without a build error: a signature,
+   a config field, a vtable slot an adapter fills, a default. Say for each what to
+   change and, where there is one, how to keep the old behaviour. Take the list
+   from `git diff v<previous>..HEAD -- Core/Interface Platform/*/Interface` and the
+   merged stories, not from the generated list. When nothing breaks, say so in one
+   line.
 
-   This is also where a documentation change that corrected a claim an integrator
-   could have acted on gets surfaced, since `docs` commits do not appear in the
-   generated list.
+   It is written by hand because the generated list names each break by its
+   commit subject and says nothing about what to change. A commit that breaks
+   the API carries `!` or a `BREAKING CHANGE` trailer, so release-please lists it
+   in a breaking-changes section; with `bump-minor-pre-major` a break before 1.0
+   bumps the minor version, not the major. A break that went in unmarked appears
+   in no generated section, so take the list from the interface diff rather than
+   from the generated one.
 
-   **The snapshot is restated here rather than linked**, which is deliberate and
+   It also lists the documentation corrected in the release, where acting on the
+   old text would have cost an integrator something, since `docs` commits do not
+   appear in the generated list.
+3. **RFC compliance at this release** - state in prose what moved - a clause
+   newly met, a standard newly covered. Restate the summary table whenever a
+   number changed; one line saying nothing changed when none did. Read the
+   numbers off the matrix at the tag, not from memory.
+
+   **This table and the platform list are restated rather than linked**, which is deliberate and
    is not the duplication the documentation rules forbid. Those rules guard
    against two *current-state* copies drifting apart. A release note is not a
    copy - it is a frozen record with a different lifetime. The
    [compliance matrix](rfc-compliance.md) and the
-   [platform matrix](platforms/index.md) answer *where are we now*; the release
+   [capability matrix](platforms/index.md) answer *where are we now*; the release
    note answers *where were we at this version*, which nothing else records. The
    site publishes from `main` only, so a link out of an old release resolves to
    today's state and silently loses what that release actually shipped.
@@ -41,15 +64,6 @@ third is generated.
    Where the full detail is wanted, link the **tag** rather than the branch -
    `blob/vX.Y.Z/docs/rfc-compliance.md` is frozen by git even though the site is
    not.
-
-   What to include:
-
-   - **RFC compliance.** State in prose what moved - a clause newly met, a
-     standard newly covered. Restate the summary table whenever a number changed;
-     one line saying nothing changed when none did. Read the numbers off the
-     matrix at the tag, not from memory.
-   - **Platforms.** Name what was added, then give the full list. "Unchanged"
-     is rarely true of the rest, since most releases touch them.
 
    Restating absolute numbers rather than only deltas is what keeps the series
    answerable: deltas compose badly, and one wrong delta propagates through every
@@ -66,22 +80,25 @@ third is generated.
    they depend on how the integrator configures it, and that they are neither a
    certification nor a conformance claim. One sentence is enough; omitting it is
    not.
-2. **Known limitations** - the defects and divergences shipping with the release,
+4. **Known limitations** - the defects and divergences shipping with the release,
    each linking its tracking issue. State that they were found by audit and are
    disclosed on the pages that describe the affected platform: a bare list of open
    defects reads as unfinished work, and the same facts framed as deliberate
    disclosure read as rigour.
-3. **Full changelog** - release-please's generated list.
+5. **Verifying this release** - the attached assets, how they are signed, and a
+   link to the verification guide at the tag. The check that matters is that a
+   bundle verifies, not that the assets are present.
+6. **Full changelog** - release-please's generated list.
 
 ### Getting the written parts into both places
 
-The `CHANGELOG.md` entry and the GitHub Release description carry the same three
-parts, and nothing copies one to the other.
+The `CHANGELOG.md` entry and the GitHub Release description carry the same parts,
+and nothing copies one to the other.
 
-1. Write the two written parts and paste them above the generated list in
+1. Write the written sections and paste them above the generated list in
    `CHANGELOG.md`, in the release pull request, before merging it.
-2. After the Release exists, build a file holding **all three parts** - the two
-   written ones and the generated list, which the merged `CHANGELOG.md` entry now
+2. After the Release exists, build a file holding **every part** - the written
+   sections and the generated list, which the merged `CHANGELOG.md` entry now
    contains - and set the description from it:
 
    ```bash
@@ -89,7 +106,7 @@ parts, and nothing copies one to the other.
    ```
 
 `--notes-file` **replaces** the Release description rather than adding to it, so a
-file carrying only the written parts would delete the generated changelog from the
+file carrying only the written sections would delete the generated changelog from the
 Release. Take the generated section from the merged `CHANGELOG.md` entry, or from
 the Release's own body with `gh release view --json body`, before editing.
 
@@ -105,8 +122,10 @@ fires `release: edited` rather than `release: published`, so neither `sbom.yml` 
 consumer of the library gets - refactoring is defined as preserving behaviour, and
 the other three never reach the consumer at all.
 
-Breaking changes surface in their own section regardless of the type that carried
-them.
+A commit marked as breaking surfaces in a breaking-changes section whatever its
+type, and in its type's own section even where that type is hidden, which is where
+0.2.0's Refactoring section came from. Mark every break, whatever its type;
+*Before you upgrade* then describes each one.
 
 The Conventional Commit type is therefore a statement about consumer impact, not
 only about which files were touched. A change that alters what an integrator
@@ -116,36 +135,43 @@ should do belongs under a type that appears.
 
 `CHANGELOG.md` is the authoritative record of what changed between releases. Its
 generated section is built by release-please from the Conventional Commit types
-listed above; the two written parts are added by hand in the release pull request.
+listed above; the written sections are added by hand in the release pull request.
 
 1. Conventional Commits land on `main`. `feat` and `fix` map to a generated
-   CHANGELOG section; the hidden types above produce no entry, and a breaking
-   change is listed whichever type carried it.
+   CHANGELOG section; the hidden types above produce no entry, and a commit marked
+   as breaking is listed whatever its type.
 2. release-please maintains a release PR that bumps the version and
-   `CHANGELOG.md`. Write the first two parts of the release notes into that PR
+   `CHANGELOG.md`. Write the written sections of the release notes into that PR
    before merging it, per *Getting the written parts into both places* above.
-3. Merging that PR creates the tag and a **draft** GitHub Release
+3. Run each target that a target checklist accepts against the release pull
+   request's head before merging it: those whose `Bdd/Targets/<Target>/README.md`
+   has a *Target checklist* section. CI cannot reach them, and
+   [CLAUDE.md](../CLAUDE.md#a-target-ci-cannot-reach-is-accepted-by-a-checklist)
+   states the rule. Record the run as a comment on the pull request - the commit,
+   each step as pass, fail or not run, and the scenarios passed, failed and
+   skipped - since release-please rewrites the pull request's body.
+4. Merging that PR creates the tag and a **draft** GitHub Release
    (made with the release-please GitHub App's token, no personal GPG/SSH signing). The tag is created at
    once; a draft would otherwise get its tag only on publication, and
    release-please could not then find the previous release.
-4. Publishing the draft is a separate step. Nothing the release attaches exists
+5. Publishing the draft is a separate step. Nothing the release attaches exists
    until then, so publish once everything the documentation links by name is in
    place - the example stacks' `release/<version>` branches, which pin the
    tag's SHA and so can only be cut once the tag exists. Publish with
    `gh release edit v<version> --draft=false --latest`, so the release is the
    one GitHub serves as latest; a fix to an older line takes `--latest=false`
    instead.
-5. The `release: published` event triggers `sbom.yml`: it renders and validates
+6. The `release: published` event triggers `sbom.yml`: it renders and validates
    the CycloneDX SBOM, writes the content-tree SHA-256 (scope: `Core/` +
    `Platform/` + `CMakeLists.txt`, `CMakePresets.json`, `LICENSE.md`,
    `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches each
    file with its signature to the Release.
-6. The same event triggers `docs-bundle.yml`: it builds the documentation from
+7. The same event triggers `docs-bundle.yml`: it builds the documentation from
    the tag with `mkdocs-offline.yml`, checks that the result works with no
    server and no network, cosign-signs the zip and attaches it with its
    signature. The bundle is built and checked on every CI run as well, so only
    the signing and the attachment wait for a release.
-7. Signing and attachment hard-fail. The Release already exists by the time the
+8. Signing and attachment hard-fail. The Release already exists by the time the
    jobs run, so a failure cannot block it - it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
@@ -177,6 +203,17 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 ## Checklist
 
 - [ ] `main` is green.
+- [ ] Bring the documentation to the release before it is tagged, since the bundle
+      is built from the tag: the example stacks' `release/<version>` links in
+      `README.md`, `docs/README.md`, `docs/build-integration.md` and
+      `docs/hardening-path.md`, the `GIT_TAG` in `docs/build-integration.md`, and
+      the four figures under *What it costs* in `README.md`, taken from the
+      re-measured hardening path.
+- [ ] The release PR's notes carry the written sections, *Before you upgrade*
+      included.
+- [ ] Run each target that has a target checklist against the release PR's head,
+      and record the run as a comment on the PR, per
+      [Cutting a release](#cutting-a-release).
 - [ ] Cut the release by merging the release PR.
 - [ ] Confirm the tag and the draft GitHub Release, and read the notes in the
       draft before anything goes out.

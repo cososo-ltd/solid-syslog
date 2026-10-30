@@ -1,4 +1,4 @@
-# BDD Testing
+# BDD testing
 
 ## Overview
 

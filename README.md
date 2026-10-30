@@ -11,18 +11,18 @@ Cyber Resilience Act and IEC 62443 expect: a component you add, not a redesign.
 
 ## What it costs
 
-**+5 KB flash** for a valid, timestamped RFC 5424 record on the wire, and **1.9 KB
-of RAM**. **+16.4 KB flash** for the whole path - store-and-forward, device identity,
-mutual TLS and AES-GCM encryption at rest - and **36.3 KB of RAM**, mainly TLS buffers.
+**+7.0 KB flash** for a valid, timestamped RFC 5424 record on the wire, and **2.9 KB
+of RAM**. **+22.0 KB flash** for the whole path - store-and-forward, device identity,
+mutual TLS and AES-GCM encryption at rest - and **36.6 KB of RAM**, mainly TLS buffers.
 Each figure is what SolidSyslog adds to a device already running FreeRTOS, lwIP,
 FatFs and Mbed TLS: a baseline built to carry the third-party code a real-world
 device would already have. Measured on a Cortex-M3 under QEMU, a representative
 device rather than a specification.
 
 Both are measured by a worked integration, published in full as
-[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.2.0) (consumed
+[solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.3.0) (consumed
 with CMake) and
-[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.2.0)
+[solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0)
 (the same integration, consumed with Make). Each stage is one commit; `git show`
 gives the diff and the measured cost.
 
@@ -48,20 +48,27 @@ a vtable, so the library ports to an embedded OS by filling roles rather
 than editing Core. Platform packs ship for hosted and embedded targets alike,
 the hosted ones fully supported as development, test, and edge / gateway hosts.
 Which upstream fills which capability is in the
-[platform matrix](https://docs.cososo.co.uk/solid-syslog/platforms/). Bring your
+[capability matrix](https://docs.cososo.co.uk/solid-syslog/platforms/). Bring your
 own stack and the same Core runs unchanged.
 
-TLS revocation (CRL / OCSP) is not performed by the library. Whether it is
-enforced depends on the TLS backend and platform you configure.
+TLS revocation (CRL / OCSP) is outside the library's contract, and no shipped
+backend checks it; a deployment that needs it configures it in its TLS library.
+[TLS obligations](https://docs.cososo.co.uk/solid-syslog/tls/#do-not-require-revocation-checking)
+explains why.
 
 ## Documentation
 
 Full documentation lives at
 [docs.cososo.co.uk/solid-syslog](https://docs.cososo.co.uk/solid-syslog/), organised
 around what you came to do: **Core**, **Integrate**, **Platforms**,
-**Compliance**, **API reference**, and **Maintaining**. New here?
+**Compliance**, **API reference**, and **Maintaining**.
 [Compliance in one page](https://docs.cososo.co.uk/solid-syslog/overview/) is the
 fastest orientation for evaluators.
+
+What changed in each release, and what to change in your code when you upgrade, is
+in [`CHANGELOG.md`](CHANGELOG.md); each
+[GitHub release](https://github.com/cososo-ltd/solid-syslog/releases) carries the
+same notes.
 
 ## Integrating it
 
@@ -77,7 +84,7 @@ and the compile-time tunables.
 
 ## Building and testing
 
-Developing the library itself? See
+To develop the library itself, see
 [Building and testing](https://docs.cososo.co.uk/solid-syslog/builds/) - the
 contributor/maintainer preset catalogue - alongside the pre-PR check budget, the BDD
 infrastructure, the CI pipeline, and the container images, all under **Maintaining**
@@ -102,7 +109,7 @@ leave unfilled.
 
 [`Bdd/Targets/`](Bdd/Targets/) holds one BDD-driven binary per target
 configuration, on the host and under QEMU alike, each exercising the library end
-to end against a real syslog server; see
+to end against a real syslog collector; see
 [BDD testing](https://docs.cososo.co.uk/solid-syslog/bdd/).
 
 ## Compliance

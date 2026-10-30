@@ -117,7 +117,9 @@ What the glue then does on each build:
   replaces that default, so name `VxWorks64` among the others.
 - `ADDED_CFLAGS` gains the define that names the library's tunables, so the
   DKM's sources see the same tunables as the library.
-- Cleaning the project cleans the library's build too.
+- Cleaning the project deletes the library's build directory and everything in
+  it, so a `SOLIDSYSLOG_BUILD_DIR` you set must name a directory the library has
+  to itself.
 
 Under `make -j`, the first build of a project can compile a DKM source before
 the library's build has written its tunables header. A source that includes a

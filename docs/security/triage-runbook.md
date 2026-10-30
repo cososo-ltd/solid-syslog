@@ -1,4 +1,4 @@
-# Vulnerability Triage Runbook
+# Vulnerability triage runbook
 
 This is the maintainer's operational counterpart to [Security policy](../../SECURITY.md):
 how a vulnerability report is handled end-to-end, from receipt to retrospective.
@@ -10,15 +10,15 @@ Advisory (GHSA). No separate issue, spreadsheet, or external tracker: the draft
 GHSA holds the timeline, severity, affected/fixed versions, and reporter details
 from receipt through publication.
 
-Reports arrive via the channels in the [security policy](../../SECURITY.md): GitHub private vulnerability
-reporting (which opens a draft GHSA directly) or the `cososo.co.uk/security/report`
-web form.
+Reports arrive through the channels in the [security policy](../../SECURITY.md).
+GitHub private vulnerability reporting opens a draft GHSA itself; for any other
+channel, open one.
 
 ## Stage 1 - Receipt (hours 0-72)
 
 - [ ] Log the report by opening (or confirming) a draft GHSA on the repo.
-- [ ] If it came via the web form, an auto-acknowledgement has already gone out;
-      send a human acknowledgement within 72 hours regardless.
+- [ ] Send a human acknowledgement within 72 hours, whatever the channel. The web
+      form has already sent an automatic one.
 - [ ] Capture the reporter's contact and their credit preference (name/handle,
       or anonymous) in the advisory.
 - [ ] Do not confirm or deny severity yet; that's triage.

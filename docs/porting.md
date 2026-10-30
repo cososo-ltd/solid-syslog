@@ -35,7 +35,7 @@ running against a well-behaved do-nothing. So porting is additive: you provide
 the roles your deployment needs and leave the rest to their Nulls. You never edit
 Core, and you never touch a role you don't use.
 
-The [platform × capability matrix](platforms/index.md) lists every role and the
+The [capability matrix](platforms/index.md) lists every role and the
 adapters that ship for it; this page is what you write when none of the shipped
 adapters fits your platform.
 
@@ -116,7 +116,10 @@ Each adapter ships a `SolidSyslog<Adapter>Errors.h`. It declares one thing: an
 `extern const struct SolidSyslogErrorSource` naming your adapter. The detail
 codes are not yours - they belong to the role you are filling, and live in a
 single `SolidSyslog<Role>Errors.h` under `Core/Interface/`. Include that header
-from yours and report its constants.
+from yours and report its constants. Define the source in the adapter's `.c` with
+both of its fields - the name a handler prints, and the role's name function, so a
+handler can name your detail codes as it names the shipped adapters':
+`const struct SolidSyslogErrorSource SolidSyslogPosixMutexErrorSource = {"PosixMutex", SolidSyslogMutexErrors_Name};`
 
 You are filling an existing role, so its enum already exists and already carries
 every code its other backends raise. Reuse the codes that fit. Add a member only
@@ -124,14 +127,16 @@ for a fault none of them has, and add it to the role's enum in Core rather than
 starting one of your own - the shared vocabulary is what lets a handler react to
 "the mutex could not be created" without knowing which backend created it, and
 survive a backend swap unchanged. A code only your adapter can raise is fine
-there; one a backend never raises is simply one a handler never sees.
+there; one a backend never raises is one a handler never sees.
 
 When something fails, the adapter calls `SolidSyslog_Error(severity, source,
 category, detail)`: `source` is its own `ErrorSource` (matched by pointer
 identity in a handler), `category` is a portable reaction axis from
 [`SolidSyslogErrorCategory.h`](api/SolidSyslogErrorCategory_8h.md), and `detail`
-is a value from the role's enum. A handler that doesn't care about your adapter
-simply never matches its source. The default handler is a silent no-op: adapters
+is a value from the role's enum. Where the call that failed left a code of its own -
+an errno, an `FRESULT` - call `SolidSyslog_ErrorWithNativeCode` instead, with the
+code as a fifth argument; the handler receives it as the event's `NativeCode`. A
+handler that does not care about your adapter never matches its source. The default handler is a silent no-op: adapters
 report and carry on, they never crash the caller.
 
 The rule and its single exception are in
@@ -169,9 +174,9 @@ allow it.
   into a process already using that upstream elsewhere.
 - A Null must be safe to call. Whatever your role's Null returns - each is
   documented in its own header - it must let Core's algorithm
-  proceed sanely: drop-on-the-floor where a drop is harmless, `false` where the
+  proceed: discard where discarding is harmless, `false` where the
   caller has an error path to run.
-- Bounded blocking. Anything that can wedge (a `connect`, a handshake) is
+- Bounded blocking. Anything that can block indefinitely (a `connect`, a handshake) is
   bounded by an explicit timeout or deadline: a timeout tunable (e.g.
   `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS`) or a caller-supplied deadline. A
   `SolidSyslogSleepFunction`, where one is used, only paces the poll loop between

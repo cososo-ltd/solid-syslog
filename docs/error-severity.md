@@ -1,9 +1,12 @@
 # Error-event severity policy
 
-`SolidSyslog_Error(severity, source, category, detail)` carries a `severity` drawn from
-`enum SolidSyslogSeverity` (`SolidSyslogPrival.h`). This document is the single source of
-truth for which level an emit site picks. It exists because the ladder is easy to drift:
-two faults can sit at the same level that an error handler needs to tell apart.
+Every event the library raises carries a `severity` from `enum SolidSyslogSeverity`
+(`SolidSyslogPrival.h`), whether it comes from `SolidSyslog_Error` or, where the
+platform gave a code of its own, `SolidSyslog_ErrorWithNativeCode`. This page is for
+whoever writes the handler that reacts to those events and whoever writes an adapter
+that raises them, and is the single source of truth for which level an emit site
+picks. It exists because the ladder is easy to drift: two faults can sit at the same
+level that an error handler needs to tell apart.
 
 ## The ladder is an *urgency* axis, not a *who-fixes-it* axis
 
@@ -42,25 +45,26 @@ The `CRITICAL` / `WARNING` line for setup faults is mechanically checkable:
 - `CRITICAL`: the component could not be built. `<Class>_Create` returned the shared Null
   sibling (pool exhausted, or a hard misconfig with no usable fallback). Also: a public-API
   call handed a NULL handle / argument, a caller code bug.
-- `WARNING`: the component was built and is delivering, just degraded (soft
+- `WARNING`: the component was built and is delivering, but degraded (soft
   misconfig), or the fault is an environmental / transient delivery condition that may
   clear on its own.
 
 A degraded-but-delivering component stays `WARNING` even though its fix is a code change;
 rating it `CRITICAL` would fire a handler's "everything is broken" reaction at a logger that
-is, in fact, working. The `BAD_CONFIG` category already tells the integrator a code change is
+is working. The `BAD_CONFIG` category already tells the integrator a code change is
 needed.
 
 `CRITICAL` vs `ERROR` is a *what has to change* distinction. `CRITICAL` is reserved for faults
 that clear only with a change to code or build settings: a NULL dependency, a pool sized too
 small, a wiring bug. `ERROR` is a fault that persists until something deployed changes, with no
-code change: a rejected certificate, a missing or too-short key, an unreachable server. A missing key is provisioned
+code change: a rejected certificate, a missing or too-short key, an unreachable collector. A missing key is provisioned
 in the field, not designed in, so it is `ERROR`, not `CRITICAL`.
 
 ## When a record is lost
 
-Every record the library loses shows at the collector as a gap in the sequence number,
-once a later record arrives. The handler is there to say why, and four rules decide what it is told. The table under
+Every record the library loses shows at the collector as a gap in the sequence number
+`SolidSyslogMetaSd` carries, once a later record arrives. The handler is there to say
+why, and four rules decide what it is told. The table under
 [Policy by category](#policy-by-category) applies them category by category, and each
 category's header doc comment is the home of its detail.
 
@@ -91,7 +95,7 @@ block that still holds unsent records each raise one `WARNING` when the run star
 | `POOL_EXHAUSTED` | `CRITICAL` | always: `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY`. |
 | `BAD_ARGUMENT` | `CRITICAL` | always: caller code bug. Single-sourced via `SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY`. |
 | `BAD_CONFIG` - fatal | `CRITICAL` | `<Class>_Create` fell back to Null. Single-sourced via `SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY`. |
-| `BAD_CONFIG` - degraded | `WARNING` | component still constructs and delivers (e.g. MetaSd without a counter, block-too-small, TLS chain-only). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
+| `BAD_CONFIG` - degraded | `WARNING` | component still constructs and delivers (e.g. block-too-small, TLS chain-only, a `sha-1` pin). Emitted with an explicit `SOLIDSYSLOG_SEVERITY_WARNING` literal at the site, not the macro. |
 | `BAD_CONFIG` - refused | `ERROR` | the component stands but this connection attempt fails on material or policy the deployment supplied (trust anchors that will not load, a malformed pin, nothing that authorises the peer). The sender retries on its next pass, so it clears once what was deployed changes. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `UNKNOWN_DESTROY` | `WARNING` | benign lifecycle misuse: library keeps working. Single-sourced via `SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY`. |
 | `STREAM_CONNECT_FAILED` - local | `ERROR` | the device could not obtain an endpoint, or its stack declined to start the attempt, so no packet was sent. Waiting does not clear it. Single-sourced via `SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY`. |
@@ -125,6 +129,6 @@ codes from `SolidSyslogTcpStreamErrors.h`, so a literal per site would restate o
 once per backend. `FILE_IO_FAILED` has one for the same reason: its codes in
 `SolidSyslogFileErrors.h` are shared by every File backend. Each of these
 macros stands for one level. `BAD_CONFIG` is split: the fatal subset uses a macro, the
-degraded subset keeps an explicit `WARNING` literal (the two are genuinely different
-severities, so a single macro would be a footgun). Tests assert the concrete expected level
+degraded subset keeps an explicit `WARNING` literal (the two are different
+severities, so one macro cannot express both). Tests assert the concrete expected level
 as a literal, never the macro, so a wrong policy value is caught.

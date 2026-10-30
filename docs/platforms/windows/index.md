@@ -23,7 +23,7 @@ keep the system defaults, and the adapter does not report the difference.
 
 Neither the datagram nor the TCP stream provides confidentiality, integrity or
 peer authentication. TLS is a separate role filled by a different platform - the
-[platform × capability matrix](../index.md) shows which - layered over this
+[capability matrix](../index.md) shows which - layered over this
 stream rather than replacing it.
 
 ### An over-large record is trimmed to the path, not lost

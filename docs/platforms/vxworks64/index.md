@@ -69,9 +69,8 @@ diagnostics.
 The library has also been built into a Workbench DKM project through
 `Platform/VxWorks64/solidsyslog-dkm.makefile`, from clean.
 
-On that image, the UDP transport and the resolver have delivered a message,
-resolved from a dotted address, through QEMU's user network to a syslog-ng
-collector on another machine. The BDD target runs the mutex, guarding the buffer
+On that image the BDD target's UDP and TCP scenarios pass against a collector on
+another machine, through QEMU's user network. The BDD target runs the mutex, guarding the buffer
 its console and service tasks share.
 
 With dosFs, and again with HRFS, on the image's IDE disk, the file has carried
