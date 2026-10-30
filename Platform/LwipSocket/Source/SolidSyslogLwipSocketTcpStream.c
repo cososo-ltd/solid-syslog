@@ -4,7 +4,7 @@
 
 #include "lwip/opt.h"
 
-#if LWIP_SOCKET && LWIP_TCP
+#if LWIP_SOCKET && LWIP_TCP && LWIP_SOCKET_SELECT
 
 #include "lwip/errno.h"
 #include "lwip/sockets.h"
@@ -551,4 +551,4 @@ static void LwipSocketTcpStream_ReportConnectFailureWithErrno(
 /* ISO C forbids an empty translation unit. */
 typedef int LwipSocketTcpStream_EmptyTranslationUnit;
 
-#endif /* LWIP_SOCKET && LWIP_TCP */
+#endif /* LWIP_SOCKET && LWIP_TCP && LWIP_SOCKET_SELECT */
