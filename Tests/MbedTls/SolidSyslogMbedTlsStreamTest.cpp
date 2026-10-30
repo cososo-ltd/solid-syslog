@@ -440,6 +440,19 @@ TEST(SolidSyslogMbedTlsStream, HandshakePollSleepsTenMilliseconds)
     LONGS_EQUAL(10, g_lastSleepMs);
 }
 
+TEST(SolidSyslogMbedTlsStream, HandshakeLastPollSleepsOnlyWhatIsLeftOfTheBudget)
+
+{
+    FakeGetHandshakeTimeoutMs_ReturnValue = 15U;
+    RecreateHandleWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(2, NoOpSleepCallCount);
+    LONGS_EQUAL(5, g_lastSleepMs);
+}
+
 TEST(SolidSyslogMbedTlsStream, GetterReceivesNullContextWhenContextNotConfigured)
 
 {

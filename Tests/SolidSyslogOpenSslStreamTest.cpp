@@ -1328,6 +1328,18 @@ TEST(SolidSyslogOpenSslStream, HandshakePollSleepsTenMilliseconds)
     LONGS_EQUAL(10, g_lastSleepMs);
 }
 
+TEST(SolidSyslogOpenSslStream, HandshakeLastPollSleepsOnlyWhatIsLeftOfTheBudget)
+{
+    FakeGetHandshakeTimeoutMs_ReturnValue = 15U;
+    RecreateStreamWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(2, NoOpSleepCallCount);
+    LONGS_EQUAL(5, g_lastSleepMs);
+}
+
 TEST(SolidSyslogOpenSslStream, GetterReceivesNullContextWhenContextNotConfigured)
 {
     RecreateStreamWithFakeHandshakeGetter();

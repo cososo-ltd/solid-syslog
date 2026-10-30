@@ -921,6 +921,19 @@ static inline bool OpenSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptM
     return totalSleptMs >= budgetMs;
 }
 
+/* The poll interval, or what is left of the budget where that is less, so the
+ * last poll does not run past the deadline. Called only while budget remains. */
+static inline uint32_t OpenSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+    uint32_t remainingMs = budgetMs - totalSleptMs;
+    if (remainingMs < pollMs)
+    {
+        pollMs = remainingMs;
+    }
+    return pollMs;
+}
+
 /* Null Object substituted at Initialise when the integrator does not install a
  * getter - returns the compile-time tunable so the bounded-handshake path is a
  * single code path regardless of whether the integrator wired runtime tuning. */
@@ -1014,8 +1027,9 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
             }
             else
             {
-                self->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
-                totalSleptMs += (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+                uint32_t pollMs = OpenSslStream_HandshakePollMs(totalSleptMs, budgetMs);
+                self->Config.Sleep(pollMs);
+                totalSleptMs += pollMs;
             }
         }
     }

@@ -111,6 +111,7 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_InitDetail(
 );
 static inline bool MbedTlsStream_IsAllocationFailure(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
+static inline uint32_t MbedTlsStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static bool MbedTlsStream_SessionIsStillOpen(struct SolidSyslogStream* base);
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
@@ -734,8 +735,9 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
         else
         {
-            self->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
-            totalSleptMs += (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+            uint32_t pollMs = MbedTlsStream_HandshakePollMs(totalSleptMs, budgetMs);
+            self->Config.Sleep(pollMs);
+            totalSleptMs += pollMs;
         }
     }
     return result;
@@ -844,6 +846,19 @@ static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc)
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs)
 {
     return totalSleptMs >= budgetMs;
+}
+
+/* The poll interval, or what is left of the budget where that is less, so the
+ * last poll does not run past the deadline. Called only while budget remains. */
+static inline uint32_t MbedTlsStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+    uint32_t remainingMs = budgetMs - totalSleptMs;
+    if (remainingMs < pollMs)
+    {
+        pollMs = remainingMs;
+    }
+    return pollMs;
 }
 
 static int MbedTlsStream_BioSend(void* ctx, const unsigned char* buf, size_t len)
