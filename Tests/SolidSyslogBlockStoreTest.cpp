@@ -3153,6 +3153,18 @@ TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)
     }
 }
 
+TEST(SolidSyslogBlockStorePool, ANullConfigLeavesEverySlotFree)
+{
+    (void) SolidSyslogBlockStore_Create(nullptr);
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a NULL config kept a pool slot");
+    }
+}
+
 TEST(SolidSyslogBlockStorePool, UseAfterDestroyIsCrashSafeViaNullStoreVtable)
 {
     /* After Destroy, the slot's vtable is overwritten with NullStore's so
