@@ -19,12 +19,14 @@ one AEAD variant are demonstrated. Other algorithms (ChaCha20-Poly1305,
 HMAC-SHA384, AES-GCM-SIV...) plug into the same `SolidSyslogSecurityPolicy` slot
 following the same pattern, provided the trailer fits
 `SOLIDSYSLOG_MAX_INTEGRITY_SIZE`: 32 bytes by default, where HMAC-SHA384 needs 48.
+The store refuses a policy whose trailer does not fit, and stores nothing, rather
+than keep records without it; the policies the library ships fail the build
+instead.
 
 A store keeps records unsealed and in clear whenever it holds the Null policy, and
-three ways to reach it are easy to miss: no policy wired, which is optional; a
-trailer that does not fit `SOLIDSYSLOG_MAX_INTEGRITY_SIZE`, which nothing reports;
-and a keyed policy whose Create failed - a missing key callback or RNG, or an
-exhausted pool - which is reported once at `CRITICAL`.
+two ways to reach it are easy to miss: no policy wired, which is optional; and a
+keyed policy whose Create failed - a missing key callback or RNG, or an exhausted
+pool - which is reported once at `CRITICAL`.
 
 ## AES-256-GCM
 
