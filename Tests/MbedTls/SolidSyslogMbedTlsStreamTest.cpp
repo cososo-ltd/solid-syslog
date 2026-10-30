@@ -419,15 +419,25 @@ TEST(SolidSyslogMbedTlsStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
 TEST(SolidSyslogMbedTlsStream, OpenUsesGetterReturnValueAsHandshakeBudget)
 
 {
-    /* 5 ms budget against the 1 ms poll interval -> loop should sleep 5 times
+    /* 50 ms budget against the 10 ms poll interval -> loop should sleep 5 times
        before declaring HANDSHAKE_TIMEOUT and unwinding. */
-    FakeGetHandshakeTimeoutMs_ReturnValue = 5U;
+    FakeGetHandshakeTimeoutMs_ReturnValue = 50U;
     RecreateHandleWithFakeHandshakeGetter();
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
 
     LONGS_EQUAL(5, NoOpSleepCallCount);
+}
+
+TEST(SolidSyslogMbedTlsStream, HandshakePollSleepsTenMilliseconds)
+
+{
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(10, g_lastSleepMs);
 }
 
 TEST(SolidSyslogMbedTlsStream, GetterReceivesNullContextWhenContextNotConfigured)
