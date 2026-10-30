@@ -171,9 +171,8 @@ reported, while a collaborator you have deliberately done without is passed as i
 object. The library distinguishes the two, and so should anyone reading your wiring
 later.
 
-**Cost.** Flash ~1.0k, RAM ~1.2k. Most of the RAM is two record slots, each
-`SOLIDSYSLOG_MAX_MESSAGE_SIZE`: one in the logger, for the record `SolidSyslog_Service`
-is dealing with, and one in the shared Null instance `SolidSyslog_Create` falls back to.
+**Cost.** Flash ~1.0k, RAM ~1.2k. Most of the RAM is the record slot the logger keeps
+for the record `SolidSyslog_Service` is dealing with, `SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes.
 Stage 21 fits the cap to the device.
 
 ## Stage 4: A first record on the wire
@@ -939,7 +938,7 @@ device actually uses.
 #define SOLIDSYSLOG_STREAM_SENDER_POOL_SIZE 1U
 ```
 
-The message cap comes first, because the ring, the record slots from stage 3, the
+The message cap comes first, because the ring, the record slot from stage 3, the
 store's record buffer and the formatter frame on the logging task's stack all follow it.
 The worst case measured on the example is 379 octets - four SD-ELEMENTs with both
 counters at full 32-bit width and both addresses at fifteen characters, plus a short

@@ -38,7 +38,7 @@
  *
  * Sizes the record SolidSyslog_Log formats on the stack of the task that
  * logs, the record slot each logger instance holds for SolidSyslog_Service
- * (one per SOLIDSYSLOG_POOL_SIZE slot, plus the shared Null instance), each
+ * (one per SOLIDSYSLOG_POOL_SIZE slot), each
  * record a CircularBuffer ring is sized for, and the BlockStore's record
  * buffer and minimum block size. A longer message is truncated, not dropped.
  * Lower values save stack, static RAM and store footprint; higher values
