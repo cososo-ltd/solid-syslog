@@ -922,7 +922,9 @@ static inline bool OpenSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptM
 }
 
 /* The poll interval, or what is left of the budget where that is less, so the
- * last poll does not run past the deadline. Called only while budget remains. */
+ * sleeps requested never add up to more than the budget. How long each sleep
+ * really takes, and the handshake itself, can still carry the attempt past it.
+ * Called only while budget remains. */
 static inline uint32_t OpenSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
 {
     uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
