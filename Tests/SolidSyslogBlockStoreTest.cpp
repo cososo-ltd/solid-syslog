@@ -584,6 +584,18 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
         store = SolidSyslogBlockStore_Create(&config);
     }
 
+    /* TrailerSize is a uint16_t, so at a reservation of UINT16_MAX no policy can
+     * exceed it and MAX + 1 would wrap to zero. The test exits rather than being
+     * compiled out. */
+    static void ExitUnlessATrailerCanExceedTheReservation()
+    {
+        if (SOLIDSYSLOG_MAX_INTEGRITY_SIZE >= UINT16_MAX)
+        {
+            UT_PRINT("Reservation >= UINT16_MAX - no uint16_t trailer can exceed it");
+            TEST_EXIT;
+        }
+    }
+
     void VerifyWriteAndReadBack() const
     {
         LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN));
@@ -685,12 +697,14 @@ TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerFillsTheReservationIsAccept
 
 TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsRefused)
 {
+    ExitUnlessATrailerCanExceedTheReservation();
     CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1);
     POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
 }
 
 TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsReportedAsFatal)
 {
+    ExitUnlessATrailerCanExceedTheReservation();
     ErrorHandlerFake_Install(nullptr);
     CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1);
     CHECK_ERROR_REPORTED_ONCE(
