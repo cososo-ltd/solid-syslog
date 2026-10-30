@@ -55,6 +55,18 @@ itself. Nor is a path `ff_stat` does not find when the file is only asked
 whether it exists, nor an open that creates the file because `r+` found none.
 [Error severity](../../error-severity.md) gives the level of each.
 
+### A directory that cannot be read looks like a missing file
+
+Plus-FAT reports a failure to read a directory as a missing file: `FF_Open` and
+`ff_stat` replace the read error with `FF_ERR_FILE_NOT_FOUND`, and `ff_stdio`
+answers `pdFREERTOS_ERRNO_ENOENT` for both. That holds of the checkout the pack
+is tested against. The file cannot tell the two apart, so it takes both as
+absent, and the read fault itself is not reported:
+
+- `Delete` answers that the file is removed. The store goes on as if the block
+  were gone, though its file and records stay on the medium.
+- `Open` falls back from `r+` to `w+`, which empties the file if it is there.
+
 ### The media driver is yours
 
 The `FF_Disk_t` implementation is supplied by you, and so is any wear levelling:

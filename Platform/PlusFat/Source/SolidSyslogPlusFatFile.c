@@ -121,8 +121,9 @@ static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
      * (media/I/O error) on an existing file must never reach it, or it would
      * empty a record file the BlockStore believes is durably stored. The exact
      * reason lives in the task errno ff_fopen just set; ENOENT is the only code
-     * for which creating is safe. Plus-FAT has no single non-truncating
-     * open-or-create mode. */
+     * for which creating is safe. Plus-FAT also answers ENOENT where it could not
+     * read the directory, which this cannot tell apart; the platform page says
+     * so. Plus-FAT has no single non-truncating open-or-create mode. */
     self->Fp = ff_fopen(path, "r+");
     int openErrno = PlusFatFile_ErrnoUnlessOpen(self);
     if (PlusFatFile_IsAbsent(openErrno))
@@ -144,9 +145,9 @@ static inline int PlusFatFile_ErrnoUnlessOpen(const struct SolidSyslogPlusFatFil
     return PlusFatFile_IsFileOpen(self) ? 0 : stdioGET_ERRNO();
 }
 
-/* True only when a call failed because the path does not exist. For ff_fopen it
- * is the single code for which falling back to the truncating "w+" cannot
- * destroy data; for ff_remove it means the path is already gone. */
+/* True when a call answered that the path does not exist. Plus-FAT gives the
+ * same answer where reading the directory failed, so it is the best the errno
+ * can say rather than proof. */
 static inline bool PlusFatFile_IsAbsent(int nativeErrno)
 {
     return nativeErrno == pdFREERTOS_ERRNO_ENOENT;
