@@ -218,5 +218,6 @@ static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return _unlink(path) == 0;
+    /* The contract counts an absent path as removed. */
+    return (_unlink(path) == 0) || (errno == ENOENT);
 }

@@ -210,5 +210,6 @@ static bool PosixFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return unlink(path) == 0;
+    /* The contract counts an absent path as removed. */
+    return (unlink(path) == 0) || (errno == ENOENT);
 }

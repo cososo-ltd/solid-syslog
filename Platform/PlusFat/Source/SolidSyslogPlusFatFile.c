@@ -33,7 +33,7 @@ static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path);
 static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline bool PlusFatFile_IsFileOpen(const struct SolidSyslogPlusFatFile* self);
 static inline int PlusFatFile_ErrnoUnlessOpen(const struct SolidSyslogPlusFatFile* self);
-static inline bool PlusFatFile_IsAbsent(int openErrno);
+static inline bool PlusFatFile_IsAbsent(int nativeErrno);
 static inline void PlusFatFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeCode);
 static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self);
 
@@ -143,11 +143,12 @@ static inline int PlusFatFile_ErrnoUnlessOpen(const struct SolidSyslogPlusFatFil
     return PlusFatFile_IsFileOpen(self) ? 0 : stdioGET_ERRNO();
 }
 
-/* True only when an ff_fopen failed because the file does not exist: the single
- * code for which falling back to the truncating "w+" cannot destroy data. */
-static inline bool PlusFatFile_IsAbsent(int openErrno)
+/* True only when a call failed because the path does not exist. For ff_fopen it
+ * is the single code for which falling back to the truncating "w+" cannot
+ * destroy data; for ff_remove it means the path is already gone. */
+static inline bool PlusFatFile_IsAbsent(int nativeErrno)
 {
-    return openErrno == pdFREERTOS_ERRNO_ENOENT;
+    return nativeErrno == pdFREERTOS_ERRNO_ENOENT;
 }
 
 static bool PlusFatFile_IsOpen(struct SolidSyslogFile* base)
@@ -266,5 +267,6 @@ static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return ff_remove(path) == 0;
+    /* The contract counts an absent path as removed. */
+    return (ff_remove(path) == 0) || PlusFatFile_IsAbsent(stdioGET_ERRNO());
 }

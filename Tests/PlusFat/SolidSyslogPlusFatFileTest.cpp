@@ -272,9 +272,16 @@ TEST(SolidSyslogPlusFatFile, DeleteCallsFremoveAndReportsTrue)
 
 TEST(SolidSyslogPlusFatFile, DeleteReportsFalseWhenFremoveFails)
 {
-    PlusFatFake_SetRemoveFails();
+    PlusFatFake_SetRemoveErrno(pdFREERTOS_ERRNO_EACCES);
 
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogPlusFatFile, DeleteReportsTrueWhenThePathIsAlreadyAbsent)
+{
+    PlusFatFake_SetRemoveErrno(pdFREERTOS_ERRNO_ENOENT);
+
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
 
 TEST(SolidSyslogPlusFatFile, OpenThatFailsForANonAbsentReasonReportsTheFailedOpenAndItsErrno)

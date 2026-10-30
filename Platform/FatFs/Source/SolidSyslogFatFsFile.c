@@ -257,5 +257,7 @@ static bool FatFsFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return f_unlink(path) == FR_OK;
+    FRESULT result = f_unlink(path);
+    /* The contract counts an absent path as removed, whether the file or its directory is missing. */
+    return (result == FR_OK) || (result == FR_NO_FILE) || (result == FR_NO_PATH);
 }

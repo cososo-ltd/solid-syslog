@@ -162,9 +162,14 @@ TEST(SolidSyslogPosixFile, DeleteRemovesFile)
     CHECK_FALSE(SolidSyslogFile_Exists(file, TEST_PATH));
 }
 
-TEST(SolidSyslogPosixFile, DeleteReturnsFalseForNonexistentFile)
+TEST(SolidSyslogPosixFile, DeleteReturnsTrueForNonexistentFile)
 {
-    CHECK_FALSE(SolidSyslogFile_Delete(file, "/tmp/nonexistent_posix_file.dat"));
+    CHECK_TRUE(SolidSyslogFile_Delete(file, "/tmp/nonexistent_posix_file.dat"));
+}
+
+TEST(SolidSyslogPosixFile, DeleteReturnsFalseForAPathItCannotRemove)
+{
+    CHECK_FALSE(SolidSyslogFile_Delete(file, "/tmp"));
 }
 
 TEST(SolidSyslogPosixFile, OpenThatFailsReportsTheFailedOpenAndItsErrno)

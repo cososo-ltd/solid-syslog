@@ -87,7 +87,7 @@ static int statResult;
 /* ff_remove state */
 static int removeCallCount;
 static const char* lastRemovePath;
-static int removeResult;
+static int removeErrno;
 
 void PlusFatFake_Reset(void)
 {
@@ -132,7 +132,7 @@ void PlusFatFake_Reset(void)
     statResult = 0;
     removeCallCount = 0;
     lastRemovePath = NULL;
-    removeResult = 0;
+    removeErrno = 0;
 }
 
 void PlusFatFake_SetOpenFailsForMode(const char* mode)
@@ -405,9 +405,9 @@ int ff_stat(const char* pcFileName, FF_Stat_t* pxStatBuffer)
     return statResult;
 }
 
-void PlusFatFake_SetRemoveFails(void)
+void PlusFatFake_SetRemoveErrno(int errnoValue)
 {
-    removeResult = -1;
+    removeErrno = errnoValue;
 }
 
 int PlusFatFake_RemoveCallCount(void)
@@ -424,5 +424,6 @@ int ff_remove(const char* pcPath)
 {
     removeCallCount++;
     lastRemovePath = pcPath;
-    return removeResult;
+    stdioSET_ERRNO(removeErrno);
+    return (removeErrno == 0) ? 0 : -1;
 }
