@@ -576,24 +576,20 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
         store = SolidSyslogBlockStore_Create(&config);
     }
 
-    void CreateWithTrailerSize(uint16_t trailerSize)
+    /* TrailerSize is a uint16_t, so at a reservation of UINT16_MAX or more no
+     * policy can exceed it. A size it cannot hold exits the test rather than
+     * wrapping, and the test exits rather than being compiled out. */
+    void CreateWithTrailerSize(size_t trailerSize)
     {
-        policy.TrailerSize = trailerSize;
+        if (trailerSize > UINT16_MAX)
+        {
+            UT_PRINT("Trailer size > UINT16_MAX - no policy can declare it");
+            TEST_EXIT;
+        }
+        policy.TrailerSize = static_cast<uint16_t>(trailerSize);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         config.SecurityPolicy = &policy;
         store = SolidSyslogBlockStore_Create(&config);
-    }
-
-    /* TrailerSize is a uint16_t, so at a reservation of UINT16_MAX no policy can
-     * exceed it and MAX + 1 would wrap to zero. The test exits rather than being
-     * compiled out. */
-    static void ExitUnlessATrailerCanExceedTheReservation()
-    {
-        if (SOLIDSYSLOG_MAX_INTEGRITY_SIZE >= UINT16_MAX)
-        {
-            UT_PRINT("Reservation >= UINT16_MAX - no uint16_t trailer can exceed it");
-            TEST_EXIT;
-        }
     }
 
     void VerifyWriteAndReadBack() const
@@ -697,16 +693,14 @@ TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerFillsTheReservationIsAccept
 
 TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsRefused)
 {
-    ExitUnlessATrailerCanExceedTheReservation();
-    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1);
+    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1U);
     POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
 }
 
 TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsReportedAsFatal)
 {
-    ExitUnlessATrailerCanExceedTheReservation();
     ErrorHandlerFake_Install(nullptr);
-    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1);
+    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1U);
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
         &SolidSyslogBlockStoreErrorSource,
