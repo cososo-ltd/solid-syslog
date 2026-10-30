@@ -114,6 +114,7 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
 static inline bool OpenSslStream_IsOpen(const struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStream* self);
+static inline uint32_t OpenSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline enum SolidSyslogTlsStreamErrors OpenSslStream_RefusalDetail(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_IsPeerNameMismatch(long verdict);
 static inline SolidSyslogSsize OpenSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
@@ -921,21 +922,6 @@ static inline bool OpenSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptM
     return totalSleptMs >= budgetMs;
 }
 
-/* The poll interval, or what is left of the budget where that is less, so the
- * sleeps requested never add up to more than the budget. How long each sleep
- * really takes, and the handshake itself, can still carry the attempt past it.
- * Called only while budget remains. */
-static inline uint32_t OpenSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
-{
-    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
-    uint32_t remainingMs = budgetMs - totalSleptMs;
-    if (remainingMs < pollMs)
-    {
-        pollMs = remainingMs;
-    }
-    return pollMs;
-}
-
 /* Null Object substituted at Initialise when the integrator does not install a
  * getter - returns the compile-time tunable so the bounded-handshake path is a
  * single code path regardless of whether the integrator wired runtime tuning. */
@@ -1036,6 +1022,21 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
         }
     }
     return result;
+}
+
+/* The poll interval, or what is left of the budget where that is less, so the
+ * sleeps requested never add up to more than the budget. How long each sleep
+ * really takes, and the handshake itself, can still carry the attempt past it.
+ * Called only while budget remains. */
+static inline uint32_t OpenSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+    uint32_t remainingMs = budgetMs - totalSleptMs;
+    if (remainingMs < pollMs)
+    {
+        pollMs = remainingMs;
+    }
+    return pollMs;
 }
 
 /* The verdict outlives the failed handshake - OpenSSL records it on the

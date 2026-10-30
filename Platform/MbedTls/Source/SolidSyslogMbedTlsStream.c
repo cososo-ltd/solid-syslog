@@ -743,6 +743,21 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
     return result;
 }
 
+/* The poll interval, or what is left of the budget where that is less, so the
+ * sleeps requested never add up to more than the budget. How long each sleep
+ * really takes, and the handshake itself, can still carry the attempt past it.
+ * Called only while budget remains. */
+static inline uint32_t MbedTlsStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+    uint32_t remainingMs = budgetMs - totalSleptMs;
+    if (remainingMs < pollMs)
+    {
+        pollMs = remainingMs;
+    }
+    return pollMs;
+}
+
 /* Verifying optionally completes the handshake and leaves the verdict to be
  * read, so a peer authorised by pin alone is refused here rather than by Mbed
  * TLS. Where anchors are installed the handshake has already failed on a bad
@@ -846,21 +861,6 @@ static inline bool MbedTlsStream_IsRetryableHandshakeRc(int rc)
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs)
 {
     return totalSleptMs >= budgetMs;
-}
-
-/* The poll interval, or what is left of the budget where that is less, so the
- * sleeps requested never add up to more than the budget. How long each sleep
- * really takes, and the handshake itself, can still carry the attempt past it.
- * Called only while budget remains. */
-static inline uint32_t MbedTlsStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
-{
-    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
-    uint32_t remainingMs = budgetMs - totalSleptMs;
-    if (remainingMs < pollMs)
-    {
-        pollMs = remainingMs;
-    }
-    return pollMs;
 }
 
 static int MbedTlsStream_BioSend(void* ctx, const unsigned char* buf, size_t len)
