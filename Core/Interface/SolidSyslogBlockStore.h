@@ -60,7 +60,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Destroy releases only the store's own slot. */
     struct SolidSyslogBlockStoreConfig
     {
-        struct SolidSyslogBlockDevice* BlockDevice; /**< Required; block store is the sole writer. */
+        /** Required: Create refuses a NULL device. The block store is the sole
+         *  writer. */
+        struct SolidSyslogBlockDevice* BlockDevice;
         /** Retention ceiling in blocks, clamped to 2..98; GetDiscardPolicy governs
          *  the overflow. An eviction that fails freezes the store with one block more
          *  than this on the media, and the next start keeps it. */
