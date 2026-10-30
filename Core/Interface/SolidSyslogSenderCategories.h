@@ -24,5 +24,10 @@
 #define SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_SENDER_BASE + 1U))
 /** Delivery to the destination recovered after a failure (edge back to healthy). */
 #define SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED ((uint16_t) (SOLIDSYSLOG_CAT_SENDER_BASE + 2U))
+/** The sender discarded a record it could not deliver and told Service it was
+ *  sent, so the record is gone rather than retried. event->Source names the
+ *  sender and event->Detail why. Raised once per run of losses; the sender's
+ *  detail code says what ends the run. */
+#define SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_SENDER_BASE + 3U))
 
 #endif /* SOLIDSYSLOGSENDERCATEGORIES_H */

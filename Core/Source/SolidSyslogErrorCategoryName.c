@@ -41,6 +41,9 @@ const char* SolidSyslogErrorCategory_Name(uint16_t category)
         case SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED:
             name = "SENDER_DELIVERY_RESTORED";
             break;
+        case SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST:
+            name = "SENDER_RECORDS_LOST";
+            break;
         case SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED:
             name = "RESOLVER_RESOLVE_FAILED";
             break;
