@@ -134,10 +134,9 @@ most ports compare the current task handle against the one given to
 lwIP itself invoked will deadlock.
 
 Here `Sleep` does not drive lwIP - the lwIP thread is running concurrently - but
-it must still wait at least the time asked: the connect and resolve deadlines are
-the sum of the sleeps requested, not a clock reading, so a `Sleep` that only
-yields spends the whole deadline at once. Wrap your RTOS delay and round a
-non-zero request up to one tick.
+it must still wait at least the time asked, as
+[`SolidSyslogSleep.h`](../../api/SolidSyslogSleep_8h.md) requires: the connect
+and resolve deadlines are counted in the sleeps requested.
 
 Marshal at the individual lwIP call, which is what this seam gives you. Wrapping
 `SolidSyslog_Service` instead puts file I/O, crypto, buffer locking and record

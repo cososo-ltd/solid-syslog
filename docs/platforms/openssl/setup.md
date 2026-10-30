@@ -12,11 +12,9 @@ page is the order to wire them in.
 - A platform supplying the TCP stream, the address and the resolver. The
   [capability matrix](../index.md) says which fills each role on your target,
   and that platform's setup page shows how to create them.
-- A `SolidSyslogSleepFunction` that waits at least the time asked. The handshake
-  polls every millisecond and counts its budget as the sleeps it asked for, not
-  from a clock, so a sleep that returns early shortens the budget and one that
-  rounds up to a scheduler tick lengthens it. On an RTOS, wrap its delay and
-  round a non-zero request up to one tick.
+- A `SolidSyslogSleepFunction` that waits at least the time asked, as
+  [`SolidSyslogSleep.h`](../../api/SolidSyslogSleep_8h.md) requires. The
+  handshake budget is counted in the sleeps it asks for.
 
 ```cmake
 set(SOLIDSYSLOG_PLATFORMS "OpenSsl;<Network>")

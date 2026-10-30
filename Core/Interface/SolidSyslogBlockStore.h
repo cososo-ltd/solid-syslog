@@ -17,8 +17,8 @@
  *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
  *  early back-pressure signalling. The callback runs on whichever task calls
  *  into the store - normally the one that calls SolidSyslog_Service - and
- *  inside Create, on the creating task, when the resumed store is already at
- *  or above the threshold.
+ *  inside SolidSyslogBlockStore_Create, on the creating task, when the resumed
+ *  store is already at or above the threshold.
  *
  *  The first block device operation that fails freezes the store, as
  *  SOLIDSYSLOG_CAT_STORE_FROZEN describes - opening the device at Create
