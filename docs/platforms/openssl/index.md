@@ -88,8 +88,11 @@ recommends. A list OpenSSL rejects fails `Open` before any handshake and is
 reported as `CIPHER_POLICY_REJECTED`, rather than falling back. An empty
 `CipherSuites` is not rejected: it is OpenSSL's way of turning TLS 1.3 off.
 
-The security level is pinned at 2 after the policy is applied, so a list
-carrying `@SECLEVEL=n` cannot lower it.
+The security level and the minimum protocol version are floors, not settings:
+level 2 and TLS 1.2. Where the context starts - from the build, from `openssl.cnf`,
+or from a `CipherList` carrying `@SECLEVEL=n` - a weaker value is raised to the
+floor and a stricter one is kept. The level is read once the policy is applied, so
+a list cannot lower it.
 
 Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go
@@ -102,9 +105,10 @@ renegotiate.
 
 An expected identity given as an address literal is matched against the
 certificate's `iPAddress` entries only, never against a DNS name or Common Name
-spelling the same digits. Refusing a TLS 1.2 peer that does not acknowledge secure
-renegotiation is OpenSSL's own default from 3.0, which the stream relies on
-rather than sets.
+spelling the same digits. The stream refuses a TLS 1.2 peer that does not
+acknowledge secure renegotiation, and sets that itself rather than relying on
+OpenSSL's default, so `UnsafeLegacyServerConnect` in `openssl.cnf` does not turn it
+off.
 
 A send first reads what the collector has sent, so that a session the collector
 has closed refuses the record rather than taking it, as the
