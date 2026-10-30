@@ -62,6 +62,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /* Raised under SOLIDSYSLOG_CAT_BAD_CONFIG, naming what Create was not
            given. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

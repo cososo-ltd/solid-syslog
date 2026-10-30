@@ -26,6 +26,7 @@ struct SolidSyslogStore;
 
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base);
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
+static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* policy);
 static struct SolidSyslogStore* BlockStore_CreateInSlot(
@@ -49,7 +50,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
 
-    if ((config != NULL) && (config->BlockDevice != NULL))
+    if (BlockStore_IsValidConfig(config))
     {
         struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
 
@@ -66,7 +67,15 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
             );
         }
     }
-    else
+
+    return result;
+}
+
+static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config)
+{
+    bool valid = false;
+
+    if (config == NULL)
     {
         BlockStore_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
@@ -74,8 +83,20 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
             SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG
         );
     }
+    else if (config->BlockDevice == NULL)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
+        );
+    }
+    else
+    {
+        valid = true;
+    }
 
-    return result;
+    return valid;
 }
 
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured)

@@ -734,6 +734,19 @@ TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsRefused)
     POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
 }
 
+TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsReportedAsFatal)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(nullptr);
+    store = SolidSyslogBlockStore_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
+    );
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {
