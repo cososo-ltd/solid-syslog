@@ -365,10 +365,26 @@ TEST(SolidSyslogOpenSslStream, OpenRequiresPeerVerification)
     LONGS_EQUAL(SSL_VERIFY_PEER, OpenSslFake_LastVerifyMode());
 }
 
-TEST(SolidSyslogOpenSslStream, OpenSetsTls12Floor)
+/* A context with no minimum configured reads 0, OpenSSL's "the lowest the
+   build supports". */
+TEST(SolidSyslogOpenSslStream, OpenRaisesAnUnsetMinimumProtocolVersionToTls12)
 {
     SolidSyslogStream_Open(stream, addr);
     LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenRaisesAWeakerHostMinimumProtocolVersionToTls12)
+{
+    OpenSslFake_SetHostMinProtoVersion(TLS1_VERSION);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostMinimumProtocolVersion)
+{
+    OpenSslFake_SetHostMinProtoVersion(TLS1_3_VERSION);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(TLS1_3_VERSION, OpenSslFake_LastMinProtoVersion());
 }
 
 /* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,

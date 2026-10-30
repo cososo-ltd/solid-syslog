@@ -103,9 +103,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetDigestFails(bool fails);
     const void* OpenSslFake_LastDigestMd(void); /* compare against EVP_sha1() / EVP_sha256() */
 
-    /* SSL_CTX_ctrl (SET_MIN_PROTO_VERSION path) */
+    /* SSL_CTX_ctrl (SET_ and GET_MIN_PROTO_VERSION paths). The minimum the
+     * context holds now; a new context starts at the host's, 0 unless set. */
     struct ssl_ctx_st* OpenSslFake_LastSslCtxCtrlCtxArg(void);
     long OpenSslFake_LastMinProtoVersion(void);
+    void OpenSslFake_SetHostMinProtoVersion(long version);
 
     int OpenSslFake_SetCipherListCallCount(void);
     struct ssl_ctx_st* OpenSslFake_LastSetCipherListCtxArg(void);

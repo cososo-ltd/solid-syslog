@@ -676,10 +676,17 @@ static inline bool OpenSslStream_IsChainTrustError(int error)
 }
 
 /* A floor, and deliberately no ceiling: RFC 9662, which updates RFC 5425,
- * requires TLS 1.3 to be preferred wherever it is implemented. */
+ * requires TLS 1.3 to be preferred wherever it is implemented. A stricter
+ * minimum from openssl.cnf stands. One configured nowhere reads 0, OpenSSL's
+ * "the lowest the build supports", which is below the floor and so raised. */
 static inline bool OpenSslStream_ConfigureProtocolFloor(SSL_CTX* ctx)
 {
-    return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) == 1;
+    bool ok = true;
+    if (SSL_CTX_get_min_proto_version(ctx) < TLS1_2_VERSION)
+    {
+        ok = SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) == 1;
+    }
+    return ok;
 }
 
 static inline bool OpenSslStream_ConfigureCipherList(SSL_CTX* ctx, const char* cipherList)

@@ -168,9 +168,12 @@ static bool digestFails;
 static const EVP_MD* lastDigestMd;
 static int fakeSha1Storage;
 
-/* SSL_CTX_ctrl (SET_MIN_PROTO_VERSION) */
+/* SSL_CTX_ctrl (SET_ and GET_MIN_PROTO_VERSION). A context starts at the
+ * host's minimum, as OpenSSL's does from openssl.cnf; 0 is OpenSSL's "the
+ * lowest the build supports", and the default. */
 static SSL_CTX* lastSslCtxCtrlCtxArg;
-static long lastMinProtoVersion;
+static long minProtoVersion;
+static long hostMinProtoVersion;
 static bool minProtoVersionFails;
 
 /* SSL_CTX_set_cipher_list */
@@ -331,7 +334,8 @@ void OpenSslFake_Reset(void)
     digestFails = false;
     lastDigestMd = NULL;
     lastSslCtxCtrlCtxArg = NULL;
-    lastMinProtoVersion = 0;
+    minProtoVersion = 0;
+    hostMinProtoVersion = 0;
     minProtoVersionFails = false;
     setCipherListCallCount = 0;
     lastSetCipherListCtxArg = NULL;
@@ -518,7 +522,12 @@ SSL_CTX* OpenSslFake_LastSslCtxCtrlCtxArg(void)
 
 long OpenSslFake_LastMinProtoVersion(void)
 {
-    return lastMinProtoVersion;
+    return minProtoVersion;
+}
+
+void OpenSslFake_SetHostMinProtoVersion(long version)
+{
+    hostMinProtoVersion = version;
 }
 
 int OpenSslFake_SslNewCallCount(void)
@@ -744,6 +753,7 @@ SSL_CTX* SSL_CTX_new(const SSL_METHOD* method)
     ctxNewCallCount++;
     lastCtxNewMethodArg = method;
     securityLevel = hostSecurityLevel;
+    minProtoVersion = hostMinProtoVersion;
     return ctxNewFails ? NULL : (SSL_CTX*) &fakeCtxStorage;
 }
 
@@ -934,8 +944,8 @@ const void* OpenSslFake_LastDigestMd(void)
     return lastDigestMd;
 }
 
-/* SSL_CTX_set_min_proto_version is a macro forwarding to SSL_CTX_ctrl; fake
- * intercepts the ctrl call for the min-proto command only. */
+/* SSL_CTX_set_min_proto_version and SSL_CTX_get_min_proto_version are macros
+ * forwarding to SSL_CTX_ctrl; the fake intercepts those two commands only. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- signature fixed by OpenSSL API
 long SSL_CTX_ctrl(SSL_CTX* ctx, int cmd, long larg, void* parg)
 {
@@ -943,8 +953,12 @@ long SSL_CTX_ctrl(SSL_CTX* ctx, int cmd, long larg, void* parg)
     lastSslCtxCtrlCtxArg = ctx;
     if (cmd == SSL_CTRL_SET_MIN_PROTO_VERSION)
     {
-        lastMinProtoVersion = larg;
+        minProtoVersion = larg;
         return minProtoVersionFails ? 0 : 1;
+    }
+    if (cmd == SSL_CTRL_GET_MIN_PROTO_VERSION)
+    {
+        return minProtoVersion;
     }
     return 1;
 }
