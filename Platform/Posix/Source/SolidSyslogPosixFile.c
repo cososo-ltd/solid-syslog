@@ -44,6 +44,7 @@ static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path);
 static inline struct SolidSyslogPosixFile* PosixFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline void PosixFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
 static inline bool PosixFile_IsWholeTransfer(ssize_t transferred, size_t count);
+static inline bool PosixFile_IsRemovedOrAbsent(int status, int unlinkErrno);
 
 void SolidSyslogPosixFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -210,5 +211,13 @@ static bool PosixFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool PosixFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return unlink(path) == 0;
+    int status = unlink(path);
+    int unlinkErrno = (status != 0) ? errno : 0;
+    return PosixFile_IsRemovedOrAbsent(status, unlinkErrno);
+}
+
+/* The contract counts an absent path as removed. */
+static inline bool PosixFile_IsRemovedOrAbsent(int status, int unlinkErrno)
+{
+    return (status == 0) || (unlinkErrno == ENOENT);
 }

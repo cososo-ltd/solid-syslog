@@ -180,9 +180,17 @@ TEST(SolidSyslogWindowsFile, DeleteRemovesFile)
     CHECK_FALSE(SolidSyslogFile_Exists(file, testPath.c_str()));
 }
 
-TEST(SolidSyslogWindowsFile, DeleteReturnsFalseForNonexistentFile)
+TEST(SolidSyslogWindowsFile, DeleteReturnsTrueForNonexistentFile)
 {
-    CHECK_FALSE(SolidSyslogFile_Delete(file, MakeTempPath("nonexistent_windows_file.dat").c_str()));
+    CHECK_TRUE(SolidSyslogFile_Delete(file, MakeTempPath("nonexistent_windows_file.dat").c_str()));
+}
+
+TEST(SolidSyslogWindowsFile, DeleteReturnsFalseForAPathItCannotRemove)
+{
+    std::string tempDirectory = MakeTempPath("");
+    tempDirectory.pop_back();
+
+    CHECK_FALSE(SolidSyslogFile_Delete(file, tempDirectory.c_str()));
 }
 
 TEST(SolidSyslogWindowsFile, OpenThatFailsReportsTheFailedOpenAndItsErrno)

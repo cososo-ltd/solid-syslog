@@ -284,6 +284,18 @@ TEST(SolidSyslogFatFsFile, DeleteReportsFalseWhenFUnlinkFails)
     CHECK_FALSE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
 
+TEST(SolidSyslogFatFsFile, DeleteReportsTrueWhenTheFileIsAlreadyAbsent)
+{
+    FatFsFake_SetUnlinkResult(FR_NO_FILE);
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
+TEST(SolidSyslogFatFsFile, DeleteReportsTrueWhenItsDirectoryIsAbsent)
+{
+    FatFsFake_SetUnlinkResult(FR_NO_PATH);
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
 TEST(SolidSyslogFatFsFile, OpenThatFailsReportsTheFailedOpenAndItsResult)
 {
     ErrorHandlerFake_Install(nullptr);

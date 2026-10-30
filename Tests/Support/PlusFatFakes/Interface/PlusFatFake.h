@@ -58,7 +58,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int PlusFatFake_StatCallCount(void);
     const char* PlusFatFake_LastStatPath(void);
 
-    void PlusFatFake_SetRemoveFails(void);
+    void PlusFatFake_SetRemoveErrno(int errnoValue);
     int PlusFatFake_RemoveCallCount(void);
     const char* PlusFatFake_LastRemovePath(void);
 

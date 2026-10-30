@@ -33,9 +33,10 @@ static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path);
 static inline struct SolidSyslogPlusFatFile* PlusFatFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline bool PlusFatFile_IsFileOpen(const struct SolidSyslogPlusFatFile* self);
 static inline int PlusFatFile_ErrnoUnlessOpen(const struct SolidSyslogPlusFatFile* self);
-static inline bool PlusFatFile_IsAbsent(int openErrno);
+static inline bool PlusFatFile_IsAbsent(int nativeErrno);
 static inline void PlusFatFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeCode);
 static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self);
+static inline bool PlusFatFile_IsRemovedOrAbsent(int status, int removeErrno);
 
 void SolidSyslogPlusFatFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -120,8 +121,9 @@ static bool PlusFatFile_Open(struct SolidSyslogFile* base, const char* path)
      * (media/I/O error) on an existing file must never reach it, or it would
      * empty a record file the BlockStore believes is durably stored. The exact
      * reason lives in the task errno ff_fopen just set; ENOENT is the only code
-     * for which creating is safe. Plus-FAT has no single non-truncating
-     * open-or-create mode. */
+     * for which creating is safe. Plus-FAT also answers ENOENT where it could not
+     * read the directory, which this cannot tell apart; the platform page says
+     * so. Plus-FAT has no single non-truncating open-or-create mode. */
     self->Fp = ff_fopen(path, "r+");
     int openErrno = PlusFatFile_ErrnoUnlessOpen(self);
     if (PlusFatFile_IsAbsent(openErrno))
@@ -143,11 +145,12 @@ static inline int PlusFatFile_ErrnoUnlessOpen(const struct SolidSyslogPlusFatFil
     return PlusFatFile_IsFileOpen(self) ? 0 : stdioGET_ERRNO();
 }
 
-/* True only when an ff_fopen failed because the file does not exist: the single
- * code for which falling back to the truncating "w+" cannot destroy data. */
-static inline bool PlusFatFile_IsAbsent(int openErrno)
+/* True when a call answered that the path does not exist. Plus-FAT gives the
+ * same answer where reading the directory failed, so it is the best the errno
+ * can say rather than proof. */
+static inline bool PlusFatFile_IsAbsent(int nativeErrno)
 {
-    return openErrno == pdFREERTOS_ERRNO_ENOENT;
+    return nativeErrno == pdFREERTOS_ERRNO_ENOENT;
 }
 
 static bool PlusFatFile_IsOpen(struct SolidSyslogFile* base)
@@ -266,5 +269,14 @@ static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return ff_remove(path) == 0;
+    int status = ff_remove(path);
+    int removeErrno = (status != 0) ? stdioGET_ERRNO() : 0;
+    return PlusFatFile_IsRemovedOrAbsent(status, removeErrno);
+}
+
+/* The contract counts an absent path as removed. Plus-FAT answers ENOTDIR
+ * where the path's directory is missing. */
+static inline bool PlusFatFile_IsRemovedOrAbsent(int status, int removeErrno)
+{
+    return (status == 0) || PlusFatFile_IsAbsent(removeErrno) || (removeErrno == pdFREERTOS_ERRNO_ENOTDIR);
 }

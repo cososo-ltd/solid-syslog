@@ -51,6 +51,7 @@ static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path);
 static inline struct SolidSyslogWindowsFile* WindowsFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline void WindowsFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeErrno);
 static inline bool WindowsFile_IsWholeTransfer(int transferred, size_t count);
+static inline bool WindowsFile_IsRemovedOrAbsent(int status, int unlinkErrno);
 
 void SolidSyslogWindowsFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -218,5 +219,13 @@ static bool WindowsFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool WindowsFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    return _unlink(path) == 0;
+    int status = _unlink(path);
+    int unlinkErrno = (status != 0) ? errno : 0;
+    return WindowsFile_IsRemovedOrAbsent(status, unlinkErrno);
+}
+
+/* The contract counts an absent path as removed. */
+static inline bool WindowsFile_IsRemovedOrAbsent(int status, int unlinkErrno)
+{
+    return (status == 0) || (unlinkErrno == ENOENT);
 }
