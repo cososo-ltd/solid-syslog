@@ -26,6 +26,8 @@ struct SolidSyslogStore;
 
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base);
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
+static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* configured);
+static struct SolidSyslogStore* BlockStore_CreateInSlot(const struct SolidSyslogBlockStoreConfig* config);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
@@ -41,6 +43,35 @@ static struct SolidSyslogBlockStore BlockStore_Pool[SOLIDSYSLOG_BLOCK_STORE_POOL
 static struct SolidSyslogPoolAllocator BlockStore_Allocator = {BlockStore_InUse, SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE};
 
 struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config)
+{
+    struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
+
+    if (BlockStore_TrailerFits(config->SecurityPolicy))
+    {
+        result = BlockStore_CreateInSlot(config);
+    }
+    else
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
+        );
+    }
+
+    return result;
+}
+
+/* Every record's trailer is reserved at SOLIDSYSLOG_MAX_INTEGRITY_SIZE, so a policy
+ * with a wider one cannot seal into it. Storing records without that policy would
+ * keep them unprotected, which the policy contract forbids. NULL is the optional
+ * no-policy wiring, not a misfit. */
+static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* configured)
+{
+    return (configured == NULL) || (configured->TrailerSize <= SOLIDSYSLOG_MAX_INTEGRITY_SIZE);
+}
+
+static struct SolidSyslogStore* BlockStore_CreateInSlot(const struct SolidSyslogBlockStoreConfig* config)
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&BlockStore_Allocator);
@@ -102,7 +133,7 @@ static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct
 {
     struct SolidSyslogSecurityPolicy* resolved = configured;
 
-    if ((resolved == NULL) || (resolved->TrailerSize > SOLIDSYSLOG_MAX_INTEGRITY_SIZE))
+    if (resolved == NULL)
     {
         resolved = SolidSyslogNullSecurityPolicy_Get();
     }
