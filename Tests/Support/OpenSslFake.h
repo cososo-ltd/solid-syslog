@@ -77,6 +77,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int (*OpenSslFake_LastPasswdCb(void))(char*, int, int, void*);
     unsigned int OpenSslFake_LastHostflags(void);
     uint64_t OpenSslFake_LastSslOptions(void);
+    /* The options a new context starts with; SSL_CTX_get_options reads the
+     * context's current ones. */
+    void OpenSslFake_SetHostCtxOptions(uint64_t options);
     int (*OpenSslFake_LastVerifyCallback(void))(int, struct x509_store_ctx_st*);
 
     /* SSL_set_ex_data / SSL_get_ex_data - one slot, which is all

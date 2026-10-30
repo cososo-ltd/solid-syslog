@@ -88,6 +88,21 @@ TEST(OpenSslFake, SetMinProtoVersionIsReadBack)
     LONGS_EQUAL(TLS1_2_VERSION, SSL_CTX_get_min_proto_version(ctx));
 }
 
+TEST(OpenSslFake, CtxNewStartsWithTheHostOptions)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    CHECK_EQUAL(SSL_OP_LEGACY_SERVER_CONNECT, SSL_CTX_get_options(ctx));
+}
+
+TEST(OpenSslFake, ClearOptionsClearsOnlyTheNamedOptions)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_NO_COMPRESSION);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_clear_options(ctx, SSL_OP_LEGACY_SERVER_CONNECT);
+    CHECK_EQUAL(SSL_OP_NO_COMPRESSION, SSL_CTX_get_options(ctx));
+}
+
 TEST(OpenSslFake, CtxNewReturnValueIsSurfaced)
 {
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());

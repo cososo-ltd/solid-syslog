@@ -75,6 +75,7 @@ static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStr
 static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
 static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx);
+static inline void OpenSslStream_RequireSecureRenegotiation(SSL_CTX* ctx);
 static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
 static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
 static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
@@ -346,6 +347,7 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
     else
     {
         OpenSslStream_RaiseSecurityLevel(self->Ctx);
+        OpenSslStream_RequireSecureRenegotiation(self->Ctx);
         OpenSslStream_RefusePassphrasePrompts(self->Ctx);
     }
     if (!ok)
@@ -451,6 +453,15 @@ static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx)
     {
         SSL_CTX_set_security_level(ctx, OPENSSL_STREAM_SECURITY_LEVEL_FLOOR);
     }
+}
+
+/* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
+ * refused. That is OpenSSL's default from 3.0, but openssl.cnf can turn
+ * UnsafeLegacyServerConnect back on, so the stream sets the requirement
+ * rather than inheriting it. */
+static inline void OpenSslStream_RequireSecureRenegotiation(SSL_CTX* ctx)
+{
+    (void) SSL_CTX_clear_options(ctx, SSL_OP_LEGACY_SERVER_CONNECT);
 }
 
 /* An encrypted private key otherwise prompts on the controlling terminal, from

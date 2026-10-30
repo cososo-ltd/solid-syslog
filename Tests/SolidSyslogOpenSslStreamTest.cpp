@@ -420,6 +420,17 @@ TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterSecurityLevelFromTheCipherList)
     LONGS_EQUAL(3, OpenSslFake_LastSecurityLevel());
 }
 
+/* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
+   refused. OpenSSL 3.0 refuses by default, but openssl.cnf can set
+   UnsafeLegacyServerConnect, so the stream clears it rather than relying on
+   the default. */
+TEST(SolidSyslogOpenSslStream, OpenClearsALegacyServerConnectTheHostSet)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT);
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_EQUAL(0U, SSL_CTX_get_options(OpenSslFake_LastCtxReturned()) & SSL_OP_LEGACY_SERVER_CONNECT);
+}
+
 /* An encrypted PEM key otherwise prompts on the controlling terminal from the
    servicing thread. The callback refuses, so the key fails to load and is
    reported as CLIENT_CREDENTIAL_NOT_INSTALLED instead. */

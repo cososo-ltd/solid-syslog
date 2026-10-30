@@ -139,6 +139,11 @@ static pem_password_cb* lastPasswdCb;
 static unsigned int lastHostflags;
 static uint64_t lastSslOptions;
 
+/* A context starts with the host's options, as OpenSSL's does from openssl.cnf
+ * - which can set UnsafeLegacyServerConnect, for one. None unless set. */
+static uint64_t ctxOptions;
+static uint64_t hostCtxOptions;
+
 /* SSL_CTX_set_verify */
 static SSL_CTX* lastSetVerifyCtxArg;
 static int lastVerifyMode;
@@ -322,6 +327,8 @@ void OpenSslFake_Reset(void)
     lastPasswdCb = NULL;
     lastHostflags = 0U;
     lastSslOptions = 0U;
+    ctxOptions = 0U;
+    hostCtxOptions = 0U;
     lastVerifyCallback = NULL;
     lastSslExDataIndex = -1;
     lastSslExData = NULL;
@@ -513,6 +520,24 @@ unsigned int OpenSslFake_LastHostflags(void)
 uint64_t OpenSslFake_LastSslOptions(void)
 {
     return lastSslOptions;
+}
+
+void OpenSslFake_SetHostCtxOptions(uint64_t options)
+{
+    hostCtxOptions = options;
+}
+
+uint64_t SSL_CTX_get_options(const SSL_CTX* ctx)
+{
+    (void) ctx;
+    return ctxOptions;
+}
+
+uint64_t SSL_CTX_clear_options(SSL_CTX* ctx, uint64_t op)
+{
+    (void) ctx;
+    ctxOptions &= ~op;
+    return ctxOptions;
 }
 
 SSL_CTX* OpenSslFake_LastSslCtxCtrlCtxArg(void)
@@ -754,6 +779,7 @@ SSL_CTX* SSL_CTX_new(const SSL_METHOD* method)
     lastCtxNewMethodArg = method;
     securityLevel = hostSecurityLevel;
     minProtoVersion = hostMinProtoVersion;
+    ctxOptions = hostCtxOptions;
     return ctxNewFails ? NULL : (SSL_CTX*) &fakeCtxStorage;
 }
 
