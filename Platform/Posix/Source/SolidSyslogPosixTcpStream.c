@@ -37,9 +37,7 @@ struct SolidSyslogAddress;
 enum
 {
     INVALID_FD = -1,
-    /* TCP_USER_TIMEOUT covers the pending-write case, where keepalive does not
-       fire, by capping how long unacked data can sit in the send queue. */
-    USER_TIMEOUT_MILLISECONDS = 30000
+    MILLISECONDS_PER_SECOND = 1000
 };
 
 static uint32_t PosixTcpStream_NullConnectTimeoutGetter(void* context);
@@ -255,17 +253,22 @@ static void PosixTcpStream_EnableTcpNoDelay(int fd)
 }
 
 /* Enable kernel TCP keepalive so a dead peer is surfaced as ETIMEDOUT during
- * idle periods, not on the next PosixTcpStream_Send. TCP_USER_TIMEOUT covers the orthogonal
- * pending-write case (keepalive only fires on a fully idle socket). Linux is
- * the POSIX target - TCP_KEEP* and TCP_USER_TIMEOUT are all available there;
- * other POSIX targets are out of scope until we actually port to one. */
+ * idle periods, not on the next PosixTcpStream_Send. TCP_USER_TIMEOUT bounds a
+ * write the peer never acknowledges, where keepalive does not probe. On Linux a
+ * user timeout also ends keepalive, overriding the probe count: the connection
+ * drops at the first unanswered probe once the user timeout has elapsed since
+ * anything was received. Setting it to the keepalive window, the idle period
+ * plus the interval across every probe, keeps the probe count meaningful and
+ * bounds an unacknowledged write by the same window. Linux is the POSIX
+ * target - TCP_KEEP* and TCP_USER_TIMEOUT are all available there; other POSIX
+ * targets are out of scope until we actually port to one. */
 static void PosixTcpStream_EnableKeepalive(int fd)
 {
     int enable = 1;
     int idle = (int) SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS;
     int interval = (int) SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS;
     int count = (int) SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT;
-    int userTimeout = USER_TIMEOUT_MILLISECONDS;
+    int userTimeout = (idle + (interval * count)) * MILLISECONDS_PER_SECOND;
 
     setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
     setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));

@@ -95,7 +95,7 @@ misra-c2012-11.3:Platform/VxWorks64/Source/SolidSyslogVxWorks64File.c:79
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixFile.c:75
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMessageQueueBuffer.c:348
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixMutex.c:55
-misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:128
+misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixTcpStream.c:126
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddress.c:20
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:27
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:34

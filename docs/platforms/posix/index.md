@@ -107,13 +107,14 @@ peek looks.
 
 Keepalive probes begin after `SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS` of silence
 and repeat at `SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS` until
-`SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT` go unanswered. A write already in flight
-is bounded separately by a user timeout, which probing does not cover. Until one
-of those fires, sends into the dead connection are accepted by the kernel and
-reported as delivered, so the records inside that window are released by
-store-and-forward and lost with the connection. The window is the idle period
-plus the interval across every probe, so shortening it costs probe traffic on an
-idle link.
+`SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT` go unanswered. A write the peer never
+acknowledges, which probing does not cover, is bounded by a user timeout set to
+the same window. One window therefore covers both a silent peer and an
+unacknowledged write: the idle period plus the interval across every probe, 85 s
+at the defaults. Until it closes, sends into the dead connection are accepted by
+the kernel and reported as delivered, so the records inside that window are
+released by store-and-forward and lost with the connection. All three tunables
+shorten it, and shortening it costs probe traffic on an idle link.
 
 ### The message-queue buffer is capped by the system, not by you
 
