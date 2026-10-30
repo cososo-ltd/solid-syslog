@@ -540,6 +540,7 @@ TEST(SolidSyslogBlockStoreDestroy, DoubleDestroyDoesNotCrash)
 TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 {
     struct SolidSyslogStore*   store   = nullptr;
+    struct SolidSyslogSecurityPolicy policy = {};
 
     void setup() override
     {
@@ -572,6 +573,22 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
         SolidSyslogFileBlockDevice_Destroy(device);
         device = SolidSyslogFileBlockDevice_Create(file, prefix, 4096);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+        store = SolidSyslogBlockStore_Create(&config);
+    }
+
+    /* TrailerSize is a uint16_t, so at a reservation of UINT16_MAX or more no
+     * policy can exceed it. A size it cannot hold exits the test rather than
+     * wrapping, and the test exits rather than being compiled out. */
+    void CreateWithTrailerSize(size_t trailerSize)
+    {
+        if (trailerSize > UINT16_MAX)
+        {
+            UT_PRINT("Trailer size > UINT16_MAX - no policy can declare it");
+            TEST_EXIT;
+        }
+        policy.TrailerSize = static_cast<uint16_t>(trailerSize);
+        struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+        config.SecurityPolicy = &policy;
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -668,25 +685,28 @@ TEST(SolidSyslogBlockStoreConfig, NullSecurityPolicyDefaultsToNoOp)
     VerifyWriteAndReadBack();
 }
 
-TEST(SolidSyslogBlockStoreConfig, OversizedSecurityPolicyLeavesNoIntegrityGap)
+TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerFillsTheReservationIsAccepted)
 {
-    struct SolidSyslogSecurityPolicy oversizedPolicy = {
-        SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1,
-        nullptr,
-        nullptr,
-    };
-    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.SecurityPolicy = &oversizedPolicy;
-    store = SolidSyslogBlockStore_Create(&config);
+    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE);
+    CHECK(store != SolidSyslogNullStore_Get());
+}
 
-    const char body[] = "HELLO WORLD";
-    const size_t bodyLen = sizeof(body) - 1;
-    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, body, bodyLen));
+TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsRefused)
+{
+    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1U);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
 
-    const size_t RECORD_HEADER = 4;
-    const size_t SENT_FLAG = 1;
-    LONGS_EQUAL(RECORD_HEADER + bodyLen + SENT_FLAG, FileFake_FileSize());
-    MEMCMP_EQUAL(body, static_cast<const uint8_t*>(FileFake_FileContent()) + RECORD_HEADER, bodyLen);
+TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsReportedAsFatal)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateWithTrailerSize(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1U);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
+    );
 }
 
 // clang-format off

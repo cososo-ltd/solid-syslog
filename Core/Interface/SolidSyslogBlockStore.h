@@ -79,8 +79,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Create a store from @p config, resuming from any records already on the
      *  device. A NULL config, an exhausted pool, or a failed inner allocation
-     *  falls back to the shared NullStore. A block too small for one worst-case
-     *  record is grown to fit and reported as a WARNING, not a failure. */
+     *  falls back to the shared NullStore. So does a SecurityPolicy whose
+     *  trailer is wider than SOLIDSYSLOG_MAX_INTEGRITY_SIZE, reported at
+     *  CRITICAL, since storing records without it would leave them unprotected.
+     *  A block too small for one worst-case record is grown to fit and reported
+     *  as a WARNING, not a failure. */
     struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config);
     /** Release the pool slot; does not destroy the injected BlockDevice or
      *  SecurityPolicy. */

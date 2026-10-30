@@ -55,6 +55,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
            written, or evicted a block still holding unsent ones. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED,
+        /** Raised under SOLIDSYSLOG_CAT_BAD_CONFIG: the security policy's trailer
+         *  is wider than SOLIDSYSLOG_MAX_INTEGRITY_SIZE, so Create refused it
+         *  rather than store records without it. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

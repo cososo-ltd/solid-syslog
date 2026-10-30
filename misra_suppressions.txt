@@ -74,7 +74,7 @@ misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:215
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:62
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:92
-misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:97
+misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:87
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:98
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:93
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslPemFileCredentials.c:61
@@ -141,9 +141,9 @@ misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:92
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:101
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:50
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:122
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:147
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:51
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:158
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:183
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:192
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:104
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:285
@@ -202,7 +202,7 @@ misra-c2012-5.7:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpKeepaliveAll.c:17
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketDatagram.c:32
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketResolver.c:35
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c:33
-misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:31
+misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:29
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:28
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:51
 misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:29
