@@ -31,7 +31,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** @p maxMessageSize must be SOLIDSYSLOG_MAX_MESSAGE_SIZE: SolidSyslog_Service
      *  reads each record into a buffer of that size, and mq_receive refuses a
      *  buffer smaller than the queue's message size, so a larger value fails every
-     *  read and a smaller one refuses every longer record. @p maxMessages sizes the
+     *  read and a smaller one refuses every longer record. A queue that already
+     *  exists under the name keeps its own attributes, so a stale one, left by a
+     *  process that did not destroy its buffer, can have another size; remove it
+     *  with mq_unlink. @p maxMessages sizes the
      *  queue; an exhausted pool falls back to the shared NullBuffer. @p mutex makes Write safe for tasks
      *  logging at once, and guards what Read and IsFull share with it, so
      *  inject SolidSyslogNullMutex_Get() only when one task both logs and calls

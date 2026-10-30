@@ -360,9 +360,9 @@ The mutex comes from your RTOS, so add its platform to the list from stage 1.
 ## Stage 8: Detect loss where it happens
 
 UDP to TCP, by putting a [`SolidSyslogStreamSender`](api/SolidSyslogStreamSender_8h.md)
-over a TCP stream. The network retransmits rather than dropping, and a send fails when
-the collector is gone instead of appearing to succeed. Records are framed by octet
-count per RFC 6587.
+over a TCP stream. The network retransmits rather than dropping, and a send fails once
+the stack knows the collector is gone, instead of appearing to succeed. Records are
+framed by octet count per RFC 6587.
 
 ```c
 struct SolidSyslogStreamSenderConfig senderConfig = {
@@ -374,7 +374,7 @@ struct SolidSyslogStreamSenderConfig senderConfig = {
 struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&senderConfig);
 ```
 
-With stage 6 this completes loss detection: the transport detects loss where it happens,
+With stage 6 this completes loss detection: the transport reports the losses it observes,
 and the sequence number reveals afterwards anything the transport could not. It is also
 what makes the delivery-failed and delivery-restored events from stage 2 meaningful.
 

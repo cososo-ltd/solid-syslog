@@ -260,7 +260,9 @@ With the PEM-buffer source, Create copied each buffer's address and length, so
 pointing your configuration at new PEM afterwards changes nothing. Write the new
 PEM over the bytes the source was created with, at the length it was created
 with, terminating NUL included, then increment the stream's version; the next
-connection parses it. With the handle source the old
+connection parses it. Make the change on the task that calls
+`SolidSyslog_Service`, or with that task held off, so a connection never parses a
+half-written buffer. With the handle source the old
 handles are still being read by an open connection, so free and re-parse them
 only after it has closed: call `SolidSyslogSender_Disconnect` from the task
 that services the library and re-parse when it returns, or do it in a

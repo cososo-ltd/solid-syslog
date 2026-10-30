@@ -126,7 +126,9 @@ within the limits, or raise them for the deployment. Pass
 `SOLIDSYSLOG_MAX_MESSAGE_SIZE` as `maxMessageSize`: `SolidSyslog_Service` reads
 each record into a buffer of that size, and `mq_receive` refuses a buffer
 smaller than the queue's message size, so a larger value fails every read and a
-smaller one refuses every longer record.
+smaller one refuses every longer record. A queue that already exists under the
+name keeps its own attributes, so a stale one, left by a process that did not destroy
+its buffer, can have another size; remove it with `mq_unlink`.
 
 ### The message-queue buffer is reachable by name
 
@@ -135,8 +137,9 @@ and writable by its owner alone. Any other process running as that user can open
 it by that name, read the records waiting in it and add records of its own, which
 the library then stores, seals and delivers as this device's. The buffer opens a
 queue that already exists under that name rather than refusing it, so a queue
-another user created first keeps that user's owner and mode. Run nothing else as
-that user, or use a buffer that stays in the process.
+another user created first keeps that user's owner and mode, and that user can
+read and add records whatever else runs as yours. Where that matters, give the
+process a private IPC namespace, or use a buffer that stays in the process.
 
 ### The blocking surface is bounded but not zero
 

@@ -688,7 +688,9 @@
  * attempts a fresh connect.
  *
  * That is safe wherever a failed send keeps the record: a store replays it,
- * and with no store Service holds it and retries it on its next pass. Only an
+ * and with no store Service holds it and retries it on its next pass, unless
+ * the buffer fills behind it first, when the discard policy decides: Oldest
+ * drops it and Halt stops the logger. Only an
  * inline wiring - a PassthroughBuffer, which sends from inside
  * SolidSyslog_Log - has nowhere to keep it, so there one lost SYN loses one
  * record. If you send inline over TCP or TLS and losing a record matters,
@@ -732,8 +734,8 @@
  * resolved: typically the first record after start-up or after the stack's
  * entry has expired. A wait that ends unresolved returns FAILED, and the
  * record waits for a later pass - in the store, or held by Service where there
- * is none; an inline wiring has nowhere to keep it, so there it is lost and
- * reported.
+ * is none, until the buffer fills behind it and the discard policy decides; an
+ * inline wiring has nowhere to keep it, so there it is lost and reported.
  * After a failed resolution a backend does not wait again until one
  * succeeds, so an unreachable next hop costs one wait, not one per record.
  *
