@@ -258,10 +258,14 @@ With the PEM-buffer source, Create copied each buffer's address and length, so
 pointing your configuration at new PEM afterwards changes nothing. A PEM that
 cannot be rewritten - a `const` array like the one above, or one in flash - cannot
 be rotated this way: hold material you will rotate in writable memory, or use the
-handle source. Where the PEM is writable, write the new PEM over the bytes the
-source was created with, at the length it was created
-with, terminating NUL included, then increment the stream's version; the next
-connection parses it. Make the change on the task that calls
+handle source. Where the PEM is writable, give each buffer's whole size as its
+`Length` at Create, sized for the largest PEM you will rotate to plus its
+terminating NUL, and fill
+what the PEM does not use with NULs: the parser stops at the first NUL, so a
+shorter PEM reads correctly. To rotate, write the new PEM over the buffer, clear
+the bytes after it to NUL, and increment the stream's version; the next
+connection parses it. New material longer than the buffer cannot be rotated in;
+use the handle source where you cannot bound its size. Make the change on the task that calls
 `SolidSyslog_Service`, or with that task held off, so a connection never parses a
 half-written buffer. With the handle source the old
 handles are still being read by an open connection, so free and re-parse them
