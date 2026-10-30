@@ -49,7 +49,7 @@ const struct SolidSyslogErrorSource SolidSyslogMbedTlsStreamErrorSource = {
 
 enum
 {
-    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 1U,
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 10U,
     MBEDTLS_STREAM_DHM_MIN_BITLEN = 2048U,
     MBEDTLS_STREAM_DISCARD_BYTES = 16U,
     MBEDTLS_STREAM_MAX_READS_BEFORE_WRITE = 8U
@@ -111,6 +111,7 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_InitDetail(
 );
 static inline bool MbedTlsStream_IsAllocationFailure(int rc);
 static inline bool MbedTlsStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
+static inline uint32_t MbedTlsStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline bool MbedTlsStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static bool MbedTlsStream_SessionIsStillOpen(struct SolidSyslogStream* base);
 static inline SolidSyslogSsize MbedTlsStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
@@ -734,11 +735,27 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
         else
         {
-            self->Config.Sleep(HANDSHAKE_POLL_INTERVAL_MILLISECONDS);
-            totalSleptMs += (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+            uint32_t pollMs = MbedTlsStream_HandshakePollMs(totalSleptMs, budgetMs);
+            self->Config.Sleep(pollMs);
+            totalSleptMs += pollMs;
         }
     }
     return result;
+}
+
+/* The poll interval, or what is left of the budget where that is less, so the
+ * sleeps requested never add up to more than the budget. How long each sleep
+ * really takes, and the handshake itself, can still carry the attempt past it.
+ * Called only while budget remains. */
+static inline uint32_t MbedTlsStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+    uint32_t remainingMs = budgetMs - totalSleptMs;
+    if (remainingMs < pollMs)
+    {
+        pollMs = remainingMs;
+    }
+    return pollMs;
 }
 
 /* Verifying optionally completes the handshake and leaves the verdict to be

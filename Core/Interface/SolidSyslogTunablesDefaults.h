@@ -815,6 +815,9 @@
  * the getter is invoked on every handshake attempt so live tuning takes
  * effect without rebuilding or recreating the stream.
  *
+ * Between attempts the handshake asks Sleep for 10 ms, or for what is left of
+ * the budget where that is less, so a budget under 10 ms allows a single retry.
+ *
  * Floor: 1 ms. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS

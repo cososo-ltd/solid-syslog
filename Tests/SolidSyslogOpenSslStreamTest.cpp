@@ -1308,15 +1308,36 @@ TEST(SolidSyslogOpenSslStream, OpenInvokesConfiguredHandshakeTimeoutGetter)
 
 TEST(SolidSyslogOpenSslStream, OpenUsesGetterReturnValueAsHandshakeBudget)
 {
-    /* 5 ms budget against the 1 ms poll interval -> loop should sleep 5 times
+    /* 50 ms budget against the 10 ms poll interval -> loop should sleep 5 times
        before declaring HANDSHAKE_TIMEOUT and unwinding. */
-    FakeGetHandshakeTimeoutMs_ReturnValue = 5U;
+    FakeGetHandshakeTimeoutMs_ReturnValue = 50U;
     RecreateStreamWithFakeHandshakeGetter();
     ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
 
     LONGS_EQUAL(5, NoOpSleepCallCount);
+}
+
+TEST(SolidSyslogOpenSslStream, HandshakePollSleepsTenMilliseconds)
+{
+    ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(10, g_lastSleepMs);
+}
+
+TEST(SolidSyslogOpenSslStream, HandshakeLastPollSleepsOnlyWhatIsLeftOfTheBudget)
+{
+    FakeGetHandshakeTimeoutMs_ReturnValue = 15U;
+    RecreateStreamWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(SSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(2, NoOpSleepCallCount);
+    LONGS_EQUAL(5, g_lastSleepMs);
 }
 
 TEST(SolidSyslogOpenSslStream, GetterReceivesNullContextWhenContextNotConfigured)
