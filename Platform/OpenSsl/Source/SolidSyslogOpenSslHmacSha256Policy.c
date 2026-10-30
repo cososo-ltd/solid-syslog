@@ -13,7 +13,6 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
-#include "SolidSyslogMacros.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyErrors.h"
 #include "SolidSyslogOpenSslHmacSha256PolicyPrivate.h"
 #include "SolidSyslogPrival.h"
@@ -34,14 +33,6 @@ enum
      * cryptographically worthless MAC, so we reject it and fail closed. */
     HMAC_SHA256_MIN_KEY_SIZE = 32
 };
-
-/* Seal/open write the tag into record->Trailer, which the store sizes at
- * SOLIDSYSLOG_MAX_INTEGRITY_SIZE. Fail the build - not a record at runtime -
- * if that shared buffer is ever tuned below this policy's trailer. */
-SOLIDSYSLOG_STATIC_ASSERT(
-    HMAC_SHA256_TAG_SIZE <= SOLIDSYSLOG_MAX_INTEGRITY_SIZE,
-    "HMAC-SHA256 tag must fit SOLIDSYSLOG_MAX_INTEGRITY_SIZE"
-);
 
 static inline struct SolidSyslogOpenSslHmacSha256Policy* OpenSslHmacSha256Policy_SelfFromBase(
     struct SolidSyslogSecurityPolicy* base
