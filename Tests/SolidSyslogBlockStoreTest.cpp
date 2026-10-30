@@ -727,6 +727,13 @@ TEST(SolidSyslogBlockStoreConfig, ANullConfigIsReportedAsFatal)
     );
 }
 
+TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsRefused)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(nullptr);
+    store = SolidSyslogBlockStore_Create(&config);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {

@@ -49,7 +49,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
 
-    if (config != NULL)
+    if ((config != NULL) && (config->BlockDevice != NULL))
     {
         struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
 
