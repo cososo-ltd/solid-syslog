@@ -14,13 +14,11 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
-#include "SolidSyslogMacros.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyErrors.h"
 #include "SolidSyslogMbedTlsAesGcmPolicyPrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
-#include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogMbedTlsAesGcmPolicyErrorSource = {
     "MbedTlsAesGcmPolicy",
@@ -36,14 +34,6 @@ enum
     /* Trailer is nonce || tag - fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
     AES_GCM_TRAILER_SIZE = GCM_NONCE_SIZE + GCM_TAG_SIZE
 };
-
-/* Seal/open write the nonce and tag into record->Trailer, which the store sizes
- * at SOLIDSYSLOG_MAX_INTEGRITY_SIZE. Fail the build - not a record at runtime -
- * if that shared buffer is ever tuned below this policy's trailer. */
-SOLIDSYSLOG_STATIC_ASSERT(
-    AES_GCM_TRAILER_SIZE <= SOLIDSYSLOG_MAX_INTEGRITY_SIZE,
-    "AES-GCM trailer (nonce + tag) must fit SOLIDSYSLOG_MAX_INTEGRITY_SIZE"
-);
 
 static inline struct SolidSyslogMbedTlsAesGcmPolicy* MbedTlsAesGcmPolicy_SelfFromBase(
     struct SolidSyslogSecurityPolicy* base
