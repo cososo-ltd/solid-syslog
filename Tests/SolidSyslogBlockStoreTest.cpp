@@ -3185,6 +3185,19 @@ TEST(SolidSyslogBlockStorePool, ANullConfigLeavesEverySlotFree)
     }
 }
 
+TEST(SolidSyslogBlockStorePool, ANullBlockDeviceLeavesEverySlotFree)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(nullptr);
+    (void) SolidSyslogBlockStore_Create(&config);
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a NULL BlockDevice kept a pool slot");
+    }
+}
+
 TEST(SolidSyslogBlockStorePool, UseAfterDestroyIsCrashSafeViaNullStoreVtable)
 {
     /* After Destroy, the slot's vtable is overwritten with NullStore's so
