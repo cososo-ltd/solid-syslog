@@ -36,6 +36,7 @@ static inline int PlusFatFile_ErrnoUnlessOpen(const struct SolidSyslogPlusFatFil
 static inline bool PlusFatFile_IsAbsent(int nativeErrno);
 static inline void PlusFatFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeCode);
 static inline bool PlusFatFile_Flush(struct SolidSyslogPlusFatFile* self);
+static inline bool PlusFatFile_IsRemovedOrAbsent(int status, int removeErrno);
 
 void SolidSyslogPlusFatFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -267,6 +268,14 @@ static bool PlusFatFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool PlusFatFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    /* The contract counts an absent path as removed. */
-    return (ff_remove(path) == 0) || PlusFatFile_IsAbsent(stdioGET_ERRNO());
+    int status = ff_remove(path);
+    int removeErrno = (status != 0) ? stdioGET_ERRNO() : 0;
+    return PlusFatFile_IsRemovedOrAbsent(status, removeErrno);
+}
+
+/* The contract counts an absent path as removed. Plus-FAT answers ENOTDIR
+ * where the path's directory is missing. */
+static inline bool PlusFatFile_IsRemovedOrAbsent(int status, int removeErrno)
+{
+    return (status == 0) || PlusFatFile_IsAbsent(removeErrno) || (removeErrno == pdFREERTOS_ERRNO_ENOTDIR);
 }

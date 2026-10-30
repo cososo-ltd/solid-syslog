@@ -38,6 +38,7 @@ static inline void FatFsFile_ReportFailure(enum SolidSyslogFileErrors code, FRES
 static inline bool FatFsFile_Sync(struct SolidSyslogFile* base);
 static inline bool FatFsFile_IsCloseStillOwed(FRESULT result);
 static bool FatFsFile_SettleOwedClose(struct SolidSyslogFatFsFile* self);
+static inline bool FatFsFile_IsRemovedOrAbsent(FRESULT result);
 
 void SolidSyslogFatFsFile_Initialise(struct SolidSyslogFile* base)
 {
@@ -257,7 +258,12 @@ static bool FatFsFile_Exists(struct SolidSyslogFile* base, const char* path)
 static bool FatFsFile_Delete(struct SolidSyslogFile* base, const char* path)
 {
     (void) base;
-    FRESULT result = f_unlink(path);
-    /* The contract counts an absent path as removed, whether the file or its directory is missing. */
+    return FatFsFile_IsRemovedOrAbsent(f_unlink(path));
+}
+
+/* The contract counts an absent path as removed, whether the file or its
+ * directory is missing. */
+static inline bool FatFsFile_IsRemovedOrAbsent(FRESULT result)
+{
     return (result == FR_OK) || (result == FR_NO_FILE) || (result == FR_NO_PATH);
 }

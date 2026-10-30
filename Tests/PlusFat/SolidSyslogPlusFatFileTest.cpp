@@ -284,6 +284,13 @@ TEST(SolidSyslogPlusFatFile, DeleteReportsTrueWhenThePathIsAlreadyAbsent)
     CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
 }
 
+TEST(SolidSyslogPlusFatFile, DeleteReportsTrueWhenItsDirectoryIsAbsent)
+{
+    PlusFatFake_SetRemoveErrno(pdFREERTOS_ERRNO_ENOTDIR);
+
+    CHECK_TRUE(SolidSyslogFile_Delete(file, TEST_PATH));
+}
+
 TEST(SolidSyslogPlusFatFile, OpenThatFailsForANonAbsentReasonReportsTheFailedOpenAndItsErrno)
 {
     ErrorHandlerFake_Install(nullptr);
