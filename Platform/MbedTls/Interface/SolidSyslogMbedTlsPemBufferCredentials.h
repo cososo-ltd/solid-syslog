@@ -38,11 +38,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** PEM text; NULL means this piece of material is not supplied. */
         const unsigned char* Bytes;
         /** Length of Bytes **including** the terminating NUL, which is the
-         *  length Mbed TLS's own parsers require of PEM - so
-         *  `strlen(pem) + 1`. Getting this wrong is reported rather than left
-         *  to surface as a parse failure: Mbed TLS reads a certificate buffer
-         *  whose last byte is not NUL as DER instead, which fails as "not a
-         *  certificate" and says nothing about the length. */
+         *  length Mbed TLS's own parsers require of PEM - at least
+         *  `strlen(pem) + 1`. It may be the whole buffer, with every byte after
+         *  the PEM a NUL, because the parser stops at the first NUL; that is
+         *  how a buffer is sized to rotate material of another length into.
+         *  The last byte must be a NUL. Getting this wrong is reported rather
+         *  than left to surface as a parse failure: Mbed TLS reads a
+         *  certificate buffer whose last byte is not NUL as DER instead, which
+         *  fails as "not a certificate" and says nothing about the length. */
         size_t Length;
     };
 

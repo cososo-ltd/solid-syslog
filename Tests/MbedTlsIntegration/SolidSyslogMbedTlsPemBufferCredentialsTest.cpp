@@ -5,6 +5,8 @@
 
 #include "CppUTest/TestHarness.h"
 
+#include <cstring>
+
 extern "C"
 {
 #include <mbedtls/ctr_drbg.h>
@@ -72,6 +74,7 @@ TEST_GROUP(SolidSyslogMbedTlsPemBufferCredentials)
 
     struct MbedTlsTestCert ca = {};
     struct MbedTlsTestCert clientCert = {};
+    struct MbedTlsTestCert rotatedClientCert = {};
     unsigned char caPem[PEM_BUFFER_BYTES] = {};
     unsigned char clientCertPem[PEM_BUFFER_BYTES] = {};
     unsigned char clientKeyPem[PEM_BUFFER_BYTES] = {};
@@ -115,6 +118,7 @@ TEST_GROUP(SolidSyslogMbedTlsPemBufferCredentials)
             SolidSyslogMbedTlsPemBufferCredentials_Destroy(credentials);
         }
         mbedtls_ssl_config_free(&conf);
+        MbedTlsTestCert_Destroy(&rotatedClientCert);
         MbedTlsTestCert_Destroy(&clientCert);
         MbedTlsTestCert_Destroy(&ca);
         mbedtls_ctr_drbg_free(&rng);
@@ -128,6 +132,28 @@ TEST_GROUP(SolidSyslogMbedTlsPemBufferCredentials)
             MbedTlsTestCert_WriteCertPem(&clientCert, clientCertPem, sizeof(clientCertPem));
         config.ClientKeyPem.Bytes = clientKeyPem;
         config.ClientKeyPem.Length = MbedTlsTestCert_WriteKeyPem(&clientCert, clientKeyPem, sizeof(clientKeyPem));
+    }
+
+    /* The rotation the setup page describes: the buffers' whole extent is
+     * given at Create, and new PEM is written over them with NULs after it. */
+    void GiveAClientCredentialSizedForRotation()
+    {
+        (void) MbedTlsTestCert_WriteCertPem(&clientCert, clientCertPem, sizeof(clientCertPem));
+        (void) MbedTlsTestCert_WriteKeyPem(&clientCert, clientKeyPem, sizeof(clientKeyPem));
+        config.ClientCertPem = {clientCertPem, sizeof(clientCertPem)};
+        config.ClientKeyPem = {clientKeyPem, sizeof(clientKeyPem)};
+    }
+
+    void RotateTheClientCredentialInPlace()
+    {
+        struct MbedTlsTestCertConfig rotatedConfig = {};
+        rotatedConfig.SubjectName = "CN=rotated";
+        rotatedConfig.Issuer = &ca;
+        MbedTlsTestCert_Create(&rotatedConfig, &rotatedClientCert, &rng);
+        memset(clientCertPem, 0, sizeof(clientCertPem));
+        memset(clientKeyPem, 0, sizeof(clientKeyPem));
+        (void) MbedTlsTestCert_WriteCertPem(&rotatedClientCert, clientCertPem, sizeof(clientCertPem));
+        (void) MbedTlsTestCert_WriteKeyPem(&rotatedClientCert, clientKeyPem, sizeof(clientKeyPem));
     }
 };
 
@@ -469,6 +495,24 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, ASecondInstallParsesAgainAfterARele
 
     CHECK_TRUE(installed.TrustAnchorsInstalled);
     CHECK_TRUE(conf.MBEDTLS_PRIVATE(key_cert) != nullptr);
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, AnInstallAfterAnInPlaceRotationParsesTheNewMaterial)
+{
+    GiveAClientCredentialSizedForRotation();
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+    mbedtls_ssl_config_free(&conf);
+    mbedtls_ssl_config_init(&conf);
+    RotateTheClientCredentialInPlace();
+
+    CHECK_TRUE(credentials->Install(credentials, &conf, &installed));
+
+    const auto* self = reinterpret_cast<const struct SolidSyslogMbedTlsPemBufferCredentials*>(credentials);
+    LONGS_EQUAL(0, PemBufferCapturedErrorCount);
+    LONGS_EQUAL(rotatedClientCert.Cert.raw.len, self->ClientCertChain.raw.len);
+    MEMCMP_EQUAL(rotatedClientCert.Cert.raw.p, self->ClientCertChain.raw.p, rotatedClientCert.Cert.raw.len);
 }
 
 TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsATrustAnchorBufferWithNoExtent)
