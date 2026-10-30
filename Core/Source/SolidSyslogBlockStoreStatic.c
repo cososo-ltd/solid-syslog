@@ -48,19 +48,23 @@ static struct SolidSyslogPoolAllocator BlockStore_Allocator = {BlockStore_InUse,
 struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config)
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
-    struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
 
-    if (BlockStore_TrailerFits(policy))
+    if (config != NULL)
     {
-        result = BlockStore_CreateInSlot(config, policy);
-    }
-    else
-    {
-        BlockStore_Report(
-            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
-        );
+        struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
+
+        if (BlockStore_TrailerFits(policy))
+        {
+            result = BlockStore_CreateInSlot(config, policy);
+        }
+        else
+        {
+            BlockStore_Report(
+                SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
+            );
+        }
     }
 
     return result;

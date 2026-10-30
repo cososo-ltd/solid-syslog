@@ -709,6 +709,12 @@ TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsReportedAsFatal
     );
 }
 
+TEST(SolidSyslogBlockStoreConfig, ANullConfigIsRefused)
+{
+    store = SolidSyslogBlockStore_Create(nullptr);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {
