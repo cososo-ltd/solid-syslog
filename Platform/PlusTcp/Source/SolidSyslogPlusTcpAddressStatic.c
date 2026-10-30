@@ -30,9 +30,7 @@ struct SolidSyslogAddress* SolidSyslogPlusTcpAddress_Create(void)
     /* TU-private fallback returned when the pool is exhausted. Sized as
      * a real SolidSyslogPlusTcpAddress so a Resolver overwrite at the
      * exhausted-fallback call site is bounded - same freertos_sockaddr
-     * storage as any pooled slot. Not a per-Sender slot: multi-overflow
-     * integrators share this storage and race on it. Bumping
-     * SOLIDSYSLOG_ADDRESS_POOL_SIZE removes the race. */
+     * storage as any pooled slot. */
     static struct SolidSyslogPlusTcpAddress fallback;
 
     size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PlusTcpAddress_Allocator);

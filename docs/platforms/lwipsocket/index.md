@@ -159,5 +159,5 @@ one. [Error severity](../../error-severity.md) covers what each level means.
   option bought, usually prompt detection of a dead peer, does not.
 - **A `CRITICAL` at create time** means a pool ran out. A datagram, stream or
   resolver then falls back to its Null object and nothing is delivered through
-  it; an address falls back to a slot every overflowing draw shares, so records
-  may go to another sender's destination.
+  it; an address falls back to a shared slot. Raise the pool size that
+  reported it.

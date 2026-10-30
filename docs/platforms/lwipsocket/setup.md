@@ -76,9 +76,8 @@ bound how many you may draw are in
 [Adding it to your build](../../build-integration.md#tunables); drawing past them
 reports `CRITICAL`. A datagram, stream or resolver drawn past its pool is the
 Null object, so a sender wired with one delivers nothing. An address drawn past
-its pool is a fallback every overflowing draw shares, so two senders wired that
-way overwrite each other's destination and records can reach the wrong
-collector: size `SOLIDSYSLOG_ADDRESS_POOL_SIZE` so that no sender draws it.
+its pool is a shared fallback instead; raise `SOLIDSYSLOG_ADDRESS_POOL_SIZE` so
+that no sender draws it.
 
 ## Resolving by name
 

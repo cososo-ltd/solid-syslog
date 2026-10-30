@@ -134,9 +134,9 @@
  * is dealing with, plus a struct of collaborator pointers, callbacks and
  * flags.
  *
- * Most integrators only ever create one SolidSyslog per process; default 1.
- * Bump via SOLIDSYSLOG_USER_TUNABLES_FILE if the integrator needs multiple
- * concurrent SolidSyslog instances.
+ * One instance per process is the supported configuration in this release,
+ * so leave this at 1. The tunable exists so the instance pool follows the
+ * same pattern as every other pool.
  *
  * Floor: 1. Sub-floor values rejected at compile time.
  */
