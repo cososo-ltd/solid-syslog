@@ -86,9 +86,8 @@
  * Drives the RecordStore per-record buffer width - every record carries
  * a tag this wide regardless of the active SolidSyslogSecurityPolicy.
  * Default 32 fits HMAC-SHA256 (32 bytes) and AES-256-GCM (28); CRC-16
- * uses 2. Never set it below the trailer of the policy you configure: the
- * library's own policies then fail the build, and SolidSyslogBlockStore_Create
- * refuses any other such policy, reporting it at CRITICAL.
+ * uses 2. A policy whose trailer is wider is refused; see
+ * SolidSyslogBlockStore_Create.
  *
  * Floor: 4. Sub-floor values rejected at compile time.
  */

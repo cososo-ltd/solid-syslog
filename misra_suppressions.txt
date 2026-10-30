@@ -141,9 +141,9 @@ misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:92
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:101
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:81
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:153
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:178
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:51
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:158
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:183
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:192
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:104
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:285

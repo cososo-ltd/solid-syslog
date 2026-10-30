@@ -76,8 +76,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         /** Bytes SealRecord appends per record; the store reserves this and
          *  treats it as opaque. Zero for the Null policy. At most
-         *  SOLIDSYSLOG_MAX_INTEGRITY_SIZE, or the block store refuses the
-         *  policy. */
+         *  SOLIDSYSLOG_MAX_INTEGRITY_SIZE. */
         uint16_t TrailerSize;
         /** Authenticate (and, for an AEAD policy, encrypt in place) @p record and
          *  write its trailer. @retval false the seal could not be produced (e.g.
