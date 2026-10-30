@@ -123,11 +123,18 @@ static SSL_CTX* lastLoadVerifyLocationsCtxArg;
 static const char* lastCaBundlePath;
 static bool loadVerifyLocationsFails;
 
-/* Session and context policy setters. A cipher string may carry @SECLEVEL=n,
- * so SSL_CTX_set_cipher_list resets the recorded level: asserting the level
- * after Open then proves it was set after the policy, where OpenSSL would
- * actually let it stand. */
-static int lastSecurityLevel;
+/* Session and context policy setters. A context starts at the host's
+ * security level, as OpenSSL's does from the build default and openssl.cnf,
+ * and a cipher string carrying @SECLEVEL=n moves it to n, as OpenSSL's does.
+ * The host level defaults to 1, OpenSSL 3.0's build default. */
+enum
+{
+    FAKE_HOST_SECURITY_LEVEL = 1
+};
+
+static int securityLevel;
+static int hostSecurityLevel;
+static void OpenSslFake_ApplySecLevel(const char* str);
 static pem_password_cb* lastPasswdCb;
 static unsigned int lastHostflags;
 static uint64_t lastSslOptions;
@@ -307,7 +314,8 @@ void OpenSslFake_Reset(void)
     loadVerifyLocationsFails = false;
     lastSetVerifyCtxArg = NULL;
     lastVerifyMode = 0;
-    lastSecurityLevel = 0;
+    securityLevel = 0;
+    hostSecurityLevel = FAKE_HOST_SECURITY_LEVEL;
     lastPasswdCb = NULL;
     lastHostflags = 0U;
     lastSslOptions = 0U;
@@ -480,7 +488,12 @@ int OpenSslFake_LastVerifyMode(void)
 
 int OpenSslFake_LastSecurityLevel(void)
 {
-    return lastSecurityLevel;
+    return securityLevel;
+}
+
+void OpenSslFake_SetHostSecurityLevel(int level)
+{
+    hostSecurityLevel = level;
 }
 
 pem_password_cb* OpenSslFake_LastPasswdCb(void)
@@ -730,6 +743,7 @@ SSL_CTX* SSL_CTX_new(const SSL_METHOD* method)
 {
     ctxNewCallCount++;
     lastCtxNewMethodArg = method;
+    securityLevel = hostSecurityLevel;
     return ctxNewFails ? NULL : (SSL_CTX*) &fakeCtxStorage;
 }
 
@@ -762,7 +776,13 @@ void SSL_CTX_set_verify(SSL_CTX* ctx, int mode, SSL_verify_cb verify_callback)
 void SSL_CTX_set_security_level(SSL_CTX* ctx, int level)
 {
     (void) ctx;
-    lastSecurityLevel = level;
+    securityLevel = level;
+}
+
+int SSL_CTX_get_security_level(const SSL_CTX* ctx)
+{
+    (void) ctx;
+    return securityLevel;
 }
 
 void SSL_CTX_set_default_passwd_cb(SSL_CTX* ctx, pem_password_cb* cb)
@@ -936,11 +956,24 @@ void OpenSslFake_SetMinProtoVersionFails(bool fails)
 
 int SSL_CTX_set_cipher_list(SSL_CTX* ctx, const char* str)
 {
-    lastSecurityLevel = 0;
     setCipherListCallCount++;
     lastSetCipherListCtxArg = ctx;
     lastCipherList = str;
+    if (!setCipherListFails)
+    {
+        OpenSslFake_ApplySecLevel(str);
+    }
     return setCipherListFails ? 0 : 1;
+}
+
+static void OpenSslFake_ApplySecLevel(const char* str)
+{
+    static const char marker[] = "@SECLEVEL=";
+    const char* found = (str != NULL) ? strstr(str, marker) : NULL;
+    if (found != NULL)
+    {
+        securityLevel = found[sizeof(marker) - 1U] - '0';
+    }
 }
 
 void OpenSslFake_SetCipherListFails(bool fails)

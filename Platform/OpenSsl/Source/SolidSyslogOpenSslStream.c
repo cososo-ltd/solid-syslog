@@ -38,7 +38,7 @@ const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource = {
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 10U,
-    OPENSSL_STREAM_SECURITY_LEVEL = 2,
+    OPENSSL_STREAM_SECURITY_LEVEL_FLOOR = 2,
     OPENSSL_STREAM_DISCARD_BYTES = 16U,
     OPENSSL_STREAM_MAX_READS_BEFORE_WRITE = 8U
 };
@@ -74,7 +74,7 @@ static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogT
 static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
-static inline void OpenSslStream_PinSecurityLevel(SSL_CTX* ctx);
+static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx);
 static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
 static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
 static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
@@ -345,7 +345,7 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
     }
     else
     {
-        OpenSslStream_PinSecurityLevel(self->Ctx);
+        OpenSslStream_RaiseSecurityLevel(self->Ctx);
         OpenSslStream_RefusePassphrasePrompts(self->Ctx);
     }
     if (!ok)
@@ -441,12 +441,16 @@ static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStr
 }
 
 /* RFC 9325 s4.5: RSA and DH of 2048 bits, curves of 224, no SHA-1 signatures -
- * OpenSSL's level 2. Pinned after the cipher policy, because a cipher string
- * may carry @SECLEVEL=n and a distribution may build with another default;
- * the contract pins the floor rather than inheriting the build's. */
-static inline void OpenSslStream_PinSecurityLevel(SSL_CTX* ctx)
+ * OpenSSL's level 2. A floor rather than a setting: the build, openssl.cnf and
+ * a cipher string's @SECLEVEL=n decide where the context starts, a weaker
+ * start is raised and a stricter one stands. Read after the cipher policy,
+ * since the string is the last of those to move it. */
+static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx)
 {
-    SSL_CTX_set_security_level(ctx, OPENSSL_STREAM_SECURITY_LEVEL);
+    if (SSL_CTX_get_security_level(ctx) < OPENSSL_STREAM_SECURITY_LEVEL_FLOOR)
+    {
+        SSL_CTX_set_security_level(ctx, OPENSSL_STREAM_SECURITY_LEVEL_FLOOR);
+    }
 }
 
 /* An encrypted private key otherwise prompts on the controlling terminal, from

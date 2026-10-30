@@ -46,6 +46,27 @@ TEST(OpenSslFake, SetVerifyCapturesMode)
     LONGS_EQUAL(SSL_VERIFY_PEER, OpenSslFake_LastVerifyMode());
 }
 
+TEST(OpenSslFake, CtxNewStartsAtTheHostSecurityLevel)
+{
+    OpenSslFake_SetHostSecurityLevel(3);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    LONGS_EQUAL(3, SSL_CTX_get_security_level(ctx));
+}
+
+TEST(OpenSslFake, CipherListCarryingSecLevelSetsTheSecurityLevel)
+{
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_set_cipher_list(ctx, "DEFAULT:@SECLEVEL=4");
+    LONGS_EQUAL(4, SSL_CTX_get_security_level(ctx));
+}
+
+TEST(OpenSslFake, SetSecurityLevelIsReadBack)
+{
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_set_security_level(ctx, 5);
+    LONGS_EQUAL(5, SSL_CTX_get_security_level(ctx));
+}
+
 TEST(OpenSslFake, SetMinProtoVersionCapturesVersion)
 {
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());

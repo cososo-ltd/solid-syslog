@@ -372,14 +372,36 @@ TEST(SolidSyslogOpenSslStream, OpenSetsTls12Floor)
 }
 
 /* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,
-   no SHA-1 signatures. Level 2 is what OpenSSL builds with by default, but a
-   distribution can build with another, and a profile's CipherList may carry
-   @SECLEVEL=n. The fake resets the level when a cipher list is set, so this
-   also proves the level is pinned after the policy rather than before it. */
-TEST(SolidSyslogOpenSslStream, OpenPinsSecurityLevel2AfterTheCipherPolicy)
+   no SHA-1 signatures. OpenSSL's level 2 is the floor; the build, openssl.cnf
+   and a profile's CipherList carrying @SECLEVEL=n all decide where the context
+   starts. The fake's host starts at 1, OpenSSL 3.0's build default. */
+TEST(SolidSyslogOpenSslStream, OpenRaisesAWeakerHostSecurityLevelTo2)
 {
     SolidSyslogStream_Open(stream, addr);
     LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostSecurityLevel)
+{
+    OpenSslFake_SetHostSecurityLevel(3);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(3, OpenSslFake_LastSecurityLevel());
+}
+
+/* Raised after the policy rather than before it, or the list would lower it
+   again. */
+TEST(SolidSyslogOpenSslStream, OpenRaisesASecurityLevelTheCipherListLowered)
+{
+    FakeProfile_Value.CipherList = "DEFAULT:@SECLEVEL=0";
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterSecurityLevelFromTheCipherList)
+{
+    FakeProfile_Value.CipherList = "DEFAULT:@SECLEVEL=3";
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(3, OpenSslFake_LastSecurityLevel());
 }
 
 /* An encrypted PEM key otherwise prompts on the controlling terminal from the
