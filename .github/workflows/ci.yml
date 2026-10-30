@@ -1071,6 +1071,7 @@ jobs:
           -DLWIP_TCP=1
           -DLWIP_TCP_KEEPALIVE=1
           -DLWIP_SOCKET=1
+          -DLWIP_SOCKET_SELECT=1
           -DconfigSUPPORT_STATIC_ALLOCATION=1
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
@@ -1145,6 +1146,7 @@ jobs:
           -DLWIP_TCP=1
           -DLWIP_TCP_KEEPALIVE=1
           -DLWIP_SOCKET=1
+          -DLWIP_SOCKET_SELECT=1
           -DconfigSUPPORT_STATIC_ALLOCATION=1
           -DconfigUSE_MUTEXES=1
           -DipconfigUSE_TCP=1
@@ -1201,6 +1203,7 @@ jobs:
             -DLWIP_TCP=1 \
             -DLWIP_TCP_KEEPALIVE=1 \
             -DLWIP_SOCKET=1 \
+            -DLWIP_SOCKET_SELECT=1 \
             -DconfigSUPPORT_STATIC_ALLOCATION=1 \
             -DconfigUSE_MUTEXES=1 \
             -DipconfigUSE_TCP=1 \
