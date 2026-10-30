@@ -52,20 +52,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 
     if (BlockStore_IsValidConfig(config))
     {
-        struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
-
-        if (BlockStore_TrailerFits(policy))
-        {
-            result = BlockStore_CreateInSlot(config, policy);
-        }
-        else
-        {
-            BlockStore_Report(
-                SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
-                SOLIDSYSLOG_CAT_BAD_CONFIG,
-                SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
-            );
-        }
+        result = BlockStore_CreateInSlot(config, BlockStore_ResolveSecurityPolicy(config->SecurityPolicy));
     }
 
     return result;
@@ -89,6 +76,14 @@ static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* c
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
+        );
+    }
+    else if (!BlockStore_TrailerFits(BlockStore_ResolveSecurityPolicy(config->SecurityPolicy)))
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
         );
     }
     else
