@@ -259,7 +259,8 @@ pointing your configuration at new PEM afterwards changes nothing. A PEM that
 cannot be rewritten - a `const` array like the one above, or one in flash - cannot
 be rotated this way: hold material you will rotate in writable memory, or use the
 handle source. Where the PEM is writable, give each buffer's whole size as its
-`Length` at Create, sized for the largest material you will rotate to, and fill
+`Length` at Create, sized for the largest PEM you will rotate to plus its
+terminating NUL, and fill
 what the PEM does not use with NULs: the parser stops at the first NUL, so a
 shorter PEM reads correctly. To rotate, write the new PEM over the buffer, clear
 the bytes after it to NUL, and increment the stream's version; the next
