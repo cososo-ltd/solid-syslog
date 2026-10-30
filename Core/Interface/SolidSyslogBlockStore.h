@@ -15,9 +15,10 @@
  *  writes, Newest and Halt refuse the incoming record, and under Halt the
  *  logger stops at that refusal. An optional capacity-threshold function
  *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
- *  early back-pressure signalling. The callback fires on the task that calls
- *  SolidSyslog_Service, and also inside Create, on the creating task, when the
- *  resumed store is already at or above the threshold.
+ *  early back-pressure signalling. The callback runs on whichever task calls
+ *  into the store - normally the one that calls SolidSyslog_Service - and
+ *  inside Create, on the creating task, when the resumed store is already at
+ *  or above the threshold.
  *
  *  The first block device operation that fails freezes the store, as
  *  SOLIDSYSLOG_CAT_STORE_FROZEN describes - opening the device at Create
@@ -47,8 +48,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     typedef size_t (*SolidSyslogStoreThresholdFunction)(void* context);
 
     /** Edge-triggered: fires once when used-bytes rises from below the threshold to
-     *  at-or-above (re-armed when it drops back below). Runs on the task that
-     *  calls SolidSyslog_Service, and inside SolidSyslogBlockStore_Create when the
+     *  at-or-above (re-armed when it drops back below). Runs on whichever
+     *  task calls into the store - normally the one that calls
+     *  SolidSyslog_Service - and inside SolidSyslogBlockStore_Create when the
      *  resumed store is already at or above the threshold. */
     typedef void (*SolidSyslogStoreThresholdCallback)(void* context);
 

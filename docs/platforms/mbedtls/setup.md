@@ -257,8 +257,11 @@ different collector at runtime, `ServerName` has to change with it: move
 ## Rotation
 
 With the PEM-buffer source, Create copied each buffer's address and length, so
-pointing your configuration at new PEM afterwards changes nothing. Write the new
-PEM over the bytes the source was created with, at the length it was created
+pointing your configuration at new PEM afterwards changes nothing. A PEM that
+cannot be rewritten - a `const` array like the one above, or one in flash - cannot
+be rotated this way: hold material you will rotate in writable memory, or use the
+handle source. Where the PEM is writable, write the new PEM over the bytes the
+source was created with, at the length it was created
 with, terminating NUL included, then increment the stream's version; the next
 connection parses it. Make the change on the task that calls
 `SolidSyslog_Service`, or with that task held off, so a connection never parses a

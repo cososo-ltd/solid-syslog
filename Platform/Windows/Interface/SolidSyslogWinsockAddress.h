@@ -18,8 +18,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogAddress;
 
     /** Draw one per sender from the pool (SOLIDSYSLOG_ADDRESS_POOL_SIZE); on
-     *  exhaustion Create returns a shared fallback instead; raise the pool size
-     *  so that no sender draws it. */
+     *  exhaustion SolidSyslogWinsockAddress_Create returns a shared fallback
+     *  instead; raise the pool size so that no sender draws it. */
     struct SolidSyslogAddress* SolidSyslogWinsockAddress_Create(void);
     /** Release the pool slot. */
     void SolidSyslogWinsockAddress_Destroy(struct SolidSyslogAddress * base);

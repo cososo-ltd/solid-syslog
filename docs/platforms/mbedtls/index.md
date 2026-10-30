@@ -72,11 +72,11 @@ opening while another still holds the source is reported and its attempt fails,
 rather than parsing over material the live connection is using, and its sender
 connects on a later pass once the first stream has closed.
 
-With the PEM-buffer source, writing the new PEM over the buffer the source was
-created with, at the same length, and moving the stream's configuration version
-is enough - nothing is freed, and the next connection parses the new bytes. Make
-the change on the task that calls `SolidSyslog_Service`, so a connection never
-parses a half-written buffer.
+With the PEM-buffer source over writable memory, writing the new PEM over the
+buffer the source was created with, at the same length, and moving the stream's
+configuration version is enough - nothing is freed, and the next connection parses
+the new bytes. Make the change on the task that calls `SolidSyslog_Service`, so a
+connection never parses a half-written buffer.
 
 The handle source is different, because rotating it means freeing material the
 open connection is still reading. Moving the version applies the change but does

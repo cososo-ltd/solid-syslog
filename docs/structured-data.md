@@ -15,10 +15,11 @@ You write only the *content*. The library owns the *framing*: the brackets, the 
 spelling, the `PARAM-NAME="..."` punctuation, and the RFC 5424 section 6.3.3 value escaping. A
 value can never break out of its quotes; whatever bytes you hand it stay inside the
 `"..."`. The names are yours to keep valid, as described below.
-The framing holds while the record fits `SOLIDSYSLOG_MAX_MESSAGE_SIZE`: structured
-data is written before the message text, so structured data that alone exceeds the
-cap is truncated inside an element and loses its closing quote and bracket. Keep
-elements well within the cap.
+The framing holds while the header and structured data fit: the formatter holds
+`SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes, one of them kept for a terminating NUL, and
+writes the header and structured data before the message text. If those two do not
+fit, the record is truncated inside an element and loses its closing quote and
+bracket. Keep elements well within the cap.
 
 The complete worked example below is drawn from the BDD target source at
 `Bdd/Targets/Common/BddTargetCustomSd.c`, which is test infrastructure rather
