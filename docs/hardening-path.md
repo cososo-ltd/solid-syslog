@@ -450,9 +450,11 @@ without storage, so route that event somewhere it will be acted on.
 The store opens its device when it is created, so create it once the volume is mounted,
 and the logger after it, since the logger's config carries the store. A store created
 before the mount stops using the device at once, and because records still reach the
-collector, only the handler shows it:
+collector, only the handler shows it. The file layer reports the open that failed, with
+the filesystem's own code, and the store then reports that it has frozen:
 
 ```text
+[syslog] ERROR FatFsFile FILE_IO_FAILED OPEN_FAILED (4) native 12
 [syslog] ERROR BlockStore STORE_FROZEN OPEN_FAILED (4)
 ```
 
