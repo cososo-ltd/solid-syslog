@@ -199,7 +199,8 @@ finished when all four parts exist, and the stack's `main` README names them.
    its attachment together, so none can be left behind:
 
    ```bash
-   gh release create v<version> --target <tip> --title <version> --latest \n     --notes-file <file> sweep-<version>.zip
+   gh release create v<version> --target <tip> --title <version> --latest \
+     --notes-file <file> sweep-<version>.zip
    ```
 
 4. A row for the branch in the *Releases* table of the stack's `main` README,
