@@ -126,7 +126,7 @@ int SolidSyslogPosixMessageQueueBuffer_Initialise(
     {
         /* The descriptor is all this process needs, and a forked child
          * inherits it, so the name goes at once: nothing else can open the
-         * queue by it, and a process that dies leaves no queue behind. */
+         * queue by it, and it is freed with the last descriptor. */
         (void) mq_unlink(queueName);
         self->Base.Write = PosixMessageQueueBuffer_Write;
         self->Base.Read = PosixMessageQueueBuffer_Read;

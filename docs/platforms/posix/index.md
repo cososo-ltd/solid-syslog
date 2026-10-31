@@ -133,10 +133,10 @@ The queue is created as a kernel object named `/solidsyslog_<pid>_<slot>`,
 readable and writable by its owner alone, and the name is unlinked as soon as
 the open returns. From then on the queue is reached only through the descriptor
 this process holds, which a forked child inherits: no other process can open it
-by name, and a process that dies takes its queue with it. A queue that already
-exists under the name when the buffer creates its own is refused rather than
-adopted, so a queue planted ahead of this process cannot hand it records or read
-its own; the refusal leaves that queue in place.
+by name, and the kernel frees it when the last descriptor closes. A queue that
+already exists under the name when the buffer creates its own is refused rather
+than adopted, so a queue planted ahead of this process cannot hand it records or
+read its own; the refusal leaves that queue in place.
 
 ### The blocking surface is bounded but not zero
 

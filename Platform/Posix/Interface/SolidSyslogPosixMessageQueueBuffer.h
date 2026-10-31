@@ -30,12 +30,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** @p maxMessages sizes the queue, whose messages are
      *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes. The buffer creates its own queue and
-     *  unlinks the name as soon as it is open, so nothing else can open the queue
-     *  by it and a process that dies leaves no queue behind. A queue that already
-     *  exists under the name is refused and left in place; that, like any other
-     *  failed open, is reported as ERROR with the errno as the native code, and
-     *  Create returns the shared NullBuffer, as it does when the pool is
-     *  exhausted.
+     *  unlinks the name as soon as it is open, so nothing can gain a descriptor
+     *  to it by name, and the kernel frees it when the last descriptor closes -
+     *  this process's, or a forked child's. A queue that already exists under
+     *  the name is refused and left in place; that, like any other failed open,
+     *  is reported as ERROR with the errno as the native code, and Create
+     *  returns the shared NullBuffer, as it does when the pool is exhausted.
      *
      *  @p mutex makes Write safe for tasks logging at once, and guards what Read
      *  and IsFull share with it, so inject SolidSyslogNullMutex_Get() only when
