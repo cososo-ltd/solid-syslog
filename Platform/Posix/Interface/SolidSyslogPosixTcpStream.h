@@ -19,7 +19,7 @@
  *    tears the connection down on peer close or error.
  *
  *  TCP_NODELAY is on, and kernel keepalive (idle ~45s, then 4 x 10s probes) plus
- *  a TCP_USER_TIMEOUT of the same window (~85s) on unacked writes surface a
+ *  a TCP_USER_TIMEOUT of the same window on unacked writes surface a
  *  wedged peer as a failed Send/Read rather than a hung service thread. */
 #ifndef SOLIDSYSLOGPOSIXTCPSTREAM_H
 #define SOLIDSYSLOGPOSIXTCPSTREAM_H
