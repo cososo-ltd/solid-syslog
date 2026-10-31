@@ -497,7 +497,7 @@ int OpenSslFake_LastVerifyMode(void)
     return lastVerifyMode;
 }
 
-int OpenSslFake_LastSecurityLevel(void)
+int OpenSslFake_CtxSecurityLevel(void)
 {
     return securityLevel;
 }
@@ -545,7 +545,7 @@ SSL_CTX* OpenSslFake_LastSslCtxCtrlCtxArg(void)
     return lastSslCtxCtrlCtxArg;
 }
 
-long OpenSslFake_LastMinProtoVersion(void)
+long OpenSslFake_CtxMinProtoVersion(void)
 {
     return minProtoVersion;
 }
@@ -979,7 +979,10 @@ long SSL_CTX_ctrl(SSL_CTX* ctx, int cmd, long larg, void* parg)
     lastSslCtxCtrlCtxArg = ctx;
     if (cmd == SSL_CTRL_SET_MIN_PROTO_VERSION)
     {
-        minProtoVersion = larg;
+        if (!minProtoVersionFails)
+        {
+            minProtoVersion = larg;
+        }
         return minProtoVersionFails ? 0 : 1;
     }
     if (cmd == SSL_CTRL_GET_MIN_PROTO_VERSION)
@@ -1010,9 +1013,10 @@ static void OpenSslFake_ApplySecLevel(const char* str)
 {
     static const char marker[] = "@SECLEVEL=";
     const char* found = (str != NULL) ? strstr(str, marker) : NULL;
-    if (found != NULL)
+    char digit = (found != NULL) ? found[sizeof(marker) - 1U] : '\0';
+    if ((digit >= '0') && (digit <= '5'))
     {
-        securityLevel = found[sizeof(marker) - 1U] - '0';
+        securityLevel = digit - '0';
     }
 }
 

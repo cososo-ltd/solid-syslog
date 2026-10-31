@@ -71,7 +71,7 @@ TEST(OpenSslFake, SetMinProtoVersionCapturesVersion)
 {
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
-    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_CtxMinProtoVersion());
 }
 
 TEST(OpenSslFake, CtxNewStartsAtTheHostMinProtoVersion)

@@ -107,8 +107,8 @@ An expected identity given as an address literal is matched against the
 certificate's `iPAddress` entries only, never against a DNS name or Common Name
 spelling the same digits. The stream refuses a TLS 1.2 peer that does not
 acknowledge secure renegotiation, and sets that itself rather than relying on
-OpenSSL's default, so `UnsafeLegacyServerConnect` in `openssl.cnf` does not turn it
-off.
+OpenSSL's default, so neither `UnsafeLegacyServerConnect` nor
+`UnsafeLegacyRenegotiation` in `openssl.cnf` turns it off.
 
 A send first reads what the collector has sent, so that a session the collector
 has closed refuses the record rather than taking it, as the

@@ -72,7 +72,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int OpenSslFake_LastVerifyMode(void);
     /* The level the context holds now. A new context starts at the host's
      * level, 1 unless set; a cipher list carrying @SECLEVEL=n moves it to n. */
-    int OpenSslFake_LastSecurityLevel(void);
+    int OpenSslFake_CtxSecurityLevel(void);
     void OpenSslFake_SetHostSecurityLevel(int level);
     int (*OpenSslFake_LastPasswdCb(void))(char*, int, int, void*);
     unsigned int OpenSslFake_LastHostflags(void);
@@ -109,7 +109,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* SSL_CTX_ctrl (SET_ and GET_MIN_PROTO_VERSION paths). The minimum the
      * context holds now; a new context starts at the host's, 0 unless set. */
     struct ssl_ctx_st* OpenSslFake_LastSslCtxCtrlCtxArg(void);
-    long OpenSslFake_LastMinProtoVersion(void);
+    long OpenSslFake_CtxMinProtoVersion(void);
     void OpenSslFake_SetHostMinProtoVersion(long version);
 
     int OpenSslFake_SetCipherListCallCount(void);

@@ -456,12 +456,13 @@ static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx)
 }
 
 /* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
- * refused. That is OpenSSL's default from 3.0, but openssl.cnf can turn
- * UnsafeLegacyServerConnect back on, so the stream sets the requirement
- * rather than inheriting it. */
+ * refused. That is OpenSSL's default from 3.0, but its client accepts such a
+ * peer under either of two options, and openssl.cnf can set both -
+ * UnsafeLegacyServerConnect and UnsafeLegacyRenegotiation - so the stream
+ * clears them rather than inheriting the default. */
 static inline void OpenSslStream_RequireSecureRenegotiation(SSL_CTX* ctx)
 {
-    (void) SSL_CTX_clear_options(ctx, SSL_OP_LEGACY_SERVER_CONNECT);
+    (void) SSL_CTX_clear_options(ctx, SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
 }
 
 /* An encrypted private key otherwise prompts on the controlling terminal, from

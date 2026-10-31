@@ -370,21 +370,21 @@ TEST(SolidSyslogOpenSslStream, OpenRequiresPeerVerification)
 TEST(SolidSyslogOpenSslStream, OpenRaisesAnUnsetMinimumProtocolVersionToTls12)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_CtxMinProtoVersion());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenRaisesAWeakerHostMinimumProtocolVersionToTls12)
 {
     OpenSslFake_SetHostMinProtoVersion(TLS1_VERSION);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_CtxMinProtoVersion());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostMinimumProtocolVersion)
 {
     OpenSslFake_SetHostMinProtoVersion(TLS1_3_VERSION);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(TLS1_3_VERSION, OpenSslFake_LastMinProtoVersion());
+    LONGS_EQUAL(TLS1_3_VERSION, OpenSslFake_CtxMinProtoVersion());
 }
 
 /* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,
@@ -394,14 +394,14 @@ TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostMinimumProtocolVersion)
 TEST(SolidSyslogOpenSslStream, OpenRaisesAWeakerHostSecurityLevelTo2)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+    LONGS_EQUAL(2, OpenSslFake_CtxSecurityLevel());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostSecurityLevel)
 {
     OpenSslFake_SetHostSecurityLevel(3);
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(3, OpenSslFake_LastSecurityLevel());
+    LONGS_EQUAL(3, OpenSslFake_CtxSecurityLevel());
 }
 
 /* Raised after the policy rather than before it, or the list would lower it
@@ -410,14 +410,14 @@ TEST(SolidSyslogOpenSslStream, OpenRaisesASecurityLevelTheCipherListLowered)
 {
     FakeProfile_Value.CipherList = "DEFAULT:@SECLEVEL=0";
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+    LONGS_EQUAL(2, OpenSslFake_CtxSecurityLevel());
 }
 
 TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterSecurityLevelFromTheCipherList)
 {
     FakeProfile_Value.CipherList = "DEFAULT:@SECLEVEL=3";
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(3, OpenSslFake_LastSecurityLevel());
+    LONGS_EQUAL(3, OpenSslFake_CtxSecurityLevel());
 }
 
 /* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
@@ -429,6 +429,15 @@ TEST(SolidSyslogOpenSslStream, OpenClearsALegacyServerConnectTheHostSet)
     OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT);
     SolidSyslogStream_Open(stream, addr);
     CHECK_EQUAL(0U, SSL_CTX_get_options(OpenSslFake_LastCtxReturned()) & SSL_OP_LEGACY_SERVER_CONNECT);
+}
+
+/* OpenSSL's client accepts a peer without the extension under either option,
+   and openssl.cnf's UnsafeLegacyRenegotiation sets the second. */
+TEST(SolidSyslogOpenSslStream, OpenClearsAnUnsafeLegacyRenegotiationTheHostSet)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_EQUAL(0U, SSL_CTX_get_options(OpenSslFake_LastCtxReturned()) & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
 }
 
 /* An encrypted PEM key otherwise prompts on the controlling terminal from the

@@ -11,7 +11,8 @@
  *
  *  - Open opens the transport, then builds a fresh SSL_CTX every call (the
  *    rotation contract - nothing survives a reconnect), raises it to the TLS 1.2
- *    and security-level 2 floors while keeping a stricter setting, asks its credentials source to install the trust anchors, any pinned
+ *    and security-level 2 floors while keeping a stricter setting, asks its
+ *    credentials source to install the trust anchors, any pinned
  *    fingerprints and the client credential, sets SSL_VERIFY_PEER, wires the
  *    transport as a custom BIO, sets SNI + the expected peer identity from the
  *    profile's ServerName, and drives the handshake. Any step failing closes the
