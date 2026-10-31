@@ -74,7 +74,10 @@ reviews:
           comparison operators (Rule 12.1). Plain `&&` between bool-typed
           operands needs NO extra parens — do not ask for it.
         - Unsigned literals carry the `U` suffix (`0U`, `1U`) in unsigned
-          contexts.
+          contexts. Exception: a preprocessor floor check on a tunable
+          (`#if SOLIDSYSLOG_X < 1`) keeps a bare literal, so a negative
+          override is compared signed and caught rather than wrapped past
+          the floor. Do not ask for `U` there; a ceiling check may take it.
         - No dynamic memory: no malloc/calloc/realloc/free. Every stateful
           "Created" class lives in a library-internal static pool (E11);
           pool exhaustion falls back to a shared Null sibling. Flag any heap use.

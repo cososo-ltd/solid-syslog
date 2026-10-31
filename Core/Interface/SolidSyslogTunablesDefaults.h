@@ -33,6 +33,14 @@
  * implementation must supply, not their sum. docs/NAMING.md states the rule.
  */
 
+/*
+ * A floor check compares against a bare literal, deliberately. The tunable is
+ * whatever the integrator wrote, and one unsigned operand makes the
+ * preprocessor compare in uintmax_t, where an override of -1 wraps to the
+ * maximum and passes `< 1U`. Signed, it is caught. A ceiling check can take
+ * the U suffix, because a wrapped negative fails it either way.
+ */
+
 /**
  * Maximum bytes the library will format for a single syslog message.
  *
@@ -774,7 +782,7 @@
 #error "SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT must be >= 1"
 #endif
 
-#if SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT > 65507
+#if SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT > 65507U
 #error "SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT must be <= 65507"
 #endif
 
