@@ -159,7 +159,9 @@ listed above; the written sections are added by hand in the release pull request
 5. Publishing the draft is a separate step. Nothing the release attaches exists
    until then, so publish once everything the documentation links by name is in
    place - the example stacks' `release/<version>` branches, which pin the
-   tag's SHA and so can only be cut once the tag exists. Publish with
+   tag's SHA and so can only be cut once the tag exists. The branch is the
+   first of four parts of a stack's release, and the other three are listed
+   under *Releasing the example stacks* below. Publish with
    `gh release edit v<version> --draft=false --latest`, so the release is the
    one GitHub serves as latest; a fix to an older line takes `--latest=false`
    instead.
@@ -177,6 +179,31 @@ listed above; the written sections are added by hand in the release pull request
    jobs run, so a failure cannot block it - it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
+
+### Releasing the example stacks
+
+Each example stack - `solid-syslog-example` and `solid-syslog-example-make` -
+gets a release of its own for every library release. The library's
+documentation links the branch by name, so the branch exists before the
+library release is published; the rest follows it. A stack's release is
+finished when all four parts exist, and the stack's `main` README names them.
+
+1. The branch `release/<version>`: the Baseline with `solid-syslog.pin` set to
+   the tag's SHA and the pin line of its commit message reading
+   `v<version>, <short SHA>.`, and the stage commits rebased onto it.
+2. An `evidence:` commit at the branch tip holding the Sweep run's output under
+   `evidence/`. Its message names the run and the commit the sweep measured,
+   and, where that commit is not the tag, why the figures hold at the tag.
+3. A tag `v<version>` at the branch tip, carrying a GitHub Release marked
+   latest, with the sweep output attached as `sweep-<version>.zip` and a
+   description naming the branch, the library tag and SHA it pins, and the
+   Sweep run. `gh release create v<version> --target <tip> --title <version>
+   --latest` creates the tag with the release.
+4. A row for the branch in the *Releases* table of the stack's `main` README,
+   committed to `main`.
+
+Steps 1 and 2 happen before the library release is published, steps 3 and 4
+after it; none of them is done by a workflow.
 
 ### Why the documentation ships as a file
 
@@ -222,9 +249,12 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 - [ ] Set the draft's notes explicitly with `gh release edit`, per
       [Getting the written parts into both places](#getting-the-written-parts-into-both-places).
 - [ ] Cut the example stacks' `release/<version>` branches pinned to the tag's
-      SHA, then publish the draft.
+      SHA, each with its evidence commit, then publish the draft.
 - [ ] Confirm GitHub marks the new release as Latest:
       `gh api repos/cososo-ltd/solid-syslog/releases/latest --jq .tag_name`.
+- [ ] Finish each example stack's release: the `v<version>` tag and GitHub
+      Release with `sweep-<version>.zip` attached, and the row on its `main`
+      README, per [Releasing the example stacks](#releasing-the-example-stacks).
 - [ ] Confirm the attachments, and verify all six assets - the SBOM, source
       hash and documentation bundle, and their three cosign signatures - per
       [`security/release-verification.md`](security/release-verification.md), not
