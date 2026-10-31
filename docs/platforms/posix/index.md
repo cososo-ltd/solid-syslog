@@ -121,22 +121,22 @@ idle link.
 `SOLIDSYSLOG_MAX_MESSAGE_SIZE` as the message size, to `mq_open`, and an
 unprivileged process cannot exceed `fs/mqueue/msg_max` and
 `fs/mqueue/msgsize_max` - 10 messages and 8192 bytes on a default Linux, where
-asking for 11 already fails. A failed open reports `ERROR` and returns the Null
-buffer, so nothing is delivered through it. Size the queue within the limits,
-or raise them for the deployment.
+asking for 11 already fails. The message size is set only by the tunable, so one
+raised past `msgsize_max` fails every open. A failed open reports `ERROR`, with
+the errno as the event's native code, and returns the Null buffer, so nothing
+is delivered through it. Size the queue within the limits, or raise them for
+the deployment.
 
-### The message-queue buffer is reachable by name
+### The message-queue buffer has no name once it is open
 
-The queue is a kernel object named `/solidsyslog_<pid>_<slot>`, created readable
-and writable by its owner alone. Any other process running as that user can open
-it by that name, read the records waiting in it and add records of its own, which
-the library then stores, seals and delivers as this device's. The buffer
-creates its own queue: one that already exists under that name, whether another
-user created it first or a process that did not destroy its buffer left it
-behind, is refused as a failed open is, and left in place. A stale queue goes on
-being refused until it is removed with `mq_unlink`. Where the same-user
-exposure matters, give the process a private IPC namespace, or use a buffer that
-stays in the process.
+The queue is created as a kernel object named `/solidsyslog_<pid>_<slot>`,
+readable and writable by its owner alone, and the name is unlinked as soon as
+the open returns. From then on the queue is reached only through the descriptor
+this process holds, which a forked child inherits: no other process can open it
+by name, and a process that dies takes its queue with it. A queue that already
+exists under the name when the buffer creates its own is refused rather than
+adopted, so a queue planted ahead of this process cannot hand it records or read
+its own; the refusal leaves that queue in place.
 
 ### The blocking surface is bounded but not zero
 

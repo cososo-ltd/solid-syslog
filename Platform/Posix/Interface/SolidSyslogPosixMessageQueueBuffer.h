@@ -14,7 +14,7 @@
  *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, as a run of its own. Read
  *  (mq_receive) is a non-blocking poll where an empty queue is silent and any
  *  other failure is reported. Each pool slot owns a distinct queue
- *  /solidsyslog_<pid>_<slot>, unlinked on Destroy. */
+ *  /solidsyslog_<pid>_<slot>, whose name is unlinked as soon as it is open. */
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 
@@ -29,11 +29,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogMutex;
 
     /** @p maxMessages sizes the queue, whose messages are
-     *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes. The buffer creates its own queue: one
-     *  that already exists under the name is refused, reported as ERROR, and left
-     *  in place, and Create returns the shared NullBuffer, as it does when the pool
-     *  is exhausted. A stale queue, left by a process that did not destroy its
-     *  buffer, is refused in the same way until it is removed with mq_unlink.
+     *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes. The buffer creates its own queue and
+     *  unlinks the name as soon as it is open, so nothing else can open the queue
+     *  by it and a process that dies leaves no queue behind. A queue that already
+     *  exists under the name is refused and left in place; that, like any other
+     *  failed open, is reported as ERROR with the errno as the native code, and
+     *  Create returns the shared NullBuffer, as it does when the pool is
+     *  exhausted.
      *
      *  @p mutex makes Write safe for tasks logging at once, and guards what Read
      *  and IsFull share with it, so inject SolidSyslogNullMutex_Get() only when
@@ -55,7 +57,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SolidSyslogDiscardPolicyFunction getDiscardPolicy,
         void* discardPolicyContext
     );
-    /** Release the pool slot; closes and unlinks the underlying queue. */
+    /** Release the pool slot; closes the underlying queue. */
     void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer * base);
 
 SOLIDSYSLOG_EXTERN_C_END
