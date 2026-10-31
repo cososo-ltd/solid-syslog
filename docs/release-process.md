@@ -177,11 +177,11 @@ listed above; the written sections are added by hand in the release pull request
    jobs run, so a failure cannot block it - it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
-9. Close the release's milestone once the Release is published, and create the
-   next one if it does not exist. The milestone is a progress view of a release
-   that is being worked on; an open milestone with nothing left in it reads as
-   a release still in flight. [CLAUDE.md](../CLAUDE.md#milestones) states what
-   goes in the next one and why it carries no due date.
+9. Close the release's milestone when the checklist below is complete, and
+   create the next one if it does not exist. The milestone is a progress view
+   of a release that is being worked on; an open milestone with nothing left in
+   it reads as a release still in flight. [CLAUDE.md](../CLAUDE.md#milestones)
+   states what goes in the next one, and when it carries a due date.
 
 ### Releasing the example stacks
 
@@ -206,8 +206,8 @@ finished when all four parts exist, and the stack's `main` README names them.
    file. Confirm with `gh release view v<version>` that the asset is listed:
 
    ```bash
-   gh release create v<version> --target <tip> --title <version> --latest \
-     --notes-file <file> sweep-<version>.zip
+   gh release create v<version> --repo cososo-ltd/<stack> --target <tip> \
+     --title <version> --latest --notes-file <file> sweep-<version>.zip
    ```
 
 4. A row for the branch in the *Releases* table of the stack's `main` README,
@@ -284,5 +284,7 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       how to restore search appears.
 - [ ] Close the release's milestone, and create the next one if it does not
       exist: `gh api -X PATCH repos/cososo-ltd/solid-syslog/milestones/<number>
-      -f state=closed`.
+      -f state=closed`, then `gh api -X POST repos/cososo-ltd/solid-syslog/milestones
+      -f title=<version>` if `gh api repos/cososo-ltd/solid-syslog/milestones
+      --jq '.[].title'` does not list it.
 - [ ] Security release: publish the coordinated GHSA.
