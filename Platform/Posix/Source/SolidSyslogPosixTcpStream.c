@@ -30,15 +30,15 @@
 /* Linux rejects a keepalive option outside these ranges with EINVAL, and the
  * setsockopt results are not checked, so an out-of-range tunable would leave the
  * kernel default in place while TCP_USER_TIMEOUT is derived from the tunable. */
-#if SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS > 32767
+#if SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS > 32767U
 #error "SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS must be <= 32767 on Linux"
 #endif
 
-#if SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS > 32767
+#if SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS > 32767U
 #error "SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS must be <= 32767 on Linux"
 #endif
 
-#if SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT > 127
+#if SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT > 127U
 #error "SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT must be <= 127 on Linux"
 #endif
 
