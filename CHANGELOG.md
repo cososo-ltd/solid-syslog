@@ -1,5 +1,336 @@
 # Changelog
 
+## [0.3.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.2.0...v0.3.0) (2026-10-31)
+
+The failure-policy release. 0.3.0 lets a device decide what a full queue gives up,
+reports every failed call a platform makes with the platform's own code, names every
+error it raises, and adds VxWorks 6.4.
+
+Still 0.x, for the reason 0.1.0 gave: the label describes platform breadth and the
+absence of field integrations, not the maturity of the code. This release does break
+the public API. Every break is listed below, under *Before you upgrade*.
+
+### What's in this release
+
+- **A discard policy for every queue.** The ring, the store and the logger ask one
+  function of yours what a full queue gives up - the oldest records, the newest, or
+  the logger itself under Halt - at the moment each has to decide, so the answer can
+  change on a running device. `OnHalt` tells the device when the logger stops.
+- **Loss is reported once per run.** The buffers, the store, the senders and the
+  logger each report when a run of losses starts, and the sequence number shows each
+  loss at the collector.
+- **A store that fails stops using its device.** The first failed device operation
+  freezes the store, reported once; delivery continues without storage.
+- **A stored record that fails verification is discarded and the rest delivered**;
+  one the policy cannot yet check waits for its key.
+- **Errors name themselves.** Severity, category and detail each have a name function,
+  and a platform's own code - errno, an FRESULT, an lfs error - travels in the event's
+  `NativeCode`.
+- **The IPv4 payload limit is stated** where the stack cannot discover the path MTU.
+- **Every transport refuses Open while open**, every TCP stream bounds its connect at
+  five minutes, and no stream takes a record after the collector has closed the
+  connection.
+
+Platforms added: VxWorks 6.4. The full list is POSIX, Windows, C11 atomics, OpenSSL,
+Mbed TLS, lwIP Raw API, lwIP Sockets API, FreeRTOS-Plus-TCP, FreeRTOS, CMSIS-RTOS2,
+VxWorks 6.4, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS.
+
+### Before you upgrade
+
+These break source compatibility with 0.2.0.
+
+Wiring the logger:
+
+- **The circular buffer takes a discard policy.** `SolidSyslogCircularBuffer_Create`
+  takes two more arguments, a `SolidSyslogDiscardPolicyFunction` and its context.
+  `NULL, NULL` builds, but applies Oldest: a full ring now drops its oldest records to
+  make room, where 0.2.0 refused the newest. To keep 0.2.0's behaviour, pass a
+  function that answers `SOLIDSYSLOG_DISCARD_POLICY_NEWEST`.
+- **The block store takes its policy as a function.** In
+  `SolidSyslogBlockStoreConfig`, `DiscardPolicy` is replaced by `GetDiscardPolicy`
+  and `DiscardPolicyContext`, and `OnStoreFull`, `StoreFullContext` and the
+  `SolidSyslogStoreFullCallback` type are removed. `NULL` applies Oldest, as a zeroed
+  0.2.0 config did.
+- **Halt belongs to the logger.** A store whose policy answers Halt refuses the record
+  that does not fit, as under Newest. The logger stops only when its own policy
+  answers Halt, set through the new `GetDiscardPolicy` and `DiscardPolicyContext` on
+  `SolidSyslogConfig`. Give the logger, the store and the buffer the same function,
+  and move an `OnStoreFull` callback to the logger's new `OnHalt` and `HaltContext`.
+  A logger left on the default carries on past a full store, and the records the
+  store refuses are lost and reported as `SOLIDSYSLOG_CAT_STORE_RECORDS_LOST`. A halt
+  no longer latches: the first `SolidSyslog_Service` after the policy stops answering
+  Halt resumes, with everything held still in place.
+- **`SolidSyslogStore_IsHalted` is removed**, with the Store vtable's `IsHalted` slot.
+  `SolidSyslog_Service` returns `SOLIDSYSLOG_SERVICE_HALTED` while the logger is
+  halted, and `OnHalt` is called when it halts.
+- **Sleep takes a `uint32_t`.** `SolidSyslogSleepFunction`, `SolidSyslogPosix_Sleep`
+  and `SolidSyslogWindows_Sleep` take `uint32_t milliseconds` rather than `int`.
+  Change the parameter of any sleep function you wrote.
+- **A connect deadline is at most five minutes.** A
+  `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS` above `SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX`
+  stops the build, and a `SolidSyslogTcpConnectTimeoutFunction` that answers more is
+  held to it.
+- **A manifest or IDE build needs the new source list.** 0.3.0 adds Core sources,
+  among them the functions that name error codes, which every shipped error source
+  refers to, so a project still compiling 0.2.0's list does not link. Regenerate it
+  with the `manifest` target. CMake and `solidsyslog.mk` consumers pick the new
+  sources up unaided.
+
+Platform packs:
+
+- **Three datagrams take a config.** `SolidSyslogLwipRawDatagram_Create`,
+  `SolidSyslogLwipSocketDatagram_Create` and `SolidSyslogPlusTcpDatagram_Create` each
+  take a pointer to a config that states the IPv4 payload the path carries, which
+  these stacks cannot discover. `NULL` keeps 0.2.0's 480 octets, now the
+  `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` tunable.
+- **The POSIX message-queue buffer takes a mutex and a discard policy, and no
+  message size.** `SolidSyslogPosixMessageQueueBuffer_Create` takes a mutex first,
+  `maxMessages` as a `size_t` rather than a `long`, and a discard-policy function and
+  its context last. `maxMessageSize` is gone: the queue's messages are
+  `SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes. Pass `SolidSyslogPosixMutex_Create()` unless
+  one thread both logs and calls `SolidSyslog_Service`. The queue's name is unlinked
+  as soon as it is open, so it is reachable by name only for that moment and a crash
+  leaves none behind; a queue that already exists under the name is refused,
+  reported as ERROR with the errno, where 0.2.0 opened it. `NULL` for the policy applies Oldest: a full queue now gives up
+  its oldest record, where 0.2.0 dropped the newest, and a function answering
+  `SOLIDSYSLOG_DISCARD_POLICY_NEWEST` keeps 0.2.0's behaviour. A full queue is
+  reported as `SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST` at WARNING, once per run of
+  losses, where 0.2.0 raised `SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED` at ERROR for
+  every refused record.
+
+Error handlers:
+
+- **`SolidSyslogErrorEvent` has two new fields and a new order:** `Severity`,
+  `Category`, `HasNativeCode`, `Source`, `Detail`, `NativeCode`. A handler that reads
+  the fields by name needs no change; code that builds an event with a positional
+  initialiser does.
+- **A handler must not call back into SolidSyslog** - not `SolidSyslog_Log`, not
+  `SolidSyslog_Service`, nor any Create or Destroy. 0.2.0's documentation did not say
+  so. A handler that logs its events through the library has to record them instead,
+  and log them from your own code once it has returned.
+- **Eight new categories can reach a handler:** `SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST`,
+  `SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED`, `SOLIDSYSLOG_CAT_FILE_IO_FAILED`,
+  `SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST`, `SOLIDSYSLOG_CAT_STORE_WRITE_FAILED`,
+  `SOLIDSYSLOG_CAT_STORE_FROZEN`, `SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED` and
+  `SOLIDSYSLOG_CAT_STORE_RECORDS_LOST`. Check what yours does with a category it does
+  not recognise.
+
+Adapters you wrote yourself:
+
+- **Buffer has a new `IsFull` slot, and it is not optional.** `SolidSyslog_Service`
+  calls it whenever it holds a record for the sender, so a buffer written for 0.2.0
+  that leaves it unset still builds, and calls through a null pointer once a send
+  fails with no store. A buffer that never queues answers false.
+- **Store:** `Write` returns `enum SolidSyslogStoreWriteResult` rather than `bool`,
+  and the `IsHalted` slot is gone.
+- **BlockDevice and File:** `Size` returns `bool` and writes the size through a new
+  parameter, and `SolidSyslogBlockDevice_Size` and `SolidSyslogFile_Size` change with
+  it. Return false when the size cannot be learned: a store takes that as a failed
+  device, where 0.2.0's 0 on error read as an empty block.
+- **SecurityPolicy:** `OpenRecord` returns `enum SolidSyslogSecurityPolicyOpenResult`
+  rather than `bool`. Answer `SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED` for a record
+  that fails verification, which the store discards, and
+  `SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN` where the key is unavailable or the
+  backend fails, which the store keeps and tries again.
+- **Datagram and Stream** must refuse `Open` on a transport that is already open:
+  return false, keep what is held, and report it. A Datagram over a stack that drops
+  what it has accepted while it resolves the next hop confirms the next hop before
+  answering SENT, and a Stream's `Send` makes sure the peer has not closed its end
+  before taking a record. `SolidSyslogDatagramDefinition.h` and
+  `SolidSyslogStreamDefinition.h` state each in full.
+- **Error sources** have a `DetailName` field. Set it to your role's
+  `SolidSyslog<Role>Errors_Name` so a handler can name your codes, and report a
+  platform's own code with `SolidSyslog_ErrorWithNativeCode`.
+
+These build unchanged but behave differently:
+
+- **Mount the store's volume before creating the store.** The block store opens its
+  device when it is created, and a failure there freezes it, reported as
+  `SOLIDSYSLOG_CAT_STORE_FROZEN` with `SOLIDSYSLOG_BLOCK_STORE_ERROR_OPEN_FAILED`.
+  Create the store once the volume is mounted, and the logger after it.
+- **A store whose device fails stops using it.** The first failed device operation
+  is reported once; delivery continues without storage until the store is created
+  again, and what the device held stays on it for the next start.
+- **A stored record the policy cannot check is kept.** A keyed policy that cannot get
+  its key while reading a record leaves it in the store, with the records behind it,
+  and tries again on the next pass. 0.2.0 discarded it.
+- **With no store, a refused record is held, not dropped at once.**
+  `SolidSyslog_Service` retries it on each pass and returns
+  `SOLIDSYSLOG_SERVICE_BLOCKED` meanwhile. Records logged in the meantime wait in the
+  buffer, and once it fills the logger's policy decides: under the default, Oldest,
+  the held record goes first. A store that has frozen behaves the same way.
+- **The record Service works on lives in the logger**, not on the stack of the task
+  that calls it. Static RAM grows by `SOLIDSYSLOG_MAX_MESSAGE_SIZE` for each logger in
+  the pool - 480 bytes at the defaults - and the service task's stack needs that
+  much less.
+- **`SolidSyslogSwitchingSender_Create` refuses a NULL element** within `SenderCount`,
+  and a `SenderCount` of 0, and returns the NullSender, so nothing is sent through it.
+  A selector that answers an index out of range still routes the record to the
+  NullSender, and the loss is now reported as `SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST` at
+  CRITICAL, once per run, where 0.2.0 said nothing.
+- **The UDP sender reports a record it cannot send even trimmed.** One that trims to
+  nothing, or is refused for size again once trimmed, is discarded as before, and the
+  loss is now reported as `SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST` at ERROR, once per run.
+- **On POSIX, a dead peer is detected at the keepalive window.** `TCP_USER_TIMEOUT` is
+  set to the idle period plus the interval across every probe, 85 s at the defaults,
+  so a silent peer is dropped one window after it last sent anything and an
+  unacknowledged write one window after it was sent. 0.2.0 set a fixed 30 s, which on
+  Linux also cut keepalive short at about 55 s. To detect sooner, lower the three
+  `SOLIDSYSLOG_TCP_KEEPALIVE_*` tunables.
+- **`Delete` counts an absent path as removed** on ChaN FatFs, FreeRTOS-Plus-FAT, POSIX
+  and Windows, as the File contract has always said. 0.2.0 answered false, which froze
+  the store as a media fault at the next eviction or drain.
+- **`SolidSyslogBlockStore_Create` refuses a policy whose trailer does not fit.** A
+  `SolidSyslogSecurityPolicy` with a `TrailerSize` above `SOLIDSYSLOG_MAX_INTEGRITY_SIZE`,
+  and a NULL config or `BlockDevice`, are each reported at CRITICAL under `BAD_CONFIG`
+  and Create returns the NullStore. 0.2.0 stored records with the Null policy,
+  unprotected and unreported, in the first case.
+- **Both TLS streams poll the handshake every 10 ms**, not every millisecond. The
+  budget still counts the sleeps requested, so a sleep that rounds up to a coarse tick
+  stretches it ten times less.
+- **The lwIP Sockets TCP stream compiles only where `LWIP_SOCKET_SELECT` is on.** A
+  build with it off keeps the rest of the pack, where 0.2.0 failed to compile it.
+- **The OpenSSL stream keeps a stricter TLS setting.** Its security level 2 and
+  TLS 1.2 minimum are floors: a higher `@SECLEVEL` in a profile's `CipherList`, or a
+  stricter `MinProtocol` or `@SECLEVEL` in the host's `openssl.cnf`, now applies,
+  where 0.2.0 lowered it to the floor. A TLS 1.2 collector without secure
+  renegotiation is refused even where `openssl.cnf` sets `UnsafeLegacyServerConnect`
+  or `UnsafeLegacyRenegotiation`.
+  A collector accepted before may now be refused.
+- **`MaxBlocks` is clamped to 98**, not 99.
+- **A second `Open` on an open transport fails** and is reported at CRITICAL. Only
+  code that opens a transport it holds can meet this.
+- **On FreeRTOS-Plus-TCP, a datagram to an unresolved next hop waits** up to
+  `SOLIDSYSLOG_DATAGRAM_RESOLVE_WAIT_MS`, 100 ms by default, on the task that sends,
+  where 0.2.0 yielded once for about 50 ms. A next hop still unresolved fails the
+  send and is reported.
+
+Documentation corrected in this release, where acting on the old text would have
+cost you:
+
+- A CMake host consumer of the OpenSSL pack calls `find_package(OpenSSL 3.0
+  REQUIRED)` itself; the documented recipe did not, and does not configure.
+- `SolidSyslogMetaSd` without a counter is a fatal `BAD_CONFIG`: no meta element is
+  emitted. The docs called it degraded, and said every `sequenceId` would read 1.
+- FreeRTOS needs `configUSE_MUTEXES=1` as well as static allocation; without both the
+  mutex does not link.
+- The POSIX message-queue buffer needs a real mutex whenever `Log` and `Service` run
+  on different threads.
+- Rotating the Mbed TLS PEM-buffer source means writing the new PEM over the original
+  buffer, whose `Length` at Create covers the largest PEM it will hold, with NULs after
+  the PEM; re-pointing the config, as documented, changes nothing.
+- On every address pack, an address drawn past its pool is a shared fallback, not a
+  Null object. One SolidSyslog instance per process is the supported configuration,
+  and under it no two senders use the fallback at once.
+- A `SolidSyslogSleepFunction` must wait at least the time asked: connect, resolve
+  and handshake budgets count the sleeps requested, so a yield spends them at once.
+- A stored record is sealed per record, not as a store: removing records, or flipping
+  which are marked sent, is not detected on the device.
+
+### RFC compliance at this release
+
+| RFC | Total | Supported | Partial | Not Met | N/A |
+|---|---|---|---|---|---|
+| RFC 5424 | 40 | 33 | 0 | 0 | 7 |
+| RFC 5425 | 21 | 16 | 0 | 0 | 5 |
+| RFC 5426 | 16 | 7 | 0 | 0 | 9 |
+| RFC 6587 | 8 | 7 | 0 | 0 | 1 |
+
+No clause changed status since 0.2.0, and no row was added or removed. One note
+changed: the RFC 5424 section 5 row now names the UDP sender's trim of a record the
+path will not carry as the one deliberate alteration, which RFC 5426 section 3.1
+permits, and its status stays Supported.
+
+The maintainer's assessment, not a certification. Each status describes the
+library with a conforming platform supplying the roles it needs, and depends on
+the components selected, including any you write yourself, which the library
+cannot speak for. The full matrix at this release, one row and one note per
+clause:
+[`docs/rfc-compliance.md` at `v0.3.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.3.0/docs/rfc-compliance.md).
+
+### Known limitations
+
+Every limitation 0.2.0 shipped with is resolved in this release: the OpenSSL
+pin-first ordering ([#919](https://github.com/cososo-ltd/solid-syslog/issues/919)),
+the lwIP Raw resolver's IPv6 answer
+([#842](https://github.com/cososo-ltd/solid-syslog/issues/842)), and the store's
+unreported verification and write failures
+([#921](https://github.com/cososo-ltd/solid-syslog/issues/921)).
+
+The pre-release audit of 0.3.0 read every documentation page against the code
+again and questioned nine behaviours
+([#1061](https://github.com/cososo-ltd/solid-syslog/issues/1061)); each is fixed in
+this release or confirmed as designed and documented as such, so no defect is
+tracked at this release. Where a platform diverges from a role's contract by
+design, that is stated on the platform's page rather than here.
+
+### Verifying this release
+
+Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256, and the
+offline documentation bundle, each with a cosign signature bundle. Signing is
+keyless via GitHub OIDC, so each signature commits to the workflow run that
+produced it. There is no personal key. The content-tree hash is reproducible from
+any clone. Commands:
+[`docs/security/release-verification.md` at `v0.3.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.3.0/docs/security/release-verification.md).
+The check that matters is that a bundle verifies, not that the assets are
+present.
+
+### ⚠ BREAKING CHANGES
+
+* the POSIX message-queue buffer creates its own queue, at the library's message size ([#1078](https://github.com/cososo-ltd/solid-syslog/issues/1078))
+
+### Features
+
+* a sender reports the records it drops ([#1079](https://github.com/cososo-ltd/solid-syslog/issues/1079)) ([a800364](https://github.com/cososo-ltd/solid-syslog/commit/a800364f237ea8c7726c89158045d43c1dd8da86))
+* every axis of an error event names itself ([#1039](https://github.com/cososo-ltd/solid-syslog/issues/1039)) ([5e96a25](https://github.com/cososo-ltd/solid-syslog/commit/5e96a2595b1c936c1e5356f15c1bca706b12576a))
+* every File and network pack reports the failing call and its native code ([#1052](https://github.com/cososo-ltd/solid-syslog/issues/1052)) ([cce9a8f](https://github.com/cososo-ltd/solid-syslog/commit/cce9a8f995d2a8d08eabb5df2fbe0dd0865b25e6))
+* S41.01 Core builds for VxWorks 6.4 and boots in QEMU Malta ([#937](https://github.com/cososo-ltd/solid-syslog/issues/937)) ([02115ab](https://github.com/cososo-ltd/solid-syslog/commit/02115abbddde9084a14fce35d0b662553a7cb8ce))
+* S41.02 VxWorks 6.4 pack skeleton and mutex ([#932](https://github.com/cososo-ltd/solid-syslog/issues/932)) ([2bcd6c8](https://github.com/cososo-ltd/solid-syslog/commit/2bcd6c818bb066e1eb72747f8d2c389b6a5230d3))
+* S41.03 VxWorks 6.4 UDP datagram and IPv4 resolver ([#939](https://github.com/cososo-ltd/solid-syslog/issues/939)) ([ca677f0](https://github.com/cososo-ltd/solid-syslog/commit/ca677f0489dcebda627eb2fde8a209b25e168df8))
+* S41.07 remote runner for the VxWorks 6.4 QEMU target ([#940](https://github.com/cososo-ltd/solid-syslog/issues/940)) ([f5399cb](https://github.com/cososo-ltd/solid-syslog/commit/f5399cb235550aad035d60f2c51eee63c4a7f29a))
+* S41.09 VxWorks 6.4 atomic counter ([#960](https://github.com/cososo-ltd/solid-syslog/issues/960)) ([23ee76e](https://github.com/cososo-ltd/solid-syslog/commit/23ee76e51aa6ff7e5327b98e912ca152284d2794))
+* S41.10 VxWorks 6.4 clock, uptime, hostname and sleep ([#956](https://github.com/cososo-ltd/solid-syslog/issues/956)) ([f27408d](https://github.com/cososo-ltd/solid-syslog/commit/f27408d10cbf998d17736358045cc47f0c51d5f8))
+* S41.11 VxWorks 6.4 TCP stream ([#961](https://github.com/cososo-ltd/solid-syslog/issues/961)) ([67a86c3](https://github.com/cososo-ltd/solid-syslog/commit/67a86c3e4913a94289f68b7309fbff667f3713ca))
+* S41.12 VxWorks 6.4 file, for the store ([#968](https://github.com/cososo-ltd/solid-syslog/issues/968)) ([b45e937](https://github.com/cososo-ltd/solid-syslog/commit/b45e937b2aebbdd6f99121ad9f8825cc8680b72f))
+* S41.14 VxWorks 6.4 store on HRFS as well as dosFs ([#970](https://github.com/cososo-ltd/solid-syslog/issues/970)) ([195d3e7](https://github.com/cososo-ltd/solid-syslog/commit/195d3e79319794a669fefe2d6f1285ef931bbfe9))
+* S41.15 VxWorks 6.4 file and store report the file system call that failed ([#976](https://github.com/cososo-ltd/solid-syslog/issues/976)) ([87da5fb](https://github.com/cososo-ltd/solid-syslog/commit/87da5fb396e7ece92b639febe1a9b331c0aae1bc))
+* S41.16 VxWorks 6.4 datagram returns SENT only once the next hop is resolved ([#988](https://github.com/cososo-ltd/solid-syslog/issues/988)) ([4d15707](https://github.com/cososo-ltd/solid-syslog/commit/4d15707a27fe2ecc55997446bab06b370455decd))
+* S42.01 the Plus-TCP datagram returns SENT only once the next hop is resolved ([#1036](https://github.com/cososo-ltd/solid-syslog/issues/1036)) ([69d4fe6](https://github.com/cososo-ltd/solid-syslog/commit/69d4fe66c80c4637f966c477c6b23fcf73b0151e))
+* S43.01 the store freezes on its first media fault ([#1011](https://github.com/cososo-ltd/solid-syslog/issues/1011)) ([697a99d](https://github.com/cososo-ltd/solid-syslog/commit/697a99d76d7e6a9af3e047f69f5cd434f00ecb11))
+* S43.02 the store discards a record that fails verification and carries on ([#1013](https://github.com/cososo-ltd/solid-syslog/issues/1013)) ([14f3da9](https://github.com/cososo-ltd/solid-syslog/commit/14f3da92db35b2b168dd3084ad47e54e9199d582))
+* S43.03 a security policy's OpenRecord says whether it opened, rejected, or could not run ([#1014](https://github.com/cososo-ltd/solid-syslog/issues/1014)) ([57ea219](https://github.com/cososo-ltd/solid-syslog/commit/57ea21966bee69a86bbf6172d20e22e39b2704c3))
+* S43.04 the store reports once when records start being lost ([#1015](https://github.com/cososo-ltd/solid-syslog/issues/1015)) ([8561254](https://github.com/cososo-ltd/solid-syslog/commit/85612548b28781f010711baf252bd58913f607c3))
+* S43.05 buffers report once when records start being lost ([#1016](https://github.com/cososo-ltd/solid-syslog/issues/1016)) ([9dfdf91](https://github.com/cososo-ltd/solid-syslog/commit/9dfdf919c988a0043d569bad2b3d991ddb30d4d1))
+* S43.07 with a store that keeps nothing, Service stops at the first failed send ([#1022](https://github.com/cososo-ltd/solid-syslog/issues/1022)) ([cfef5f1](https://github.com/cososo-ltd/solid-syslog/commit/cfef5f1fe7fa14b88c93fc2e4332a679f545504e))
+* S43.08 the discard policy is set once, on the logger ([#1025](https://github.com/cososo-ltd/solid-syslog/issues/1025)) ([b1d8d59](https://github.com/cososo-ltd/solid-syslog/commit/b1d8d59bf844152631081bd4d003b44290d27637))
+* S43.10 File Size reports failure rather than an empty file ([#1027](https://github.com/cososo-ltd/solid-syslog/issues/1027)) ([212fc60](https://github.com/cososo-ltd/solid-syslog/commit/212fc602f22e0879e4f7540b935ae10f178f6d6a))
+* S43.11 buffers apply the discard policy ([#1028](https://github.com/cososo-ltd/solid-syslog/issues/1028)) ([20ea7f8](https://github.com/cososo-ltd/solid-syslog/commit/20ea7f8e9db6160682227b9b1befad0aae8713c8))
+* the error event carries the platform's native code as a field ([#1042](https://github.com/cososo-ltd/solid-syslog/issues/1042)) ([436454d](https://github.com/cososo-ltd/solid-syslog/commit/436454d320f71dc5a64dc2f1d74432f2708e6f97))
+* the integrator states the IPv4 payload limit where the stack cannot discover the path MTU ([#1035](https://github.com/cososo-ltd/solid-syslog/issues/1035)) ([4c73ade](https://github.com/cososo-ltd/solid-syslog/commit/4c73adee8a53b42ede28dd5957c7ee715a254d17))
+* VxWorks 6.4 platform support ([6819c2b](https://github.com/cososo-ltd/solid-syslog/commit/6819c2b4f7f5752822424624bdb18eac1c3292bf))
+
+
+### Bug Fixes
+
+* every File Delete counts an absent path as removed ([#1072](https://github.com/cososo-ltd/solid-syslog/issues/1072)) ([a8df857](https://github.com/cososo-ltd/solid-syslog/commit/a8df857fc79df9611f6c693742b080e91c35506b))
+* every TCP stream bounds the connect deadline at five minutes ([#1031](https://github.com/cososo-ltd/solid-syslog/issues/1031)) ([fa83da7](https://github.com/cososo-ltd/solid-syslog/commit/fa83da757b10d24eb80bae4752f825b68d7c5b77))
+* every transport refuses Open while it is already open, and reports it ([#1049](https://github.com/cososo-ltd/solid-syslog/issues/1049)) ([a01cc8e](https://github.com/cososo-ltd/solid-syslog/commit/a01cc8ed3f1bfdecef9ae0a409510739b9998cba))
+* no stream takes a record after the collector has closed the connection ([#1053](https://github.com/cososo-ltd/solid-syslog/issues/1053)) ([dac9961](https://github.com/cososo-ltd/solid-syslog/commit/dac9961493f6d1acc300e2059c450666f87213ee))
+* SolidSyslogBlockStore_Create refuses a NULL config or BlockDevice ([#1075](https://github.com/cososo-ltd/solid-syslog/issues/1075)) ([b685658](https://github.com/cososo-ltd/solid-syslog/commit/b68565858257931c325b6536e46c9a88be22bc3c))
+* the block store refuses a security policy whose trailer does not fit ([#1074](https://github.com/cososo-ltd/solid-syslog/issues/1074)) ([26d5acc](https://github.com/cososo-ltd/solid-syslog/commit/26d5acc728f33b7660697086da530b7363556e92))
+* the block store's used bytes follow occupancy again after a refusal ([#1032](https://github.com/cososo-ltd/solid-syslog/issues/1032)) ([7b6c76b](https://github.com/cososo-ltd/solid-syslog/commit/7b6c76b5274c5c67e11fd5e95ed052c0cd906b48))
+* the lwIP Raw resolvers refuse an IPv6 answer the transports cannot send to ([#1045](https://github.com/cososo-ltd/solid-syslog/issues/1045)) ([a70d9ad](https://github.com/cososo-ltd/solid-syslog/commit/a70d9ada5600f52d944aaef19ef5371199754c0a))
+* the lwIP Sockets stream compiles only where lwip_select exists ([#1073](https://github.com/cososo-ltd/solid-syslog/issues/1073)) ([abe68f2](https://github.com/cososo-ltd/solid-syslog/commit/abe68f2e7cceb166ee3790baa7de9dba105a3459))
+* the Mbed TLS stream tells the library it is deliberately not naming the peer ([#1044](https://github.com/cososo-ltd/solid-syslog/issues/1044)) ([89a6d99](https://github.com/cososo-ltd/solid-syslog/commit/89a6d99ea649e123a6e04d3369613429618683b6))
+* the OpenSSL stream names a fingerprint mismatch ahead of an expired issuer ([#1034](https://github.com/cososo-ltd/solid-syslog/issues/1034)) ([29631ed](https://github.com/cososo-ltd/solid-syslog/commit/29631ed3ee497e65681f6441c9f26a0fc5853eeb)), closes [#919](https://github.com/cososo-ltd/solid-syslog/issues/919)
+* the OpenSSL stream raises its TLS floors and keeps a stricter setting ([#1076](https://github.com/cososo-ltd/solid-syslog/issues/1076)) ([aab701c](https://github.com/cososo-ltd/solid-syslog/commit/aab701c583077e588fbc0c6c023b960a9d8afbe1))
+* the POSIX message-queue buffer creates its own queue, at the library's message size ([#1078](https://github.com/cososo-ltd/solid-syslog/issues/1078)) ([0a2cd3c](https://github.com/cososo-ltd/solid-syslog/commit/0a2cd3c3b322c07778fb9815c2b0b7ce395b8c88))
+* the POSIX TCP stream derives its user timeout from the keepalive tunables ([#1077](https://github.com/cososo-ltd/solid-syslog/issues/1077)) ([3c99803](https://github.com/cososo-ltd/solid-syslog/commit/3c9980361a09fc503e33010dc0d07dcc1d672d60))
+* the TLS handshake polls every 10 ms, so a coarse sleep stretches its budget less ([#1069](https://github.com/cososo-ltd/solid-syslog/issues/1069)) ([bb33aa6](https://github.com/cososo-ltd/solid-syslog/commit/bb33aa63db619fa7761fb4ca35cbec6754ae00c3))
+* VxWorks 6.4 Delete answers removed only for a removed or absent path ([#1040](https://github.com/cososo-ltd/solid-syslog/issues/1040)) ([44f243f](https://github.com/cososo-ltd/solid-syslog/commit/44f243f72cd907ec3c2dbecaef4a0db12524291d))
+* VxWorks 6.4 Exists asks stat, not open, whether a path is there ([#1041](https://github.com/cososo-ltd/solid-syslog/issues/1041)) ([7019a30](https://github.com/cososo-ltd/solid-syslog/commit/7019a30dbbb07d31e7371879ba99b034b2c83d1d))
+* VxWorks 6.4 review sweep - resolver, runner hardening, and comments and docs said once ([#981](https://github.com/cososo-ltd/solid-syslog/issues/981)) ([bd687bc](https://github.com/cososo-ltd/solid-syslog/commit/bd687bc3918b525c1f5efb26eed82e585cce9614))
+
 ## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-28)
 
 The TLS release. 0.2.0 lets a device authorise its collector by certificate
