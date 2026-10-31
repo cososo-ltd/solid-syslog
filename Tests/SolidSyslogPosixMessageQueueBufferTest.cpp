@@ -777,6 +777,30 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueThatAlreadyExistsIsRefused)
     POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
 }
 
+TEST(SolidSyslogPosixMessageQueueBufferPool, RefusingAQueueThatAlreadyExistsReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_QueueAlreadyExists();
+
+    overflow = MakeBuffer();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED
+    );
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueItRefusedIsLeftWhereItIs)
+{
+    MqFake_QueueAlreadyExists();
+
+    overflow = MakeBuffer();
+
+    CALLED_FAKE(MqFake_Unlink, NEVER);
+}
+
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)
 {
     FillPool();

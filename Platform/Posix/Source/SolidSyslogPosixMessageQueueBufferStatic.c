@@ -64,12 +64,9 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
         }
         else
         {
-            (void) SolidSyslogPoolAllocator_FreeIfInUse(
-                &PosixMessageQueueBuffer_Allocator,
-                index,
-                PosixMessageQueueBuffer_CleanupAtIndex,
-                NULL
-            );
+            /* No queue was opened, so there is none to close or unlink; the
+             * name may belong to a queue this buffer refused. */
+            (void) SolidSyslogPoolAllocator_FreeIfInUse(&PosixMessageQueueBuffer_Allocator, index, NULL, NULL);
             PosixMessageQueueBuffer_Report(
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
