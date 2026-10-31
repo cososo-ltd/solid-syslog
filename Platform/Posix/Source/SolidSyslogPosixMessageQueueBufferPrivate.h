@@ -32,7 +32,6 @@ struct SolidSyslogPosixMessageQueueBuffer
     mqd_t Mq;
     SolidSyslogFormatterStorage
         NameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE)];
-    size_t MaxMessageSize;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;
     /* Each report stands for a run of records the queue would not take as it
@@ -51,7 +50,6 @@ struct SolidSyslogPosixMessageQueueBuffer
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
-    size_t maxMessageSize,
     size_t maxMessages,
     size_t slotIndex,
     SolidSyslogDiscardPolicyFunction getDiscardPolicy,

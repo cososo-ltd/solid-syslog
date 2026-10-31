@@ -28,19 +28,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBuffer;
     struct SolidSyslogMutex;
 
-    /** @p maxMessageSize must be SOLIDSYSLOG_MAX_MESSAGE_SIZE: SolidSyslog_Service
-     *  reads each record into a buffer of that size, and mq_receive refuses a
-     *  buffer smaller than the queue's message size, so a larger value fails every
-     *  read and a smaller one refuses every longer record. A queue that already
-     *  exists under the name keeps its own attributes, so a stale one, left by a
-     *  process that did not destroy its buffer, can have another size; remove it
-     *  with mq_unlink. @p maxMessages sizes the
-     *  queue; an exhausted pool falls back to the shared NullBuffer. @p mutex makes Write safe for tasks
-     *  logging at once, and guards what Read and IsFull share with it, so
-     *  inject SolidSyslogNullMutex_Get() only when one task both logs and calls
-     *  SolidSyslog_Service. It must outlive the buffer. It guards this
-     *  process's own state, not the queue, which the kernel shares between
-     *  processes itself.
+    /** @p maxMessages sizes the queue, whose messages are
+     *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes. The buffer creates its own queue: one
+     *  that already exists under the name is refused, reported as ERROR, and left
+     *  in place, and Create returns the shared NullBuffer, as it does when the pool
+     *  is exhausted. A stale queue, left by a process that did not destroy its
+     *  buffer, is refused in the same way until it is removed with mq_unlink.
+     *
+     *  @p mutex makes Write safe for tasks logging at once, and guards what Read
+     *  and IsFull share with it, so inject SolidSyslogNullMutex_Get() only when
+     *  one task both logs and calls SolidSyslog_Service. It must outlive the
+     *  buffer. It guards this process's own state, not the queue, which the
+     *  kernel shares between processes itself.
      *
      *  @p getDiscardPolicy is asked, with @p discardPolicyContext, on a send
      *  the full queue refuses, from the task that logs; give it the function
@@ -52,7 +51,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  being written. */
     struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
         struct SolidSyslogMutex * mutex,
-        size_t maxMessageSize,
         size_t maxMessages,
         SolidSyslogDiscardPolicyFunction getDiscardPolicy,
         void* discardPolicyContext

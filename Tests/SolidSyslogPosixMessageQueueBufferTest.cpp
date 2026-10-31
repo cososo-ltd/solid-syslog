@@ -56,7 +56,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
     {
         MqFake_Reset();
         testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
         readSize = 0;
     }
 
@@ -130,6 +130,11 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ReadReturnsWrittenSize)
 TEST(SolidSyslogPosixMessageQueueBuffer, ReadFromEmptyReturnsFalse)
 {
     CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, TheQueueTakesMessagesOfTheLibrarysMessageSize)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_MAX_MESSAGE_SIZE, MqFake_LastOpenMaxMessageSize());
 }
 
 TEST(SolidSyslogPosixMessageQueueBuffer, MultipleWritesReadInOrder)
@@ -425,13 +430,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UnderHaltAFullQueueRefusesTheRecordAsUn
 TEST(SolidSyslogPosixMessageQueueBuffer, NoPolicyInjectedAppliesOldest)
 {
     SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
-    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
-        SolidSyslogNullMutex_Get(),
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
-        TEST_MAX_MESSAGES,
-        nullptr,
-        nullptr
-    );
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), TEST_MAX_MESSAGES, nullptr, nullptr);
     FillTheQueue();
 
     Write("newest");
@@ -526,7 +525,6 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UseAfterDestroyIsCrashSafeViaNullBuffer
 
     buffer = SolidSyslogPosixMessageQueueBuffer_Create(
         SolidSyslogNullMutex_Get(),
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
         10,
         AnswersTestPolicy,
         nullptr
@@ -585,7 +583,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferMutex)
     {
         MqFake_Reset();
         testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
     }
 
     void teardown() override
@@ -622,13 +620,7 @@ static enum SolidSyslogDiscardPolicy PolicyThatLogs(void* context)
 TEST(SolidSyslogPosixMessageQueueBufferMutex, APolicyFunctionThatLogsIsNotAskedUnderTheLock)
 {
     SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
-    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
-        MutexFake_Create(),
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
-        TEST_MAX_MESSAGES,
-        PolicyThatLogs,
-        nullptr
-    );
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), TEST_MAX_MESSAGES, PolicyThatLogs, nullptr);
     policyLogTarget = buffer;
 
     Write();
@@ -698,7 +690,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
 
     static struct SolidSyslogBuffer* MakeBuffer()
     {
-        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10, nullptr, nullptr);
+        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), 10, nullptr, nullptr);
     }
 
     void FillPool()

@@ -36,10 +36,8 @@ static struct SolidSyslogPoolAllocator PosixMessageQueueBuffer_Allocator = {
     SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE
 };
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- distinct semantic meaning; struct wrapper would over-engineer
 struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
     struct SolidSyslogMutex* mutex,
-    size_t maxMessageSize,
     size_t maxMessages,
     SolidSyslogDiscardPolicyFunction getDiscardPolicy,
     void* discardPolicyContext
@@ -52,7 +50,6 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
         bool opened = SolidSyslogPosixMessageQueueBuffer_Initialise(
             &PosixMessageQueueBuffer_Pool[index].Base,
             mutex,
-            maxMessageSize,
             maxMessages,
             index,
             getDiscardPolicy,

@@ -82,7 +82,6 @@ static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPo
 bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
-    size_t maxMessageSize,
     size_t maxMessages,
     size_t slotIndex,
     SolidSyslogDiscardPolicyFunction getDiscardPolicy,
@@ -106,10 +105,14 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
 
     struct mq_attr attr = {0};
     attr.mq_maxmsg = (long) maxMessages;
-    attr.mq_msgsize = (long) maxMessageSize;
+    attr.mq_msgsize = (long) SOLIDSYSLOG_MAX_MESSAGE_SIZE;
 
-    self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
-    self->MaxMessageSize = maxMessageSize;
+    self->Mq = mq_open(
+        PosixMessageQueueBuffer_QueueName(self),
+        O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK,
+        OWNER_READ_WRITE,
+        &attr
+    );
     self->Mutex = mutex;
     PosixMessageQueueBuffer_InstallDiscardPolicy(self, getDiscardPolicy, discardPolicyContext);
     self->RefusalReported = false;
