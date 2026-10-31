@@ -7,9 +7,10 @@
  *  injected Datagram, resolving the endpoint and opening the socket lazily on
  *  the first Send and re-resolving when the endpoint version changes. A datagram
  *  the path reports as oversize is retried once, trimmed to the datagram's
- *  MaxPayload on a UTF-8 codepoint boundary rather than dropped; an
- *  untransmittable record (trims to nothing, or still oversize on retry) is
- *  swallowed as sent so Service does not loop on it. A NULL send buffer is
+ *  MaxPayload on a UTF-8 codepoint boundary rather than dropped. A record that
+ *  cannot be sent even trimmed (trims to nothing, or is refused for size again)
+ *  is discarded so Service does not loop on it, and the loss is reported as
+ *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, once per run. A NULL send buffer is
  *  reported and rejected without touching delivery health. Repeated delivery
  *  failures and the recovery after them are reported once each via
  *  SolidSyslog_Error (DELIVERY_FAILED / DELIVERY_RESTORED). Destroy disconnects
