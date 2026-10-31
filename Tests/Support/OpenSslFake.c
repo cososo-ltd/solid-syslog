@@ -1013,10 +1013,13 @@ static void OpenSslFake_ApplySecLevel(const char* str)
 {
     static const char marker[] = "@SECLEVEL=";
     const char* found = (str != NULL) ? strstr(str, marker) : NULL;
-    char digit = (found != NULL) ? found[sizeof(marker) - 1U] : '\0';
-    if ((digit >= '0') && (digit <= '5'))
+    if (found != NULL)
     {
-        securityLevel = digit - '0';
+        const char digit = found[sizeof(marker) - 1U];
+        if ((digit >= '0') && (digit <= '5'))
+        {
+            securityLevel = digit - '0';
+        }
     }
 }
 
