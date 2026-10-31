@@ -20,6 +20,7 @@ using namespace CososoTesting;
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
@@ -765,6 +766,15 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReleasesSlot)
     {
         CHECK_TEXT(slot != overflow, "Pool slot collided with the failed-Create fallback handle");
     }
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueThatAlreadyExistsIsRefused)
+{
+    MqFake_QueueAlreadyExists();
+
+    overflow = MakeBuffer();
+
+    POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)

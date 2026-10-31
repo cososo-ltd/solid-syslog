@@ -108,7 +108,7 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     attr.mq_maxmsg = (long) maxMessages;
     attr.mq_msgsize = (long) maxMessageSize;
 
-    self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
+    self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
     self->MaxMessageSize = maxMessageSize;
     self->Mutex = mutex;
     PosixMessageQueueBuffer_InstallDiscardPolicy(self, getDiscardPolicy, discardPolicyContext);
