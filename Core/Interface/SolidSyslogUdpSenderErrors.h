@@ -33,7 +33,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** The datagram refused the record for size and it could not be trimmed
          *  to a datagram it accepts: MaxPayload left nothing to send, or the
          *  trimmed record was refused for size again. The record is discarded
-         *  rather than offered for ever. Raised as an ERROR under
+         *  rather than offered for ever, and as it reached nobody it moves
+         *  delivery health neither way. Raised as an ERROR under
          *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, once per run of such records; the
          *  next record handed to the network, whole or trimmed, ends the run. */
         SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE,

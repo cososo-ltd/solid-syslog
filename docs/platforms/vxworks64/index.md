@@ -175,7 +175,10 @@ what the integrator states through the datagram config's payload-limit
 callback, or `SOLIDSYSLOG_UDP_IPV4_PAYLOAD_LIMIT` where none is stated - is
 reported as oversize without reaching the stack, and the sender trims it to fit
 and sends it again. A send the stack
-refuses with `EMSGSIZE` is reported as oversize in the same way.
+refuses with `EMSGSIZE` is reported as oversize in the same way. A stated limit
+above what the stack accepts therefore loses records: one over the stack's real
+limit is refused again once trimmed, and the sender discards it and reports the
+loss as `SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST`.
 
 Raising `SOLIDSYSLOG_MAX_MESSAGE_SIZE` above that limit therefore does not
 produce larger datagrams on this platform; it only lengthens the records the
