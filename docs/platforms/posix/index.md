@@ -132,11 +132,16 @@ the deployment.
 The queue is created as a kernel object named `/solidsyslog_<pid>_<slot>`,
 readable and writable by its owner alone, and the name is unlinked as soon as
 the open returns. From then on the queue is reached only through the descriptor
-this process holds, which a forked child inherits: no other process can open it
-by name, and the kernel frees it when the last descriptor closes. A queue that
-already exists under the name when the buffer creates its own is refused rather
-than adopted, so a queue planted ahead of this process cannot hand it records or
-read its own; the refusal leaves that queue in place.
+this process holds, which a forked child inherits, and the kernel frees it when
+the last descriptor closes. The name exists for the moment between the create
+and the unlink, and a process running as the same user that opens it in that
+moment keeps its descriptor: it can then read the records waiting in the queue
+and add records of its own, which the library stores, seals and delivers as
+this device's. Where that matters, give the process a private IPC namespace, or
+use a buffer that stays in the process. A queue that already exists under the
+name when the buffer creates its own is refused rather than adopted, so a queue
+planted ahead of this process cannot hand it records or read its own; the
+refusal leaves that queue in place.
 
 ### The blocking surface is bounded but not zero
 
