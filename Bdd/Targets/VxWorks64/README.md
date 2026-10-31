@@ -59,10 +59,9 @@ Each script describes its parameters: `Get-Help .\<script>.ps1 -Detailed`.
 Run by hand against the commit under review, each step recorded as pass, fail
 or not run.
 
-Steps 6 to 11 need a Workbench DKM project wired as
-[VxWorks 6.4 setup](../../../docs/platforms/vxworks64/setup.md#in-a-dkm)
-describes, building from a checkout of the same commit. The repository holds no
-such project.
+Steps 1 to 5 run on the QEMU target this directory builds. Step 6 runs on
+real hardware, in a product that integrates the library; the repository holds
+neither, so the step says what is run and what is recorded rather than how.
 
 1. `New-VxWorks64Vip.ps1 -Force` completes.
 2. `Build-VxWorks64Vip.ps1 -Clean` ends with `Diagnostics: none`.
@@ -75,19 +74,16 @@ such project.
 5. In Windows PowerShell 5.1,
    `Invoke-Pester -Script Runner\VxWorks64Runner.Tests.ps1` reports no
    failures.
-
-6. A build from clean writes `libsolidsyslog.a` and links the module.
-7. A second build, with nothing changed, rewrites neither the archive nor the
-   module.
-8. After a change to one library source, a build rewrites the archive and
-   relinks the module.
-9. A build from clean with `make -j` links the module after the archive is
-   written.
-10. The module loads into a kernel image that includes the toolchain's
-    intrinsics component, `INCLUDE_DIAB_INTRINSICS` or
-    `INCLUDE_GNU_INTRINSICS`, and the component name is the one setup gives.
-11. Loading the module into an image without that component is refused; record
-    the loader's message with the run.
+6. Real-target smoke test. Build the product's integration of the library at
+   the commit under review, start it on the hardware, and have it log a
+   representative set of records. An independent reference collector, one
+   chosen outside this project, receives them over UDP and over TCP. A pass
+   shows that the library builds into the product, starts with it, selects
+   each transport, and delivers records from real hardware to a real
+   collector; the scenarios in step 4 remain the behavioural evidence for the
+   platform. Record what was sent, so one release's run is comparable with
+   the next: the collector, the number of units, the record count by
+   transport, and the facilities and severities covered.
 
 ## Running the BDD scenarios
 
