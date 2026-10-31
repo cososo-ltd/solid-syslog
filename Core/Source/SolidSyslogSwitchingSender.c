@@ -104,10 +104,10 @@ static inline void SwitchingSender_SwitchTo(
     self->CurrentSender = newCurrent;
 }
 
-/* Out-of-range selector index (including empty-array case) resolves to the
- * shared NullSender. NullSender.Send returns true so the Service algorithm
- * drops the message - a misconfigured selector must not retain messages in
- * the Store - and the loss is reported. */
+/* An out-of-range selector index resolves to the shared NullSender.
+ * NullSender.Send returns true so the Service algorithm drops the message - a
+ * misconfigured selector must not retain messages in the Store - and the loss
+ * is reported. */
 static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(struct SolidSyslogSwitchingSender* self)
 {
     struct SolidSyslogSender* result = SolidSyslogNullSender_Get();

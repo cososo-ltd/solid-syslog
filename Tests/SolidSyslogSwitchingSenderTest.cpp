@@ -260,21 +260,6 @@ TEST(SolidSyslogSwitchingSender, SelectorAtLastValidIndexDelegatesToThatSender)
     CALLED_FAKE_ON(SenderFake_Send, innerC, ONCE);
 }
 
-TEST(SolidSyslogSwitchingSender, ZeroSenderCountSendReturnsTrueToDropOnTheFloor)
-{
-    /* Out-of-range selector (or zero-count) resolves to the shared
-     * NullSender, whose Send returns true so messages drop rather than
-     * accumulate in the Store. */
-    CreateSwitchingSender(0);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, "x", 1));
-}
-
-TEST(SolidSyslogSwitchingSender, ZeroSenderCountDisconnectDoesNotCrash)
-{
-    CreateSwitchingSender(0);
-    SolidSyslogSender_Disconnect(sender);
-}
-
 TEST(SolidSyslogSwitchingSender, SelectorBeyondEndSendReturnsTrueAndDoesNotTouchInnerSenders)
 {
     /* Out-of-range selector resolves to the shared NullSender, whose
@@ -480,6 +465,24 @@ TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSendersReportsError)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SENDERS
     );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNoSendersReportsError)
+{
+    config.SenderCount = 0;
+    SolidSyslogSwitchingSender_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NO_SENDERS
+    );
+}
+
+TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNoSendersReturnsNullSender)
+{
+    config.SenderCount = 0;
+    POINTERS_EQUAL(SolidSyslogNullSender_Get(), SolidSyslogSwitchingSender_Create(&config));
 }
 
 TEST(SolidSyslogSwitchingSenderBadSetup, CreateWithNullSelectorReportsError)

@@ -26,6 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_INNER_SENDER, /**< An element of Senders within SenderCount is NULL. */
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NO_SENDERS, /**< SenderCount is 0, so no Send could reach a sender. */
         /** The Selector answered an index at or beyond SenderCount, so the record
          *  went to the NullSender and is lost. Raised as a CRITICAL under
          *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, once per run of such Sends; the next

@@ -7,9 +7,8 @@
  *  through the one the Selector picks - the wiring for dual-SIEM fan-out or an
  *  active/standby failover stack. The Selector is called on every Send and
  *  returns an index into the Senders array; a value at or beyond SenderCount
- *  (including any value when the array is empty) routes to the shared
- *  NullSender, which drops the message so a misconfigured selector never retains
- *  records in the Store, and the loss is reported as
+ *  routes to the shared NullSender, which drops the message so a misconfigured
+ *  selector never retains records in the Store, and the loss is reported as
  *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST. Switching away from a sender
  *  disconnects it, so only the currently selected inner sender holds a live
  *  connection; the inner senders themselves are caller-owned and are not
@@ -28,17 +27,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Returns the index into Senders of the sender to route the next message
      *  through. Called on every Send, so it must be cheap; an index at or beyond
-     *  SenderCount (including any value when SenderCount is 0) routes to the shared
-     *  NullSender, which drops the message so a misconfigured selector never
-     *  retains records in the Store, and reports the loss. @p context is SelectorContext, passed through unchanged. */
+     *  SenderCount routes to the shared NullSender, which drops the message so a
+     *  misconfigured selector never retains records in the Store, and reports
+     *  the loss. @p context is SelectorContext, passed through unchanged. */
     typedef uint8_t (*SolidSyslogSwitchingSenderSelector)(void* context);
 
     /** Wiring for SolidSyslogSwitchingSender_Create, a sender that fronts several
      *  inner senders and picks one per message via Selector (dual-SIEM, failover).
-     *  Senders and Selector are required, as is every element of Senders within
-     *  SenderCount (NULL in any of them makes Create fall back to the shared
-     *  NullSender). The Senders array and the inner senders it points to must
-     *  outlive the created handle, and the elements are checked at Create only:
+     *  Senders and Selector are required, as is at least one sender and every
+     *  element of Senders within SenderCount (NULL in any of them, or a
+     *  SenderCount of 0, makes Create fall back to the shared NullSender). The
+     *  Senders array and the inner senders it points to must outlive the
+     *  created handle, and the elements are checked at Create only:
      *  the array is read on every Send, so one set to NULL afterwards is called
      *  as a vtable. Swap an element for its replacement, never for NULL. The
      *  config struct itself is copied at Create and may be transient. Switching away from a sender disconnects it. */
