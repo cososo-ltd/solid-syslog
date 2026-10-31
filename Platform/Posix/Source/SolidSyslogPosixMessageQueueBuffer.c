@@ -78,7 +78,7 @@ static inline void PosixMessageQueueBuffer_InstallDiscardPolicy(
 );
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- distinct semantic meaning; mirrors the public SolidSyslogPosixMessageQueueBuffer_Create signature plus a per-slot discriminator
-bool SolidSyslogPosixMessageQueueBuffer_Initialise(
+int SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     size_t maxMessages,
@@ -110,6 +110,9 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     attr.mq_msgsize = (long) SOLIDSYSLOG_MAX_MESSAGE_SIZE;
 
     self->Mq = mq_open(queueName, O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
+    /* errno is captured straight after mq_open, as Read does after
+     * mq_receive (MISRA C:2012 Rule 22.10). */
+    int openErrno = (self->Mq == (mqd_t) -1) ? errno : 0;
     self->Mutex = mutex;
     PosixMessageQueueBuffer_InstallDiscardPolicy(self, getDiscardPolicy, discardPolicyContext);
     self->RefusalReported = false;
@@ -119,8 +122,7 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
 
     /* A slot whose open failed keeps the functions it had, so a handle left
      * from an earlier Destroy of the slot stays a NullBuffer. */
-    bool opened = self->Mq != (mqd_t) -1;
-    if (opened)
+    if (openErrno == 0)
     {
         /* The descriptor is all this process needs, and a forked child
          * inherits it, so the name goes at once: nothing else can open the
@@ -130,7 +132,7 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
         self->Base.Read = PosixMessageQueueBuffer_Read;
         self->Base.IsFull = PosixMessageQueueBuffer_IsFull;
     }
-    return opened;
+    return openErrno;
 }
 
 static inline void PosixMessageQueueBuffer_InstallDiscardPolicy(

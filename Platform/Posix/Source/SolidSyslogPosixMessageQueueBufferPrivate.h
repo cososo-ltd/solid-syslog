@@ -44,7 +44,8 @@ struct SolidSyslogPosixMessageQueueBuffer
     bool Full;
 };
 
-bool SolidSyslogPosixMessageQueueBuffer_Initialise(
+/* Answers 0 once the queue is open, else the errno mq_open left. */
+int SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
     size_t maxMessages,

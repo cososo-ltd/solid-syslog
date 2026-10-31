@@ -734,18 +734,19 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, ExhaustedCreateReportsError)
     );
 }
 
-TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsError)
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsErrorWithTheErrno)
 {
     ErrorHandlerFake_Install(nullptr);
     MqFake_FailNextOpen(EINVAL);
 
     overflow = MakeBuffer();
 
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
+        EINVAL
     );
 }
 
@@ -775,18 +776,19 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueThatAlreadyExistsIsRefused)
     POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
 }
 
-TEST(SolidSyslogPosixMessageQueueBufferPool, RefusingAQueueThatAlreadyExistsReportsError)
+TEST(SolidSyslogPosixMessageQueueBufferPool, RefusingAQueueThatAlreadyExistsReportsErrorWithEexist)
 {
     ErrorHandlerFake_Install(nullptr);
     MqFake_QueueAlreadyExists();
 
     overflow = MakeBuffer();
 
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
+        EEXIST
     );
 }
 
