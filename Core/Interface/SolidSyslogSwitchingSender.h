@@ -9,7 +9,8 @@
  *  returns an index into the Senders array; a value at or beyond SenderCount
  *  (including any value when the array is empty) routes to the shared
  *  NullSender, which drops the message so a misconfigured selector never retains
- *  records in the Store. Switching away from a sender disconnects it, so only
+ *  records in the Store; the loss is reported as
+ *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, once per run of such Sends. Switching away from a sender disconnects it, so only
  *  the currently selected inner sender holds a live connection; the inner
  *  senders themselves are caller-owned and are not disconnected or freed on
  *  Destroy. */
@@ -29,7 +30,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  through. Called on every Send, so it must be cheap; an index at or beyond
      *  SenderCount (including any value when SenderCount is 0) routes to the shared
      *  NullSender, which drops the message so a misconfigured selector never
-     *  retains records in the Store. @p context is SelectorContext, passed through unchanged. */
+     *  retains records in the Store, and reports the loss once per run of such
+     *  Sends. @p context is SelectorContext, passed through unchanged. */
     typedef uint8_t (*SolidSyslogSwitchingSenderSelector)(void* context);
 
     /** Wiring for SolidSyslogSwitchingSender_Create, a sender that fronts several

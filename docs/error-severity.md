@@ -118,6 +118,8 @@ block that still holds unsent records each raise one `WARNING` when the run star
 | `STORE_RECORDS_LOST` | `WARNING` | the discard policy lost records, working as configured: a full store refused the record being written (`NEWEST`, `HALT`), or evicted a block still holding unsent records (`OLDEST`). Raised once per run: a run of refusals is re-armed by the next record the store keeps, a run of evictions by the next rotation that evicts nothing unsent. Under `HALT` the logger stops at the refusal and writes nothing more, so it is raised once. Explicit `SOLIDSYSLOG_SEVERITY_WARNING` at the site. |
 | `SENDER_DELIVERY_FAILED` | `WARNING` | destination outage: recoverable, store-and-forward covers it. |
 | `SENDER_DELIVERY_RESTORED` | `NOTICE` | recovery. |
+| `SENDER_RECORDS_LOST` - selector | `CRITICAL` | a switching sender's selector answered an index out of range, so the record went to the NullSender and is lost. A fault in the integrator's selector, which only a code change clears. Raised once per run, re-armed by the next Send routed to a sender in range. Explicit `SOLIDSYSLOG_SEVERITY_CRITICAL` at the site. |
+| `SENDER_RECORDS_LOST` - too large | `ERROR` | the UDP sender could not trim a record to a datagram the path accepts - `MaxPayload` left nothing, or the trimmed record was refused for size again - so it is discarded rather than offered for ever. A stated limit above what the stack accepts is a deployment value, so it clears when that changes. Raised once per run, re-armed by the next record handed to the network, whole or trimmed. A record trimmed and delivered is not reported. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 
 ## Single-source severity macros
 

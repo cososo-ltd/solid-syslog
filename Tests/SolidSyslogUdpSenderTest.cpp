@@ -820,7 +820,7 @@ TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize
 
 /* A platform whose stack cannot distinguish an over-large datagram reports
  * FAILED for one, which the contract permits. The record is still too big for
- * the path, so it is trimmed and retried rather than lost - #736. */
+ * the path, so it is trimmed and retried rather than lost. */
 TEST(SolidSyslogUdpSenderRetry, FailureLargerThanMaxPayloadTrimsAndRetries)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
