@@ -134,7 +134,10 @@ the integrator states through its config's payload-limit callback, or
 it cannot stand behind. A
 record the stack says is too long is reported as oversize rather than as a
 failure, which is what lets the sender retry it trimmed to that payload instead
-of attempting it whole again.
+of attempting it whole again. A stated limit above what the stack accepts
+defeats that: a record over the stack's real limit is refused again once
+trimmed, and the sender discards it and reports the loss as
+`SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST`.
 
 On a stack built without IPv4 that request is rejected outright, so every
 resolve fails and reports. A deployment on such a stack needs a different

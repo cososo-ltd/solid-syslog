@@ -73,6 +73,14 @@ static bool SwitchingSender_IsValidConfig(const struct SolidSyslogSwitchingSende
             SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NULL_SENDERS
         );
     }
+    else if (config->SenderCount == 0U)
+    {
+        SwitchingSender_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_NO_SENDERS
+        );
+    }
     else if (config->Selector == NULL)
     {
         SwitchingSender_Report(

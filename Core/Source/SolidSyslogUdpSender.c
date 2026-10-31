@@ -15,6 +15,7 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogResolver.h"
+#include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogSenderHealth.h"
 #include "SolidSyslogTransport.h"
@@ -31,6 +32,12 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
 static void UdpSender_Disconnect(struct SolidSyslogSender* base);
 
 static inline struct SolidSyslogUdpSender* UdpSender_SelfFromBase(struct SolidSyslogSender* base);
+static inline enum SolidSyslogDatagramSendResult UdpSender_Deliver(
+    struct SolidSyslogUdpSender* self,
+    const void* buffer,
+    size_t size
+);
+static inline bool UdpSender_WasDiscarded(enum SolidSyslogDatagramSendResult outcome);
 static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* self, bool delivered);
 static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* self);
 static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* self);
@@ -45,13 +52,23 @@ static inline bool UdpSender_OpenSocket(struct SolidSyslogUdpSender* self);
 static bool UdpSender_ResolveDestination(struct SolidSyslogUdpSender* self, const char* host, uint16_t port);
 static inline struct SolidSyslogAddress* UdpSender_Address(struct SolidSyslogUdpSender* self);
 static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self);
-static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self, const void* buffer, size_t size);
+static inline enum SolidSyslogDatagramSendResult UdpSender_TransmitDatagram(
+    struct SolidSyslogUdpSender* self,
+    const void* buffer,
+    size_t size
+);
+static inline enum SolidSyslogDatagramSendResult UdpSender_SendTo(
+    struct SolidSyslogUdpSender* self,
+    const void* buffer,
+    size_t size
+);
 static inline bool UdpSender_FailureWasOversize(struct SolidSyslogUdpSender* self, size_t size);
 static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     struct SolidSyslogUdpSender* self,
     const void* buffer,
     size_t size
 );
+static inline void UdpSender_ReportRecordTooLarge(struct SolidSyslogUdpSender* self);
 static uint32_t UdpSender_NilEndpointVersion(void* context);
 
 void SolidSyslogUdpSender_Initialise(struct SolidSyslogSender* base, const struct SolidSyslogUdpSenderConfig* config)
@@ -66,6 +83,7 @@ void SolidSyslogUdpSender_Initialise(struct SolidSyslogSender* base, const struc
     }
     self->Connected = false;
     self->DeliveryHealthy = true;
+    self->RecordTooLargeReported = false;
     self->LastEndpointVersion = 0;
 }
 
@@ -93,10 +111,35 @@ static bool UdpSender_Send(struct SolidSyslogSender* base, const void* buffer, s
     else
     {
         struct SolidSyslogUdpSender* self = UdpSender_SelfFromBase(base);
-        result = UdpSender_Reconcile(self) && UdpSender_TransmitDatagram(self, buffer, size);
-        UdpSender_UpdateDeliveryHealth(self, result);
+        enum SolidSyslogDatagramSendResult outcome = UdpSender_Deliver(self, buffer, size);
+        if (!UdpSender_WasDiscarded(outcome))
+        {
+            UdpSender_UpdateDeliveryHealth(self, outcome == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT);
+        }
+        result = outcome != SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
     }
     return result;
+}
+
+static inline enum SolidSyslogDatagramSendResult UdpSender_Deliver(
+    struct SolidSyslogUdpSender* self,
+    const void* buffer,
+    size_t size
+)
+{
+    enum SolidSyslogDatagramSendResult outcome = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED;
+    if (UdpSender_Reconcile(self))
+    {
+        outcome = UdpSender_TransmitDatagram(self, buffer, size);
+    }
+    return outcome;
+}
+
+/* A record still refused for size once trimmed has been discarded: it reached
+ * nobody, so it says nothing about delivery health either way. */
+static inline bool UdpSender_WasDiscarded(enum SolidSyslogDatagramSendResult outcome)
+{
+    return outcome == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
 }
 
 /* Driven only from the genuine delivery path - a NULL-buffer argument error
@@ -210,10 +253,15 @@ static inline void UdpSender_CloseSocket(struct SolidSyslogUdpSender* self)
     self->Connected = false;
 }
 
-static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self, const void* buffer, size_t size)
+/* SENT and FAILED as the datagram answered; OVERSIZE only for a record that
+ * could not be sent even trimmed, and has been discarded. */
+static inline enum SolidSyslogDatagramSendResult UdpSender_TransmitDatagram(
+    struct SolidSyslogUdpSender* self,
+    const void* buffer,
+    size_t size
+)
 {
-    enum SolidSyslogDatagramSendResult result =
-        SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, size, UdpSender_Address(self));
+    enum SolidSyslogDatagramSendResult result = UdpSender_SendTo(self, buffer, size);
     if ((result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED) && UdpSender_FailureWasOversize(self, size))
     {
         result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
@@ -222,7 +270,24 @@ static inline bool UdpSender_TransmitDatagram(struct SolidSyslogUdpSender* self,
     {
         result = UdpSender_RetryAfterOversize(self, buffer, size);
     }
-    return result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+    return result;
+}
+
+/* A datagram handed to the network, whole or trimmed, ends a run of records
+ * too large to send. */
+static inline enum SolidSyslogDatagramSendResult UdpSender_SendTo(
+    struct SolidSyslogUdpSender* self,
+    const void* buffer,
+    size_t size
+)
+{
+    enum SolidSyslogDatagramSendResult result =
+        SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, size, UdpSender_Address(self));
+    if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT)
+    {
+        self->RecordTooLargeReported = false;
+    }
+    return result;
 }
 
 /* An implementation that cannot distinguish an over-large datagram reports
@@ -247,20 +312,35 @@ static inline enum SolidSyslogDatagramSendResult UdpSender_RetryAfterOversize(
     size_t maxPayload = SolidSyslogDatagram_MaxPayload(self->Config.Datagram);
     size_t clipLimit = (size < maxPayload) ? size : maxPayload;
     size_t trimmed = SolidSyslogUdpPayload_TrimToCodepointBoundary((const uint8_t*) buffer, clipLimit);
-    /* Default SENT swallows trimmed == 0 (path can't carry the message) so the
-     * Service algorithm doesn't loop on an undeliverable. */
-    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
+    /* A trim that leaves nothing stands for a refusal: the path cannot carry
+     * the record at all. */
+    enum SolidSyslogDatagramSendResult result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE;
     if (trimmed > 0U)
     {
-        result = SolidSyslogDatagram_SendTo(self->Config.Datagram, buffer, trimmed, UdpSender_Address(self));
-        if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE)
-        {
-            /* Retry still OVERSIZE means the kernel disagrees with its own
-             * MaxPayload - swallow for the same reason. */
-            result = SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT;
-        }
+        result = UdpSender_SendTo(self, buffer, trimmed);
+    }
+    if (result == SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE)
+    {
+        /* Still refused for size, so trying again cannot help: the record is
+         * discarded, so Service does not loop on an undeliverable, and the
+         * loss is reported. */
+        UdpSender_ReportRecordTooLarge(self);
     }
     return result;
+}
+
+/* One report stands for a run of records the path would not carry. */
+static inline void UdpSender_ReportRecordTooLarge(struct SolidSyslogUdpSender* self)
+{
+    if (!self->RecordTooLargeReported)
+    {
+        UdpSender_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+            SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
+        );
+        self->RecordTooLargeReported = true;
+    }
 }
 
 static uint32_t UdpSender_NilEndpointVersion(void* context)

@@ -5,6 +5,7 @@
 #ifndef SOLIDSYSLOGSWITCHINGSENDERPRIVATE_H
 #define SOLIDSYSLOGSWITCHINGSENDERPRIVATE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "SolidSyslogError.h"
@@ -18,6 +19,7 @@ struct SolidSyslogSwitchingSender
     struct SolidSyslogSender Base;
     struct SolidSyslogSwitchingSenderConfig Config;
     struct SolidSyslogSender* CurrentSender;
+    bool OutOfRangeReported;
 };
 
 void SolidSyslogSwitchingSender_Initialise(

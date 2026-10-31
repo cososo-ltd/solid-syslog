@@ -605,6 +605,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)
     {
         setupFakesWithDatagramFake();
         sender = SolidSyslogUdpSender_Create(&config);
+        ErrorHandlerFake_Install(nullptr);
     }
 
     void teardown() override
@@ -621,6 +622,11 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)
     void retrySendReturns(enum SolidSyslogDatagramSendResult result) const
     {
         DatagramFake_SetSendResult(datagram, 1, result);
+    }
+
+    void sendNumberReturns(int callIndex, enum SolidSyslogDatagramSendResult result) const
+    {
+        DatagramFake_SetSendResult(datagram, callIndex, result);
     }
 
     void maxPayload(size_t bytes) const
@@ -681,10 +687,10 @@ TEST(SolidSyslogUdpSenderRetry, OversizeRetryWalksBackToCodepointBoundary)
     LONGS_EQUAL(2, retrySendSize());
 }
 
-/* Double-OVERSIZE means the kernel disagreed with its own reported
- * MaxPayload - impossible-shouldn't-happen but if it did, returning
- * false would loop the buffered algorithm forever on an undeliverable.
- * Swallow: drop the message and return true so the caller moves on. */
+/* Double-OVERSIZE means the datagram refused a record trimmed to its own
+ * MaxPayload. Returning false would loop the buffered algorithm forever on
+ * an undeliverable, so the record is discarded - and reported - and true
+ * lets the caller move on. */
 TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReturnsTrueToAvoidPermanentLoop)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
@@ -702,6 +708,60 @@ TEST(SolidSyslogUdpSenderRetry, DoubleOversizeDoesNotSendThird)
     CALLED_DATAGRAM_SEND(TWICE);
 }
 
+TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReportsRecordsLost)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(3);
+    Send();
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
+    );
+}
+
+/* With MaxPayload 0 each record makes one send, so calls 0 and 1 are two
+ * records in a row that the path cannot carry. */
+TEST(SolidSyslogUdpSenderRetry, RunOfRecordsTooLargeReportsOnlyOnce)
+{
+    sendNumberReturns(0, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(1, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogUdpSenderRetry, RecordSentWholeRearmsRecordsLost)
+{
+    sendNumberReturns(0, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(2, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+/* Every record is refused whole. The first and last cannot be trimmed, so
+ * each makes one send; the middle one is trimmed and its retry (call 2) is
+ * delivered. */
+TEST(SolidSyslogUdpSenderRetry, TrimmedRecordSentRearmsRecordsLost)
+{
+    sendNumberReturns(0, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(1, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(3, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    maxPayload(3);
+    Send();
+    maxPayload(0);
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
@@ -711,13 +771,26 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
 }
 
 /* Trimmed length 0 means the message physically can't fit the path -
- * looping won't help, so we swallow and report success. The Buffered/
- * Service algorithm discards rather than retrying forever. */
+ * looping won't help, so the record is discarded and true returned. The
+ * Buffered/Service algorithm moves on rather than retrying forever. */
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
     maxPayload(0);
     CHECK_TRUE(Send());
+}
+
+TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReportsRecordsLost)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
+    );
 }
 
 /* Retry sendto failing with non-OVERSIZE error (e.g. ECONNREFUSED on
@@ -729,6 +802,22 @@ TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeReturnsFalse)
     retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
     maxPayload(3);
     CHECK_FALSE(Send());
+}
+
+/* A transient failure keeps the record, so it is not a loss: the only report
+ * is the delivery-health edge. */
+TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeDoesNotReportRecordsLost)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
+    maxPayload(3);
+    Send();
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_FAILED
+    );
 }
 
 TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize)
@@ -747,7 +836,7 @@ TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize
 
 /* A platform whose stack cannot distinguish an over-large datagram reports
  * FAILED for one, which the contract permits. The record is still too big for
- * the path, so it is trimmed and retried rather than lost - #736. */
+ * the path, so it is trimmed and retried rather than lost. */
 TEST(SolidSyslogUdpSenderRetry, FailureLargerThanMaxPayloadTrimsAndRetries)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
@@ -1001,6 +1090,14 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderDeliveryHealth, UdpSenderTestBase)
     {
         DatagramFake_SetSendResult(datagram, callIndex, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
     }
+
+    /* Refused for size on a path that cannot carry any of it, so the record
+     * is discarded. */
+    void sendNumberIsTooLarge(int callIndex) const
+    {
+        DatagramFake_SetSendResult(datagram, callIndex, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+        DatagramFake_SetMaxPayload(datagram, 0);
+    }
 };
 
 // clang-format on
@@ -1038,6 +1135,23 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRestore
         &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED
+    );
+}
+
+/* A discarded record reached nobody, so it is not a recovery: the only report
+ * after the failure is the loss. */
+TEST(SolidSyslogUdpSenderDeliveryHealth, RecordTooLargeAfterDownDoesNotReportDeliveryRestored)
+{
+    sendNumberFails(0);
+    sendNumberIsTooLarge(1);
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
     );
 }
 
