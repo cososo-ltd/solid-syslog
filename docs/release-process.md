@@ -177,6 +177,11 @@ listed above; the written sections are added by hand in the release pull request
    jobs run, so a failure cannot block it - it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
    job (see [release verification](security/release-verification.md)).
+9. Close the release's milestone once the Release is published, and create the
+   next one if it does not exist. The milestone is a progress view of a release
+   that is being worked on; an open milestone with nothing left in it reads as
+   a release still in flight. [CLAUDE.md](../CLAUDE.md#milestones) states what
+   goes in the next one and why it carries no due date.
 
 ### Releasing the example stacks
 
@@ -275,4 +280,7 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       the pages render acceptably, and nothing else in the pipeline looks at
       them. Confirm the footer names the release, and that the notice explaining
       how to restore search appears.
+- [ ] Close the release's milestone, and create the next one if it does not
+      exist: `gh api -X PATCH repos/cososo-ltd/solid-syslog/milestones/<number>
+      -f state=closed`.
 - [ ] Security release: publish the coordinated GHSA.
