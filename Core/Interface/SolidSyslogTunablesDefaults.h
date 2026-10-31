@@ -788,6 +788,10 @@
 #define SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS 45U
 #endif
 
+#if SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS < 1
+#error "SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS must be >= 1"
+#endif
+
 /**
  * Interval between keepalive probes once the idle period has elapsed.
  */
@@ -795,11 +799,29 @@
 #define SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS 10U
 #endif
 
+#if SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS < 1
+#error "SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS must be >= 1"
+#endif
+
 /**
  * Unanswered keepalive probes tolerated before the peer is declared dead.
+ *
+ * Floor: 1 for each of the three keepalive tunables. Ceiling: the keepalive
+ * window, the idle period plus the interval across every probe, must not
+ * exceed 2147483 s, so that it is still representable in milliseconds as a
+ * signed 32-bit value. Values outside the range are rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT
 #define SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT 4U
+#endif
+
+#if SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT < 1
+#error "SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT must be >= 1"
+#endif
+
+#if (SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS + \
+     (SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS * SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT)) > 2147483U
+#error "SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS + INTERVAL_SECONDS x PROBE_COUNT must be <= 2147483"
 #endif
 
 /**
