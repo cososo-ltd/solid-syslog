@@ -30,6 +30,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_UDP_SENDER_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_FAILED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED,
+        /** The datagram refused the record for size and it could not be trimmed
+         *  to a datagram it accepts: MaxPayload left nothing to send, or the
+         *  trimmed record was refused for size again. The record is discarded
+         *  rather than offered for ever. Raised as an ERROR under
+         *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, once per run of such records; the
+         *  next record handed to the network, whole or trimmed, ends the run. */
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE,
         SOLIDSYSLOG_UDP_SENDER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

@@ -605,6 +605,7 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)
     {
         setupFakesWithDatagramFake();
         sender = SolidSyslogUdpSender_Create(&config);
+        ErrorHandlerFake_Install(nullptr);
     }
 
     void teardown() override
@@ -621,6 +622,11 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderRetry, UdpSenderTestBase)
     void retrySendReturns(enum SolidSyslogDatagramSendResult result) const
     {
         DatagramFake_SetSendResult(datagram, 1, result);
+    }
+
+    void sendNumberReturns(int callIndex, enum SolidSyslogDatagramSendResult result) const
+    {
+        DatagramFake_SetSendResult(datagram, callIndex, result);
     }
 
     void maxPayload(size_t bytes) const
@@ -702,6 +708,60 @@ TEST(SolidSyslogUdpSenderRetry, DoubleOversizeDoesNotSendThird)
     CALLED_DATAGRAM_SEND(TWICE);
 }
 
+TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReportsRecordsLost)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(3);
+    Send();
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
+    );
+}
+
+/* With MaxPayload 0 each record makes one send, so calls 0 and 1 are two
+ * records in a row that the path cannot carry. */
+TEST(SolidSyslogUdpSenderRetry, RunOfRecordsTooLargeReportsOnlyOnce)
+{
+    sendNumberReturns(0, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(1, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogUdpSenderRetry, RecordSentWholeRearmsRecordsLost)
+{
+    sendNumberReturns(0, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(2, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+/* Every record is refused whole. The first and last cannot be trimmed, so
+ * each makes one send; the middle one is trimmed and its retry (call 2) is
+ * delivered. */
+TEST(SolidSyslogUdpSenderRetry, TrimmedRecordSentRearmsRecordsLost)
+{
+    sendNumberReturns(0, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(1, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    sendNumberReturns(3, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    maxPayload(3);
+    Send();
+    maxPayload(0);
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
@@ -718,6 +778,19 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
     maxPayload(0);
     CHECK_TRUE(Send());
+}
+
+TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReportsRecordsLost)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    maxPayload(0);
+    Send();
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
+    );
 }
 
 /* Retry sendto failing with non-OVERSIZE error (e.g. ECONNREFUSED on

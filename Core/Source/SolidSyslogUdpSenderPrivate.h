@@ -20,6 +20,7 @@ struct SolidSyslogUdpSender
     struct SolidSyslogUdpSenderConfig Config;
     bool Connected;
     bool DeliveryHealthy;
+    bool RecordTooLargeReported;
     uint32_t LastEndpointVersion;
 };
 
