@@ -195,8 +195,13 @@ finished when all four parts exist, and the stack's `main` README names them.
 3. A tag `v<version>` at the branch tip, carrying a GitHub Release marked
    latest, with the sweep output attached as `sweep-<version>.zip` and a
    description naming the branch, the library tag and SHA it pins, and the
-   Sweep run. `gh release create v<version> --target <tip> --title <version>
-   --latest` creates the tag with the release.
+   Sweep run. One command creates the tag, the Release, its description and
+   its attachment together, so none can be left behind:
+
+   ```bash
+   gh release create v<version> --target <tip> --title <version> --latest \n     --notes-file <file> sweep-<version>.zip
+   ```
+
 4. A row for the branch in the *Releases* table of the stack's `main` README,
    committed to `main`.
 
