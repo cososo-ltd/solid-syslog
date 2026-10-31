@@ -80,13 +80,13 @@ sections are added by hand in the release pull request.
    they depend on how the integrator configures it, and that they are neither a
    certification nor a conformance claim. One sentence is enough; omitting it is
    not.
-4. **Known limitations** - the defects tracked at the release, each linking its
-   tracking issue. State that they were found by audit and are disclosed on the
-   pages that describe the affected platform: a bare list of open defects reads
-   as unfinished work, and the same facts framed as deliberate disclosure read as
-   rigour. A divergence a platform accepts by design is not a limitation of the
-   release: it is stated on that platform's page, and the note points there in
-   one sentence rather than listing it.
+4. **Known limitations** - the defects tracked at the release, listed here, each
+   linking its tracking issue. State that they were found by audit and that the
+   page of each affected platform discloses them too: a bare list of open
+   defects reads as unfinished work, and the same facts framed as deliberate
+   disclosure read as rigour. A divergence a platform accepts by design is not a
+   limitation of the release: it is stated on that platform's page alone, and
+   the note points there in one sentence rather than listing it.
 5. **Verifying this release** - the attached assets, how they are signed, and a
    link to the verification guide at the tag. The check that matters is that a
    bundle verifies, not that the assets are present.
