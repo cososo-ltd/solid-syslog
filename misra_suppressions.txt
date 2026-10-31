@@ -39,7 +39,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:69
 misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:197
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:77
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:73
-misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:134
+misra-c2012-11.3:Core/Source/SolidSyslogUdpSender.c:169
 misra-c2012-11.3:Platform/StdAtomic/Source/SolidSyslogStdAtomicCounter.c:36
 misra-c2012-11.3:Platform/FatFs/Source/SolidSyslogFatFsFile.c:62
 misra-c2012-11.3:Platform/LittleFs/Source/SolidSyslogLittleFsFile.c:76
@@ -106,7 +106,7 @@ misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsFile.c:82
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWindowsMutex.c:42
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:106
 misra-c2012-11.3:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:208
-misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:273
+misra-c2012-11.5:Core/Source/SolidSyslogUdpSender.c:314
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:96
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:195
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:255
