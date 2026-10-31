@@ -43,8 +43,8 @@ repositories carry the exact figures, every stage's run report, the diff that pr
 each, and the reasoning behind it.
 
 Rounded stage by stage, the figures do not sum exactly to the cost of the whole path.
-Measured cumulatively against the same baseline, the path costs about 22.0 KB of flash and
-36.6 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
+Measured cumulatively against the same baseline, the path costs about 22.6 KB of flash and
+36.3 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
 stage's figure as the cost of that step and the example's own measurements as the cost of
 the path.
 
@@ -171,7 +171,7 @@ reported, while a collaborator you have deliberately done without is passed as i
 object. The library distinguishes the two, and so should anyone reading your wiring
 later.
 
-**Cost.** Flash ~1.0k, RAM ~1.2k. Most of the RAM is the record slot the logger keeps
+**Cost.** Flash ~1.0k, RAM ~730 B. Most of the RAM is the record slot the logger keeps
 for the record `SolidSyslog_Service` is dealing with, `SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes.
 Stage 21 fits the cap to the device.
 
@@ -350,7 +350,7 @@ many went. The store from stage 10 reports loss under the same rules, stated onc
 however many events can be logged before it is next serviced. It also makes logging from
 multiple tasks safe.
 
-**Cost.** Flash ~1.5k, RAM ~5.5k - the ring and the service task's stack. That stack
+**Cost.** Flash ~1.4k, RAM ~5.5k - the ring and the service task's stack. That stack
 holds the send beneath `SolidSyslog_Service` but not the record being sent, which lives
 in the logger and was counted at stage 3. You choose the ring size, and stage 21
 revisits it once the store is there to hold a backlog.
@@ -469,7 +469,7 @@ Making stored records tamper-*evident* is stage 15.
 **When you need it.** What is your audit-loss budget? If the collector is unreachable
 for an hour, is losing that hour acceptable? Must records survive a reboot?
 
-**Cost.** Flash ~5.6k, RAM ~1.4k - handles and one record buffer, not capacity.
+**Cost.** Flash ~5.9k, RAM ~1.4k - handles and one record buffer, not capacity.
 **Upstream:** files on your filesystem. Both the number of files and the size of each are
 tunable.
 
@@ -588,7 +588,7 @@ host with no site PKI behind it, and a fingerprint provisioned at commissioning 
 none - which is why this path pins first, and adds a CA chain only at stage 19, for sites
 that run one.
 
-**Cost.** Flash ~3.2k. RAM ~28k on the example device - but only ~730 B of that is the
+**Cost.** Flash ~3.3k. RAM ~28k on the example device - but only ~730 B of that is the
 library; the rest is a second concurrent TLS session: the Mbed TLS memory pool grows from
 32 to 53 KiB, and the service task's stack grows for the handshake.
 
@@ -718,7 +718,7 @@ and never stores one. See [at-rest cryptography](security/at-rest-cryptography.m
 **When you need it.** If an attacker could reach the medium - removable, unattended, or
 stealable - and stored records must be provably unaltered.
 
-**Cost.** Flash ~450 B, RAM ~25 B. **Upstream:** a crypto primitive, which your TLS
+**Cost.** Flash ~430 B, RAM ~25 B. **Upstream:** a crypto primitive, which your TLS
 library already provides and has already linked if you took stage 13. Reaching for
 at-rest protection *without* TLS is where this stage carries an upstream cost of its
 own.
@@ -750,7 +750,7 @@ claim is exactly what a collector is watching for.
 each record, rather than assume it. It is also the cheapest way to detect a fleet
 member whose pipeline has silently degraded.
 
-**Cost.** Flash ~125 B, RAM negligible.
+**Cost.** Flash ~140 B, RAM negligible.
 
 ## Stage 17: Prove which device sent it
 
@@ -864,7 +864,7 @@ collector certificate renewed by the same CA still crosses as it did at stage 14
 **When you need it.** When the site runs a PKI and its policy requires every peer to
 chain to it. Where there is no site PKI, the pin from stage 13 is complete on its own.
 
-**Cost.** Flash ~100 B, RAM negligible. The chain itself costs nothing measurable on the
+**Cost.** Flash ~90 B, RAM negligible. The chain itself costs nothing measurable on the
 example: the collector's certificate is already parsed to compute its fingerprint, and the
 CA is one the device already holds for its broker session. The flash is the pipeline
 element's new parameter.
@@ -921,7 +921,7 @@ engineer to decide rather than the firmware, or if the device must stop rather t
 a record. A device content to keep the newest records can leave every policy argument
 `NULL`.
 
-**Cost.** Flash ~110 B, all of it the example's own code, and no RAM: the queues already
+**Cost.** Flash ~130 B, all of it the example's own code, and no RAM: the queues already
 carried the pointers.
 
 ## Stage 21: Fit the sizes to the device
@@ -960,7 +960,7 @@ mechanism and the way it is most often got wrong.
 a device that is still missing collaborators, and the high-water marks that justify a
 stack are only trustworthy when everything that runs on it is there.
 
-**Cost.** No flash. RAM ~4.2k **returned**.
+**Cost.** No flash. RAM ~4.1k **returned**.
 
 ---
 
