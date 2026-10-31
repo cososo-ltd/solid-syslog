@@ -793,6 +793,18 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueItRefusedIsLeftWhereItIs)
     CALLED_FAKE(MqFake_Unlink, NEVER);
 }
 
+TEST(SolidSyslogPosixMessageQueueBufferPool, ARefusedCreateLeavesADestroyedHandleInItsSlotANoOp)
+{
+    struct SolidSyslogBuffer* destroyed = MakeBuffer();
+    SolidSyslogPosixMessageQueueBuffer_Destroy(destroyed);
+    MqFake_FailNextOpen(EINVAL);
+    overflow = MakeBuffer();
+
+    SolidSyslogBuffer_Write(destroyed, "hello", 5);
+
+    CALLED_FAKE(MqFake_Send, NEVER);
+}
+
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)
 {
     FillPool();

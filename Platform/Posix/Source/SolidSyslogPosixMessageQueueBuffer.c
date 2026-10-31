@@ -119,10 +119,17 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     self->FailureReported = false;
     self->EvictionReported = false;
     self->Full = false;
-    self->Base.Write = PosixMessageQueueBuffer_Write;
-    self->Base.Read = PosixMessageQueueBuffer_Read;
-    self->Base.IsFull = PosixMessageQueueBuffer_IsFull;
-    return self->Mq != (mqd_t) -1;
+
+    /* A slot whose open failed keeps the functions it had, so a handle left
+     * from an earlier Destroy of the slot stays a NullBuffer. */
+    bool opened = self->Mq != (mqd_t) -1;
+    if (opened)
+    {
+        self->Base.Write = PosixMessageQueueBuffer_Write;
+        self->Base.Read = PosixMessageQueueBuffer_Read;
+        self->Base.IsFull = PosixMessageQueueBuffer_IsFull;
+    }
+    return opened;
 }
 
 static inline void PosixMessageQueueBuffer_InstallDiscardPolicy(
