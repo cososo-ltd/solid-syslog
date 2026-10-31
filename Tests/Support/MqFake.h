@@ -12,6 +12,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* open configuration - one-shot, consumed by the next mq_open call */
     void MqFake_FailNextOpen(int errnoValue);
+    /* a queue exists under whatever name is opened, until mq_unlink removes it:
+     * an O_CREAT | O_EXCL open fails with EEXIST, any other open adopts it */
+    void MqFake_QueueAlreadyExists(void);
 
     int MqFake_OpenCallCount(void);
     const char* MqFake_LastOpenName(void);

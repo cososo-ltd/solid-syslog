@@ -300,13 +300,8 @@ int main(int argc, char* argv[])
 
     /* The interactive thread logs while the service thread drains. */
     struct SolidSyslogMutex* bufferMutex = SolidSyslogPosixMutex_Create();
-    struct SolidSyslogBuffer* buffer = SolidSyslogPosixMessageQueueBuffer_Create(
-        bufferMutex,
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
-        10,
-        BddTargetStoreSettings_GetDiscardPolicy,
-        NULL
-    );
+    struct SolidSyslogBuffer* buffer =
+        SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, 10, BddTargetStoreSettings_GetDiscardPolicy, NULL);
     struct SolidSyslogAtomicCounter* counter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,

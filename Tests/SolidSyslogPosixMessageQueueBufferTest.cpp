@@ -20,6 +20,7 @@ using namespace CososoTesting;
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
@@ -55,7 +56,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBuffer)
     {
         MqFake_Reset();
         testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
         readSize = 0;
     }
 
@@ -129,6 +130,17 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ReadReturnsWrittenSize)
 TEST(SolidSyslogPosixMessageQueueBuffer, ReadFromEmptyReturnsFalse)
 {
     CHECK_FALSE(Read());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, TheQueueTakesMessagesOfTheLibrarysMessageSize)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_MAX_MESSAGE_SIZE, MqFake_LastOpenMaxMessageSize());
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, TheQueueNameIsUnlinkedOnceTheQueueIsOpen)
+{
+    CALLED_FAKE(MqFake_Unlink, ONCE);
+    STRCMP_EQUAL(MqFake_LastOpenName(), MqFake_LastUnlinkName());
 }
 
 TEST(SolidSyslogPosixMessageQueueBuffer, MultipleWritesReadInOrder)
@@ -424,13 +436,7 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UnderHaltAFullQueueRefusesTheRecordAsUn
 TEST(SolidSyslogPosixMessageQueueBuffer, NoPolicyInjectedAppliesOldest)
 {
     SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
-    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
-        SolidSyslogNullMutex_Get(),
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
-        TEST_MAX_MESSAGES,
-        nullptr,
-        nullptr
-    );
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), TEST_MAX_MESSAGES, nullptr, nullptr);
     FillTheQueue();
 
     Write("newest");
@@ -525,7 +531,6 @@ TEST(SolidSyslogPosixMessageQueueBuffer, UseAfterDestroyIsCrashSafeViaNullBuffer
 
     buffer = SolidSyslogPosixMessageQueueBuffer_Create(
         SolidSyslogNullMutex_Get(),
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
         10,
         AnswersTestPolicy,
         nullptr
@@ -584,7 +589,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferMutex)
     {
         MqFake_Reset();
         testPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
-        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
+        buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), TEST_MAX_MESSAGES, AnswersTestPolicy, nullptr);
     }
 
     void teardown() override
@@ -621,13 +626,7 @@ static enum SolidSyslogDiscardPolicy PolicyThatLogs(void* context)
 TEST(SolidSyslogPosixMessageQueueBufferMutex, APolicyFunctionThatLogsIsNotAskedUnderTheLock)
 {
     SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
-    buffer = SolidSyslogPosixMessageQueueBuffer_Create(
-        MutexFake_Create(),
-        SOLIDSYSLOG_MAX_MESSAGE_SIZE,
-        TEST_MAX_MESSAGES,
-        PolicyThatLogs,
-        nullptr
-    );
+    buffer = SolidSyslogPosixMessageQueueBuffer_Create(MutexFake_Create(), TEST_MAX_MESSAGES, PolicyThatLogs, nullptr);
     policyLogTarget = buffer;
 
     Write();
@@ -697,7 +696,7 @@ TEST_GROUP(SolidSyslogPosixMessageQueueBufferPool)
 
     static struct SolidSyslogBuffer* MakeBuffer()
     {
-        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), SOLIDSYSLOG_MAX_MESSAGE_SIZE, 10, nullptr, nullptr);
+        return SolidSyslogPosixMessageQueueBuffer_Create(SolidSyslogNullMutex_Get(), 10, nullptr, nullptr);
     }
 
     void FillPool()
@@ -735,18 +734,19 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, ExhaustedCreateReportsError)
     );
 }
 
-TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsError)
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReportsErrorWithTheErrno)
 {
     ErrorHandlerFake_Install(nullptr);
     MqFake_FailNextOpen(EINVAL);
 
     overflow = MakeBuffer();
 
-    CHECK_ERROR_REPORTED_ONCE(
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
         SOLIDSYSLOG_SEVERITY_ERROR,
         &SolidSyslogPosixMessageQueueBufferErrorSource,
         SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
+        EINVAL
     );
 }
 
@@ -765,6 +765,52 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateOnMqOpenFailureReleasesSlot)
     {
         CHECK_TEXT(slot != overflow, "Pool slot collided with the failed-Create fallback handle");
     }
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueThatAlreadyExistsIsRefused)
+{
+    MqFake_QueueAlreadyExists();
+
+    overflow = MakeBuffer();
+
+    POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, RefusingAQueueThatAlreadyExistsReportsErrorWithEexist)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_QueueAlreadyExists();
+
+    overflow = MakeBuffer();
+
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
+        EEXIST
+    );
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, AQueueItRefusedIsLeftWhereItIs)
+{
+    MqFake_QueueAlreadyExists();
+
+    overflow = MakeBuffer();
+
+    CALLED_FAKE(MqFake_Unlink, NEVER);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, ARefusedCreateLeavesADestroyedHandleInItsSlotANoOp)
+{
+    struct SolidSyslogBuffer* destroyed = MakeBuffer();
+    SolidSyslogPosixMessageQueueBuffer_Destroy(destroyed);
+    MqFake_FailNextOpen(EINVAL);
+    overflow = MakeBuffer();
+
+    SolidSyslogBuffer_Write(destroyed, "hello", 5);
+
+    CALLED_FAKE(MqFake_Send, NEVER);
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)
@@ -811,6 +857,17 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfPooledHandleLocksOnce)
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyClosesTheQueueAndHasNoNameLeftToUnlink)
+{
+    pooled[0] = MakeBuffer();
+
+    SolidSyslogPosixMessageQueueBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(MqFake_Close, ONCE);
+    CALLED_FAKE(MqFake_Unlink, ONCE);
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleDoesNotLock)

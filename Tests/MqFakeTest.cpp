@@ -69,6 +69,39 @@ TEST(MqFake, FailNextOpenIsOneShot)
     CHECK(second != (mqd_t) -1);
 }
 
+TEST(MqFake, AQueueThatAlreadyExistsRefusesAnExclusiveOpen)
+{
+    MqFake_QueueAlreadyExists();
+    struct mq_attr attr = {0, 4, 64, 0, {0}};
+
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- POSIX mq_open is a varargs function when O_CREAT is set
+    mqd_t result = mq_open("/test", O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR, &attr);
+
+    LONGS_EQUAL(-1, (long) result);
+    LONGS_EQUAL(EEXIST, errno);
+}
+
+TEST(MqFake, AQueueThatAlreadyExistsIsAdoptedByAnOpenThatIsNotExclusive)
+{
+    MqFake_QueueAlreadyExists();
+
+    mqd_t result = OpenTestQueue("/test");
+
+    CHECK(result != (mqd_t) -1);
+}
+
+TEST(MqFake, AQueueThatAlreadyExistsIsGoneOnceUnlinked)
+{
+    MqFake_QueueAlreadyExists();
+    mq_unlink("/test");
+    struct mq_attr attr = {0, 4, 64, 0, {0}};
+
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- POSIX mq_open is a varargs function when O_CREAT is set
+    mqd_t result = mq_open("/test", O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR, &attr);
+
+    CHECK(result != (mqd_t) -1);
+}
+
 TEST(MqFake, OpenNameHistoryReturnsNameByIndex)
 {
     OpenTestQueue("/alpha");

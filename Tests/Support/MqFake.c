@@ -40,6 +40,7 @@ struct MqFakeQueue
 
 static struct MqFakeQueue queues[MQFAKE_MAX_QUEUES];
 
+static bool queueAlreadyExists;
 static bool nextOpenShouldFail;
 static int nextOpenErrno;
 static int openCallCount;
@@ -89,6 +90,7 @@ void MqFake_Reset(void)
         }
     }
 
+    queueAlreadyExists = false;
     nextOpenShouldFail = false;
     nextOpenErrno = 0;
     openCallCount = 0;
@@ -127,6 +129,11 @@ void MqFake_FailNextOpen(int errnoValue)
 {
     nextOpenShouldFail = true;
     nextOpenErrno = errnoValue;
+}
+
+void MqFake_QueueAlreadyExists(void)
+{
+    queueAlreadyExists = true;
 }
 
 int MqFake_OpenCallCount(void)
@@ -276,6 +283,10 @@ mqd_t mq_open(const char* name, int oflag, ...)
         nextOpenShouldFail = false;
         errno = nextOpenErrno;
     }
+    else if (queueAlreadyExists && ((oflag & (O_CREAT | O_EXCL)) == (O_CREAT | O_EXCL)))
+    {
+        errno = EEXIST;
+    }
     else
     {
         long requestedMaxMessages = 0;
@@ -336,6 +347,7 @@ int mq_close(mqd_t mqd)
 int mq_unlink(const char* name)
 {
     unlinkCallCount++;
+    queueAlreadyExists = false;
     SafeString_Copy(lastUnlinkName, sizeof(lastUnlinkName), name);
     return 0;
 }

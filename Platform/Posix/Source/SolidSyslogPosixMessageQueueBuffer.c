@@ -76,13 +76,11 @@ static inline void PosixMessageQueueBuffer_InstallDiscardPolicy(
     SolidSyslogDiscardPolicyFunction configured,
     void* context
 );
-static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPosixMessageQueueBuffer* self);
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- distinct semantic meaning; mirrors the public SolidSyslogPosixMessageQueueBuffer_Create signature plus a per-slot discriminator
-bool SolidSyslogPosixMessageQueueBuffer_Initialise(
+int SolidSyslogPosixMessageQueueBuffer_Initialise(
     struct SolidSyslogBuffer* base,
     struct SolidSyslogMutex* mutex,
-    size_t maxMessageSize,
     size_t maxMessages,
     size_t slotIndex,
     SolidSyslogDiscardPolicyFunction getDiscardPolicy,
@@ -97,29 +95,44 @@ bool SolidSyslogPosixMessageQueueBuffer_Initialise(
     /* Queue name: /solidsyslog_<pid>_<slotIndex>. The pid keeps the name
      * unique per process; the slot index keeps multiple in-process pool
      * entries from aliasing onto the same kernel queue object. */
+    SolidSyslogFormatterStorage
+        nameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE)];
     struct SolidSyslogFormatter* name =
-        SolidSyslogFormatter_Create(self->NameStorage, POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE);
+        SolidSyslogFormatter_Create(nameStorage, POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE);
     SolidSyslogFormatter_BoundedString(name, queueNamePrefix, sizeof(queueNamePrefix) - 1U);
     SolidSyslogFormatter_Uint32(name, (uint32_t) getpid());
     SolidSyslogFormatter_AsciiCharacter(name, '_');
     SolidSyslogFormatter_Uint32(name, (uint32_t) slotIndex);
+    const char* queueName = SolidSyslogFormatter_AsFormattedBuffer(name);
 
     struct mq_attr attr = {0};
     attr.mq_maxmsg = (long) maxMessages;
-    attr.mq_msgsize = (long) maxMessageSize;
+    attr.mq_msgsize = (long) SOLIDSYSLOG_MAX_MESSAGE_SIZE;
 
-    self->Mq = mq_open(PosixMessageQueueBuffer_QueueName(self), O_CREAT | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
-    self->MaxMessageSize = maxMessageSize;
+    self->Mq = mq_open(queueName, O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, OWNER_READ_WRITE, &attr);
+    /* errno is captured straight after mq_open, as Read does after
+     * mq_receive (MISRA C:2012 Rule 22.10). */
+    int openErrno = (self->Mq == (mqd_t) -1) ? errno : 0;
     self->Mutex = mutex;
     PosixMessageQueueBuffer_InstallDiscardPolicy(self, getDiscardPolicy, discardPolicyContext);
     self->RefusalReported = false;
     self->FailureReported = false;
     self->EvictionReported = false;
     self->Full = false;
-    self->Base.Write = PosixMessageQueueBuffer_Write;
-    self->Base.Read = PosixMessageQueueBuffer_Read;
-    self->Base.IsFull = PosixMessageQueueBuffer_IsFull;
-    return self->Mq != (mqd_t) -1;
+
+    /* A slot whose open failed keeps the functions it had, so a handle left
+     * from an earlier Destroy of the slot stays a NullBuffer. */
+    if (openErrno == 0)
+    {
+        /* The descriptor is all this process needs, and a forked child
+         * inherits it, so the name goes at once: nothing else can open the
+         * queue by it, and it is freed with the last descriptor. */
+        (void) mq_unlink(queueName);
+        self->Base.Write = PosixMessageQueueBuffer_Write;
+        self->Base.Read = PosixMessageQueueBuffer_Read;
+        self->Base.IsFull = PosixMessageQueueBuffer_IsFull;
+    }
+    return openErrno;
 }
 
 static inline void PosixMessageQueueBuffer_InstallDiscardPolicy(
@@ -141,15 +154,9 @@ void SolidSyslogPosixMessageQueueBuffer_Cleanup(struct SolidSyslogBuffer* base)
 {
     struct SolidSyslogPosixMessageQueueBuffer* self = PosixMessageQueueBuffer_SelfFromBase(base);
     mq_close(self->Mq);
-    mq_unlink(PosixMessageQueueBuffer_QueueName(self));
     /* Overwrite the abstract base with the shared NullBuffer vtable so
      * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
     *base = *SolidSyslogNullBuffer_Get();
-}
-
-static inline const char* PosixMessageQueueBuffer_QueueName(struct SolidSyslogPosixMessageQueueBuffer* self)
-{
-    return SolidSyslogFormatter_AsFormattedBuffer(SolidSyslogFormatter_FromStorage(self->NameStorage));
 }
 
 static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)

@@ -14,7 +14,7 @@
  *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, as a run of its own. Read
  *  (mq_receive) is a non-blocking poll where an empty queue is silent and any
  *  other failure is reported. Each pool slot owns a distinct queue
- *  /solidsyslog_<pid>_<slot>, unlinked on Destroy. */
+ *  /solidsyslog_<pid>_<slot>, whose name is unlinked as soon as it is open. */
 #ifndef SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 #define SOLIDSYSLOGPOSIXMESSAGEQUEUEBUFFER_H
 
@@ -28,19 +28,21 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBuffer;
     struct SolidSyslogMutex;
 
-    /** @p maxMessageSize must be SOLIDSYSLOG_MAX_MESSAGE_SIZE: SolidSyslog_Service
-     *  reads each record into a buffer of that size, and mq_receive refuses a
-     *  buffer smaller than the queue's message size, so a larger value fails every
-     *  read and a smaller one refuses every longer record. A queue that already
-     *  exists under the name keeps its own attributes, so a stale one, left by a
-     *  process that did not destroy its buffer, can have another size; remove it
-     *  with mq_unlink. @p maxMessages sizes the
-     *  queue; an exhausted pool falls back to the shared NullBuffer. @p mutex makes Write safe for tasks
-     *  logging at once, and guards what Read and IsFull share with it, so
-     *  inject SolidSyslogNullMutex_Get() only when one task both logs and calls
-     *  SolidSyslog_Service. It must outlive the buffer. It guards this
-     *  process's own state, not the queue, which the kernel shares between
-     *  processes itself.
+    /** @p maxMessages sizes the queue, whose messages are
+     *  SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes. The buffer creates its own queue and
+     *  unlinks the name as soon as it is open, so the queue is reachable by name
+     *  only in the moment between the two, and the kernel frees it when the last
+     *  descriptor closes - this process's, a forked child's, or one a same-user
+     *  process took in that moment. A queue that already exists under the name
+     *  is refused and left in place; that, like any other failed open, is
+     *  reported as ERROR with the errno as the native code, and Create returns
+     *  the shared NullBuffer, as it does when the pool is exhausted.
+     *
+     *  @p mutex makes Write safe for tasks logging at once, and guards what Read
+     *  and IsFull share with it, so inject SolidSyslogNullMutex_Get() only when
+     *  one task both logs and calls SolidSyslog_Service. It must outlive the
+     *  buffer. It guards this process's own state, not the queue, which the
+     *  kernel shares between processes itself.
      *
      *  @p getDiscardPolicy is asked, with @p discardPolicyContext, on a send
      *  the full queue refuses, from the task that logs; give it the function
@@ -52,12 +54,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  being written. */
     struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
         struct SolidSyslogMutex * mutex,
-        size_t maxMessageSize,
         size_t maxMessages,
         SolidSyslogDiscardPolicyFunction getDiscardPolicy,
         void* discardPolicyContext
     );
-    /** Release the pool slot; closes and unlinks the underlying queue. */
+    /** Release the pool slot; closes the underlying queue. */
     void SolidSyslogPosixMessageQueueBuffer_Destroy(struct SolidSyslogBuffer * base);
 
 SOLIDSYSLOG_EXTERN_C_END
