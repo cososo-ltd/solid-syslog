@@ -8,7 +8,9 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogNullSender.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogSender.h"
+#include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogSwitchingSenderErrors.h"
@@ -32,7 +34,8 @@ static inline void SwitchingSender_SwitchTo(
     struct SolidSyslogSwitchingSender* self,
     struct SolidSyslogSender* newCurrent
 );
-static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self);
+static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(struct SolidSyslogSwitchingSender* self);
+static inline void SwitchingSender_ReportOutOfRange(struct SolidSyslogSwitchingSender* self);
 
 void SolidSyslogSwitchingSender_Initialise(
     struct SolidSyslogSender* base,
@@ -44,6 +47,7 @@ void SolidSyslogSwitchingSender_Initialise(
     self->Base.Disconnect = SwitchingSender_Disconnect;
     self->Config = *config;
     self->CurrentSender = SolidSyslogNullSender_Get();
+    self->OutOfRangeReported = false;
 }
 
 void SolidSyslogSwitchingSender_Cleanup(struct SolidSyslogSender* base)
@@ -103,8 +107,8 @@ static inline void SwitchingSender_SwitchTo(
 /* Out-of-range selector index (including empty-array case) resolves to the
  * shared NullSender. NullSender.Send returns true so the Service algorithm
  * drops the message - a misconfigured selector must not retain messages in
- * the Store. */
-static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const struct SolidSyslogSwitchingSender* self)
+ * the Store - and the loss is reported. */
+static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(struct SolidSyslogSwitchingSender* self)
 {
     struct SolidSyslogSender* result = SolidSyslogNullSender_Get();
     uint8_t index = self->Config.Selector(self->Config.SelectorContext);
@@ -112,7 +116,29 @@ static inline struct SolidSyslogSender* SwitchingSender_RequestedSender(const st
     if (index < self->Config.SenderCount)
     {
         result = self->Config.Senders[index];
+        self->OutOfRangeReported = false;
+    }
+    else
+    {
+        SwitchingSender_ReportOutOfRange(self);
     }
 
     return result;
+}
+
+/* One report stands for a run of out-of-range indexes; the next index in range
+ * ends the run. Checked where the index is read rather than on a switch, as
+ * CurrentSender starts as the NullSender and a selector out of range from the
+ * first Send never switches. */
+static inline void SwitchingSender_ReportOutOfRange(struct SolidSyslogSwitchingSender* self)
+{
+    if (!self->OutOfRangeReported)
+    {
+        SwitchingSender_Report(
+            SOLIDSYSLOG_SEVERITY_CRITICAL,
+            SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+            SOLIDSYSLOG_SWITCHING_SENDER_ERROR_SELECTOR_OUT_OF_RANGE
+        );
+        self->OutOfRangeReported = true;
+    }
 }

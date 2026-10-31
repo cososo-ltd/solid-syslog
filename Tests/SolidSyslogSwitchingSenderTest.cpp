@@ -8,6 +8,7 @@
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSender.h"
+#include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogSwitchingSenderErrors.h"
 #include "SolidSyslogTunables.h"
@@ -64,6 +65,7 @@ TEST_GROUP(SolidSyslogSwitchingSender)
         inners[1] = innerB;
         inners[2] = innerC;
         CreateSwitchingSender(2);
+        ErrorHandlerFake_Install(nullptr);
     }
 
     void teardown() override
@@ -281,6 +283,50 @@ TEST(SolidSyslogSwitchingSender, SelectorBeyondEndSendReturnsTrueAndDoesNotTouch
     CHECK_TRUE(SolidSyslogSender_Send(sender, "x", 1));
     CALLED_FAKE_ON(SenderFake_Send, innerA, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, innerB, NEVER);
+}
+
+TEST(SolidSyslogSwitchingSender, SelectorBeyondEndOnFirstSendReportsRecordsLost)
+{
+    selectorReturn = BEYOND_END;
+    Send("x", 1);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_SELECTOR_OUT_OF_RANGE
+    );
+}
+
+TEST(SolidSyslogSwitchingSender, SwitchingFromSenderToBeyondEndReportsRecordsLost)
+{
+    Send("x", 1);
+    selectorReturn = BEYOND_END;
+    Send("y", 1);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_SELECTOR_OUT_OF_RANGE
+    );
+}
+
+TEST(SolidSyslogSwitchingSender, SelectorStayingBeyondEndReportsRecordsLostOnlyOnce)
+{
+    selectorReturn = BEYOND_END;
+    Send("x", 1);
+    Send("y", 1);
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogSwitchingSender, SelectorBackInRangeRearmsRecordsLost)
+{
+    selectorReturn = BEYOND_END;
+    Send("x", 1);
+    selectorReturn = INNER_A;
+    Send("y", 1);
+    selectorReturn = BEYOND_END;
+    Send("z", 1);
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogSwitchingSender, DisconnectAfterSwitchingBeyondEndIsNilSafe)
