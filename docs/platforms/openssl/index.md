@@ -89,10 +89,12 @@ reported as `CIPHER_POLICY_REJECTED`, rather than falling back. An empty
 `CipherSuites` is not rejected: it is OpenSSL's way of turning TLS 1.3 off.
 
 The security level and the minimum protocol version are floors, not settings:
-level 2 and TLS 1.2. Where the context starts - from the build, from `openssl.cnf`,
-or from a `CipherList` carrying `@SECLEVEL=n` - a weaker value is raised to the
-floor and a stricter one is kept. The level is read once the policy is applied, so
-a list cannot lower it.
+level 2 and TLS 1.2. The stream reads what the context holds and raises only a
+weaker value, so a stricter one is kept. The minimum protocol comes from the
+build and `openssl.cnf`. The security level comes from those too, unless the
+`CipherList` carries `@SECLEVEL=n`: that overrides the host's level, higher or
+lower, as it does anywhere in OpenSSL. The stream reads the level once the
+policy is applied, so a list can move it between levels but never below 2.
 
 Key-exchange groups and signature algorithms are not selectable here. TLS 1.3
 moved both out of the ciphersuite, so a policy naming a curve has nowhere to go

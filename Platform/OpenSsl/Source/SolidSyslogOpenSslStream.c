@@ -446,7 +446,9 @@ static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStr
  * OpenSSL's level 2. A floor rather than a setting: the build, openssl.cnf and
  * a cipher string's @SECLEVEL=n decide where the context starts, a weaker
  * start is raised and a stricter one stands. Read after the cipher policy,
- * since the string is the last of those to move it. */
+ * since the string is the last of those to move it: the profile's own
+ * @SECLEVEL overrides the host's, as it does anywhere in OpenSSL, and only
+ * this floor is beneath both. */
 static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx)
 {
     if (SSL_CTX_get_security_level(ctx) < OPENSSL_STREAM_SECURITY_LEVEL_FLOOR)
