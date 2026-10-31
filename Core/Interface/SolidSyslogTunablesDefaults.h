@@ -791,6 +791,8 @@
  * is sent. This and the two tunables below are applied by every TCP Stream
  * backend that can set keepalive on its own connection; a backend whose stack
  * sets keepalive globally says so on its platform page.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS
 #define SOLIDSYSLOG_TCP_KEEPALIVE_IDLE_SECONDS 45U
@@ -802,6 +804,8 @@
 
 /**
  * Interval between keepalive probes once the idle period has elapsed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS
 #define SOLIDSYSLOG_TCP_KEEPALIVE_INTERVAL_SECONDS 10U
@@ -814,10 +818,10 @@
 /**
  * Unanswered keepalive probes tolerated before the peer is declared dead.
  *
- * Floor: 1 for each of the three keepalive tunables. Ceiling: the keepalive
- * window, the idle period plus the interval across every probe, must not
- * exceed 2147483 s, so that it is still representable in milliseconds as a
- * signed 32-bit value. Values outside the range are rejected at compile time.
+ * Floor: 1. Ceiling: the keepalive window, the idle period plus the interval
+ * across every probe, must not exceed 2147483 s, so that it is still
+ * representable in milliseconds as a signed 32-bit value. Values outside the
+ * range are rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT
 #define SOLIDSYSLOG_TCP_KEEPALIVE_PROBE_COUNT 4U
