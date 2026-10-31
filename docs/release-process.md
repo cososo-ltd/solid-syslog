@@ -200,8 +200,10 @@ finished when all four parts exist, and the stack's `main` README names them.
 3. A tag `v<version>` at the branch tip, carrying a GitHub Release marked
    latest, with the sweep output attached as `sweep-<version>.zip` and a
    description naming the branch, the library tag and SHA it pins, and the
-   Sweep run. One command creates the tag, the Release, its description and
-   its attachment together, so none can be left behind:
+   Sweep run. One command creates them together: with an asset named, gh
+   creates the Release as a draft, uploads the asset, then publishes, so a
+   failed upload leaves a draft rather than a published Release without its
+   file. Confirm with `gh release view v<version>` that the asset is listed:
 
    ```bash
    gh release create v<version> --target <tip> --title <version> --latest \
