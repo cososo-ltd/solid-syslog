@@ -63,8 +63,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  statement - the record is too big and the implementation will not say
      *  what would fit - and the record is discarded rather than offered for
      *  ever. A trimmed record refused for size again is discarded the same
-     *  way. The sender reports either discard as
-     *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, once per run of such records. */
+     *  way, and the sender reports either discard as
+     *  SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST. */
     enum SolidSyslogDatagramSendResult SolidSyslogDatagram_SendTo(
         struct SolidSyslogDatagram * datagram,
         const void* buffer,

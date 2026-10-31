@@ -687,10 +687,10 @@ TEST(SolidSyslogUdpSenderRetry, OversizeRetryWalksBackToCodepointBoundary)
     LONGS_EQUAL(2, retrySendSize());
 }
 
-/* Double-OVERSIZE means the kernel disagreed with its own reported
- * MaxPayload - impossible-shouldn't-happen but if it did, returning
- * false would loop the buffered algorithm forever on an undeliverable.
- * Swallow: drop the message and return true so the caller moves on. */
+/* Double-OVERSIZE means the datagram refused a record trimmed to its own
+ * MaxPayload. Returning false would loop the buffered algorithm forever on
+ * an undeliverable, so the record is discarded - and reported - and true
+ * lets the caller move on. */
 TEST(SolidSyslogUdpSenderRetry, DoubleOversizeReturnsTrueToAvoidPermanentLoop)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
@@ -771,8 +771,8 @@ TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadSkipsRetrySend)
 }
 
 /* Trimmed length 0 means the message physically can't fit the path -
- * looping won't help, so we swallow and report success. The Buffered/
- * Service algorithm discards rather than retrying forever. */
+ * looping won't help, so the record is discarded and true returned. The
+ * Buffered/Service algorithm moves on rather than retrying forever. */
 TEST(SolidSyslogUdpSenderRetry, ZeroMaxPayloadReturnsTrueToAvoidPermanentLoop)
 {
     firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
@@ -802,6 +802,22 @@ TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeReturnsFalse)
     retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
     maxPayload(3);
     CHECK_FALSE(Send());
+}
+
+/* A transient failure keeps the record, so it is not a loss: the only report
+ * is the delivery-health edge. */
+TEST(SolidSyslogUdpSenderRetry, RetryFailedNonOversizeDoesNotReportRecordsLost)
+{
+    firstSendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+    retrySendReturns(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
+    maxPayload(3);
+    Send();
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_FAILED
+    );
 }
 
 TEST(SolidSyslogUdpSenderRetry, MaxPayloadLargerThanMessageCapsTrimToMessageSize)
