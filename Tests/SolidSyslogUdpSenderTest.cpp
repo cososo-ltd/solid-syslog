@@ -1090,6 +1090,14 @@ TEST_GROUP_BASE(SolidSyslogUdpSenderDeliveryHealth, UdpSenderTestBase)
     {
         DatagramFake_SetSendResult(datagram, callIndex, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_FAILED);
     }
+
+    /* Refused for size on a path that cannot carry any of it, so the record
+     * is discarded. */
+    void sendNumberIsTooLarge(int callIndex) const
+    {
+        DatagramFake_SetSendResult(datagram, callIndex, SOLIDSYSLOG_DATAGRAM_SEND_RESULT_OVERSIZE);
+        DatagramFake_SetMaxPayload(datagram, 0);
+    }
 };
 
 // clang-format on
@@ -1127,6 +1135,23 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, RecoveryAfterDownReportsDeliveryRestore
         &SolidSyslogUdpSenderErrorSource,
         SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
         SOLIDSYSLOG_UDP_SENDER_ERROR_DELIVERY_RESTORED
+    );
+}
+
+/* A discarded record reached nobody, so it is not a recovery: the only report
+ * after the failure is the loss. */
+TEST(SolidSyslogUdpSenderDeliveryHealth, RecordTooLargeAfterDownDoesNotReportDeliveryRestored)
+{
+    sendNumberFails(0);
+    sendNumberIsTooLarge(1);
+    Send();
+    Send();
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_RECORD_TOO_LARGE
     );
 }
 
