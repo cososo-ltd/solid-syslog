@@ -26,6 +26,7 @@ struct SolidSyslogStore;
 
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base);
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
+static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* policy);
 static struct SolidSyslogStore* BlockStore_CreateInSlot(
@@ -48,13 +49,36 @@ static struct SolidSyslogPoolAllocator BlockStore_Allocator = {BlockStore_InUse,
 struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config)
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
-    struct SolidSyslogSecurityPolicy* policy = BlockStore_ResolveSecurityPolicy(config->SecurityPolicy);
 
-    if (BlockStore_TrailerFits(policy))
+    if (BlockStore_IsValidConfig(config))
     {
-        result = BlockStore_CreateInSlot(config, policy);
+        result = BlockStore_CreateInSlot(config, BlockStore_ResolveSecurityPolicy(config->SecurityPolicy));
     }
-    else
+
+    return result;
+}
+
+static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config)
+{
+    bool valid = false;
+
+    if (config == NULL)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG
+        );
+    }
+    else if (config->BlockDevice == NULL)
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
+        );
+    }
+    else if (!BlockStore_TrailerFits(BlockStore_ResolveSecurityPolicy(config->SecurityPolicy)))
     {
         BlockStore_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
@@ -62,8 +86,12 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
             SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
         );
     }
+    else
+    {
+        valid = true;
+    }
 
-    return result;
+    return valid;
 }
 
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured)

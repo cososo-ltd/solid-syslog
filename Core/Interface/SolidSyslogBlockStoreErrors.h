@@ -59,6 +59,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  is wider than SOLIDSYSLOG_MAX_INTEGRITY_SIZE, so Create refused it
          *  rather than store records without it. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE,
+        /* Raised under SOLIDSYSLOG_CAT_BAD_CONFIG, naming what Create was not
+           given. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

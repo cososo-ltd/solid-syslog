@@ -60,7 +60,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Destroy releases only the store's own slot. */
     struct SolidSyslogBlockStoreConfig
     {
-        struct SolidSyslogBlockDevice* BlockDevice; /**< Required; block store is the sole writer. */
+        /** Required: Create refuses a NULL device. The block store is the sole
+         *  writer. */
+        struct SolidSyslogBlockDevice* BlockDevice;
         /** Retention ceiling in blocks, clamped to 2..98; GetDiscardPolicy governs
          *  the overflow. An eviction that fails freezes the store with one block more
          *  than this on the media, and the next start keeps it. */
@@ -78,12 +80,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Create a store from @p config, resuming from any records already on the
-     *  device. A NULL config, an exhausted pool, or a failed inner allocation
-     *  falls back to the shared NullStore. So does a SecurityPolicy whose
-     *  trailer is wider than SOLIDSYSLOG_MAX_INTEGRITY_SIZE, reported at
-     *  CRITICAL, since storing records without it would leave them unprotected.
-     *  A block too small for one worst-case record is grown to fit and reported
-     *  as a WARNING, not a failure. */
+     *  device. Each of these is reported at CRITICAL and falls back to the
+     *  shared NullStore: a NULL config or BlockDevice, an exhausted pool, a
+     *  failed inner allocation, and a SecurityPolicy whose trailer is wider than
+     *  SOLIDSYSLOG_MAX_INTEGRITY_SIZE, since storing records without it would
+     *  leave them unprotected. A block too small for one worst-case record is
+     *  grown to fit and reported as a WARNING, not a failure. */
     struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config);
     /** Release the pool slot; does not destroy the injected BlockDevice or
      *  SecurityPolicy. */

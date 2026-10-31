@@ -709,6 +709,44 @@ TEST(SolidSyslogBlockStoreConfig, APolicyWhoseTrailerDoesNotFitIsReportedAsFatal
     );
 }
 
+TEST(SolidSyslogBlockStoreConfig, ANullConfigIsRefused)
+{
+    store = SolidSyslogBlockStore_Create(nullptr);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, ANullConfigIsReportedAsFatal)
+{
+    ErrorHandlerFake_Install(nullptr);
+    store = SolidSyslogBlockStore_Create(nullptr);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG
+    );
+}
+
+TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsRefused)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(nullptr);
+    store = SolidSyslogBlockStore_Create(&config);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsReportedAsFatal)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(nullptr);
+    store = SolidSyslogBlockStore_Create(&config);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
+    );
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {
@@ -3132,6 +3170,31 @@ TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "pool slot collided with NullStore singleton");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
+}
+
+TEST(SolidSyslogBlockStorePool, ANullConfigLeavesEverySlotFree)
+{
+    (void) SolidSyslogBlockStore_Create(nullptr);
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a NULL config kept a pool slot");
+    }
+}
+
+TEST(SolidSyslogBlockStorePool, ANullBlockDeviceLeavesEverySlotFree)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(nullptr);
+    (void) SolidSyslogBlockStore_Create(&config);
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a NULL BlockDevice kept a pool slot");
     }
 }
 
