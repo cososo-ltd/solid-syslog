@@ -14,7 +14,6 @@
 #include "SolidSyslogBufferDefinition.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
-#include "SolidSyslogFormatter.h"
 #include "SolidSyslogPosixMessageQueueBufferErrors.h"
 #include "SolidSyslogPrival.h"
 
@@ -30,8 +29,6 @@ struct SolidSyslogPosixMessageQueueBuffer
     struct SolidSyslogBuffer Base;
     struct SolidSyslogMutex* Mutex;
     mqd_t Mq;
-    SolidSyslogFormatterStorage
-        NameStorage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(POSIX_MESSAGE_QUEUE_BUFFER_MAX_NAME_SIZE)];
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;
     /* Each report stands for a run of records the queue would not take as it

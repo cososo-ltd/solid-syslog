@@ -137,6 +137,12 @@ TEST(SolidSyslogPosixMessageQueueBuffer, TheQueueTakesMessagesOfTheLibrarysMessa
     LONGS_EQUAL(SOLIDSYSLOG_MAX_MESSAGE_SIZE, MqFake_LastOpenMaxMessageSize());
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, TheQueueNameIsUnlinkedOnceTheQueueIsOpen)
+{
+    CALLED_FAKE(MqFake_Unlink, ONCE);
+    STRCMP_EQUAL(MqFake_LastOpenName(), MqFake_LastUnlinkName());
+}
+
 TEST(SolidSyslogPosixMessageQueueBuffer, MultipleWritesReadInOrder)
 {
     SolidSyslogBuffer_Write(buffer, "first", 5);
@@ -849,6 +855,17 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfPooledHandleLocksOnce)
 
     CALLED_FAKE(ConfigLockFake_Lock, ONCE);
     CALLED_FAKE(ConfigLockFake_Unlock, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyClosesTheQueueAndHasNoNameLeftToUnlink)
+{
+    pooled[0] = MakeBuffer();
+
+    SolidSyslogPosixMessageQueueBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+
+    CALLED_FAKE(MqFake_Close, ONCE);
+    CALLED_FAKE(MqFake_Unlink, ONCE);
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, DestroyOfUnknownHandleDoesNotLock)
