@@ -365,21 +365,79 @@ TEST(SolidSyslogOpenSslStream, OpenRequiresPeerVerification)
     LONGS_EQUAL(SSL_VERIFY_PEER, OpenSslFake_LastVerifyMode());
 }
 
-TEST(SolidSyslogOpenSslStream, OpenSetsTls12Floor)
+/* A context with no minimum configured reads 0, OpenSSL's "the lowest the
+   build supports". */
+TEST(SolidSyslogOpenSslStream, OpenRaisesAnUnsetMinimumProtocolVersionToTls12)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_CtxMinProtoVersion());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenRaisesAWeakerHostMinimumProtocolVersionToTls12)
+{
+    OpenSslFake_SetHostMinProtoVersion(TLS1_VERSION);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_CtxMinProtoVersion());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostMinimumProtocolVersion)
+{
+    OpenSslFake_SetHostMinProtoVersion(TLS1_3_VERSION);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(TLS1_3_VERSION, OpenSslFake_CtxMinProtoVersion());
 }
 
 /* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,
-   no SHA-1 signatures. Level 2 is what OpenSSL builds with by default, but a
-   distribution can build with another, and a profile's CipherList may carry
-   @SECLEVEL=n. The fake resets the level when a cipher list is set, so this
-   also proves the level is pinned after the policy rather than before it. */
-TEST(SolidSyslogOpenSslStream, OpenPinsSecurityLevel2AfterTheCipherPolicy)
+   no SHA-1 signatures. OpenSSL's level 2 is the floor; the build, openssl.cnf
+   and a profile's CipherList carrying @SECLEVEL=n all decide where the context
+   starts. The fake's host starts at 1, OpenSSL 3.0's build default. */
+TEST(SolidSyslogOpenSslStream, OpenRaisesAWeakerHostSecurityLevelTo2)
 {
     SolidSyslogStream_Open(stream, addr);
-    LONGS_EQUAL(2, OpenSslFake_LastSecurityLevel());
+    LONGS_EQUAL(2, OpenSslFake_CtxSecurityLevel());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostSecurityLevel)
+{
+    OpenSslFake_SetHostSecurityLevel(3);
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(3, OpenSslFake_CtxSecurityLevel());
+}
+
+/* Raised after the policy rather than before it, or the list would lower it
+   again. */
+TEST(SolidSyslogOpenSslStream, OpenRaisesASecurityLevelTheCipherListLowered)
+{
+    FakeProfile_Value.CipherList = "DEFAULT:@SECLEVEL=0";
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(2, OpenSslFake_CtxSecurityLevel());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterSecurityLevelFromTheCipherList)
+{
+    FakeProfile_Value.CipherList = "DEFAULT:@SECLEVEL=3";
+    SolidSyslogStream_Open(stream, addr);
+    LONGS_EQUAL(3, OpenSslFake_CtxSecurityLevel());
+}
+
+/* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
+   refused. OpenSSL 3.0 refuses by default, but openssl.cnf can set
+   UnsafeLegacyServerConnect, so the stream clears it rather than relying on
+   the default. */
+TEST(SolidSyslogOpenSslStream, OpenClearsALegacyServerConnectTheHostSet)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT);
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_EQUAL(0U, SSL_CTX_get_options(OpenSslFake_LastCtxReturned()) & SSL_OP_LEGACY_SERVER_CONNECT);
+}
+
+/* OpenSSL's client accepts a peer without the extension under either option,
+   and openssl.cnf's UnsafeLegacyRenegotiation sets the second. */
+TEST(SolidSyslogOpenSslStream, OpenClearsAnUnsafeLegacyRenegotiationTheHostSet)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
+    SolidSyslogStream_Open(stream, addr);
+    CHECK_EQUAL(0U, SSL_CTX_get_options(OpenSslFake_LastCtxReturned()) & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
 }
 
 /* An encrypted PEM key otherwise prompts on the controlling terminal from the

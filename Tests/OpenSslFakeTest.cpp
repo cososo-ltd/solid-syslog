@@ -46,11 +46,61 @@ TEST(OpenSslFake, SetVerifyCapturesMode)
     LONGS_EQUAL(SSL_VERIFY_PEER, OpenSslFake_LastVerifyMode());
 }
 
+TEST(OpenSslFake, CtxNewStartsAtTheHostSecurityLevel)
+{
+    OpenSslFake_SetHostSecurityLevel(3);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    LONGS_EQUAL(3, SSL_CTX_get_security_level(ctx));
+}
+
+TEST(OpenSslFake, CipherListCarryingSecLevelSetsTheSecurityLevel)
+{
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_set_cipher_list(ctx, "DEFAULT:@SECLEVEL=4");
+    LONGS_EQUAL(4, SSL_CTX_get_security_level(ctx));
+}
+
+TEST(OpenSslFake, SetSecurityLevelIsReadBack)
+{
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_set_security_level(ctx, 5);
+    LONGS_EQUAL(5, SSL_CTX_get_security_level(ctx));
+}
+
 TEST(OpenSslFake, SetMinProtoVersionCapturesVersion)
 {
     SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
     SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
-    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_LastMinProtoVersion());
+    LONGS_EQUAL(TLS1_2_VERSION, OpenSslFake_CtxMinProtoVersion());
+}
+
+TEST(OpenSslFake, CtxNewStartsAtTheHostMinProtoVersion)
+{
+    OpenSslFake_SetHostMinProtoVersion(TLS1_3_VERSION);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    LONGS_EQUAL(TLS1_3_VERSION, SSL_CTX_get_min_proto_version(ctx));
+}
+
+TEST(OpenSslFake, SetMinProtoVersionIsReadBack)
+{
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
+    LONGS_EQUAL(TLS1_2_VERSION, SSL_CTX_get_min_proto_version(ctx));
+}
+
+TEST(OpenSslFake, CtxNewStartsWithTheHostOptions)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    CHECK_EQUAL(SSL_OP_LEGACY_SERVER_CONNECT, SSL_CTX_get_options(ctx));
+}
+
+TEST(OpenSslFake, ClearOptionsClearsOnlyTheNamedOptions)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_NO_COMPRESSION);
+    SSL_CTX* ctx = SSL_CTX_new(TLS_client_method());
+    SSL_CTX_clear_options(ctx, SSL_OP_LEGACY_SERVER_CONNECT);
+    CHECK_EQUAL(SSL_OP_NO_COMPRESSION, SSL_CTX_get_options(ctx));
 }
 
 TEST(OpenSslFake, CtxNewReturnValueIsSurfaced)

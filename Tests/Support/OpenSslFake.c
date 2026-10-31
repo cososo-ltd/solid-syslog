@@ -123,14 +123,26 @@ static SSL_CTX* lastLoadVerifyLocationsCtxArg;
 static const char* lastCaBundlePath;
 static bool loadVerifyLocationsFails;
 
-/* Session and context policy setters. A cipher string may carry @SECLEVEL=n,
- * so SSL_CTX_set_cipher_list resets the recorded level: asserting the level
- * after Open then proves it was set after the policy, where OpenSSL would
- * actually let it stand. */
-static int lastSecurityLevel;
+/* Session and context policy setters. A context starts at the host's
+ * security level, as OpenSSL's does from the build default and openssl.cnf,
+ * and a cipher string carrying @SECLEVEL=n moves it to n, as OpenSSL's does.
+ * The host level defaults to 1, OpenSSL 3.0's build default. */
+enum
+{
+    FAKE_HOST_SECURITY_LEVEL = 1
+};
+
+static int securityLevel;
+static int hostSecurityLevel;
+static void OpenSslFake_ApplySecLevel(const char* str);
 static pem_password_cb* lastPasswdCb;
 static unsigned int lastHostflags;
 static uint64_t lastSslOptions;
+
+/* A context starts with the host's options, as OpenSSL's does from openssl.cnf
+ * - which can set UnsafeLegacyServerConnect, for one. None unless set. */
+static uint64_t ctxOptions;
+static uint64_t hostCtxOptions;
 
 /* SSL_CTX_set_verify */
 static SSL_CTX* lastSetVerifyCtxArg;
@@ -161,9 +173,12 @@ static bool digestFails;
 static const EVP_MD* lastDigestMd;
 static int fakeSha1Storage;
 
-/* SSL_CTX_ctrl (SET_MIN_PROTO_VERSION) */
+/* SSL_CTX_ctrl (SET_ and GET_MIN_PROTO_VERSION). A context starts at the
+ * host's minimum, as OpenSSL's does from openssl.cnf; 0 is OpenSSL's "the
+ * lowest the build supports", and the default. */
 static SSL_CTX* lastSslCtxCtrlCtxArg;
-static long lastMinProtoVersion;
+static long minProtoVersion;
+static long hostMinProtoVersion;
 static bool minProtoVersionFails;
 
 /* SSL_CTX_set_cipher_list */
@@ -307,10 +322,13 @@ void OpenSslFake_Reset(void)
     loadVerifyLocationsFails = false;
     lastSetVerifyCtxArg = NULL;
     lastVerifyMode = 0;
-    lastSecurityLevel = 0;
+    securityLevel = 0;
+    hostSecurityLevel = FAKE_HOST_SECURITY_LEVEL;
     lastPasswdCb = NULL;
     lastHostflags = 0U;
     lastSslOptions = 0U;
+    ctxOptions = 0U;
+    hostCtxOptions = 0U;
     lastVerifyCallback = NULL;
     lastSslExDataIndex = -1;
     lastSslExData = NULL;
@@ -323,7 +341,8 @@ void OpenSslFake_Reset(void)
     digestFails = false;
     lastDigestMd = NULL;
     lastSslCtxCtrlCtxArg = NULL;
-    lastMinProtoVersion = 0;
+    minProtoVersion = 0;
+    hostMinProtoVersion = 0;
     minProtoVersionFails = false;
     setCipherListCallCount = 0;
     lastSetCipherListCtxArg = NULL;
@@ -478,9 +497,14 @@ int OpenSslFake_LastVerifyMode(void)
     return lastVerifyMode;
 }
 
-int OpenSslFake_LastSecurityLevel(void)
+int OpenSslFake_CtxSecurityLevel(void)
 {
-    return lastSecurityLevel;
+    return securityLevel;
+}
+
+void OpenSslFake_SetHostSecurityLevel(int level)
+{
+    hostSecurityLevel = level;
 }
 
 pem_password_cb* OpenSslFake_LastPasswdCb(void)
@@ -498,14 +522,37 @@ uint64_t OpenSslFake_LastSslOptions(void)
     return lastSslOptions;
 }
 
+void OpenSslFake_SetHostCtxOptions(uint64_t options)
+{
+    hostCtxOptions = options;
+}
+
+uint64_t SSL_CTX_get_options(const SSL_CTX* ctx)
+{
+    (void) ctx;
+    return ctxOptions;
+}
+
+uint64_t SSL_CTX_clear_options(SSL_CTX* ctx, uint64_t op)
+{
+    (void) ctx;
+    ctxOptions &= ~op;
+    return ctxOptions;
+}
+
 SSL_CTX* OpenSslFake_LastSslCtxCtrlCtxArg(void)
 {
     return lastSslCtxCtrlCtxArg;
 }
 
-long OpenSslFake_LastMinProtoVersion(void)
+long OpenSslFake_CtxMinProtoVersion(void)
 {
-    return lastMinProtoVersion;
+    return minProtoVersion;
+}
+
+void OpenSslFake_SetHostMinProtoVersion(long version)
+{
+    hostMinProtoVersion = version;
 }
 
 int OpenSslFake_SslNewCallCount(void)
@@ -730,6 +777,9 @@ SSL_CTX* SSL_CTX_new(const SSL_METHOD* method)
 {
     ctxNewCallCount++;
     lastCtxNewMethodArg = method;
+    securityLevel = hostSecurityLevel;
+    minProtoVersion = hostMinProtoVersion;
+    ctxOptions = hostCtxOptions;
     return ctxNewFails ? NULL : (SSL_CTX*) &fakeCtxStorage;
 }
 
@@ -762,7 +812,13 @@ void SSL_CTX_set_verify(SSL_CTX* ctx, int mode, SSL_verify_cb verify_callback)
 void SSL_CTX_set_security_level(SSL_CTX* ctx, int level)
 {
     (void) ctx;
-    lastSecurityLevel = level;
+    securityLevel = level;
+}
+
+int SSL_CTX_get_security_level(const SSL_CTX* ctx)
+{
+    (void) ctx;
+    return securityLevel;
 }
 
 void SSL_CTX_set_default_passwd_cb(SSL_CTX* ctx, pem_password_cb* cb)
@@ -914,8 +970,8 @@ const void* OpenSslFake_LastDigestMd(void)
     return lastDigestMd;
 }
 
-/* SSL_CTX_set_min_proto_version is a macro forwarding to SSL_CTX_ctrl; fake
- * intercepts the ctrl call for the min-proto command only. */
+/* SSL_CTX_set_min_proto_version and SSL_CTX_get_min_proto_version are macros
+ * forwarding to SSL_CTX_ctrl; the fake intercepts those two commands only. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- signature fixed by OpenSSL API
 long SSL_CTX_ctrl(SSL_CTX* ctx, int cmd, long larg, void* parg)
 {
@@ -923,8 +979,15 @@ long SSL_CTX_ctrl(SSL_CTX* ctx, int cmd, long larg, void* parg)
     lastSslCtxCtrlCtxArg = ctx;
     if (cmd == SSL_CTRL_SET_MIN_PROTO_VERSION)
     {
-        lastMinProtoVersion = larg;
+        if (!minProtoVersionFails)
+        {
+            minProtoVersion = larg;
+        }
         return minProtoVersionFails ? 0 : 1;
+    }
+    if (cmd == SSL_CTRL_GET_MIN_PROTO_VERSION)
+    {
+        return minProtoVersion;
     }
     return 1;
 }
@@ -936,11 +999,28 @@ void OpenSslFake_SetMinProtoVersionFails(bool fails)
 
 int SSL_CTX_set_cipher_list(SSL_CTX* ctx, const char* str)
 {
-    lastSecurityLevel = 0;
     setCipherListCallCount++;
     lastSetCipherListCtxArg = ctx;
     lastCipherList = str;
+    if (!setCipherListFails)
+    {
+        OpenSslFake_ApplySecLevel(str);
+    }
     return setCipherListFails ? 0 : 1;
+}
+
+static void OpenSslFake_ApplySecLevel(const char* str)
+{
+    static const char marker[] = "@SECLEVEL=";
+    const char* found = (str != NULL) ? strstr(str, marker) : NULL;
+    if (found != NULL)
+    {
+        const char digit = found[sizeof(marker) - 1U];
+        if ((digit >= '0') && (digit <= '5'))
+        {
+            securityLevel = digit - '0';
+        }
+    }
 }
 
 void OpenSslFake_SetCipherListFails(bool fails)

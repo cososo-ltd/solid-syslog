@@ -38,7 +38,7 @@ const struct SolidSyslogErrorSource SolidSyslogOpenSslStreamErrorSource = {
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 10U,
-    OPENSSL_STREAM_SECURITY_LEVEL = 2,
+    OPENSSL_STREAM_SECURITY_LEVEL_FLOOR = 2,
     OPENSSL_STREAM_DISCARD_BYTES = 16U,
     OPENSSL_STREAM_MAX_READS_BEFORE_WRITE = 8U
 };
@@ -74,7 +74,8 @@ static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogT
 static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
-static inline void OpenSslStream_PinSecurityLevel(SSL_CTX* ctx);
+static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx);
+static inline void OpenSslStream_RequireSecureRenegotiation(SSL_CTX* ctx);
 static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
 static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
 static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
@@ -345,7 +346,8 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
     }
     else
     {
-        OpenSslStream_PinSecurityLevel(self->Ctx);
+        OpenSslStream_RaiseSecurityLevel(self->Ctx);
+        OpenSslStream_RequireSecureRenegotiation(self->Ctx);
         OpenSslStream_RefusePassphrasePrompts(self->Ctx);
     }
     if (!ok)
@@ -441,12 +443,28 @@ static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStr
 }
 
 /* RFC 9325 s4.5: RSA and DH of 2048 bits, curves of 224, no SHA-1 signatures -
- * OpenSSL's level 2. Pinned after the cipher policy, because a cipher string
- * may carry @SECLEVEL=n and a distribution may build with another default;
- * the contract pins the floor rather than inheriting the build's. */
-static inline void OpenSslStream_PinSecurityLevel(SSL_CTX* ctx)
+ * OpenSSL's level 2. A floor rather than a setting: the build, openssl.cnf and
+ * a cipher string's @SECLEVEL=n decide where the context starts, a weaker
+ * start is raised and a stricter one stands. Read after the cipher policy,
+ * since the string is the last of those to move it: the profile's own
+ * @SECLEVEL overrides the host's, as it does anywhere in OpenSSL, and only
+ * this floor is beneath both. */
+static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx)
 {
-    SSL_CTX_set_security_level(ctx, OPENSSL_STREAM_SECURITY_LEVEL);
+    if (SSL_CTX_get_security_level(ctx) < OPENSSL_STREAM_SECURITY_LEVEL_FLOOR)
+    {
+        SSL_CTX_set_security_level(ctx, OPENSSL_STREAM_SECURITY_LEVEL_FLOOR);
+    }
+}
+
+/* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
+ * refused. That is OpenSSL's default from 3.0, but its client accepts such a
+ * peer under either of two options, and openssl.cnf can set both -
+ * UnsafeLegacyServerConnect and UnsafeLegacyRenegotiation - so the stream
+ * clears them rather than inheriting the default. */
+static inline void OpenSslStream_RequireSecureRenegotiation(SSL_CTX* ctx)
+{
+    (void) SSL_CTX_clear_options(ctx, SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
 }
 
 /* An encrypted private key otherwise prompts on the controlling terminal, from
@@ -672,10 +690,17 @@ static inline bool OpenSslStream_IsChainTrustError(int error)
 }
 
 /* A floor, and deliberately no ceiling: RFC 9662, which updates RFC 5425,
- * requires TLS 1.3 to be preferred wherever it is implemented. */
+ * requires TLS 1.3 to be preferred wherever it is implemented. A stricter
+ * minimum from openssl.cnf stands. One configured nowhere reads 0, OpenSSL's
+ * "the lowest the build supports", which is below the floor and so raised. */
 static inline bool OpenSslStream_ConfigureProtocolFloor(SSL_CTX* ctx)
 {
-    return SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) == 1;
+    bool ok = true;
+    if (SSL_CTX_get_min_proto_version(ctx) < TLS1_2_VERSION)
+    {
+        ok = SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) == 1;
+    }
+    return ok;
 }
 
 static inline bool OpenSslStream_ConfigureCipherList(SSL_CTX* ctx, const char* cipherList)

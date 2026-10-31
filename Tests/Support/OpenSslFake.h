@@ -70,10 +70,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct ssl_ctx_st* OpenSslFake_LastSetVerifyCtxArg(void);
     int OpenSslFake_LastVerifyMode(void);
-    int OpenSslFake_LastSecurityLevel(void);
+    /* The level the context holds now. A new context starts at the host's
+     * level, 1 unless set; a cipher list carrying @SECLEVEL=n moves it to n. */
+    int OpenSslFake_CtxSecurityLevel(void);
+    void OpenSslFake_SetHostSecurityLevel(int level);
     int (*OpenSslFake_LastPasswdCb(void))(char*, int, int, void*);
     unsigned int OpenSslFake_LastHostflags(void);
     uint64_t OpenSslFake_LastSslOptions(void);
+    /* The options a new context starts with; SSL_CTX_get_options reads the
+     * context's current ones. */
+    void OpenSslFake_SetHostCtxOptions(uint64_t options);
     int (*OpenSslFake_LastVerifyCallback(void))(int, struct x509_store_ctx_st*);
 
     /* SSL_set_ex_data / SSL_get_ex_data - one slot, which is all
@@ -100,9 +106,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void OpenSslFake_SetDigestFails(bool fails);
     const void* OpenSslFake_LastDigestMd(void); /* compare against EVP_sha1() / EVP_sha256() */
 
-    /* SSL_CTX_ctrl (SET_MIN_PROTO_VERSION path) */
+    /* SSL_CTX_ctrl (SET_ and GET_MIN_PROTO_VERSION paths). The minimum the
+     * context holds now; a new context starts at the host's, 0 unless set. */
     struct ssl_ctx_st* OpenSslFake_LastSslCtxCtrlCtxArg(void);
-    long OpenSslFake_LastMinProtoVersion(void);
+    long OpenSslFake_CtxMinProtoVersion(void);
+    void OpenSslFake_SetHostMinProtoVersion(long version);
 
     int OpenSslFake_SetCipherListCallCount(void);
     struct ssl_ctx_st* OpenSslFake_LastSetCipherListCtxArg(void);
