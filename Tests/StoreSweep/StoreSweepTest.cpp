@@ -146,6 +146,16 @@ bool IsUndetectableLoss(const Case& c)
     return truncatedAtBoundary || flagStuckAtSent;
 }
 
+/* A write the store could not have known was wrong, accepted as a limit of
+ * the Null policy rather than a failure of the store (E25, 2026-11-01): with
+ * nothing to verify a record's length, a damaged length byte places the sent
+ * mark wherever it says. Only a policy's verdict makes a length trustworthy
+ * (S25.02), and the loss that follows is reported and stays in the block. */
+bool IsUnverifiableWrite(const Case& c)
+{
+    return !c.Pol->Strong && IsSingleByteDamage(c.Fault) && StoreBench::IsRecordLengthByte(c.Block, c.Offset);
+}
+
 Verdict Judge(const StoreBench& bench, const Case& c)
 {
     Verdict verdict = {nullptr, ""};
@@ -183,7 +193,7 @@ Verdict Judge(const StoreBench& bench, const Case& c)
         verdict.Kind = KIND_LOSS_OUTSIDE_BLOCK;
         verdict.Detail = "sequence " + std::to_string(outside[0]) + " was lost outside the faulted block";
     }
-    else if (!StoreBench::IllegalWrites().empty())
+    else if (!StoreBench::IllegalWrites().empty() && !IsUnverifiableWrite(c))
     {
         BlockDeviceFakeWrite write = StoreBench::IllegalWrites()[0];
         verdict.Kind = KIND_ILLEGAL_WRITE;

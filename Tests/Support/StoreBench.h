@@ -105,9 +105,11 @@ class StoreBench
 
     /* Where the records the log saw appended lie: a boundary is the first byte
      * of a record or the byte after the last one; the flag byte is a record's
-     * last. The sweep uses these to name the faults no format can detect. */
+     * last; the length bytes are the two after the two-byte magic. The sweep
+     * uses these to name the faults no format, or no policy, can detect. */
     static bool IsRecordBoundary(size_t block, size_t offset);
     static bool IsRecordFlagByte(size_t block, size_t offset);
+    static bool IsRecordLengthByte(size_t block, size_t offset);
 
   private:
     StoreBenchOptions options;

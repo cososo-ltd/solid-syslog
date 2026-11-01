@@ -26,6 +26,14 @@ two ways to reach it are easy to miss: no policy wired, which is optional; and a
 keyed policy whose Create failed - a missing key callback or RNG, or an exhausted
 pool - which is reported once at `CRITICAL`.
 
+Nothing verifies a record's length under the Null policy either. The store
+reads a record by the length it finds and marks it sent at the position that
+length gives, so a damaged length byte puts that mark wherever the damage says.
+That record and the ones after it in the same block are lost, and the loss is
+reported. A policy with integrity rejects the record before any of that. This is
+a limit of the Null policy rather than a fault in the store, and the store sweep
+treats it as one.
+
 ## AES-256-GCM
 
 Two implementations of one policy, `SolidSyslogOpenSslAesGcmPolicy` and

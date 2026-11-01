@@ -359,6 +359,40 @@ bool StoreBench::IsRecordBoundary(size_t block, size_t offset)
     return (offset == 0U) || IsRecordFlagByte(block, offset - 1U);
 }
 
+namespace
+{
+/* The record store's cleartext header: the magic, then the length. */
+const size_t RECORD_MAGIC_SIZE = 2U;
+const size_t RECORD_LENGTH_SIZE = 2U;
+
+bool IsFirstByteOfAnAppend(size_t block, size_t offset)
+{
+    bool found = false;
+    size_t writeCount = BlockDeviceFake_WriteCount();
+
+    for (size_t i = 0U; !found && (i < writeCount); i++)
+    {
+        BlockDeviceFakeWrite append = BlockDeviceFake_Write(i);
+        found = append.Appended && (append.Block == block) && (append.Count > 0U) && (append.Offset == offset);
+    }
+
+    return found;
+}
+} // namespace
+
+bool StoreBench::IsRecordLengthByte(size_t block, size_t offset)
+{
+    bool found = false;
+
+    for (size_t field = 0U; !found && (field < RECORD_LENGTH_SIZE); field++)
+    {
+        size_t start = RECORD_MAGIC_SIZE + field;
+        found = (offset >= start) && IsFirstByteOfAnAppend(block, offset - start);
+    }
+
+    return found;
+}
+
 std::vector<BlockDeviceFakeWrite> StoreBench::IllegalWrites()
 {
     std::vector<BlockDeviceFakeWrite> illegal;

@@ -209,3 +209,16 @@ TEST(StoreBench, TheBenchKnowsWhereTheRecordsItWroteBeginAndEnd)
     CHECK_TRUE(bench.IsRecordFlagByte(0, 73));
     CHECK_FALSE(bench.IsRecordFlagByte(0, 37));
 }
+
+TEST(StoreBench, TheBenchKnowsWhereEachRecordCarriesItsLength)
+{
+    StoreBench bench(options);
+    bench.Write(1); /* two magic bytes, then the two-byte length */
+    bench.Write(2);
+    CHECK_FALSE(bench.IsRecordLengthByte(0, 1));
+    CHECK_TRUE(bench.IsRecordLengthByte(0, 2));
+    CHECK_TRUE(bench.IsRecordLengthByte(0, 3));
+    CHECK_FALSE(bench.IsRecordLengthByte(0, 4));
+    CHECK_TRUE(bench.IsRecordLengthByte(0, 39));
+    CHECK_FALSE(bench.IsRecordLengthByte(1, 2));
+}
