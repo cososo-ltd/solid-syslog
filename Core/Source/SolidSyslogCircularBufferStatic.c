@@ -47,6 +47,14 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
             SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_MUTEX
         );
     }
+    else if (ring == NULL)
+    {
+        CircularBuffer_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_RING
+        );
+    }
     else
     {
         size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
