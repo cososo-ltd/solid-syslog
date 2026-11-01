@@ -13,7 +13,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* An in-memory block device holding the whole block space, for driving the
      * store through media states no file fake can express. One instance; Create
-     * resets it. */
+     * resets it. A block holds 4096 bytes: an Append that would pass that is
+     * refused whatever @p blockSize says. */
     struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t blockSize);
 
     /* Media operations since Create: every vtable call but GetBlockSize, which
@@ -31,7 +32,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /* Writes the device accepted since Create, in order. A refused write is
-     * not logged. Entries past what is kept read back zeroed. */
+     * not logged. The first 1024 are kept; entries past that read back zeroed,
+     * which the bench reports as a write of nothing. */
     size_t BlockDeviceFake_WriteCount(void);
     struct BlockDeviceFakeWrite BlockDeviceFake_Write(size_t index);
 

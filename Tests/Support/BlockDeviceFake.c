@@ -11,7 +11,7 @@ enum
 {
     BLOCKDEVICEFAKE_BLOCKS = 100,
     BLOCKDEVICEFAKE_BLOCK_CAPACITY = 4096,
-    BLOCKDEVICEFAKE_KEPT_WRITES = 256,
+    BLOCKDEVICEFAKE_KEPT_WRITES = 1024,
     BLOCKDEVICEFAKE_OVERLAYS = 8
 };
 
@@ -227,7 +227,8 @@ static bool Append(struct SolidSyslogBlockDevice* base, size_t blockIndex, const
     (void) base;
     CountOperation();
     struct Block* block = PresentBlockAt(blockIndex);
-    bool appended = (block != NULL) && SpanIsWithin(block->Size, count, blockSize);
+    bool appended = (block != NULL) && SpanIsWithin(block->Size, count, blockSize) &&
+                    SpanIsWithin(block->Size, count, BLOCKDEVICEFAKE_BLOCK_CAPACITY);
 
     if (appended)
     {

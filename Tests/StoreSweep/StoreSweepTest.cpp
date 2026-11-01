@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -130,8 +131,12 @@ bool IsSingleByteDamage(const char* fault)
  * inherent and only loss beyond the block is the store's doing. */
 bool BlockIsGone(const char* fault)
 {
-    return (std::string(fault) == "absent-at-open") || (std::string(fault) == "removed-after-operation") ||
-           (std::string(fault) == "torn-append");
+    return (std::string(fault) == "absent-at-open") || (std::string(fault) == "removed-after-operation");
+}
+
+bool IsTornAppend(const char* fault)
+{
+    return std::string(fault) == "torn-append";
 }
 
 /* Two faults no record format of this shape can see, accepted as limits of
@@ -156,16 +161,37 @@ bool IsUnverifiableWrite(const Case& c)
     return !c.Pol->Strong && IsSingleByteDamage(c.Fault) && StoreBench::IsRecordLengthByte(c.Block, c.Offset);
 }
 
+/* The silent losses the store answers for. A block that is gone takes its
+ * own records with it; a torn append loses the one record it was writing and
+ * nothing else in the block, since everything before the tear is whole. */
+std::vector<unsigned> SilentLossesChargedTo(const StoreBench& bench, const Case& c)
+{
+    std::vector<unsigned> silent;
+
+    if (BlockIsGone(c.Fault))
+    {
+        silent = bench.SilentlyLostOutsideBlock(c.Block);
+    }
+    else if (IsUndetectableLoss(c))
+    {
+        /* Nothing is charged. */
+    }
+    else
+    {
+        silent = bench.SilentlyLost();
+        if (IsTornAppend(c.Fault))
+        {
+            silent.erase(std::remove(silent.begin(), silent.end(), FRESH_SEQUENCE), silent.end());
+        }
+    }
+
+    return silent;
+}
+
 Verdict Judge(const StoreBench& bench, const Case& c)
 {
     Verdict verdict = {nullptr, ""};
-    std::vector<unsigned> silent =
-        BlockIsGone(c.Fault) ? bench.SilentlyLostOutsideBlock(c.Block) : bench.SilentlyLost();
-
-    if (IsUndetectableLoss(c))
-    {
-        silent.clear();
-    }
+    std::vector<unsigned> silent = SilentLossesChargedTo(bench, c);
 
     /* A store that has reported itself frozen has stopped using the media on
      * purpose (E43), and media that fails again at the next start is never
@@ -227,9 +253,10 @@ void PrintAccount(const StoreBench& bench);
 /* Builds the scenario, applies the fault through @p apply, restarts, writes
  * one fresh record, drains, then restarts and drains once more - a frozen
  * store keeps its records for the next start, so it gets one - and judges. */
-template <typename Apply> Verdict RunCase(Case c, When when, Apply apply)
+template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
 {
     StoreBench bench(OptionsFor(c));
+    Case judged = c; /* the tuple names the case; the fault's block is resolved below */
     Populate(bench, *c.Scene);
 
     if (when == BEFORE_RESTART)
@@ -244,7 +271,7 @@ template <typename Apply> Verdict RunCase(Case c, When when, Apply apply)
         apply(c);
         bench.MarkFaultApplied();
         bench.Write(FRESH_SEQUENCE); /* the write the power loss cuts */
-        c.Block = BlockDeviceFake_Write(BlockDeviceFake_WriteCount() - 1U).Block;
+        judged.Block = BlockDeviceFake_Write(BlockDeviceFake_WriteCount() - 1U).Block;
         bench.Restart();
     }
 
@@ -257,7 +284,7 @@ template <typename Apply> Verdict RunCase(Case c, When when, Apply apply)
         PrintAccount(bench);
     }
 
-    return Judge(bench, c);
+    return Judge(bench, judged);
 }
 
 std::string Join(const std::vector<unsigned>& sequences)
@@ -350,12 +377,19 @@ Grid BlocksOf(const Case& c, size_t variants)
 }
 
 /* How many media operations a clean run of the case makes after the fault
- * point, so a removal can be placed after each one. */
+ * point, so a removal can be placed after each one. The operations that
+ * populate the scenario come before that point and are not positions. */
 Grid OperationsOf(const Case& c, size_t variants)
 {
     Grid grid = BlocksOf(c, variants);
+    size_t populating = 0U;
+    {
+        StoreBench bench(OptionsFor(c));
+        Populate(bench, *c.Scene);
+        populating = BlockDeviceFake_OperationCount();
+    }
     RunCase(c, BEFORE_RESTART, [](const Case&) {});
-    size_t operations = BlockDeviceFake_OperationCount();
+    size_t operations = BlockDeviceFake_OperationCount() - populating;
 
     for (size_t block = 0U; block < grid.Blocks; block++)
     {
@@ -604,8 +638,9 @@ TEST(StoreSweep, ABlockRemovedWhileRunning)
     );
 }
 
-/* offset is how many bytes of the fresh record land; the block is the one
- * being written. */
+/* offset is how many bytes of the fresh record land; the tuple's block is the
+ * layout's last, and the case is judged in the block the write landed in,
+ * which is the next one when the layout's last is full. */
 TEST(StoreSweep, PowerLossDuringTheWrite)
 {
     Sweep(
