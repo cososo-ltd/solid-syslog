@@ -448,7 +448,11 @@ static inline bool HasBytesToRead(const struct FileFake* fake, size_t count)
 
 static inline void CopyFromFile(struct FileFake* fake, void* buf, size_t count)
 {
-    memcpy(buf, fake->active->content + fake->position, count);
+    /* A read of nothing may carry no buffer; memcpy takes none as undefined. */
+    if (count > 0U)
+    {
+        memcpy(buf, fake->active->content + fake->position, count);
+    }
     AdvancePosition(fake, count);
 }
 

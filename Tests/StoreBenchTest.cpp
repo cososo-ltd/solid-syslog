@@ -1,11 +1,24 @@
 #include "StoreBench.h"
+#include "SolidSyslogTunables.h"
 #include "SolidSyslogBlockDevice.h"
 #include "CppUTest/TestHarness.h"
+
+/* A block that holds one worst-case record and not two, whatever the build's
+ * message limit: the store grows a smaller block to this minimum. */
+const size_t ONE_RECORD_BLOCK = SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 5U;
 
 // clang-format off
 TEST_GROUP(StoreBench)
 {
     StoreBenchOptions options = {1024, 2, nullptr, 32};
+    StoreBenchOptions oneRecordPerBlock = {ONE_RECORD_BLOCK, 3, nullptr, SOLIDSYSLOG_MAX_MESSAGE_SIZE};
+
+    /* The second write rotates, so the records sit in blocks 0 and 1. */
+    static void WriteOneRecordToEachOfTwoBlocks(StoreBench& bench)
+    {
+        bench.Write(1);
+        bench.Write(2);
+    }
 };
 
 // clang-format on
@@ -103,11 +116,8 @@ TEST(StoreBench, AWriteAtThatIsNotAFlagByteAtARecordEndIsIllegal)
 
 TEST(StoreBench, ALostRecordOutsideTheFaultedBlockIsNamed)
 {
-    /* One worst-case record per block, so the second write rotates to block 1. */
-    StoreBenchOptions oneRecordPerBlock = {485, 3, nullptr, 480};
     StoreBench bench(oneRecordPerBlock);
-    bench.Write(1);
-    bench.Write(2);
+    WriteOneRecordToEachOfTwoBlocks(bench);
     BlockDeviceFake_FlipBit(1, 0, 0);
     bench.Drain(10);
     LONGS_EQUAL(1, bench.Lost().size());
@@ -118,10 +128,8 @@ TEST(StoreBench, ALostRecordOutsideTheFaultedBlockIsNamed)
 
 TEST(StoreBench, ALostRecordStillReadableOnTheMediaIsNotGone)
 {
-    StoreBenchOptions oneRecordPerBlock = {485, 3, nullptr, 480};
     StoreBench bench(oneRecordPerBlock);
-    bench.Write(1);
-    bench.Write(2);
+    WriteOneRecordToEachOfTwoBlocks(bench);
     BlockDeviceFake_FailReadsTouching(0, 0); /* the store freezes on the older block */
     bench.Drain(10);
     LONGS_EQUAL(1, bench.FreezeReports());
@@ -131,10 +139,8 @@ TEST(StoreBench, ALostRecordStillReadableOnTheMediaIsNotGone)
 
 TEST(StoreBench, ALostRecordWhoseBlockWasRemovedIsGone)
 {
-    StoreBenchOptions oneRecordPerBlock = {485, 3, nullptr, 480};
     StoreBench bench(oneRecordPerBlock);
-    bench.Write(1);
-    bench.Write(2);
+    WriteOneRecordToEachOfTwoBlocks(bench);
     BlockDeviceFake_RemoveBlock(1);
     bench.Drain(10);
     LONGS_EQUAL(1, bench.GoneOutsideBlock(0).size());
