@@ -18,6 +18,7 @@
 
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetMtlsConfig.h"
+#include "BddTargetOsPrimitives.h"
 #include "BddTargetPlusFatMount.h"
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
@@ -142,6 +143,10 @@ int main(void)
         {
         }
     }
+
+    /* The console lock has to exist before the IP task's event hook spawns the
+     * two writers. */
+    BddTargetOsPrimitives_InitialiseOs();
 
     vTaskStartScheduler();
 

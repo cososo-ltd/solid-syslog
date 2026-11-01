@@ -11,8 +11,9 @@
  *
  * Two threads write the one UART, and the driver yields between bytes, so
  * each _write and each echoed byte holds the console lock from
- * BddTargetOsPrimitives.h. Whether a line reaches _write whole is the
- * stream's buffering, which BddTargetFreeRtosPipeline_InitConsole sets.
+ * BddTargetOsPrimitives.h. The lock keeps one write whole; it does not make
+ * stdio shareable, which is why the pipeline keeps the Service thread's
+ * output out of stdio altogether.
  *
  * Not host-TDD'd - this file exists only in the cross build (gated by
  * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The QEMU
