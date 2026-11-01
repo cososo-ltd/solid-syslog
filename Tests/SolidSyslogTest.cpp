@@ -1351,6 +1351,23 @@ TEST(SolidSyslogServiceHalt, ARefusalUnderNewestDoesNotHalt)
     LONGS_EQUAL(SOLIDSYSLOG_SERVICE_READY, SolidSyslog_Service(solidSyslog));
 }
 
+/* OnHalt is optional: with none configured the halt still takes effect, and
+ * the integrator reads it from the Service return instead. */
+TEST(SolidSyslogServiceHalt, AHaltWithNoCallbackConfiguredStillHalts)
+{
+    SolidSyslog_Destroy(solidSyslog);
+    SolidSyslogConfig config = {};
+    config.Buffer = fakeBuffer;
+    config.Sender = fakeSender;
+    config.Store = fakeStore;
+    config.GetDiscardPolicy = AnswersConfiguredPolicy;
+    config.DiscardPolicyContext = &policy;
+    solidSyslog = SolidSyslog_Create(&config);
+    LogOneTheStoreRefuses();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, SolidSyslog_Service(solidSyslog));
+}
+
 /* A store that keeps nothing never had the record, so its refusal is not the
  * policy speaking: the record goes to the sender, and the logger runs on. */
 TEST(SolidSyslogServiceHalt, AStoreThatKeepsNothingCannotHaltTheLogger)

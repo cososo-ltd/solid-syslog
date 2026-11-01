@@ -36,6 +36,12 @@ TEST(SolidSyslogNullBuffer, ReadReturnsFalseAndZeroBytes)
     LONGS_EQUAL(0, bytesRead);
 }
 
+/* Nothing is ever queued, so nothing is ever outrun. */
+TEST(SolidSyslogNullBuffer, IsFullIsNever)
+{
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 TEST(SolidSyslogNullBuffer, GetIsIdempotentAndReturnsSameInstance)
 {
     POINTERS_EQUAL(buffer, SolidSyslogNullBuffer_Get());

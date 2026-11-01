@@ -85,6 +85,13 @@ TEST(SolidSyslogPassthroughBuffer, ReadReturnsNothingToSend)
     CHECK_FALSE(sent);
 }
 
+/* Every record goes straight to the sender, so there is no queue to fill. */
+TEST(SolidSyslogPassthroughBuffer, IsFullIsNever)
+{
+    Write();
+    CHECK_FALSE(SolidSyslogBuffer_IsFull(buffer));
+}
+
 TEST(SolidSyslogPassthroughBuffer, DestroyWithNullHandleEmitsUnknownDestroyWarning)
 {
     ErrorHandlerFake_Install(nullptr);
