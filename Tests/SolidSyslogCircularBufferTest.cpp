@@ -893,6 +893,35 @@ TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexDoesNotConsumeAPoolSlot)
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
+TEST(SolidSyslogCircularBufferPool, CreateWithNullRingReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    overflow = SolidSyslogCircularBuffer_Create(mutex, nullptr, sizeof(ring), AnswersTestPolicy, nullptr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogCircularBufferErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_RING
+    );
+}
+
+TEST(SolidSyslogCircularBufferPool, CreateWithNullRingReturnsTheNullBuffer)
+{
+    overflow = SolidSyslogCircularBuffer_Create(mutex, nullptr, sizeof(ring), AnswersTestPolicy, nullptr);
+
+    POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
+}
+
+TEST(SolidSyslogCircularBufferPool, CreateWithNullRingDoesNotConsumeAPoolSlot)
+{
+    overflow = SolidSyslogCircularBuffer_Create(mutex, nullptr, sizeof(ring), AnswersTestPolicy, nullptr);
+
+    FillPool();
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
 TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
 {
     FillPool();

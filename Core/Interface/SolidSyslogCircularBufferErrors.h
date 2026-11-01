@@ -44,6 +44,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORDS_EVICTED,
         /** Create was given no mutex; raised under SOLIDSYSLOG_CAT_BAD_CONFIG. */
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_MUTEX,
+        /** Create was given no ring behind the ring size; raised under
+         *  SOLIDSYSLOG_CAT_BAD_CONFIG. */
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_RING,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
