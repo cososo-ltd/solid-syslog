@@ -2031,6 +2031,34 @@ TEST(SolidSyslogOpenSslStream, OpenPullsTheProfile)
     LONGS_EQUAL(1, FakeProfile_CallCount);
 }
 
+/* The profile is optional: with none configured every field keeps the
+ * library default, and Open still reaches the handshake. */
+TEST(SolidSyslogOpenSslStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigured)
+{
+    config.Profile = nullptr;
+    ReCreateStreamWithUpdatedConfig();
+
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    LONGS_EQUAL(0, FakeProfile_CallCount);
+}
+
+/* The waived chain-trust verdict stays in verify_result after the pin has
+ * authorised the peer, so a refusal arriving later must not be read back out
+ * of it as a fault in the peer's certificate. */
+TEST(SolidSyslogOpenSslStream, ARefusalAfterAPinWaivedChainTrustIsNotReportedAsAnUntrustedCertificate)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    ArrangeCertificateVerificationFailure(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED
+    );
+}
+
 TEST(SolidSyslogOpenSslStream, TheErrorSourceNamesItsDetailsThroughTlsStreamErrors)
 {
     CHECK(SolidSyslogTlsStreamErrors_Name == SolidSyslogOpenSslStreamErrorSource.DetailName);
