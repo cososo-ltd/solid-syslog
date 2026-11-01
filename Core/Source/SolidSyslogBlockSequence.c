@@ -212,12 +212,13 @@ static inline void BlockSequence_StartReadingBlock(
 );
 
 /* The on-disk block set is one contiguous run in the circular sequence space
- * [0, BLOCK_SEQUENCE_MODULUS), which after enough rotations straddles the 99 -> 00
- * boundary (e.g. {98, 99, 0, 1}). A block missing from inside the run - a
- * filesystem check removed it - splits the set with a second, smaller gap.
- * So the run is read as the complement of the largest gap: oldest sits one
- * past its end, write one before its start, and the hole stays inside the
- * run. */
+ * [0, BLOCK_SEQUENCE_MODULUS), which after enough rotations straddles the
+ * 99 -> 00 boundary (e.g. {98, 99, 0, 1}). A block missing from inside the
+ * run - a filesystem check removed it - splits the set with a second, smaller
+ * gap. So the run is read as the complement of the largest gap: oldest sits
+ * one past its end, write one before its start, and the hole stays inside the
+ * run, counting towards the block ceiling exactly as the block it replaces
+ * would have. */
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence)
 {
     struct BlockPresence presence;
@@ -268,8 +269,9 @@ static void BlockSequence_ScanForBlockPresence(
 
 /* Walks once round the sequence space from just after a present block, so
  * every gap is met whole, and keeps the largest. Nothing changes when every
- * block is present: maxBlocks is clamped to BLOCK_SEQUENCE_MODULUS - 2, so that cannot
- * arise from the library's own rotation, and the caller's defaults stand. */
+ * block is present: maxBlocks is clamped to BLOCK_SEQUENCE_MODULUS - 2, so
+ * that cannot arise from the library's own rotation, and the caller's
+ * defaults stand. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(
     const struct SolidSyslogBlockSequence* blockSequence,
