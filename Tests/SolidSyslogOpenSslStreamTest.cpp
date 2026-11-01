@@ -119,6 +119,33 @@ extern "C" void FakeProfile(struct SolidSyslogOpenSslProfile* profile, void* con
 }
 } // namespace
 
+/* What the stream had already put on the context when the credentials were
+   asked to install. The library's policy goes on first, so a backend that types
+   its own material has the last word. */
+struct SslCtxAtInstall
+{
+    int VerifyMode;
+    long MinProtoVersion;
+    const char* CipherList;
+    const char* CipherSuites;
+    int SecurityLevel;
+    uint64_t Options;
+    pem_password_cb* PasswdCb;
+};
+
+static struct SslCtxAtInstall SslCtxSeenAtInstall;
+
+extern "C" void CaptureSslCtxAtInstall(void)
+{
+    SslCtxSeenAtInstall.VerifyMode = OpenSslFake_LastVerifyMode();
+    SslCtxSeenAtInstall.MinProtoVersion = OpenSslFake_CtxMinProtoVersion();
+    SslCtxSeenAtInstall.CipherList = OpenSslFake_LastCipherList();
+    SslCtxSeenAtInstall.CipherSuites = OpenSslFake_LastCipherSuites();
+    SslCtxSeenAtInstall.SecurityLevel = OpenSslFake_CtxSecurityLevel();
+    SslCtxSeenAtInstall.Options = SSL_CTX_get_options(OpenSslCredentialsFake_LastInstallCtx());
+    SslCtxSeenAtInstall.PasswdCb = OpenSslFake_LastPasswdCb();
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogOpenSslStream)
 {
@@ -177,6 +204,15 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         transport        = StreamFake_Create();
         config.Transport = transport;
         stream           = SolidSyslogOpenSslStream_Create(&config);
+    }
+
+    /* Open with the credentials watched, so a test can read what was already
+     * on the context when the backend's Install ran. */
+    void OpenObservingInstall()
+    {
+        SslCtxSeenAtInstall = {};
+        OpenSslCredentialsFake_SetInstallObserver(CaptureSslCtxAtInstall);
+        SolidSyslogStream_Open(stream, addr);
     }
 
     /* Arrange a peer whose certificate OpenSSL refused with `verifyResult`.
@@ -365,6 +401,12 @@ TEST(SolidSyslogOpenSslStream, OpenRequiresPeerVerification)
     LONGS_EQUAL(SSL_VERIFY_PEER, OpenSslFake_LastVerifyMode());
 }
 
+TEST(SolidSyslogOpenSslStream, PeerVerificationIsOnTheContextBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+    LONGS_EQUAL(SSL_VERIFY_PEER, SslCtxSeenAtInstall.VerifyMode);
+}
+
 /* A context with no minimum configured reads 0, OpenSSL's "the lowest the
    build supports". */
 TEST(SolidSyslogOpenSslStream, OpenRaisesAnUnsetMinimumProtocolVersionToTls12)
@@ -385,6 +427,12 @@ TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterHostMinimumProtocolVersion)
     OpenSslFake_SetHostMinProtoVersion(TLS1_3_VERSION);
     SolidSyslogStream_Open(stream, addr);
     LONGS_EQUAL(TLS1_3_VERSION, OpenSslFake_CtxMinProtoVersion());
+}
+
+TEST(SolidSyslogOpenSslStream, TheTlsFloorIsOnTheContextBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+    LONGS_EQUAL(TLS1_2_VERSION, SslCtxSeenAtInstall.MinProtoVersion);
 }
 
 /* RFC 9325 s4.5: 112-bit security - RSA and DH of 2048 bits, curves of 224,
@@ -420,6 +468,12 @@ TEST(SolidSyslogOpenSslStream, OpenKeepsAStricterSecurityLevelFromTheCipherList)
     LONGS_EQUAL(3, OpenSslFake_CtxSecurityLevel());
 }
 
+TEST(SolidSyslogOpenSslStream, TheSecurityLevelFloorIsOnTheContextBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+    LONGS_EQUAL(2, SslCtxSeenAtInstall.SecurityLevel);
+}
+
 /* RFC 5746: a TLS 1.2 peer that does not acknowledge secure renegotiation is
    refused. OpenSSL 3.0 refuses by default, but openssl.cnf can set
    UnsafeLegacyServerConnect, so the stream clears it rather than relying on
@@ -440,6 +494,13 @@ TEST(SolidSyslogOpenSslStream, OpenClearsAnUnsafeLegacyRenegotiationTheHostSet)
     CHECK_EQUAL(0U, SSL_CTX_get_options(OpenSslFake_LastCtxReturned()) & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
 }
 
+TEST(SolidSyslogOpenSslStream, TheLegacyRenegotiationOptionsAreClearedBeforeTheCredentialsInstall)
+{
+    OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
+    OpenObservingInstall();
+    CHECK_EQUAL(0U, SslCtxSeenAtInstall.Options & (SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION));
+}
+
 /* An encrypted PEM key otherwise prompts on the controlling terminal from the
    servicing thread. The callback refuses, so the key fails to load and is
    reported as CLIENT_CREDENTIAL_NOT_INSTALLED instead. */
@@ -453,6 +514,14 @@ TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherT
         char buf[8];
         LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
     }
+}
+
+/* A backend that loads an encrypted key does so inside Install, so the refusal
+   has to be in place by then. */
+TEST(SolidSyslogOpenSslStream, ThePassphraseCallbackIsOnTheContextBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+    CHECK_TRUE(SslCtxSeenAtInstall.PasswdCb != nullptr);
 }
 
 /* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most
@@ -476,6 +545,13 @@ TEST(SolidSyslogOpenSslStream, OpenPassesCipherListToSslCtx)
     ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("ECDHE+AESGCM", OpenSslFake_LastCipherList());
+}
+
+TEST(SolidSyslogOpenSslStream, TheProfilesCipherListIsOnTheContextBeforeTheCredentialsInstall)
+{
+    FakeProfile_Value.CipherList = "ECDHE+AESGCM";
+    OpenObservingInstall();
+    STRCMP_EQUAL("ECDHE+AESGCM", SslCtxSeenAtInstall.CipherList);
 }
 
 TEST(SolidSyslogOpenSslStream, OpenSkipsCipherListSetupWhenNotConfigured)
@@ -512,6 +588,13 @@ TEST(SolidSyslogOpenSslStream, OpenPassesCipherSuitesToSslCtx)
     ReCreateStreamWithUpdatedConfig();
     SolidSyslogStream_Open(stream, addr);
     STRCMP_EQUAL("TLS_AES_256_GCM_SHA384", OpenSslFake_LastCipherSuites());
+}
+
+TEST(SolidSyslogOpenSslStream, TheProfilesCipherSuitesAreOnTheContextBeforeTheCredentialsInstall)
+{
+    FakeProfile_Value.CipherSuites = "TLS_AES_256_GCM_SHA384";
+    OpenObservingInstall();
+    STRCMP_EQUAL("TLS_AES_256_GCM_SHA384", SslCtxSeenAtInstall.CipherSuites);
 }
 
 TEST(SolidSyslogOpenSslStream, OpenSkipsCipherSuitesSetupWhenNotConfigured)
