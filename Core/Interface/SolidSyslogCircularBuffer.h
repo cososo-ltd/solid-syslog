@@ -55,8 +55,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  and drain sides mutually safe when they run on different tasks; inject
      *  SolidSyslogNullMutex_Get() for single-task use. Both must outlive the
      *  buffer. A NULL @p mutex is reported as SOLIDSYSLOG_CAT_BAD_CONFIG and
-     *  Create returns the shared NullBuffer. Records are length-prefixed and never split across the wrap point
-     *  (a record that would straddle the end wraps whole to the front).
+     *  Create returns the shared NullBuffer. Records are length-prefixed and
+     *  never split across the wrap point (a record that would straddle the end
+     *  wraps whole to the front).
      *
      *  @p getDiscardPolicy is asked, with @p discardPolicyContext, on a write
      *  the full ring cannot take, from the task that logs; give it the function

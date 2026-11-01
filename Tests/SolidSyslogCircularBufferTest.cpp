@@ -14,6 +14,7 @@
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTunables.h"
@@ -875,13 +876,11 @@ TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexReportsError)
     );
 }
 
-TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexReturnsFallbackDistinctFromAnyPoolSlot)
+TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexReturnsTheNullBuffer)
 {
-    FillPool();
-
     overflow = SolidSyslogCircularBuffer_Create(nullptr, ring, sizeof(ring), AnswersTestPolicy, nullptr);
 
-    CHECK_IS_FALLBACK(overflow, pooled);
+    POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
 }
 
 TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexDoesNotConsumeAPoolSlot)
@@ -891,10 +890,7 @@ TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexDoesNotConsumeAPoolSlot)
     overflow = SolidSyslogCircularBuffer_Create(nullptr, ring, sizeof(ring), AnswersTestPolicy, nullptr);
 
     FillPool();
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(slot != overflow, "Pool slot collided with the NULL-mutex fallback handle");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
 }
 
 TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)

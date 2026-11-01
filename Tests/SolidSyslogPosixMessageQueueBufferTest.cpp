@@ -827,13 +827,11 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexReportsError)
     );
 }
 
-TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexReturnsFallbackDistinctFromAnyPoolSlot)
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexReturnsTheNullBuffer)
 {
-    FillPool();
-
     overflow = SolidSyslogPosixMessageQueueBuffer_Create(nullptr, 10, nullptr, nullptr);
 
-    CHECK_IS_FALLBACK(overflow, pooled);
+    POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexDoesNotConsumeAPoolSlot)
@@ -843,10 +841,7 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexDoesNotConsumeAP
     overflow = SolidSyslogPosixMessageQueueBuffer_Create(nullptr, 10, nullptr, nullptr);
 
     FillPool();
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(slot != overflow, "Pool slot collided with the NULL-mutex fallback handle");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
 }
 
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)
