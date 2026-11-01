@@ -239,6 +239,15 @@ TEST(BlockSequenceScan, ResumesAcrossAHoleInTheRun)
     LONGS_EQUAL(2, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
+/* The drain never touches the hole: on a file device a Size would create it. */
+TEST(BlockSequenceScan, TheReadStepsOverAHoleInTheRun)
+{
+    existing = {0, 2};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
 namespace
 {
 enum

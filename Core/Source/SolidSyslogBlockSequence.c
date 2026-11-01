@@ -17,21 +17,20 @@ struct SolidSyslogBlockDevice;
 enum
 {
     MIN_MAX_BLOCKS = 2U,
-    SEQUENCE_MODULUS = 100U,
     /* Two short of the sequence space: a failed eviction leaves one block over
      * the ceiling, and a resume still needs an absent number to find the run. */
-    MAX_MAX_BLOCKS = SEQUENCE_MODULUS - 2U
+    MAX_MAX_BLOCKS = BLOCK_SEQUENCE_MODULUS - 2U
 };
 
 static inline uint8_t BlockSequence_NextSequence(uint8_t current)
 {
-    return (uint8_t) ((current + 1U) % SEQUENCE_MODULUS);
+    return (uint8_t) ((current + 1U) % BLOCK_SEQUENCE_MODULUS);
 }
 
 static inline size_t BlockSequence_BlockCount(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    return (size_t) ((blockSequence->WriteSequence - blockSequence->OldestSequence + SEQUENCE_MODULUS) %
-                     SEQUENCE_MODULUS) +
+    return (size_t) ((blockSequence->WriteSequence - blockSequence->OldestSequence + BLOCK_SEQUENCE_MODULUS) %
+                     BLOCK_SEQUENCE_MODULUS) +
            1U;
 }
 
@@ -80,6 +79,11 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->DeviceFailed = false;
     blockSequence->EvictedUnsent = false;
     blockSequence->FailedOperation = SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX;
+
+    for (size_t seq = 0; seq < BLOCK_SEQUENCE_MODULUS; seq++)
+    {
+        blockSequence->BlockPresent[seq] = false;
+    }
 }
 
 void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequence)
@@ -91,6 +95,7 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence);
+static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 static inline void BlockSequence_NoteDeviceFailure(
     struct SolidSyslogBlockSequence* blockSequence,
     enum SolidSyslogBlockStoreErrors failedOperation
@@ -115,7 +120,7 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
     }
     else
     {
-        ready = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, 0);
+        ready = BlockSequence_AcquireBlock(blockSequence, 0);
 
         if (!ready)
         {
@@ -131,6 +136,19 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
     return ready;
 }
 
+/* The map follows the device: a block the device acquired is present. */
+static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
+{
+    bool acquired = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, blockIndex);
+
+    if (acquired)
+    {
+        blockSequence->BlockPresent[blockIndex] = true;
+    }
+
+    return acquired;
+}
+
 static inline void BlockSequence_NoteDeviceFailure(
     struct SolidSyslogBlockSequence* blockSequence,
     enum SolidSyslogBlockStoreErrors failedOperation
@@ -143,14 +161,8 @@ static inline void BlockSequence_NoteDeviceFailure(
     }
 }
 
-enum
-{
-    MAX_SEQUENCE = SEQUENCE_MODULUS
-};
-
 struct BlockPresence
 {
-    bool Present[MAX_SEQUENCE];
     bool FoundAny;
     int LastPresent;
 };
@@ -169,7 +181,12 @@ static void BlockSequence_ScanForBlockPresence(
     struct BlockPresence* presence
 );
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
-static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest);
+static void BlockSequence_LocateRunBoundaries(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    const struct BlockPresence* presence,
+    int* oldest,
+    int* newest
+);
 
 static inline void BlockSequence_StartReadingBlock(
     struct SolidSyslogBlockSequence* blockSequence,
@@ -177,7 +194,7 @@ static inline void BlockSequence_StartReadingBlock(
 );
 
 /* The on-disk block set is one contiguous run in the circular sequence space
- * [0, MAX_SEQUENCE), which after enough rotations straddles the 99 -> 00
+ * [0, BLOCK_SEQUENCE_MODULUS), which after enough rotations straddles the 99 -> 00
  * boundary (e.g. {98, 99, 0, 1}). A block missing from inside the run - a
  * filesystem check removed it - splits the set with a second, smaller gap.
  * So the run is read as the complement of the largest gap: oldest sits one
@@ -191,8 +208,8 @@ static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence*
     if (presence.FoundAny)
     {
         int oldest = 0;
-        int newest = MAX_SEQUENCE - 1;
-        BlockSequence_LocateRunBoundaries(&presence, &oldest, &newest);
+        int newest = BLOCK_SEQUENCE_MODULUS - 1;
+        BlockSequence_LocateRunBoundaries(blockSequence, &presence, &oldest, &newest);
 
         blockSequence->OldestSequence = (uint8_t) oldest;
         BlockSequence_StartReadingBlock(blockSequence, (uint8_t) oldest);
@@ -219,11 +236,11 @@ static void BlockSequence_ScanForBlockPresence(
     presence->FoundAny = false;
     presence->LastPresent = 0;
 
-    for (int seq = 0; seq < MAX_SEQUENCE; seq++)
+    for (int seq = 0; seq < BLOCK_SEQUENCE_MODULUS; seq++)
     {
-        presence->Present[seq] = SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, (size_t) seq);
+        blockSequence->BlockPresent[seq] = SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, (size_t) seq);
 
-        if (presence->Present[seq])
+        if (blockSequence->BlockPresent[seq])
         {
             presence->FoundAny = true;
             presence->LastPresent = seq;
@@ -233,20 +250,25 @@ static void BlockSequence_ScanForBlockPresence(
 
 /* Walks once round the sequence space from just after a present block, so
  * every gap is met whole, and keeps the largest. Nothing changes when every
- * block is present: maxBlocks is clamped to MAX_SEQUENCE - 2, so that cannot
+ * block is present: maxBlocks is clamped to BLOCK_SEQUENCE_MODULUS - 2, so that cannot
  * arise from the library's own rotation, and the caller's defaults stand. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
-static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest)
+static void BlockSequence_LocateRunBoundaries(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    const struct BlockPresence* presence,
+    int* oldest,
+    int* newest
+)
 {
     struct Gap largest = {0, 0};
     struct Gap current = {0, 0};
     int index = presence->LastPresent;
 
-    for (int step = 0; step < MAX_SEQUENCE; step++)
+    for (int step = 0; step < BLOCK_SEQUENCE_MODULUS; step++)
     {
         index = BlockSequence_CircularNext(index);
 
-        if (presence->Present[index])
+        if (blockSequence->BlockPresent[index])
         {
             current.Length = 0;
         }
@@ -268,19 +290,19 @@ static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presen
 
     if (largest.Length > 0)
     {
-        *oldest = (largest.Start + largest.Length) % MAX_SEQUENCE;
+        *oldest = (largest.Start + largest.Length) % BLOCK_SEQUENCE_MODULUS;
         *newest = BlockSequence_CircularPrev(largest.Start);
     }
 }
 
 static inline int BlockSequence_CircularNext(int index)
 {
-    return (index + 1) % MAX_SEQUENCE;
+    return (index + 1) % BLOCK_SEQUENCE_MODULUS;
 }
 
 static inline int BlockSequence_CircularPrev(int index)
 {
-    return (index + MAX_SEQUENCE - 1) % MAX_SEQUENCE;
+    return (index + BLOCK_SEQUENCE_MODULUS - 1) % BLOCK_SEQUENCE_MODULUS;
 }
 
 static inline bool BlockSequence_ThresholdEnabled(const struct SolidSyslogBlockSequence* blockSequence);
@@ -454,7 +476,7 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequen
 
     if (ready)
     {
-        ready = SolidSyslogBlockDevice_Acquire(device, blockIndex);
+        ready = BlockSequence_AcquireBlock(blockSequence, blockIndex);
 
         if (!ready)
         {
@@ -644,9 +666,35 @@ static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogB
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
+static inline uint8_t BlockSequence_NextPresentSequence(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    uint8_t current
+);
+
 void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
-    BlockSequence_StartReadingBlock(blockSequence, BlockSequence_NextSequence(blockSequence->ReadSequence));
+    BlockSequence_StartReadingBlock(
+        blockSequence,
+        BlockSequence_NextPresentSequence(blockSequence, blockSequence->ReadSequence)
+    );
+}
+
+/* Steps over a hole in the run. Terminates because the write block is always
+ * present: the scan ends the run on one, and a rotation marks the one it
+ * acquires. */
+static inline uint8_t BlockSequence_NextPresentSequence(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    uint8_t current
+)
+{
+    uint8_t next = BlockSequence_NextSequence(current);
+
+    while (!blockSequence->BlockPresent[next])
+    {
+        next = BlockSequence_NextSequence(next);
+    }
+
+    return next;
 }
 
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence)
