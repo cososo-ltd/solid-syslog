@@ -1455,17 +1455,21 @@ def step_target_reports_key_unavailable_once(context):
     )
 
 
-@then("the target reports once that the connection was refused")
-def step_target_reports_connection_refused_once(context):
+@then("the target reports once that the collector could not be reached")
+def step_target_reports_collector_unreachable_once(context):
     # The sender retries the connect on every service pass for as long as the
-    # collector is down, and every attempt is refused; one run of the same
-    # refusal, one report. A different failure in the run would report too,
-    # so the list is checked whole rather than counted.
+    # collector is down, and every attempt fails the same way; one run of the
+    # same failure, one report. A different failure in the run would report
+    # too, so the list is checked whole rather than counted. Which failure it
+    # is depends on the stack: a closed loopback port answers a reset at once
+    # on Linux, but Winsock surfaces it only after the stream's connect budget
+    # has expired, where the same outage reads as a timeout.
     reports = _reports_once_made(reported_connect_failures, context.interactive_process)
 
-    expected = [(severity_value("WARNING"), tcp_stream_error_code("CONNECT_REFUSED"))]
-    assert reports == expected, (
-        f"Expected one refused-connection report at WARNING, got {reports}\n"
+    remote = {tcp_stream_error_code("CONNECT_REFUSED"), tcp_stream_error_code("CONNECT_TIMED_OUT")}
+    unreachable = [(severity, detail) for severity, detail in reports if detail in remote]
+    assert (len(reports) == 1) and (unreachable == reports) and (reports[0][0] == severity_value("WARNING")), (
+        f"Expected one report at WARNING that the collector refused or did not answer, got {reports}\n"
         f"--- target output ---\n{target_output(context.interactive_process)}"
     )
 

@@ -6,8 +6,7 @@
 
 #include "SolidSyslogError.h"
 
-static inline bool StreamOpenHealth_IsNews(const struct SolidSyslogStreamOpenHealth* self, int32_t detail);
-static inline void StreamOpenHealth_Latch(struct SolidSyslogStreamOpenHealth* self, int32_t detail);
+static inline bool StreamOpenHealth_Admit(struct SolidSyslogStreamOpenHealth* self, int32_t detail);
 
 void SolidSyslogStreamOpenHealth_ReportFailure(
     struct SolidSyslogStreamOpenHealth* self,
@@ -17,24 +16,24 @@ void SolidSyslogStreamOpenHealth_ReportFailure(
     int32_t detail
 )
 {
-    if (StreamOpenHealth_IsNews(self, detail))
+    if (StreamOpenHealth_Admit(self, detail))
     {
-        StreamOpenHealth_Latch(self, detail);
         SolidSyslog_Error(severity, source, category, detail);
     }
 }
 
-/* A run is one detail repeating; the native code behind it may vary (a
- * different errno for the same refusal) without being news. */
-static inline bool StreamOpenHealth_IsNews(const struct SolidSyslogStreamOpenHealth* self, int32_t detail)
+/* Whether this failure is news, latching it when it is. A run is one detail
+ * repeating; the native code behind it may vary (a different errno for the
+ * same refusal) without being news. */
+static inline bool StreamOpenHealth_Admit(struct SolidSyslogStreamOpenHealth* self, int32_t detail)
 {
-    return !(self->Failing && (self->FailedDetail == detail));
-}
-
-static inline void StreamOpenHealth_Latch(struct SolidSyslogStreamOpenHealth* self, int32_t detail)
-{
-    self->Failing = true;
-    self->FailedDetail = detail;
+    bool isNews = !(self->Failing && (self->FailedDetail == detail));
+    if (isNews)
+    {
+        self->Failing = true;
+        self->FailedDetail = detail;
+    }
+    return isNews;
 }
 
 void SolidSyslogStreamOpenHealth_ReportFailureWithNativeCode(
@@ -46,9 +45,8 @@ void SolidSyslogStreamOpenHealth_ReportFailureWithNativeCode(
     int32_t nativeCode
 )
 {
-    if (StreamOpenHealth_IsNews(self, detail))
+    if (StreamOpenHealth_Admit(self, detail))
     {
-        StreamOpenHealth_Latch(self, detail);
         SolidSyslog_ErrorWithNativeCode(severity, source, category, detail, nativeCode);
     }
 }
