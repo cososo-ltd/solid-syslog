@@ -30,6 +30,7 @@
 #include "SolidSyslogPassthroughBufferErrors.h"
 #include "SolidSyslogResolverErrors.h"
 #include "SolidSyslogStreamSenderErrors.h"
+#include "SolidSyslogSharedScratchErrors.h"
 #include "SolidSyslogSwitchingSenderErrors.h"
 #include "SolidSyslogTcpStreamErrors.h"
 #include "SolidSyslogTimeQualitySdErrors.h"
@@ -257,4 +258,10 @@ TEST(SolidSyslogErrorNames, EverySeverityHasANameAndNothingPastDebugDoes)
     }
     POINTERS_EQUAL(nullptr, SolidSyslogSeverity_Name(SOLIDSYSLOG_SEVERITY_DEBUG + 1));
     POINTERS_EQUAL(nullptr, SolidSyslogSeverity_Name(-1));
+}
+
+TEST(SolidSyslogErrorNames, SharedScratchErrorsNamesItsCodes)
+{
+    STRCMP_EQUAL("NULL_MUTEX", SolidSyslogSharedScratchErrors_Name(SOLIDSYSLOG_SHARED_SCRATCH_ERROR_NULL_MUTEX));
+    CHECK_VOCABULARY_NAMED(SolidSyslogSharedScratchErrors_Name, SOLIDSYSLOG_SHARED_SCRATCH_ERROR_MAX);
 }

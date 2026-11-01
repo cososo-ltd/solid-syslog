@@ -233,9 +233,11 @@ the example's records stay under it.
 Most of the RAM is stack on the logging task. The record is built on the stack of
 whichever task calls `SolidSyslog_Log`, sized by `SOLIDSYSLOG_MAX_MESSAGE_SIZE`, so that
 task has to be deep enough to hold one. In the example the logging task was still at the
-RTOS minimum inherited from the baseline and had to grow. Stage 21 fits the cap and the
-stacks to the device, once every collaborator is in place and the high-water marks are
-worth trusting.
+RTOS minimum inherited from the baseline and had to grow. Where several tasks log, the
+[shared scratch](api/SolidSyslogSharedScratch_8h.md) builds the record in one static
+buffer under a mutex instead, so the cost is paid once rather than on every task's stack.
+Stage 21 fits the cap and the stacks to the device, once every collaborator is in place
+and the high-water marks are worth trusting.
 
 **When you need it.** Every device needs this much. The question is whether UDP is
 enough: it drops records silently, and anyone on the path can read them. Stage 8 answers

@@ -916,7 +916,10 @@ see it. The Formatter shape is documented under deviation D.002 in `docs/misra-d
 **Internal sub-components** of pool-allocated classes (e.g. `RecordStore` and
 `BlockSequence` inside `BlockStore`) live in sibling pools sized off the parent's
 tunable. Their types stay in `Core/Source/` and never appear in public headers, so
-integrator and example code physically cannot reach them.
+integrator and example code physically cannot reach them. One public class shares a
+tunable the same way: `SolidSyslogSharedScratch` is sized by `SOLIDSYSLOG_POOL_SIZE`,
+one per logger the build can hold, because a count of its own would only ever be set
+to that one. Its header says so.
 
 ---
 

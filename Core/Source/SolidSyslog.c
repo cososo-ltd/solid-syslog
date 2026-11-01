@@ -22,7 +22,9 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrivate.h"
 #include "SolidSyslogHeaderFieldFunction.h"
+#include "SolidSyslogScratch.h"
 #include "SolidSyslogSender.h"
+#include "SolidSyslogStackScratch.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogStoreDefinition.h"
 #include "SolidSyslogTimestamp.h"
@@ -32,9 +34,19 @@ const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog", Sol
 
 struct SolidSyslogBuffer;
 struct SolidSyslogHeaderField;
+struct SolidSyslogScratch;
 struct SolidSyslogSender;
 struct SolidSyslogStore;
 struct SolidSyslogStructuredData;
+
+/* What Log carries into the scratch: the continuation formats from it. */
+struct LogRequest
+{
+    struct SolidSyslog* Handle;
+    const struct SolidSyslogMessage* Message;
+    struct SolidSyslogStructuredData** Sd;
+    size_t SdCount;
+};
 
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
@@ -54,6 +66,8 @@ static void SolidSyslog_DoLog(
     struct SolidSyslogStructuredData** sd,
     size_t sdCount
 );
+static void SolidSyslog_FormatIntoScratch(SolidSyslogFormatterStorage* storage, size_t messageBytes, void* context);
+static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSyslogScratch* configured);
 static void SolidSyslog_InstallAppName(
     struct SolidSyslog* self,
     SolidSyslogHeaderFieldFunction configured,
@@ -113,6 +127,7 @@ void SolidSyslog_Initialise(
     SolidSyslog_InstallStructuredData(self, config->Sd, config->SdCount);
     SolidSyslog_InstallDiscardPolicy(self, config->GetDiscardPolicy, config->DiscardPolicyContext);
     SolidSyslog_InstallHalt(self, config->OnHalt, config->HaltContext);
+    SolidSyslog_InstallScratch(self, config->Scratch);
 }
 
 void SolidSyslog_Cleanup(struct SolidSyslog* self)
@@ -128,6 +143,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Buffer = SolidSyslogNullBuffer_Get();
     self->Sender = SolidSyslogNullSender_Get();
     self->Store = SolidSyslogNullStore_Get();
+    self->Scratch = SolidSyslogStackScratch_Get();
     self->Format.Clock = SolidSyslog_NullClock;
     self->Format.GetHostname = SolidSyslog_NullHeaderField;
     self->Format.GetHostnameContext = NULL;
@@ -281,6 +297,16 @@ static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCal
     {
         self->OnHalt = configured;
         self->HaltContext = context;
+    }
+}
+
+/* NULL means the stack scratch, which is what every logger had before the
+ * field existed; nothing to report. */
+static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSyslogScratch* configured)
+{
+    if (configured != NULL)
+    {
+        self->Scratch = configured;
     }
 }
 
@@ -617,14 +643,20 @@ static void SolidSyslog_DoLog(
             safeSdCount = 0U;
         }
 
-        SolidSyslogFormatterStorage storage[SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_MESSAGE_SIZE)];
-        struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(storage, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
-
-        SolidSyslogMessageFormatter_Format(f, message, &handle->Format, sd, safeSdCount);
-        SolidSyslogBuffer_Write(
-            handle->Buffer,
-            SolidSyslogFormatter_AsFormattedBuffer(f),
-            SolidSyslogFormatter_Length(f)
-        );
+        struct LogRequest request = {handle, message, sd, safeSdCount};
+        handle->Scratch->WithScratch(handle->Scratch, SolidSyslog_FormatIntoScratch, &request);
     }
+}
+
+static void SolidSyslog_FormatIntoScratch(SolidSyslogFormatterStorage* storage, size_t messageBytes, void* context)
+{
+    struct LogRequest* request = (struct LogRequest*) context;
+    struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(storage, messageBytes);
+
+    SolidSyslogMessageFormatter_Format(f, request->Message, &request->Handle->Format, request->Sd, request->SdCount);
+    SolidSyslogBuffer_Write(
+        request->Handle->Buffer,
+        SolidSyslogFormatter_AsFormattedBuffer(f),
+        SolidSyslogFormatter_Length(f)
+    );
 }

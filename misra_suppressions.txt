@@ -36,6 +36,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:64
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:64
 misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:69
+misra-c2012-11.3:Core/Source/SolidSyslogSharedScratch.c:50
 misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:197
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:77
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:73
@@ -115,6 +116,7 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:186
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:487
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:868
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:880
+misra-c2012-11.5:Core/Source/SolidSyslog.c:653
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -126,16 +128,17 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/SolidSyslog.c:106
-misra-c2012-11.8:Core/Source/SolidSyslog.c:107
-misra-c2012-11.8:Core/Source/SolidSyslog.c:108
-misra-c2012-11.8:Core/Source/SolidSyslog.c:109
-misra-c2012-11.8:Core/Source/SolidSyslog.c:110
-misra-c2012-11.8:Core/Source/SolidSyslog.c:111
-misra-c2012-11.8:Core/Source/SolidSyslog.c:112
-misra-c2012-11.8:Core/Source/SolidSyslog.c:113
-misra-c2012-11.8:Core/Source/SolidSyslog.c:114
-misra-c2012-11.8:Core/Source/SolidSyslog.c:115
+misra-c2012-11.8:Core/Source/SolidSyslog.c:120
+misra-c2012-11.8:Core/Source/SolidSyslog.c:121
+misra-c2012-11.8:Core/Source/SolidSyslog.c:122
+misra-c2012-11.8:Core/Source/SolidSyslog.c:123
+misra-c2012-11.8:Core/Source/SolidSyslog.c:124
+misra-c2012-11.8:Core/Source/SolidSyslog.c:125
+misra-c2012-11.8:Core/Source/SolidSyslog.c:126
+misra-c2012-11.8:Core/Source/SolidSyslog.c:127
+misra-c2012-11.8:Core/Source/SolidSyslog.c:128
+misra-c2012-11.8:Core/Source/SolidSyslog.c:129
+misra-c2012-11.8:Core/Source/SolidSyslog.c:130
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85

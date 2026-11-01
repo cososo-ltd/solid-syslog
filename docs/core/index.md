@@ -45,6 +45,15 @@ Portable [role](../roles/index.md) implementations - no platform required:
 | [`SolidSyslogTimeQualitySd`](../api/SolidSyslogTimeQualitySd_8h.md) | StructuredData - tzKnown, isSynced, syncAccuracy |
 | [`SolidSyslogOriginSd`](../api/SolidSyslogOriginSd_8h.md) | StructuredData - software, swVersion, enterpriseId, ip |
 
+Where `Log` formats a message, chosen on
+[`SolidSyslogConfig`](../api/structSolidSyslogConfig.md). This is a strategy
+inside Core rather than a role: there is no contract to implement.
+
+| Class | Does |
+|---|---|
+| [`SolidSyslogStackScratch`](../api/SolidSyslogStackScratch_8h.md) | formats on the stack of the task that logs; the default |
+| [`SolidSyslogSharedScratch`](../api/SolidSyslogSharedScratch_8h.md) | formats in one static buffer, taken under a mutex |
+
 Every role also has a Null - `SolidSyslogNull<Role>_Get()`, or
 `SolidSyslogNullSd_Get()` for StructuredData -
 whose methods are safe no-ops. That is what an unfilled slot resolves to, and

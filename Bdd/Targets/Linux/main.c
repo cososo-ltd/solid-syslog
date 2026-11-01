@@ -48,6 +48,7 @@
 #include "SolidSyslogPosixAddress.h"
 #include "SolidSyslogPosixDatagram.h"
 #include "SolidSyslogPosixTcpStream.h"
+#include "SolidSyslogSharedScratch.h"
 #include "SolidSyslogSwitchingSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogUdpSender.h"
@@ -323,6 +324,12 @@ int main(int argc, char* argv[])
     struct SolidSyslogStructuredData* sdList[3] = {metaSd, timeQuality, originSd};
     size_t sdCount = BddTargetStoreSettings_NoSd() ? 1 : 3;
 
+    /* This target logs through the shared scratch, so every scenario runs the
+       library's own flows under it. Its mutex is separate from the buffer's,
+       which is taken inside it. */
+    struct SolidSyslogMutex* scratchMutex = SolidSyslogPosixMutex_Create();
+    struct SolidSyslogScratch* scratch = SolidSyslogSharedScratch_Create(scratchMutex);
+
     struct SolidSyslogConfig config = {
         .Buffer = buffer,
         .Sender = sender,
@@ -335,6 +342,7 @@ int main(int argc, char* argv[])
         .SdCount = sdCount,
         .GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy,
         .OnHalt = OnHalt,
+        .Scratch = scratch,
     };
     solidSyslog = SolidSyslog_Create(&config);
 
@@ -356,6 +364,8 @@ int main(int argc, char* argv[])
     pthread_join(serviceThread, NULL);
 
     SolidSyslog_Destroy(solidSyslog);
+    SolidSyslogSharedScratch_Destroy(scratch);
+    SolidSyslogPosixMutex_Destroy(scratchMutex);
     SolidSyslogOriginSd_Destroy(originSd);
     SolidSyslogTimeQualitySd_Destroy(timeQuality);
     SolidSyslogMetaSd_Destroy(metaSd);

@@ -496,6 +496,11 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
 {
     (void) argument;
 
+    /* Installed before anything is created, so a Create-time report from the
+       sender, a mutex, the buffer or a structured-data object is printed rather
+       than dropped by the library's silent default handler. */
+    SolidSyslog_SetErrorHandler(ErrorHandlerEx, NULL);
+
     /* Seed the destination host with the platform default before any `set host`,
        and start with the demo key available. */
     BddTargetMessageSettings_Reset(g_config->DefaultHost);
@@ -558,7 +563,6 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .Sd = sdList,
         .SdCount = BddTargetStoreSettings_NoSd() ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
     };
-    SolidSyslog_SetErrorHandler(ErrorHandlerEx, NULL);
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
 

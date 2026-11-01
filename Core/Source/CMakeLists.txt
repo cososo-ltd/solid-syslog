@@ -12,6 +12,9 @@ set(SOURCES
     SolidSyslogFormatter.c
     SolidSyslogTimestampFormatter.c
     SolidSyslogMessageFormatter.c
+    SolidSyslogStackScratch.c
+    SolidSyslogSharedScratch.c
+    SolidSyslogSharedScratchStatic.c
     SolidSyslogMetaSd.c
     SolidSyslogMetaSdStatic.c
     SolidSyslogPassthroughBuffer.c
@@ -74,6 +77,7 @@ set(SOURCES
     SolidSyslogMutexErrorsName.c
     SolidSyslogOriginSdErrorsName.c
     SolidSyslogPassthroughBufferErrorsName.c
+    SolidSyslogSharedScratchErrorsName.c
     SolidSyslogResolverErrorsName.c
     SolidSyslogStreamSenderErrorsName.c
     SolidSyslogSwitchingSenderErrorsName.c

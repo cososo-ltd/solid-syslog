@@ -20,6 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslog;
     struct SolidSyslogBuffer;
     struct SolidSyslogHeaderField;
+    struct SolidSyslogScratch;
     struct SolidSyslogSender;
     struct SolidSyslogStore;
     struct SolidSyslogStructuredData;
@@ -35,7 +36,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Sender, and Store fall back to their Null object and report an error
      *  (a no-op unless an error handler is installed; inject the Null* object
      *  instead to stay silent), while the callbacks fall back to nil defaults
-     *  with no error. Whatever you do provide must outlive the created handle;
+     *  and Scratch to the stack scratch, with no error. Whatever you do provide must outlive the created handle;
      *  the config struct itself is only read during Create and may be transient. */
     struct SolidSyslogConfig
     {
@@ -62,6 +63,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         void* DiscardPolicyContext;
         SolidSyslogHaltCallback OnHalt; /**< @optional nothing is called when NULL. */
         void* HaltContext; /**< Passed back to OnHalt unchanged. */
+        /** Where Log formats a message: on the stack of the task that logs
+         *  (SolidSyslogStackScratch_Get(), and what NULL means) or in one buffer
+         *  shared under a mutex (SolidSyslogSharedScratch_Create). */
+        struct SolidSyslogScratch* Scratch;
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or
