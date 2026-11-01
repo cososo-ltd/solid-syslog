@@ -369,7 +369,7 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
     size_t* bytesRead
 );
 static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result);
-static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self);
+static bool BlockStore_StepPastRejected(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportLoss(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors fault);
 static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self);
 
@@ -450,7 +450,7 @@ static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSy
 
     if (result == SOLIDSYSLOG_RECORD_STORE_READ_REJECTED)
     {
-        stepped = BlockStore_DiscardCurrent(self);
+        stepped = BlockStore_StepPastRejected(self);
     }
     else if (result == SOLIDSYSLOG_RECORD_STORE_READ_END_OF_DATA)
     {
@@ -506,30 +506,19 @@ static bool BlockStore_AbandonRestOfReadBlock(struct SolidSyslogBlockStore* self
     return movedOn;
 }
 
-/* Marks the rejected record on the media so nothing offers it again, and moves
- * the cursor to the record after it. A mark that will not write is a media
- * fault: the store freezes, and there is no next record to try. */
-static bool BlockStore_DiscardCurrent(struct SolidSyslogBlockStore* self)
+/* Moves the cursor to the record after the rejected one, writing nothing: the
+ * policy did not vouch for the length that says where the record ends, so a
+ * mark written there could land inside the record that really follows. The
+ * record is read and rejected again each time the store starts, until its
+ * block is done with. */
+static bool BlockStore_StepPastRejected(struct SolidSyslogBlockStore* self)
 {
-    size_t nextCursor = 0U;
-    enum SolidSyslogRecordStoreMarkResult marked = SolidSyslogRecordStore_DiscardLastRead(
-        self->RecordStore,
-        SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
-        &nextCursor
+    BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED);
+    SolidSyslogBlockSequence_SetReadCursor(
+        self->BlockSequence,
+        SolidSyslogRecordStore_StepPastLastRead(self->RecordStore)
     );
-    bool discarded = marked == SOLIDSYSLOG_RECORD_STORE_MARK_SUCCEEDED;
-
-    if (discarded)
-    {
-        BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED);
-        SolidSyslogBlockSequence_SetReadCursor(self->BlockSequence, nextCursor);
-    }
-    else
-    {
-        BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED);
-    }
-
-    return discarded;
+    return true;
 }
 
 /* One report stands for a whole run of records lost one after another; the

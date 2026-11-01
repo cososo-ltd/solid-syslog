@@ -27,6 +27,18 @@ static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA = "hello";
 static const size_t TEST_DATA_LEN = 5;
 
+class TEST_SolidSyslogBlockStoreIntegrity_ARejectedRecordWithADamagedLengthLeavesTheNextRecordUntouched_Test;
+
+/* The second record of the pair WriteTwoRecordsAndDamageTheFirstLength wrote,
+ * byte for byte as it was written: nothing the store did landed in it. */
+#define CHECK_SECOND_RECORD_UNTOUCHED()                                                              \
+    {                                                                                                \
+        const uint8_t secondRecord[] = {0xA5, 0x5A, 0x06, 0x00, 's', 'e', 'c', 'o', 'n', 'd', 0xFF}; \
+        uint8_t onMedia[sizeof(secondRecord)] = {};                                                  \
+        CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 10, onMedia, sizeof(onMedia)));            \
+        MEMCMP_EQUAL(secondRecord, onMedia, sizeof(onMedia));                                        \
+    }
+
 #define CHECK_STORE_FROZEN(failedOperation) \
     CHECK_ERROR_REPORTED_ONCE(              \
         SOLIDSYSLOG_SEVERITY_ERROR,         \
@@ -1965,6 +1977,20 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
         SolidSyslogBlockStore_Destroy(store);
         CreateStore();
     }
+
+    /* Two records, then the first's length byte damaged on the media under
+     * the running store: 5 with bit 3 flipped reads 13, a record that ends
+     * inside the second one. */
+    void WriteTwoRecordsAndDamageTheFirstLength() const
+    {
+        SolidSyslogStore_Write(store, "first", 5);
+        SolidSyslogStore_Write(store, "second", 6);
+        SolidSyslogFile_Open(file, "/tmp/test_store00.log");
+        uint8_t damagedLength = 13;
+        SolidSyslogFile_SeekTo(file, 2);
+        SolidSyslogFile_Write(file, &damagedLength, 1);
+        SolidSyslogFile_Close(file);
+    }
 };
 
 // clang-format on
@@ -2083,7 +2109,8 @@ TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyRejectsIsSteppedOverToTheNe
     MEMCMP_EQUAL("second", buf, 6);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsNotOfferedAgainAfterARestart)
+/* Nothing marks a rejected record on the device, so it is verified again. */
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsVerifiedAgainAfterARestart)
 {
     SolidSyslogStore_Write(store, "first", 5);
     SolidSyslogStore_Write(store, "second", 6);
@@ -2093,24 +2120,27 @@ TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsNotOfferedAgainAfterAResta
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     RecreateStore();
+    spyOpenRejections = 1;
+    SpyOpenRecordCallCount = 0;
 
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     MEMCMP_EQUAL("second", buf, 6);
+    CALLED_FUNCTION(SpyOpenRecord, TWICE);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, ADiscardMarkThatWillNotWriteFreezesTheStore)
+/* The policy rejects a record whose length byte is damaged so that the record
+ * it describes still lies within the block. That length is part of what the
+ * policy refused to vouch for, so nothing may be written where it points. */
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthLeavesTheNextRecordUntouched)
 {
-    SolidSyslogStore_Write(store, "first", 5);
-    SolidSyslogStore_Write(store, "second", 6);
+    WriteTwoRecordsAndDamageTheFirstLength();
     spyOpenRejections = 1;
-    ErrorHandlerFake_Install(nullptr);
-    FileFake_FailNextWrite(file);
 
     char buf[TEST_BUF_SIZE] = {};
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
-    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED);
+    CHECK_SECOND_RECORD_UNTOUCHED();
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsReportedAsDiscarded)

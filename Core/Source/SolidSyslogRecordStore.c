@@ -26,8 +26,10 @@ enum
     SENT_FLAG_SIZE = 1,
     SENT_FLAG_UNSENT = 0xFF,
     SENT_FLAG_SENT = 0x00,
-    /* A record the policy rejected. Like SENT it only clears bits, so flash
-     * takes it in place; unlike SENT it leaves the loss readable on the media. */
+    /* Written by releases before 0.4.0 for a record the policy rejected. A
+     * rejected record is now stepped past unmarked, since a length the policy
+     * did not vouch for is nowhere to write a flag; one so marked is still read
+     * as finished with. */
     SENT_FLAG_DISCARDED = 0x0F
 };
 
@@ -576,13 +578,10 @@ static inline bool RecordStore_WriteFlag(
     );
 }
 
-enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_DiscardLastRead(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    size_t* nextCursor
-)
+size_t SolidSyslogRecordStore_StepPastLastRead(struct SolidSyslogRecordStore* recordStore)
 {
-    return RecordStore_MarkLastRead(recordStore, blockDevice, SENT_FLAG_DISCARDED, nextCursor);
+    recordStore->HasReadRecord = false;
+    return recordStore->LastSentFlagOffset + SENT_FLAG_SIZE;
 }
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore)

@@ -101,13 +101,12 @@ enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore);
 
-/* Marks the record Read last met as discarded, so no later read or resume scan
- * offers it again: @p nextCursor is where the record after it starts. */
-enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_DiscardLastRead(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    size_t* nextCursor
-);
+/* Where the record after the one Read last met starts, by the length its
+ * header gave. Nothing is written: a record the policy rejected has a length
+ * the policy did not vouch for, so there is nowhere to put a mark, and it is
+ * read and rejected again each time the store starts until its block is done
+ * with. The record is forgotten. */
+size_t SolidSyslogRecordStore_StepPastLastRead(struct SolidSyslogRecordStore* recordStore);
 
 /* What FindFirstUnsent met on its way through the block. */
 enum SolidSyslogRecordStoreScanResult
