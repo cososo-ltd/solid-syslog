@@ -300,6 +300,16 @@ static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCal
     }
 }
 
+/* NULL means the stack scratch, which is what every logger had before the
+ * field existed; nothing to report. */
+static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSyslogScratch* configured)
+{
+    if (configured != NULL)
+    {
+        self->Scratch = configured;
+    }
+}
+
 static void SolidSyslog_InstallStructuredData(
     struct SolidSyslog* self,
     struct SolidSyslogStructuredData** configured,
@@ -649,14 +659,4 @@ static void SolidSyslog_FormatIntoScratch(SolidSyslogFormatterStorage* storage, 
         SolidSyslogFormatter_AsFormattedBuffer(f),
         SolidSyslogFormatter_Length(f)
     );
-}
-
-/* NULL means the stack scratch, which is what every logger had before the
- * field existed; nothing to report. */
-static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSyslogScratch* configured)
-{
-    if (configured != NULL)
-    {
-        self->Scratch = configured;
-    }
 }

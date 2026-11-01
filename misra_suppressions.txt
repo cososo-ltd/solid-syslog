@@ -116,7 +116,7 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:186
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:487
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:868
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:880
-misra-c2012-11.5:Core/Source/SolidSyslog.c:643
+misra-c2012-11.5:Core/Source/SolidSyslog.c:653
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
