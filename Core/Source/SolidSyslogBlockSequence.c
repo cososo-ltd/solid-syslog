@@ -527,7 +527,7 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
     {
         bool readingOldestBlock = (blockSequence->ReadSequence == blockSequence->OldestSequence);
         blockSequence->EvictedUnsent = readingOldestBlock;
-        blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
+        blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
 
         if (readingOldestBlock)
         {

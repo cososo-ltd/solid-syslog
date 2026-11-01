@@ -282,6 +282,21 @@ TEST(BlockSequenceScan, ADrainedBlockBeforeAHoleHandsOldestToTheBlockAfterIt)
     CHECK_FALSE(WasDisposed(1));
 }
 
+/* An eviction too: the block after the hole becomes the oldest, and the hole
+ * is never the one disposed of. */
+TEST(BlockSequenceScan, AnEvictionBeforeAHoleHandsOldestToTheBlockAfterIt)
+{
+    existing = {0, 2};
+    sizes = {{0, 1000}, {2, 1000}};
+    RecreateWithMaxBlocks(2);
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    bool readBlockChanged = false;
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_EvictedUnsent(sequence));
+    LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
+    CHECK_FALSE(WasDisposed(1));
+}
+
 namespace
 {
 enum
