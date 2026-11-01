@@ -15,12 +15,14 @@
 
 #include "SolidSyslogPlusTcpTcpStream.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
 
 struct SolidSyslogPlusTcpTcpStream
 {
     struct SolidSyslogStream Base;
     struct SolidSyslogPlusTcpTcpStreamConfig Config;
     Socket_t Socket;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
 };
 
 void SolidSyslogPlusTcpTcpStream_Initialise(

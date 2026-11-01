@@ -10,6 +10,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
 #include "SolidSyslogVxWorks64TcpStream.h"
 #include "SolidSyslogVxWorks64TcpStreamErrors.h"
 
@@ -18,6 +19,7 @@ struct SolidSyslogVxWorks64TcpStream
     struct SolidSyslogStream Base;
     struct SolidSyslogVxWorks64TcpStreamConfig Config;
     int Fd;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
 };
 
 void SolidSyslogVxWorks64TcpStream_Initialise(

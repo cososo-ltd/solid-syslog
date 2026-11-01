@@ -352,6 +352,45 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectRefusedWhenTheSocketIsClosed
     );
 }
 
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsARepeatedRefusalOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_ENOTCONN);
+
+    SolidSyslogStream_Open(stream, addr);
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsADifferentFailureInTheSameRun)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_ENOTCONN);
+    SolidSyslogStream_Open(stream, addr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_EINVAL);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenReportsTheSameRefusalAgainAfterAConnectionInBetween)
+{
+    ErrorHandlerFake_Install(nullptr);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_ENOTCONN);
+    SolidSyslogStream_Open(stream, addr);
+    FreeRtosSocketsFake_SetConnectReturn(0);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    SolidSyslogStream_Close(stream);
+    FreeRtosSocketsFake_SetConnectReturn(-pdFREERTOS_ERRNO_ENOTCONN);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogPlusTcpTcpStream, OpenReportsConnectNotStartedWhenTheStackRejectsTheAttempt)
 {
     ErrorHandlerFake_Install(nullptr);
