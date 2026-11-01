@@ -518,31 +518,14 @@ static inline void RecordStore_RememberCurrentRecord(
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
+static inline bool RecordStore_WriteSentFlag(
     struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag,
-    size_t* nextCursor
-);
-static inline bool RecordStore_WriteFlag(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag
+    struct SolidSyslogBlockDevice* blockDevice
 );
 
 enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
-    size_t* nextCursor
-)
-{
-    return RecordStore_MarkLastRead(recordStore, blockDevice, SENT_FLAG_SENT, nextCursor);
-}
-
-static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag,
     size_t* nextCursor
 )
 {
@@ -552,7 +535,7 @@ static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
     {
         result = SOLIDSYSLOG_RECORD_STORE_MARK_DEVICE_FAILED;
 
-        if (RecordStore_WriteFlag(recordStore, blockDevice, flag))
+        if (RecordStore_WriteSentFlag(recordStore, blockDevice))
         {
             *nextCursor = recordStore->LastSentFlagOffset + SENT_FLAG_SIZE;
             recordStore->HasReadRecord = false;
@@ -563,12 +546,12 @@ static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
     return result;
 }
 
-static inline bool RecordStore_WriteFlag(
+static inline bool RecordStore_WriteSentFlag(
     struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag
+    struct SolidSyslogBlockDevice* blockDevice
 )
 {
+    uint8_t flag = SENT_FLAG_SENT;
     return SolidSyslogBlockDevice_WriteAt(
         blockDevice,
         recordStore->LastReadBlockIndex,

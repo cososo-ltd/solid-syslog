@@ -2143,6 +2143,28 @@ TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthLeavesTheN
     CHECK_SECOND_RECORD_UNTOUCHED();
 }
 
+/* Stepped past by the length the policy refused, the cursor lands inside the
+ * second record: the rejection is reported, and the corruption it leads to
+ * joins the same run. */
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthIsReportedOnceAndEndsTheBlock)
+{
+    WriteTwoRecordsAndDamageTheFirstLength();
+    spyOpenRejections = 1;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED
+    );
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
 TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsReportedAsDiscarded)
 {
     SolidSyslogStore_Write(store, "first", 5);
