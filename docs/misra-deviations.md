@@ -273,6 +273,13 @@ boundary. Each affected wrapper concentrates the cast in a single
 not one per callback (see `LwipRawTcpStream_SelfFromArg` for the
 canonical shape).
 
+The same shape arises once inside Core, where the library runs a
+continuation of its own rather than a third party's. `SolidSyslog_Log`
+hands a `struct LogRequest*` to the scratch's `WithScratch` as its
+`void* context`, and `SolidSyslog_FormatIntoScratch` casts it back. Every
+scratch passes the pointer through unchanged, so the cast can only meet
+the type `Log` passed in. Accepted under S38.01 (#633).
+
 A second 11.5 sub-case the library leans on is the
 `void* ↔ const uint8_t*` cast in `SolidSyslogUdpSender` when trimming
 codepoint-boundary bytes from the caller's `const void*` buffer, a
@@ -283,7 +290,8 @@ third-party API contract (the public `Send` / `SendTo` interface) is
 ### Scope
 
 - **Strict level** - `Core/Source/`: the `SelfFromBase` helpers on every vtable
-  class, and the Formatter storage cast of sub-case (b).
+  class, the Formatter storage cast of sub-case (b), and the one
+  continuation-context cast of sub-case (c) in `SolidSyslog.c`.
 - **Pragmatic level** - `Platform/*/Source/`: the same `SelfFromBase` shape in
   each adapter, the per-platform Address downcasts, and the callback `void*`
   casts of sub-case (c). Every pack that declares a vtable class is in scope.
