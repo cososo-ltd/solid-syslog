@@ -640,7 +640,7 @@ static void SolidSyslog_DoLog(
 
 static void SolidSyslog_FormatIntoScratch(SolidSyslogFormatterStorage* storage, size_t messageBytes, void* context)
 {
-    const struct LogRequest* request = (const struct LogRequest*) context;
+    struct LogRequest* request = (struct LogRequest*) context;
     struct SolidSyslogFormatter* f = SolidSyslogFormatter_Create(storage, messageBytes);
 
     SolidSyslogMessageFormatter_Format(f, request->Message, &request->Handle->Format, request->Sd, request->SdCount);

@@ -82,6 +82,20 @@ def build_graph(root):
                         "header": path,
                     }
                 )
+    # A role is a contract an integrator can fill: it has a dispatch header or a
+    # vtable Definition header in some Interface directory. A factory that returns
+    # a type with neither (the Scratch, a strategy private to Core) is not a role
+    # and takes no part in the graph.
+    headers = {
+        os.path.basename(path)
+        for directory in _scan_dirs(root)
+        for path in glob.glob(os.path.join(directory, "*.h"))
+    }
+    roles = {
+        role: info
+        for role, info in roles.items()
+        if ("SolidSyslog" + role + ".h" in headers) or ("SolidSyslog" + role + "Definition.h" in headers)
+    }
     core = os.path.join(root, "Core", "Interface")
     defined = _defined_structs(root)
     for role, info in roles.items():

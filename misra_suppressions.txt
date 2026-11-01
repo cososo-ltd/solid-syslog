@@ -36,6 +36,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:64
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:64
 misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:69
+misra-c2012-11.3:Core/Source/SolidSyslogSharedScratch.c:50
 misra-c2012-11.3:Core/Source/SolidSyslogStreamSender.c:197
 misra-c2012-11.3:Core/Source/SolidSyslogSwitchingSender.c:77
 misra-c2012-11.3:Core/Source/SolidSyslogTimeQualitySd.c:73
@@ -115,6 +116,7 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:186
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:487
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:868
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:880
+misra-c2012-11.5:Core/Source/SolidSyslog.c:643
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -136,6 +138,7 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:126
 misra-c2012-11.8:Core/Source/SolidSyslog.c:127
 misra-c2012-11.8:Core/Source/SolidSyslog.c:128
 misra-c2012-11.8:Core/Source/SolidSyslog.c:129
+misra-c2012-11.8:Core/Source/SolidSyslog.c:130
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
