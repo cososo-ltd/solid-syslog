@@ -134,14 +134,19 @@ static uint32_t WinsockTcpStream_Version(struct SolidSyslogStream* base);
 static inline struct SolidSyslogWinsockTcpStream* WinsockTcpStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool WinsockTcpStream_ConfigProvidesGetter(const struct SolidSyslogWinsockTcpStreamConfig* config);
 static void WinsockTcpStream_ReportConnectFailureWithLastError(
+    struct SolidSyslogWinsockTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     int lastError
 );
-static void WinsockTcpStream_ReportUnfinishedWait(SOCKET fd, int selectResult, int selectLastError);
+static void WinsockTcpStream_ReportUnfinishedWait(
+    struct SolidSyslogWinsockTcpStream* self,
+    int selectResult,
+    int selectLastError
+);
 
-static SOCKET WinsockTcpStream_OpenAndConfigureSocket(void);
-static bool WinsockTcpStream_ConfigureSocket(SOCKET fd);
+static void WinsockTcpStream_OpenAndConfigureSocket(struct SolidSyslogWinsockTcpStream* self);
+static bool WinsockTcpStream_ConfigureSocket(struct SolidSyslogWinsockTcpStream* self);
 static void WinsockTcpStream_EnableTcpNoDelay(SOCKET fd);
 static void WinsockTcpStream_EnableKeepalive(SOCKET fd);
 static inline bool WinsockTcpStream_IsSocketValid(SOCKET fd);
@@ -149,12 +154,20 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
     struct SolidSyslogWinsockTcpStream* self,
     const struct sockaddr_in* sin
 );
-static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, uint32_t connectTimeoutMs);
-static bool WinsockTcpStream_SetNonBlocking(SOCKET fd);
-static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connectTimeoutMs);
-static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd);
+static bool WinsockTcpStream_Connect(
+    struct SolidSyslogWinsockTcpStream* self,
+    const struct sockaddr_in* sin,
+    uint32_t connectTimeoutMs
+);
+static bool WinsockTcpStream_SetNonBlocking(struct SolidSyslogWinsockTcpStream* self);
+static bool WinsockTcpStream_WaitForConnectCompletion(
+    struct SolidSyslogWinsockTcpStream* self,
+    uint32_t connectTimeoutMs
+);
+static bool WinsockTcpStream_ReadDeferredConnectError(struct SolidSyslogWinsockTcpStream* self);
 static bool WinsockTcpStream_ReadSocketError(SOCKET fd, int* code);
 static void WinsockTcpStream_ReportConnectFailure(
+    struct SolidSyslogWinsockTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
@@ -258,10 +271,14 @@ static bool WinsockTcpStream_TakeSocketAndConnect(
 )
 {
     bool connected = false;
-    self->Fd = WinsockTcpStream_OpenAndConfigureSocket();
+    WinsockTcpStream_OpenAndConfigureSocket(self);
     if (WinsockTcpStream_IsSocketValid(self->Fd))
     {
         connected = WinsockTcpStream_ConnectOrCloseOnFailure(self, sin);
+    }
+    if (connected)
+    {
+        SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
     }
     return connected;
 }
@@ -270,17 +287,27 @@ static bool WinsockTcpStream_TakeSocketAndConnect(
  * failed, so a portable handler reacts to "no connection" without knowing
  * Winsock. Each failing step reports its own, because each is the only place
  * that knows which one it was, and the only place its WSAGetLastError can be
- * read before another call replaces it. */
+ * read before another call replaces it. Reported once per run of the same
+ * detail, as the Open contract requires: the sender retries every service
+ * pass. */
 static void WinsockTcpStream_ReportConnectFailure(
+    struct SolidSyslogWinsockTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 )
 {
-    WinsockTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->OpenHealth,
+        &SolidSyslogWinsockTcpStreamErrorSource,
+        severity,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        (int32_t) detail
+    );
 }
 
 /* The fault, with the Winsock error code behind it when the call left one. */
 static void WinsockTcpStream_ReportConnectFailureWithLastError(
+    struct SolidSyslogWinsockTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     int lastError
@@ -288,9 +315,10 @@ static void WinsockTcpStream_ReportConnectFailureWithLastError(
 {
     if (lastError != 0)
     {
-        SolidSyslog_ErrorWithNativeCode(
-            severity,
+        SolidSyslogStreamOpenHealth_ReportFailureWithNativeCode(
+            &self->OpenHealth,
             &SolidSyslogWinsockTcpStreamErrorSource,
+            severity,
             SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
             (int32_t) detail,
             (int32_t) lastError
@@ -298,43 +326,43 @@ static void WinsockTcpStream_ReportConnectFailureWithLastError(
     }
     else
     {
-        WinsockTcpStream_ReportConnectFailure(severity, detail);
+        WinsockTcpStream_ReportConnectFailure(self, severity, detail);
     }
 }
 
 /* Non-blocking from the start: connect() returns WSAEWOULDBLOCK and the wait
  * is bounded via select(); WinsockTcpStream_Send/WinsockTcpStream_Read never block the service thread on a
  * wedged peer or a full kernel send buffer. */
-static SOCKET WinsockTcpStream_OpenAndConfigureSocket(void)
+static void WinsockTcpStream_OpenAndConfigureSocket(struct SolidSyslogWinsockTcpStream* self)
 {
-    SOCKET fd = WinsockTcpStream_socket(AF_INET, SOCK_STREAM, 0);
+    self->Fd = WinsockTcpStream_socket(AF_INET, SOCK_STREAM, 0);
     /* Read the error once, immediately after socket, before any call replaces it. */
-    int socketLastError = WinsockTcpStream_IsSocketValid(fd) ? 0 : WinsockTcpStream_WSAGetLastError();
-    if (!WinsockTcpStream_IsSocketValid(fd))
+    int socketLastError = WinsockTcpStream_IsSocketValid(self->Fd) ? 0 : WinsockTcpStream_WSAGetLastError();
+    if (!WinsockTcpStream_IsSocketValid(self->Fd))
     {
         WinsockTcpStream_ReportConnectFailureWithLastError(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
             socketLastError
         );
     }
-    else if (!WinsockTcpStream_ConfigureSocket(fd))
+    else if (!WinsockTcpStream_ConfigureSocket(self))
     {
-        WinsockTcpStream_closesocket(fd);
-        fd = INVALID_SOCKET;
+        WinsockTcpStream_closesocket(self->Fd);
+        self->Fd = INVALID_SOCKET;
     }
     else
     {
         /* configured - ready to connect */
     }
-    return fd;
 }
 
-static bool WinsockTcpStream_ConfigureSocket(SOCKET fd)
+static bool WinsockTcpStream_ConfigureSocket(struct SolidSyslogWinsockTcpStream* self)
 {
-    WinsockTcpStream_EnableTcpNoDelay(fd);
-    WinsockTcpStream_EnableKeepalive(fd);
-    return WinsockTcpStream_SetNonBlocking(fd);
+    WinsockTcpStream_EnableTcpNoDelay(self->Fd);
+    WinsockTcpStream_EnableKeepalive(self->Fd);
+    return WinsockTcpStream_SetNonBlocking(self);
 }
 
 static void WinsockTcpStream_EnableTcpNoDelay(SOCKET fd)
@@ -370,7 +398,7 @@ static bool WinsockTcpStream_ConnectOrCloseOnFailure(
 )
 {
     uint32_t connectTimeoutMs = WinsockTcpStream_ResolveConnectTimeoutMs(self);
-    bool connected = WinsockTcpStream_Connect(self->Fd, sin, connectTimeoutMs);
+    bool connected = WinsockTcpStream_Connect(self, sin, connectTimeoutMs);
     if (!connected)
     {
         WinsockTcpStream_closesocket(self->Fd);
@@ -395,10 +423,14 @@ static uint32_t WinsockTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogWinso
  * discard policy from firing in BDD outage scenarios. The non-blocking path
  * bounds each connect attempt to CONNECT_TIMEOUT_MILLISECONDS; the socket
  * stays non-blocking thereafter so WinsockTcpStream_Send/WinsockTcpStream_Read are also fail-fast. */
-static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, uint32_t connectTimeoutMs)
+static bool WinsockTcpStream_Connect(
+    struct SolidSyslogWinsockTcpStream* self,
+    const struct sockaddr_in* sin,
+    uint32_t connectTimeoutMs
+)
 {
     bool connected = false;
-    int rc = WinsockTcpStream_connect(fd, (const struct sockaddr*) sin, (int) sizeof(*sin));
+    int rc = WinsockTcpStream_connect(self->Fd, (const struct sockaddr*) sin, (int) sizeof(*sin));
     /* Read the error once, immediately after connect, so both tests below see
      * the same value and no intervening call can replace it. */
     int lastError = (rc == SOCKET_ERROR) ? WinsockTcpStream_WSAGetLastError() : 0;
@@ -409,12 +441,13 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
     }
     else if (lastError == WSAEWOULDBLOCK)
     {
-        connected = WinsockTcpStream_WaitForConnectCompletion(fd, connectTimeoutMs) &&
-                    WinsockTcpStream_ReadDeferredConnectError(fd);
+        connected = WinsockTcpStream_WaitForConnectCompletion(self, connectTimeoutMs) &&
+                    WinsockTcpStream_ReadDeferredConnectError(self);
     }
     else if (WinsockTcpStream_IsRemoteConnectError(lastError))
     {
         WinsockTcpStream_ReportConnectFailureWithLastError(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
             lastError
@@ -423,6 +456,7 @@ static bool WinsockTcpStream_Connect(SOCKET fd, const struct sockaddr_in* sin, u
     else
     {
         WinsockTcpStream_ReportConnectFailureWithLastError(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
             lastError
@@ -446,15 +480,16 @@ static inline bool WinsockTcpStream_IsRemoteConnectError(int wsaError)
 /* A socket Winsock will not make non-blocking is of no use: the bounded
  * connect, and Send and Read never blocking the service thread, all rest on
  * it. The attempt is given up here, and this is the step that reports it. */
-static bool WinsockTcpStream_SetNonBlocking(SOCKET fd)
+static bool WinsockTcpStream_SetNonBlocking(struct SolidSyslogWinsockTcpStream* self)
 {
     u_long mode = 1;
-    int rc = WinsockTcpStream_ioctlsocket(fd, (long) FIONBIO, &mode);
+    int rc = WinsockTcpStream_ioctlsocket(self->Fd, (long) FIONBIO, &mode);
     int ioctlLastError = (rc == SOCKET_ERROR) ? WinsockTcpStream_WSAGetLastError() : 0;
     bool nonBlocking = (rc != SOCKET_ERROR);
     if (!nonBlocking)
     {
         WinsockTcpStream_ReportConnectFailureWithLastError(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
             ioctlLastError
@@ -463,8 +498,12 @@ static bool WinsockTcpStream_SetNonBlocking(SOCKET fd)
     return nonBlocking;
 }
 
-static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connectTimeoutMs)
+static bool WinsockTcpStream_WaitForConnectCompletion(
+    struct SolidSyslogWinsockTcpStream* self,
+    uint32_t connectTimeoutMs
+)
 {
+    SOCKET fd = self->Fd;
     fd_set writeSet;
     FD_ZERO(&writeSet);
     FD_SET(fd, &writeSet);
@@ -483,7 +522,7 @@ static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connec
     bool ready = (rc > 0) && FD_ISSET(fd, &writeSet) && !FD_ISSET(fd, &errorSet);
     if (!ready)
     {
-        WinsockTcpStream_ReportUnfinishedWait(fd, rc, selectLastError);
+        WinsockTcpStream_ReportUnfinishedWait(self, rc, selectLastError);
     }
     return ready;
 }
@@ -492,12 +531,17 @@ static bool WinsockTcpStream_WaitForConnectCompletion(SOCKET fd, uint32_t connec
  * left its error. A socket select answered for, flagged in the exception set,
  * is how Winsock reports a refused non-blocking connect, and the socket holds
  * the failure in SO_ERROR. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a socket, a select result and the error it left; distinct semantics
-static void WinsockTcpStream_ReportUnfinishedWait(SOCKET fd, int selectResult, int selectLastError)
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the error it left; distinct semantics
+static void WinsockTcpStream_ReportUnfinishedWait(
+    struct SolidSyslogWinsockTcpStream* self,
+    int selectResult,
+    int selectLastError
+)
 {
     if (WinsockTcpStream_WaitTimedOut(selectResult))
     {
         WinsockTcpStream_ReportConnectFailure(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
         );
@@ -507,9 +551,10 @@ static void WinsockTcpStream_ReportUnfinishedWait(SOCKET fd, int selectResult, i
         int lastError = selectLastError;
         if (selectResult > 0)
         {
-            (void) WinsockTcpStream_ReadSocketError(fd, &lastError);
+            (void) WinsockTcpStream_ReadSocketError(self->Fd, &lastError);
         }
         WinsockTcpStream_ReportConnectFailureWithLastError(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
             lastError
@@ -525,14 +570,15 @@ static inline bool WinsockTcpStream_WaitTimedOut(int selectResult)
     return selectResult == 0;
 }
 
-static bool WinsockTcpStream_ReadDeferredConnectError(SOCKET fd)
+static bool WinsockTcpStream_ReadDeferredConnectError(struct SolidSyslogWinsockTcpStream* self)
 {
     int code = 0;
-    bool asked = WinsockTcpStream_ReadSocketError(fd, &code);
+    bool asked = WinsockTcpStream_ReadSocketError(self->Fd, &code);
     bool connected = asked && (code == 0);
     if (!connected)
     {
         WinsockTcpStream_ReportConnectFailureWithLastError(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
             code

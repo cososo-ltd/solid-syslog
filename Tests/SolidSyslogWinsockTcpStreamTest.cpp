@@ -120,6 +120,12 @@ TEST_GROUP(SolidSyslogWinsockTcpStream)
     void openAfterConnectFails(int wsaError) const
     {
         ErrorHandlerFake_Install(nullptr);
+        openAgainAfterConnectFails(wsaError);
+    }
+
+    /* A later attempt in the same run: the handler keeps counting. */
+    void openAgainAfterConnectFails(int wsaError) const
+    {
         WinsockFake_SetConnectFailsWithLastError(wsaError);
         SolidSyslogStream_Open(stream, addr);
     }
@@ -297,6 +303,34 @@ TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmed
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         WSAECONNREFUSED
     );
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsARepeatedRefusalOnce)
+{
+    openAfterConnectFails(WSAECONNREFUSED);
+    openAgainAfterConnectFails(WSAECONNREFUSED);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsADifferentFailureInTheSameRun)
+{
+    openAfterConnectFails(WSAECONNREFUSED);
+    openAgainAfterConnectFails(WSAEINVAL);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWinsockTcpStream, OpenReportsTheSameRefusalAgainAfterAConnectionInBetween)
+{
+    openAfterConnectFails(WSAECONNREFUSED);
+    WinsockFake_Reset(); /* the fake's refusal is sticky; the handler is not reset */
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    SolidSyslogStream_Close(stream);
+    openAgainAfterConnectFails(WSAECONNREFUSED);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogWinsockTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)
