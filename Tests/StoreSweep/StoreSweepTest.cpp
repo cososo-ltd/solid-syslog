@@ -1,8 +1,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include "BlockDeviceFake.h"
+#include "Environment.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogCrc16Policy.h"
 #include "StoreBench.h"
@@ -37,7 +39,6 @@ const Scenario SCENARIOS[] = {
     {"two-blocks-first-part-sent", 512U, 3U, 20U, 3U},
     {"three-full-blocks", 512U, 4U, 39U, 0U},
 };
-const size_t SCENARIO_COUNT = sizeof(SCENARIOS) / sizeof(SCENARIOS[0]);
 
 struct Policy
 {
@@ -49,14 +50,11 @@ const Policy POLICIES[] = {
     {"null", false},
     {"crc16", true},
 };
-const size_t POLICY_COUNT = sizeof(POLICIES) / sizeof(POLICIES[0]);
 
 struct SolidSyslogSecurityPolicy* PolicyFor(const Policy& policy)
 {
     return policy.Strong ? SolidSyslogCrc16Policy_Create() : nullptr;
 }
-
-const char* const ABSENT_BEHAVIOUR_NAMES[] = {"fails", "created-on-touch", "ghost"};
 
 const enum BlockDeviceFakeAbsentBlockBehaviour ABSENT_BEHAVIOURS[] = {
     BLOCKDEVICEFAKE_ABSENT_FAILS,
@@ -112,14 +110,13 @@ const char* const KIND_SILENT_LOSS = "silent-loss";
 const char* const KIND_LOSS_OUTSIDE_BLOCK = "loss-outside-block";
 const char* const KIND_ILLEGAL_WRITE = "illegal-write";
 const char* const KIND_UNDETECTED_DAMAGE = "undetected-damage";
-const char* const KINDS[] = {
+const std::vector<const char*> KINDS = {
     KIND_UNBOUNDED_WORK,
     KIND_SILENT_LOSS,
     KIND_LOSS_OUTSIDE_BLOCK,
     KIND_ILLEGAL_WRITE,
     KIND_UNDETECTED_DAMAGE,
 };
-const size_t KIND_COUNT = sizeof(KINDS) / sizeof(KINDS[0]);
 
 /* Whether the policy is expected to catch this fault class: one changed byte
  * on the media. A failed read or a vanished block is not damage it can see. */
@@ -142,10 +139,10 @@ bool BlockIsGone(const char* fault)
  * cut exactly at a record boundary, which leaves nothing to say the records
  * after it ever existed; and a sent-flag byte stuck at the value that means
  * sent, which is a sent record to any reader. */
-bool IsUndetectableLoss(const StoreBench& bench, const Case& c)
+bool IsUndetectableLoss(const Case& c)
 {
-    bool truncatedAtBoundary = (std::string(c.Fault) == "truncate") && bench.IsRecordBoundary(c.Block, c.Offset);
-    bool flagStuckAtSent = (std::string(c.Fault) == "stuck-00") && bench.IsRecordFlagByte(c.Block, c.Offset);
+    bool truncatedAtBoundary = (std::string(c.Fault) == "truncate") && StoreBench::IsRecordBoundary(c.Block, c.Offset);
+    bool flagStuckAtSent = (std::string(c.Fault) == "stuck-00") && StoreBench::IsRecordFlagByte(c.Block, c.Offset);
     return truncatedAtBoundary || flagStuckAtSent;
 }
 
@@ -155,7 +152,7 @@ Verdict Judge(const StoreBench& bench, const Case& c)
     std::vector<unsigned> silent =
         BlockIsGone(c.Fault) ? bench.SilentlyLostOutsideBlock(c.Block) : bench.SilentlyLost();
 
-    if (IsUndetectableLoss(bench, c))
+    if (IsUndetectableLoss(c))
     {
         silent.clear();
     }
@@ -186,9 +183,9 @@ Verdict Judge(const StoreBench& bench, const Case& c)
         verdict.Kind = KIND_LOSS_OUTSIDE_BLOCK;
         verdict.Detail = "sequence " + std::to_string(outside[0]) + " was lost outside the faulted block";
     }
-    else if (!bench.IllegalWrites().empty())
+    else if (!StoreBench::IllegalWrites().empty())
     {
-        BlockDeviceFakeWrite write = bench.IllegalWrites()[0];
+        BlockDeviceFakeWrite write = StoreBench::IllegalWrites()[0];
         verdict.Kind = KIND_ILLEGAL_WRITE;
         verdict.Detail = "the store wrote " + std::to_string(write.Count) + " byte(s) at block " +
                          std::to_string(write.Block) + " offset " + std::to_string(write.Offset) +
@@ -257,50 +254,44 @@ std::string Join(const std::vector<unsigned>& sequences)
 {
     std::string joined;
 
-    for (size_t i = 0U; i < sequences.size(); i++)
+    for (unsigned sequence : sequences)
     {
-        joined += (i == 0U ? "" : " ") + std::to_string(sequences[i]);
+        joined += (joined.empty() ? "" : " ") + std::to_string(sequence);
     }
 
     return joined;
 }
 
+void Say(const std::string& text)
+{
+    (void) std::fputs(text.c_str(), stdout);
+}
+
 /* What the bench recorded, for the one case the filter named. */
 void PrintAccount(const StoreBench& bench)
 {
-    std::printf("  delivered: %s\n", Join(bench.Delivered()).c_str());
-    std::printf("  lost: %s\n", Join(bench.Lost()).c_str());
-    std::printf(
-        "  loss reports=%lu (frozen=%lu) garbage=%lu duplicates=%lu max operations in one call=%lu bytes written "
-        "after fault=%lu\n",
-        static_cast<unsigned long>(bench.LossReports()),
-        static_cast<unsigned long>(bench.FreezeReports()),
-        static_cast<unsigned long>(bench.Garbage()),
-        static_cast<unsigned long>(bench.Duplicates()),
-        static_cast<unsigned long>(bench.MaxOperationsInOneCall()),
-        static_cast<unsigned long>(bench.BytesWrittenAfterFault())
-    );
-    std::vector<BlockDeviceFakeWrite> illegal = bench.IllegalWrites();
-    for (size_t i = 0U; i < illegal.size(); i++)
+    Say("  delivered: " + Join(bench.Delivered()) + "\n");
+    Say("  lost: " + Join(bench.Lost()) + "\n");
+    Say("  loss reports=" + std::to_string(bench.LossReports()) + " (frozen=" + std::to_string(bench.FreezeReports()) +
+        ") garbage=" + std::to_string(bench.Garbage()) + " duplicates=" + std::to_string(bench.Duplicates()) +
+        " max operations in one call=" + std::to_string(bench.MaxOperationsInOneCall()) +
+        " bytes written after fault=" + std::to_string(bench.BytesWrittenAfterFault()) + "\n");
+    for (const BlockDeviceFakeWrite& write : StoreBench::IllegalWrites())
     {
-        std::printf(
-            "  illegal write: block=%lu offset=%lu count=%lu\n",
-            static_cast<unsigned long>(illegal[i].Block),
-            static_cast<unsigned long>(illegal[i].Offset),
-            static_cast<unsigned long>(illegal[i].Count)
-        );
+        Say("  illegal write: block=" + std::to_string(write.Block) + " offset=" + std::to_string(write.Offset) +
+            " count=" + std::to_string(write.Count) + "\n");
     }
-    std::printf("  blocks present:");
+    std::string present = "  blocks present:";
     for (size_t block = 0U; block < BLOCK_SPACE; block++)
     {
         size_t size = 0U;
         if (SolidSyslogBlockDevice_Exists(bench.Device(), block) &&
             SolidSyslogBlockDevice_Size(bench.Device(), block, &size))
         {
-            std::printf(" %lu(%lu)", static_cast<unsigned long>(block), static_cast<unsigned long>(size));
+            present += " " + std::to_string(block) + "(" + std::to_string(size) + ")";
         }
     }
-    std::printf("\n");
+    Say(present + "\n");
 }
 
 /* The positions a fault class is swept over: for each block the scenario
@@ -308,7 +299,7 @@ void PrintAccount(const StoreBench& bench)
 struct Grid
 {
     size_t Blocks;
-    size_t Offsets[BLOCK_SPACE];
+    std::vector<size_t> Offsets;
     size_t Variants;
 };
 
@@ -316,6 +307,7 @@ struct Grid
 Grid LayoutOf(const Case& c, size_t variants)
 {
     Grid grid = {};
+    grid.Offsets.assign(BLOCK_SPACE, 0U);
     grid.Variants = variants;
     StoreBench bench(OptionsFor(c));
     Populate(bench, *c.Scene);
@@ -397,17 +389,13 @@ size_t casesRun = 0U;
 class Failures
 {
   public:
-    Failures() : count(0U), byKind()
-    {
-    }
-
     void Add(const Case& c, const Verdict& verdict)
     {
         if (count < FAILURES_PRINTED)
         {
             message += "\n\t" + Describe(c) + ": " + verdict.Kind + ": " + verdict.Detail;
         }
-        for (size_t kind = 0U; kind < KIND_COUNT; kind++)
+        for (size_t kind = 0U; kind < KINDS.size(); kind++)
         {
             if (KINDS[kind] == verdict.Kind)
             {
@@ -422,7 +410,7 @@ class Failures
         if (count > 0U)
         {
             std::string summary = std::to_string(count) + " of " + std::to_string(casesRun) + " cases failed:";
-            for (size_t kind = 0U; kind < KIND_COUNT; kind++)
+            for (size_t kind = 0U; kind < KINDS.size(); kind++)
             {
                 if (byKind[kind] > 0U)
                 {
@@ -435,8 +423,8 @@ class Failures
     }
 
   private:
-    size_t count;
-    size_t byKind[KIND_COUNT];
+    size_t count = 0U;
+    std::vector<size_t> byKind = std::vector<size_t>(KINDS.size(), 0U);
     std::string message;
 };
 
@@ -449,11 +437,11 @@ void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply a
     size_t budget = StoreSweep_Budget();
     Failures failures;
 
-    for (size_t s = 0U; s < SCENARIO_COUNT; s++)
+    for (const Scenario& scene : SCENARIOS)
     {
-        for (size_t p = 0U; p < POLICY_COUNT; p++)
+        for (const Policy& pol : POLICIES)
         {
-            Case c = {&SCENARIOS[s], &POLICIES[p], fault, 0U, 0U, 0U};
+            Case c = {&scene, &pol, fault, 0U, 0U, 0U};
             Grid grid = gridOf(c, variants);
             size_t total = GridTotal(grid);
             size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
@@ -481,13 +469,13 @@ void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply a
 
 size_t StoreSweep_Budget()
 {
-    const char* value = std::getenv("SOLIDSYSLOG_STORE_SWEEP_BUDGET");
+    const char* value = Environment_Get("SOLIDSYSLOG_STORE_SWEEP_BUDGET");
     return (value != nullptr) ? static_cast<size_t>(std::strtoul(value, nullptr, 10)) : SMOKE_BUDGET;
 }
 
 std::string StoreSweep_CaseFilter()
 {
-    const char* value = std::getenv("SOLIDSYSLOG_STORE_SWEEP_CASE");
+    const char* value = Environment_Get("SOLIDSYSLOG_STORE_SWEEP_CASE");
     return (value != nullptr) ? std::string(value) : std::string();
 }
 
@@ -496,7 +484,7 @@ TEST_GROUP(StoreSweep)
 {
     void teardown() override
     {
-        std::printf("  %s: %lu cases\n", UtestShell::getCurrent()->getName().asCharString(), static_cast<unsigned long>(casesRun));
+        Say(std::string("  ") + UtestShell::getCurrent()->getName().asCharString() + ": " + std::to_string(casesRun) + " cases\n");
         casesRun = 0U;
     }
 };

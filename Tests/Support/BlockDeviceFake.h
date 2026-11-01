@@ -52,7 +52,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* A block that goes while the store runs: absent once the Nth media
      * operation since Create has completed. */
-    void BlockDeviceFake_RemoveBlockAfterOperation(size_t block, size_t operationCount);
+    void BlockDeviceFake_RemoveBlockAfterOperation(size_t block, size_t afterOperation);
 
     /* What an operation on an absent block meets. Fails is a flash-like device.
      * Created-on-touch is a file device whose open creates the file, so Size

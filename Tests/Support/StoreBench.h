@@ -101,13 +101,13 @@ class StoreBench
     /* Writes the store made that it had no business making: a WriteAt that is
      * not one byte at the last byte of a record the log saw appended. Judged
      * by position, since what the store verified is not visible from here. */
-    std::vector<BlockDeviceFakeWrite> IllegalWrites() const;
+    static std::vector<BlockDeviceFakeWrite> IllegalWrites();
 
     /* Where the records the log saw appended lie: a boundary is the first byte
      * of a record or the byte after the last one; the flag byte is a record's
      * last. The sweep uses these to name the faults no format can detect. */
-    bool IsRecordBoundary(size_t block, size_t offset) const;
-    bool IsRecordFlagByte(size_t block, size_t offset) const;
+    static bool IsRecordBoundary(size_t block, size_t offset);
+    static bool IsRecordFlagByte(size_t block, size_t offset);
 
   private:
     StoreBenchOptions options;

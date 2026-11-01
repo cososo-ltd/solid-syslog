@@ -1,5 +1,6 @@
 #include "StoreBench.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "SolidSyslogBlockDevice.h"
@@ -21,7 +22,7 @@ const size_t SEQUENCE_HEADER_LENGTH = SEQUENCE_PREFIX_LENGTH + SEQUENCE_DIGITS;
 
 char PaddingByte(unsigned sequence, size_t index)
 {
-    return static_cast<char>('a' + (((sequence * 7U) + index) % 26U));
+    return static_cast<char>('a' + (((static_cast<size_t>(sequence) * 7U) + index) % 26U));
 }
 
 void FormatRecord(char* record, size_t recordSize, unsigned sequence)
@@ -62,11 +63,11 @@ bool ParseRecord(const char* record, size_t length, size_t recordSize, unsigned*
 } // namespace
 
 StoreBench::StoreBench(const StoreBenchOptions& benchOptions)
-    : options(benchOptions), device(nullptr), store(nullptr), writesBeforeFault(0U), garbage(0U), lossReports(0U),
-      freezeReports(0U), maxOperationsInOneCall(0U), operationsBeforeCall(0U)
+    : options(benchOptions), device(BlockDeviceFake_Create(benchOptions.BlockSize)), store(nullptr),
+      writesBeforeFault(0U), garbage(0U), lossReports(0U), freezeReports(0U), maxOperationsInOneCall(0U),
+      operationsBeforeCall(0U)
 {
     SolidSyslog_SetErrorHandler(HandleError, this);
-    device = BlockDeviceFake_Create(benchOptions.BlockSize);
     CreateStore();
 }
 
@@ -111,11 +112,7 @@ void StoreBench::BeginCall()
 void StoreBench::EndCall()
 {
     size_t operations = BlockDeviceFake_OperationCount() - operationsBeforeCall;
-
-    if (operations > maxOperationsInOneCall)
-    {
-        maxOperationsInOneCall = operations;
-    }
+    maxOperationsInOneCall = std::max(maxOperationsInOneCall, operations);
 }
 
 bool StoreBench::ReadWithoutMarking()
@@ -192,11 +189,11 @@ std::vector<unsigned> StoreBench::Lost() const
 {
     std::vector<unsigned> lost;
 
-    for (size_t i = 0U; i < kept.size(); i++)
+    for (const Kept& record : kept)
     {
-        if (!WasDelivered(kept[i].Sequence))
+        if (!WasDelivered(record.Sequence))
         {
-            lost.push_back(kept[i].Sequence);
+            lost.push_back(record.Sequence);
         }
     }
 
@@ -207,11 +204,11 @@ std::vector<unsigned> StoreBench::LostOutsideBlock(size_t faultBlock) const
 {
     std::vector<unsigned> lost;
 
-    for (size_t i = 0U; i < kept.size(); i++)
+    for (const Kept& record : kept)
     {
-        if ((kept[i].Block != faultBlock) && !WasDelivered(kept[i].Sequence))
+        if ((record.Block != faultBlock) && !WasDelivered(record.Sequence))
         {
-            lost.push_back(kept[i].Sequence);
+            lost.push_back(record.Sequence);
         }
     }
 
@@ -222,11 +219,11 @@ std::vector<unsigned> StoreBench::GoneOutsideBlock(size_t faultBlock) const
 {
     std::vector<unsigned> gone;
 
-    for (size_t i = 0U; i < kept.size(); i++)
+    for (const Kept& record : kept)
     {
-        if ((kept[i].Block != faultBlock) && !WasDelivered(kept[i].Sequence) && !IsStillOnMedia(kept[i]))
+        if ((record.Block != faultBlock) && !WasDelivered(record.Sequence) && !IsStillOnMedia(record))
         {
-            gone.push_back(kept[i].Sequence);
+            gone.push_back(record.Sequence);
         }
     }
 
@@ -257,9 +254,9 @@ bool StoreBench::WasKept(unsigned sequence) const
 {
     bool wasKept = false;
 
-    for (size_t i = 0U; i < kept.size(); i++)
+    for (const Kept& record : kept)
     {
-        wasKept = wasKept || (kept[i].Sequence == sequence);
+        wasKept = wasKept || (record.Sequence == sequence);
     }
 
     return wasKept;
@@ -269,9 +266,9 @@ bool StoreBench::WasDelivered(unsigned sequence) const
 {
     bool wasDelivered = false;
 
-    for (size_t j = 0U; j < delivered.size(); j++)
+    for (unsigned sent : delivered)
     {
-        wasDelivered = wasDelivered || (delivered[j] == sequence);
+        wasDelivered = wasDelivered || (sent == sequence);
     }
 
     return wasDelivered;
@@ -351,18 +348,18 @@ bool IsLastByteOfAnAppend(const BlockDeviceFakeWrite& write, size_t writeCount)
 }
 } // namespace
 
-bool StoreBench::IsRecordFlagByte(size_t block, size_t offset) const
+bool StoreBench::IsRecordFlagByte(size_t block, size_t offset)
 {
     BlockDeviceFakeWrite at = {block, offset, 1U, false};
     return IsLastByteOfAnAppend(at, BlockDeviceFake_WriteCount());
 }
 
-bool StoreBench::IsRecordBoundary(size_t block, size_t offset) const
+bool StoreBench::IsRecordBoundary(size_t block, size_t offset)
 {
     return (offset == 0U) || IsRecordFlagByte(block, offset - 1U);
 }
 
-std::vector<BlockDeviceFakeWrite> StoreBench::IllegalWrites() const
+std::vector<BlockDeviceFakeWrite> StoreBench::IllegalWrites()
 {
     std::vector<BlockDeviceFakeWrite> illegal;
     size_t writeCount = BlockDeviceFake_WriteCount();

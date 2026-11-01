@@ -19,9 +19,9 @@ enum
  * may touch. */
 struct Overlay
 {
-    bool Active;
     size_t Block;
     size_t Offset;
+    bool Active;
     uint8_t Value;
 };
 
@@ -131,7 +131,7 @@ static struct Block* PresentBlockAt(size_t blockIndex)
 
     if (IsValidIndex(blockIndex) && !blocks[blockIndex].FailsEverything)
     {
-        if (blocks[blockIndex].Present)
+        if (blocks[blockIndex].Present || (absentBehaviour == BLOCKDEVICEFAKE_ABSENT_IS_GHOST))
         {
             block = &blocks[blockIndex];
         }
@@ -139,10 +139,6 @@ static struct Block* PresentBlockAt(size_t blockIndex)
         {
             blocks[blockIndex].Present = true;
             blocks[blockIndex].Size = 0U;
-            block = &blocks[blockIndex];
-        }
-        else if (absentBehaviour == BLOCKDEVICEFAKE_ABSENT_IS_GHOST)
-        {
             block = &blocks[blockIndex];
         }
         else

@@ -6,6 +6,14 @@
 # by its tuple. CI exports the full budget in the lanes that carry it.
 add_executable(SolidSyslogStoreSweep main.cpp StoreSweepTest.cpp)
 
+# The budget and filter come from the environment, which MSVC reads only
+# through getenv_s. CMake picks the implementation as it does SafeString's.
+if(MSVC)
+    target_sources(SolidSyslogStoreSweep PRIVATE ${CMAKE_SOURCE_DIR}/Tests/Support/EnvironmentWindows.c)
+else()
+    target_sources(SolidSyslogStoreSweep PRIVATE ${CMAKE_SOURCE_DIR}/Tests/Support/EnvironmentStandard.c)
+endif()
+
 target_link_libraries(SolidSyslogStoreSweep PRIVATE
     ${PROJECT_NAME}
     StoreBench
