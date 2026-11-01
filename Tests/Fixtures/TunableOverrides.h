@@ -21,3 +21,5 @@
 #define SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_POOL_SIZE 2U
 #define SOLIDSYSLOG_ATOMIC_COUNTER_POOL_SIZE 2U
 #define SOLIDSYSLOG_POOL_SIZE 3U
+/* The Linux BDD target holds two: the buffer's and the shared scratch's. */
+#define SOLIDSYSLOG_MUTEX_POOL_SIZE 2U
