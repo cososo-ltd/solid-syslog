@@ -1124,9 +1124,15 @@ jobs:
 
       # ----------------------------------------------------------------
       # cppcheck-misra addon — runs the MISRA C:2012 addon over Strict +
-      # Pragmatic levels (Core/Source/ + Platform/*/Source/). Findings
-      # fail CI (--error-exitcode=1); suppressions live in
-      # misra_suppressions.txt with rationales in docs/misra-deviations.md.
+      # Pragmatic levels (Core/Source/ + Platform/*/Source/). Suppressions
+      # live in misra_suppressions.txt with rationales in
+      # docs/misra-deviations.md. The step fails on any finding printed,
+      # not on cppcheck's exit code: Cppcheck 2.10 reports the addon's
+      # whole-program rules (2.4, 2.5, 5.7) after the per-file pass, and
+      # those results are not counted towards --error-exitcode, so a
+      # fresh unused tag, unused macro or repeated tag would otherwise
+      # reach main with the lane green. The exit code is still honoured
+      # for the per-file rules; the grep catches what it misses.
       # No vendor headers are on the path, so a vendor constant that sizes an
       # array is defined here at the value the vendor documents
       # (MAXHOSTNAMELEN and INET_ADDR_LEN, VxWorks 6.4); unexpanded, it reads
@@ -1137,60 +1143,67 @@ jobs:
 
       - name: Run cppcheck-misra
         if: success() || failure()
-        run: >
-          cppcheck
-          --addon=misra
-          --suppressions-list=misra_suppressions.txt
-          --error-exitcode=1
-          --inline-suppr
-          --std=c11
-          -DLWIP_DNS=1
-          -DLWIP_UDP=1
-          -DLWIP_TCP=1
-          -DLWIP_TCP_KEEPALIVE=1
-          -DLWIP_SOCKET=1
-          -DLWIP_SOCKET_SELECT=1
-          -DconfigSUPPORT_STATIC_ALLOCATION=1
-          -DconfigUSE_MUTEXES=1
-          -DipconfigUSE_TCP=1
-          -DMBEDTLS_HAVE_TIME_DATE=1
-          -DTICK_TYPE_WIDTH_16_BITS=0
-          -DTICK_TYPE_WIDTH_32_BITS=1
-          -DTICK_TYPE_WIDTH_64_BITS=2
-          -DconfigTICK_TYPE_WIDTH_IN_BITS=1
-          -DMAXHOSTNAMELEN=256
-          -DINET_ADDR_LEN=18
-          -ICore/Interface
-          -ICore/Source
-          -IPlatform/StdAtomic/Interface
-          -IPlatform/Posix/Interface
-          -IPlatform/Windows/Interface
-          -IPlatform/OpenSsl/Interface
-          -IPlatform/MbedTls/Interface
-          -IPlatform/FreeRtos/Interface
-          -IPlatform/CmsisRtos/Interface
-          -IPlatform/VxWorks64/Interface
-          -IPlatform/PlusTcp/Interface
-          -IPlatform/LwipRaw/Interface
-          -IPlatform/LwipSocket/Interface
-          -IPlatform/FatFs/Interface
-          -IPlatform/LittleFs/Interface
-          -IPlatform/PlusFat/Interface
-          Core/Source/
-          Platform/StdAtomic/Source/
-          Platform/Posix/Source/
-          Platform/Windows/Source/
-          Platform/OpenSsl/Source/
-          Platform/MbedTls/Source/
-          Platform/FreeRtos/Source/
-          Platform/CmsisRtos/Source/
-          Platform/VxWorks64/Source/
-          Platform/PlusTcp/Source/
-          Platform/LwipRaw/Source/
-          Platform/LwipSocket/Source/
-          Platform/FatFs/Source/
-          Platform/LittleFs/Source/
-          Platform/PlusFat/Source/
+        run: |
+          mkdir -p build/cppcheck-misra
+          set -o pipefail
+          cppcheck \
+            --addon=misra \
+            --suppressions-list=misra_suppressions.txt \
+            --error-exitcode=1 \
+            --inline-suppr \
+            --std=c11 \
+            -DLWIP_DNS=1 \
+            -DLWIP_UDP=1 \
+            -DLWIP_TCP=1 \
+            -DLWIP_TCP_KEEPALIVE=1 \
+            -DLWIP_SOCKET=1 \
+            -DLWIP_SOCKET_SELECT=1 \
+            -DconfigSUPPORT_STATIC_ALLOCATION=1 \
+            -DconfigUSE_MUTEXES=1 \
+            -DipconfigUSE_TCP=1 \
+            -DMBEDTLS_HAVE_TIME_DATE=1 \
+            -DTICK_TYPE_WIDTH_16_BITS=0 \
+            -DTICK_TYPE_WIDTH_32_BITS=1 \
+            -DTICK_TYPE_WIDTH_64_BITS=2 \
+            -DconfigTICK_TYPE_WIDTH_IN_BITS=1 \
+            -DMAXHOSTNAMELEN=256 \
+            -DINET_ADDR_LEN=18 \
+            -ICore/Interface \
+            -ICore/Source \
+            -IPlatform/StdAtomic/Interface \
+            -IPlatform/Posix/Interface \
+            -IPlatform/Windows/Interface \
+            -IPlatform/OpenSsl/Interface \
+            -IPlatform/MbedTls/Interface \
+            -IPlatform/FreeRtos/Interface \
+            -IPlatform/CmsisRtos/Interface \
+            -IPlatform/VxWorks64/Interface \
+            -IPlatform/PlusTcp/Interface \
+            -IPlatform/LwipRaw/Interface \
+            -IPlatform/LwipSocket/Interface \
+            -IPlatform/FatFs/Interface \
+            -IPlatform/LittleFs/Interface \
+            -IPlatform/PlusFat/Interface \
+            Core/Source/ \
+            Platform/StdAtomic/Source/ \
+            Platform/Posix/Source/ \
+            Platform/Windows/Source/ \
+            Platform/OpenSsl/Source/ \
+            Platform/MbedTls/Source/ \
+            Platform/FreeRtos/Source/ \
+            Platform/CmsisRtos/Source/ \
+            Platform/VxWorks64/Source/ \
+            Platform/PlusTcp/Source/ \
+            Platform/LwipRaw/Source/ \
+            Platform/LwipSocket/Source/ \
+            Platform/FatFs/Source/ \
+            Platform/LittleFs/Source/ \
+            Platform/PlusFat/Source/ \
+            2>&1 | tee build/cppcheck-misra/cppcheck-misra.log
+          if grep -q '\[misra-c2012-' build/cppcheck-misra/cppcheck-misra.log; then
+            echo '::error::MISRA findings above are not covered by misra_suppressions.txt'
+            exit 1
+          fi
 
       - name: Generate cppcheck-misra XML report
         if: success() || failure()
