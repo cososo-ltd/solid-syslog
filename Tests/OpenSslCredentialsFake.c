@@ -15,6 +15,7 @@ struct OpenSslCredentialsFake
     bool TrustAnchorsInstalled;
     const char* const * Fingerprints;
     size_t FingerprintCount;
+    void (*InstallObserver)(void);
 };
 
 static struct OpenSslCredentialsFake fake;
@@ -28,6 +29,10 @@ static bool Install(
     (void) self;
     fake.InstallCallCount++;
     fake.LastInstallCtx = ctx;
+    if (fake.InstallObserver != NULL)
+    {
+        fake.InstallObserver();
+    }
     installed->TrustAnchorsInstalled = fake.TrustAnchorsInstalled;
     installed->Fingerprints = fake.Fingerprints;
     installed->FingerprintCount = fake.FingerprintCount;
@@ -56,6 +61,7 @@ void OpenSslCredentialsFake_Reset(void)
     fake.TrustAnchorsInstalled = true;
     fake.Fingerprints = NULL;
     fake.FingerprintCount = 0U;
+    fake.InstallObserver = NULL;
 }
 
 int OpenSslCredentialsFake_InstallCallCount(void)
@@ -71,6 +77,11 @@ struct ssl_ctx_st* OpenSslCredentialsFake_LastInstallCtx(void)
 int OpenSslCredentialsFake_ReleaseCallCount(void)
 {
     return fake.ReleaseCallCount;
+}
+
+void OpenSslCredentialsFake_SetInstallObserver(void (*observer)(void))
+{
+    fake.InstallObserver = observer;
 }
 
 void OpenSslCredentialsFake_SetInstallSucceeds(bool succeeds)

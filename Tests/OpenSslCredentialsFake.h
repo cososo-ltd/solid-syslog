@@ -23,6 +23,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct ssl_ctx_st* OpenSslCredentialsFake_LastInstallCtx(void);
     int OpenSslCredentialsFake_ReleaseCallCount(void);
 
+    /* Called from inside Install, before it reports back, so a test can observe
+       what the stream had already put on the context when the backend got its
+       turn. */
+    void OpenSslCredentialsFake_SetInstallObserver(void (*observer)(void));
+
     void OpenSslCredentialsFake_SetInstallSucceeds(bool succeeds);
     void OpenSslCredentialsFake_SetTrustAnchorsInstalled(bool installed);
     void OpenSslCredentialsFake_SetFingerprints(const char* const * fingerprints, size_t count);
