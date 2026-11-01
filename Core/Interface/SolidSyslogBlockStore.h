@@ -8,7 +8,9 @@
  *  giving durable retention across a restart. Create resumes from whatever
  *  records are already on the device (scanning the read block, honouring any
  *  per-record integrity trailer from the injected SecurityPolicy) so a reboot
- *  keeps unsent records queued.
+ *  keeps unsent records queued. A block missing from the set, as a filesystem
+ *  check can leave after a power loss, costs only its own records: the blocks
+ *  around it are kept, delivered in order, and the gap is never written to.
  *
  *  MaxBlocks caps retention; the injected discard policy governs the overflow
  *  once every block is full - Oldest evicts the oldest block to keep accepting
