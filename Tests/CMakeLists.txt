@@ -197,6 +197,11 @@ if(SOLIDSYSLOG_POSIX)
         MqFakeTest.cpp
         SocketFakeTest.cpp
     )
+    # Measures stack depth on a painted thread stack; ASan relocates stack
+    # arrays to its fake stack, so the sanitiser lane cannot see the frame.
+    if(NOT SANITIZE)
+        list(APPEND TEST_SOURCES SolidSyslogScratchStackUsageTest.cpp)
+    endif()
 endif()
 
 if(SOLIDSYSLOG_OPENSSL)
