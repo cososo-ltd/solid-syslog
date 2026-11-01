@@ -98,6 +98,7 @@ set(TEST_SOURCES
     SolidSyslogNullResolverTest.cpp
     SolidSyslogNullStreamTest.cpp
     SolidSyslogNullMutexTest.cpp
+    SolidSyslogStackScratchTest.cpp
     SolidSyslogNullSdTest.cpp
     SolidSyslogSdValueTest.cpp
     SolidSyslogSdElementTest.cpp

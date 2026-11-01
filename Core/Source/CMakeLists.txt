@@ -12,6 +12,7 @@ set(SOURCES
     SolidSyslogFormatter.c
     SolidSyslogTimestampFormatter.c
     SolidSyslogMessageFormatter.c
+    SolidSyslogStackScratch.c
     SolidSyslogMetaSd.c
     SolidSyslogMetaSdStatic.c
     SolidSyslogPassthroughBuffer.c
