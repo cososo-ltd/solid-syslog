@@ -257,7 +257,7 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
 
     /* Open with the credentials watched, so a test can read what was already
      * on the ssl_config when the backend's Install ran. */
-    void OpenObservingInstall()
+    void OpenObservingInstall() const
     {
         SslConfigSeenAtInstall = {};
         MbedTlsCredentialsFake_SetInstallObserver(CaptureSslConfigAtInstall);

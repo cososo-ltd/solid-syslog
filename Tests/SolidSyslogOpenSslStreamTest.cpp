@@ -208,7 +208,7 @@ TEST_GROUP(SolidSyslogOpenSslStream)
 
     /* Open with the credentials watched, so a test can read what was already
      * on the context when the backend's Install ran. */
-    void OpenObservingInstall()
+    void OpenObservingInstall() const
     {
         SslCtxSeenAtInstall = {};
         OpenSslCredentialsFake_SetInstallObserver(CaptureSslCtxAtInstall);
@@ -498,7 +498,10 @@ TEST(SolidSyslogOpenSslStream, TheLegacyRenegotiationOptionsAreClearedBeforeTheC
 {
     OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
     OpenObservingInstall();
-    CHECK_EQUAL(0U, SslCtxSeenAtInstall.Options & (SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION));
+    CHECK_EQUAL(
+        0U,
+        SslCtxSeenAtInstall.Options & (SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)
+    );
 }
 
 /* An encrypted PEM key otherwise prompts on the controlling terminal from the
