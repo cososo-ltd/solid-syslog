@@ -56,7 +56,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* SSL_get_verify_result - the certification-path verdict the adapter reads
      * after a refused handshake. Resets to X509_V_OK, which is what OpenSSL
-     * reports when verification never ran or found nothing wrong. */
+     * reports when verification never ran or found nothing wrong. A connect
+     * that runs the verify callback overwrites it with the store error, so a
+     * test stages one or the other. */
     void OpenSslFake_SetVerifyResult(long value);
 
     int OpenSslFake_BioSetFlagsCallCount(void);

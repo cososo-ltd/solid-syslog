@@ -1240,13 +1240,17 @@ int SSL_connect(SSL* ssl)
      * staged in the store context. The store error becomes the verify result
      * whether the callback waived it or not - OpenSSL keeps it on the
      * connection either way - and a refusal wins over any scripted result, as
-     * it does in the real handshake. */
+     * it does in the real handshake. The staged objection is put back so a
+     * retried connect asks the same question, not one shaped by the last
+     * answer. */
     if (connectRunsVerifyCallback && (lastVerifyCallback != NULL))
     {
+        int staged = storeCtxError;
         storeCtxDepth = 0;
-        int preverifyOk = (storeCtxError == X509_V_OK) ? 1 : 0;
+        int preverifyOk = (staged == X509_V_OK) ? 1 : 0;
         int verdict = lastVerifyCallback(preverifyOk, OpenSslFake_StoreCtx());
         verifyResultValue = storeCtxError;
+        storeCtxError = staged;
         if (verdict == 0)
         {
             rc = -1;
