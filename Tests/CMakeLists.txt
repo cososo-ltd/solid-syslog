@@ -100,6 +100,7 @@ set(TEST_SOURCES
     SolidSyslogNullMutexTest.cpp
     SolidSyslogStackScratchTest.cpp
     SolidSyslogLogScratchTest.cpp
+    SolidSyslogSharedScratchTest.cpp
     SolidSyslogNullSdTest.cpp
     SolidSyslogSdValueTest.cpp
     SolidSyslogSdElementTest.cpp

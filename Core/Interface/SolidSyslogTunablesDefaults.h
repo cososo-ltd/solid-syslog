@@ -138,7 +138,9 @@
  * can simultaneously hold. Each instance costs a record slot of
  * SOLIDSYSLOG_MAX_MESSAGE_SIZE bytes, for the record SolidSyslog_Service
  * is dealing with, plus a struct of collaborator pointers, callbacks and
- * flags.
+ * flags. It also sizes the SolidSyslogSharedScratch pool, one buffer of
+ * SOLIDSYSLOG_MAX_MESSAGE_SIZE per slot, which a build pays for only when
+ * it links that class.
  *
  * One instance per process is the supported configuration in this release,
  * so leave this at 1. The tunable exists so the instance pool follows the

@@ -7,7 +7,9 @@
 #include "SolidSyslog.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogPassthroughBuffer.h"
+#include "SolidSyslogNullMutex.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSharedScratch.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogLogScratch)
@@ -90,4 +92,16 @@ TEST(SolidSyslogLogScratch, InjectedScratchProducesTheSameRecordAsTheDefault)
 
     CreateWith(ScratchFake_Create());
     STRCMP_EQUAL(viaDefault.c_str(), LogAndTakeRecord().c_str());
+}
+
+TEST(SolidSyslogLogScratch, SharedScratchProducesTheSameRecordAsTheDefault)
+{
+    CreateWith(nullptr);
+    std::string viaDefault = LogAndTakeRecord();
+    SolidSyslog_Destroy(solidSyslog);
+
+    struct SolidSyslogScratch* shared = SolidSyslogSharedScratch_Create(SolidSyslogNullMutex_Get());
+    CreateWith(shared);
+    STRCMP_EQUAL(viaDefault.c_str(), LogAndTakeRecord().c_str());
+    SolidSyslogSharedScratch_Destroy(shared);
 }
