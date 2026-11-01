@@ -35,6 +35,8 @@ Portable [role](../roles/index.md) implementations - no platform required:
 |---|---|
 | [`SolidSyslogPassthroughBuffer`](../api/SolidSyslogPassthroughBuffer_8h.md) | Buffer - sends inline, no queue |
 | [`SolidSyslogCircularBuffer`](../api/SolidSyslogCircularBuffer_8h.md) | Buffer - ring over caller-supplied memory, mutex injected |
+| [`SolidSyslogStackScratch`](../api/SolidSyslogStackScratch_8h.md) | Scratch - `Log` formats on the stack of the task that logs; the default |
+| [`SolidSyslogSharedScratch`](../api/SolidSyslogSharedScratch_8h.md) | Scratch - `Log` formats in one static buffer, taken under a mutex |
 | [`SolidSyslogUdpSender`](../api/SolidSyslogUdpSender_8h.md) | Sender - RFC 5426 over a Datagram |
 | [`SolidSyslogStreamSender`](../api/SolidSyslogStreamSender_8h.md) | Sender - RFC 6587 octet framing over any Stream |
 | [`SolidSyslogSwitchingSender`](../api/SolidSyslogSwitchingSender_8h.md) | Sender - delegates to one of several inners |

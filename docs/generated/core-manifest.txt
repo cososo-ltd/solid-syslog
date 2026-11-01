@@ -26,6 +26,9 @@ Core/Source/SolidSyslogBuffer.c
 Core/Source/SolidSyslogFormatter.c
 Core/Source/SolidSyslogTimestampFormatter.c
 Core/Source/SolidSyslogMessageFormatter.c
+Core/Source/SolidSyslogStackScratch.c
+Core/Source/SolidSyslogSharedScratch.c
+Core/Source/SolidSyslogSharedScratchStatic.c
 Core/Source/SolidSyslogMetaSd.c
 Core/Source/SolidSyslogMetaSdStatic.c
 Core/Source/SolidSyslogPassthroughBuffer.c
@@ -88,6 +91,7 @@ Core/Source/SolidSyslogMetaSdErrorsName.c
 Core/Source/SolidSyslogMutexErrorsName.c
 Core/Source/SolidSyslogOriginSdErrorsName.c
 Core/Source/SolidSyslogPassthroughBufferErrorsName.c
+Core/Source/SolidSyslogSharedScratchErrorsName.c
 Core/Source/SolidSyslogResolverErrorsName.c
 Core/Source/SolidSyslogStreamSenderErrorsName.c
 Core/Source/SolidSyslogSwitchingSenderErrorsName.c

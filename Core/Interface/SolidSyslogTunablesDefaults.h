@@ -44,13 +44,13 @@
 /**
  * Maximum bytes the library will format for a single syslog message.
  *
- * Sizes the record SolidSyslog_Log formats on the stack of the task that
- * logs, the record slot each logger instance holds for SolidSyslog_Service
- * (one per SOLIDSYSLOG_POOL_SIZE slot), each
- * record a CircularBuffer ring is sized for, and the BlockStore's record
- * buffer and minimum block size. A longer message is truncated, not dropped.
- * Lower values save stack, static RAM and store footprint; higher values
- * reduce truncation.
+ * Sizes the scratch SolidSyslog_Log formats a message in - on the stack of
+ * the task that logs, or once in static RAM under the shared scratch - the
+ * record slot each logger instance holds for SolidSyslog_Service (one per
+ * SOLIDSYSLOG_POOL_SIZE slot), each record a CircularBuffer ring is sized
+ * for, and the BlockStore's record buffer and minimum block size. A longer
+ * message is truncated, not dropped. Lower values save stack, static RAM
+ * and store footprint; higher values reduce truncation.
  *
  * The default is the length RFC 5424 section 6.1 requires every transport
  * receiver to accept, and so the largest a sender can emit with certainty of
