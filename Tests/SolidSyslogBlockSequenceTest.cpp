@@ -146,7 +146,7 @@ bool FakeSize(struct SolidSyslogBlockDevice* self, size_t blockIndex, size_t* re
 } // namespace
 
 // clang-format off
-TEST_GROUP(BlockSequenceScan)
+TEST_BASE(BlockSequenceTestBase)
 {
     ScanFake fakeDevice = {};
     std::set<size_t> existing;
@@ -154,7 +154,7 @@ TEST_GROUP(BlockSequenceScan)
     std::map<size_t, size_t> sizes;
     struct SolidSyslogBlockSequence* sequence = nullptr;
 
-    void setup() override
+    void WireFakeDevice()
     {
         fakeDevice.Base.Acquire = FakeAcquire;
         fakeDevice.Base.Dispose = FakeDispose;
@@ -166,12 +166,33 @@ TEST_GROUP(BlockSequenceScan)
         fakeDevice.existing     = &existing;
         fakeDevice.calls        = &calls;
         fakeDevice.sizes        = &sizes;
+    }
 
+    void BuildSequence(size_t maxBlockSize, size_t maxBlocks)
+    {
         struct SolidSyslogBlockSequenceConfig config = {};
         config.BlockDevice                = &fakeDevice.Base;
-        config.MaxBlockSize                = 1000;
-        config.MaxBlocks                   = 99;
+        config.MaxBlockSize               = maxBlockSize;
+        config.MaxBlocks                  = maxBlocks;
         sequence = SolidSyslogBlockSequence_Create(&config);
+    }
+
+    [[nodiscard]] bool WasDisposed(size_t blockIndex) const
+    {
+        return std::any_of(calls.begin(), calls.end(), [blockIndex](const DeviceCall& call) {
+            return (call.type == CallType::Dispose) && (call.BlockIndex == blockIndex);
+        });
+    }
+};
+
+TEST_GROUP_BASE(BlockSequenceScan, BlockSequenceTestBase)
+{
+    static const size_t SCAN_BLOCK_SIZE = 1000;
+
+    void setup() override
+    {
+        WireFakeDevice();
+        BuildSequence(SCAN_BLOCK_SIZE, 99);
     }
 
     void teardown() override
@@ -182,18 +203,7 @@ TEST_GROUP(BlockSequenceScan)
     void RecreateWithMaxBlocks(size_t maxBlocks)
     {
         SolidSyslogBlockSequence_Destroy(sequence);
-        struct SolidSyslogBlockSequenceConfig config = {};
-        config.BlockDevice                = &fakeDevice.Base;
-        config.MaxBlockSize               = 1000;
-        config.MaxBlocks                  = maxBlocks;
-        sequence = SolidSyslogBlockSequence_Create(&config);
-    }
-
-    [[nodiscard]] bool WasDisposed(size_t blockIndex) const
-    {
-        return std::any_of(calls.begin(), calls.end(), [blockIndex](const DeviceCall& call) {
-            return (call.type == CallType::Dispose) && (call.BlockIndex == blockIndex);
-        });
+        BuildSequence(SCAN_BLOCK_SIZE, maxBlocks);
     }
 };
 
@@ -269,6 +279,28 @@ TEST(BlockSequenceScan, TheReadStepsOverAHoleInTheRun)
     LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
 }
 
+TEST(BlockSequenceScan, TheReadStepsOverEveryHoleInTheRun)
+{
+    existing = {0, 2, 4};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    LONGS_EQUAL(4, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
+/* The hole counts towards the ceiling as the block it replaces would have:
+ * {0, 2} is a run of three, so at a ceiling of three the next rotation evicts. */
+TEST(BlockSequenceScan, AHoleCountsTowardsTheBlockCeiling)
+{
+    existing = {0, 2};
+    sizes = {{0, 1000}, {2, 1000}};
+    RecreateWithMaxBlocks(3);
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    bool readBlockChanged = false;
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(WasDisposed(0));
+}
+
 /* Nor does the drain dispose of it: once the block before the hole is drained
  * the oldest marker moves to the block after it. */
 TEST(BlockSequenceScan, ADrainedBlockBeforeAHoleHandsOldestToTheBlockAfterIt)
@@ -329,29 +361,13 @@ enum
 } // namespace
 
 // clang-format off
-TEST_GROUP(BlockSequenceRotation)
+TEST_GROUP_BASE(BlockSequenceRotation, BlockSequenceTestBase)
 {
     static const size_t SIMULATED_RECORD_SIZE = 50;
 
-    ScanFake fakeDevice = {};
-    std::set<size_t> existing;
-    std::vector<DeviceCall> calls;
-    std::map<size_t, size_t> sizes;
-    struct SolidSyslogBlockSequence* sequence = nullptr;
-
     void setup() override
     {
-        fakeDevice.Base.Acquire = FakeAcquire;
-        fakeDevice.Base.Dispose = FakeDispose;
-        fakeDevice.Base.Exists  = FakeExists;
-        fakeDevice.Base.Read    = FakeRead;
-        fakeDevice.Base.Append  = FakeAppend;
-        fakeDevice.Base.WriteAt = FakeWriteAt;
-        fakeDevice.Base.Size    = FakeSize;
-        fakeDevice.existing     = &existing;
-        fakeDevice.calls        = &calls;
-        fakeDevice.sizes        = &sizes;
-
+        WireFakeDevice();
         CreateSequence(99);
     }
 
@@ -362,12 +378,7 @@ TEST_GROUP(BlockSequenceRotation)
 
     void CreateSequence(size_t maxBlocks)
     {
-        struct SolidSyslogBlockSequenceConfig config = {};
-        config.BlockDevice                = &fakeDevice.Base;
-        config.MaxBlockSize               = ROTATION_BLOCK_SIZE;
-        config.MaxBlocks                  = maxBlocks;
-        sequence = SolidSyslogBlockSequence_Create(&config);
-
+        BuildSequence(ROTATION_BLOCK_SIZE, maxBlocks);
         SolidSyslogBlockSequence_Open(sequence); /* cold start: Acquire(0) */
         /* Simulate one record's worth of data in block 0 - production rotation
          * never seals an empty block, and the dispose-on-empty trigger uses
