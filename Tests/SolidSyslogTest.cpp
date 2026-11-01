@@ -1254,21 +1254,25 @@ TEST_GROUP(SolidSyslogServiceHalt)
         (*static_cast<int*>(context))++;
     }
 
-    void setup() override
+    void CreateLogger(SolidSyslogHaltCallback onHalt = nullptr, void* haltContext = nullptr)
     {
-        fakeSender = SenderFake_Create();
-        fakeBuffer = BufferFake_Create();
-        fakeStore  = StoreFake_Create();
-
         SolidSyslogConfig config    = {};
         config.Buffer               = fakeBuffer;
         config.Sender               = fakeSender;
         config.Store                = fakeStore;
         config.GetDiscardPolicy     = AnswersConfiguredPolicy;
         config.DiscardPolicyContext = &policy;
-        config.OnHalt               = CountHalt;
-        config.HaltContext          = &haltCount;
+        config.OnHalt               = onHalt;
+        config.HaltContext          = haltContext;
         solidSyslog = SolidSyslog_Create(&config);
+    }
+
+    void setup() override
+    {
+        fakeSender = SenderFake_Create();
+        fakeBuffer = BufferFake_Create();
+        fakeStore  = StoreFake_Create();
+        CreateLogger(CountHalt, &haltCount);
     }
 
     void teardown() override
@@ -1356,13 +1360,7 @@ TEST(SolidSyslogServiceHalt, ARefusalUnderNewestDoesNotHalt)
 TEST(SolidSyslogServiceHalt, AHaltWithNoCallbackConfiguredStillHalts)
 {
     SolidSyslog_Destroy(solidSyslog);
-    SolidSyslogConfig config = {};
-    config.Buffer = fakeBuffer;
-    config.Sender = fakeSender;
-    config.Store = fakeStore;
-    config.GetDiscardPolicy = AnswersConfiguredPolicy;
-    config.DiscardPolicyContext = &policy;
-    solidSyslog = SolidSyslog_Create(&config);
+    CreateLogger();
     LogOneTheStoreRefuses();
 
     LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, SolidSyslog_Service(solidSyslog));
