@@ -228,16 +228,32 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         SolidSyslogStream_Open(stream, addr);
     }
 
-    /* Arrange a peer whose certificate OpenSSL refused with `verifyResult`.
-     * ServerName is supplied so the refusal is the only error source - an unset one
-     * would also emit the unverified-peer WARNING. */
+    /* Arrange a peer whose certificate OpenSSL refused with `verifyResult`. */
     void ArrangeCertificateVerificationFailure(long verifyResult)
+    {
+        ArrangeHandshakeRefusal();
+        OpenSslFake_SetVerifyResult(verifyResult);
+    }
+
+    /* Arrange a handshake OpenSSL refuses. ServerName is supplied so the
+     * refusal is the only error source - an unset one would also emit the
+     * unverified-peer WARNING. Recreates the stream, which resets the fake, so
+     * anything else the handshake needs is staged after this. */
+    void ArrangeHandshakeRefusal()
     {
         FakeProfile_Value.ServerName = "logs.example";
         ReCreateStreamWithUpdatedConfig();
         OpenSslFake_SetConnectFails(true);
         OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
-        OpenSslFake_SetVerifyResult(verifyResult);
+    }
+
+    /* A peer authorised by pin alone: one pin, the digest that matches it, and
+     * no trust anchors for the chain to reach. */
+    static void ArrangePinnedPeerWithoutTrustAnchors()
+    {
+        OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+        OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+        OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
     }
 
     /* Drive the registered BIO read callback with the given transport return -
@@ -1901,9 +1917,7 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnUnpinnedPeerToOpenSsl)
 
 TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesChainTrustForAPinnedPeerWithoutTrustAnchors)
 {
-    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
-    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
-    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    ArrangePinnedPeerWithoutTrustAnchors();
     OpenSslFake_SetStoreCtxError(X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT);
 
     LONGS_EQUAL(1, OpenThenVerifyLeaf(0));
@@ -1919,9 +1933,7 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesEveryObjectionAMissingTrustAn
         X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE,
         X509_V_ERR_CERT_UNTRUSTED,
     };
-    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
-    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
-    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    ArrangePinnedPeerWithoutTrustAnchors();
     SolidSyslogStream_Open(stream, addr);
 
     for (int error : chainTrustErrors)
@@ -1937,9 +1949,7 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesEveryObjectionAMissingTrustAn
 
 TEST(SolidSyslogOpenSslStream, VerifyCallbackDoesNotWaiveTheCertificatesOwnValidityForAPinnedPeer)
 {
-    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
-    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
-    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    ArrangePinnedPeerWithoutTrustAnchors();
     OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
 
     LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
@@ -1975,7 +1985,12 @@ TEST(SolidSyslogOpenSslStream, OpenReportsAPinNamingADigestTheBuildCannotCompute
 
 TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerFingerprintDidNotMatch)
 {
-    ArrangeCertificateVerificationFailure(X509_V_ERR_APPLICATION_VERIFICATION);
+    static const uint8_t presented[32] = {0xFF};
+    ArrangeHandshakeRefusal();
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetCertDigest(presented, sizeof(presented));
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
+
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
         transport,
@@ -2036,9 +2051,7 @@ TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfAnIssuerOutside
    whether or not anchors are configured. */
 TEST(SolidSyslogOpenSslStream, AMatchingPinDoesNotForgiveAnIssuerOutsideItsDatesWithoutTrustAnchors)
 {
-    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
-    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
-    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    ArrangePinnedPeerWithoutTrustAnchors();
 
     LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_HAS_EXPIRED, 1));
     LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
@@ -2134,8 +2147,8 @@ TEST(SolidSyslogOpenSslStream, OpenPullsTheProfile)
     LONGS_EQUAL(1, FakeProfile_CallCount);
 }
 
-/* The profile is optional: with none configured every field keeps the
- * library default, and Open still reaches the handshake. */
+/* The profile is optional: with none configured no cipher policy or expected
+ * identity reaches the context, and Open still reaches the handshake. */
 TEST(SolidSyslogOpenSslStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigured)
 {
     config.Profile = nullptr;
@@ -2143,6 +2156,10 @@ TEST(SolidSyslogOpenSslStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigur
 
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
     LONGS_EQUAL(0, FakeProfile_CallCount);
+    LONGS_EQUAL(0, OpenSslFake_SetCipherListCallCount());
+    LONGS_EQUAL(0, OpenSslFake_SetCipherSuitesCallCount());
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSet1Host());
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSniHostname());
 }
 
 /* The waived chain-trust verdict stays in verify_result after the pin has
@@ -2150,9 +2167,13 @@ TEST(SolidSyslogOpenSslStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigur
  * of it as a fault in the peer's certificate. */
 TEST(SolidSyslogOpenSslStream, ARefusalAfterAPinWaivedChainTrustIsNotReportedAsAnUntrustedCertificate)
 {
-    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
-    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
-    ArrangeCertificateVerificationFailure(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    /* The scripted connect failure is the refusal that arrives afterwards. It
+       recreates the stream, which resets the fake, so the handshake is staged
+       after it: the pin matches and waives the missing anchor. */
+    ArrangeHandshakeRefusal();
+    ArrangePinnedPeerWithoutTrustAnchors();
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
