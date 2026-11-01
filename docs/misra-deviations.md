@@ -276,9 +276,10 @@ canonical shape).
 The same shape arises once inside Core, where the library runs a
 continuation of its own rather than a third party's. `SolidSyslog_Log`
 hands a `struct LogRequest*` to the scratch's `WithScratch` as its
-`void* context`, and the continuation in `SolidSyslog.c` casts it back.
-Every scratch passes the pointer through unchanged, so the cast can only
-meet the type `Log` passed in. Accepted under S38.01 (#633).
+`void* context`, and the continuation in `SolidSyslog.c` casts it back to
+`struct LogRequest*`. Every scratch passes the pointer through unchanged,
+so the cast only ever meets the pointer the logger supplied. Accepted
+under S38.01 (#633).
 
 A second 11.5 sub-case the library leans on is the
 `void* ↔ const uint8_t*` cast in `SolidSyslogUdpSender` when trimming
