@@ -1143,9 +1143,9 @@ jobs:
 
       - name: Run cppcheck-misra
         if: success() || failure()
+        shell: bash
         run: |
           mkdir -p build/cppcheck-misra
-          set -o pipefail
           cppcheck \
             --addon=misra \
             --suppressions-list=misra_suppressions.txt \
