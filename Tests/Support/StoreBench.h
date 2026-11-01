@@ -1,0 +1,117 @@
+#ifndef STOREBENCH_H
+#define STOREBENCH_H
+
+#include <cstddef>
+#include <vector>
+
+#include "BlockDeviceFake.h"
+#include "SolidSyslogStore.h"
+
+struct SolidSyslogSecurityPolicy;
+struct SolidSyslogErrorEvent;
+
+/* A block store over the BlockDeviceFake, with a record of everything the
+ * store was told and said: what Write answered, what a drain delivered, and
+ * what the error handler was told. The verdicts of the store sweep are read
+ * from that record; the bench records and never asserts, so the sweep and
+ * the named regression tests can each judge it their own way. */
+struct StoreBenchOptions
+{
+    size_t BlockSize;
+    size_t MaxBlocks;
+    struct SolidSyslogSecurityPolicy* Policy; /* NULL for the Null policy */
+    size_t RecordSize; /* every record is this many bytes */
+};
+
+class StoreBench
+{
+  public:
+    explicit StoreBench(const StoreBenchOptions& options);
+    ~StoreBench();
+
+    /* Stores a record carrying @p sequence, padded to RecordSize. */
+    enum SolidSyslogStoreWriteResult Write(unsigned sequence);
+
+    /* Reads and marks sent until nothing is unsent, or @p maxPasses reads
+     * have returned nothing while the store still says it holds something. */
+    void Drain(size_t maxPasses);
+
+    /* Destroys the store and creates it again over the same media: a power
+     * cycle. */
+    void Restart();
+
+    /* One ReadNextUnsent with no MarkSent, so the record is still unsent on
+     * the media: what a send that never completed leaves. */
+    bool ReadWithoutMarking();
+
+    struct SolidSyslogBlockDevice* Device() const;
+
+    /* The sequences delivered, in delivery order. */
+    const std::vector<unsigned>& Delivered() const;
+
+    /* Sequences the store answered KEPT for and never delivered, when nothing
+     * was said about them either: no loss report and no garbage delivered.
+     * Coarse by design - a report stands for a run - so it names a record that
+     * vanished with nothing said, not which record each report covered. */
+    std::vector<unsigned> SilentlyLost() const;
+
+    /* Sequences the store answered KEPT for and never delivered, whatever was
+     * said about them. */
+    std::vector<unsigned> Lost() const;
+
+    /* Lost sequences whose record was appended to a block other than
+     * @p faultBlock: loss one fault should not have reached. */
+    std::vector<unsigned> LostOutsideBlock(size_t faultBlock) const;
+
+    /* Reports under the store's discarded, lost and frozen categories: what
+     * the store said when it could not deliver. */
+    size_t LossReports() const;
+
+    /* Called once the test has applied its fault; BytesWrittenAfterFault then
+     * sums every write the device accepted from that point. */
+    void MarkFaultApplied();
+    size_t BytesWrittenAfterFault() const;
+
+    /* Records handed back that did not parse as one the bench wrote. */
+    size_t Garbage() const;
+
+    /* Deliveries of a sequence already delivered. */
+    size_t Duplicates() const;
+
+    /* The most media operations any one store call made, Create included. */
+    size_t MaxOperationsInOneCall() const;
+
+    /* Writes the store made that it had no business making: a WriteAt that is
+     * not one byte at the last byte of a record the log saw appended. Judged
+     * by position, since what the store verified is not visible from here. */
+    std::vector<BlockDeviceFakeWrite> IllegalWrites() const;
+
+  private:
+    StoreBenchOptions options;
+    struct SolidSyslogBlockDevice* device;
+    struct SolidSyslogStore* store;
+
+    struct Kept
+    {
+        unsigned Sequence;
+        size_t Block;
+    };
+
+    std::vector<Kept> kept;
+    std::vector<unsigned> delivered;
+    size_t writesBeforeFault;
+    size_t garbage;
+    size_t lossReports;
+    size_t maxOperationsInOneCall;
+    size_t operationsBeforeCall;
+
+    void CreateStore();
+    bool ReadOne();
+    bool WasDelivered(unsigned sequence) const;
+    void BeginCall();
+    void EndCall();
+    void OnError(const struct SolidSyslogErrorEvent* event);
+    static void HandleError(void* context, const struct SolidSyslogErrorEvent* event);
+};
+
+#endif /* STOREBENCH_H */
