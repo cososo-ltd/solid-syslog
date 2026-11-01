@@ -122,5 +122,5 @@ TEST(SolidSyslogScratchStackUsage, TheSharedScratchSparesTheLoggingTaskTheMessag
 {
     size_t viaStack = StackUsedLoggingThrough(SolidSyslogStackScratch_Get());
     size_t viaShared = StackUsedLoggingThrough(shared);
-    CHECK_COMPARE(viaStack - viaShared, >=, EXPECTED_SAVING);
+    CHECK_COMPARE(viaStack, >=, viaShared + EXPECTED_SAVING);
 }

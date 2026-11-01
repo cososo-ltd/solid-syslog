@@ -25,9 +25,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Take a pool slot holding one message buffer, guarded by @p mutex, which
      *  must outlive it. The pool holds SOLIDSYSLOG_POOL_SIZE: one per logger the
-     *  build can hold. A NULL mutex, or an exhausted pool, is reported and the
-     *  stack scratch is returned instead, so logging continues but on the
-     *  stack of each task that logs. */
+     *  build can hold. The mutex is one of its own, beside any the Buffer
+     *  takes, so SOLIDSYSLOG_MUTEX_POOL_SIZE must hold both. A NULL mutex, or
+     *  an exhausted pool, is reported and the stack scratch is returned
+     *  instead, so logging continues but on the stack of each task that logs. */
     struct SolidSyslogScratch* SolidSyslogSharedScratch_Create(struct SolidSyslogMutex * mutex);
     /** Release the pool slot; does not destroy the injected mutex. */
     void SolidSyslogSharedScratch_Destroy(struct SolidSyslogScratch * base);
