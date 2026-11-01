@@ -125,6 +125,7 @@ extern "C" void FakeProfile(struct SolidSyslogOpenSslProfile* profile, void* con
 struct SslCtxAtInstall
 {
     int VerifyMode;
+    int (*VerifyCallback)(int, struct x509_store_ctx_st*);
     long MinProtoVersion;
     const char* CipherList;
     const char* CipherSuites;
@@ -138,6 +139,7 @@ static struct SslCtxAtInstall SslCtxSeenAtInstall;
 extern "C" void CaptureSslCtxAtInstall(void)
 {
     SslCtxSeenAtInstall.VerifyMode = OpenSslFake_LastVerifyMode();
+    SslCtxSeenAtInstall.VerifyCallback = OpenSslFake_LastVerifyCallback();
     SslCtxSeenAtInstall.MinProtoVersion = OpenSslFake_CtxMinProtoVersion();
     SslCtxSeenAtInstall.CipherList = OpenSslFake_LastCipherList();
     SslCtxSeenAtInstall.CipherSuites = OpenSslFake_LastCipherSuites();
@@ -407,6 +409,14 @@ TEST(SolidSyslogOpenSslStream, PeerVerificationIsOnTheContextBeforeTheCredential
     LONGS_EQUAL(SSL_VERIFY_PEER, SslCtxSeenAtInstall.VerifyMode);
 }
 
+/* The callback carries the pin and the waiver, so a backend's own has to be
+   able to replace it as it can the mode. */
+TEST(SolidSyslogOpenSslStream, TheVerifyCallbackIsOnTheContextBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+    CHECK_TRUE(SslCtxSeenAtInstall.VerifyCallback != nullptr);
+}
+
 /* A context with no minimum configured reads 0, OpenSSL's "the lowest the
    build supports". */
 TEST(SolidSyslogOpenSslStream, OpenRaisesAnUnsetMinimumProtocolVersionToTls12)
@@ -524,7 +534,13 @@ TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherT
 TEST(SolidSyslogOpenSslStream, ThePassphraseCallbackIsOnTheContextBeforeTheCredentialsInstall)
 {
     OpenObservingInstall();
-    CHECK_TRUE(SslCtxSeenAtInstall.PasswdCb != nullptr);
+    pem_password_cb* cb = SslCtxSeenAtInstall.PasswdCb;
+    CHECK_TRUE(cb != nullptr);
+    if (cb != nullptr)
+    {
+        char buf[8];
+        LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
+    }
 }
 
 /* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most
