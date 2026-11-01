@@ -81,6 +81,7 @@ endif()
 
 set(TEST_SOURCES
     SolidSyslogTest.cpp
+    BlockDeviceFakeTest.cpp
     SolidSyslogServiceHeldRecordTest.cpp
     SolidSyslogPoolTest.cpp
     SolidSyslogTunablesTest.cpp
@@ -241,7 +242,7 @@ endif()
 
 add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
-target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake CppUTest CppUTestExt Threads::Threads)
+target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
 if(SOLIDSYSLOG_STDATOMIC)
