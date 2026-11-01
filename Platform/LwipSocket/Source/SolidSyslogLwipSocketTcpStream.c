@@ -453,7 +453,7 @@ static bool LwipSocketTcpStream_WaitForConnectCompletion(
 /* The budget expiring is nothing to report a code for. A select that failed
  * left its errno. A socket lwip_select answered for, flagged in the exception
  * set, holds the failure in SO_ERROR. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the errno it left; distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a select result and the errno it left; distinct semantics
 static void LwipSocketTcpStream_ReportUnfinishedWait(
     struct SolidSyslogLwipSocketTcpStream* self,
     int selectResult,
@@ -483,6 +483,8 @@ static void LwipSocketTcpStream_ReportUnfinishedWait(
         );
     }
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /* Remote means the destination or the network answered, or failed to. Every
  * other immediate failure is local - the stack would not accept the socket, or

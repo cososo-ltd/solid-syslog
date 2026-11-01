@@ -457,7 +457,7 @@ static bool PosixTcpStream_WaitForConnectCompletion(struct SolidSyslogPosixTcpSt
 /* The budget expiring is nothing to report a code for. A select that failed
  * left its errno. A socket select answered for, flagged in the exception set,
  * holds the failure in SO_ERROR. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the errno it left; distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a select result and the errno it left; distinct semantics
 static void PosixTcpStream_ReportUnfinishedWait(
     struct SolidSyslogPosixTcpStream* self,
     int selectResult,
@@ -487,6 +487,8 @@ static void PosixTcpStream_ReportUnfinishedWait(
         );
     }
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /* select() returning zero is the budget expiring with nothing to report. Any
  * other unready outcome means the destination answered, just not with a

@@ -170,7 +170,8 @@ every send would fail to. The refusal is reported as `ERROR` with the detail
 instances you create alongside everything else using the stack. lwIP itself
 reports nothing when a pool runs out. A `MEMP_NUM_TCP_PCB` shortage is the one
 the adapter names: `tcp_new` answers no pcb, and the stream reports
-`ENDPOINT_UNAVAILABLE` at `ERROR` once, on the first attempt to connect that
-finds the pool short, and again only after a connect has succeeded. A shortage of UDP
+`ENDPOINT_UNAVAILABLE` at `ERROR` once, on the first attempt that finds the pool
+short, and again only once a connection has succeeded or a different connect
+failure has been reported in between. A shortage of UDP
 pcbs or pbufs fails the datagram's open or a send with no event of the adapter's
 own, and reaches you as the sender's delivery failure.

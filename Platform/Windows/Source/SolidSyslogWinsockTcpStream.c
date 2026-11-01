@@ -531,7 +531,7 @@ static bool WinsockTcpStream_WaitForConnectCompletion(
  * left its error. A socket select answered for, flagged in the exception set,
  * is how Winsock reports a refused non-blocking connect, and the socket holds
  * the failure in SO_ERROR. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- a select result and the error it left; distinct semantics
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a select result and the error it left; distinct semantics
 static void WinsockTcpStream_ReportUnfinishedWait(
     struct SolidSyslogWinsockTcpStream* self,
     int selectResult,
@@ -561,6 +561,8 @@ static void WinsockTcpStream_ReportUnfinishedWait(
         );
     }
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /* select() returning zero is the budget expiring with nothing to report. Any
  * other unready outcome means the destination answered, just not with a
