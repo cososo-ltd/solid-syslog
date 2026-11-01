@@ -42,6 +42,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per run of writes that
          *  evicted. */
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORDS_EVICTED,
+        /** Create was given no mutex; raised under SOLIDSYSLOG_CAT_BAD_CONFIG. */
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_MUTEX,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

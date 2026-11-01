@@ -43,43 +43,54 @@ struct SolidSyslogBuffer* SolidSyslogPosixMessageQueueBuffer_Create(
     void* discardPolicyContext
 )
 {
-    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixMessageQueueBuffer_Allocator);
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMessageQueueBuffer_Allocator, index) == true)
+    if (mutex == NULL)
     {
-        int openErrno = SolidSyslogPosixMessageQueueBuffer_Initialise(
-            &PosixMessageQueueBuffer_Pool[index].Base,
-            mutex,
-            maxMessages,
-            index,
-            getDiscardPolicy,
-            discardPolicyContext
+        PosixMessageQueueBuffer_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_NULL_MUTEX
         );
-        if (openErrno == 0)
-        {
-            handle = &PosixMessageQueueBuffer_Pool[index].Base;
-        }
-        else
-        {
-            /* No queue was opened, so there is none to close or unlink; the
-             * name may belong to a queue this buffer refused. */
-            (void) SolidSyslogPoolAllocator_FreeIfInUse(&PosixMessageQueueBuffer_Allocator, index, NULL, NULL);
-            SolidSyslog_ErrorWithNativeCode(
-                SOLIDSYSLOG_SEVERITY_ERROR,
-                &SolidSyslogPosixMessageQueueBufferErrorSource,
-                SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-                (int32_t) SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
-                (int32_t) openErrno
-            );
-        }
     }
     else
     {
-        PosixMessageQueueBuffer_Report(
-            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_POOL_EXHAUSTED
-        );
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&PosixMessageQueueBuffer_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&PosixMessageQueueBuffer_Allocator, index) == true)
+        {
+            int openErrno = SolidSyslogPosixMessageQueueBuffer_Initialise(
+                &PosixMessageQueueBuffer_Pool[index].Base,
+                mutex,
+                maxMessages,
+                index,
+                getDiscardPolicy,
+                discardPolicyContext
+            );
+            if (openErrno == 0)
+            {
+                handle = &PosixMessageQueueBuffer_Pool[index].Base;
+            }
+            else
+            {
+                /* No queue was opened, so there is none to close or unlink; the
+                 * name may belong to a queue this buffer refused. */
+                (void) SolidSyslogPoolAllocator_FreeIfInUse(&PosixMessageQueueBuffer_Allocator, index, NULL, NULL);
+                SolidSyslog_ErrorWithNativeCode(
+                    SOLIDSYSLOG_SEVERITY_ERROR,
+                    &SolidSyslogPosixMessageQueueBufferErrorSource,
+                    SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+                    (int32_t) SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
+                    (int32_t) openErrno
+                );
+            }
+        }
+        else
+        {
+            PosixMessageQueueBuffer_Report(
+                SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_POOL_EXHAUSTED
+            );
+        }
     }
     return handle;
 }

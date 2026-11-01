@@ -813,6 +813,37 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, ARefusedCreateLeavesADestroyedHandl
     CALLED_FAKE(MqFake_Send, NEVER);
 }
 
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(nullptr, 10, nullptr, nullptr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogPosixMessageQueueBufferErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_NULL_MUTEX
+    );
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexReturnsTheNullBuffer)
+{
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(nullptr, 10, nullptr, nullptr);
+
+    POINTERS_EQUAL(SolidSyslogNullBuffer_Get(), overflow);
+}
+
+TEST(SolidSyslogPosixMessageQueueBufferPool, CreateWithNullMutexDoesNotConsumeAPoolSlot)
+{
+    // Had the refused Create kept a slot, FillPool would overflow into the
+    // fallback one slot sooner and that slot would collide with `overflow`.
+    overflow = SolidSyslogPosixMessageQueueBuffer_Create(nullptr, 10, nullptr, nullptr);
+
+    FillPool();
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
 TEST(SolidSyslogPosixMessageQueueBufferPool, FallbackReadAndWriteAreNoOps)
 {
     FillPool();

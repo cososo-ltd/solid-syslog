@@ -42,7 +42,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  and IsFull share with it, so inject SolidSyslogNullMutex_Get() only when
      *  one task both logs and calls SolidSyslog_Service. It must outlive the
      *  buffer. It guards this process's own state, not the queue, which the
-     *  kernel shares between processes itself.
+     *  kernel shares between processes itself. A NULL @p mutex is reported as
+     *  SOLIDSYSLOG_CAT_BAD_CONFIG and Create returns the shared NullBuffer.
      *
      *  @p getDiscardPolicy is asked, with @p discardPolicyContext, on a send
      *  the full queue refuses, from the task that logs; give it the function
