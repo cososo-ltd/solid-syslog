@@ -54,7 +54,7 @@ TEST_GROUP(SolidSyslogSharedScratch)
         MutexFake_Destroy();
     }
 
-    void Use()
+    void Use() const
     {
         scratch->WithScratch(scratch, SpyUser, nullptr);
     }

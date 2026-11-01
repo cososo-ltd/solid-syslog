@@ -3,9 +3,12 @@
    has painted. The sanitiser lane leaves this file out: ASan moves stack arrays
    to its own fake stack, which would hide the very frame being measured. */
 #include <pthread.h>
+#include <algorithm>
+#include <iterator>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <string>
 
 #include "CppUTest/TestHarness.h"
 #include "SenderFake.h"
@@ -20,11 +23,12 @@
 
 namespace
 {
-constexpr size_t THREAD_STACK_BYTES = 64U * 1024U;
+constexpr size_t THREAD_STACK_BYTES = size_t{64} * size_t{1024};
 constexpr uint8_t PAINT = 0xA5U;
 /* The shared form must spare the logging task at least this much of the
    message buffer; the rest is tolerance for frame layout and alignment. */
-constexpr size_t EXPECTED_SAVING = (SOLIDSYSLOG_MAX_MESSAGE_SIZE * 8U) / 10U;
+constexpr size_t MESSAGE_BYTES = SOLIDSYSLOG_MAX_MESSAGE_SIZE;
+constexpr size_t EXPECTED_SAVING = (MESSAGE_BYTES * 8U) / 10U;
 
 alignas(4096) uint8_t threadStack[THREAD_STACK_BYTES];
 /* Longer than the buffer, so the whole of it is written on every run. */
@@ -42,12 +46,9 @@ void* LogOnce(void* handle)
    is the lowest address no longer carrying the paint. */
 size_t BytesDisturbed()
 {
-    size_t untouched = 0U;
-    while ((untouched < THREAD_STACK_BYTES) && (threadStack[untouched] == PAINT))
-    {
-        untouched++;
-    }
-    return THREAD_STACK_BYTES - untouched;
+    uint8_t* firstDisturbed =
+        std::find_if_not(std::begin(threadStack), std::end(threadStack), [](uint8_t byte) { return byte == PAINT; });
+    return static_cast<size_t>(std::distance(firstDisturbed, std::end(threadStack)));
 }
 } // namespace
 
@@ -77,11 +78,11 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
         SenderFake_Destroy(fakeSender);
     }
 
-    void LogOnThePaintedStack(struct SolidSyslog* solidSyslog)
+    static void LogOnThePaintedStack(struct SolidSyslog* solidSyslog)
     {
         memset(threadStack, PAINT, sizeof(threadStack));
-        pthread_attr_t attributes;
-        pthread_t thread;
+        pthread_attr_t attributes{};
+        pthread_t thread{};
         LONGS_EQUAL(0, pthread_attr_init(&attributes));
         LONGS_EQUAL(0, pthread_attr_setstack(&attributes, threadStack, sizeof(threadStack)));
         LONGS_EQUAL(0, pthread_create(&thread, &attributes, LogOnce, solidSyslog));
@@ -92,7 +93,7 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
     /* Measured on the second run. The first call through any libc symbol
        binds it lazily, on the calling thread's stack, so a first run is
        deeper by whatever that thread happened to call first. */
-    size_t StackUsedLoggingThrough(struct SolidSyslogScratch* scratch)
+    size_t StackUsedLoggingThrough(struct SolidSyslogScratch* scratch) const
     {
         SolidSyslogConfig config = {};
         config.Buffer            = buffer;
@@ -115,12 +116,15 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
 TEST(SolidSyslogScratchStackUsage, TheStackScratchPutsTheMessageBufferOnTheLoggingTask)
 {
     size_t used = StackUsedLoggingThrough(SolidSyslogStackScratch_Get());
-    CHECK_COMPARE(used, >=, SOLIDSYSLOG_MAX_MESSAGE_SIZE);
+    CHECK_TEXT(used >= MESSAGE_BYTES, ("used " + std::to_string(used)).c_str());
 }
 
 TEST(SolidSyslogScratchStackUsage, TheSharedScratchSparesTheLoggingTaskTheMessageBuffer)
 {
     size_t viaStack = StackUsedLoggingThrough(SolidSyslogStackScratch_Get());
     size_t viaShared = StackUsedLoggingThrough(shared);
-    CHECK_COMPARE(viaStack, >=, viaShared + EXPECTED_SAVING);
+    CHECK_TEXT(
+        viaStack >= viaShared + EXPECTED_SAVING,
+        ("stack " + std::to_string(viaStack) + " shared " + std::to_string(viaShared)).c_str()
+    );
 }
