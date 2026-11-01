@@ -100,5 +100,7 @@ integrator's control.
 
 Rotate the key, or change the policy, once the store has drained. A record names
 neither the key nor the policy that sealed it, so the store opens each stored record
-with the policy and key in force now, and one sealed under another is discarded and
-reported under `SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED`, as a tampered record is.
+with the policy and key in force now, and one sealed under another is rejected as a
+tampered record is: stepped past and reported under
+`SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED`, and, since it is left on the device
+unmarked, rejected and reported again on each start until its block is done with.
