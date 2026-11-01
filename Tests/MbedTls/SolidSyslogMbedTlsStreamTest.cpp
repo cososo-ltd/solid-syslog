@@ -62,6 +62,7 @@ struct SslConfigAtInstall
     int MinTlsVersion;
     int LegacyRenegotiation;
     unsigned int DhmMinBitlen;
+    int (*RngFunc)(void*, unsigned char*, size_t);
     void* RngContext;
     const int* Ciphersuites;
     const mbedtls_x509_crt_profile* CertProfile;
@@ -75,6 +76,7 @@ extern "C" void CaptureSslConfigAtInstall(void)
     SslConfigSeenAtInstall.MinTlsVersion = MbedTlsFake_ConfMinTlsVersion(conf);
     SslConfigSeenAtInstall.LegacyRenegotiation = MbedTlsFake_LastLegacyRenegotiationArg();
     SslConfigSeenAtInstall.DhmMinBitlen = MbedTlsFake_LastDhmMinBitlenArg();
+    SslConfigSeenAtInstall.RngFunc = MbedTlsFake_LastSslConfRngFuncArg();
     SslConfigSeenAtInstall.RngContext = MbedTlsFake_LastSslConfRngContextArg();
     SslConfigSeenAtInstall.Ciphersuites = MbedTlsFake_LastSslConfCiphersuitesArg();
     SslConfigSeenAtInstall.CertProfile = MbedTlsFake_LastSslConfCertProfileArg();
@@ -1194,6 +1196,7 @@ TEST(SolidSyslogMbedTlsStream, TheRngIsOnTheSslConfigBeforeTheCredentialsInstall
 {
     OpenObservingInstall();
 
+    POINTERS_EQUAL((void*) mbedtls_ctr_drbg_random, (void*) SslConfigSeenAtInstall.RngFunc);
     POINTERS_EQUAL(&rng, SslConfigSeenAtInstall.RngContext);
 }
 

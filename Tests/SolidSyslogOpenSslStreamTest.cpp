@@ -40,6 +40,17 @@ using namespace CososoTesting;
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
+/* The callback is installed, and refuses rather than prompts when asked. */
+#define CHECK_PASSPHRASE_CALLBACK_REFUSES(cb)                    \
+    {                                                            \
+        CHECK_TRUE((cb) != nullptr);                             \
+        if ((cb) != nullptr)                                     \
+        {                                                        \
+            char buf[8];                                         \
+            LONGS_EQUAL(0, (cb) (buf, sizeof(buf), 0, nullptr)); \
+        }                                                        \
+    }
+
 class TEST_SolidSyslogOpenSslStream_ReadReturnsNegativeOneOnHardErrorAndClosesSsl_Test;
 class TEST_SolidSyslogOpenSslStream_ReadReturnsNegativeOneOnZeroReturnAndClosesSsl_Test;
 class TEST_SolidSyslogOpenSslStream_SendClosesTransportOnWriteFailure_Test;
@@ -508,6 +519,8 @@ TEST(SolidSyslogOpenSslStream, TheLegacyRenegotiationOptionsAreClearedBeforeTheC
 {
     OpenSslFake_SetHostCtxOptions(SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
     OpenObservingInstall();
+    /* Expecting zero of a zeroed snapshot, so prove Install ran. */
+    LONGS_EQUAL(1, OpenSslCredentialsFake_InstallCallCount());
     CHECK_EQUAL(
         0U,
         SslCtxSeenAtInstall.Options & (SSL_OP_LEGACY_SERVER_CONNECT | SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)
@@ -520,13 +533,7 @@ TEST(SolidSyslogOpenSslStream, TheLegacyRenegotiationOptionsAreClearedBeforeTheC
 TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherThanPrompts)
 {
     SolidSyslogStream_Open(stream, addr);
-    pem_password_cb* cb = OpenSslFake_LastPasswdCb();
-    CHECK_TRUE(cb != nullptr);
-    if (cb != nullptr)
-    {
-        char buf[8];
-        LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
-    }
+    CHECK_PASSPHRASE_CALLBACK_REFUSES(OpenSslFake_LastPasswdCb());
 }
 
 /* A backend that loads an encrypted key does so inside Install, so the refusal
@@ -534,13 +541,7 @@ TEST(SolidSyslogOpenSslStream, OpenInstallsAPassphraseCallbackThatRefusesRatherT
 TEST(SolidSyslogOpenSslStream, ThePassphraseCallbackIsOnTheContextBeforeTheCredentialsInstall)
 {
     OpenObservingInstall();
-    pem_password_cb* cb = SslCtxSeenAtInstall.PasswdCb;
-    CHECK_TRUE(cb != nullptr);
-    if (cb != nullptr)
-    {
-        char buf[8];
-        LONGS_EQUAL(0, cb(buf, sizeof(buf), 0, nullptr));
-    }
+    CHECK_PASSPHRASE_CALLBACK_REFUSES(SslCtxSeenAtInstall.PasswdCb);
 }
 
 /* RFC 9525 s6.3 and RFC 5425 s5.2: a wildcard is the whole of the left-most
