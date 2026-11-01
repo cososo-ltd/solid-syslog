@@ -176,11 +176,10 @@ struct Gap
 static inline int BlockSequence_CircularPrev(int index);
 static inline int BlockSequence_CircularNext(int index);
 static int BlockSequence_ScanForBlockPresence(struct SolidSyslogBlockSequence* blockSequence);
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(
     const struct SolidSyslogBlockSequence* blockSequence,
     int lastPresent,
-    int* oldest,
+    int* oldest, // NOLINT(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints
     int* newest
 );
 
@@ -251,11 +250,10 @@ static int BlockSequence_ScanForBlockPresence(struct SolidSyslogBlockSequence* b
  * block is present: maxBlocks is clamped to BLOCK_SEQUENCE_MODULUS - 2, so
  * that cannot arise from the library's own rotation, and the caller's
  * defaults stand. */
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(
     const struct SolidSyslogBlockSequence* blockSequence,
     int lastPresent,
-    int* oldest,
+    int* oldest, // NOLINT(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints
     int* newest
 )
 {

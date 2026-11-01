@@ -171,6 +171,7 @@ misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:13
 # See docs/misra-deviations.md#d009
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:12
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:22
+misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:18
 misra-c2012-2.4:Core/Source/SolidSyslogFormatter.h:18
 misra-c2012-2.4:Core/Source/SolidSyslogMessageFormatter.c:25
 misra-c2012-2.4:Core/Source/SolidSyslogRecordStore.c:18
