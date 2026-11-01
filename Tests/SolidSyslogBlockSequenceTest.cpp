@@ -297,6 +297,29 @@ TEST(BlockSequenceScan, AnEvictionBeforeAHoleHandsOldestToTheBlockAfterIt)
     CHECK_FALSE(WasDisposed(1));
 }
 
+/* A hole on the wrap boundary is a gap like any other. */
+TEST(BlockSequenceScan, ResumesAcrossAHoleAtTheWrapBoundary)
+{
+    existing = {98, 0, 1};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(98, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(1, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
+/* The step over a hole ends at the write block, so a block a rotation acquires
+ * counts as present from then on. */
+TEST(BlockSequenceScan, TheReadReachesABlockAcquiredAfterResume)
+{
+    existing = {0, 2};
+    sizes = {{0, 1000}, {2, 1000}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    bool readBlockChanged = false;
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged)); /* acquires 3 */
+    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    LONGS_EQUAL(3, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
 namespace
 {
 enum
