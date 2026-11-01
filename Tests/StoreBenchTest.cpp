@@ -125,3 +125,49 @@ TEST(StoreBench, BytesWrittenAfterTheFaultCountsOnlyWhatFollowedTheMark)
     bench.Drain(10); /* one sent-flag byte */
     LONGS_EQUAL(1, bench.BytesWrittenAfterFault());
 }
+
+TEST(StoreBench, DeliverSendsOnlyTheGivenNumberOfRecords)
+{
+    StoreBench bench(options);
+    bench.Write(1);
+    bench.Write(2);
+    bench.Write(3);
+    LONGS_EQUAL(2, bench.Deliver(2));
+    LONGS_EQUAL(2, bench.Delivered().size());
+    LONGS_EQUAL(1, bench.Lost().size());
+    LONGS_EQUAL(3, bench.Lost()[0]);
+}
+
+TEST(StoreBench, ADeliveredRecordWhoseSequenceWasNeverKeptIsGarbage)
+{
+    StoreBench bench(options);
+    bench.Write(7);
+    BlockDeviceFake_FlipBit(0, 11, 2); /* a sequence digit becomes another digit: 00007 reads 00047 */
+    bench.Drain(10);
+    CHECK_TRUE(bench.Delivered().empty());
+    LONGS_EQUAL(1, bench.Garbage());
+    CHECK_TRUE(bench.SilentlyLost().empty());
+}
+
+TEST(StoreBench, ARecordWhoseSequenceDigitReadsAsAnotherKeptSequenceIsGarbage)
+{
+    StoreBench bench(options);
+    bench.Write(1);
+    bench.Write(2);
+    BlockDeviceFake_FlipBit(0, 12, 1); /* record 1's last digit: 00001 reads 00003, then 00002 would with bit 0 */
+    BlockDeviceFake_FlipBit(0, 12, 0);
+    bench.Drain(10);
+    LONGS_EQUAL(1, bench.Delivered().size());
+    LONGS_EQUAL(2, bench.Delivered()[0]);
+    LONGS_EQUAL(1, bench.Garbage());
+}
+
+TEST(StoreBench, ARecordWithADamagedPaddingByteIsGarbage)
+{
+    StoreBench bench(options);
+    bench.Write(7);
+    BlockDeviceFake_FlipBit(0, 20, 0); /* well inside the padding */
+    bench.Drain(10);
+    CHECK_TRUE(bench.Delivered().empty());
+    LONGS_EQUAL(1, bench.Garbage());
+}

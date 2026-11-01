@@ -9,17 +9,26 @@
 
 namespace
 {
-/* Every record is "SEQ=" and five decimal digits, padded with 'x' to the
- * record size, so a delivered record either parses to its sequence or is
- * garbage. */
+/* Every record is "SEQ=" and five decimal digits, padded to the record size
+ * with a pattern drawn from the sequence, so a delivered record either parses
+ * whole to its sequence or is garbage: one damaged byte anywhere in it, a
+ * changed digit included, breaks the pattern. */
 const char SEQUENCE_PREFIX[] = "SEQ=";
 const size_t SEQUENCE_PREFIX_LENGTH = sizeof(SEQUENCE_PREFIX) - 1U;
 const size_t SEQUENCE_DIGITS = 5U;
 const size_t SEQUENCE_HEADER_LENGTH = SEQUENCE_PREFIX_LENGTH + SEQUENCE_DIGITS;
 
+char PaddingByte(unsigned sequence, size_t index)
+{
+    return static_cast<char>('a' + (((sequence * 7U) + index) % 26U));
+}
+
 void FormatRecord(char* record, size_t recordSize, unsigned sequence)
 {
-    std::memset(record, 'x', recordSize);
+    for (size_t index = SEQUENCE_HEADER_LENGTH; index < recordSize; index++)
+    {
+        record[index] = PaddingByte(sequence, index);
+    }
     std::memcpy(record, SEQUENCE_PREFIX, SEQUENCE_PREFIX_LENGTH);
     unsigned remaining = sequence;
     for (size_t digit = SEQUENCE_DIGITS; digit > 0U; digit--)
@@ -29,10 +38,9 @@ void FormatRecord(char* record, size_t recordSize, unsigned sequence)
     }
 }
 
-bool ParseRecord(const char* record, size_t length, unsigned* sequence)
+bool ParseRecord(const char* record, size_t length, size_t recordSize, unsigned* sequence)
 {
-    bool parsed =
-        (length >= SEQUENCE_HEADER_LENGTH) && (std::memcmp(record, SEQUENCE_PREFIX, SEQUENCE_PREFIX_LENGTH) == 0);
+    bool parsed = (length == recordSize) && (std::memcmp(record, SEQUENCE_PREFIX, SEQUENCE_PREFIX_LENGTH) == 0);
     unsigned value = 0U;
 
     for (size_t digit = 0U; parsed && (digit < SEQUENCE_DIGITS); digit++)
@@ -40,6 +48,11 @@ bool ParseRecord(const char* record, size_t length, unsigned* sequence)
         char c = record[SEQUENCE_PREFIX_LENGTH + digit];
         parsed = (c >= '0') && (c <= '9');
         value = (value * 10U) + static_cast<unsigned>(c - '0');
+    }
+
+    for (size_t index = SEQUENCE_HEADER_LENGTH; parsed && (index < recordSize); index++)
+    {
+        parsed = record[index] == PaddingByte(value, index);
     }
 
     *sequence = value;
@@ -156,6 +169,18 @@ std::vector<unsigned> StoreBench::SilentlyLost() const
     return silent;
 }
 
+std::vector<unsigned> StoreBench::SilentlyLostOutsideBlock(size_t faultBlock) const
+{
+    std::vector<unsigned> silent;
+
+    if ((lossReports == 0U) && (garbage == 0U))
+    {
+        silent = LostOutsideBlock(faultBlock);
+    }
+
+    return silent;
+}
+
 std::vector<unsigned> StoreBench::Lost() const
 {
     std::vector<unsigned> lost;
@@ -184,6 +209,18 @@ std::vector<unsigned> StoreBench::LostOutsideBlock(size_t faultBlock) const
     }
 
     return lost;
+}
+
+bool StoreBench::WasKept(unsigned sequence) const
+{
+    bool wasKept = false;
+
+    for (size_t i = 0U; i < kept.size(); i++)
+    {
+        wasKept = wasKept || (kept[i].Sequence == sequence);
+    }
+
+    return wasKept;
 }
 
 bool StoreBench::WasDelivered(unsigned sequence) const
@@ -305,6 +342,21 @@ void StoreBench::Drain(size_t maxPasses)
     }
 }
 
+size_t StoreBench::Deliver(size_t count)
+{
+    size_t sent = 0U;
+
+    while ((sent < count) && ReadOne())
+    {
+        BeginCall();
+        SolidSyslogStore_MarkSent(store);
+        EndCall();
+        sent++;
+    }
+
+    return sent;
+}
+
 /* One ReadNextUnsent, with what it handed back recorded as a sequence or as
  * garbage. */
 bool StoreBench::ReadOne()
@@ -317,8 +369,10 @@ bool StoreBench::ReadOne()
 
     if (read)
     {
+        /* A sequence the bench never wrote is a damaged record that still
+         * parses, not a delivery. */
         unsigned sequence = 0U;
-        if (ParseRecord(record, length, &sequence))
+        if (ParseRecord(record, length, options.RecordSize, &sequence) && WasKept(sequence))
         {
             delivered.push_back(sequence);
         }

@@ -36,6 +36,9 @@ class StoreBench
      * have returned nothing while the store still says it holds something. */
     void Drain(size_t maxPasses);
 
+    /* Reads and marks sent up to @p count records; answers how many it did. */
+    size_t Deliver(size_t count);
+
     /* Destroys the store and creates it again over the same media: a power
      * cycle. */
     void Restart();
@@ -54,6 +57,10 @@ class StoreBench
      * Coarse by design - a report stands for a run - so it names a record that
      * vanished with nothing said, not which record each report covered. */
     std::vector<unsigned> SilentlyLost() const;
+
+    /* The same, for records appended to a block other than @p faultBlock:
+     * for a fault that takes the block with it, what else went unspoken. */
+    std::vector<unsigned> SilentlyLostOutsideBlock(size_t faultBlock) const;
 
     /* Sequences the store answered KEPT for and never delivered, whatever was
      * said about them. */
@@ -107,6 +114,7 @@ class StoreBench
 
     void CreateStore();
     bool ReadOne();
+    bool WasKept(unsigned sequence) const;
     bool WasDelivered(unsigned sequence) const;
     void BeginCall();
     void EndCall();

@@ -277,6 +277,10 @@ if(SOLIDSYSLOG_WINSOCK)
 endif()
 
 
+# The store sweep (S25.01): its own executable so the per-commit junit run
+# stays fast. See Tests/StoreSweep/CMakeLists.txt for the budget.
+add_subdirectory(StoreSweep)
+
 if(SOLIDSYSLOG_OPENSSL)
     add_subdirectory(OpenSslIntegration)
 endif()
