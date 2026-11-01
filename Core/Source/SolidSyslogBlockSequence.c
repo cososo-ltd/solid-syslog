@@ -96,6 +96,11 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
+static inline bool BlockSequence_DisposeBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
+static inline uint8_t BlockSequence_NextPresentSequence(
+    const struct SolidSyslogBlockSequence* blockSequence,
+    uint8_t current
+);
 static inline void BlockSequence_NoteDeviceFailure(
     struct SolidSyslogBlockSequence* blockSequence,
     enum SolidSyslogBlockStoreErrors failedOperation
@@ -136,7 +141,8 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
     return ready;
 }
 
-/* The map follows the device: a block the device acquired is present. */
+/* The map follows the device: a block it acquired is present, one it disposed
+ * of is not. */
 static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
 {
     bool acquired = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, blockIndex);
@@ -147,6 +153,18 @@ static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* b
     }
 
     return acquired;
+}
+
+static inline bool BlockSequence_DisposeBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
+{
+    bool disposed = SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockIndex);
+
+    if (disposed)
+    {
+        blockSequence->BlockPresent[blockIndex] = false;
+    }
+
+    return disposed;
 }
 
 static inline void BlockSequence_NoteDeviceFailure(
@@ -461,12 +479,11 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
  * that failed, so a stale block that will not go is a dispose failure. */
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
 {
-    struct SolidSyslogBlockDevice* device = blockSequence->BlockDevice;
     bool ready = true;
 
-    if (SolidSyslogBlockDevice_Exists(device, blockIndex))
+    if (SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, blockIndex))
     {
-        ready = SolidSyslogBlockDevice_Dispose(device, blockIndex);
+        ready = BlockSequence_DisposeBlock(blockSequence, blockIndex);
 
         if (!ready)
         {
@@ -506,7 +523,7 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
 {
     bool readBlockChanged = false;
 
-    if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
+    if (BlockSequence_DisposeBlock(blockSequence, blockSequence->OldestSequence))
     {
         bool readingOldestBlock = (blockSequence->ReadSequence == blockSequence->OldestSequence);
         blockSequence->EvictedUnsent = readingOldestBlock;
@@ -632,7 +649,7 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
         if (SolidSyslogBlockSequence_ReadBlockSize(blockSequence, &readBlockSize) &&
             BlockSequence_IsReadBlockFullyDrained(blockSequence, readBlockSize))
         {
-            if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence))
+            if (BlockSequence_DisposeBlock(blockSequence, blockSequence->ReadSequence))
             {
                 BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
                 *readBlockChanged = true;
@@ -660,16 +677,11 @@ static inline bool BlockSequence_IsReadBlockFullyDrained(
 
 static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
-    blockSequence->OldestSequence = BlockSequence_NextSequence(blockSequence->OldestSequence);
+    blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
     BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
     blockSequence->AtCapacity = false;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
-
-static inline uint8_t BlockSequence_NextPresentSequence(
-    const struct SolidSyslogBlockSequence* blockSequence,
-    uint8_t current
-);
 
 void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {

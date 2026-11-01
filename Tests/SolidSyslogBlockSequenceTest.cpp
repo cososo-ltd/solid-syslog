@@ -150,6 +150,8 @@ TEST_GROUP(BlockSequenceScan)
 {
     ScanFake fakeDevice = {};
     std::set<size_t> existing;
+    std::vector<DeviceCall> calls;
+    std::map<size_t, size_t> sizes;
     struct SolidSyslogBlockSequence* sequence = nullptr;
 
     void setup() override
@@ -162,6 +164,8 @@ TEST_GROUP(BlockSequenceScan)
         fakeDevice.Base.WriteAt = FakeWriteAt;
         fakeDevice.Base.Size    = FakeSize;
         fakeDevice.existing     = &existing;
+        fakeDevice.calls        = &calls;
+        fakeDevice.sizes        = &sizes;
 
         struct SolidSyslogBlockSequenceConfig config = {};
         config.BlockDevice                = &fakeDevice.Base;
@@ -173,6 +177,23 @@ TEST_GROUP(BlockSequenceScan)
     void teardown() override
     {
         SolidSyslogBlockSequence_Destroy(sequence);
+    }
+
+    void RecreateWithMaxBlocks(size_t maxBlocks)
+    {
+        SolidSyslogBlockSequence_Destroy(sequence);
+        struct SolidSyslogBlockSequenceConfig config = {};
+        config.BlockDevice                = &fakeDevice.Base;
+        config.MaxBlockSize               = 1000;
+        config.MaxBlocks                  = maxBlocks;
+        sequence = SolidSyslogBlockSequence_Create(&config);
+    }
+
+    [[nodiscard]] bool WasDisposed(size_t blockIndex) const
+    {
+        return std::any_of(calls.begin(), calls.end(), [blockIndex](const DeviceCall& call) {
+            return (call.type == CallType::Dispose) && (call.BlockIndex == blockIndex);
+        });
     }
 };
 
@@ -246,6 +267,19 @@ TEST(BlockSequenceScan, TheReadStepsOverAHoleInTheRun)
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
     SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
     LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
+/* Nor does the drain dispose of it: once the block before the hole is drained
+ * the oldest marker moves to the block after it. */
+TEST(BlockSequenceScan, ADrainedBlockBeforeAHoleHandsOldestToTheBlockAfterIt)
+{
+    existing = {0, 2};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence)); /* block 0 reads as empty, so it is drained */
+    bool readBlockChanged = false;
+    SolidSyslogBlockSequence_DisposeReadBlockIfDrained(sequence, &readBlockChanged);
+    CHECK_TRUE(readBlockChanged);
+    LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
+    CHECK_FALSE(WasDisposed(1));
 }
 
 namespace
