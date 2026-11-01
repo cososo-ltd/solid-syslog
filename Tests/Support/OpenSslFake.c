@@ -1236,15 +1236,19 @@ int SSL_connect(SSL* ssl)
         int idx = (callIndex < connectReturnSequenceLen) ? callIndex : (connectReturnSequenceLen - 1);
         rc = connectReturnSequence[idx];
     }
-    /* A refusal from the callback wins over any scripted result, as it does in
-     * the real handshake. */
+    /* The callback is asked about the leaf with whatever objection the test
+     * staged in the store context. The store error becomes the verify result
+     * whether the callback waived it or not - OpenSSL keeps it on the
+     * connection either way - and a refusal wins over any scripted result, as
+     * it does in the real handshake. */
     if (connectRunsVerifyCallback && (lastVerifyCallback != NULL))
     {
         storeCtxDepth = 0;
-        storeCtxError = X509_V_OK;
-        if (lastVerifyCallback(1, OpenSslFake_StoreCtx()) == 0)
+        int preverifyOk = (storeCtxError == X509_V_OK) ? 1 : 0;
+        int verdict = lastVerifyCallback(preverifyOk, OpenSslFake_StoreCtx());
+        verifyResultValue = storeCtxError;
+        if (verdict == 0)
         {
-            verifyResultValue = storeCtxError;
             rc = -1;
         }
     }

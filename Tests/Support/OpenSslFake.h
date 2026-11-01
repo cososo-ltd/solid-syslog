@@ -21,8 +21,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void OpenSslFake_SetConnectFails(bool fails);
     /* Run the registered verify callback at depth 0 inside SSL_connect, as the
-     * real one does; a refusal fails the connect and the store error becomes
-     * the verify result. Off by default. */
+     * real one does, presenting the objection staged with SetStoreCtxError
+     * (none by default). The store error becomes the verify result whether the
+     * callback waived it or not, and a refusal fails the connect. Off by
+     * default. */
     void OpenSslFake_SetConnectRunsVerifyCallback(bool runs);
     void OpenSslFake_SetWriteFails(bool fails);
     void OpenSslFake_SetSet1HostFails(bool fails);

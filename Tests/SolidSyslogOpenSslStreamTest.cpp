@@ -233,11 +233,15 @@ TEST_GROUP(SolidSyslogOpenSslStream)
      * would also emit the unverified-peer WARNING. */
     void ArrangeCertificateVerificationFailure(long verifyResult)
     {
+        ArrangeHandshakeRefusal();
+        OpenSslFake_SetVerifyResult(verifyResult);
+    }
+    void ArrangeHandshakeRefusal()
+    {
         FakeProfile_Value.ServerName = "logs.example";
         ReCreateStreamWithUpdatedConfig();
         OpenSslFake_SetConnectFails(true);
         OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
-        OpenSslFake_SetVerifyResult(verifyResult);
     }
 
     /* Drive the registered BIO read callback with the given transport return -
@@ -2134,15 +2138,18 @@ TEST(SolidSyslogOpenSslStream, OpenPullsTheProfile)
     LONGS_EQUAL(1, FakeProfile_CallCount);
 }
 
-/* The profile is optional: with none configured every field keeps the
- * library default, and Open still reaches the handshake. */
+/* The profile is optional: with none configured no cipher policy or expected
+ * identity reaches the context, and Open still reaches the handshake. */
 TEST(SolidSyslogOpenSslStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigured)
 {
     config.Profile = nullptr;
     ReCreateStreamWithUpdatedConfig();
 
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
-    LONGS_EQUAL(0, FakeProfile_CallCount);
+    LONGS_EQUAL(0, OpenSslFake_SetCipherListCallCount());
+    LONGS_EQUAL(0, OpenSslFake_SetCipherSuitesCallCount());
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSet1Host());
+    POINTERS_EQUAL(nullptr, OpenSslFake_LastSniHostname());
 }
 
 /* The waived chain-trust verdict stays in verify_result after the pin has
@@ -2152,7 +2159,12 @@ TEST(SolidSyslogOpenSslStream, ARefusalAfterAPinWaivedChainTrustIsNotReportedAsA
 {
     OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
-    ArrangeCertificateVerificationFailure(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    /* The pin matches and waives the missing anchor inside the handshake; the
+       scripted connect failure is the refusal that arrives afterwards. */
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
+    ArrangeHandshakeRefusal();
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
