@@ -285,6 +285,6 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 - [ ] Close the release's milestone, and create the next one if it does not
       exist: `gh api -X PATCH repos/cososo-ltd/solid-syslog/milestones/<number>
       -f state=closed`, then `gh api -X POST repos/cososo-ltd/solid-syslog/milestones
-      -f title=<version>` if `gh api repos/cososo-ltd/solid-syslog/milestones
-      --jq '.[].title'` does not list it.
+      -f title=<next-version>` if `gh api repos/cososo-ltd/solid-syslog/milestones
+      --jq '.[].title'` does not list `<next-version>`.
 - [ ] Security release: publish the coordinated GHSA.
