@@ -54,6 +54,22 @@ extern "C" void CaptureSslConfigFreesAtRelease(void)
     SslConfigFreesSeenAtRelease = MbedTlsFake_SslConfigFreeCallCount();
 }
 
+/* What the stream had already put on the ssl_config when the credentials were
+   asked to install. The library's policy goes on first, so a backend that types
+   its own material has the last word. */
+struct SslConfigAtInstall
+{
+    int MinTlsVersion;
+};
+
+static struct SslConfigAtInstall SslConfigSeenAtInstall;
+
+extern "C" void CaptureSslConfigAtInstall(void)
+{
+    const struct mbedtls_ssl_config* conf = MbedTlsCredentialsFake_LastInstallConfig();
+    SslConfigSeenAtInstall.MinTlsVersion = MbedTlsFake_ConfMinTlsVersion(conf);
+}
+
 static const unsigned char TEST_SHA256_DIGEST[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
                                                      0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
                                                      0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F};
@@ -227,6 +243,15 @@ TEST_GROUP(SolidSyslogMbedTlsStream)
         transport = StreamFake_Create();
         config.Transport = transport;
         handle = SolidSyslogMbedTlsStream_Create(&config);
+    }
+
+    /* Open with the credentials watched, so a test can read what was already
+     * on the ssl_config when the backend's Install ran. */
+    void OpenObservingInstall()
+    {
+        SslConfigSeenAtInstall = {};
+        MbedTlsCredentialsFake_SetInstallObserver(CaptureSslConfigAtInstall);
+        SolidSyslogStream_Open(handle, addr);
     }
 
     /* Arrange mbedtls_ssl_handshake to first emit `wantError`, then succeed on
@@ -1097,6 +1122,13 @@ TEST(SolidSyslogMbedTlsStream, OpenPinsMinimumTlsVersionToTls12)
     SolidSyslogStream_Open(handle, addr);
 
     LONGS_EQUAL(MBEDTLS_SSL_VERSION_TLS1_2, MbedTlsFake_ConfMinTlsVersion(MbedTlsFake_LastSslConfigInitArg()));
+}
+
+TEST(SolidSyslogMbedTlsStream, TheTlsFloorIsOnTheSslConfigBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+
+    LONGS_EQUAL(MBEDTLS_SSL_VERSION_TLS1_2, SslConfigSeenAtInstall.MinTlsVersion);
 }
 
 /* RFC 9325 s3.5: a TLS 1.2 client whose renegotiation_info the server does not

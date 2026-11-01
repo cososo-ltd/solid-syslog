@@ -15,6 +15,7 @@ struct MbedTlsCredentialsFake
     bool TrustAnchorsInstalled;
     const char* const * Fingerprints;
     size_t FingerprintCount;
+    void (*InstallObserver)(void);
     void (*ReleaseObserver)(void);
 };
 
@@ -29,6 +30,10 @@ static bool Install(
     (void) self;
     fake.InstallCallCount++;
     fake.LastInstallConfig = conf;
+    if (fake.InstallObserver != NULL)
+    {
+        fake.InstallObserver();
+    }
     installed->TrustAnchorsInstalled = fake.TrustAnchorsInstalled;
     installed->Fingerprints = fake.Fingerprints;
     installed->FingerprintCount = fake.FingerprintCount;
@@ -61,6 +66,7 @@ void MbedTlsCredentialsFake_Reset(void)
     fake.TrustAnchorsInstalled = true;
     fake.Fingerprints = NULL;
     fake.FingerprintCount = 0U;
+    fake.InstallObserver = NULL;
     fake.ReleaseObserver = NULL;
 }
 
@@ -77,6 +83,11 @@ struct mbedtls_ssl_config* MbedTlsCredentialsFake_LastInstallConfig(void)
 int MbedTlsCredentialsFake_ReleaseCallCount(void)
 {
     return fake.ReleaseCallCount;
+}
+
+void MbedTlsCredentialsFake_SetInstallObserver(void (*observer)(void))
+{
+    fake.InstallObserver = observer;
 }
 
 void MbedTlsCredentialsFake_SetReleaseObserver(void (*observer)(void))

@@ -23,6 +23,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct mbedtls_ssl_config* MbedTlsCredentialsFake_LastInstallConfig(void);
     int MbedTlsCredentialsFake_ReleaseCallCount(void);
 
+    /* Called from inside Install, before it reports back, so a test can observe
+       what the stream had already put on the ssl_config when the backend got
+       its turn. */
+    void MbedTlsCredentialsFake_SetInstallObserver(void (*observer)(void));
+
     /* Called from inside Release, so a test can observe what has already
        happened at the moment the credential window closes. */
     void MbedTlsCredentialsFake_SetReleaseObserver(void (*observer)(void));
