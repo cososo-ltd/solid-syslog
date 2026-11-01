@@ -12,12 +12,14 @@
 #include "SolidSyslogPosixTcpStreamErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
 
 struct SolidSyslogPosixTcpStream
 {
     struct SolidSyslogStream Base;
     struct SolidSyslogPosixTcpStreamConfig Config;
     int Fd;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
 };
 
 void SolidSyslogPosixTcpStream_Initialise(
