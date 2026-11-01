@@ -12,6 +12,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
 #include "SolidSyslogWinsockTcpStream.h"
 #include "SolidSyslogWinsockTcpStreamErrors.h"
 
@@ -20,6 +21,7 @@ struct SolidSyslogWinsockTcpStream
     struct SolidSyslogStream Base;
     struct SolidSyslogWinsockTcpStreamConfig Config;
     SOCKET Fd;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
 };
 
 void SolidSyslogWinsockTcpStream_Initialise(

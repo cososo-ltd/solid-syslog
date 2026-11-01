@@ -133,6 +133,7 @@ void SolidSyslogMbedTlsStream_Initialise(
     self->Base.Version = MbedTlsStream_Version;
     self->Config = *config;
     self->CredentialsInstalled = false;
+    self->OpenHealth = (struct SolidSyslogStreamOpenHealth) {0};
     if (MbedTlsStream_ConfigProvidesHandshakeGetter(config) == false)
     {
         /* Substitute the Null Object so the bounded-handshake loop has a
@@ -264,6 +265,10 @@ static inline bool MbedTlsStream_Open(struct SolidSyslogStream* base, const stru
     else
     {
         ok = MbedTlsStream_Establish(base, addr);
+        if (ok)
+        {
+            SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+        }
     }
     return ok;
 }
@@ -717,18 +722,18 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
         else if (!MbedTlsStream_IsRetryableHandshakeRc(rc))
         {
-            MbedTlsStream_Report(
+            MbedTlsStream_ReportHandshakeFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
-                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                 MbedTlsStream_InitDetail(rc, MbedTlsStream_RefusalDetail(self))
             );
             done = true;
         }
         else if (MbedTlsStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
         {
-            MbedTlsStream_Report(
+            MbedTlsStream_ReportHandshakeFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_WARNING,
-                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                 SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
             );
             done = true;
@@ -767,11 +772,7 @@ static inline bool MbedTlsStream_PeerPassedVerification(struct SolidSyslogMbedTl
     bool ok = !MbedTlsStream_IsVerifyFailure(mbedtls_ssl_get_verify_result(&self->SslContext));
     if (!ok)
     {
-        MbedTlsStream_Report(
-            SOLIDSYSLOG_SEVERITY_ERROR,
-            SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
-            MbedTlsStream_RefusalDetail(self)
-        );
+        MbedTlsStream_ReportHandshakeFailure(self, SOLIDSYSLOG_SEVERITY_ERROR, MbedTlsStream_RefusalDetail(self));
     }
     return ok;
 }

@@ -13,12 +13,14 @@
 #include "SolidSyslogLwipSocketTcpStreamErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
 
 struct SolidSyslogLwipSocketTcpStream
 {
     struct SolidSyslogStream Base;
     struct SolidSyslogLwipSocketTcpStreamConfig Config;
     int Fd;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
 };
 
 void SolidSyslogLwipSocketTcpStream_Initialise(

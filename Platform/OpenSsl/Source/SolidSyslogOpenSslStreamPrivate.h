@@ -14,6 +14,8 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogOpenSslStream.h"
 #include "SolidSyslogOpenSslStreamErrors.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
@@ -26,6 +28,7 @@ struct SolidSyslogOpenSslStream
     SSL_CTX* Ctx;
     SSL* Ssl;
     BIO_METHOD* BioMethod;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
     /* Set immediately before Install is called, cleared by the Release that
      * answers it. The contract is one Release per Install call whatever that
      * call returned, and Close is idempotent, so the flag is what keeps both
@@ -66,6 +69,23 @@ static inline void OpenSslStream_Report(
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogOpenSslStreamErrorSource, category, (int32_t) code);
+}
+
+/* A failed handshake, reported once per run of the same detail as the Open
+ * contract requires: the sender retries every service pass. */
+static inline void OpenSslStream_ReportHandshakeFailure(
+    struct SolidSyslogOpenSslStream* self,
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTlsStreamErrors code
+)
+{
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->OpenHealth,
+        &SolidSyslogOpenSslStreamErrorSource,
+        severity,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        (int32_t) code
+    );
 }
 
 #endif /* SOLIDSYSLOGOPENSSLSTREAMPRIVATE_H */

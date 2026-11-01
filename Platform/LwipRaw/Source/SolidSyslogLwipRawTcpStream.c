@@ -80,15 +80,20 @@ static inline bool LwipRawTcpStream_RxQueueIsFull(const struct SolidSyslogLwipRa
 static inline bool LwipRawTcpStream_HasCloseWork(const struct SolidSyslogLwipRawTcpStream* self);
 static inline bool LwipRawTcpStream_HasReadWork(const struct SolidSyslogLwipRawTcpStream* self);
 static void LwipRawTcpStream_ReportConnectFailure(
+    struct SolidSyslogLwipRawTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
 static void LwipRawTcpStream_ReportConnectFailureWithCode(
+    struct SolidSyslogLwipRawTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     err_t nativeCode
 );
-static void LwipRawTcpStream_ReportFailedAttempt(const struct LwipRawTcpStreamCall* call);
+static void LwipRawTcpStream_ReportFailedAttempt(
+    struct SolidSyslogLwipRawTcpStream* self,
+    const struct LwipRawTcpStreamCall* call
+);
 static void LwipRawTcpStream_DoOpenAndConnect(void* context);
 static void LwipRawTcpStream_DoAbort(void* context);
 static void LwipRawTcpStream_DoSend(void* context);
@@ -222,17 +227,22 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
             {
                 /* Abort first: the hop also reads what ended the attempt. */
                 SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoAbort, &call);
-                LwipRawTcpStream_ReportFailedAttempt(&call);
+                LwipRawTcpStream_ReportFailedAttempt(self, &call);
             }
         }
         else
         {
             LwipRawTcpStream_ReportConnectFailure(
+                self,
                 SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
                 SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
             );
         }
         opened = LwipRawTcpStream_IsOpen(self);
+        if (opened)
+        {
+            SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+        }
     }
     return opened;
 }
@@ -240,27 +250,37 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
 /* Every connect failure is one category with the detail naming which step
  * failed, so a portable handler reacts to "no connection" without knowing
  * lwIP. Runs on the caller's thread - never inside a marshalled hop, since
- * the handler is integrator code. */
+ * the handler is integrator code. Reported once per run of the same detail,
+ * as the Open contract requires: the sender retries every service pass. */
 static void LwipRawTcpStream_ReportConnectFailure(
+    struct SolidSyslogLwipRawTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 )
 {
-    LwipRawTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->OpenHealth,
+        &SolidSyslogLwipRawTcpStreamErrorSource,
+        severity,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        (int32_t) detail
+    );
 }
 
 /* The fault, with the err_t behind it. Every caller has one: tcp_connect
  * declined with it, or a callback was handed it, and each callback that sets
  * Errored records one. */
 static void LwipRawTcpStream_ReportConnectFailureWithCode(
+    struct SolidSyslogLwipRawTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     err_t nativeCode
 )
 {
-    SolidSyslog_ErrorWithNativeCode(
-        severity,
+    SolidSyslogStreamOpenHealth_ReportFailureWithNativeCode(
+        &self->OpenHealth,
         &SolidSyslogLwipRawTcpStreamErrorSource,
+        severity,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
         (int32_t) detail,
         (int32_t) nativeCode
@@ -273,11 +293,15 @@ static void LwipRawTcpStream_ReportConnectFailureWithCode(
  * hop's reading separates a reset that arrived from a budget that simply ran
  * out. The code is the one tcp_connect answered, or the one the callback that
  * ended the attempt was handed; a budget that ran out has none. */
-static void LwipRawTcpStream_ReportFailedAttempt(const struct LwipRawTcpStreamCall* call)
+static void LwipRawTcpStream_ReportFailedAttempt(
+    struct SolidSyslogLwipRawTcpStream* self,
+    const struct LwipRawTcpStreamCall* call
+)
 {
     if (call->ConnectErr != ERR_OK)
     {
         LwipRawTcpStream_ReportConnectFailureWithCode(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
             call->ConnectErr
@@ -286,6 +310,7 @@ static void LwipRawTcpStream_ReportFailedAttempt(const struct LwipRawTcpStreamCa
     else if (call->EndedByPeer)
     {
         LwipRawTcpStream_ReportConnectFailureWithCode(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
             call->PeerError
@@ -294,6 +319,7 @@ static void LwipRawTcpStream_ReportFailedAttempt(const struct LwipRawTcpStreamCa
     else
     {
         LwipRawTcpStream_ReportConnectFailure(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT
         );

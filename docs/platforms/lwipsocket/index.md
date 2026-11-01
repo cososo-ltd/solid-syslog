@@ -153,10 +153,12 @@ one. [Error severity](../../error-severity.md) covers what each level means.
   the delivery failure the sender raises once records stop getting through.
 - **A lookup refused for its address family raises `ERROR`.** The destination
   cannot be served as asked, and retrying will not change that.
-- **A connect that fails raises one event per attempt**, `ERROR` where this
-  device could not obtain or start the connection and `WARNING` where the
-  destination answered with something other than a connection, or did not
-  answer inside the budget. The detail code names which step gave up.
+- **A connect that fails raises one event per run of the same failure**,
+  `ERROR` where this device could not obtain or start the connection and
+  `WARNING` where the destination answered with something other than a
+  connection, or did not answer inside the budget. The detail code names which
+  step gave up; a run ends when a connect succeeds, and a different step
+  giving up in the same run is reported too.
 - **A socket option the stack declines raises `WARNING`**, once per connection
   attempt however many were declined. The connection carries records; what the
   option bought, usually prompt detection of a dead peer, does not.

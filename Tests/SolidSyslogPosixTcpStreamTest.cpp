@@ -103,6 +103,12 @@ TEST_GROUP(SolidSyslogPosixTcpStream)
     void openAfterConnectFails(int connectErrno) const
     {
         ErrorHandlerFake_Install(nullptr);
+        openAgainAfterConnectFails(connectErrno);
+    }
+
+    /* A later attempt in the same run: the handler keeps counting. */
+    void openAgainAfterConnectFails(int connectErrno) const
+    {
         SocketFake_SetConnectFailsWithErrno(connectErrno);
         SolidSyslogStream_Open(stream, addr);
     }
@@ -312,6 +318,33 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmedia
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         ECONNREFUSED
     );
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsARepeatedRefusalOnce)
+{
+    openAfterConnectFails(ECONNREFUSED);
+    openAgainAfterConnectFails(ECONNREFUSED);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsADifferentFailureInTheSameRun)
+{
+    openAfterConnectFails(ECONNREFUSED);
+    openAgainAfterConnectFails(EINVAL);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsTheSameRefusalAgainAfterAConnectionInBetween)
+{
+    openAfterConnectFails(ECONNREFUSED);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    SolidSyslogStream_Close(stream);
+    openAgainAfterConnectFails(ECONNREFUSED);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectNotStartedWhenConnectFailsForALocalReason)

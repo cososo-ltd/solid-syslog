@@ -305,6 +305,42 @@ TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsInTheExceptionSetCarriesTh
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, ARepeatedRefusalIsReportedOnce)
+{
+    LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
+
+    CHECK_FALSE(Open());
+    CHECK_FALSE(Open());
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, ADifferentFailureInTheSameRunIsReported)
+{
+    LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
+    CHECK_FALSE(Open());
+    LwipSocketsFake_SetConnectResult(-1, ENOBUFS);
+
+    CHECK_FALSE(Open());
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, TheSameRefusalIsReportedAgainAfterAConnectionInBetween)
+{
+    LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
+    CHECK_FALSE(Open());
+    LwipSocketsFake_SetConnectResult(0, 0);
+    CHECK_TRUE(Open());
+    SolidSyslogStream_Close(stream);
+    LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);
+
+    CHECK_FALSE(Open());
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, ADestinationThatRefusesImmediatelyIsReportedAsRefused)
 {
     LwipSocketsFake_SetConnectResult(-1, ECONNREFUSED);

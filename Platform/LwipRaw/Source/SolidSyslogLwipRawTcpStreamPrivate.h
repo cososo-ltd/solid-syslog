@@ -15,6 +15,7 @@
 #include "SolidSyslogLwipRawTcpStreamErrors.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
 #include "SolidSyslogTunables.h"
 #include "lwip/err.h"
 
@@ -25,6 +26,7 @@ struct SolidSyslogLwipRawTcpStream
 {
     struct SolidSyslogStream Base;
     struct SolidSyslogLwipRawTcpStreamConfig Config;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
     struct tcp_pcb* Pcb;
     bool Connected;
     bool Errored;

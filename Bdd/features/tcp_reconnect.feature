@@ -17,3 +17,5 @@ Feature: TCP reconnection after server outage
     And the client sends a message
     Then the syslog oracle receives 5 messages
     And the messages have contiguous sequenceIds
+    And the target reports once that the collector could not be reached
+    And the target reports once that delivery was restored

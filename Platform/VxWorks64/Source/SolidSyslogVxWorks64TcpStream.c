@@ -66,10 +66,12 @@ static inline struct SolidSyslogVxWorks64TcpStream* VxWorks64TcpStream_SelfFromB
 static void VxWorks64TcpStream_CloseSocket(struct SolidSyslogVxWorks64TcpStream* self);
 static inline bool VxWorks64TcpStream_IsSocketValid(int fd);
 static void VxWorks64TcpStream_ReportConnectFailure(
+    struct SolidSyslogVxWorks64TcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
 static void VxWorks64TcpStream_ReportConnectFailureWithErrno(
+    struct SolidSyslogVxWorks64TcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     int nativeErrno
@@ -96,6 +98,7 @@ void SolidSyslogVxWorks64TcpStream_Initialise(
     self->Base.Close = VxWorks64TcpStream_Close;
     self->Base.Version = VxWorks64TcpStream_Version;
     self->Fd = INVALID_SOCKET;
+    self->OpenHealth = (struct SolidSyslogStreamOpenHealth) {0};
     self->Config.GetConnectTimeoutMs = VxWorks64TcpStream_NullConnectTimeoutGetter;
     self->Config.ConnectTimeoutContext = NULL;
     if (VxWorks64TcpStream_ConfigProvidesGetter(config) == true)
@@ -165,10 +168,15 @@ static bool VxWorks64TcpStream_TakeSocketAndConnect(
     else
     {
         VxWorks64TcpStream_ReportConnectFailureWithErrno(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE,
             socketErrno
         );
+    }
+    if (connected)
+    {
+        SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
     }
     return connected;
 }
@@ -187,17 +195,27 @@ static inline bool VxWorks64TcpStream_IsSocketValid(int fd)
     return fd >= 0;
 }
 
-/* One category for every connect failure; the detail names the step. */
+/* One category for every connect failure; the detail names the step.
+ * Reported once per run of the same detail, as the Open contract requires:
+ * the sender retries every service pass. */
 static void VxWorks64TcpStream_ReportConnectFailure(
+    struct SolidSyslogVxWorks64TcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 )
 {
-    VxWorks64TcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->OpenHealth,
+        &SolidSyslogVxWorks64TcpStreamErrorSource,
+        severity,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        (int32_t) detail
+    );
 }
 
 /* The fault, with the errno behind it when the call left one. */
 static void VxWorks64TcpStream_ReportConnectFailureWithErrno(
+    struct SolidSyslogVxWorks64TcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     int nativeErrno
@@ -205,9 +223,10 @@ static void VxWorks64TcpStream_ReportConnectFailureWithErrno(
 {
     if (nativeErrno != 0)
     {
-        SolidSyslog_ErrorWithNativeCode(
-            severity,
+        SolidSyslogStreamOpenHealth_ReportFailureWithNativeCode(
+            &self->OpenHealth,
             &SolidSyslogVxWorks64TcpStreamErrorSource,
+            severity,
             SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
             (int32_t) detail,
             (int32_t) nativeErrno
@@ -215,7 +234,7 @@ static void VxWorks64TcpStream_ReportConnectFailureWithErrno(
     }
     else
     {
-        VxWorks64TcpStream_ReportConnectFailure(severity, detail);
+        VxWorks64TcpStream_ReportConnectFailure(self, severity, detail);
     }
 }
 
@@ -254,6 +273,7 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
     if (connectErrno == EINPROGRESS)
     {
         VxWorks64TcpStream_ReportConnectFailureWithErrno(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
             connectErrno
@@ -262,6 +282,7 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
     else if (VxWorks64TcpStream_IsRemoteConnectError(connectErrno))
     {
         VxWorks64TcpStream_ReportConnectFailureWithErrno(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
             connectErrno
@@ -270,6 +291,7 @@ static bool VxWorks64TcpStream_Connect(struct SolidSyslogVxWorks64TcpStream* sel
     else if (!connected)
     {
         VxWorks64TcpStream_ReportConnectFailureWithErrno(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
             connectErrno

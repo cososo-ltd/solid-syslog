@@ -26,6 +26,7 @@ set(SOURCES
     SolidSyslogNullMutex.c
     SolidSyslogSender.c
     SolidSyslogSenderHealth.c
+    SolidSyslogStreamOpenHealth.c
     SolidSyslogNullSender.c
     SolidSyslogStore.c
     SolidSyslogNullSd.c

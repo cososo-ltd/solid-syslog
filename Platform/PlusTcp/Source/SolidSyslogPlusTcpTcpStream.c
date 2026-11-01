@@ -74,15 +74,17 @@ static BaseType_t PlusTcpTcpStream_TryConnect(
     const struct SolidSyslogAddress* addr
 );
 static void PlusTcpTcpStream_ReportConnectFailure(
+    struct SolidSyslogPlusTcpTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 );
 static void PlusTcpTcpStream_ReportConnectFailureWithCode(
+    struct SolidSyslogPlusTcpTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     BaseType_t connectResult
 );
-static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult);
+static void PlusTcpTcpStream_ReportFailedAttempt(struct SolidSyslogPlusTcpTcpStream* self, BaseType_t connectResult);
 static inline void PlusTcpTcpStream_PrimeArpIfMissing(uint32_t ip);
 static void PlusTcpTcpStream_ClearTimeouts(Socket_t socket);
 static void PlusTcpTcpStream_SetSendTimeout(Socket_t socket, TickType_t ticks);
@@ -186,11 +188,16 @@ static bool PlusTcpTcpStream_Open(struct SolidSyslogStream* base, const struct S
         else
         {
             PlusTcpTcpStream_ReportConnectFailure(
+                self,
                 SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
                 SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
             );
         }
         opened = PlusTcpTcpStream_IsOpen(self);
+        if (opened)
+        {
+            SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+        }
     }
     return opened;
 }
@@ -217,33 +224,43 @@ static void PlusTcpTcpStream_ConnectOrCloseOnFailure(
     }
     else
     {
-        PlusTcpTcpStream_ReportFailedAttempt(connectResult);
+        PlusTcpTcpStream_ReportFailedAttempt(self, connectResult);
         PlusTcpTcpStream_CloseSocket(self);
     }
 }
 
 /* Every connect failure is one category with the detail naming which step
  * failed, so a portable handler reacts to "no connection" without knowing
- * FreeRTOS-Plus-TCP. */
+ * FreeRTOS-Plus-TCP. Reported once per run of the same detail, as the Open
+ * contract requires: the sender retries every service pass. */
 static void PlusTcpTcpStream_ReportConnectFailure(
+    struct SolidSyslogPlusTcpTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail
 )
 {
-    PlusTcpTcpStream_Report(severity, SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED, detail);
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->OpenHealth,
+        &SolidSyslogPlusTcpTcpStreamErrorSource,
+        severity,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        (int32_t) detail
+    );
 }
 
 /* The fault, with the value FreeRTOS_connect answered behind it: the negated
  * FreeRTOS errno, as the stack returns it. */
 static void PlusTcpTcpStream_ReportConnectFailureWithCode(
+    struct SolidSyslogPlusTcpTcpStream* self,
     enum SolidSyslogSeverity severity,
     enum SolidSyslogTcpStreamErrors detail,
     BaseType_t connectResult
 )
 {
-    SolidSyslog_ErrorWithNativeCode(
-        severity,
+    SolidSyslogStreamOpenHealth_ReportFailureWithNativeCode(
+        &self->OpenHealth,
         &SolidSyslogPlusTcpTcpStreamErrorSource,
+        severity,
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
         (int32_t) detail,
         (int32_t) connectResult
@@ -255,11 +272,12 @@ static void PlusTcpTcpStream_ReportConnectFailureWithCode(
  * the destination answering with something other than a connection - and any
  * other error comes from prvTCPConnectStart, which means the stack declined
  * to begin and no SYN was sent. Each carries that return as its code. */
-static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult)
+static void PlusTcpTcpStream_ReportFailedAttempt(struct SolidSyslogPlusTcpTcpStream* self, BaseType_t connectResult)
 {
     if (connectResult == -pdFREERTOS_ERRNO_ETIMEDOUT)
     {
         PlusTcpTcpStream_ReportConnectFailureWithCode(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_TIMED_OUT,
             connectResult
@@ -268,6 +286,7 @@ static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult)
     else if (connectResult == -pdFREERTOS_ERRNO_ENOTCONN)
     {
         PlusTcpTcpStream_ReportConnectFailureWithCode(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
             connectResult
@@ -276,6 +295,7 @@ static void PlusTcpTcpStream_ReportFailedAttempt(BaseType_t connectResult)
     else
     {
         PlusTcpTcpStream_ReportConnectFailureWithCode(
+            self,
             SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
             SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED,
             connectResult

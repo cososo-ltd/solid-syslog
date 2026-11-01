@@ -95,6 +95,12 @@ TEST_GROUP(SolidSyslogVxWorks64TcpStream)
     void OpenAfterConnectFails(int connectErrno) const
     {
         ErrorHandlerFake_Install(nullptr);
+        OpenAgainAfterConnectFails(connectErrno);
+    }
+
+    /* A later attempt in the same run: the handler keeps counting. */
+    void OpenAgainAfterConnectFails(int connectErrno) const
+    {
         VxWorks64NetFake_FailConnectWithErrno(connectErrno);
         SolidSyslogStream_Open(stream, address);
     }
@@ -251,6 +257,34 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectRefusedWhenTheStackGive
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         ETIMEDOUT
     );
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, OpenReportsARepeatedRefusalOnce)
+{
+    OpenAfterConnectFails(ECONNREFUSED);
+    OpenAgainAfterConnectFails(ECONNREFUSED);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, OpenReportsADifferentFailureInTheSameRun)
+{
+    OpenAfterConnectFails(ECONNREFUSED);
+    OpenAgainAfterConnectFails(ENETUNREACH);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheSameRefusalAgainAfterAConnectionInBetween)
+{
+    OpenAfterConnectFails(ECONNREFUSED);
+    VxWorks64NetFake_FailConnectWithErrno(0);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, address));
+    SolidSyslogStream_Close(stream);
+    OpenAgainAfterConnectFails(ECONNREFUSED);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectNotStartedWhenItFailsForALocalReason)

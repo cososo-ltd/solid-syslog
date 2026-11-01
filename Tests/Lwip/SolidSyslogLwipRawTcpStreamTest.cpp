@@ -435,6 +435,45 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsRe
     );
 }
 
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsARepeatedRefusalOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectCallbackResult(ERR_RST);
+
+    SolidSyslogStream_Open(stream, address);
+    SolidSyslogStream_Open(stream, address);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsADifferentFailureInTheSameRun)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectCallbackResult(ERR_RST);
+    SolidSyslogStream_Open(stream, address);
+    LwipTcpFake_SetTcpConnectError(ERR_RTE);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsTheSameRefusalAgainAfterAConnectionInBetween)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectCallbackResult(ERR_RST);
+    SolidSyslogStream_Open(stream, address);
+    LwipTcpFake_SetConnectCallbackResult(ERR_OK);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, address));
+    SolidSyslogStream_Close(stream);
+    LwipTcpFake_SetConnectCallbackResult(ERR_RST);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectTimedOutWhenNoAnswerArrivesWithinTheBudget)
 {
     ErrorHandlerFake_Install(nullptr);
