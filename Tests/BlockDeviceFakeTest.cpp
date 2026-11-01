@@ -211,3 +211,120 @@ TEST(BlockDeviceFake, TheBlockStoreRoundTripsARecordOverTheFake)
 
     SolidSyslogBlockStore_Destroy(store);
 }
+
+// clang-format off
+TEST_GROUP(BlockDeviceFakeFaults)
+{
+    struct SolidSyslogBlockDevice* device = nullptr;
+    char buf[8] = {};
+
+    void setup() override
+    {
+        device = BlockDeviceFake_Create(64);
+        SolidSyslogBlockDevice_Acquire(device, 3);
+        SolidSyslogBlockDevice_Append(device, 3, "abcdef", 6);
+    }
+
+    bool ReadBlock3(size_t offset, size_t count)
+    {
+        return SolidSyslogBlockDevice_Read(device, 3, offset, buf, count);
+    }
+};
+
+// clang-format on
+
+TEST(BlockDeviceFakeFaults, FlipBitChangesTheByteOnTheMedia)
+{
+    BlockDeviceFake_FlipBit(3, 1, 0); /* 'b' is 0x62; bit 0 set gives 'c' */
+    CHECK_TRUE(ReadBlock3(0, 6));
+    MEMCMP_EQUAL("accdef", buf, 6);
+}
+
+TEST(BlockDeviceFakeFaults, AStuckByteReadsAsItsValueEvenAfterAWriteOverIt)
+{
+    BlockDeviceFake_StickByte(3, 2, 0xFF);
+    SolidSyslogBlockDevice_WriteAt(device, 3, 2, "Z", 1);
+    CHECK_TRUE(ReadBlock3(1, 3));
+    BYTES_EQUAL('b', buf[0]);
+    BYTES_EQUAL(0xFF, buf[1]);
+    BYTES_EQUAL('d', buf[2]);
+}
+
+TEST(BlockDeviceFakeFaults, AReadTouchingAFailedOffsetFailsAndOthersSucceed)
+{
+    BlockDeviceFake_FailReadsTouching(3, 4);
+    CHECK_FALSE(ReadBlock3(3, 2));
+    CHECK_FALSE(ReadBlock3(4, 1));
+    CHECK_TRUE(ReadBlock3(0, 4));
+    CHECK_TRUE(ReadBlock3(5, 1));
+}
+
+TEST(BlockDeviceFakeFaults, TruncateToShortensTheReportedSizeAndBoundsReads)
+{
+    BlockDeviceFake_TruncateTo(3, 4);
+    size_t size = 0U;
+    CHECK_TRUE(SolidSyslogBlockDevice_Size(device, 3, &size));
+    LONGS_EQUAL(4, size);
+    CHECK_TRUE(ReadBlock3(0, 4));
+    CHECK_FALSE(ReadBlock3(3, 2));
+}
+
+TEST(BlockDeviceFakeFaults, RemoveBlockMakesItAbsent)
+{
+    BlockDeviceFake_RemoveBlock(3);
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 3));
+    CHECK_FALSE(ReadBlock3(0, 1));
+}
+
+TEST(BlockDeviceFakeFaults, ABlockThatFailsEveryOperationStillReportsPresent)
+{
+    BlockDeviceFake_FailEveryOperationOn(3);
+    size_t size = 0U;
+    CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 3));
+    CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 3, &size));
+    CHECK_FALSE(ReadBlock3(0, 1));
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 3, "x", 1));
+    CHECK_FALSE(SolidSyslogBlockDevice_WriteAt(device, 3, 0, "x", 1));
+    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 3));
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 3));
+}
+
+TEST(BlockDeviceFakeFaults, ABlockIsRemovedOnceTheOperationCountIsReached)
+{
+    BlockDeviceFake_RemoveBlockAfterOperation(3, 3); /* setup made two */
+    CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 3));
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 3));
+}
+
+TEST(BlockDeviceFakeFaults, ATornAppendLandsOnlyTheFirstBytesAndReportsSuccess)
+{
+    BlockDeviceFake_TearNextAppend(2);
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 3, "XYZ", 3));
+    size_t size = 0U;
+    SolidSyslogBlockDevice_Size(device, 3, &size);
+    LONGS_EQUAL(8, size);
+    CHECK_TRUE(ReadBlock3(6, 2));
+    MEMCMP_EQUAL("XY", buf, 2);
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 3, "Q", 1));
+    SolidSyslogBlockDevice_Size(device, 3, &size);
+    LONGS_EQUAL(9, size);
+}
+
+TEST(BlockDeviceFakeFaults, WhenAbsentBlocksAreCreatedOnTouchSizeIsZeroAndTheBlockExistsAfter)
+{
+    BlockDeviceFake_SetAbsentBlockBehaviour(BLOCKDEVICEFAKE_ABSENT_IS_CREATED_ON_TOUCH);
+    size_t size = 99U;
+    CHECK_TRUE(SolidSyslogBlockDevice_Size(device, 7, &size));
+    LONGS_EQUAL(0, size);
+    CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 7));
+}
+
+TEST(BlockDeviceFakeFaults, WhenAbsentBlocksAreGhostsOperationsUseTheOldContentButExistsSaysAbsent)
+{
+    BlockDeviceFake_RemoveBlock(3);
+    BlockDeviceFake_SetAbsentBlockBehaviour(BLOCKDEVICEFAKE_ABSENT_IS_GHOST);
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 3));
+    CHECK_TRUE(ReadBlock3(0, 6));
+    MEMCMP_EQUAL("abcdef", buf, 6);
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 3, "g", 1));
+}
