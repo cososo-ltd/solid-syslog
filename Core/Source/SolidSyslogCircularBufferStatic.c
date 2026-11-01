@@ -38,27 +38,38 @@ struct SolidSyslogBuffer* SolidSyslogCircularBuffer_Create(
     void* discardPolicyContext
 )
 {
-    size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
     struct SolidSyslogBuffer* handle = SolidSyslogNullBuffer_Get();
-    if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
+    if (mutex == NULL)
     {
-        SolidSyslogCircularBuffer_Initialise(
-            &CircularBuffer_Pool[index].Base,
-            mutex,
-            ring,
-            ringBytes,
-            getDiscardPolicy,
-            discardPolicyContext
+        CircularBuffer_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_MUTEX
         );
-        handle = &CircularBuffer_Pool[index].Base;
     }
     else
     {
-        CircularBuffer_Report(
-            SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
-            SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
-            SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED
-        );
+        size_t index = SolidSyslogPoolAllocator_AcquireFirstFree(&CircularBuffer_Allocator);
+        if (SolidSyslogPoolAllocator_IndexIsValid(&CircularBuffer_Allocator, index))
+        {
+            SolidSyslogCircularBuffer_Initialise(
+                &CircularBuffer_Pool[index].Base,
+                mutex,
+                ring,
+                ringBytes,
+                getDiscardPolicy,
+                discardPolicyContext
+            );
+            handle = &CircularBuffer_Pool[index].Base;
+        }
+        else
+        {
+            CircularBuffer_Report(
+                SOLIDSYSLOG_POOL_EXHAUSTED_SEVERITY,
+                SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
+                SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED
+            );
+        }
     }
     return handle;
 }

@@ -861,6 +861,42 @@ TEST(SolidSyslogCircularBufferPool, ExhaustedCreateReportsError)
     );
 }
 
+TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexReportsError)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    overflow = SolidSyslogCircularBuffer_Create(nullptr, ring, sizeof(ring), AnswersTestPolicy, nullptr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogCircularBufferErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_NULL_MUTEX
+    );
+}
+
+TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexReturnsFallbackDistinctFromAnyPoolSlot)
+{
+    FillPool();
+
+    overflow = SolidSyslogCircularBuffer_Create(nullptr, ring, sizeof(ring), AnswersTestPolicy, nullptr);
+
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogCircularBufferPool, CreateWithNullMutexDoesNotConsumeAPoolSlot)
+{
+    // Had the refused Create kept a slot, FillPool would overflow into the
+    // fallback one slot sooner and that slot would collide with `overflow`.
+    overflow = SolidSyslogCircularBuffer_Create(nullptr, ring, sizeof(ring), AnswersTestPolicy, nullptr);
+
+    FillPool();
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != overflow, "Pool slot collided with the NULL-mutex fallback handle");
+    }
+}
+
 TEST(SolidSyslogCircularBufferPool, FallbackWriteAndReadAreNoOps)
 {
     FillPool();
