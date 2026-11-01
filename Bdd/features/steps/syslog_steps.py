@@ -29,9 +29,11 @@ from tls_collectors import fingerprint_of, listener
 from syslog_severities import severity_value
 from store_files import corrupt_first_unsent_record
 from security_policy_reports import reported_keys_unavailable
+from stream_reports import reported_connect_failures, reported_delivery_restorations
+from tls_error_codes import sender_error_code, tcp_stream_error_code
 from buffer_reports import reported_buffer_losses
 from store_reports import reported_store_discards, reported_store_freezes, reported_store_losses
-from tls_reports import ReportRecorder, reported_details
+from tls_reports import ReportRecorder, reported_details, target_output
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
 
 PER_TRANSPORT_LOG_SYSLOG_NG = {
@@ -1450,6 +1452,32 @@ def step_target_reports_key_unavailable_once(context):
     severities = [severity for severity, _detail in reports]
     assert severities == [severity_value("ERROR")], (
         f"Expected one key-unavailable report at ERROR, got {reports}"
+    )
+
+
+@then("the target reports once that the connection was refused")
+def step_target_reports_connection_refused_once(context):
+    # The sender retries the connect on every service pass for as long as the
+    # collector is down, and every attempt is refused; one run of the same
+    # refusal, one report. A different failure in the run would report too,
+    # so the list is checked whole rather than counted.
+    reports = _reports_once_made(reported_connect_failures, context.interactive_process)
+
+    expected = [(severity_value("WARNING"), tcp_stream_error_code("CONNECT_REFUSED"))]
+    assert reports == expected, (
+        f"Expected one refused-connection report at WARNING, got {reports}\n"
+        f"--- target output ---\n{target_output(context.interactive_process)}"
+    )
+
+
+@then("the target reports once that delivery was restored")
+def step_target_reports_delivery_restored_once(context):
+    reports = _reports_once_made(reported_delivery_restorations, context.interactive_process)
+
+    expected = [(severity_value("NOTICE"), sender_error_code("DELIVERY_RESTORED"))]
+    assert reports == expected, (
+        f"Expected one delivery-restored report at NOTICE, got {reports}\n"
+        f"--- target output ---\n{target_output(context.interactive_process)}"
     )
 
 

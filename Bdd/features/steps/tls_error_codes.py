@@ -26,9 +26,11 @@ import re
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 _HEADER = _REPO_ROOT / "Core" / "Interface" / "SolidSyslogTlsStreamErrors.h"
 _SENDER_HEADER = _REPO_ROOT / "Core" / "Interface" / "SolidSyslogStreamSenderErrors.h"
+_TCP_STREAM_HEADER = _REPO_ROOT / "Core" / "Interface" / "SolidSyslogTcpStreamErrors.h"
 
 _PREFIX = "SOLIDSYSLOG_TLS_STREAM_ERROR_"
 _SENDER_PREFIX = "SOLIDSYSLOG_STREAM_SENDER_ERROR_"
+_TCP_STREAM_PREFIX = "SOLIDSYSLOG_TCP_STREAM_ERROR_"
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 
 
@@ -91,16 +93,16 @@ def tls_error_code(name):
     return TLS_ERROR_CODES[shortName]
 
 
-def _parseSender(header_text):
-    """The sender's codes. Same shape as the TLS enum, without the _MAX
+def _parsePlain(header, enumName, prefix):
+    """A per-class enum's codes. Same shape as the TLS enum, without the _MAX
     obligations E39 places on that one."""
-    block = _blockPattern("SolidSyslogStreamSenderErrors").search(header_text)
+    block = _blockPattern(enumName).search(header.read_text(encoding="utf-8"))
     if block is None:
-        raise RuntimeError(f"No enum SolidSyslogStreamSenderErrors in {_SENDER_HEADER}")
+        raise RuntimeError(f"No enum {enumName} in {header}")
 
     codes = {}
     nextValue = 0
-    for name, explicit in _memberPattern(_SENDER_PREFIX).findall(_COMMENT.sub(" ", block.group(1))):
+    for name, explicit in _memberPattern(prefix).findall(_COMMENT.sub(" ", block.group(1))):
         if explicit:
             nextValue = int(explicit)
         codes[name] = nextValue
@@ -108,7 +110,11 @@ def _parseSender(header_text):
     return codes
 
 
-SENDER_ERROR_CODES = _parseSender(_SENDER_HEADER.read_text(encoding="utf-8"))
+SENDER_ERROR_CODES = _parsePlain(_SENDER_HEADER, "SolidSyslogStreamSenderErrors", _SENDER_PREFIX)
+
+# Every TCP backend reports the same enum, so one scenario asserts the same
+# number on every lane that has a TCP stream.
+TCP_STREAM_ERROR_CODES = _parsePlain(_TCP_STREAM_HEADER, "SolidSyslogTcpStreamErrors", _TCP_STREAM_PREFIX)
 
 
 def sender_error_code(name):
@@ -119,4 +125,15 @@ def sender_error_code(name):
     except KeyError:
         raise KeyError(
             f"No sender code {name!r}. Known: {sorted(SENDER_ERROR_CODES)}."
+        ) from None
+
+
+def tcp_stream_error_code(name):
+    """The number a target prints for one of the TCP stream's codes."""
+    shortName = name.strip().upper()
+    try:
+        return TCP_STREAM_ERROR_CODES[shortName]
+    except KeyError:
+        raise KeyError(
+            f"No TCP stream code {name!r}. Known: {sorted(TCP_STREAM_ERROR_CODES)}."
         ) from None
