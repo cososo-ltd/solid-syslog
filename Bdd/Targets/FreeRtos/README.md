@@ -165,7 +165,11 @@ and `.bss`, calls `__libc_init_array`, then calls `main()`.
 
 `main()` initialises the CMSDK UART (CMSDK_UART0 @ `0x40004000`) for
 polled `_read` / `_write` via newlib retargeting
-([Syscalls.c](Common/Syscalls.c)), brings up FreeRTOS-Plus-TCP with a
+([Syscalls.c](Common/Syscalls.c)). Both tasks write that one UART, so
+`_write` holds a console lock, and stdio belongs to the interactive task:
+the Service task's reports and markers leave in one `write()` each, so
+the host sees every prompt and every report whole. It then brings up
+FreeRTOS-Plus-TCP with a
 static IPv4 of `10.0.2.15` on the QEMU slirp network, and starts the
 scheduler. On link-up the IP-task event hook spawns the interactive task
 (running `BddTargetInteractive_Run`) and the Service task (draining the

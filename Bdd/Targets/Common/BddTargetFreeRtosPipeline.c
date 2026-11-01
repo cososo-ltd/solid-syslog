@@ -47,9 +47,11 @@
 #include "SolidSyslogTunables.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 /* The injected platform seam - set once via BddTargetFreeRtosPipeline_SetConfig
  * before the tasks run. */
@@ -135,6 +137,7 @@ static void OnBlocks(void);
 static void TeardownAll(void);
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event);
+static void WriteConsoleLine(const char* line, size_t length);
 
 static uint32_t MmioRead32(uintptr_t address)
 {
@@ -154,6 +157,13 @@ void BddTargetFreeRtosPipeline_Sleep(uint32_t milliseconds)
      * SolidSyslogSleepFunction callback. */
     BddTargetOsPrimitives_Sleep(milliseconds);
 }
+
+/* Room for the longest report line the handler formats; a longer one is cut,
+ * not split. */
+enum
+{
+    REPORT_LINE_CAPACITY = 256
+};
 
 static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, BddTargetFreeRtosPipeline_Sleep};
 
@@ -203,7 +213,12 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
        one as a portable code. */
     const struct SolidSyslogErrorSource* tlsSource = BddTargetTlsSender_ErrorSource();
     const char* role = ((tlsSource != NULL) && (source == tlsSource)) ? "role=tls " : "";
-    (void) printf(
+    /* Runs on whichever thread reported, the Service thread included, so it
+     * never touches stdio: see WriteConsoleLine. */
+    char line[REPORT_LINE_CAPACITY];
+    int formatted = snprintf(
+        line,
+        sizeof(line),
         "[solidsyslog] severity=%d [%s %scat=%u detail=%ld] %s %s\n",
         (int) event->Severity,
         sourceName,
@@ -213,6 +228,27 @@ static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* ev
         message,
         BddTargetErrorText_Detail(event)
     );
+    if (formatted > 0)
+    {
+        size_t length = (size_t) formatted;
+        if (length >= sizeof(line))
+        {
+            /* Truncated: keep the line a line. */
+            length = sizeof(line) - 1U;
+            line[length - 1U] = '\n';
+        }
+        WriteConsoleLine(line, length);
+    }
+}
+
+/* stdio belongs to the interactive thread. This newlib is built without
+ * retargetable locking, so two threads in one FILE's buffer corrupt it, and
+ * the Service thread's reports used to share stdout with the prompt. Anything
+ * the Service thread says is formatted locally and leaves in one write(),
+ * which the console lock in _write keeps whole against the UART. */
+static void WriteConsoleLine(const char* line, size_t length)
+{
+    (void) write(STDOUT_FILENO, line, length);
 }
 
 static bool OnSet(const char* name, const char* value)
@@ -404,11 +440,13 @@ static void OnHalt(void* context)
 
 /* Stdout marker the behave harness watches for. The Linux equivalent writes a
  * host file unreachable from the QEMU guest; instead we print a line-anchored
- * token to the UART, which the captured-stdout reader in syslog_steps.py scans. */
+ * token to the UART, which the captured-stdout reader in syslog_steps.py scans.
+ * Fires on the Service thread's drain, so it goes the same way as a report. */
 static void OnThresholdCrossed(void* context)
 {
     (void) context;
-    (void) printf("[THRESHOLD-CROSSED]\r\n");
+    static const char MARKER[] = "[THRESHOLD-CROSSED]\r\n";
+    WriteConsoleLine(MARKER, sizeof(MARKER) - 1U);
 }
 
 /* The harness's `blocks` command. The lifecycle mutex keeps the Service task's

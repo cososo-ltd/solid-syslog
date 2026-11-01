@@ -71,6 +71,16 @@ bool BddTargetOsPrimitives_WaitForNotify(uint32_t timeoutMilliseconds);
  * blocks for a tick rather than merely yielding. */
 void BddTargetOsPrimitives_Sleep(uint32_t milliseconds);
 
+/* The console is one polled UART that every thread writes, a byte at a time,
+ * and the UART driver yields between bytes. Without a lock the Service thread's
+ * error reports land inside the interactive thread's prompt, and the host
+ * reading the serial stream never sees the prompt whole. Hold this around one
+ * complete write. Created by InitialiseOs; before that, and before the
+ * scheduler runs, there is one thread and both calls do nothing. Never from an
+ * interrupt. */
+void BddTargetOsPrimitives_LockConsole(void);
+void BddTargetOsPrimitives_UnlockConsole(void);
+
 /* Monotonic milliseconds since the scheduler started. 64-bit so that it does
  * not wrap earlier than the kernel's own tick counter would. */
 uint64_t BddTargetOsPrimitives_UptimeMilliseconds(void);

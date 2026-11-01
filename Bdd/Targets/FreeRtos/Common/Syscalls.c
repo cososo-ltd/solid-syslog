@@ -9,10 +9,17 @@
  * that send carriage-return on Enter still terminate fgets, and each
  * received byte is echoed back over TX so the user sees what they type.
  *
+ * Two threads write the one UART, and the driver yields between bytes, so
+ * each _write and each echoed byte holds the console lock from
+ * BddTargetOsPrimitives.h. The lock keeps one write whole; it does not make
+ * stdio shareable, which is why the pipeline keeps the Service thread's
+ * output out of stdio altogether.
+ *
  * Not host-TDD'd - this file exists only in the cross build (gated by
  * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The QEMU
  * smoke is the integration check that proves the path end-to-end. */
 
+#include "BddTargetOsPrimitives.h"
 #include "CmsdkUart.h"
 
 #include <errno.h>
@@ -56,7 +63,9 @@ int _write(int file, char* buffer, int length)
     (void) file;
     if (length > 0)
     {
+        BddTargetOsPrimitives_LockConsole();
         CmsdkUart_Write(buffer, (size_t) length);
+        BddTargetOsPrimitives_UnlockConsole();
     }
     return length;
 }
@@ -72,6 +81,7 @@ int _read(int file, char* buffer, int length)
         {
             byte = '\n';
         }
+        BddTargetOsPrimitives_LockConsole();
         if (byte == '\n')
         {
             CmsdkUart_PutChar('\r');
@@ -81,6 +91,7 @@ int _read(int file, char* buffer, int length)
         {
             CmsdkUart_PutChar(byte);
         }
+        BddTargetOsPrimitives_UnlockConsole();
         buffer[0] = byte;
         bytesRead = 1;
     }
