@@ -91,6 +91,7 @@ set(TEST_SOURCES
     SolidSyslogPassthroughBufferTest.cpp
     SolidSyslogCircularBufferTest.cpp
     SolidSyslogPoolAllocatorTest.cpp
+    SolidSyslogStreamOpenHealthTest.cpp
     SolidSyslogNullBlockDeviceTest.cpp
     SolidSyslogNullBufferTest.cpp
     SolidSyslogNullDatagramTest.cpp
