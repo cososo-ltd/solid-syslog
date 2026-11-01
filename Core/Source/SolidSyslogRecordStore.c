@@ -26,8 +26,8 @@ enum
     SENT_FLAG_SIZE = 1,
     SENT_FLAG_UNSENT = 0xFF,
     SENT_FLAG_SENT = 0x00,
-    /* A record the policy rejected. Like SENT it only clears bits, so flash
-     * takes it in place; unlike SENT it leaves the loss readable on the media. */
+    /* Written by releases before 0.4.0 for a record the policy rejected, and
+     * still read as finished with. Nothing writes it now. */
     SENT_FLAG_DISCARDED = 0x0F
 };
 
@@ -233,7 +233,8 @@ enum SolidSyslogRecordStoreReadResult SolidSyslogRecordStore_Read(
  * over whether or not the policy accepted it. */
 static inline bool RecordStore_RecordExtentIsKnown(enum SolidSyslogRecordStoreReadResult result)
 {
-    return (result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED) || (result == SOLIDSYSLOG_RECORD_STORE_READ_REJECTED);
+    return (result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED) || (result == SOLIDSYSLOG_RECORD_STORE_READ_REJECTED) ||
+           (result == SOLIDSYSLOG_RECORD_STORE_READ_FINISHED_WITH);
 }
 
 static inline enum SolidSyslogRecordStoreReadResult RecordStore_ReadSpan(
@@ -268,6 +269,8 @@ static inline bool RecordStore_RecordIsWithinData(
     uint16_t length,
     size_t dataSize
 );
+static inline bool RecordStore_FlagReadsFinishedWith(struct SolidSyslogRecordStore* recordStore, uint16_t length);
+static inline bool RecordStore_FlagMarksSentOrDiscarded(uint8_t flag);
 static inline enum SolidSyslogRecordStoreReadResult RecordStore_OpenRecord(
     struct SolidSyslogRecordStore* recordStore,
     uint16_t length
@@ -275,7 +278,8 @@ static inline enum SolidSyslogRecordStoreReadResult RecordStore_OpenRecord(
 
 /* A record is read only once it is known to lie whole within the block's data,
  * so one cut short - what a power cut mid-append leaves - is corrupt rather
- * than a device failure. */
+ * than a device failure. The flag is read with the trailer: a record already
+ * marked is finished with, and the policy is not asked about it. */
 static enum SolidSyslogRecordStoreReadResult RecordStore_ReadAndValidateRecord(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
@@ -307,9 +311,14 @@ static enum SolidSyslogRecordStoreReadResult RecordStore_ReadAndValidateRecord(
             blockIndex,
             RecordStore_TrailerOffset(offset, *length),
             RecordStore_TrailerAddress(recordStore, *length),
-            recordStore->SecurityPolicy->TrailerSize,
+            recordStore->SecurityPolicy->TrailerSize + SENT_FLAG_SIZE,
             dataSize
         );
+    }
+
+    if ((result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED) && RecordStore_FlagReadsFinishedWith(recordStore, *length))
+    {
+        result = SOLIDSYSLOG_RECORD_STORE_READ_FINISHED_WITH;
     }
 
     if (result == SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED)
@@ -318,6 +327,18 @@ static enum SolidSyslogRecordStoreReadResult RecordStore_ReadAndValidateRecord(
     }
 
     return result;
+}
+
+static inline bool RecordStore_FlagReadsFinishedWith(struct SolidSyslogRecordStore* recordStore, uint16_t length)
+{
+    return RecordStore_FlagMarksSentOrDiscarded(*RecordStore_SentFlagAddress(recordStore, length));
+}
+
+/* Exact values only: a flag a power cut left half-written reads as unsent, so
+ * the record is sent again rather than lost. */
+static inline bool RecordStore_FlagMarksSentOrDiscarded(uint8_t flag)
+{
+    return (flag == SENT_FLAG_SENT) || (flag == SENT_FLAG_DISCARDED);
 }
 
 /* The header, and that the record it describes lies whole within the data. */
@@ -516,31 +537,14 @@ static inline void RecordStore_RememberCurrentRecord(
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
+static inline bool RecordStore_WriteSentFlag(
     struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag,
-    size_t* nextCursor
-);
-static inline bool RecordStore_WriteFlag(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag
+    struct SolidSyslogBlockDevice* blockDevice
 );
 
 enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
     struct SolidSyslogRecordStore* recordStore,
     struct SolidSyslogBlockDevice* blockDevice,
-    size_t* nextCursor
-)
-{
-    return RecordStore_MarkLastRead(recordStore, blockDevice, SENT_FLAG_SENT, nextCursor);
-}
-
-static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag,
     size_t* nextCursor
 )
 {
@@ -550,7 +554,7 @@ static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
     {
         result = SOLIDSYSLOG_RECORD_STORE_MARK_DEVICE_FAILED;
 
-        if (RecordStore_WriteFlag(recordStore, blockDevice, flag))
+        if (RecordStore_WriteSentFlag(recordStore, blockDevice))
         {
             *nextCursor = recordStore->LastSentFlagOffset + SENT_FLAG_SIZE;
             recordStore->HasReadRecord = false;
@@ -561,12 +565,12 @@ static enum SolidSyslogRecordStoreMarkResult RecordStore_MarkLastRead(
     return result;
 }
 
-static inline bool RecordStore_WriteFlag(
+static inline bool RecordStore_WriteSentFlag(
     struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    uint8_t flag
+    struct SolidSyslogBlockDevice* blockDevice
 )
 {
+    uint8_t flag = SENT_FLAG_SENT;
     return SolidSyslogBlockDevice_WriteAt(
         blockDevice,
         recordStore->LastReadBlockIndex,
@@ -576,13 +580,10 @@ static inline bool RecordStore_WriteFlag(
     );
 }
 
-enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_DiscardLastRead(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    size_t* nextCursor
-)
+size_t SolidSyslogRecordStore_StepPastLastRead(struct SolidSyslogRecordStore* recordStore)
 {
-    return RecordStore_MarkLastRead(recordStore, blockDevice, SENT_FLAG_DISCARDED, nextCursor);
+    recordStore->HasReadRecord = false;
+    return recordStore->LastSentFlagOffset + SENT_FLAG_SIZE;
 }
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore)
@@ -607,7 +608,6 @@ static inline enum SolidSyslogRecordStoreReadResult RecordStore_IsRecordSentOrDi
     size_t blockSize,
     bool* finishedWith
 );
-static inline bool RecordStore_FlagMarksSentOrDiscarded(uint8_t flag);
 static inline void RecordStore_SkipRecord(
     const struct SolidSyslogRecordStore* recordStore,
     size_t* cursor,
@@ -711,13 +711,6 @@ static inline enum SolidSyslogRecordStoreReadResult RecordStore_IsRecordSentOrDi
     );
     *finishedWith = RecordStore_FlagMarksSentOrDiscarded(flag);
     return result;
-}
-
-/* Exact values only: a flag a power cut left half-written reads as unsent, so
- * the record is sent again rather than lost. */
-static inline bool RecordStore_FlagMarksSentOrDiscarded(uint8_t flag)
-{
-    return (flag == SENT_FLAG_SENT) || (flag == SENT_FLAG_DISCARDED);
 }
 
 static inline void RecordStore_SkipRecord(

@@ -59,15 +59,17 @@ enum SolidSyslogRecordStoreAppendResult SolidSyslogRecordStore_Append(
  * header that will not parse, or a record that runs past the data, is corrupt:
  * where it ends is unknown, so nothing after it in the block can be read. A
  * record the policy rejects has a valid header, so its extent is known and it
- * can be stepped over. A record the policy could not open has had no verdict,
- * so it stays where it is to be tried again. A device read that fails within
- * the data is a device failure. */
+ * can be stepped over; so has one whose flag says it was already sent or
+ * discarded, which is stepped over without a word. A record the policy could
+ * not open has had no verdict, so it stays where it is to be tried again. A
+ * device read that fails within the data is a device failure. */
 enum SolidSyslogRecordStoreReadResult
 {
     SOLIDSYSLOG_RECORD_STORE_READ_SUCCEEDED,
     SOLIDSYSLOG_RECORD_STORE_READ_END_OF_DATA,
     SOLIDSYSLOG_RECORD_STORE_READ_CORRUPT,
     SOLIDSYSLOG_RECORD_STORE_READ_REJECTED,
+    SOLIDSYSLOG_RECORD_STORE_READ_FINISHED_WITH,
     SOLIDSYSLOG_RECORD_STORE_READ_COULD_NOT_OPEN,
     SOLIDSYSLOG_RECORD_STORE_READ_DEVICE_FAILED
 };
@@ -101,13 +103,9 @@ enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
 
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore);
 
-/* Marks the record Read last met as discarded, so no later read or resume scan
- * offers it again: @p nextCursor is where the record after it starts. */
-enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_DiscardLastRead(
-    struct SolidSyslogRecordStore* recordStore,
-    struct SolidSyslogBlockDevice* blockDevice,
-    size_t* nextCursor
-);
+/* Where the record after the one Read last met starts, by the length its
+ * header gave. Nothing is written, and the record is forgotten. */
+size_t SolidSyslogRecordStore_StepPastLastRead(struct SolidSyslogRecordStore* recordStore);
 
 /* What FindFirstUnsent met on its way through the block. */
 enum SolidSyslogRecordStoreScanResult

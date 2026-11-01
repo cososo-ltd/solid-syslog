@@ -57,8 +57,8 @@ trailer is `nonce (12) ‖ tag (16)`.
   entropy the adapter assumes and the silent failure mode when it is missing.
   Uniqueness stays probabilistic, bounded by the 2^32 per-key envelope below.
 - Failure: `OpenRecord` tells a verdict from a fault. A tag mismatch (the
-  expected tamper-detected outcome) is rejected silently, and the store discards
-  the record and reports the discard. A missing key or a crypto-backend error is
+  expected tamper-detected outcome) is rejected silently, and the store steps
+  past the record and reports the loss. A missing key or a crypto-backend error is
   not a verdict: the policy reports it, and the store keeps the record until the
   policy can run. The [SecurityPolicy contract](../api/structSolidSyslogSecurityPolicy.md)
   states both. Sealing has no such reprieve: a record written while the key is
@@ -100,5 +100,7 @@ integrator's control.
 
 Rotate the key, or change the policy, once the store has drained. A record names
 neither the key nor the policy that sealed it, so the store opens each stored record
-with the policy and key in force now, and one sealed under another is discarded and
-reported under `SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED`, as a tampered record is.
+with the policy and key in force now, and one sealed under another is rejected as a
+tampered record is: stepped past and reported under
+`SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED`, and, since it is left on the device
+unmarked, rejected and reported again on each start until its block is done with.

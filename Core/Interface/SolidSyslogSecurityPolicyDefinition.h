@@ -84,8 +84,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  unprotected. */
         bool (*SealRecord)(struct SolidSyslogSecurityPolicy* base, const struct SolidSyslogSecurityRecord* record);
         /** Verify @p record against its trailer (and, for an AEAD policy, decrypt
-         *  the body in place). On REJECTED the store discards the record and
-         *  reports the discard, so a policy need not report the verdict itself.
+         *  the body in place). On REJECTED the store steps past the record and
+         *  reports the loss, so a policy need not report the verdict itself.
          *  On COULD_NOT_RUN the store keeps the record where it is and tries it
          *  again on the next Service pass; the records behind it wait with it. */
         enum SolidSyslogSecurityPolicyOpenResult (*OpenRecord)(
