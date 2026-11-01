@@ -157,9 +157,19 @@ void BddTargetFreeRtosPipeline_Sleep(uint32_t milliseconds)
 
 static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, BddTargetFreeRtosPipeline_Sleep};
 
+/* Longer than any one report the error handler writes; a line that overflows
+ * it is flushed in two writes, which only costs that line its atomicity. */
+static char stderrLine[256];
+
 void BddTargetFreeRtosPipeline_InitConsole(uint32_t uartBaseAddress)
 {
     CmsdkUart_Init(&MMIO_ACCESS, uartBaseAddress);
+    /* Newlib leaves stderr unbuffered, and the error handler writes a report in
+     * pieces, so each piece would take the console lock on its own and another
+     * thread's line could land between them. Line buffering hands _write the
+     * whole report at its newline. stdout is already line buffered: _isatty
+     * says the UART is a terminal. */
+    (void) setvbuf(stderr, stderrLine, _IOLBF, sizeof(stderrLine));
 }
 
 void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineConfig* config)

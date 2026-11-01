@@ -28,6 +28,11 @@
  * block a given mutex got. */
 static StaticSemaphore_t controlBlocks[BDD_TARGET_MUTEX_COUNT];
 
+static StaticSemaphore_t consoleLockStorage;
+static osMutexId_t consoleLock = NULL;
+
+static inline bool ConsoleLockIsUsable(void);
+
 struct SolidSyslogMutex* BddTargetOsPrimitives_CreateMutex(unsigned slot)
 {
     return SolidSyslogCmsisRtosMutex_Create(&controlBlocks[slot], (uint32_t) sizeof(controlBlocks[slot]));
@@ -46,6 +51,37 @@ uint32_t BddTargetOsPrimitives_GetSysUpTime(void)
 void BddTargetOsPrimitives_InitialiseOs(void)
 {
     (void) osKernelInitialize();
+
+    /* osMutexNew needs the kernel initialised, which is why the console lock is
+     * made here rather than with the UART. */
+    osMutexAttr_t attributes = {0};
+    attributes.name = "console";
+    attributes.cb_mem = &consoleLockStorage;
+    attributes.cb_size = (uint32_t) sizeof(consoleLockStorage);
+    consoleLock = osMutexNew(&attributes);
+}
+
+void BddTargetOsPrimitives_LockConsole(void)
+{
+    if (ConsoleLockIsUsable())
+    {
+        (void) osMutexAcquire(consoleLock, osWaitForever);
+    }
+}
+
+void BddTargetOsPrimitives_UnlockConsole(void)
+{
+    if (ConsoleLockIsUsable())
+    {
+        (void) osMutexRelease(consoleLock);
+    }
+}
+
+/* A mutex can only block once the kernel runs; until then main is the only
+ * writer and the UART needs no lock. */
+static inline bool ConsoleLockIsUsable(void)
+{
+    return (consoleLock != NULL) && (osKernelGetState() == osKernelRunning);
 }
 
 bool BddTargetOsPrimitives_Spawn(void (*entry)(void* argument), const char* name, uint32_t stackBytes)

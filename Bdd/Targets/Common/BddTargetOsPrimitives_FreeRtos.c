@@ -9,6 +9,7 @@
 #include "SolidSyslogFreeRtosSysUpTime.h"
 
 #include <FreeRTOS.h>
+#include <semphr.h>
 #include <task.h>
 
 #include <stdbool.h>
@@ -17,6 +18,11 @@
 
 /* One level above idle - see the priority note in BddTargetOsPrimitives.h. */
 #define BDD_TARGET_THREAD_PRIORITY (tskIDLE_PRIORITY + 1U)
+
+static StaticSemaphore_t consoleLockStorage;
+static SemaphoreHandle_t consoleLock = NULL;
+
+static inline bool ConsoleLockIsUsable(void);
 
 struct SolidSyslogMutex* BddTargetOsPrimitives_CreateMutex(unsigned slot)
 {
@@ -39,7 +45,31 @@ uint32_t BddTargetOsPrimitives_GetSysUpTime(void)
 void BddTargetOsPrimitives_InitialiseOs(void)
 {
     /* The kernel needs no call before xTaskCreate; vTaskStartScheduler does
-     * the initialising. */
+     * the initialising. The console lock is the one thing to make here. */
+    consoleLock = xSemaphoreCreateMutexStatic(&consoleLockStorage);
+}
+
+void BddTargetOsPrimitives_LockConsole(void)
+{
+    if (ConsoleLockIsUsable())
+    {
+        (void) xSemaphoreTake(consoleLock, portMAX_DELAY);
+    }
+}
+
+void BddTargetOsPrimitives_UnlockConsole(void)
+{
+    if (ConsoleLockIsUsable())
+    {
+        (void) xSemaphoreGive(consoleLock);
+    }
+}
+
+/* A mutex can only block once the scheduler runs; until then main is the only
+ * writer and the UART needs no lock. */
+static inline bool ConsoleLockIsUsable(void)
+{
+    return (consoleLock != NULL) && (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
 }
 
 bool BddTargetOsPrimitives_Spawn(void (*entry)(void* argument), const char* name, uint32_t stackBytes)
