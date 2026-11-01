@@ -60,6 +60,11 @@ extern "C" void CaptureSslConfigFreesAtRelease(void)
 struct SslConfigAtInstall
 {
     int MinTlsVersion;
+    int LegacyRenegotiation;
+    unsigned int DhmMinBitlen;
+    void* RngContext;
+    const int* Ciphersuites;
+    const mbedtls_x509_crt_profile* CertProfile;
 };
 
 static struct SslConfigAtInstall SslConfigSeenAtInstall;
@@ -68,6 +73,11 @@ extern "C" void CaptureSslConfigAtInstall(void)
 {
     const struct mbedtls_ssl_config* conf = MbedTlsCredentialsFake_LastInstallConfig();
     SslConfigSeenAtInstall.MinTlsVersion = MbedTlsFake_ConfMinTlsVersion(conf);
+    SslConfigSeenAtInstall.LegacyRenegotiation = MbedTlsFake_LastLegacyRenegotiationArg();
+    SslConfigSeenAtInstall.DhmMinBitlen = MbedTlsFake_LastDhmMinBitlenArg();
+    SslConfigSeenAtInstall.RngContext = MbedTlsFake_LastSslConfRngContextArg();
+    SslConfigSeenAtInstall.Ciphersuites = MbedTlsFake_LastSslConfCiphersuitesArg();
+    SslConfigSeenAtInstall.CertProfile = MbedTlsFake_LastSslConfCertProfileArg();
 }
 
 static const unsigned char TEST_SHA256_DIGEST[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
@@ -1141,6 +1151,13 @@ TEST(SolidSyslogMbedTlsStream, OpenBreaksTheHandshakeWithAPeerLackingRenegotiati
     LONGS_EQUAL(MBEDTLS_SSL_LEGACY_BREAK_HANDSHAKE, MbedTlsFake_LastLegacyRenegotiationArg());
 }
 
+TEST(SolidSyslogMbedTlsStream, TheRenegotiationPolicyIsOnTheSslConfigBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+
+    LONGS_EQUAL(MBEDTLS_SSL_LEGACY_BREAK_HANDSHAKE, SslConfigSeenAtInstall.LegacyRenegotiation);
+}
+
 #if defined(MBEDTLS_DHM_C) && defined(MBEDTLS_SSL_CLI_C)
 /* RFC 9325 s4.5: DH parameters of at least 2048 bits. The library's default
    floor is 1024. */
@@ -1149,6 +1166,13 @@ TEST(SolidSyslogMbedTlsStream, OpenRaisesTheDiffieHellmanFloorTo2048Bits)
     SolidSyslogStream_Open(handle, addr);
 
     UNSIGNED_LONGS_EQUAL(2048U, MbedTlsFake_LastDhmMinBitlenArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, TheDiffieHellmanFloorIsOnTheSslConfigBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+
+    UNSIGNED_LONGS_EQUAL(2048U, SslConfigSeenAtInstall.DhmMinBitlen);
 }
 #endif
 
@@ -1164,6 +1188,13 @@ TEST(SolidSyslogMbedTlsStream, OpenWiresRngFromConfigUsingCtrDrbgRandom)
     POINTERS_EQUAL(MbedTlsFake_LastSslConfigInitArg(), MbedTlsFake_LastSslConfRngConfigArg());
     POINTERS_EQUAL((void*) mbedtls_ctr_drbg_random, (void*) MbedTlsFake_LastSslConfRngFuncArg());
     POINTERS_EQUAL(&rngMarker, MbedTlsFake_LastSslConfRngContextArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, TheRngIsOnTheSslConfigBeforeTheCredentialsInstall)
+{
+    OpenObservingInstall();
+
+    POINTERS_EQUAL(&rng, SslConfigSeenAtInstall.RngContext);
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenSetsHostnameWhenServerNameProvided)
@@ -1637,6 +1668,16 @@ TEST(SolidSyslogMbedTlsStream, OpenAppliesTheProfilesCiphersuites)
     POINTERS_EQUAL(suites, MbedTlsFake_LastSslConfCiphersuitesArg());
 }
 
+TEST(SolidSyslogMbedTlsStream, TheProfilesCiphersuitesAreOnTheSslConfigBeforeTheCredentialsInstall)
+{
+    static const int suites[] = {MBEDTLS_TLS1_3_AES_256_GCM_SHA384, 0};
+    FakeProfile_Value.CipherSuites = suites;
+
+    OpenObservingInstall();
+
+    POINTERS_EQUAL(suites, SslConfigSeenAtInstall.Ciphersuites);
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenLeavesCiphersuitesAloneWhenTheProfileSetsNone)
 {
     SolidSyslogStream_Open(handle, addr);
@@ -1652,6 +1693,16 @@ TEST(SolidSyslogMbedTlsStream, OpenAppliesTheProfilesCertificateProfile)
     SolidSyslogStream_Open(handle, addr);
 
     POINTERS_EQUAL(&certProfile, MbedTlsFake_LastSslConfCertProfileArg());
+}
+
+TEST(SolidSyslogMbedTlsStream, TheProfilesCertificateProfileIsOnTheSslConfigBeforeTheCredentialsInstall)
+{
+    static const mbedtls_x509_crt_profile certProfile = {0, 0, 0, 0};
+    FakeProfile_Value.CertProfile = &certProfile;
+
+    OpenObservingInstall();
+
+    POINTERS_EQUAL(&certProfile, SslConfigSeenAtInstall.CertProfile);
 }
 
 TEST(SolidSyslogMbedTlsStream, OpenLeavesTheCertificateProfileAloneWhenTheProfileSetsNone)
