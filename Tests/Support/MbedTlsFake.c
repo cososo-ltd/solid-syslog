@@ -702,8 +702,12 @@ void MbedTlsFake_SetPkCheckPairReturn(int value)
  * libmbedtls; the production code's calls to mbedtls_* resolve here.
  * ------------------------------------------------------------------------- */
 
+/* Zeroes the config as the real one does. The stream's config sits in a pool
+ * slot that every test reuses, so without this a field set by one test would
+ * still read as set in the next. */
 void mbedtls_ssl_config_init(mbedtls_ssl_config* conf)
 {
+    memset(conf, 0, sizeof(*conf));
     sslConfigInitCallCount++;
     lastSslConfigInitArg = conf;
 }
