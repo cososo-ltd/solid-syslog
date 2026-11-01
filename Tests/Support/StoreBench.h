@@ -93,6 +93,12 @@ class StoreBench
      * by position, since what the store verified is not visible from here. */
     std::vector<BlockDeviceFakeWrite> IllegalWrites() const;
 
+    /* Where the records the log saw appended lie: a boundary is the first byte
+     * of a record or the byte after the last one; the flag byte is a record's
+     * last. The sweep uses these to name the faults no format can detect. */
+    bool IsRecordBoundary(size_t block, size_t offset) const;
+    bool IsRecordFlagByte(size_t block, size_t offset) const;
+
   private:
     StoreBenchOptions options;
     struct SolidSyslogBlockDevice* device;

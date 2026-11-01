@@ -304,6 +304,17 @@ bool IsLastByteOfAnAppend(const BlockDeviceFakeWrite& write, size_t writeCount)
 }
 } // namespace
 
+bool StoreBench::IsRecordFlagByte(size_t block, size_t offset) const
+{
+    BlockDeviceFakeWrite at = {block, offset, 1U, false};
+    return IsLastByteOfAnAppend(at, BlockDeviceFake_WriteCount());
+}
+
+bool StoreBench::IsRecordBoundary(size_t block, size_t offset) const
+{
+    return (offset == 0U) || IsRecordFlagByte(block, offset - 1U);
+}
+
 std::vector<BlockDeviceFakeWrite> StoreBench::IllegalWrites() const
 {
     std::vector<BlockDeviceFakeWrite> illegal;

@@ -137,11 +137,28 @@ bool BlockIsGone(const char* fault)
            (std::string(fault) == "torn-append");
 }
 
+/* Two faults no record format of this shape can see, accepted as limits of
+ * the design rather than failures of the store (E25, 2026-11-01): a block
+ * cut exactly at a record boundary, which leaves nothing to say the records
+ * after it ever existed; and a sent-flag byte stuck at the value that means
+ * sent, which is a sent record to any reader. */
+bool IsUndetectableLoss(const StoreBench& bench, const Case& c)
+{
+    bool truncatedAtBoundary = (std::string(c.Fault) == "truncate") && bench.IsRecordBoundary(c.Block, c.Offset);
+    bool flagStuckAtSent = (std::string(c.Fault) == "stuck-00") && bench.IsRecordFlagByte(c.Block, c.Offset);
+    return truncatedAtBoundary || flagStuckAtSent;
+}
+
 Verdict Judge(const StoreBench& bench, const Case& c)
 {
     Verdict verdict = {nullptr, ""};
     std::vector<unsigned> silent =
         BlockIsGone(c.Fault) ? bench.SilentlyLostOutsideBlock(c.Block) : bench.SilentlyLost();
+
+    if (IsUndetectableLoss(bench, c))
+    {
+        silent.clear();
+    }
 
     if (bench.MaxOperationsInOneCall() > OPERATION_BOUND)
     {

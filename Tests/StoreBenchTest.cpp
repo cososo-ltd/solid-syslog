@@ -171,3 +171,16 @@ TEST(StoreBench, ARecordWithADamagedPaddingByteIsGarbage)
     CHECK_TRUE(bench.Delivered().empty());
     LONGS_EQUAL(1, bench.Garbage());
 }
+
+TEST(StoreBench, TheBenchKnowsWhereTheRecordsItWroteBeginAndEnd)
+{
+    StoreBench bench(options);
+    bench.Write(1); /* 32 bytes plus 5 of framing under the Null policy */
+    bench.Write(2);
+    CHECK_TRUE(bench.IsRecordBoundary(0, 0));
+    CHECK_TRUE(bench.IsRecordBoundary(0, 37));
+    CHECK_FALSE(bench.IsRecordBoundary(0, 36));
+    CHECK_TRUE(bench.IsRecordFlagByte(0, 36));
+    CHECK_TRUE(bench.IsRecordFlagByte(0, 73));
+    CHECK_FALSE(bench.IsRecordFlagByte(0, 37));
+}
