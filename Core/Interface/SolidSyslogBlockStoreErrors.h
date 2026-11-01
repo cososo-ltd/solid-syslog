@@ -43,9 +43,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /* Raised under SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, naming why the
            record could not be delivered: the security policy rejected it, or
            it was corrupt. */
-        /** The device still holds it, unmarked, since a length the policy did
-         *  not vouch for is nowhere to write a mark: it is read and rejected
-         *  again each time the store starts, until its block is done with. */
+        /** The security policy rejected the record. The device still holds it,
+         *  unmarked, since a length the policy did not vouch for is nowhere to
+         *  write a mark: it is read and rejected again each time the store
+         *  starts, and reported again, until its block is done with. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED,
         /** Its header would not parse, or it ran past the end of its block, so
          *  where it ends is unknown and the rest of the block goes with it. */

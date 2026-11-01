@@ -104,10 +104,7 @@ enum SolidSyslogRecordStoreMarkResult SolidSyslogRecordStore_MarkLastReadAsSent(
 void SolidSyslogRecordStore_ForgetLastRead(struct SolidSyslogRecordStore* recordStore);
 
 /* Where the record after the one Read last met starts, by the length its
- * header gave. Nothing is written: a record the policy rejected has a length
- * the policy did not vouch for, so there is nowhere to put a mark, and it is
- * read and rejected again each time the store starts until its block is done
- * with. The record is forgotten. */
+ * header gave. Nothing is written, and the record is forgotten. */
 size_t SolidSyslogRecordStore_StepPastLastRead(struct SolidSyslogRecordStore* recordStore);
 
 /* What FindFirstUnsent met on its way through the block. */

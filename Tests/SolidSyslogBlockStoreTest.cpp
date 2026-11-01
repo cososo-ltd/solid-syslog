@@ -27,18 +27,6 @@ static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
 static const char* const TEST_DATA = "hello";
 static const size_t TEST_DATA_LEN = 5;
 
-class TEST_SolidSyslogBlockStoreIntegrity_ARejectedRecordWithADamagedLengthLeavesTheNextRecordUntouched_Test;
-
-/* The second record of the pair WriteTwoRecordsAndDamageTheFirstLength wrote,
- * byte for byte as it was written: nothing the store did landed in it. */
-#define CHECK_SECOND_RECORD_UNTOUCHED()                                                              \
-    {                                                                                                \
-        const uint8_t secondRecord[] = {0xA5, 0x5A, 0x06, 0x00, 's', 'e', 'c', 'o', 'n', 'd', 0xFF}; \
-        uint8_t onMedia[sizeof(secondRecord)] = {};                                                  \
-        CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 10, onMedia, sizeof(onMedia)));            \
-        MEMCMP_EQUAL(secondRecord, onMedia, sizeof(onMedia));                                        \
-    }
-
 #define CHECK_STORE_FROZEN(failedOperation) \
     CHECK_ERROR_REPORTED_ONCE(              \
         SOLIDSYSLOG_SEVERITY_ERROR,         \
@@ -2158,7 +2146,11 @@ TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthLeavesTheN
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
-    CHECK_SECOND_RECORD_UNTOUCHED();
+    /* The second record, byte for byte as it was written. */
+    const uint8_t secondRecord[] = {0xA5, 0x5A, 0x06, 0x00, 's', 'e', 'c', 'o', 'n', 'd', 0xFF};
+    uint8_t onMedia[sizeof(secondRecord)] = {};
+    CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 10, onMedia, sizeof(onMedia)));
+    MEMCMP_EQUAL(secondRecord, onMedia, sizeof(onMedia));
 }
 
 /* Stepped past by the length the policy refused, the cursor lands inside the

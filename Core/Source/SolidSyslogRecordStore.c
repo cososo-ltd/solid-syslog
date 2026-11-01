@@ -26,10 +26,8 @@ enum
     SENT_FLAG_SIZE = 1,
     SENT_FLAG_UNSENT = 0xFF,
     SENT_FLAG_SENT = 0x00,
-    /* Written by releases before 0.4.0 for a record the policy rejected. A
-     * rejected record is now stepped past unmarked, since a length the policy
-     * did not vouch for is nowhere to write a flag; one so marked is still read
-     * as finished with. */
+    /* Written by releases before 0.4.0 for a record the policy rejected, and
+     * still read as finished with. Nothing writes it now. */
     SENT_FLAG_DISCARDED = 0x0F
 };
 
