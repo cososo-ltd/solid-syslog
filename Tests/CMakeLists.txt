@@ -99,6 +99,7 @@ set(TEST_SOURCES
     SolidSyslogNullStreamTest.cpp
     SolidSyslogNullMutexTest.cpp
     SolidSyslogStackScratchTest.cpp
+    SolidSyslogLogScratchTest.cpp
     SolidSyslogNullSdTest.cpp
     SolidSyslogSdValueTest.cpp
     SolidSyslogSdElementTest.cpp
@@ -123,6 +124,7 @@ set(TEST_SOURCES
     AddressFake.c
     BufferFake.c
     MutexFake.c
+    ScratchFake.c
     StoreFakeTest.cpp
     StoreFake.c
     SenderFakeTest.cpp

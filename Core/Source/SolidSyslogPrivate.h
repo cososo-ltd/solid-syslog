@@ -18,6 +18,7 @@
 struct SolidSyslogBuffer;
 struct SolidSyslogConfig;
 struct SolidSyslogHeaderField;
+struct SolidSyslogScratch;
 struct SolidSyslogSender;
 struct SolidSyslogStore;
 
@@ -26,6 +27,7 @@ struct SolidSyslog
     struct SolidSyslogBuffer* Buffer;
     struct SolidSyslogSender* Sender;
     struct SolidSyslogStore* Store;
+    struct SolidSyslogScratch* Scratch;
     struct SolidSyslogMessageFormatterContext Format;
     /* The one record Service works on at a time: taken from the buffer, or read
      * from the store to send. It outlives a Service pass so that a record no
