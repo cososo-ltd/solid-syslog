@@ -196,7 +196,9 @@ static inline void BlockSequence_StartReadingBlock(
  * gap. So the run is read as the complement of the largest gap: oldest sits
  * one past its end, write one before its start, and the hole stays inside the
  * run, counting towards the block ceiling exactly as the block it replaces
- * would have. */
+ * would have. That holds while the hole is shorter than the free gap: with
+ * the store at its ceiling the free gap is two slots, and a hole of two or
+ * more consecutive blocks is then read as the gap instead. */
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence)
 {
     int lastPresent = BlockSequence_ScanForBlockPresence(blockSequence);
