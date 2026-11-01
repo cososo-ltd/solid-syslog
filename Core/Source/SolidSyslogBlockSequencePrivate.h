@@ -14,6 +14,11 @@
 
 struct SolidSyslogBlockDevice;
 
+enum
+{
+    BLOCK_SEQUENCE_MODULUS = 100U /* block sequence numbers run 00 to 99 and wrap */
+};
+
 struct SolidSyslogBlockSequenceConfig
 {
     struct SolidSyslogBlockDevice* BlockDevice;
@@ -49,6 +54,7 @@ struct SolidSyslogBlockSequence
     bool DeviceFailed;
     bool EvictedUnsent; /* the latest rotation evicted a block still holding unsent records */
     enum SolidSyslogBlockStoreErrors FailedOperation;
+    bool BlockPresent[BLOCK_SEQUENCE_MODULUS]; /* a hole in the run is stepped over, never read or disposed */
 };
 
 void SolidSyslogBlockSequence_Initialise(
