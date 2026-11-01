@@ -116,6 +116,31 @@ TEST(StoreBench, ALostRecordOutsideTheFaultedBlockIsNamed)
     LONGS_EQUAL(2, bench.LostOutsideBlock(0)[0]);
 }
 
+TEST(StoreBench, ALostRecordStillReadableOnTheMediaIsNotGone)
+{
+    StoreBenchOptions oneRecordPerBlock = {485, 3, nullptr, 480};
+    StoreBench bench(oneRecordPerBlock);
+    bench.Write(1);
+    bench.Write(2);
+    BlockDeviceFake_FailReadsTouching(0, 0); /* the store freezes on the older block */
+    bench.Drain(10);
+    LONGS_EQUAL(1, bench.FreezeReports());
+    LONGS_EQUAL(1, bench.LostOutsideBlock(0).size());
+    CHECK_TRUE(bench.GoneOutsideBlock(0).empty());
+}
+
+TEST(StoreBench, ALostRecordWhoseBlockWasRemovedIsGone)
+{
+    StoreBenchOptions oneRecordPerBlock = {485, 3, nullptr, 480};
+    StoreBench bench(oneRecordPerBlock);
+    bench.Write(1);
+    bench.Write(2);
+    BlockDeviceFake_RemoveBlock(1);
+    bench.Drain(10);
+    LONGS_EQUAL(1, bench.GoneOutsideBlock(0).size());
+    LONGS_EQUAL(2, bench.GoneOutsideBlock(0)[0]);
+}
+
 TEST(StoreBench, BytesWrittenAfterTheFaultCountsOnlyWhatFollowedTheMark)
 {
     StoreBench bench(options);

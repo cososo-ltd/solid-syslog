@@ -70,9 +70,19 @@ class StoreBench
      * @p faultBlock: loss one fault should not have reached. */
     std::vector<unsigned> LostOutsideBlock(size_t faultBlock) const;
 
+    /* Those of LostOutsideBlock whose bytes are no longer intact on the media.
+     * A store that has frozen leaves what it holds stranded, still readable,
+     * for a start on repaired media; a record that is gone was disposed of or
+     * overwritten, which no freeze excuses. */
+    std::vector<unsigned> GoneOutsideBlock(size_t faultBlock) const;
+
     /* Reports under the store's discarded, lost and frozen categories: what
      * the store said when it could not deliver. */
     size_t LossReports() const;
+
+    /* Reports under the store's frozen category alone: the store said it had
+     * stopped using the media. */
+    size_t FreezeReports() const;
 
     /* Called once the test has applied its fault; BytesWrittenAfterFault then
      * sums every write the device accepted from that point. */
@@ -108,6 +118,8 @@ class StoreBench
     {
         unsigned Sequence;
         size_t Block;
+        size_t Offset; /* of the Append that carried it */
+        size_t Count;
     };
 
     std::vector<Kept> kept;
@@ -115,6 +127,7 @@ class StoreBench
     size_t writesBeforeFault;
     size_t garbage;
     size_t lossReports;
+    size_t freezeReports;
     size_t maxOperationsInOneCall;
     size_t operationsBeforeCall;
 
@@ -122,6 +135,7 @@ class StoreBench
     bool ReadOne();
     bool WasKept(unsigned sequence) const;
     bool WasDelivered(unsigned sequence) const;
+    bool IsStillOnMedia(const Kept& record) const;
     void BeginCall();
     void EndCall();
     void OnError(const struct SolidSyslogErrorEvent* event);

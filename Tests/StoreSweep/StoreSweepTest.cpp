@@ -160,6 +160,16 @@ Verdict Judge(const StoreBench& bench, const Case& c)
         silent.clear();
     }
 
+    /* A store that has reported itself frozen has stopped using the media on
+     * purpose (E43), and media that fails again at the next start is never
+     * used again: failed media is not worked around, accepted as the design
+     * 2026-11-01. What the store still holds is then stranded rather than
+     * lost, so after a freeze the block bound counts only records that are
+     * gone from the media. A record disposed of or overwritten is the store's
+     * doing whether it froze afterwards or not. */
+    std::vector<unsigned> outside =
+        (bench.FreezeReports() > 0U) ? bench.GoneOutsideBlock(c.Block) : bench.LostOutsideBlock(c.Block);
+
     if (bench.MaxOperationsInOneCall() > OPERATION_BOUND)
     {
         verdict.Kind = KIND_UNBOUNDED_WORK;
@@ -171,11 +181,10 @@ Verdict Judge(const StoreBench& bench, const Case& c)
         verdict.Detail =
             "sequence " + std::to_string(silent[0]) + " was kept, never delivered, and nothing was reported";
     }
-    else if (!bench.LostOutsideBlock(c.Block).empty())
+    else if (!outside.empty())
     {
         verdict.Kind = KIND_LOSS_OUTSIDE_BLOCK;
-        verdict.Detail =
-            "sequence " + std::to_string(bench.LostOutsideBlock(c.Block)[0]) + " was lost outside the faulted block";
+        verdict.Detail = "sequence " + std::to_string(outside[0]) + " was lost outside the faulted block";
     }
     else if (!bench.IllegalWrites().empty())
     {
@@ -262,8 +271,10 @@ void PrintAccount(const StoreBench& bench)
     std::printf("  delivered: %s\n", Join(bench.Delivered()).c_str());
     std::printf("  lost: %s\n", Join(bench.Lost()).c_str());
     std::printf(
-        "  loss reports=%lu garbage=%lu duplicates=%lu max operations in one call=%lu bytes written after fault=%lu\n",
+        "  loss reports=%lu (frozen=%lu) garbage=%lu duplicates=%lu max operations in one call=%lu bytes written "
+        "after fault=%lu\n",
         static_cast<unsigned long>(bench.LossReports()),
+        static_cast<unsigned long>(bench.FreezeReports()),
         static_cast<unsigned long>(bench.Garbage()),
         static_cast<unsigned long>(bench.Duplicates()),
         static_cast<unsigned long>(bench.MaxOperationsInOneCall()),

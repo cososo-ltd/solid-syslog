@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogStoreCategories.h"
@@ -62,7 +63,7 @@ bool ParseRecord(const char* record, size_t length, size_t recordSize, unsigned*
 
 StoreBench::StoreBench(const StoreBenchOptions& benchOptions)
     : options(benchOptions), device(nullptr), store(nullptr), writesBeforeFault(0U), garbage(0U), lossReports(0U),
-      maxOperationsInOneCall(0U), operationsBeforeCall(0U)
+      freezeReports(0U), maxOperationsInOneCall(0U), operationsBeforeCall(0U)
 {
     SolidSyslog_SetErrorHandler(HandleError, this);
     device = BlockDeviceFake_Create(benchOptions.BlockSize);
@@ -83,6 +84,11 @@ void StoreBench::OnError(const struct SolidSyslogErrorEvent* event)
     if (loss)
     {
         lossReports++;
+    }
+
+    if (event->Category == SOLIDSYSLOG_CAT_STORE_FROZEN)
+    {
+        freezeReports++;
     }
 }
 
@@ -150,7 +156,8 @@ enum SolidSyslogStoreWriteResult StoreBench::Write(unsigned sequence)
     if (result == SOLIDSYSLOG_STORE_WRITE_KEPT)
     {
         /* The record is the Append the log saw last. */
-        Kept keptRecord = {sequence, BlockDeviceFake_Write(BlockDeviceFake_WriteCount() - 1U).Block};
+        BlockDeviceFakeWrite append = BlockDeviceFake_Write(BlockDeviceFake_WriteCount() - 1U);
+        Kept keptRecord = {sequence, append.Block, append.Offset, append.Count};
         kept.push_back(keptRecord);
     }
 
@@ -211,6 +218,41 @@ std::vector<unsigned> StoreBench::LostOutsideBlock(size_t faultBlock) const
     return lost;
 }
 
+std::vector<unsigned> StoreBench::GoneOutsideBlock(size_t faultBlock) const
+{
+    std::vector<unsigned> gone;
+
+    for (size_t i = 0U; i < kept.size(); i++)
+    {
+        if ((kept[i].Block != faultBlock) && !WasDelivered(kept[i].Sequence) && !IsStillOnMedia(kept[i]))
+        {
+            gone.push_back(kept[i].Sequence);
+        }
+    }
+
+    return gone;
+}
+
+/* Whether the bytes the Append carried still read back with the record in
+ * them: not disposed of with the block, not overwritten by a later one. */
+bool StoreBench::IsStillOnMedia(const Kept& record) const
+{
+    std::vector<char> onMedia(record.Count);
+    char expected[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    FormatRecord(expected, options.RecordSize, record.Sequence);
+    bool found = false;
+
+    if (SolidSyslogBlockDevice_Read(device, record.Block, record.Offset, onMedia.data(), record.Count))
+    {
+        for (size_t at = 0U; !found && ((at + options.RecordSize) <= record.Count); at++)
+        {
+            found = std::memcmp(&onMedia[at], expected, options.RecordSize) == 0;
+        }
+    }
+
+    return found;
+}
+
 bool StoreBench::WasKept(unsigned sequence) const
 {
     bool wasKept = false;
@@ -256,6 +298,11 @@ size_t StoreBench::BytesWrittenAfterFault() const
 size_t StoreBench::LossReports() const
 {
     return lossReports;
+}
+
+size_t StoreBench::FreezeReports() const
+{
+    return freezeReports;
 }
 
 size_t StoreBench::Garbage() const
