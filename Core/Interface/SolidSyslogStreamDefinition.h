@@ -31,6 +31,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  not just this stream. Leave nothing open on a failed path: the caller
          *  retries with a bare Open and never calls Close first.
          *
+         *  Report a failed Open once per run, not once per attempt. The sender
+         *  retries on every servicing pass while the destination is down, and
+         *  its own DELIVERY_FAILED already marks the edge, so a stream that
+         *  reports every attempt floods the handler with one fact. The first
+         *  failure in a run reports, with its detail and native code: that is
+         *  the diagnostic the sender's event does not carry. A repeat with the
+         *  same detail is silent, whatever its native code; a different detail
+         *  is new information and reports; an Open that succeeds re-arms it.
+         *  There is no restored event of the stream's own: the sender's
+         *  DELIVERY_RESTORED is that. Hold the latch per instance, zeroed when
+         *  the instance is created, so a reused pool slot starts armed.
+         *
          *  Refuse Open on a stream that is already open. Nothing in the library
          *  does it, so a second Open is a caller's fault rather than a
          *  reconnect: return false, leave the connection held exactly as it was
