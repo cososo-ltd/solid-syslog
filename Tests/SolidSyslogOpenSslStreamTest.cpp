@@ -2157,14 +2157,15 @@ TEST(SolidSyslogOpenSslStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigur
  * of it as a fault in the peer's certificate. */
 TEST(SolidSyslogOpenSslStream, ARefusalAfterAPinWaivedChainTrustIsNotReportedAsAnUntrustedCertificate)
 {
+    /* The scripted connect failure is the refusal that arrives afterwards. It
+       recreates the stream, which resets the fake, so the handshake is staged
+       after it: the pin matches and waives the missing anchor. */
+    ArrangeHandshakeRefusal();
     OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
     OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
-    /* The pin matches and waives the missing anchor inside the handshake; the
-       scripted connect failure is the refusal that arrives afterwards. */
     OpenSslFake_SetStoreCtxError(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
     OpenSslFake_SetConnectRunsVerifyCallback(true);
-    ArrangeHandshakeRefusal();
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
     CHECK_OPEN_UNWOUND_WITH_ERROR(
