@@ -152,8 +152,14 @@ struct BlockPresence
 {
     bool Present[MAX_SEQUENCE];
     bool FoundAny;
-    bool FoundAbsent;
-    int FirstAbsent;
+    int LastPresent;
+};
+
+/* A run of absent sequence numbers: where it starts and how many it spans. */
+struct Gap
+{
+    int Start;
+    int Length;
 };
 
 static inline int BlockSequence_CircularPrev(int index);
@@ -170,12 +176,13 @@ static inline void BlockSequence_StartReadingBlock(
     uint8_t readSequence
 );
 
-/* The on-disk block set is a single contiguous run in the circular sequence
- * space [0, MAX_SEQUENCE). After enough rotations the run straddles the
- * 99 -> 00 boundary (e.g. {98, 99, 0, 1}). Naive lowest=oldest /
- * highest=write mis-classifies wrapped runs, so locate the gap (the absent
- * blocks) and read the run as the complement: oldest sits one past the gap
- * end, write sits one before the gap start. */
+/* The on-disk block set is one contiguous run in the circular sequence space
+ * [0, MAX_SEQUENCE), which after enough rotations straddles the 99 -> 00
+ * boundary (e.g. {98, 99, 0, 1}). A block missing from inside the run - a
+ * filesystem check removed it - splits the set with a second, smaller gap.
+ * So the run is read as the complement of the largest gap: oldest sits one
+ * past its end, write one before its start, and the hole stays inside the
+ * run. */
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence)
 {
     struct BlockPresence presence;
@@ -210,8 +217,7 @@ static void BlockSequence_ScanForBlockPresence(
 )
 {
     presence->FoundAny = false;
-    presence->FoundAbsent = false;
-    presence->FirstAbsent = 0;
+    presence->LastPresent = 0;
 
     for (int seq = 0; seq < MAX_SEQUENCE; seq++)
     {
@@ -220,39 +226,51 @@ static void BlockSequence_ScanForBlockPresence(
         if (presence->Present[seq])
         {
             presence->FoundAny = true;
-        }
-        else if (!presence->FoundAbsent)
-        {
-            presence->FirstAbsent = seq;
-            presence->FoundAbsent = true;
-        }
-        else
-        {
-            /* present run already closed - nothing to record */
+            presence->LastPresent = seq;
         }
     }
 }
 
+/* Walks once round the sequence space from just after a present block, so
+ * every gap is met whole, and keeps the largest. Nothing changes when every
+ * block is present: maxBlocks is clamped to MAX_SEQUENCE - 2, so that cannot
+ * arise from the library's own rotation, and the caller's defaults stand. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints; distinct semantics
 static void BlockSequence_LocateRunBoundaries(const struct BlockPresence* presence, int* oldest, int* newest)
 {
-    if (presence->FoundAbsent)
-    {
-        *oldest = BlockSequence_CircularNext(presence->FirstAbsent);
-        while (!presence->Present[*oldest])
-        {
-            *oldest = BlockSequence_CircularNext(*oldest);
-        }
+    struct Gap largest = {0, 0};
+    struct Gap current = {0, 0};
+    int index = presence->LastPresent;
 
-        *newest = BlockSequence_CircularPrev(presence->FirstAbsent);
-        while (!presence->Present[*newest])
+    for (int step = 0; step < MAX_SEQUENCE; step++)
+    {
+        index = BlockSequence_CircularNext(index);
+
+        if (presence->Present[index])
         {
-            *newest = BlockSequence_CircularPrev(*newest);
+            current.Length = 0;
+        }
+        else
+        {
+            if (current.Length == 0)
+            {
+                current.Start = index;
+            }
+
+            current.Length++;
+
+            if (current.Length > largest.Length)
+            {
+                largest = current;
+            }
         }
     }
-    /* else: every block is present - maxBlocks is clamped to MAX_SEQUENCE - 1
-     * so this cannot arise from the library's own rotation. Caller's defaults
-     * for oldest=0, newest=MAX_SEQUENCE-1 stand. */
+
+    if (largest.Length > 0)
+    {
+        *oldest = (largest.Start + largest.Length) % MAX_SEQUENCE;
+        *newest = BlockSequence_CircularPrev(largest.Start);
+    }
 }
 
 static inline int BlockSequence_CircularNext(int index)

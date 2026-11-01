@@ -229,6 +229,16 @@ TEST(BlockSequenceScan, ResumesWrappedSingleBlockAtBoundary)
     LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
+/* A block missing from inside the run - a filesystem check removed it - is a
+ * second gap. The run is the complement of the largest gap, not the first. */
+TEST(BlockSequenceScan, ResumesAcrossAHoleInTheRun)
+{
+    existing = {0, 2};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(2, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
 namespace
 {
 enum
