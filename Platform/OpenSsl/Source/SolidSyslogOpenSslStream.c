@@ -163,6 +163,7 @@ void SolidSyslogOpenSslStream_Initialise(
     self->Ctx = NULL;
     self->Ssl = NULL;
     self->BioMethod = NULL;
+    self->OpenHealth = (struct SolidSyslogStreamOpenHealth) {0};
     self->CredentialsInstalled = false;
 }
 
@@ -283,6 +284,10 @@ static inline bool OpenSslStream_Open(struct SolidSyslogStream* base, const stru
     else
     {
         ok = OpenSslStream_Establish(base, addr);
+        if (ok)
+        {
+            SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+        }
     }
     return ok;
 }
@@ -1022,18 +1027,18 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
             int err = SSL_get_error(self->Ssl, rc);
             if (!OpenSslStream_IsRetryableSslError(err))
             {
-                OpenSslStream_Report(
+                OpenSslStream_ReportHandshakeFailure(
+                    self,
                     SOLIDSYSLOG_SEVERITY_ERROR,
-                    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                     OpenSslStream_RefusalDetail(self)
                 );
                 done = true;
             }
             else if (OpenSslStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
             {
-                OpenSslStream_Report(
+                OpenSslStream_ReportHandshakeFailure(
+                    self,
                     SOLIDSYSLOG_SEVERITY_WARNING,
-                    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                     SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
                 );
                 done = true;

@@ -537,6 +537,50 @@ TEST(SolidSyslogMbedTlsStream, OpenClosesTransportAndFreesSslStateWhenHandshakeF
     );
 }
 
+/* The sender retries a refused handshake every service pass; one run of the
+ * same refusal is one report. */
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedHandshakeRejectionOnce)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsADifferentHandshakeFailureInTheSameRun)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheSameHandshakeRejectionAgainAfterASessionInBetween)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    ArrangePersistentHandshakeError(0);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    SolidSyslogStream_Close(handle);
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenReportsThatThePeerCertificateHasExpired)
 {
     ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_EXPIRED);

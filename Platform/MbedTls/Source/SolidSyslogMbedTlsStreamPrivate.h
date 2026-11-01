@@ -17,11 +17,14 @@
 #include "SolidSyslogTlsFingerprint.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogStreamOpenHealth.h"
+#include "SolidSyslogTlsStreamCategories.h"
 
 struct SolidSyslogMbedTlsStream
 {
     struct SolidSyslogStream Base;
     struct SolidSyslogMbedTlsStreamConfig Config;
+    struct SolidSyslogStreamOpenHealth OpenHealth;
     mbedtls_ssl_config SslConfig;
     mbedtls_ssl_context SslContext;
     /* Set immediately before Install is called, cleared by the Release that
@@ -59,6 +62,23 @@ static inline void MbedTlsStream_Report(
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogMbedTlsStreamErrorSource, category, (int32_t) code);
+}
+
+/* A failed handshake, reported once per run of the same detail as the Open
+ * contract requires: the sender retries every service pass. */
+static inline void MbedTlsStream_ReportHandshakeFailure(
+    struct SolidSyslogMbedTlsStream* self,
+    enum SolidSyslogSeverity severity,
+    enum SolidSyslogTlsStreamErrors code
+)
+{
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->OpenHealth,
+        &SolidSyslogMbedTlsStreamErrorSource,
+        severity,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        (int32_t) code
+    );
 }
 
 #endif /* SOLIDSYSLOGMBEDTLSSTREAMPRIVATE_H */

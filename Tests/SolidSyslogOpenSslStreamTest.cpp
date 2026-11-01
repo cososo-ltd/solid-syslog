@@ -1117,6 +1117,53 @@ TEST(SolidSyslogOpenSslStream, OpenReturnsFalseWhenHandshakeFails)
     );
 }
 
+/* The sender retries a refused handshake every service pass; one run of the
+ * same refusal is one report. */
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedHandshakeRejectionOnce)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsADifferentHandshakeFailureInTheSameRun)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASessionInBetween)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetConnectFails(false);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    SolidSyslogStream_Close(stream);
+    OpenSslFake_SetConnectFails(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateHasExpired)
 {
     ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_HAS_EXPIRED);
