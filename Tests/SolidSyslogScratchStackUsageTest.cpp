@@ -27,10 +27,13 @@ constexpr uint8_t PAINT = 0xA5U;
 constexpr size_t EXPECTED_SAVING = (SOLIDSYSLOG_MAX_MESSAGE_SIZE * 8U) / 10U;
 
 alignas(4096) uint8_t threadStack[THREAD_STACK_BYTES];
+/* Longer than the buffer, so the whole of it is written on every run. */
+char longMessage[SOLIDSYSLOG_MAX_MESSAGE_SIZE * 2U];
 
 void* LogOnce(void* handle)
 {
-    SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, "hello"};
+    SolidSyslogMessage message =
+        {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, longMessage};
     SolidSyslog_Log(static_cast<struct SolidSyslog*>(handle), &message);
     return nullptr;
 }
@@ -62,6 +65,8 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
         buffer     = SolidSyslogPassthroughBuffer_Create(fakeSender);
         mutex      = SolidSyslogPosixMutex_Create();
         shared     = SolidSyslogSharedScratch_Create(mutex);
+        memset(longMessage, 'x', sizeof(longMessage) - 1U);
+        longMessage[sizeof(longMessage) - 1U] = 0;
     }
 
     void teardown() override
@@ -72,14 +77,8 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
         SenderFake_Destroy(fakeSender);
     }
 
-    size_t StackUsedLoggingThrough(struct SolidSyslogScratch* scratch)
+    void LogOnThePaintedStack(struct SolidSyslog* solidSyslog)
     {
-        SolidSyslogConfig config = {};
-        config.Buffer            = buffer;
-        config.Sender            = fakeSender;
-        config.Scratch           = scratch;
-        struct SolidSyslog* solidSyslog = SolidSyslog_Create(&config);
-
         memset(threadStack, PAINT, sizeof(threadStack));
         pthread_attr_t attributes;
         pthread_t thread;
@@ -88,6 +87,21 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
         LONGS_EQUAL(0, pthread_create(&thread, &attributes, LogOnce, solidSyslog));
         LONGS_EQUAL(0, pthread_join(thread, nullptr));
         LONGS_EQUAL(0, pthread_attr_destroy(&attributes));
+    }
+
+    /* Measured on the second run. The first call through any libc symbol
+       binds it lazily, on the calling thread's stack, so a first run is
+       deeper by whatever that thread happened to call first. */
+    size_t StackUsedLoggingThrough(struct SolidSyslogScratch* scratch)
+    {
+        SolidSyslogConfig config = {};
+        config.Buffer            = buffer;
+        config.Sender            = fakeSender;
+        config.Scratch           = scratch;
+        struct SolidSyslog* solidSyslog = SolidSyslog_Create(&config);
+
+        LogOnThePaintedStack(solidSyslog);
+        LogOnThePaintedStack(solidSyslog);
 
         SolidSyslog_Destroy(solidSyslog);
         return BytesDisturbed();
