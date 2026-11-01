@@ -1965,6 +1965,20 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
         SolidSyslogBlockStore_Destroy(store);
         CreateStore();
     }
+
+    /* Two records, then the first's length byte damaged on the media under
+     * the running store: 5 with bit 3 flipped reads 13, a record that ends
+     * inside the second one. */
+    void WriteTwoRecordsAndDamageTheFirstLength() const
+    {
+        SolidSyslogStore_Write(store, "first", 5);
+        SolidSyslogStore_Write(store, "second", 6);
+        SolidSyslogFile_Open(file, "/tmp/test_store00.log");
+        uint8_t damagedLength = 13;
+        SolidSyslogFile_SeekTo(file, 2);
+        SolidSyslogFile_Write(file, &damagedLength, 1);
+        SolidSyslogFile_Close(file);
+    }
 };
 
 // clang-format on
@@ -2083,7 +2097,8 @@ TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyRejectsIsSteppedOverToTheNe
     MEMCMP_EQUAL("second", buf, 6);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsNotOfferedAgainAfterARestart)
+/* Nothing marks a rejected record on the device, so it is verified again. */
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsVerifiedAgainAfterARestart)
 {
     SolidSyslogStore_Write(store, "first", 5);
     SolidSyslogStore_Write(store, "second", 6);
@@ -2093,24 +2108,71 @@ TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsNotOfferedAgainAfterAResta
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     RecreateStore();
+    spyOpenRejections = 1;
+    SpyOpenRecordCallCount = 0;
 
     CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
     MEMCMP_EQUAL("second", buf, 6);
+    CALLED_FUNCTION(SpyOpenRecord, TWICE);
 }
 
-TEST(SolidSyslogBlockStoreIntegrity, ADiscardMarkThatWillNotWriteFreezesTheStore)
+/* With the rejected record unmarked, the resume scan stops on it, and the
+ * records behind it that were sent are met by the read rather than the scan. */
+TEST(SolidSyslogBlockStoreIntegrity, ASentRecordBehindARejectedOneIsNotDeliveredAgainAfterARestart)
 {
     SolidSyslogStore_Write(store, "first", 5);
     SolidSyslogStore_Write(store, "second", 6);
     spyOpenRejections = 1;
-    ErrorHandlerFake_Install(nullptr);
-    FileFake_FailNextWrite(file);
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    RecreateStore();
+    spyOpenRejections = 1;
+
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+}
+
+/* The policy rejects a record whose length byte is damaged so that the record
+ * it describes still lies within the block. That length is part of what the
+ * policy refused to vouch for, so nothing may be written where it points. */
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthLeavesTheNextRecordUntouched)
+{
+    WriteTwoRecordsAndDamageTheFirstLength();
+    spyOpenRejections = 1;
 
     char buf[TEST_BUF_SIZE] = {};
     size_t bytesRead = 0U;
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
-    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED);
+    /* The second record, byte for byte as it was written. */
+    const uint8_t secondRecord[] = {0xA5, 0x5A, 0x06, 0x00, 's', 'e', 'c', 'o', 'n', 'd', 0xFF};
+    uint8_t onMedia[sizeof(secondRecord)] = {};
+    CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 10, onMedia, sizeof(onMedia)));
+    MEMCMP_EQUAL(secondRecord, onMedia, sizeof(onMedia));
+}
+
+/* Stepped past by the length the policy refused, the cursor lands inside the
+ * second record: the rejection is reported, and the corruption it leads to
+ * joins the same run. */
+TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthIsReportedOnceAndEndsTheBlock)
+{
+    WriteTwoRecordsAndDamageTheFirstLength();
+    spyOpenRejections = 1;
+    ErrorHandlerFake_Install(nullptr);
+
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED
+    );
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsReportedAsDiscarded)
