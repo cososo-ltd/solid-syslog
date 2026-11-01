@@ -370,6 +370,7 @@ static enum SolidSyslogRecordStoreReadResult BlockStore_ReadCurrent(
 );
 static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSyslogRecordStoreReadResult result);
 static bool BlockStore_StepPastRejected(struct SolidSyslogBlockStore* self);
+static bool BlockStore_StepPastCurrent(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportLoss(struct SolidSyslogBlockStore* self, enum SolidSyslogBlockStoreErrors fault);
 static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self);
 
@@ -452,6 +453,10 @@ static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSy
     {
         stepped = BlockStore_StepPastRejected(self);
     }
+    else if (result == SOLIDSYSLOG_RECORD_STORE_READ_FINISHED_WITH)
+    {
+        stepped = BlockStore_StepPastCurrent(self);
+    }
     else if (result == SOLIDSYSLOG_RECORD_STORE_READ_END_OF_DATA)
     {
         stepped = BlockStore_ReadNextBlockIfBehind(self);
@@ -514,6 +519,14 @@ static bool BlockStore_AbandonRestOfReadBlock(struct SolidSyslogBlockStore* self
 static bool BlockStore_StepPastRejected(struct SolidSyslogBlockStore* self)
 {
     BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED);
+    return BlockStore_StepPastCurrent(self);
+}
+
+/* The cursor moves to the record after the one just read, by the length its
+ * header gave. A record already marked sent is met here only behind an unmarked
+ * rejected one, where the resume scan stopped. */
+static bool BlockStore_StepPastCurrent(struct SolidSyslogBlockStore* self)
+{
     SolidSyslogBlockSequence_SetReadCursor(
         self->BlockSequence,
         SolidSyslogRecordStore_StepPastLastRead(self->RecordStore)

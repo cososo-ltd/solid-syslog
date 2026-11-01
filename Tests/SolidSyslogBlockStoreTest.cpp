@@ -2128,6 +2128,24 @@ TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordIsVerifiedAgainAfterARestart
     CALLED_FUNCTION(SpyOpenRecord, TWICE);
 }
 
+/* With the rejected record unmarked, the resume scan stops on it, and the
+ * records behind it that were sent are met by the read rather than the scan. */
+TEST(SolidSyslogBlockStoreIntegrity, ASentRecordBehindARejectedOneIsNotDeliveredAgainAfterARestart)
+{
+    SolidSyslogStore_Write(store, "first", 5);
+    SolidSyslogStore_Write(store, "second", 6);
+    spyOpenRejections = 1;
+    char buf[TEST_BUF_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    RecreateStore();
+    spyOpenRejections = 1;
+
+    CHECK_FALSE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+}
+
 /* The policy rejects a record whose length byte is damaged so that the record
  * it describes still lies within the block. That length is part of what the
  * policy refused to vouch for, so nothing may be written where it points. */
