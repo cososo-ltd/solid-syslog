@@ -13,6 +13,13 @@ add_library(StoreBench STATIC StoreBench.cpp)
 target_include_directories(StoreBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(StoreBench PUBLIC ${PROJECT_NAME} BlockDeviceFake)
 
+# The stream fake: a Stream whose Open, Send and Close are scripted and
+# counted, and which keeps every byte it accepted so the frames a sender
+# wrote can be read back. A library because the scenario suite links it too.
+add_library(StreamFake STATIC StreamFake.c)
+target_include_directories(StreamFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
+
 add_library(ConfigLockFake STATIC ConfigLockFake.c)
 target_include_directories(ConfigLockFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ConfigLockFake PUBLIC ${PROJECT_NAME})

@@ -140,7 +140,6 @@ set(TEST_SOURCES
     FileFakeTest.cpp
     FileFake.c
     StreamFakeTest.cpp
-    StreamFake.c
     TestAssert.cpp
     SolidSyslogBlockStoreTest.cpp
     SolidSyslogBlockStoreDrainOrderingTest.cpp
@@ -244,7 +243,7 @@ endif()
 
 add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
-target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench CppUTest CppUTestExt Threads::Threads)
+target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench StreamFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
 if(SOLIDSYSLOG_STDATOMIC)

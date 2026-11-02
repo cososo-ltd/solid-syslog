@@ -14,7 +14,6 @@ add_executable(SolidSyslogMbedTlsStreamPoolTest
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/MbedTlsCredentialsFake.c
-    ${CMAKE_SOURCE_DIR}/Tests/StreamFake.c
 )
 
 target_link_libraries(SolidSyslogMbedTlsStreamPoolTest PRIVATE
@@ -22,6 +21,7 @@ target_link_libraries(SolidSyslogMbedTlsStreamPoolTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
+    StreamFake
     CppUTest
     CppUTestExt
 )
@@ -54,7 +54,6 @@ add_executable(SolidSyslogMbedTlsStreamTest
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
     ${CMAKE_SOURCE_DIR}/Tests/MbedTlsCredentialsFake.c
-    ${CMAKE_SOURCE_DIR}/Tests/StreamFake.c
 )
 
 target_link_libraries(SolidSyslogMbedTlsStreamTest PRIVATE
@@ -62,6 +61,7 @@ target_link_libraries(SolidSyslogMbedTlsStreamTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
+    StreamFake
     CppUTest
     CppUTestExt
 )
@@ -97,6 +97,7 @@ target_link_libraries(SolidSyslogMbedTlsHmacSha256PolicyTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
+    StreamFake
     CppUTest
     CppUTestExt
 )
@@ -135,6 +136,7 @@ target_link_libraries(SolidSyslogMbedTlsAesGcmPolicyTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
+    StreamFake
     CppUTest
     CppUTestExt
 )
@@ -196,6 +198,7 @@ target_link_libraries(SolidSyslogMbedTlsHandleCredentialsTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
+    StreamFake
     CppUTest
     CppUTestExt
 )
