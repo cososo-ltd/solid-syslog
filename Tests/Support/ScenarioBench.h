@@ -90,6 +90,9 @@ class ScenarioBench
     size_t MaxDeviceOperationsInOnePass() const;
     size_t MaxSendsInOnePass() const;
 
+    /* Whether FailDevice has been called. */
+    bool DeviceHasFailed() const;
+
     /* What the queues say now. */
     bool StoreHasUnsent();
     bool StoreIsFrozen();
@@ -113,6 +116,7 @@ class ScenarioBench
     std::vector<ScenarioEvent> events;
     size_t garbage;
     size_t halts;
+    bool deviceFailed;
     size_t framesSeen;
     size_t deviceOperationsInLastPass;
     size_t sendsInLastPass;
@@ -120,6 +124,7 @@ class ScenarioBench
     size_t maxSendsInOnePass;
 
     void TakeNewFrames();
+    static struct SolidSyslogBuffer* CreateBuffer(std::vector<uint8_t>& ring, void* policyContext);
     void OnError(const struct SolidSyslogErrorEvent* event);
     static void HandleError(void* context, const struct SolidSyslogErrorEvent* event);
     static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);

@@ -62,9 +62,10 @@ bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     : options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
-      counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(nullptr), store(nullptr), sender(nullptr),
-      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), framesSeen(0U), deviceOperationsInLastPass(0U),
-      sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U)
+      counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
+      sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false),
+      framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U),
+      maxSendsInOnePass(0U)
 {
     SolidSyslog_SetErrorHandler(HandleError, this);
 
@@ -72,9 +73,6 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     metaConfig.Counter = counter;
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     sds[0] = metaSd;
-
-    buffer =
-        SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ring.data(), ring.size(), GetDiscardPolicy, this);
 
     struct SolidSyslogBlockStoreConfig storeConfig = {};
     storeConfig.BlockDevice = device;
@@ -100,6 +98,17 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     config.OnHalt = OnHalt;
     config.HaltContext = this;
     logger = SolidSyslog_Create(&config);
+}
+
+struct SolidSyslogBuffer* ScenarioBench::CreateBuffer(std::vector<uint8_t>& ring, void* policyContext)
+{
+    return SolidSyslogCircularBuffer_Create(
+        SolidSyslogNullMutex_Get(),
+        ring.data(),
+        ring.size(),
+        GetDiscardPolicy,
+        policyContext
+    );
 }
 
 ScenarioBench::~ScenarioBench()
@@ -162,7 +171,13 @@ void ScenarioBench::SetSenderDown(bool down)
 
 void ScenarioBench::FailDevice()
 {
+    deviceFailed = true;
     BlockDeviceFake_FailEveryOperation();
+}
+
+bool ScenarioBench::DeviceHasFailed() const
+{
+    return deviceFailed;
 }
 
 void ScenarioBench::SetDiscardPolicy(enum SolidSyslogDiscardPolicy policy)
