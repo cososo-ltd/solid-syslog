@@ -8,6 +8,7 @@
 #include "Environment.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogCrc16Policy.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "StoreBench.h"
 #include "StoreSweep.h"
 #include "CppUTest/TestHarness.h"
@@ -20,6 +21,7 @@ const size_t DRAIN_PASSES = 20U;
  * operations, and a call that spins passes this at once. */
 const size_t OPERATION_BOUND = 2000U;
 const unsigned FRESH_SEQUENCE = 1000U;
+const unsigned PROBE_SEQUENCE = 2000U;
 const size_t BITS_PER_BYTE = 8U;
 const size_t RECORD_SIZE = 32U;
 const size_t BLOCK_SPACE = 100U;
@@ -57,6 +59,22 @@ struct SolidSyslogSecurityPolicy* PolicyFor(const Policy& policy)
     return policy.Strong ? SolidSyslogCrc16Policy_Create() : nullptr;
 }
 
+/* What the store does with a record once it is at its block ceiling. Under
+ * Oldest a block the store has finished with goes at the next rotation
+ * whether or not it was disposed of; under the other two nothing goes, so a
+ * block left behind undisposed stays until a restart. */
+struct Discard
+{
+    const char* Name;
+    enum SolidSyslogDiscardPolicy Policy;
+};
+
+const Discard DISCARDS[] = {
+    {"oldest", SOLIDSYSLOG_DISCARD_POLICY_OLDEST},
+    {"newest", SOLIDSYSLOG_DISCARD_POLICY_NEWEST},
+    {"halt", SOLIDSYSLOG_DISCARD_POLICY_HALT},
+};
+
 const enum BlockDeviceFakeAbsentBlockBehaviour ABSENT_BEHAVIOURS[] = {
     BLOCKDEVICEFAKE_ABSENT_FAILS,
     BLOCKDEVICEFAKE_ABSENT_IS_CREATED_ON_TOUCH,
@@ -72,6 +90,7 @@ struct Case
 {
     const Scenario* Scene;
     const Policy* Pol;
+    const Discard* Disc;
     const char* Fault;
     size_t Block;
     size_t Offset;
@@ -80,13 +99,15 @@ struct Case
 
 std::string Describe(const Case& c)
 {
-    return std::string("scenario=") + c.Scene->Name + " policy=" + c.Pol->Name + " fault=" + c.Fault +
-           " block=" + std::to_string(c.Block) + " offset=" + std::to_string(c.Offset) + " n=" + std::to_string(c.N);
+    return std::string("scenario=") + c.Scene->Name + " policy=" + c.Pol->Name + " discard=" + c.Disc->Name +
+           " fault=" + c.Fault + " block=" + std::to_string(c.Block) + " offset=" + std::to_string(c.Offset) +
+           " n=" + std::to_string(c.N);
 }
 
 StoreBenchOptions OptionsFor(const Case& c)
 {
-    StoreBenchOptions options = {c.Scene->BlockSize, c.Scene->MaxBlocks, PolicyFor(*c.Pol), RECORD_SIZE};
+    StoreBenchOptions options =
+        {c.Scene->BlockSize, c.Scene->MaxBlocks, PolicyFor(*c.Pol), RECORD_SIZE, c.Disc->Policy};
     return options;
 }
 
@@ -111,12 +132,14 @@ const char* const KIND_SILENT_LOSS = "silent-loss";
 const char* const KIND_LOSS_OUTSIDE_BLOCK = "loss-outside-block";
 const char* const KIND_ILLEGAL_WRITE = "illegal-write";
 const char* const KIND_UNDETECTED_DAMAGE = "undetected-damage";
+const char* const KIND_WEDGED = "wedged";
 const std::vector<const char*> KINDS = {
     KIND_UNBOUNDED_WORK,
     KIND_SILENT_LOSS,
     KIND_LOSS_OUTSIDE_BLOCK,
     KIND_ILLEGAL_WRITE,
     KIND_UNDETECTED_DAMAGE,
+    KIND_WEDGED,
 };
 
 /* Whether the policy is expected to catch this fault class: one changed byte
@@ -188,6 +211,14 @@ std::vector<unsigned> SilentLossesChargedTo(const StoreBench& bench, const Case&
     return silent;
 }
 
+/* Whether the store turned a record away while holding nothing it could still
+ * deliver. A store that is frozen refuses by design; one that is not can only
+ * be full of blocks it has finished with and never disposed of. */
+bool IsWedged(StoreBench& bench, bool refusedWhileIdle)
+{
+    return refusedWhileIdle && !bench.IsFrozen();
+}
+
 Verdict Judge(const StoreBench& bench, const Case& c)
 {
     Verdict verdict = {nullptr, ""};
@@ -250,9 +281,47 @@ enum When
 
 void PrintAccount(const StoreBench& bench);
 
+/* The device's operation count when the last case was judged: the probe's
+ * operations come after it. */
+size_t operationsWhenJudged = 0U;
+
+/* At least a block's worth of records, so a store with nothing left to
+ * deliver has to rotate to take them all. The payload is smaller than the
+ * record on the media, so this over-counts; a store that has finished with
+ * what it held frees each block as the write leaves it, so a further rotation
+ * costs it nothing. */
+size_t ProbeRecords(const Case& c)
+{
+    return (c.Scene->BlockSize / RECORD_SIZE) + 1U;
+}
+
+/* Writes the probe once the drains are done and the store says it holds
+ * nothing unsent; answers whether a record was turned away. A store still
+ * holding something is not probed: a refusal then would be the policy's. */
+bool ProbeRefusedWhileIdle(StoreBench& bench, const Case& c)
+{
+    bool refused = false;
+
+    if (!bench.HasUnsent())
+    {
+        size_t count = ProbeRecords(c);
+
+        for (size_t n = 0U; !refused && (n < count); n++)
+        {
+            refused = bench.Write(PROBE_SEQUENCE + static_cast<unsigned>(n)) != SOLIDSYSLOG_STORE_WRITE_KEPT;
+        }
+        bench.Drain(DRAIN_PASSES);
+    }
+
+    return refused;
+}
+
 /* Builds the scenario, applies the fault through @p apply, restarts, writes
  * one fresh record, drains, then restarts and drains once more - a frozen
- * store keeps its records for the next start, so it gets one - and judges. */
+ * store keeps its records for the next start, so it gets one - and judges.
+ * Then probes with a block's worth of writes, which a store that has finished
+ * with what it held must take. The probe comes after the judgement so that
+ * what it reports or loses answers the wedge verdict and no other. */
 template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
 {
     StoreBench bench(OptionsFor(c));
@@ -278,13 +347,22 @@ template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
     bench.Drain(DRAIN_PASSES);
     bench.Restart();
     bench.Drain(DRAIN_PASSES);
+    Verdict verdict = Judge(bench, judged);
+    operationsWhenJudged = BlockDeviceFake_OperationCount();
+    bool refusedWhileIdle = ProbeRefusedWhileIdle(bench, c);
+
+    if ((verdict.Kind == nullptr) && IsWedged(bench, refusedWhileIdle))
+    {
+        verdict.Kind = KIND_WEDGED;
+        verdict.Detail = "the store refused a write while holding nothing unsent";
+    }
 
     if (StoreSweep_CaseFilter() == Describe(c))
     {
         PrintAccount(bench);
     }
 
-    return Judge(bench, judged);
+    return verdict;
 }
 
 std::string Join(const std::vector<unsigned>& sequences)
@@ -376,9 +454,11 @@ Grid BlocksOf(const Case& c, size_t variants)
     return grid;
 }
 
-/* How many media operations a clean run of the case makes after the fault
- * point, so a removal can be placed after each one. The operations that
- * populate the scenario come before that point and are not positions. */
+/* How many media operations a clean run of the case makes between the fault
+ * point and the judgement, so a removal can be placed after each one. The
+ * operations that populate the scenario come before that point, and the
+ * probe's come after the judgement, so neither are positions: a removal
+ * during the probe would face the wedge verdict alone. */
 Grid OperationsOf(const Case& c, size_t variants)
 {
     Grid grid = BlocksOf(c, variants);
@@ -389,7 +469,7 @@ Grid OperationsOf(const Case& c, size_t variants)
         populating = BlockDeviceFake_OperationCount();
     }
     RunCase(c, BEFORE_RESTART, [](const Case&) {});
-    size_t operations = BlockDeviceFake_OperationCount() - populating;
+    size_t operations = operationsWhenJudged - populating;
 
     for (size_t block = 0U; block < grid.Blocks; block++)
     {
@@ -472,37 +552,45 @@ class Failures
     std::string message;
 };
 
-/* Runs @p apply at every grid position the budget admits, or the one the
- * filter names, for every scenario and policy. */
-template <typename GridOf, typename Apply>
-void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply apply)
+/* Runs @p apply at every position of one grid the budget admits, or at the
+ * one the filter names. */
+template <typename Apply> void SweepGrid(Case c, const Grid& grid, When when, Apply apply, Failures& failures)
 {
     std::string filter = StoreSweep_CaseFilter();
     size_t budget = StoreSweep_Budget();
+    size_t total = GridTotal(grid);
+    size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
+
+    for (size_t index = 0U; index < total; index += ((stride == 0U) ? 1U : stride))
+    {
+        PlaceInGrid(grid, index, c);
+
+        if (filter.empty() || (filter == Describe(c)))
+        {
+            casesRun++;
+            Verdict verdict = RunCase(c, when, apply);
+            if (verdict.Kind != nullptr)
+            {
+                failures.Add(c, verdict);
+            }
+        }
+    }
+}
+
+/* Sweeps one grid for every scenario, policy and discard policy. */
+template <typename GridOf, typename Apply>
+void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply apply)
+{
     Failures failures;
 
     for (const Scenario& scene : SCENARIOS)
     {
         for (const Policy& pol : POLICIES)
         {
-            Case c = {&scene, &pol, fault, 0U, 0U, 0U};
-            Grid grid = gridOf(c, variants);
-            size_t total = GridTotal(grid);
-            size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
-
-            for (size_t index = 0U; index < total; index += ((stride == 0U) ? 1U : stride))
+            for (const Discard& disc : DISCARDS)
             {
-                PlaceInGrid(grid, index, c);
-
-                if (filter.empty() || (filter == Describe(c)))
-                {
-                    casesRun++;
-                    Verdict verdict = RunCase(c, when, apply);
-                    if (verdict.Kind != nullptr)
-                    {
-                        failures.Add(c, verdict);
-                    }
-                }
+                Case c = {&scene, &pol, &disc, fault, 0U, 0U, 0U};
+                SweepGrid(c, gridOf(c, variants), when, apply, failures);
             }
         }
     }

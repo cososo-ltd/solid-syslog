@@ -99,9 +99,16 @@ void StoreBench::CreateStore()
     config.BlockDevice = device;
     config.MaxBlocks = options.MaxBlocks;
     config.SecurityPolicy = options.Policy;
+    config.GetDiscardPolicy = GetDiscardPolicy;
+    config.DiscardPolicyContext = this;
     BeginCall();
     store = SolidSyslogBlockStore_Create(&config);
     EndCall();
+}
+
+enum SolidSyslogDiscardPolicy StoreBench::GetDiscardPolicy(void* context)
+{
+    return static_cast<StoreBench*>(context)->options.DiscardPolicy;
 }
 
 void StoreBench::BeginCall()
@@ -123,6 +130,22 @@ bool StoreBench::ReadWithoutMarking()
 struct SolidSyslogBlockDevice* StoreBench::Device() const
 {
     return device;
+}
+
+bool StoreBench::HasUnsent()
+{
+    BeginCall();
+    bool unsent = SolidSyslogStore_HasUnsent(store);
+    EndCall();
+    return unsent;
+}
+
+bool StoreBench::IsFrozen()
+{
+    BeginCall();
+    bool frozen = SolidSyslogStore_IsTransient(store);
+    EndCall();
+    return frozen;
 }
 
 void StoreBench::Restart()
