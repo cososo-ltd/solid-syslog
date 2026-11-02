@@ -1,5 +1,6 @@
 #include "ScenarioBench.h"
 #include "SolidSyslogBufferCategories.h"
+#include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
@@ -103,4 +104,10 @@ TEST(ScenarioBench, AFullStoreUnderHaltStopsTheLoggerUntilThePolicyChanges)
     LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, bench.Service());
     bench.SetDiscardPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
     CHECK_TRUE(bench.Service() != SOLIDSYSLOG_SERVICE_HALTED);
+}
+
+TEST(ScenarioBench, TheRingIsSizedForTheWorstCaseRecords)
+{
+    ScenarioBench bench(options);
+    LONGS_EQUAL(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4U), bench.RingBytes());
 }

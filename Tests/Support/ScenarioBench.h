@@ -93,6 +93,9 @@ class ScenarioBench
     /* Whether FailDevice has been called. */
     bool DeviceHasFailed() const;
 
+    /* The ring's size, which bounds what one pass can drain. */
+    size_t RingBytes() const;
+
     /* What the queues say now. */
     bool StoreHasUnsent();
     bool StoreIsFrozen();

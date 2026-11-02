@@ -282,6 +282,10 @@ endif()
 # stays fast. See Tests/StoreSweep/CMakeLists.txt for the budget.
 add_subdirectory(StoreSweep)
 
+# The scenario suite (S44.01): the real Core over the fakes under scripted
+# faults and seeded random walks. See Tests/Scenario/CMakeLists.txt.
+add_subdirectory(Scenario)
+
 if(SOLIDSYSLOG_OPENSSL)
     add_subdirectory(OpenSslIntegration)
 endif()

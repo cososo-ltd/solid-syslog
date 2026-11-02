@@ -180,6 +180,11 @@ bool ScenarioBench::DeviceHasFailed() const
     return deviceFailed;
 }
 
+size_t ScenarioBench::RingBytes() const
+{
+    return ring.size();
+}
+
 void ScenarioBench::SetDiscardPolicy(enum SolidSyslogDiscardPolicy policy)
 {
     options.DiscardPolicy = policy;
