@@ -81,6 +81,7 @@ endif()
 
 if(SOLIDSYSLOG_WOLFSSL)
     add_subdirectory(WolfSsl)
+    add_subdirectory(WolfSslIntegration)
 endif()
 
 set(TEST_SOURCES
