@@ -76,6 +76,8 @@ misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:6
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:79
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:92
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:87
+misra-c2012-11.3:Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256Policy.c:102
+misra-c2012-11.3:Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c:89
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:98
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:93
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslPemFileCredentials.c:61
@@ -208,6 +210,8 @@ misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketResolver.c:35
 misra-c2012-5.7:Platform/LwipSocket/Source/SolidSyslogLwipSocketTcpStream.c:33
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:29
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:28
+misra-c2012-5.7:Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c:32
+misra-c2012-5.7:Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256Policy.c:31
 misra-c2012-5.7:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:51
 misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:29
 misra-c2012-5.7:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:29
