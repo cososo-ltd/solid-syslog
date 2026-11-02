@@ -212,6 +212,28 @@ SOLIDSYSLOG_STORE_SWEEP_CASE='scenario=one-block policy=crc16 discard=oldest fau
   build/debug/Tests/StoreSweep/SolidSyslogStoreSweep
 ```
 
+### Scenario suite - re-run a failing walk
+
+`SolidSyslogScenarioSuite` runs the real Core over the fakes: a logger over a
+circular buffer, a block store on the block device fake and a stream sender
+on the stream fake. Scripted fault shapes and seeded random walks drive Log
+and Service with the sender refusing, the device failing, the queues filling
+and the discard policy changing mid-run, and a table of invariants is judged
+after every pass: every sequence id used once, one handler event per fault
+run and none without a fault, bounded work per pass, nothing moving while
+halted, and every record delivered unless a loss was reported. Under `junit`
+it takes a smoke count of 25 walks; the `build-linux-gcc` and
+`sanitize-linux-gcc` lanes export `SOLIDSYSLOG_SCENARIO_RUNS=2000`, which
+takes under ten seconds. A failure prints the walk's seed, rig, pass, the
+invariant and its reason, and the script. Set `SOLIDSYSLOG_SCENARIO_SEED` to
+the seed and the executable runs that one walk.
+
+```bash
+cmake --build --preset debug --target SolidSyslogScenarioSuite
+SOLIDSYSLOG_SCENARIO_RUNS=2000 build/debug/Tests/Scenario/SolidSyslogScenarioSuite
+SOLIDSYSLOG_SCENARIO_SEED=2 build/debug/Tests/Scenario/SolidSyslogScenarioSuite
+```
+
 ## Markdown
 
 Markdown is linted in CI by the `analyze-markdown` lane (markdownlint-cli2

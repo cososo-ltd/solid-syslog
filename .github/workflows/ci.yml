@@ -24,6 +24,8 @@ jobs:
       GIT_CONFIG_VALUE_0: '*'
       # The store sweep runs every case here; the other lanes take its smoke budget.
       SOLIDSYSLOG_STORE_SWEEP_BUDGET: 0
+      # The scenario suite walks its full count here; the other lanes take its smoke count.
+      SOLIDSYSLOG_SCENARIO_RUNS: 2000
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -439,6 +441,7 @@ jobs:
       GIT_CONFIG_VALUE_0: '*'
       # The store sweep runs every case here, under the sanitizers.
       SOLIDSYSLOG_STORE_SWEEP_BUDGET: 0
+      SOLIDSYSLOG_SCENARIO_RUNS: 2000
       # UBSan recovers and carries on by default, so a finding is a line in
       # the log and a green lane. It fails the test instead.
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
