@@ -21,7 +21,7 @@ TEST_GROUP(StoreBench)
         bench.Write(2);
     }
 
-    StoreBenchOptions OneRecordPerBlockUnder(enum SolidSyslogDiscardPolicy policy) const
+    [[nodiscard]] StoreBenchOptions OneRecordPerBlockUnder(enum SolidSyslogDiscardPolicy policy) const
     {
         StoreBenchOptions under = oneRecordPerBlock;
         under.DiscardPolicy = policy;
