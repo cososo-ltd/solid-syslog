@@ -3,9 +3,10 @@
 #include "SolidSyslogBlockDevice.h"
 #include "CppUTest/TestHarness.h"
 
-/* A block that holds one worst-case record and not two, whatever the build's
- * message limit: the store grows a smaller block to this minimum. */
-const size_t ONE_RECORD_BLOCK = SOLIDSYSLOG_MAX_MESSAGE_SIZE + SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 5U;
+/* A block that holds exactly one record of the build's message limit under the
+ * Null policy, whose framing is five bytes: the store grows a smaller block to
+ * this minimum, and a larger one would take two. */
+const size_t ONE_RECORD_BLOCK = SOLIDSYSLOG_MAX_MESSAGE_SIZE + 5U;
 
 // clang-format off
 TEST_GROUP(StoreBench)
