@@ -511,21 +511,19 @@ static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockS
     return BlockSequence_BlockCount(blockSequence) > blockSequence->MaxBlocks;
 }
 
+/* The oldest block is the read block - a block the read has finished with is
+ * disposed of as the read leaves it - so an eviction always costs records
+ * still to send, and the read starts again on the block after it. */
 static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
     bool readBlockChanged = false;
 
     if (BlockSequence_DisposeBlock(blockSequence, blockSequence->OldestSequence))
     {
-        bool readingOldestBlock = (blockSequence->ReadSequence == blockSequence->OldestSequence);
-        blockSequence->EvictedUnsent = readingOldestBlock;
+        blockSequence->EvictedUnsent = true;
         blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
-
-        if (readingOldestBlock)
-        {
-            BlockSequence_ResetReadToOldest(blockSequence);
-            readBlockChanged = true;
-        }
+        BlockSequence_ResetReadToOldest(blockSequence);
+        readBlockChanged = true;
     }
     else
     {
@@ -638,12 +636,44 @@ static inline bool BlockSequence_IsReadBlockActiveWrite(const struct SolidSyslog
     return blockSequence->ReadSequence == blockSequence->WriteSequence;
 }
 
-static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_IsReadBlockFullyDrained(
     const struct SolidSyslogBlockSequence* blockSequence,
     size_t readBlockSize
 );
-static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence);
+static inline void BlockSequence_AdvancePastDisposedReadBlock(struct SolidSyslogBlockSequence* blockSequence);
+static inline bool BlockSequence_DisposeReadBlock(struct SolidSyslogBlockSequence* blockSequence);
+
+/* The read block is the oldest: every block before it was disposed of or
+ * evicted as the read left it, so disposing it leaves no hole in the run. The
+ * caller has checked the read is behind the write, so a next block exists. */
+void SolidSyslogBlockSequence_LeaveReadBlock(struct SolidSyslogBlockSequence* blockSequence)
+{
+    (void) BlockSequence_DisposeReadBlock(blockSequence);
+}
+
+static inline bool BlockSequence_DisposeReadBlock(struct SolidSyslogBlockSequence* blockSequence)
+{
+    bool disposed = BlockSequence_DisposeBlock(blockSequence, blockSequence->ReadSequence);
+
+    if (disposed)
+    {
+        BlockSequence_AdvancePastDisposedReadBlock(blockSequence);
+    }
+    else
+    {
+        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+    }
+
+    return disposed;
+}
+
+static inline void BlockSequence_AdvancePastDisposedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
+{
+    blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
+    blockSequence->AtCapacity = false;
+    BlockSequence_NotifyThresholdCrossed(blockSequence);
+}
 
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
     struct SolidSyslogBlockSequence* blockSequence,
@@ -652,29 +682,16 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
 {
     *readBlockChanged = false;
 
-    if (!BlockSequence_IsReadBlockActiveWrite(blockSequence) && BlockSequence_IsReadBlockOldest(blockSequence))
+    if (!BlockSequence_IsReadBlockActiveWrite(blockSequence))
     {
         size_t readBlockSize = 0U;
 
         if (SolidSyslogBlockSequence_ReadBlockSize(blockSequence, &readBlockSize) &&
             BlockSequence_IsReadBlockFullyDrained(blockSequence, readBlockSize))
         {
-            if (BlockSequence_DisposeBlock(blockSequence, blockSequence->ReadSequence))
-            {
-                BlockSequence_AdvancePastDrainedReadBlock(blockSequence);
-                *readBlockChanged = true;
-            }
-            else
-            {
-                BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
-            }
+            *readBlockChanged = BlockSequence_DisposeReadBlock(blockSequence);
         }
     }
-}
-
-static inline bool BlockSequence_IsReadBlockOldest(const struct SolidSyslogBlockSequence* blockSequence)
-{
-    return blockSequence->ReadSequence == blockSequence->OldestSequence;
 }
 
 static inline bool BlockSequence_IsReadBlockFullyDrained(
@@ -683,22 +700,6 @@ static inline bool BlockSequence_IsReadBlockFullyDrained(
 )
 {
     return blockSequence->ReadCursor >= readBlockSize;
-}
-
-static inline void BlockSequence_AdvancePastDrainedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
-{
-    blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
-    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
-    blockSequence->AtCapacity = false;
-    BlockSequence_NotifyThresholdCrossed(blockSequence);
-}
-
-void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence)
-{
-    BlockSequence_StartReadingBlock(
-        blockSequence,
-        BlockSequence_NextPresentSequence(blockSequence, blockSequence->ReadSequence)
-    );
 }
 
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence)

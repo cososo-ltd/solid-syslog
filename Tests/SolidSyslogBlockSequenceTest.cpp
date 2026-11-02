@@ -275,7 +275,7 @@ TEST(BlockSequenceScan, TheReadStepsOverAHoleInTheRun)
 {
     existing = {0, 2};
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
     LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
 }
 
@@ -283,9 +283,28 @@ TEST(BlockSequenceScan, TheReadStepsOverEveryHoleInTheRun)
 {
     existing = {0, 2, 4};
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
-    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
     LONGS_EQUAL(4, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
+/* A block the read has left holds nothing to deliver, so it goes from the device. */
+TEST(BlockSequenceScan, TheBlockTheReadLeavesIsDisposedOf)
+{
+    existing = {0, 2};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    CHECK_EQUAL(0U, existing.count(0));
+}
+
+TEST(BlockSequenceScan, ABlockThatWillNotDisposeAsTheReadLeavesItIsADisposeFailure)
+{
+    existing = {0, 2};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    fakeDevice.failNextDispose = true;
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    CHECK_TRUE(SolidSyslogBlockSequence_DeviceFailed(sequence));
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
 }
 
 /* The hole counts towards the ceiling as the block it replaces would have:
@@ -347,8 +366,8 @@ TEST(BlockSequenceScan, TheReadReachesABlockAcquiredAfterResume)
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
     bool readBlockChanged = false;
     CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged)); /* acquires 3 */
-    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
-    SolidSyslogBlockSequence_AdvanceToNextReadBlock(sequence);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
     LONGS_EQUAL(3, SolidSyslogBlockSequence_ReadSequence(sequence));
 }
 

@@ -88,12 +88,17 @@ void SolidSyslogBlockSequence_SetReadCursor(struct SolidSyslogBlockSequence* blo
  * block, otherwise what the device reports. False, with the failure noted, when
  * the device cannot say - never read as an empty block. */
 bool SolidSyslogBlockSequence_ReadBlockSize(struct SolidSyslogBlockSequence* blockSequence, size_t* size);
-void SolidSyslogBlockSequence_AdvanceToNextReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence);
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
     struct SolidSyslogBlockSequence* blockSequence,
     bool* readBlockChanged
 );
+/* The read is done with its block - nothing in it remains to deliver, whether
+ * its records were marked, stepped past or given up - so the block is disposed
+ * of and the read starts on the next. Only for a read block behind the write
+ * block: the write block is never left. A dispose that fails is noted as a
+ * device failure. */
+void SolidSyslogBlockSequence_LeaveReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 
 /* Set by the first block device operation that fails; the store freezes on it. */
 bool SolidSyslogBlockSequence_DeviceFailed(const struct SolidSyslogBlockSequence* blockSequence);

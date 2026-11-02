@@ -2625,6 +2625,7 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
     struct SolidSyslogStore* store = nullptr;
     struct SolidSyslogSecurityPolicy* policy = nullptr;
     char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    enum SolidSyslogDiscardPolicy configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
     void setup() override
     {
@@ -2640,13 +2641,18 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
     }
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- maxBlockSize and maxBlocks have distinct semantics
-    void CreateWithMaxBlockSize(size_t maxBlockSize, size_t maxBlocks = 2)
+    void CreateWithMaxBlockSize(size_t maxBlockSize,
+                               enum SolidSyslogDiscardPolicy discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
+                               size_t maxBlocks = 2)
     {
         EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
         config.BlockDevice     = device;
         config.MaxBlocks        = maxBlocks;
         config.SecurityPolicy  = policy;
+        configuredPolicy       = discardPolicy;
+        config.GetDiscardPolicy = AnswersConfiguredPolicy;
+        config.DiscardPolicyContext = &configuredPolicy;
         store = SolidSyslogBlockStore_Create(&config);
     }
 
@@ -2655,23 +2661,53 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
         SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
     }
 
-    void CorruptFirstRecordBody(const char* path) const
+    void CorruptByteAt(const char* path, size_t offset, uint8_t corrupt) const
     {
         SolidSyslogFile_Open(file, path);
-        uint8_t corrupt = 0xFF;
-        SolidSyslogFile_SeekTo(file, 4);
+        SolidSyslogFile_SeekTo(file, offset);
         SolidSyslogFile_Write(file, &corrupt, 1);
         SolidSyslogFile_Close(file);
+    }
+
+    void CorruptFirstRecordBody(const char* path) const
+    {
+        CorruptByteAt(path, 4, 0xFF);
     }
 
     /* A header that will not parse: the rest of the block cannot be stepped over. */
     void CorruptFirstRecordMagic(const char* path) const
     {
-        SolidSyslogFile_Open(file, path);
-        uint8_t corrupt = 0x00;
-        SolidSyslogFile_SeekTo(file, 0);
-        SolidSyslogFile_Write(file, &corrupt, 1);
-        SolidSyslogFile_Close(file);
+        CorruptByteAt(path, 0, 0x00);
+    }
+
+    void CorruptSecondRecordMagic(const char* path) const
+    {
+        CorruptByteAt(path, ONE_MAX_MSG_RECORD, 0x00);
+    }
+
+    /* Two one-record blocks, the first's record damaged so the policy rejects
+     * it, under a discard policy that never evicts. */
+    void RestartUnderNewestWithBlock00sOnlyRecordDamaged()
+    {
+        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+        WriteMaxMsg(); /* block 00 */
+        WriteMaxMsg(); /* block 01 */
+        SolidSyslogBlockStore_Destroy(store);
+        CorruptFirstRecordBody("/tmp/test_store00.log");
+        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    }
+
+    /* A full two-record block 00 whose second record's header is damaged, so
+     * the read gives up the rest of the block, under a discard policy that
+     * never evicts. */
+    void RestartUnderNewestWithBlock00sSecondRecordDamaged()
+    {
+        CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+        WriteMaxMsg();
+        WriteMaxMsg(); /* block 00 is full */
+        SolidSyslogBlockStore_Destroy(store);
+        CorruptSecondRecordMagic("/tmp/test_store00.log");
+        CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     }
 };
 
@@ -2737,6 +2773,109 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, CorruptWriteBlockRotatesOnNextWrit
     memset(newMsg, 'N', sizeof(newMsg));
     LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, newMsg, sizeof(newMsg)));
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+/* The read steps past a rejected record that ends its block, so nothing in
+ * the block remains to deliver. Under Newest no rotation evicts it, so if it
+ * is not disposed of when the read leaves it, it is held for good. */
+TEST(SolidSyslogBlockStoreCorruptionRecovery, ABlockWhoseLastRecordWasRejectedIsDisposedOfOnceTheReadHasLeftIt)
+{
+    RestartUnderNewestWithBlock00sOnlyRecordDamaged();
+
+    /* Block 00's record is rejected and stepped past; block 01's is delivered. */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead));
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+/* With the dead block gone the store is one block of two, so the write that
+ * fills block 01 and rotates is kept rather than refused. */
+TEST(SolidSyslogBlockStoreCorruptionRecovery, AWriteThatNeedsARotationIsKeptOnceTheBlockTheReadLeftIsGone)
+{
+    RestartUnderNewestWithBlock00sOnlyRecordDamaged();
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+}
+
+/* The read gives up the rest of a block behind the write block at a header
+ * that will not parse. What it gave up is reported lost, so nothing in the
+ * block remains to deliver and it goes the same way. */
+TEST(SolidSyslogBlockStoreCorruptionRecovery, ABlockTheReadAbandonedIsDisposedOfOnceTheReadHasLeftIt)
+{
+    RestartUnderNewestWithBlock00sSecondRecordDamaged();
+    WriteMaxMsg(); /* block 00 is corrupt, so this opens block 01 */
+
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead); /* block 00's first record */
+    SolidSyslogStore_MarkSent(store);
+    CHECK_TRUE(SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead)); /* block 01's */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+}
+
+TEST(SolidSyslogBlockStoreCorruptionRecovery, AFailedDisposeOfABlockTheReadHasLeftFreezesTheStore)
+{
+    RestartUnderNewestWithBlock00sOnlyRecordDamaged();
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+
+    /* The rejected record is reported first, then the freeze. */
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
+    );
+}
+
+/* The freeze is the only report: the loss the read was giving up on is not
+ * reported after it, and the write block is left as it was. */
+TEST(
+    SolidSyslogBlockStoreCorruptionRecovery,
+    AFailedDisposeOfABlockTheReadAbandonedFreezesTheStoreAndReportsNothingElse
+)
+{
+    RestartUnderNewestWithBlock00sSecondRecordDamaged();
+    WriteMaxMsg(); /* block 01 */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead); /* abandons block 00 */
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+}
+
+/* Resuming abandons a corrupt oldest block before the first read. A dispose
+ * that fails there freezes the store, which does not go on to the write block. */
+TEST(SolidSyslogBlockStoreCorruptionRecovery, AFailedDisposeWhileResumingPastACorruptBlockFreezesTheStoreOnce)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    SolidSyslogBlockStore_Destroy(store);
+    CorruptFirstRecordMagic("/tmp/test_store00.log");
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
 }
 
 // clang-format off
