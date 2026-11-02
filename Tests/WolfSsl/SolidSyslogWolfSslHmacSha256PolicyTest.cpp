@@ -29,6 +29,12 @@ extern "C"
 
 using namespace CososoTesting;
 
+/* The CHECK_* macros below call seal() and open() on the Seal fixture, so the
+   tests that expand them are declared for include-what-you-use. */
+class TEST_SolidSyslogWolfSslHmacSha256PolicySeal_SealRecordFailsClosedWhenHmacInitFails_Test;
+class TEST_SolidSyslogWolfSslHmacSha256PolicySeal_SealRecordFailsClosedWhenHmacSetKeyFails_Test;
+class TEST_SolidSyslogWolfSslHmacSha256PolicySeal_SealRecordFailsClosedWhenHmacUpdateFails_Test;
+
 enum
 {
     HMAC_SHA256_TAG_SIZE = 32,

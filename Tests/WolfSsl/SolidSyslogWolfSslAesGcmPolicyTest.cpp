@@ -23,6 +23,15 @@ extern "C"
 
 using namespace CososoTesting;
 
+/* The CHECK_* macros below call seal() and open() on the Seal fixture, so the
+   tests that expand them are declared for include-what-you-use. */
+class TEST_SolidSyslogWolfSslAesGcmPolicySeal_SealReportsErrorWhenInitialisingTheContextFails_Test;
+class TEST_SolidSyslogWolfSslAesGcmPolicySeal_SealReportsErrorWhenSettingKeyFails_Test;
+class TEST_SolidSyslogWolfSslAesGcmPolicySeal_SealReportsErrorWhenEncryptingFails_Test;
+class TEST_SolidSyslogWolfSslAesGcmPolicySeal_OpenReportsErrorWhenInitialisingTheContextFails_Test;
+class TEST_SolidSyslogWolfSslAesGcmPolicySeal_OpenReportsErrorWhenSettingKeyFails_Test;
+class TEST_SolidSyslogWolfSslAesGcmPolicySeal_OpenReportsErrorWhenDecryptingFails_Test;
+
 enum
 {
     AES_GCM_POLICY_KEY_SIZE = 32,
