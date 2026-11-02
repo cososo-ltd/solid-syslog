@@ -81,6 +81,8 @@ endif()
 
 set(TEST_SOURCES
     SolidSyslogTest.cpp
+    BlockDeviceFakeTest.cpp
+    StoreBenchTest.cpp
     SolidSyslogServiceHeldRecordTest.cpp
     SolidSyslogPoolTest.cpp
     SolidSyslogTunablesTest.cpp
@@ -242,7 +244,7 @@ endif()
 
 add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
-target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake CppUTest CppUTestExt Threads::Threads)
+target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
 if(SOLIDSYSLOG_STDATOMIC)
@@ -275,6 +277,10 @@ if(SOLIDSYSLOG_WINSOCK)
     target_link_libraries(${PROJECT_NAME}Tests PRIVATE WinsockFakes)
 endif()
 
+
+# The store sweep (S25.01): its own executable so the per-commit junit run
+# stays fast. See Tests/StoreSweep/CMakeLists.txt for the budget.
+add_subdirectory(StoreSweep)
 
 if(SOLIDSYSLOG_OPENSSL)
     add_subdirectory(OpenSslIntegration)

@@ -191,6 +191,27 @@ our copyright across every file in them. If it fires, the question is whether
 the file belongs in the shipped library at all - there is deliberately no
 allowlist.
 
+### Store sweep - re-run a failing case
+
+`SolidSyslogStoreSweep` applies every single media fault at every position
+and judges the store by the bench's verdicts. Under `junit` it takes a smoke
+budget of 50 cases per fault class, scenario and policy; the
+`build-linux-gcc` and `sanitize-linux-gcc` lanes export
+`SOLIDSYSLOG_STORE_SWEEP_BUDGET=0` and run every case, which takes seconds,
+so the full run is a reasonable local check whenever the store or its
+record layout changes. A failure prints the case's tuple. Set
+`SOLIDSYSLOG_STORE_SWEEP_CASE` to it and the executable runs that one case
+and prints the bench's account: what was delivered, what was lost, what was
+reported, every write the store made that was not a record's flag, and the
+blocks left on the media.
+
+```bash
+cmake --build --preset debug --target SolidSyslogStoreSweep
+SOLIDSYSLOG_STORE_SWEEP_BUDGET=0 build/debug/Tests/StoreSweep/SolidSyslogStoreSweep
+SOLIDSYSLOG_STORE_SWEEP_CASE='scenario=one-block policy=crc16 fault=flip-bit block=0 offset=80 n=0' \
+  build/debug/Tests/StoreSweep/SolidSyslogStoreSweep
+```
+
 ## Markdown
 
 Markdown is linted in CI by the `analyze-markdown` lane (markdownlint-cli2

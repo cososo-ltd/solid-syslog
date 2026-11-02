@@ -2,6 +2,17 @@ add_library(ErrorHandlerFake STATIC ErrorHandlerFake.c)
 target_include_directories(ErrorHandlerFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ErrorHandlerFake PUBLIC ${PROJECT_NAME})
 
+add_library(BlockDeviceFake STATIC BlockDeviceFake.c)
+target_include_directories(BlockDeviceFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(BlockDeviceFake PUBLIC ${PROJECT_NAME})
+
+# The store bench drives a BlockStore over the BlockDeviceFake and records what
+# happened, for the store sweep and the named regression tests alike. C++ with
+# no CppUTest dependency, so both executables link it.
+add_library(StoreBench STATIC StoreBench.cpp)
+target_include_directories(StoreBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(StoreBench PUBLIC ${PROJECT_NAME} BlockDeviceFake)
+
 add_library(ConfigLockFake STATIC ConfigLockFake.c)
 target_include_directories(ConfigLockFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ConfigLockFake PUBLIC ${PROJECT_NAME})
