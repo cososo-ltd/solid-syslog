@@ -7,6 +7,11 @@
 # only entered when the option is ON), which itself defaults ON when the
 # WOLFSSL_DIR environment variable is set.
 
+# cppcheck walks the wolfSSL headers these targets put on the include path and
+# reports style findings inside them (C-style casts in wc_port.h, too many
+# configurations). Vendor headers are not ours to fix, so cppcheck is disabled
+# per target, as the Mbed TLS test executables do for the same reason.
+
 # SolidSyslogWolfSslHmacSha256Policy - keyed at-rest integrity policy, driven
 # against the deterministic wc_Hmac* double.
 add_executable(SolidSyslogWolfSslHmacSha256PolicyTest
@@ -31,6 +36,11 @@ target_include_directories(SolidSyslogWolfSslHmacSha256PolicyTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslHmacSha256PolicyTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslHmacSha256PolicyTest)
@@ -62,6 +72,11 @@ target_include_directories(SolidSyslogWolfSslAesGcmPolicyTest PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface
     ${CMAKE_SOURCE_DIR}/Core/Source
     ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslAesGcmPolicyTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslAesGcmPolicyTest)

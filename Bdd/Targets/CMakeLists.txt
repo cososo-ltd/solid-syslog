@@ -52,9 +52,16 @@ if(SOLIDSYSLOG_POSIX)
             Common/BddTargetMtlsConfig.c
         )
     else()
-        message(FATAL_ERROR
-            "The Linux BDD target needs a crypto pack for its at-rest policies: "
-            "select OpenSsl or WolfSsl.")
+        # No crypto pack: the keyed policies cannot be built, so the seam
+        # answers them with no policy and the store reports it. Lets a
+        # configure that names Posix alone, such as the manifest lane, go
+        # through; no BDD lane drives this build.
+        list(APPEND LINUX_SOURCES
+            Common/BddTargetSecurityPolicy_Core.c
+            Common/BddTargetTlsSender_Unavailable.c
+            Common/BddTargetTlsConfig.c
+            Common/BddTargetMtlsConfig.c
+        )
     endif()
     add_executable(SolidSyslogBddTarget ${LINUX_SOURCES})
     target_link_libraries(SolidSyslogBddTarget PRIVATE ${PROJECT_NAME} Threads::Threads)

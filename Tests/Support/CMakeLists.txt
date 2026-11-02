@@ -87,4 +87,11 @@ if(SOLIDSYSLOG_WOLFSSL)
     )
 
     target_link_libraries(WolfSslFakes PUBLIC ${PROJECT_NAME})
+
+    # cppcheck walks the wolfSSL headers and reports style findings inside
+    # them; they are not ours to fix. Disabled per target, as for MbedTlsFakes.
+    set_target_properties(WolfSslFakes PROPERTIES
+        C_CPPCHECK ""
+        CXX_CPPCHECK ""
+    )
 endif()

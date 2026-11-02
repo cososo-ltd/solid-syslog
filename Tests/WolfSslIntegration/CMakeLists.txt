@@ -47,6 +47,13 @@ function(solidsyslog_add_wolfssl_integration target prefix)
         ${CMAKE_SOURCE_DIR}/Tests/Support
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
+    # cppcheck walks the wolfSSL headers and reports style findings inside
+    # them; they are not ours to fix. Disabled per target, as for the Mbed TLS
+    # integration executable.
+    set_target_properties(${target} PROPERTIES
+        C_CPPCHECK ""
+        CXX_CPPCHECK ""
+    )
     solidsyslog_add_test(${target})
 endfunction()
 
