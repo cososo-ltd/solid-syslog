@@ -20,6 +20,16 @@ add_library(StreamFake STATIC StreamFake.c)
 target_include_directories(StreamFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
 
+# A Resolver that always answers, and a sequenceId counter with no platform
+# behind it: what a stream sender and a meta SD need to run on any host.
+add_library(ResolverFake STATIC ResolverFake.c)
+target_include_directories(ResolverFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ResolverFake PUBLIC ${PROJECT_NAME})
+
+add_library(CounterFake STATIC CounterFake.c)
+target_include_directories(CounterFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(CounterFake PUBLIC ${PROJECT_NAME})
+
 add_library(ConfigLockFake STATIC ConfigLockFake.c)
 target_include_directories(ConfigLockFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ConfigLockFake PUBLIC ${PROJECT_NAME})
