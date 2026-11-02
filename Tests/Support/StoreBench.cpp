@@ -132,9 +132,20 @@ struct SolidSyslogBlockDevice* StoreBench::Device() const
     return device;
 }
 
-bool StoreBench::HasUnsent() const
+bool StoreBench::HasUnsent()
 {
-    return SolidSyslogStore_HasUnsent(store);
+    BeginCall();
+    bool unsent = SolidSyslogStore_HasUnsent(store);
+    EndCall();
+    return unsent;
+}
+
+bool StoreBench::IsFrozen()
+{
+    BeginCall();
+    bool frozen = SolidSyslogStore_IsTransient(store);
+    EndCall();
+    return frozen;
 }
 
 void StoreBench::Restart()

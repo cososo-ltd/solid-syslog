@@ -52,7 +52,10 @@ class StoreBench
     struct SolidSyslogBlockDevice* Device() const;
 
     /* What the store says: whether it still holds something to deliver. */
-    bool HasUnsent() const;
+    bool HasUnsent();
+
+    /* Whether the store has frozen (E43) and stopped using the media. */
+    bool IsFrozen();
 
     /* The sequences delivered, in delivery order. */
     const std::vector<unsigned>& Delivered() const;

@@ -212,14 +212,14 @@ std::vector<unsigned> SilentLossesChargedTo(const StoreBench& bench, const Case&
 }
 
 /* Whether the store turned a record away while holding nothing it could still
- * deliver. A frozen store refuses by design; one that has not frozen can only
+ * deliver. A store that is frozen refuses by design; one that is not can only
  * be full of blocks it has finished with and never disposed of. */
-bool IsWedged(const StoreBench& bench, bool refusedWhileIdle)
+bool IsWedged(StoreBench& bench, bool refusedWhileIdle)
 {
-    return refusedWhileIdle && (bench.FreezeReports() == 0U);
+    return refusedWhileIdle && !bench.IsFrozen();
 }
 
-Verdict Judge(const StoreBench& bench, const Case& c, bool refusedWhileIdle)
+Verdict Judge(const StoreBench& bench, const Case& c)
 {
     Verdict verdict = {nullptr, ""};
     std::vector<unsigned> silent = SilentLossesChargedTo(bench, c);
@@ -263,11 +263,6 @@ Verdict Judge(const StoreBench& bench, const Case& c, bool refusedWhileIdle)
         verdict.Kind = KIND_UNDETECTED_DAMAGE;
         verdict.Detail = "a record the policy should have rejected was delivered";
     }
-    else if (IsWedged(bench, refusedWhileIdle))
-    {
-        verdict.Kind = KIND_WEDGED;
-        verdict.Detail = "the store refused a write while holding nothing unsent";
-    }
     else
     {
         /* Every verdict held. */
@@ -286,35 +281,43 @@ enum When
 
 void PrintAccount(const StoreBench& bench);
 
-/* A block's worth of records and one more, so a store with nothing left to
- * deliver has to rotate to take them all. */
+/* At least a block's worth of records, so a store with nothing left to
+ * deliver has to rotate to take them all. The payload is smaller than the
+ * record on the media, so this over-counts; a store that has finished with
+ * what it held frees each block as the write leaves it, so a further rotation
+ * costs it nothing. */
 size_t ProbeRecords(const Case& c)
 {
     return (c.Scene->BlockSize / RECORD_SIZE) + 1U;
 }
 
-/* Writes the probe once the drains are done; answers whether a record was
- * turned away by a store that said it held nothing unsent. */
+/* Writes the probe once the drains are done and the store says it holds
+ * nothing unsent; answers whether a record was turned away. A store still
+ * holding something is not probed: a refusal then would be the policy's. */
 bool ProbeRefusedWhileIdle(StoreBench& bench, const Case& c)
 {
-    bool idle = !bench.HasUnsent();
     bool refused = false;
-    size_t count = ProbeRecords(c);
 
-    for (size_t n = 0U; !refused && (n < count); n++)
+    if (!bench.HasUnsent())
     {
-        refused = bench.Write(PROBE_SEQUENCE + static_cast<unsigned>(n)) != SOLIDSYSLOG_STORE_WRITE_KEPT;
-    }
-    bench.Drain(DRAIN_PASSES);
+        size_t count = ProbeRecords(c);
 
-    return idle && refused;
+        for (size_t n = 0U; !refused && (n < count); n++)
+        {
+            refused = bench.Write(PROBE_SEQUENCE + static_cast<unsigned>(n)) != SOLIDSYSLOG_STORE_WRITE_KEPT;
+        }
+        bench.Drain(DRAIN_PASSES);
+    }
+
+    return refused;
 }
 
 /* Builds the scenario, applies the fault through @p apply, restarts, writes
  * one fresh record, drains, then restarts and drains once more - a frozen
- * store keeps its records for the next start, so it gets one. Then probes
- * with a block's worth of writes, which a store that has finished with what
- * it held must take, and judges. */
+ * store keeps its records for the next start, so it gets one - and judges.
+ * Then probes with a block's worth of writes, which a store that has finished
+ * with what it held must take. The probe comes after the judgement so that
+ * what it reports or loses answers the wedge verdict and no other. */
 template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
 {
     StoreBench bench(OptionsFor(c));
@@ -340,14 +343,21 @@ template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
     bench.Drain(DRAIN_PASSES);
     bench.Restart();
     bench.Drain(DRAIN_PASSES);
+    Verdict verdict = Judge(bench, judged);
     bool refusedWhileIdle = ProbeRefusedWhileIdle(bench, c);
+
+    if ((verdict.Kind == nullptr) && IsWedged(bench, refusedWhileIdle))
+    {
+        verdict.Kind = KIND_WEDGED;
+        verdict.Detail = "the store refused a write while holding nothing unsent";
+    }
 
     if (StoreSweep_CaseFilter() == Describe(c))
     {
         PrintAccount(bench);
     }
 
-    return Judge(bench, judged, refusedWhileIdle);
+    return verdict;
 }
 
 std::string Join(const std::vector<unsigned>& sequences)
@@ -535,13 +545,35 @@ class Failures
     std::string message;
 };
 
-/* Runs @p apply at every grid position the budget admits, or the one the
- * filter names, for every scenario, policy and discard policy. */
-template <typename GridOf, typename Apply>
-void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply apply)
+/* Runs @p apply at every position of one grid the budget admits, or at the
+ * one the filter names. */
+template <typename Apply> void SweepGrid(Case c, const Grid& grid, When when, Apply apply, Failures& failures)
 {
     std::string filter = StoreSweep_CaseFilter();
     size_t budget = StoreSweep_Budget();
+    size_t total = GridTotal(grid);
+    size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
+
+    for (size_t index = 0U; index < total; index += ((stride == 0U) ? 1U : stride))
+    {
+        PlaceInGrid(grid, index, c);
+
+        if (filter.empty() || (filter == Describe(c)))
+        {
+            casesRun++;
+            Verdict verdict = RunCase(c, when, apply);
+            if (verdict.Kind != nullptr)
+            {
+                failures.Add(c, verdict);
+            }
+        }
+    }
+}
+
+/* Sweeps one grid for every scenario, policy and discard policy. */
+template <typename GridOf, typename Apply>
+void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply apply)
+{
     Failures failures;
 
     for (const Scenario& scene : SCENARIOS)
@@ -551,24 +583,7 @@ void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply a
             for (const Discard& disc : DISCARDS)
             {
                 Case c = {&scene, &pol, &disc, fault, 0U, 0U, 0U};
-                Grid grid = gridOf(c, variants);
-                size_t total = GridTotal(grid);
-                size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
-
-                for (size_t index = 0U; index < total; index += ((stride == 0U) ? 1U : stride))
-                {
-                    PlaceInGrid(grid, index, c);
-
-                    if (filter.empty() || (filter == Describe(c)))
-                    {
-                        casesRun++;
-                        Verdict verdict = RunCase(c, when, apply);
-                        if (verdict.Kind != nullptr)
-                        {
-                            failures.Add(c, verdict);
-                        }
-                    }
-                }
+                SweepGrid(c, gridOf(c, variants), when, apply, failures);
             }
         }
     }
