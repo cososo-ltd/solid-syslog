@@ -30,6 +30,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int StreamFake_CloseCallCount(struct SolidSyslogStream * stream);
     void StreamFake_SetVersion(struct SolidSyslogStream * stream, uint32_t value);
 
+    /* The RFC 6587 octet-counted frames the stream has accepted whole: a
+     * decimal length, a space, then that many bytes, however the sender split
+     * them across Send calls. */
+    size_t StreamFake_FrameCount(struct SolidSyslogStream * stream);
+    /* The index-th frame's bytes, NUL-terminated, in the order they completed. */
+    const char* StreamFake_Frame(struct SolidSyslogStream * stream, size_t index);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* STREAMFAKE_H */

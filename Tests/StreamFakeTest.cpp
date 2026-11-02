@@ -104,3 +104,48 @@ TEST(StreamFake, SetOpenFailsMakesOpenReturnFalse)
     struct SolidSyslogAddress* addr = AddressFake_Get();
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
 }
+
+TEST(StreamFake, NoFrameBeforeAnySend)
+{
+    LONGS_EQUAL(0, StreamFake_FrameCount(stream));
+}
+
+TEST(StreamFake, AFrameSentAsPrefixThenBodyIsKeptWhole)
+{
+    SolidSyslogStream_Send(stream, "5 ", 2);
+    SolidSyslogStream_Send(stream, "hello", 5);
+    LONGS_EQUAL(1, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("hello", StreamFake_Frame(stream, 0));
+}
+
+TEST(StreamFake, FramesAreKeptInTheOrderTheyCompleted)
+{
+    SolidSyslogStream_Send(stream, "3 one", 5);
+    SolidSyslogStream_Send(stream, "3 two", 5);
+    LONGS_EQUAL(2, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("one", StreamFake_Frame(stream, 0));
+    STRCMP_EQUAL("two", StreamFake_Frame(stream, 1));
+}
+
+TEST(StreamFake, AFailedSendKeepsNoBytes)
+{
+    StreamFake_SetSendFails(stream, true);
+    SolidSyslogStream_Send(stream, "5 hello", 7);
+    LONGS_EQUAL(0, StreamFake_FrameCount(stream));
+}
+
+TEST(StreamFake, CloseDropsTheFrameInProgress)
+{
+    SolidSyslogStream_Send(stream, "5 he", 4);
+    SolidSyslogStream_Close(stream);
+    SolidSyslogStream_Send(stream, "3 abc", 5);
+    LONGS_EQUAL(1, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("abc", StreamFake_Frame(stream, 0));
+}
+
+TEST(StreamFake, AZeroLengthFrameCompletesAtItsPrefix)
+{
+    SolidSyslogStream_Send(stream, "0 ", 2);
+    LONGS_EQUAL(1, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("", StreamFake_Frame(stream, 0));
+}

@@ -2,6 +2,7 @@
 #include "SolidSyslogStreamDefinition.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 struct StreamFake
 {
@@ -19,7 +20,29 @@ struct StreamFake
     SolidSyslogSsize ReadReturn;
     int CloseCallCount;
     uint32_t Version;
+    /* Frames completed so far: each NUL-terminated, back to back in Frames,
+     * found by its offset. */
+    char* Frames;
+    size_t FramesUsed;
+    size_t FramesCapacity;
+    size_t* FrameOffsets;
+    size_t FrameCount;
+    size_t FrameCapacity;
+    /* The frame in progress: the length being read from its prefix, then
+     * the body bytes received against that length. */
+    bool PrefixComplete;
+    size_t ExpectedLength;
+    char* Body;
+    size_t BodyReceived;
 };
+
+static void Reassemble(struct StreamFake* fake, const uint8_t* bytes, size_t count);
+static void TakePrefixByte(struct StreamFake* fake, uint8_t byte);
+static void TakeBodyByte(struct StreamFake* fake, uint8_t byte);
+static void CompleteFrameIfBodyIsWhole(struct StreamFake* fake);
+static void KeepFrame(struct StreamFake* fake);
+static void DropPartialFrame(struct StreamFake* fake);
+static void Grow(void** storage, size_t* capacity, size_t needed, size_t elementSize);
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
 {
@@ -35,7 +58,92 @@ static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size
     fake->SendCallCount++;
     fake->LastSendBuf = buffer;
     fake->LastSendSize = size;
+    if (!fake->SendFails)
+    {
+        Reassemble(fake, (const uint8_t*) buffer, size);
+    }
     return !fake->SendFails;
+}
+
+/* The RFC 6587 framing a stream sender writes: decimal digits, a space, then
+ * that many bytes, however the sender split them across Send calls. */
+static void Reassemble(struct StreamFake* fake, const uint8_t* bytes, size_t count)
+{
+    for (size_t i = 0; i < count; i++)
+    {
+        if (fake->PrefixComplete)
+        {
+            TakeBodyByte(fake, bytes[i]);
+        }
+        else
+        {
+            TakePrefixByte(fake, bytes[i]);
+        }
+    }
+}
+
+static void TakePrefixByte(struct StreamFake* fake, uint8_t byte)
+{
+    if (byte == ' ')
+    {
+        fake->PrefixComplete = true;
+        fake->Body = (char*) realloc(fake->Body, fake->ExpectedLength + 1U);
+        fake->BodyReceived = 0U;
+        CompleteFrameIfBodyIsWhole(fake);
+    }
+    else
+    {
+        fake->ExpectedLength = (fake->ExpectedLength * 10U) + (size_t) (byte - (uint8_t) '0');
+    }
+}
+
+static void TakeBodyByte(struct StreamFake* fake, uint8_t byte)
+{
+    fake->Body[fake->BodyReceived] = (char) byte;
+    fake->BodyReceived++;
+    CompleteFrameIfBodyIsWhole(fake);
+}
+
+static void CompleteFrameIfBodyIsWhole(struct StreamFake* fake)
+{
+    if (fake->BodyReceived == fake->ExpectedLength)
+    {
+        KeepFrame(fake);
+        DropPartialFrame(fake);
+    }
+}
+
+static void KeepFrame(struct StreamFake* fake)
+{
+    size_t bytes = fake->ExpectedLength + 1U;
+    Grow((void**) &fake->Frames, &fake->FramesCapacity, fake->FramesUsed + bytes, sizeof(char));
+    Grow((void**) &fake->FrameOffsets, &fake->FrameCapacity, fake->FrameCount + 1U, sizeof(size_t));
+    memcpy(&fake->Frames[fake->FramesUsed], fake->Body, fake->ExpectedLength);
+    fake->Frames[fake->FramesUsed + fake->ExpectedLength] = '\0';
+    fake->FrameOffsets[fake->FrameCount] = fake->FramesUsed;
+    fake->FramesUsed += bytes;
+    fake->FrameCount++;
+}
+
+static void DropPartialFrame(struct StreamFake* fake)
+{
+    fake->PrefixComplete = false;
+    fake->ExpectedLength = 0U;
+    fake->BodyReceived = 0U;
+}
+
+static void Grow(void** storage, size_t* capacity, size_t needed, size_t elementSize)
+{
+    if (needed > *capacity)
+    {
+        size_t grown = (*capacity == 0U) ? 256U : (*capacity * 2U);
+        while (grown < needed)
+        {
+            grown *= 2U;
+        }
+        *storage = realloc(*storage, grown * elementSize);
+        *capacity = grown;
+    }
 }
 
 static SolidSyslogSsize Read(struct SolidSyslogStream* self, void* buffer, size_t size)
@@ -53,10 +161,13 @@ static uint32_t Version(struct SolidSyslogStream* self)
     return fake->Version;
 }
 
+/* A frame cut by a close never reaches a collector whole: the sender
+ * reconnects and writes it again from its prefix. */
 static void Close(struct SolidSyslogStream* self)
 {
     struct StreamFake* fake = (struct StreamFake*) self;
     fake->CloseCallCount++;
+    DropPartialFrame(fake);
 }
 
 struct SolidSyslogStream* StreamFake_Create(void)
@@ -72,7 +183,11 @@ struct SolidSyslogStream* StreamFake_Create(void)
 
 void StreamFake_Destroy(struct SolidSyslogStream* stream)
 {
-    free(stream);
+    struct StreamFake* fake = (struct StreamFake*) stream;
+    free(fake->Frames);
+    free(fake->FrameOffsets);
+    free(fake->Body);
+    free(fake);
 }
 
 int StreamFake_OpenCallCount(struct SolidSyslogStream* stream)
@@ -138,4 +253,15 @@ int StreamFake_CloseCallCount(struct SolidSyslogStream* stream)
 void StreamFake_SetVersion(struct SolidSyslogStream* stream, uint32_t value)
 {
     ((struct StreamFake*) stream)->Version = value;
+}
+
+size_t StreamFake_FrameCount(struct SolidSyslogStream* stream)
+{
+    return ((struct StreamFake*) stream)->FrameCount;
+}
+
+const char* StreamFake_Frame(struct SolidSyslogStream* stream, size_t index)
+{
+    struct StreamFake* fake = (struct StreamFake*) stream;
+    return &fake->Frames[fake->FrameOffsets[index]];
 }
