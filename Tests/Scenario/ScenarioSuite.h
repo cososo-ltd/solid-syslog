@@ -7,6 +7,7 @@
 
 #include "ScenarioBench.h"
 #include "SolidSyslogDiscardPolicy.h"
+#include "SolidSyslogTunables.h"
 
 /* The fixture a script runs over. */
 struct ScenarioRig
@@ -15,11 +16,26 @@ struct ScenarioRig
     ScenarioBenchOptions Options;
 };
 
+/* A record is never shorter than its fixed header, so a ring or a block
+ * holds at most its size over this. */
+const size_t SCENARIO_SMALLEST_RECORD_BYTES = 32U;
+
+/* A block that holds a worst-case record whatever the tunables say, with
+ * room for many of the bench's small ones; smaller and the store reports
+ * the device as too small at Create. */
+const size_t SCENARIO_BLOCK_BYTES = 2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE;
+
 /* The rigs: the policy the logger, buffer and store start under, over a
  * ring and a store small enough that a walk fills them. */
-inline const ScenarioRig SCENARIO_RIG_OLDEST = {"oldest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST}};
-inline const ScenarioRig SCENARIO_RIG_NEWEST = {"newest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST}};
-inline const ScenarioRig SCENARIO_RIG_HALT = {"halt", {8U, 1024U, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT}};
+inline const ScenarioRig SCENARIO_RIG_OLDEST = {
+    "oldest",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST}
+};
+inline const ScenarioRig SCENARIO_RIG_NEWEST = {
+    "newest",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST}
+};
+inline const ScenarioRig SCENARIO_RIG_HALT = {"halt", {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT}};
 
 /* What a run found: a pass, or the first invariant to fail, where and why. */
 struct ScenarioVerdict

@@ -14,10 +14,8 @@ namespace
 {
 /* A pass moves at most what the ring held, the record held from the last
  * pass and one from the store, with two sends and a few device operations
- * per record. A record is never shorter than its fixed header, so the ring
- * holds at most its size over that. Tripwires, not budgets: a call that
- * spins passes them at once. */
-const size_t SMALLEST_RECORD_BYTES = 32U;
+ * per record. Tripwires, not budgets: a call that spins passes them at
+ * once. */
 const size_t RECORDS_BEYOND_THE_RING = 2U;
 const size_t SENDS_PER_RECORD = 2U;
 const size_t DEVICE_OPERATIONS_PER_RECORD = 4U;
@@ -216,7 +214,7 @@ std::string NothingMovesWhileHalted(const ScenarioState& state)
 
 std::string WorkPerPassIsBounded(const ScenarioState& state)
 {
-    size_t records = (state.Bench.RingBytes() / SMALLEST_RECORD_BYTES) + RECORDS_BEYOND_THE_RING;
+    size_t records = (state.Bench.RingBytes() / SCENARIO_SMALLEST_RECORD_BYTES) + RECORDS_BEYOND_THE_RING;
     std::string reason;
     if (state.Bench.DeviceOperationsInLastPass() > (records * DEVICE_OPERATIONS_PER_RECORD))
     {

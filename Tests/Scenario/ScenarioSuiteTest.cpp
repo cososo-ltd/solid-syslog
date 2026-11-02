@@ -2,6 +2,7 @@
 #include <string>
 
 #include "ScenarioSuite.h"
+#include "SolidSyslogCircularBuffer.h"
 #include "CppUTest/TestHarness.h"
 
 namespace
@@ -9,6 +10,18 @@ namespace
 const ScenarioRig& OLDEST = SCENARIO_RIG_OLDEST;
 const ScenarioRig& NEWEST = SCENARIO_RIG_NEWEST;
 const ScenarioRig& HALT = SCENARIO_RIG_HALT;
+
+/* Enough records to fill the rig's store with room to spare. */
+size_t StoreFill(const ScenarioRig& rig)
+{
+    return ((rig.Options.MaxBlocks * rig.Options.BlockSize) / SCENARIO_SMALLEST_RECORD_BYTES) + 20U;
+}
+
+/* Enough records to fill the rig's ring with room to spare. */
+size_t RingFill(const ScenarioRig& rig)
+{
+    return (SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(rig.Options.BufferMessages) / SCENARIO_SMALLEST_RECORD_BYTES) + 20U;
+}
 
 std::string Repeat(const std::string& steps, size_t times)
 {
@@ -69,32 +82,33 @@ TEST(ScenarioSuite, ADeviceFailingDuringAnOutageLosesWhatTheStoreHeld)
 
 TEST(ScenarioSuite, ABufferFillingUnderOldestEvictsOnce)
 {
-    CHECK_SCENARIO(OLDEST, Repeat("L", 200U) + Repeat("S", 10U) + Repeat("L", 200U));
+    CHECK_SCENARIO(OLDEST, Repeat("L", RingFill(OLDEST)) + Repeat("S", 10U) + Repeat("L", RingFill(OLDEST)));
 }
 
 TEST(ScenarioSuite, ABufferFillingUnderNewestRefusesOnce)
 {
-    CHECK_SCENARIO(NEWEST, Repeat("L", 200U) + Repeat("S", 10U) + Repeat("L", 200U));
+    CHECK_SCENARIO(NEWEST, Repeat("L", RingFill(NEWEST)) + Repeat("S", 10U) + Repeat("L", RingFill(NEWEST)));
 }
 
 TEST(ScenarioSuite, AStoreFillingUnderOldestRotatesAwayUnsentRecords)
 {
-    CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", 150U) + "U");
+    CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", StoreFill(OLDEST)) + "U");
 }
 
 TEST(ScenarioSuite, AStoreFillingUnderNewestRefusesTheNewRecords)
 {
-    CHECK_SCENARIO(NEWEST, "D" + Repeat("LS", 150U) + "U");
+    CHECK_SCENARIO(NEWEST, "D" + Repeat("LS", StoreFill(NEWEST)) + "U");
 }
 
 TEST(ScenarioSuite, AStoreFillingUnderHaltStopsTheLoggerUntilThePolicyChanges)
 {
-    CHECK_SCENARIO(HALT, "D" + Repeat("LS", 150U) + "O" + Repeat("LS", 10U) + "U");
+    CHECK_SCENARIO(HALT, "D" + Repeat("LS", StoreFill(HALT)) + "O" + Repeat("LS", 10U) + "U");
 }
 
 TEST(ScenarioSuite, APolicyChangedMidOutageIsHonouredFromTheNextRecord)
 {
-    CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", 100U) + "N" + Repeat("LS", 100U) + "H" + Repeat("LS", 100U) + "U");
+    size_t fill = StoreFill(OLDEST);
+    CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", fill) + "N" + Repeat("LS", fill) + "H" + Repeat("LS", fill) + "U");
 }
 
 TEST(ScenarioSuite, ARandomWalkHoldsEveryInvariant)

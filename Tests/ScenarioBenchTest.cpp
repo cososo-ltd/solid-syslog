@@ -5,12 +5,14 @@
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
 
 // clang-format off
 TEST_GROUP(ScenarioBench)
 {
-    ScenarioBenchOptions options = {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST};
+    /* A block that holds a worst-case record whatever the tunables say. */
+    ScenarioBenchOptions options = {4U, static_cast<size_t>(2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE), 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST};
 };
 
 // clang-format on
@@ -69,7 +71,7 @@ TEST(ScenarioBench, AFullBufferUnderNewestRefusesAndIsReportedOnceFromTheLog)
     ScenarioBench bench(options);
     /* The records are far smaller than the worst case the ring is sized
      * for, so it takes many more than BufferMessages to fill it. */
-    for (unsigned i = 0U; i < 200U; i++)
+    for (unsigned i = 0U; i < (SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4U) / 32U) + 20U; i++)
     {
         bench.Log();
     }
@@ -94,7 +96,9 @@ TEST(ScenarioBench, AFullStoreUnderHaltStopsTheLoggerUntilThePolicyChanges)
     ScenarioBench bench(options);
     bench.SetSenderDown(true);
     enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
-    for (unsigned i = 0U; (i < 200U) && (status != SOLIDSYSLOG_SERVICE_HALTED); i++)
+    /* Enough records to fill the store with room to spare. */
+    unsigned fill = static_cast<unsigned>((options.MaxBlocks * options.BlockSize) / 32U) + 20U;
+    for (unsigned i = 0U; (i < fill) && (status != SOLIDSYSLOG_SERVICE_HALTED); i++)
     {
         bench.Log();
         status = bench.Service();

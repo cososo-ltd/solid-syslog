@@ -1,5 +1,6 @@
 #include "ScenarioSuite.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <array>
 #include <random>
@@ -198,11 +199,19 @@ std::string ScenarioSuite_Describe(const ScenarioRig& rig, const std::string& sc
            verdict.Invariant + "\" reason=\"" + verdict.Reason + "\" script=" + script;
 }
 
+/* A seed is the decimal a failure printed, whole and within uint32_t;
+ * anything else is not one, so a typo cannot narrow a lane to one walk. */
 bool ScenarioSuite_SeedGiven(uint32_t* seed)
 {
     const char* value = Environment_Get("SOLIDSYSLOG_SCENARIO_SEED");
-    bool given = value != nullptr;
-    *seed = given ? static_cast<uint32_t>(std::strtoul(value, nullptr, 10)) : 0U;
+    bool digits = (value != nullptr) && (*value != '\0');
+    for (const char* c = value; digits && (*c != '\0'); c++)
+    {
+        digits = (*c >= '0') && (*c <= '9');
+    }
+    unsigned long long parsed = digits ? std::strtoull(value, nullptr, 10) : 0ULL;
+    bool given = digits && (parsed <= UINT32_MAX);
+    *seed = given ? static_cast<uint32_t>(parsed) : 0U;
     return given;
 }
 
