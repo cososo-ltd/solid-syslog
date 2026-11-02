@@ -2696,6 +2696,19 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
         CorruptFirstRecordBody("/tmp/test_store00.log");
         CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     }
+
+    /* A full two-record block 00 whose second record's header is damaged, so
+     * the read gives up the rest of the block, under a discard policy that
+     * never evicts. */
+    void RestartUnderNewestWithBlock00sSecondRecordDamaged()
+    {
+        CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+        WriteMaxMsg();
+        WriteMaxMsg(); /* block 00 is full */
+        SolidSyslogBlockStore_Destroy(store);
+        CorruptSecondRecordMagic("/tmp/test_store00.log");
+        CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    }
 };
 
 // clang-format on
@@ -2795,12 +2808,7 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, AWriteThatNeedsARotationIsKeptOnce
  * block remains to deliver and it goes the same way. */
 TEST(SolidSyslogBlockStoreCorruptionRecovery, ABlockTheReadAbandonedIsDisposedOfOnceTheReadHasLeftIt)
 {
-    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
-    WriteMaxMsg();
-    WriteMaxMsg(); /* block 00 is full */
-    SolidSyslogBlockStore_Destroy(store);
-    CorruptSecondRecordMagic("/tmp/test_store00.log");
-    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    RestartUnderNewestWithBlock00sSecondRecordDamaged();
     WriteMaxMsg(); /* block 00 is corrupt, so this opens block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
@@ -2839,12 +2847,7 @@ TEST(
     AFailedDisposeOfABlockTheReadAbandonedFreezesTheStoreAndReportsNothingElse
 )
 {
-    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
-    WriteMaxMsg();
-    WriteMaxMsg(); /* block 00 is full */
-    SolidSyslogBlockStore_Destroy(store);
-    CorruptSecondRecordMagic("/tmp/test_store00.log");
-    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    RestartUnderNewestWithBlock00sSecondRecordDamaged();
     WriteMaxMsg(); /* block 01 */
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
     size_t bytesRead = 0U;
