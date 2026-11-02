@@ -10,7 +10,6 @@ set(OPENSSL_INTEGRATION_TESTS_SOURCES
     BioPairStreamTest.cpp
     SolidSyslogOpenSslAesGcmPolicyIntegrationTest.cpp
     main.cpp
-    ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
 )
 
 # OpenSSL on MSVC requires applink.c when the application passes FILE* across
@@ -29,6 +28,7 @@ add_executable(OpenSslIntegrationTests ${OPENSSL_INTEGRATION_TESTS_SOURCES})
 
 target_link_libraries(OpenSslIntegrationTests PRIVATE
     ${PROJECT_NAME}
+    AddressFake
     CppUTest
     CppUTestExt
     OpenSSL::SSL

@@ -51,6 +51,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BlockDeviceFake_TruncateTo(size_t block, size_t size);
     void BlockDeviceFake_RemoveBlock(size_t block);
     void BlockDeviceFake_FailEveryOperationOn(size_t block);
+    /* The whole device fails from now on, as a medium that has gone does. */
+    void BlockDeviceFake_FailEveryOperation(void);
 
     /* A block that goes while the store runs: absent once the Nth media
      * operation since Create has completed. */

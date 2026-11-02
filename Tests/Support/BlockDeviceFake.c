@@ -347,6 +347,14 @@ void BlockDeviceFake_FailEveryOperationOn(size_t block)
     blocks[block].FailsEverything = true;
 }
 
+void BlockDeviceFake_FailEveryOperation(void)
+{
+    for (size_t block = 0U; block < BLOCKDEVICEFAKE_BLOCKS; block++)
+    {
+        blocks[block].FailsEverything = true;
+    }
+}
+
 void BlockDeviceFake_RemoveBlockAfterOperation(size_t block, size_t afterOperation)
 {
     removalArmed = true;

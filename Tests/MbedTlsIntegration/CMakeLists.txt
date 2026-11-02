@@ -53,7 +53,6 @@ add_executable(MbedTlsIntegrationTests
     SocketStream.c
     MbedTlsTestCert.c
     MbedTlsTestServer.c
-    ${CMAKE_SOURCE_DIR}/Tests/AddressFake.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
@@ -68,6 +67,7 @@ add_executable(MbedTlsIntegrationTests
 
 target_link_libraries(MbedTlsIntegrationTests PRIVATE
     ${PROJECT_NAME}
+    AddressFake
     CppUTest
     CppUTestExt
     mbedtls

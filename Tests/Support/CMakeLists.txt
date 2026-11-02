@@ -22,6 +22,11 @@ target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
 
 # A Resolver that always answers, and a sequenceId counter with no platform
 # behind it: what a stream sender and a meta SD need to run on any host.
+# An opaque address token for tests whose stream never reads a sockaddr.
+add_library(AddressFake STATIC AddressFake.c)
+target_include_directories(AddressFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(AddressFake PUBLIC ${PROJECT_NAME})
+
 add_library(ResolverFake STATIC ResolverFake.c)
 target_include_directories(ResolverFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ResolverFake PUBLIC ${PROJECT_NAME})
