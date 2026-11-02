@@ -21,6 +21,7 @@ const size_t DRAIN_PASSES = 20U;
  * operations, and a call that spins passes this at once. */
 const size_t OPERATION_BOUND = 2000U;
 const unsigned FRESH_SEQUENCE = 1000U;
+const unsigned PROBE_SEQUENCE = 2000U;
 const size_t BITS_PER_BYTE = 8U;
 const size_t RECORD_SIZE = 32U;
 const size_t BLOCK_SPACE = 100U;
@@ -131,12 +132,14 @@ const char* const KIND_SILENT_LOSS = "silent-loss";
 const char* const KIND_LOSS_OUTSIDE_BLOCK = "loss-outside-block";
 const char* const KIND_ILLEGAL_WRITE = "illegal-write";
 const char* const KIND_UNDETECTED_DAMAGE = "undetected-damage";
+const char* const KIND_WEDGED = "wedged";
 const std::vector<const char*> KINDS = {
     KIND_UNBOUNDED_WORK,
     KIND_SILENT_LOSS,
     KIND_LOSS_OUTSIDE_BLOCK,
     KIND_ILLEGAL_WRITE,
     KIND_UNDETECTED_DAMAGE,
+    KIND_WEDGED,
 };
 
 /* Whether the policy is expected to catch this fault class: one changed byte
@@ -208,7 +211,15 @@ std::vector<unsigned> SilentLossesChargedTo(const StoreBench& bench, const Case&
     return silent;
 }
 
-Verdict Judge(const StoreBench& bench, const Case& c)
+/* Whether the store turned a record away while holding nothing it could still
+ * deliver. A frozen store refuses by design; one that has not frozen can only
+ * be full of blocks it has finished with and never disposed of. */
+bool IsWedged(const StoreBench& bench, bool refusedWhileIdle)
+{
+    return refusedWhileIdle && (bench.FreezeReports() == 0U);
+}
+
+Verdict Judge(const StoreBench& bench, const Case& c, bool refusedWhileIdle)
 {
     Verdict verdict = {nullptr, ""};
     std::vector<unsigned> silent = SilentLossesChargedTo(bench, c);
@@ -252,6 +263,11 @@ Verdict Judge(const StoreBench& bench, const Case& c)
         verdict.Kind = KIND_UNDETECTED_DAMAGE;
         verdict.Detail = "a record the policy should have rejected was delivered";
     }
+    else if (IsWedged(bench, refusedWhileIdle))
+    {
+        verdict.Kind = KIND_WEDGED;
+        verdict.Detail = "the store refused a write while holding nothing unsent";
+    }
     else
     {
         /* Every verdict held. */
@@ -270,9 +286,35 @@ enum When
 
 void PrintAccount(const StoreBench& bench);
 
+/* A block's worth of records and one more, so a store with nothing left to
+ * deliver has to rotate to take them all. */
+size_t ProbeRecords(const Case& c)
+{
+    return (c.Scene->BlockSize / RECORD_SIZE) + 1U;
+}
+
+/* Writes the probe once the drains are done; answers whether a record was
+ * turned away by a store that said it held nothing unsent. */
+bool ProbeRefusedWhileIdle(StoreBench& bench, const Case& c)
+{
+    bool idle = !bench.HasUnsent();
+    bool refused = false;
+    size_t count = ProbeRecords(c);
+
+    for (size_t n = 0U; !refused && (n < count); n++)
+    {
+        refused = bench.Write(PROBE_SEQUENCE + static_cast<unsigned>(n)) != SOLIDSYSLOG_STORE_WRITE_KEPT;
+    }
+    bench.Drain(DRAIN_PASSES);
+
+    return idle && refused;
+}
+
 /* Builds the scenario, applies the fault through @p apply, restarts, writes
  * one fresh record, drains, then restarts and drains once more - a frozen
- * store keeps its records for the next start, so it gets one - and judges. */
+ * store keeps its records for the next start, so it gets one. Then probes
+ * with a block's worth of writes, which a store that has finished with what
+ * it held must take, and judges. */
 template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
 {
     StoreBench bench(OptionsFor(c));
@@ -298,13 +340,14 @@ template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
     bench.Drain(DRAIN_PASSES);
     bench.Restart();
     bench.Drain(DRAIN_PASSES);
+    bool refusedWhileIdle = ProbeRefusedWhileIdle(bench, c);
 
     if (StoreSweep_CaseFilter() == Describe(c))
     {
         PrintAccount(bench);
     }
 
-    return Judge(bench, judged);
+    return Judge(bench, judged, refusedWhileIdle);
 }
 
 std::string Join(const std::vector<unsigned>& sequences)

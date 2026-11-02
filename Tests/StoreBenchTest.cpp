@@ -11,8 +11,8 @@ const size_t ONE_RECORD_BLOCK = SOLIDSYSLOG_MAX_MESSAGE_SIZE + 5U;
 // clang-format off
 TEST_GROUP(StoreBench)
 {
-    StoreBenchOptions options = {1024, 2, nullptr, 32};
-    StoreBenchOptions oneRecordPerBlock = {ONE_RECORD_BLOCK, 3, nullptr, SOLIDSYSLOG_MAX_MESSAGE_SIZE};
+    StoreBenchOptions options = {1024, 2, nullptr, 32, SOLIDSYSLOG_DISCARD_POLICY_OLDEST};
+    StoreBenchOptions oneRecordPerBlock = {ONE_RECORD_BLOCK, 3, nullptr, SOLIDSYSLOG_MAX_MESSAGE_SIZE, SOLIDSYSLOG_DISCARD_POLICY_OLDEST};
 
     /* The second write rotates, so the records sit in blocks 0 and 1. */
     static void WriteOneRecordToEachOfTwoBlocks(StoreBench& bench)

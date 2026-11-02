@@ -51,6 +51,9 @@ class StoreBench
 
     struct SolidSyslogBlockDevice* Device() const;
 
+    /* What the store says: whether it still holds something to deliver. */
+    bool HasUnsent() const;
+
     /* The sequences delivered, in delivery order. */
     const std::vector<unsigned>& Delivered() const;
 

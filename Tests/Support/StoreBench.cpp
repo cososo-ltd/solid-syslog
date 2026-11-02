@@ -132,6 +132,11 @@ struct SolidSyslogBlockDevice* StoreBench::Device() const
     return device;
 }
 
+bool StoreBench::HasUnsent() const
+{
+    return SolidSyslogStore_HasUnsent(store);
+}
+
 void StoreBench::Restart()
 {
     SolidSyslogBlockStore_Destroy(store);
