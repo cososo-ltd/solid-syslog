@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
        decision rather than a conditional in the target. */
     struct SolidSyslogSecurityPolicy* BddTargetSecurityPolicy_Create(void);
     /* Destroys what Create built; the Null policy and CRC-16 need no pack. */
-    void BddTargetSecurityPolicy_Destroy(struct SolidSyslogSecurityPolicy* policy);
+    void BddTargetSecurityPolicy_Destroy(struct SolidSyslogSecurityPolicy * policy);
 
 SOLIDSYSLOG_EXTERN_C_END
 

@@ -192,7 +192,6 @@ static void DestroySender(void)
     SolidSyslogPosixResolver_Destroy(sharedResolver);
 }
 
-
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetOptions* options)
 {
     bool useFile = (strcmp(options->Store, "file") == 0);
