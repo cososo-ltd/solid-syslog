@@ -475,15 +475,20 @@ static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSy
 }
 
 /* Reads on in the next block where the write has left this one behind; at the
- * end of the write block there is nothing more. */
+ * end of the write block there is nothing more. The block the read leaves has
+ * nothing left to deliver, however the read got to its end - a mark, a step
+ * past a rejected record, or the rest given up as corrupt - so it is disposed
+ * of as the read leaves it. A dispose that fails has frozen the store, which
+ * reads nothing further. */
 static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self)
 {
     bool behind = SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence);
 
     if (behind)
     {
-        SolidSyslogBlockSequence_AdvanceToNextReadBlock(self->BlockSequence);
+        SolidSyslogBlockSequence_LeaveReadBlock(self->BlockSequence);
         SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
+        behind = !BlockStore_FreezeIfDeviceFailed(self);
     }
 
     return behind;
