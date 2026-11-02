@@ -8,8 +8,11 @@
 #include <wolfssl/options.h>
 #endif
 #include <string.h>
+#include <wolfssl/wolfcrypt/aes.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/memory.h>
+#include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/wolfcrypt/types.h>
 
@@ -17,7 +20,11 @@ enum
 {
     WOLFSSLFAKE_MAX_KEY = 128,
     WOLFSSLFAKE_MAX_INPUT = 512,
-    WOLFSSLFAKE_TAG_SIZE = 32
+    WOLFSSLFAKE_TAG_SIZE = 32,
+    WOLFSSLFAKE_GCM_KEY = 32,
+    WOLFSSLFAKE_GCM_NONCE = 12,
+    WOLFSSLFAKE_MAX_AAD = 64,
+    WOLFSSLFAKE_MAX_PLAINTEXT = 256
 };
 
 static int hmacInitCallCount;
@@ -29,6 +36,26 @@ static uint8_t lastHmacInput[WOLFSSLFAKE_MAX_INPUT];
 static size_t lastHmacInputLen;
 static int hmacFreeCallCount;
 static enum WolfSslFakeHmacStep hmacFailStep;
+
+static int aesInitCallCount;
+static int aesFreeCallCount;
+static int gcmSealCount;
+static int gcmOpenCount;
+static uint8_t lastGcmKey[WOLFSSLFAKE_GCM_KEY];
+static size_t lastGcmKeyLen;
+static uint8_t lastGcmNonce[WOLFSSLFAKE_GCM_NONCE];
+static uint8_t lastGcmAad[WOLFSSLFAKE_MAX_AAD];
+static size_t lastGcmAadLen;
+static uint8_t lastGcmPlaintext[WOLFSSLFAKE_MAX_PLAINTEXT];
+static size_t lastGcmPlaintextLen;
+static enum WolfSslFakeGcmStep gcmFailStep;
+static bool gcmAuthFails;
+
+static int rngGenerateBlockCallCount;
+static const void* lastRngGenerateBlockContext;
+static const void* lastRngGenerateBlockBuf;
+static size_t lastRngGenerateBlockLen;
+static bool rngGenerateBlockFails;
 
 static int forceZeroCallCount;
 static const void* lastForceZeroBuf;
@@ -45,6 +72,24 @@ void WolfSslFake_Reset(void)
     lastHmacInputLen = 0U;
     hmacFreeCallCount = 0;
     hmacFailStep = WOLFSSLFAKE_HMAC_STEP_NONE;
+    aesInitCallCount = 0;
+    aesFreeCallCount = 0;
+    gcmSealCount = 0;
+    gcmOpenCount = 0;
+    memset(lastGcmKey, 0, sizeof lastGcmKey);
+    lastGcmKeyLen = 0U;
+    memset(lastGcmNonce, 0, sizeof lastGcmNonce);
+    memset(lastGcmAad, 0, sizeof lastGcmAad);
+    lastGcmAadLen = 0U;
+    memset(lastGcmPlaintext, 0, sizeof lastGcmPlaintext);
+    lastGcmPlaintextLen = 0U;
+    gcmFailStep = WOLFSSLFAKE_GCM_STEP_NONE;
+    gcmAuthFails = false;
+    rngGenerateBlockCallCount = 0;
+    lastRngGenerateBlockContext = NULL;
+    lastRngGenerateBlockBuf = NULL;
+    lastRngGenerateBlockLen = 0U;
+    rngGenerateBlockFails = false;
     forceZeroCallCount = 0;
     lastForceZeroBuf = NULL;
     lastForceZeroLen = 0U;
@@ -164,6 +209,220 @@ int WolfSslFake_HmacFreeCallCount(void)
 void WolfSslFake_SetHmacStepFails(enum WolfSslFakeHmacStep step)
 {
     hmacFailStep = step;
+}
+
+/* -------------------------------------------------------------------------
+ * AES-256-GCM - link-interposed wc_Aes* + the RNG nonce source.
+ * Capture-and-canned-return, NOT a cipher (see header).
+ * ------------------------------------------------------------------------- */
+
+int wc_AesInit(Aes* aes, void* heap, int devId)
+{
+    (void) aes;
+    (void) heap;
+    (void) devId;
+    aesInitCallCount++;
+    return (gcmFailStep == WOLFSSLFAKE_GCM_STEP_INIT) ? -1 : 0;
+}
+
+void wc_AesFree(Aes* aes)
+{
+    (void) aes;
+    aesFreeCallCount++;
+}
+
+int wc_AesGcmSetKey(Aes* aes, const byte* key, word32 len)
+{
+    (void) aes;
+    lastGcmKeyLen = len;
+    memcpy(lastGcmKey, key, (len < sizeof lastGcmKey) ? len : sizeof lastGcmKey);
+    return (gcmFailStep == WOLFSSLFAKE_GCM_STEP_SETKEY) ? -1 : 0;
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- signature fixed by the wolfCrypt API
+int wc_AesGcmEncrypt(
+    Aes* aes,
+    byte* out,
+    const byte* in,
+    word32 sz,
+    const byte* iv,
+    word32 ivSz,
+    byte* authTag,
+    word32 authTagSz,
+    const byte* authIn,
+    word32 authInSz
+)
+{
+    (void) aes;
+    gcmSealCount++;
+    memcpy(lastGcmNonce, iv, (ivSz < sizeof lastGcmNonce) ? ivSz : sizeof lastGcmNonce);
+    /* Report only what was actually captured - a reader walking LastGcmAad() /
+     * LastGcmPlaintext() up to the reported length then never runs past the
+     * capture buffer if a test exceeds its capacity. */
+    lastGcmAadLen = (authInSz < sizeof lastGcmAad) ? authInSz : sizeof lastGcmAad;
+    memcpy(lastGcmAad, authIn, lastGcmAadLen);
+    lastGcmPlaintextLen = (sz < sizeof lastGcmPlaintext) ? sz : sizeof lastGcmPlaintext;
+    memcpy(lastGcmPlaintext, in, lastGcmPlaintextLen);
+    /* The double does not encrypt: copy input to output unchanged so the
+     * in-place buffer stays defined (memmove - production passes out == in)
+     * and write a canned all-zero tag the adapter only forwards into the trailer. */
+    memmove(out, in, sz);
+    memset(authTag, 0, authTagSz);
+    return (gcmFailStep == WOLFSSLFAKE_GCM_STEP_ENCRYPT) ? -1 : 0;
+}
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- signature fixed by the wolfCrypt API
+int wc_AesGcmDecrypt(
+    Aes* aes,
+    byte* out,
+    const byte* in,
+    word32 sz,
+    const byte* iv,
+    word32 ivSz,
+    const byte* authTag,
+    word32 authTagSz,
+    const byte* authIn,
+    word32 authInSz
+)
+{
+    (void) aes;
+    (void) authTag;
+    (void) authTagSz;
+    gcmOpenCount++;
+    memcpy(lastGcmNonce, iv, (ivSz < sizeof lastGcmNonce) ? ivSz : sizeof lastGcmNonce);
+    lastGcmAadLen = (authInSz < sizeof lastGcmAad) ? authInSz : sizeof lastGcmAad;
+    memcpy(lastGcmAad, authIn, lastGcmAadLen);
+    memmove(out, in, sz);
+    /* Canned verdict - real tag verification is the integration suite's job.
+     * SetGcmAuthFails drives the tamper / wrong-key rejection (silent);
+     * the DECRYPT step drives a genuine error (reported DECRYPT_FAILED). */
+    int result = 0;
+    if (gcmAuthFails)
+    {
+        result = AES_GCM_AUTH_E;
+    }
+    else if (gcmFailStep == WOLFSSLFAKE_GCM_STEP_DECRYPT)
+    {
+        result = -1;
+    }
+    else
+    {
+        /* Authentic. */
+    }
+    return result;
+}
+
+int wc_RNG_GenerateBlock(WC_RNG* rng, byte* output, word32 sz)
+{
+    rngGenerateBlockCallCount++;
+    lastRngGenerateBlockContext = rng;
+    lastRngGenerateBlockBuf = output;
+    lastRngGenerateBlockLen = sz;
+    if (rngGenerateBlockFails)
+    {
+        return -1;
+    }
+    for (size_t index = 0U; index < sz; index++)
+    {
+        output[index] = (byte) (0xA0U + index);
+    }
+    return 0;
+}
+
+int WolfSslFake_AesInitCallCount(void)
+{
+    return aesInitCallCount;
+}
+
+int WolfSslFake_AesFreeCallCount(void)
+{
+    return aesFreeCallCount;
+}
+
+int WolfSslFake_GcmSealCount(void)
+{
+    return gcmSealCount;
+}
+
+int WolfSslFake_GcmOpenCount(void)
+{
+    return gcmOpenCount;
+}
+
+const uint8_t* WolfSslFake_LastGcmKey(void)
+{
+    return lastGcmKey;
+}
+
+size_t WolfSslFake_LastGcmKeyLen(void)
+{
+    return lastGcmKeyLen;
+}
+
+const uint8_t* WolfSslFake_LastGcmNonce(void)
+{
+    return lastGcmNonce;
+}
+
+const uint8_t* WolfSslFake_LastGcmAad(void)
+{
+    return lastGcmAad;
+}
+
+size_t WolfSslFake_LastGcmAadLen(void)
+{
+    return lastGcmAadLen;
+}
+
+const uint8_t* WolfSslFake_LastGcmPlaintext(void)
+{
+    return lastGcmPlaintext;
+}
+
+size_t WolfSslFake_LastGcmPlaintextLen(void)
+{
+    return lastGcmPlaintextLen;
+}
+
+void WolfSslFake_SetGcmStepFails(enum WolfSslFakeGcmStep step)
+{
+    gcmFailStep = step;
+}
+
+void WolfSslFake_SetGcmAuthFails(bool fails)
+{
+    gcmAuthFails = fails;
+}
+
+struct WC_RNG* WolfSslFake_Rng(void)
+{
+    static WC_RNG rng;
+    return &rng;
+}
+
+int WolfSslFake_RngGenerateBlockCallCount(void)
+{
+    return rngGenerateBlockCallCount;
+}
+
+const void* WolfSslFake_LastRngGenerateBlockContext(void)
+{
+    return lastRngGenerateBlockContext;
+}
+
+const void* WolfSslFake_LastRngGenerateBlockBuf(void)
+{
+    return lastRngGenerateBlockBuf;
+}
+
+size_t WolfSslFake_LastRngGenerateBlockLen(void)
+{
+    return lastRngGenerateBlockLen;
+}
+
+void WolfSslFake_SetRngGenerateBlockFails(bool fails)
+{
+    rngGenerateBlockFails = fails;
 }
 
 /* -------------------------------------------------------------------------

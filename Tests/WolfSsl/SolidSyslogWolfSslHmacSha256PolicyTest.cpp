@@ -554,20 +554,19 @@ TEST(SolidSyslogWolfSslHmacSha256PolicySeal, ANewPolicyReportsItsFirstFaultEvenA
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
-
 /* Each fallible wolfCrypt call in the HMAC sequence fails the seal closed and
  * is reported as one HMAC fault. */
-#define CHECK_SEAL_REPORTS_HMAC_FAILURE_AT(step)              \
-    {                                                         \
-        ErrorHandlerFake_Install(nullptr);                    \
-        WolfSslFake_SetHmacStepFails(step);                   \
-        uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};               \
+#define CHECK_SEAL_REPORTS_HMAC_FAILURE_AT(step)                 \
+    {                                                            \
+        ErrorHandlerFake_Install(nullptr);                       \
+        WolfSslFake_SetHmacStepFails(step);                      \
+        uint8_t tag[HMAC_SHA256_TAG_SIZE] = {};                  \
         CHECK_FALSE(seal(TEST_RECORD, sizeof TEST_RECORD, tag)); \
-        CHECK_REPORTED_ERROR(                                 \
-            SOLIDSYSLOG_SEVERITY_ERROR,                       \
-            SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,      \
-            SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED  \
-        );                                                    \
+        CHECK_REPORTED_ERROR(                                    \
+            SOLIDSYSLOG_SEVERITY_ERROR,                          \
+            SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,         \
+            SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED     \
+        );                                                       \
     }
 
 TEST(SolidSyslogWolfSslHmacSha256PolicySeal, SealRecordFailsClosedWhenHmacInitFails)

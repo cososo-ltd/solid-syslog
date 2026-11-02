@@ -34,3 +34,34 @@ target_include_directories(SolidSyslogWolfSslHmacSha256PolicyTest PRIVATE
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslHmacSha256PolicyTest)
+
+# SolidSyslogWolfSslAesGcmPolicy - keyed at-rest AEAD (confidentiality +
+# integrity). Driven against the WolfSslFake GCM capture double + RNG nonce
+# source: the unit suite proves the adapter's wiring and every fallible-call
+# error path; genuine AES-GCM round-trip / tamper / wrong-key correctness lives
+# in Tests/WolfSslIntegration against the real library.
+add_executable(SolidSyslogWolfSslAesGcmPolicyTest
+    SolidSyslogWolfSslAesGcmPolicyTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
+)
+
+target_link_libraries(SolidSyslogWolfSslAesGcmPolicyTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslAesGcmPolicyTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslAesGcmPolicyTest)

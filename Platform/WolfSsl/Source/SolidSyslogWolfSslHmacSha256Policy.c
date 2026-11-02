@@ -59,7 +59,13 @@ static bool WolfSslHmacSha256Policy_FetchKey(
     uint8_t* keyOut,
     size_t* keyLengthOut
 );
-static bool WolfSslHmacSha256Policy_Hmac(const uint8_t* key, size_t keyLength, const uint8_t* data, uint16_t length, uint8_t* tagOut);
+static bool WolfSslHmacSha256Policy_Hmac(
+    const uint8_t* key,
+    size_t keyLength,
+    const uint8_t* data,
+    uint16_t length,
+    uint8_t* tagOut
+);
 static void WolfSslHmacSha256Policy_ReportFault(
     struct SolidSyslogWolfSslHmacSha256Policy* policy,
     uint16_t category,
@@ -193,7 +199,13 @@ static bool WolfSslHmacSha256Policy_FetchKey(
 
 /* One HMAC-SHA256 over `data` with a transient wolfCrypt context. Any step
  * failing is one fault to the caller; the context is freed either way. */
-static bool WolfSslHmacSha256Policy_Hmac(const uint8_t* key, size_t keyLength, const uint8_t* data, uint16_t length, uint8_t* tagOut)
+static bool WolfSslHmacSha256Policy_Hmac(
+    const uint8_t* key,
+    size_t keyLength,
+    const uint8_t* data,
+    uint16_t length,
+    uint8_t* tagOut
+)
 {
     Hmac hmac;
     bool ok = false;

@@ -1,0 +1,55 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
+/** @file
+ *  AES-256-GCM confidentiality-and-integrity SecurityPolicy via wolfCrypt, for a
+ *  store that must encrypt records at rest.
+ *
+ *  What the policy does through its vtable is the substance:
+ *
+ *  - Seal encrypts a record in place: draws a fresh 12-byte nonce from the
+ *    caller's wolfCrypt RNG, encrypts the body (Content past HeaderLength),
+ *    authenticates the header as associated data, and writes nonce||tag into the
+ *    record trailer. It is keyed and fails closed - if the key is unavailable or
+ *    not exactly 32 bytes, Seal returns false and nothing is stored.
+ *  - Open reverses it: decrypts the body and verifies the tag over the header and
+ *    ciphertext. A tag mismatch (tamper, or wrong key) is the expected rejection
+ *    and is silent. A key that is unavailable or not 32 bytes, or a genuine
+ *    wolfCrypt fault, could not run, and is reported.
+ *
+ *  The key is fetched on demand via GetKey and wiped after every operation - it
+ *  is never stored on the instance. */
+#ifndef SOLIDSYSLOGWOLFSSLAESGCMPOLICY_H
+#define SOLIDSYSLOGWOLFSSLAESGCMPOLICY_H
+
+#include "SolidSyslogExternC.h"
+#include "SolidSyslogKeyFunction.h"
+
+struct SolidSyslogSecurityPolicy;
+struct WC_RNG;
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    struct SolidSyslogWolfSslAesGcmPolicyConfig
+    {
+        SolidSyslogKeyFunction GetKey; /**< Fetches the 32-byte AES-256 key on demand; required. Any other
+                                            reported length is treated as unavailable. */
+        void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
+        struct WC_RNG* Rng; /**< Initialised wolfCrypt RNG each record's 12-byte nonce is drawn from;
+                                 required and caller-owned. Injected because wolfCrypt has no
+                                 context-free RNG. */
+    };
+
+    /** Draw an AES-GCM policy from the pool. Bad config (NULL GetKey or NULL Rng)
+     *  or an exhausted pool falls back to the shared NullSecurityPolicy. */
+    struct SolidSyslogSecurityPolicy* SolidSyslogWolfSslAesGcmPolicy_Create(
+        const struct SolidSyslogWolfSslAesGcmPolicyConfig* config
+    );
+    /** Release the pool slot; the policy owns no resources beyond the slot (the
+     *  key is fetched per-call, the RNG is caller-owned). */
+    void SolidSyslogWolfSslAesGcmPolicy_Destroy(struct SolidSyslogSecurityPolicy * base);
+
+SOLIDSYSLOG_EXTERN_C_END
+
+#endif /* SOLIDSYSLOGWOLFSSLAESGCMPOLICY_H */

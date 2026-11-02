@@ -14,6 +14,8 @@ add_library(SolidSyslogWolfSsl INTERFACE)
 target_sources(SolidSyslogWolfSsl INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslHmacSha256Policy.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslHmacSha256PolicyStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslAesGcmPolicy.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
 )
 
 target_include_directories(SolidSyslogWolfSsl INTERFACE
