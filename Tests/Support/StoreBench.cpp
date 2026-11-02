@@ -99,9 +99,16 @@ void StoreBench::CreateStore()
     config.BlockDevice = device;
     config.MaxBlocks = options.MaxBlocks;
     config.SecurityPolicy = options.Policy;
+    config.GetDiscardPolicy = GetDiscardPolicy;
+    config.DiscardPolicyContext = this;
     BeginCall();
     store = SolidSyslogBlockStore_Create(&config);
     EndCall();
+}
+
+enum SolidSyslogDiscardPolicy StoreBench::GetDiscardPolicy(void* context)
+{
+    return static_cast<StoreBench*>(context)->options.DiscardPolicy;
 }
 
 void StoreBench::BeginCall()

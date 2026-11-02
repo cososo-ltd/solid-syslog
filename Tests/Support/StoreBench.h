@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "BlockDeviceFake.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogStore.h"
 
 struct SolidSyslogSecurityPolicy;
@@ -21,6 +22,7 @@ struct StoreBenchOptions
     size_t MaxBlocks;
     struct SolidSyslogSecurityPolicy* Policy; /* NULL for the Null policy */
     size_t RecordSize; /* every record is this many bytes */
+    enum SolidSyslogDiscardPolicy DiscardPolicy; /* what a full store does with a record */
 };
 
 class StoreBench
@@ -142,6 +144,7 @@ class StoreBench
     void EndCall();
     void OnError(const struct SolidSyslogErrorEvent* event);
     static void HandleError(void* context, const struct SolidSyslogErrorEvent* event);
+    static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
 };
 
 #endif /* STOREBENCH_H */

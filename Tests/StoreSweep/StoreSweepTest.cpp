@@ -8,6 +8,7 @@
 #include "Environment.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogCrc16Policy.h"
+#include "SolidSyslogDiscardPolicy.h"
 #include "StoreBench.h"
 #include "StoreSweep.h"
 #include "CppUTest/TestHarness.h"
@@ -57,6 +58,22 @@ struct SolidSyslogSecurityPolicy* PolicyFor(const Policy& policy)
     return policy.Strong ? SolidSyslogCrc16Policy_Create() : nullptr;
 }
 
+/* What the store does with a record once it is at its block ceiling. Under
+ * Oldest a block the store has finished with goes at the next rotation
+ * whether or not it was disposed of; under the other two nothing goes, so a
+ * block left behind undisposed stays until a restart. */
+struct Discard
+{
+    const char* Name;
+    enum SolidSyslogDiscardPolicy Policy;
+};
+
+const Discard DISCARDS[] = {
+    {"oldest", SOLIDSYSLOG_DISCARD_POLICY_OLDEST},
+    {"newest", SOLIDSYSLOG_DISCARD_POLICY_NEWEST},
+    {"halt", SOLIDSYSLOG_DISCARD_POLICY_HALT},
+};
+
 const enum BlockDeviceFakeAbsentBlockBehaviour ABSENT_BEHAVIOURS[] = {
     BLOCKDEVICEFAKE_ABSENT_FAILS,
     BLOCKDEVICEFAKE_ABSENT_IS_CREATED_ON_TOUCH,
@@ -72,6 +89,7 @@ struct Case
 {
     const Scenario* Scene;
     const Policy* Pol;
+    const Discard* Disc;
     const char* Fault;
     size_t Block;
     size_t Offset;
@@ -80,13 +98,15 @@ struct Case
 
 std::string Describe(const Case& c)
 {
-    return std::string("scenario=") + c.Scene->Name + " policy=" + c.Pol->Name + " fault=" + c.Fault +
-           " block=" + std::to_string(c.Block) + " offset=" + std::to_string(c.Offset) + " n=" + std::to_string(c.N);
+    return std::string("scenario=") + c.Scene->Name + " policy=" + c.Pol->Name + " discard=" + c.Disc->Name +
+           " fault=" + c.Fault + " block=" + std::to_string(c.Block) + " offset=" + std::to_string(c.Offset) +
+           " n=" + std::to_string(c.N);
 }
 
 StoreBenchOptions OptionsFor(const Case& c)
 {
-    StoreBenchOptions options = {c.Scene->BlockSize, c.Scene->MaxBlocks, PolicyFor(*c.Pol), RECORD_SIZE};
+    StoreBenchOptions options =
+        {c.Scene->BlockSize, c.Scene->MaxBlocks, PolicyFor(*c.Pol), RECORD_SIZE, c.Disc->Policy};
     return options;
 }
 
@@ -473,7 +493,7 @@ class Failures
 };
 
 /* Runs @p apply at every grid position the budget admits, or the one the
- * filter names, for every scenario and policy. */
+ * filter names, for every scenario, policy and discard policy. */
 template <typename GridOf, typename Apply>
 void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply apply)
 {
@@ -485,22 +505,25 @@ void Sweep(const char* fault, size_t variants, GridOf gridOf, When when, Apply a
     {
         for (const Policy& pol : POLICIES)
         {
-            Case c = {&scene, &pol, fault, 0U, 0U, 0U};
-            Grid grid = gridOf(c, variants);
-            size_t total = GridTotal(grid);
-            size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
-
-            for (size_t index = 0U; index < total; index += ((stride == 0U) ? 1U : stride))
+            for (const Discard& disc : DISCARDS)
             {
-                PlaceInGrid(grid, index, c);
+                Case c = {&scene, &pol, &disc, fault, 0U, 0U, 0U};
+                Grid grid = gridOf(c, variants);
+                size_t total = GridTotal(grid);
+                size_t stride = ((budget == 0U) || !filter.empty()) ? 1U : ((total + budget - 1U) / budget);
 
-                if (filter.empty() || (filter == Describe(c)))
+                for (size_t index = 0U; index < total; index += ((stride == 0U) ? 1U : stride))
                 {
-                    casesRun++;
-                    Verdict verdict = RunCase(c, when, apply);
-                    if (verdict.Kind != nullptr)
+                    PlaceInGrid(grid, index, c);
+
+                    if (filter.empty() || (filter == Describe(c)))
                     {
-                        failures.Add(c, verdict);
+                        casesRun++;
+                        Verdict verdict = RunCase(c, when, apply);
+                        if (verdict.Kind != nullptr)
+                        {
+                            failures.Add(c, verdict);
+                        }
                     }
                 }
             }
