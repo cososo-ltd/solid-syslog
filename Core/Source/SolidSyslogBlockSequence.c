@@ -644,7 +644,8 @@ static inline void BlockSequence_AdvancePastDisposedReadBlock(struct SolidSyslog
 static inline bool BlockSequence_DisposeReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 
 /* The read block is the oldest: every block before it was disposed of or
- * evicted as the read left it, so disposing it leaves no hole in the run. */
+ * evicted as the read left it, so disposing it leaves no hole in the run. The
+ * caller has checked the read is behind the write, so a next block exists. */
 void SolidSyslogBlockSequence_LeaveReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
     (void) BlockSequence_DisposeReadBlock(blockSequence);
@@ -664,6 +665,14 @@ static inline bool BlockSequence_DisposeReadBlock(struct SolidSyslogBlockSequenc
     }
 
     return disposed;
+}
+
+static inline void BlockSequence_AdvancePastDisposedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
+{
+    blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
+    blockSequence->AtCapacity = false;
+    BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
 void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
@@ -691,14 +700,6 @@ static inline bool BlockSequence_IsReadBlockFullyDrained(
 )
 {
     return blockSequence->ReadCursor >= readBlockSize;
-}
-
-static inline void BlockSequence_AdvancePastDisposedReadBlock(struct SolidSyslogBlockSequence* blockSequence)
-{
-    blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
-    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
-    blockSequence->AtCapacity = false;
-    BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
 
 bool SolidSyslogBlockSequence_ReadIsBehindWrite(const struct SolidSyslogBlockSequence* blockSequence)

@@ -2641,8 +2641,9 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
     }
 
     // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- maxBlockSize and maxBlocks have distinct semantics
-    void CreateWithMaxBlockSize(size_t maxBlockSize, size_t maxBlocks = 2,
-                               enum SolidSyslogDiscardPolicy discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST)
+    void CreateWithMaxBlockSize(size_t maxBlockSize,
+                               enum SolidSyslogDiscardPolicy discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST,
+                               size_t maxBlocks = 2)
     {
         EnsureDeviceBlockSize(maxBlockSize);
         struct SolidSyslogBlockStoreConfig config = DEFAULT_CONFIG;
@@ -2660,44 +2661,40 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCorruptionRecovery, BlockDeviceTestBase)
         SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
     }
 
-    void CorruptFirstRecordBody(const char* path) const
+    void CorruptByteAt(const char* path, size_t offset, uint8_t corrupt) const
     {
         SolidSyslogFile_Open(file, path);
-        uint8_t corrupt = 0xFF;
-        SolidSyslogFile_SeekTo(file, 4);
+        SolidSyslogFile_SeekTo(file, offset);
         SolidSyslogFile_Write(file, &corrupt, 1);
         SolidSyslogFile_Close(file);
+    }
+
+    void CorruptFirstRecordBody(const char* path) const
+    {
+        CorruptByteAt(path, 4, 0xFF);
     }
 
     /* A header that will not parse: the rest of the block cannot be stepped over. */
     void CorruptFirstRecordMagic(const char* path) const
     {
-        SolidSyslogFile_Open(file, path);
-        uint8_t corrupt = 0x00;
-        SolidSyslogFile_SeekTo(file, 0);
-        SolidSyslogFile_Write(file, &corrupt, 1);
-        SolidSyslogFile_Close(file);
+        CorruptByteAt(path, 0, 0x00);
     }
 
     void CorruptSecondRecordMagic(const char* path) const
     {
-        SolidSyslogFile_Open(file, path);
-        uint8_t corrupt = 0x00;
-        SolidSyslogFile_SeekTo(file, ONE_MAX_MSG_RECORD);
-        SolidSyslogFile_Write(file, &corrupt, 1);
-        SolidSyslogFile_Close(file);
+        CorruptByteAt(path, ONE_MAX_MSG_RECORD, 0x00);
     }
 
     /* Two one-record blocks, the first's record damaged so the policy rejects
      * it, under a discard policy that never evicts. */
     void RestartUnderNewestWithBlock00sOnlyRecordDamaged()
     {
-        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, 2, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
         WriteMaxMsg(); /* block 00 */
         WriteMaxMsg(); /* block 01 */
         SolidSyslogBlockStore_Destroy(store);
         CorruptFirstRecordBody("/tmp/test_store00.log");
-        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, 2, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     }
 };
 
@@ -2798,12 +2795,12 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, AWriteThatNeedsARotationIsKeptOnce
  * block remains to deliver and it goes the same way. */
 TEST(SolidSyslogBlockStoreCorruptionRecovery, ABlockTheReadAbandonedIsDisposedOfOnceTheReadHasLeftIt)
 {
-    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, 2, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     WriteMaxMsg();
     WriteMaxMsg(); /* block 00 is full */
     SolidSyslogBlockStore_Destroy(store);
     CorruptSecondRecordMagic("/tmp/test_store00.log");
-    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, 2, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
     WriteMaxMsg(); /* block 00 is corrupt, so this opens block 01 */
 
     char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
@@ -2833,6 +2830,49 @@ TEST(SolidSyslogBlockStoreCorruptionRecovery, AFailedDisposeOfABlockTheReadHasLe
         SOLIDSYSLOG_CAT_STORE_FROZEN,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
     );
+}
+
+/* The freeze is the only report: the loss the read was giving up on is not
+ * reported after it, and the write block is left as it was. */
+TEST(
+    SolidSyslogBlockStoreCorruptionRecovery,
+    AFailedDisposeOfABlockTheReadAbandonedFreezesTheStoreAndReportsNothingElse
+)
+{
+    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg();
+    WriteMaxMsg(); /* block 00 is full */
+    SolidSyslogBlockStore_Destroy(store);
+    CorruptSecondRecordMagic("/tmp/test_store00.log");
+    CreateWithMaxBlockSize(TWO_MAX_MSG_RECORDS, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg(); /* block 01 */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead); /* abandons block 00 */
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+}
+
+/* Resuming abandons a corrupt oldest block before the first read. A dispose
+ * that fails there freezes the store, which does not go on to the write block. */
+TEST(SolidSyslogBlockStoreCorruptionRecovery, AFailedDisposeWhileResumingPastACorruptBlockFreezesTheStoreOnce)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    SolidSyslogBlockStore_Destroy(store);
+    CorruptFirstRecordMagic("/tmp/test_store00.log");
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextDelete(file);
+
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+
+    CHECK_STORE_FROZEN(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
 }
 
 // clang-format off

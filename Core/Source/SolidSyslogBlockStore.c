@@ -109,7 +109,10 @@ static void BlockStore_ResumeFromExistingBlock(struct SolidSyslogBlockStore* sel
         scanned = BlockStore_ScanReadBlock(self);
     }
 
-    if (scanned != SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED)
+    /* A read that failed, or a dispose that failed on leaving a corrupt block,
+     * has frozen the store: the device is not asked about the write block. */
+    if ((scanned != SOLIDSYSLOG_RECORD_STORE_SCAN_DEVICE_FAILED) &&
+        !SolidSyslogBlockSequence_DeviceFailed(self->BlockSequence))
     {
         BlockStore_CheckWriteBlock(self);
     }
@@ -478,39 +481,43 @@ static bool BlockStore_StepPast(struct SolidSyslogBlockStore* self, enum SolidSy
  * end of the write block there is nothing more. The block the read leaves has
  * nothing left to deliver, however the read got to its end - a mark, a step
  * past a rejected record, or the rest given up as corrupt - so it is disposed
- * of as the read leaves it. A dispose that fails has frozen the store, which
- * reads nothing further. */
+ * of as the read leaves it. Says whether the read has moved on: a dispose that
+ * fails freezes the store, and the read moves nowhere. */
 static bool BlockStore_ReadNextBlockIfBehind(struct SolidSyslogBlockStore* self)
 {
-    bool behind = SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence);
+    bool movedOn = false;
 
-    if (behind)
+    if (SolidSyslogBlockSequence_ReadIsBehindWrite(self->BlockSequence))
     {
         SolidSyslogBlockSequence_LeaveReadBlock(self->BlockSequence);
         SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
-        behind = !BlockStore_FreezeIfDeviceFailed(self);
+        movedOn = !BlockStore_FreezeIfDeviceFailed(self);
     }
 
-    return behind;
+    return movedOn;
 }
 
 /* The rest of the read block cannot be read. Behind the write block the next
  * block is read instead. In the write block nothing unsent remains, and the
  * block is closed so the next write starts a new one rather than appending
- * after the damage. */
+ * after the damage. A store frozen on the way out of the block has reported
+ * that, and nothing more is reported or marked. */
 static bool BlockStore_AbandonRestOfReadBlock(struct SolidSyslogBlockStore* self)
 {
     bool movedOn = BlockStore_ReadNextBlockIfBehind(self);
 
-    BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT);
-
-    if (!movedOn)
+    if (!SolidSyslogBlockSequence_DeviceFailed(self->BlockSequence))
     {
-        SolidSyslogBlockSequence_SetReadCursor(
-            self->BlockSequence,
-            SolidSyslogBlockSequence_WritePosition(self->BlockSequence)
-        );
-        SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+        BlockStore_ReportLoss(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_CORRUPT);
+
+        if (!movedOn)
+        {
+            SolidSyslogBlockSequence_SetReadCursor(
+                self->BlockSequence,
+                SolidSyslogBlockSequence_WritePosition(self->BlockSequence)
+            );
+            SolidSyslogBlockSequence_MarkWriteBlockCorrupt(self->BlockSequence);
+        }
     }
 
     return movedOn;

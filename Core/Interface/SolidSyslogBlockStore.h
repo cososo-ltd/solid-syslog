@@ -13,7 +13,7 @@
  *  around it are kept and delivered in order, and nothing is written into the
  *  gap while it lies among them. A block the read has finished with - each of
  *  its records delivered, rejected or given up as damaged - is removed from
- *  the device, so what a store holds is what it still has to send.
+ *  the device as the read moves on from it.
  *
  *  MaxBlocks caps retention; the injected discard policy governs the overflow
  *  once every block is full - Oldest evicts the oldest block to keep accepting

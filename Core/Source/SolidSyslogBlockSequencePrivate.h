@@ -95,7 +95,8 @@ void SolidSyslogBlockSequence_DisposeReadBlockIfDrained(
 );
 /* The read is done with its block - nothing in it remains to deliver, whether
  * its records were marked, stepped past or given up - so the block is disposed
- * of and the read starts on the next. A dispose that fails is noted as a
+ * of and the read starts on the next. Only for a read block behind the write
+ * block: the write block is never left. A dispose that fails is noted as a
  * device failure. */
 void SolidSyslogBlockSequence_LeaveReadBlock(struct SolidSyslogBlockSequence* blockSequence);
 
