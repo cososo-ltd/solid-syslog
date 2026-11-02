@@ -20,6 +20,22 @@ TEST_GROUP(StoreBench)
         bench.Write(1);
         bench.Write(2);
     }
+
+    StoreBenchOptions OneRecordPerBlockUnder(enum SolidSyslogDiscardPolicy policy) const
+    {
+        StoreBenchOptions under = oneRecordPerBlock;
+        under.DiscardPolicy = policy;
+        return under;
+    }
+
+    /* Fills the three blocks, then offers the record the store has no room for. */
+    static enum SolidSyslogStoreWriteResult WriteOneRecordMoreThanTheBlocksHold(StoreBench& bench)
+    {
+        bench.Write(1);
+        bench.Write(2);
+        bench.Write(3);
+        return bench.Write(4);
+    }
 };
 
 // clang-format on
@@ -228,4 +244,22 @@ TEST(StoreBench, TheBenchKnowsWhereEachRecordCarriesItsLength)
     CHECK_FALSE(bench.IsRecordLengthByte(0, 4));
     CHECK_TRUE(bench.IsRecordLengthByte(0, 39));
     CHECK_FALSE(bench.IsRecordLengthByte(1, 2));
+}
+
+TEST(StoreBench, TheBenchRunsTheStoreUnderOldestWhenAsked)
+{
+    StoreBench bench(OneRecordPerBlockUnder(SOLIDSYSLOG_DISCARD_POLICY_OLDEST));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, WriteOneRecordMoreThanTheBlocksHold(bench));
+}
+
+TEST(StoreBench, TheBenchRunsTheStoreUnderNewestWhenAsked)
+{
+    StoreBench bench(OneRecordPerBlockUnder(SOLIDSYSLOG_DISCARD_POLICY_NEWEST));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, WriteOneRecordMoreThanTheBlocksHold(bench));
+}
+
+TEST(StoreBench, TheBenchRunsTheStoreUnderHaltWhenAsked)
+{
+    StoreBench bench(OneRecordPerBlockUnder(SOLIDSYSLOG_DISCARD_POLICY_HALT));
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, WriteOneRecordMoreThanTheBlocksHold(bench));
 }

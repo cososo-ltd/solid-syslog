@@ -281,6 +281,10 @@ enum When
 
 void PrintAccount(const StoreBench& bench);
 
+/* The device's operation count when the last case was judged: the probe's
+ * operations come after it. */
+size_t operationsWhenJudged = 0U;
+
 /* At least a block's worth of records, so a store with nothing left to
  * deliver has to rotate to take them all. The payload is smaller than the
  * record on the media, so this over-counts; a store that has finished with
@@ -344,6 +348,7 @@ template <typename Apply> Verdict RunCase(const Case& c, When when, Apply apply)
     bench.Restart();
     bench.Drain(DRAIN_PASSES);
     Verdict verdict = Judge(bench, judged);
+    operationsWhenJudged = BlockDeviceFake_OperationCount();
     bool refusedWhileIdle = ProbeRefusedWhileIdle(bench, c);
 
     if ((verdict.Kind == nullptr) && IsWedged(bench, refusedWhileIdle))
@@ -449,9 +454,11 @@ Grid BlocksOf(const Case& c, size_t variants)
     return grid;
 }
 
-/* How many media operations a clean run of the case makes after the fault
- * point, so a removal can be placed after each one. The operations that
- * populate the scenario come before that point and are not positions. */
+/* How many media operations a clean run of the case makes between the fault
+ * point and the judgement, so a removal can be placed after each one. The
+ * operations that populate the scenario come before that point, and the
+ * probe's come after the judgement, so neither are positions: a removal
+ * during the probe would face the wedge verdict alone. */
 Grid OperationsOf(const Case& c, size_t variants)
 {
     Grid grid = BlocksOf(c, variants);
@@ -462,7 +469,7 @@ Grid OperationsOf(const Case& c, size_t variants)
         populating = BlockDeviceFake_OperationCount();
     }
     RunCase(c, BEFORE_RESTART, [](const Case&) {});
-    size_t operations = BlockDeviceFake_OperationCount() - populating;
+    size_t operations = operationsWhenJudged - populating;
 
     for (size_t block = 0U; block < grid.Blocks; block++)
     {
