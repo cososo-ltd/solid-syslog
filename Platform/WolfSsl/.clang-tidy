@@ -1,0 +1,20 @@
+---
+# Pragmatic level per docs/NAMING.md - Platform/WolfSsl.
+#
+# Inherits the root .clang-tidy. The pack's public headers refer to upstream
+# wolfSSL struct types by forward declaration - `WC_RNG` today, the session and
+# context types once the stream lands - because the integrator-supplied handles
+# in the config structs are those types. The upstream tags are SCREAMING_CASE
+# or `wc_`-prefixed, which violates the project's StructCase + StructPrefix
+# rule, but renaming is impossible (they are third-party). Extend
+# StructIgnoredRegexp locally so the rule exempts the wolfSSL namespace.
+#
+# clang-tidy CheckOption values do not merge across the hierarchy - the
+# latest-encountered value wins. The pattern below therefore re-states the
+# root .clang-tidy whitelist plus the wolfSSL namespace. Keep in sync.
+InheritParentConfig: true
+CheckOptions:
+  - {
+      key: readability-identifier-naming.StructIgnoredRegexp,
+      value: "^(SolidSyslog|EscapedContext|Gap|LogRequest|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall|WC_RNG|WOLFSSL|WOLFSSL_[A-Z0-9_]+|wc_[A-Za-z0-9_]+)$",
+    }

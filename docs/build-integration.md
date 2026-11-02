@@ -93,6 +93,7 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 | `StdAtomic` | atomics | C11 `<stdatomic.h>` |
 | `OpenSsl` | tls | OpenSSL 3.0+ |
 | `MbedTls` | tls | Mbed TLS |
+| `WolfSsl` | tls | wolfSSL |
 | `LwipRaw` | network | lwIP Raw API |
 | `LwipSocket` | network | lwIP Sockets API |
 | `PlusTcp` | network | FreeRTOS-Plus-TCP |
@@ -137,9 +138,9 @@ The variable takes three kinds of answer:
 
 <!-- platforms: kind=upstream -->
 
-`MbedTls`, `LwipRaw`, `LwipSocket`, `PlusTcp`, `FreeRtos`, `CmsisRtos`,
-`VxWorks64`, `FatFs`, `PlusFat` and `LittleFs` are never selected for you: you
-name them or you do not get them. Setting `LWIP_PATH` or `FREERTOS_KERNEL_PATH`
+`MbedTls`, `WolfSsl`, `LwipRaw`, `LwipSocket`, `PlusTcp`, `FreeRtos`,
+`CmsisRtos`, `VxWorks64`, `FatFs`, `PlusFat` and `LittleFs` are never selected
+for you: you name them or you do not get them. Setting `LWIP_PATH` or `FREERTOS_KERNEL_PATH`
 in your environment does not change what your build contains.
 
 <!-- /platforms -->
@@ -152,10 +153,11 @@ needs your config header, you link it; otherwise it is already inside.**
 <!-- platforms: kind=upstream -->
 
 Header-configured upstreams cannot be precompiled, because `lwipopts.h`,
-`FreeRTOSConfig.h`, `mbedtls_config.h`, `ffconf.h` and their siblings change
-layout and behaviour and we cannot see your copy. These are lwIP's Raw API and
-its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel, CMSIS-RTOS2, VxWorks
-6.4, Mbed TLS, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS. Each is a
+`FreeRTOSConfig.h`, `mbedtls_config.h`, `wolfssl/options.h`, `ffconf.h` and
+their siblings change layout and behaviour and we cannot see your copy. These
+are lwIP's Raw API and its Sockets API, FreeRTOS-Plus-TCP, the FreeRTOS kernel,
+CMSIS-RTOS2, VxWorks 6.4, Mbed TLS, wolfSSL, ChaN FatFs, FreeRTOS-Plus-FAT and
+LittleFS. Each is a
 `SolidSyslog::<Platform>` target carrying its adapter sources, which compile
 into *your* target against *your* config.
 

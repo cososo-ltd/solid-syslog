@@ -145,6 +145,14 @@ DESCRIPTIONS = {
         "Wire SolidSyslogMbedTlsStream for RFC 5425 syslog over TLS, in order: "
         "bring-up, credentials, profile, stream, and what the error handler sees."
     ),
+    "platforms/wolfssl/index.md": (
+        "The wolfSSL adapter pack for embedded targets: keyed at-rest crypto for "
+        "the SecurityPolicy role over wolfCrypt, compiled against your own build."
+    ),
+    "platforms/wolfssl/setup.md": (
+        "Wire the wolfSSL at-rest policies into a store, in order: what to link, "
+        "the RNG, the policy, and what the error handler sees."
+    ),
     "platforms/fatfs/index.md": (
         "The ChaN FatFs adapter pack, filling the File role beneath a BlockDevice "
         "— RTOS-agnostic, for bare-metal targets or under any RTOS."

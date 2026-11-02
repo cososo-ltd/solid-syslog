@@ -204,6 +204,11 @@ Both build against `Tests/Fixtures/TunableOverrides.h`, proving
 targets the message size the path-MTU feature needs. The commands live in
 [BDD testing](bdd.md), where they are used.
 
+`tunable-override-wolfssl` is the Linux one again with `SOLIDSYSLOG_PLATFORMS`
+naming `WolfSsl` and not `OpenSsl`, so the BDD target takes its at-rest
+policies from the wolfSSL pack. It needs `WOLFSSL_DIR`, which the `cpputest`
+image exports.
+
 ## Installing the library
 
 ```bash

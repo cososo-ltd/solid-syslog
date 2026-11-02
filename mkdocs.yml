@@ -216,6 +216,7 @@ nav:
       - lwIP (Sockets API): platforms/lwipsocket/index.md
       - Mbed TLS: platforms/mbedtls/index.md
       - OpenSSL: platforms/openssl/index.md
+      - wolfSSL: platforms/wolfssl/index.md
       - Posix: platforms/posix/index.md
       - Windows: platforms/windows/index.md
       - VxWorks 6.4: platforms/vxworks64/index.md

@@ -77,6 +77,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 |---|---|
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
 | Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
+| wolfSSL (security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl`, the Linux target without OpenSSL, running every scenario that needs no TLS |
 | FreeRTOS-Plus-TCP | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-plustcp` end to end under QEMU |
 | lwIP (Raw API) | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
 | lwIP (Sockets API) | `build-freertos-host-tdd-plustcp` against fakes; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
