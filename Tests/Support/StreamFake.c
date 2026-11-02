@@ -87,7 +87,13 @@ static void TakePrefixByte(struct StreamFake* fake, uint8_t byte)
     if (byte == ' ')
     {
         fake->PrefixComplete = true;
-        fake->Body = (char*) realloc(fake->Body, fake->ExpectedLength + 1U);
+        /* A test fake: a failed realloc has nowhere to go but abort. */
+        char* body = (char*) realloc(fake->Body, fake->ExpectedLength + 1U);
+        if (body == NULL)
+        {
+            abort();
+        }
+        fake->Body = body;
         fake->BodyReceived = 0U;
         CompleteFrameIfBodyIsWhole(fake);
     }
@@ -141,7 +147,12 @@ static void Grow(void** storage, size_t* capacity, size_t needed, size_t element
         {
             grown *= 2U;
         }
-        *storage = realloc(*storage, grown * elementSize);
+        void* moved = realloc(*storage, grown * elementSize);
+        if (moved == NULL)
+        {
+            abort();
+        }
+        *storage = moved;
         *capacity = grown;
     }
 }
