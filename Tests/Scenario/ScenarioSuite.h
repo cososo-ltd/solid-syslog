@@ -6,6 +6,7 @@
 #include <string>
 
 #include "ScenarioBench.h"
+#include "SolidSyslogDiscardPolicy.h"
 
 /* The fixture a script runs over. */
 struct ScenarioRig
@@ -13,6 +14,12 @@ struct ScenarioRig
     const char* Name;
     ScenarioBenchOptions Options;
 };
+
+/* The rigs: the policy the logger, buffer and store start under, over a
+ * ring and a store small enough that a walk fills them. */
+inline const ScenarioRig SCENARIO_RIG_OLDEST = {"oldest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST}};
+inline const ScenarioRig SCENARIO_RIG_NEWEST = {"newest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST}};
+inline const ScenarioRig SCENARIO_RIG_HALT = {"halt", {8U, 1024U, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT}};
 
 /* What a run found: a pass, or the first invariant to fail, where and why. */
 struct ScenarioVerdict

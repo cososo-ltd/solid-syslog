@@ -149,3 +149,11 @@ TEST(StreamFake, AZeroLengthFrameCompletesAtItsPrefix)
     LONGS_EQUAL(1, StreamFake_FrameCount(stream));
     STRCMP_EQUAL("", StreamFake_Frame(stream, 0));
 }
+
+TEST(StreamFake, APrefixThatIsNotALengthIsDroppedAndTheNextFrameKept)
+{
+    SolidSyslogStream_Send(stream, "x ", 2);
+    SolidSyslogStream_Send(stream, "2 ok", 4);
+    LONGS_EQUAL(1, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("ok", StreamFake_Frame(stream, 0));
+}

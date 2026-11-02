@@ -100,7 +100,21 @@ class ScenarioBench
     bool StoreHasUnsent();
     bool StoreIsFrozen();
 
+    ScenarioBench(const ScenarioBench&) = delete;
+    ScenarioBench& operator=(const ScenarioBench&) = delete;
+
   private:
+    /* Installed before any Core object is created, so a Create that reports
+     * is on the record; the first member, so that it is. */
+    struct HandlerInstallation
+    {
+        explicit HandlerInstallation(ScenarioBench* bench);
+        ~HandlerInstallation();
+        HandlerInstallation(const HandlerInstallation&) = delete;
+        HandlerInstallation& operator=(const HandlerInstallation&) = delete;
+    };
+
+    HandlerInstallation handler;
     ScenarioBenchOptions options;
     std::vector<uint8_t> ring;
     struct SolidSyslogBlockDevice* device;

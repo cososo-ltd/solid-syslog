@@ -2,14 +2,13 @@
 #include <string>
 
 #include "ScenarioSuite.h"
-#include "SolidSyslogDiscardPolicy.h"
 #include "CppUTest/TestHarness.h"
 
 namespace
 {
-const ScenarioRig OLDEST = {"oldest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST}};
-const ScenarioRig NEWEST = {"newest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST}};
-const ScenarioRig HALT = {"halt", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_HALT}};
+const ScenarioRig& OLDEST = SCENARIO_RIG_OLDEST;
+const ScenarioRig& NEWEST = SCENARIO_RIG_NEWEST;
+const ScenarioRig& HALT = SCENARIO_RIG_HALT;
 
 std::string Repeat(const std::string& steps, size_t times)
 {

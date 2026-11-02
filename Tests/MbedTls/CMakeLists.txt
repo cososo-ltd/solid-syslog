@@ -97,7 +97,6 @@ target_link_libraries(SolidSyslogMbedTlsHmacSha256PolicyTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
-    StreamFake
     CppUTest
     CppUTestExt
 )
@@ -136,7 +135,6 @@ target_link_libraries(SolidSyslogMbedTlsAesGcmPolicyTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
-    StreamFake
     CppUTest
     CppUTestExt
 )
@@ -198,7 +196,6 @@ target_link_libraries(SolidSyslogMbedTlsHandleCredentialsTest PRIVATE
     ConfigLockFake
     ErrorHandlerFake
     MbedTlsFakes
-    StreamFake
     CppUTest
     CppUTestExt
 )

@@ -17,11 +17,7 @@ const size_t WALK_STEPS = 300U;
 /* Passes the drain allows beyond one per record before it is a spin. */
 const size_t DRAIN_SLACK = 50U;
 
-const std::array<ScenarioRig, 3> RIGS = {{
-    {"oldest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST}},
-    {"newest", {4U, 512U, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST}},
-    {"halt", {8U, 1024U, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT}},
-}};
+const std::array<ScenarioRig, 3> RIGS = {{SCENARIO_RIG_OLDEST, SCENARIO_RIG_NEWEST, SCENARIO_RIG_HALT}};
 
 /* A step's letter and its weight in a thousand draws. Logging outruns
  * Service, outages are short and recover, and a device failure is rare
@@ -151,9 +147,11 @@ class Driver
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
         size_t allowance = bench.Logged() + DRAIN_SLACK;
-        for (size_t i = 0U; verdict.Passed && (i < allowance) && (state.Status != SOLIDSYSLOG_SERVICE_IDLE); i++)
+        bool idle = false; /* the script's last status says nothing about what it logged since */
+        for (size_t i = 0U; verdict.Passed && !idle && (i < allowance); i++)
         {
             verdict = Pass();
+            idle = state.Status == SOLIDSYSLOG_SERVICE_IDLE;
         }
         return verdict.Passed ? ScenarioInvariants_CheckAtEnd(state) : verdict;
     }
@@ -208,8 +206,13 @@ bool ScenarioSuite_SeedGiven(uint32_t* seed)
     return given;
 }
 
+/* A count that is unset, malformed or zero is the smoke count: a typo in a
+ * lane's environment must not switch the walks off. */
 size_t ScenarioSuite_Runs()
 {
     const char* value = Environment_Get("SOLIDSYSLOG_SCENARIO_RUNS");
-    return (value != nullptr) ? static_cast<size_t>(std::strtoul(value, nullptr, 10)) : SMOKE_RUNS;
+    char* end = nullptr;
+    size_t runs = (value != nullptr) ? static_cast<size_t>(std::strtoul(value, &end, 10)) : 0U;
+    bool whole = (value != nullptr) && (*value != '\0') && (*end == '\0');
+    return (whole && (runs > 0U)) ? runs : SMOKE_RUNS;
 }

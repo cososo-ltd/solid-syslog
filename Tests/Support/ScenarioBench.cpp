@@ -59,16 +59,24 @@ bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
 }
 } // namespace
 
+ScenarioBench::HandlerInstallation::HandlerInstallation(ScenarioBench* bench)
+{
+    SolidSyslog_SetErrorHandler(HandleError, bench);
+}
+
+ScenarioBench::HandlerInstallation::~HandlerInstallation()
+{
+    SolidSyslog_SetErrorHandler(nullptr, nullptr);
+}
+
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
-    : options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
+    : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
       sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false),
       framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U),
       maxSendsInOnePass(0U)
 {
-    SolidSyslog_SetErrorHandler(HandleError, this);
-
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
@@ -120,7 +128,6 @@ ScenarioBench::~ScenarioBench()
     SolidSyslogMetaSd_Destroy(metaSd);
     CounterFake_Destroy(counter);
     StreamFake_Destroy(stream);
-    SolidSyslog_SetErrorHandler(nullptr, nullptr);
 }
 
 unsigned ScenarioBench::Log()

@@ -4,7 +4,16 @@
 #include "SolidSyslogTransport.h"
 #include "CppUTest/TestHarness.h"
 
-TEST_GROUP(ResolverFake){};
+// clang-format off
+TEST_GROUP(ResolverFake)
+{
+    void setup() override
+    {
+        ResolverFake_Reset();
+    }
+};
+
+// clang-format on
 
 TEST(ResolverFake, ResolvesWhateverItIsAsked)
 {

@@ -30,6 +30,11 @@ struct SolidSyslogResolver* ResolverFake_Get(void)
     return &instance;
 }
 
+void ResolverFake_Reset(void)
+{
+    resolveCallCount = 0;
+}
+
 int ResolverFake_ResolveCallCount(void)
 {
     return resolveCallCount;

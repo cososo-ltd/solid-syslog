@@ -248,7 +248,10 @@ std::string TheDrainEndsIdle(const ScenarioState& state)
     return (state.Status == SOLIDSYSLOG_SERVICE_IDLE) ? std::string() : "the last pass was not IDLE";
 }
 
-/* Without a loss report, every record logged reached the sender. */
+/* Without a loss report, every record logged reached the sender. With one
+ * the shortfall is legitimate but unaccounted: a report is latched once per
+ * run and the Core has no per-record count of what its queues discarded, so
+ * the exact account waits on a story that adds one. */
 std::string EveryRecordIsDeliveredOrItsLossReported(const ScenarioState& state)
 {
     bool lossReported = false;

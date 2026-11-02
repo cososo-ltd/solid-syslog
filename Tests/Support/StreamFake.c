@@ -31,6 +31,7 @@ struct StreamFake
     /* The frame in progress: the length being read from its prefix, then
      * the body bytes received against that length. */
     bool PrefixComplete;
+    bool PrefixGarbage; /* a byte that was not a digit: the frame is dropped, not kept */
     size_t ExpectedLength;
     char* Body;
     size_t BodyReceived;
@@ -97,9 +98,13 @@ static void TakePrefixByte(struct StreamFake* fake, uint8_t byte)
         fake->BodyReceived = 0U;
         CompleteFrameIfBodyIsWhole(fake);
     }
-    else
+    else if ((byte >= (uint8_t) '0') && (byte <= (uint8_t) '9'))
     {
         fake->ExpectedLength = (fake->ExpectedLength * 10U) + (size_t) (byte - (uint8_t) '0');
+    }
+    else
+    {
+        fake->PrefixGarbage = true;
     }
 }
 
@@ -114,7 +119,10 @@ static void CompleteFrameIfBodyIsWhole(struct StreamFake* fake)
 {
     if (fake->BodyReceived == fake->ExpectedLength)
     {
-        KeepFrame(fake);
+        if (!fake->PrefixGarbage)
+        {
+            KeepFrame(fake);
+        }
         DropPartialFrame(fake);
     }
 }
@@ -134,6 +142,7 @@ static void KeepFrame(struct StreamFake* fake)
 static void DropPartialFrame(struct StreamFake* fake)
 {
     fake->PrefixComplete = false;
+    fake->PrefixGarbage = false;
     fake->ExpectedLength = 0U;
     fake->BodyReceived = 0U;
 }
