@@ -22,6 +22,13 @@ target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
 
 # A Resolver that always answers, and a sequenceId counter with no platform
 # behind it: what a stream sender and a meta SD need to run on any host.
+# The scenario bench runs the real Core end to end over the fakes above and
+# records what came out, for the scenario suite and the named tests alike.
+# C++ with no CppUTest dependency, so both executables link it.
+add_library(ScenarioBench STATIC ScenarioBench.cpp SyslogFieldParser.cpp)
+target_include_directories(ScenarioBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ScenarioBench PUBLIC ${PROJECT_NAME} AddressFake BlockDeviceFake CounterFake ResolverFake StreamFake)
+
 # An opaque address token for tests whose stream never reads a sockaddr.
 add_library(AddressFake STATIC AddressFake.c)
 target_include_directories(AddressFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

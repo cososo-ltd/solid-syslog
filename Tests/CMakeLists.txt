@@ -83,6 +83,7 @@ set(TEST_SOURCES
     SolidSyslogTest.cpp
     BlockDeviceFakeTest.cpp
     StoreBenchTest.cpp
+    ScenarioBenchTest.cpp
     SolidSyslogServiceHeldRecordTest.cpp
     SolidSyslogPoolTest.cpp
     SolidSyslogTunablesTest.cpp
@@ -123,7 +124,6 @@ set(TEST_SOURCES
     SolidSyslogTimestampFormatterTest.cpp
     SolidSyslogMessageFormatterTest.cpp
     SolidSyslogUdpPayloadTest.cpp
-    Support/SyslogFieldParser.cpp
     BufferFakeTest.cpp
     BufferFake.c
     MutexFake.c
@@ -244,7 +244,7 @@ endif()
 
 add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
-target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench StreamFake ResolverFake CounterFake AddressFake CppUTest CppUTestExt Threads::Threads)
+target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench ScenarioBench StreamFake ResolverFake CounterFake AddressFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
 if(SOLIDSYSLOG_STDATOMIC)
