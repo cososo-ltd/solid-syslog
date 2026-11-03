@@ -16,6 +16,7 @@
 Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256Policy.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256PolicyStatic.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyGcm.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
 
 ## Include directories

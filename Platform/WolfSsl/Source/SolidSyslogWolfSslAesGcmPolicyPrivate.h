@@ -14,6 +14,15 @@
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 
+enum
+{
+    AES_GCM_POLICY_KEY_SIZE = 32,
+    AES_GCM_POLICY_NONCE_SIZE = 12,
+    AES_GCM_POLICY_TAG_SIZE = 16,
+    /* Trailer is nonce || tag - fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
+    AES_GCM_POLICY_TRAILER_SIZE = AES_GCM_POLICY_NONCE_SIZE + AES_GCM_POLICY_TAG_SIZE
+};
+
 struct SolidSyslogWolfSslAesGcmPolicy
 {
     struct SolidSyslogSecurityPolicy Base;
@@ -26,6 +35,15 @@ void SolidSyslogWolfSslAesGcmPolicy_Initialise(
     const struct SolidSyslogWolfSslAesGcmPolicyConfig* config
 );
 void SolidSyslogWolfSslAesGcmPolicy_Cleanup(struct SolidSyslogSecurityPolicy* base);
+
+/* The two wolfCrypt calls, in their own translation unit so that a build whose
+ * wc_AesGcmEncrypt does not keep wolfCrypt's exact-size buffer contract leaves
+ * them undefined rather than overrunning the record. See the platform page. */
+bool SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
+enum SolidSyslogSecurityPolicyOpenResult SolidSyslogWolfSslAesGcmPolicy_GcmDecrypt(
+    const struct SolidSyslogSecurityRecord* record,
+    const uint8_t* key
+);
 
 static inline void WolfSslAesGcmPolicy_Report(
     enum SolidSyslogSeverity severity,

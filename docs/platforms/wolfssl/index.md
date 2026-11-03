@@ -48,6 +48,26 @@ or check.
 
 Neither policy reaches a feature a bare build lacks.
 
+One build is refused rather than used. `--enable-afalg=xilinx` and
+`--enable-afalg=xilinx-aes` define `WOLFSSL_AFALG_XILINX_AES`, which routes
+AES-GCM through the Linux AF_ALG interface to the Zynq accelerator. On that port
+`wc_AesGcmEncrypt` and `wc_AesGcmDecrypt` read and write `WC_AES_BLOCK_SIZE`
+bytes beyond the body they are given, as wolfSSL's API documentation for the two
+functions states. The policy encrypts the record body in place, and the bytes
+after it are the record's nonce and tag, so the port would overwrite them during
+every seal. The pack therefore withholds
+`SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt` and
+`SolidSyslogWolfSslAesGcmPolicy_GcmDecrypt` on that build, and the link fails
+naming them, rather than sealing a record that could never be opened.
+
+The padded versions are not written because there is no board here to run them
+on. An integrator who has one supplies those two functions, declared in
+`SolidSyslogWolfSslAesGcmPolicyPrivate.h`: copy the body into a buffer with
+`WC_AES_BLOCK_SIZE` bytes of room after it, aligned to `WOLFSSL_XILINX_ALIGN`,
+make the wolfCrypt call on that buffer with the nonce, tag and header arguments
+the shipped versions pass, and copy the body back on success. The HMAC policy is
+unaffected: the port takes nothing but AES.
+
 ## Coexistence is an auditable contract
 
 `Platform/WolfSsl/Source/` calls no process-global wolfSSL API. It does not call

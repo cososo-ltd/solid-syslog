@@ -9,8 +9,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <wolfssl/wolfcrypt/aes.h>
-#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/memory.h>
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/types.h>
@@ -26,15 +24,6 @@
 const struct SolidSyslogErrorSource SolidSyslogWolfSslAesGcmPolicyErrorSource = {
     "WolfSslAesGcmPolicy",
     SolidSyslogAesGcmPolicyErrors_Name
-};
-
-enum
-{
-    AES_GCM_POLICY_KEY_SIZE = 32,
-    AES_GCM_POLICY_NONCE_SIZE = 12,
-    AES_GCM_POLICY_TAG_SIZE = 16,
-    /* Trailer is nonce || tag - fits SOLIDSYSLOG_MAX_INTEGRITY_SIZE (32). */
-    AES_GCM_POLICY_TRAILER_SIZE = AES_GCM_POLICY_NONCE_SIZE + AES_GCM_POLICY_TAG_SIZE
 };
 
 static inline struct SolidSyslogWolfSslAesGcmPolicy* WolfSslAesGcmPolicy_SelfFromBase(
@@ -53,11 +42,6 @@ static void WolfSslAesGcmPolicy_ReportFault(
     struct SolidSyslogWolfSslAesGcmPolicy* policy,
     uint16_t category,
     enum SolidSyslogAesGcmPolicyErrors code
-);
-static bool WolfSslAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key);
-static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_GcmDecrypt(
-    const struct SolidSyslogSecurityRecord* record,
-    const uint8_t* key
 );
 
 void SolidSyslogWolfSslAesGcmPolicy_Initialise(
@@ -108,7 +92,7 @@ static bool WolfSslAesGcmPolicy_SealRecord(
          * it back from there and writes the tag immediately after it. */
         if (wc_RNG_GenerateBlock(policy->Config.Rng, record->Trailer, AES_GCM_POLICY_NONCE_SIZE) == 0)
         {
-            if (WolfSslAesGcmPolicy_GcmEncrypt(record, key))
+            if (SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt(record, key))
             {
                 sealed = true;
                 policy->FaultReported = false;
@@ -167,37 +151,6 @@ static void WolfSslAesGcmPolicy_ReportFault(
     }
 }
 
-/* One AES-256-GCM seal with a transient wolfCrypt context: the body is
- * encrypted in place, the header authenticated, and the tag written after the
- * nonce already in the trailer. Any step failing is one fault to the caller;
- * the context is freed whenever it was initialised. */
-static bool WolfSslAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecord* record, const uint8_t* key)
-{
-    uint8_t* body = &record->Content[record->HeaderLength];
-    uint16_t bodyLength = (uint16_t) (record->ContentLength - record->HeaderLength);
-
-    Aes aes;
-    bool ok = false;
-    if (wc_AesInit(&aes, NULL, INVALID_DEVID) == 0)
-    {
-        ok = (wc_AesGcmSetKey(&aes, key, AES_GCM_POLICY_KEY_SIZE) == 0) &&
-             (wc_AesGcmEncrypt(
-                  &aes,
-                  body,
-                  body,
-                  bodyLength,
-                  record->Trailer,
-                  AES_GCM_POLICY_NONCE_SIZE,
-                  &record->Trailer[AES_GCM_POLICY_NONCE_SIZE],
-                  AES_GCM_POLICY_TAG_SIZE,
-                  record->Content,
-                  record->HeaderLength
-              ) == 0);
-        wc_AesFree(&aes);
-    }
-    return ok;
-}
-
 static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogSecurityPolicy* self,
     const struct SolidSyslogSecurityRecord* record
@@ -209,7 +162,7 @@ static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
     uint8_t key[AES_GCM_POLICY_KEY_SIZE];
     if (WolfSslAesGcmPolicy_FetchKey(policy, key))
     {
-        result = WolfSslAesGcmPolicy_GcmDecrypt(record, key);
+        result = SolidSyslogWolfSslAesGcmPolicy_GcmDecrypt(record, key);
         if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
         {
             WolfSslAesGcmPolicy_ReportFault(
@@ -225,53 +178,5 @@ static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
         }
     }
     wc_ForceZero(key, sizeof key);
-    return result;
-}
-
-/* The verdict comes from wc_AesGcmDecrypt's return code: 0 is authentic,
- * AES_GCM_AUTH_E is tamper or wrong key (the expected rejection - silent, like
- * the HMAC verify), anything else a genuine wolfCrypt error, which reaches no
- * verdict. */
-static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_GcmDecrypt(
-    const struct SolidSyslogSecurityRecord* record,
-    const uint8_t* key
-)
-{
-    uint8_t* body = &record->Content[record->HeaderLength];
-    uint16_t bodyLength = (uint16_t) (record->ContentLength - record->HeaderLength);
-
-    Aes aes;
-    enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
-    if (wc_AesInit(&aes, NULL, INVALID_DEVID) == 0)
-    {
-        if (wc_AesGcmSetKey(&aes, key, AES_GCM_POLICY_KEY_SIZE) == 0)
-        {
-            int verdict = wc_AesGcmDecrypt(
-                &aes,
-                body,
-                body,
-                bodyLength,
-                record->Trailer,
-                AES_GCM_POLICY_NONCE_SIZE,
-                &record->Trailer[AES_GCM_POLICY_NONCE_SIZE],
-                AES_GCM_POLICY_TAG_SIZE,
-                record->Content,
-                record->HeaderLength
-            );
-            if (verdict == 0)
-            {
-                result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_OPENED;
-            }
-            else if (verdict == AES_GCM_AUTH_E)
-            {
-                result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_REJECTED;
-            }
-            else
-            {
-                /* Genuine wolfCrypt failure - no verdict. */
-            }
-        }
-        wc_AesFree(&aes);
-    }
     return result;
 }

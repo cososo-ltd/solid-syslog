@@ -54,6 +54,7 @@ add_executable(SolidSyslogWolfSslAesGcmPolicyTest
     SolidSyslogWolfSslAesGcmPolicyTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyGcm.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
 )
 
