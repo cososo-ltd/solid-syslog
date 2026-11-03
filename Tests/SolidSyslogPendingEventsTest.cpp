@@ -18,6 +18,8 @@
 #include "TestUtils.h"
 
 using namespace CososoTesting;
+
+class TEST_SolidSyslogPendingEventsInsideSend_ADeliveryFailureRaisedInsideSendIsCapturedWithoutRecursion_Test;
 #include "SolidSyslogPendingEvents.h"
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
@@ -31,6 +33,11 @@ TEST_GROUP(SolidSyslogPendingEvents)
     void setup() override
     {
         SolidSyslogPendingEvents_Reset();
+    }
+
+    bool TakeKind(uint16_t category)
+    {
+        return SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(category), &taken);
     }
 };
 
@@ -49,7 +56,7 @@ TEST(SolidSyslogPendingEvents, ARaiseOfAReportedKindFillsItsSlot)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
 
-    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST), &taken));
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, taken.Severity);
     POINTERS_EQUAL(&source, taken.Source);
     LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, taken.Category);
@@ -62,7 +69,7 @@ TEST(SolidSyslogPendingEvents, ARaiseWithANativeCodeKeepsItInTheSlot)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_ErrorWithNativeCode(SOLIDSYSLOG_SEVERITY_ERROR, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7, -5);
 
-    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST), &taken));
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
     CHECK(taken.HasNativeCode);
     LONGS_EQUAL(-5, taken.NativeCode);
 }
@@ -73,7 +80,7 @@ TEST(SolidSyslogPendingEvents, ASecondRaiseOfTheSameKindOverwritesTheDetailAndSt
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 9);
 
-    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST), &taken));
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, taken.Severity);
     LONGS_EQUAL(9, taken.Detail);
 }
@@ -127,10 +134,9 @@ TEST(SolidSyslogPendingEvents, TakeClearsTheSlotSoASecondTakeFindsNothing)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
-    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
 
-    CHECK(SolidSyslogPendingEvents_Take(index, &taken));
-    CHECK_FALSE(SolidSyslogPendingEvents_Take(index, &taken));
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+    CHECK_FALSE(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 }
 
 static int detailNameCalls = 0;
@@ -151,12 +157,11 @@ TEST(SolidSyslogPendingEvents, TheTapNeverNamesTheDetailSoARaisingDetailNameDoes
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, SOLIDSYSLOG_CAT_STORE_FROZEN, 1);
     LONGS_EQUAL(0, detailNameCalls);
 
-    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_STORE_FROZEN);
-    CHECK(SolidSyslogPendingEvents_Take(index, &taken));
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_STORE_FROZEN));
     STRCMP_EQUAL("RAISED", SolidSyslogErrorEvent_DetailName(&taken));
 
     LONGS_EQUAL(1, detailNameCalls);
-    CHECK(SolidSyslogPendingEvents_Take(index, &taken));
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_STORE_FROZEN));
     LONGS_EQUAL(99, taken.Detail);
 }
 
@@ -197,6 +202,8 @@ TEST(SolidSyslogPendingEventsInsideSend, ADeliveryFailureRaisedInsideSendIsCaptu
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     CALLED_FAKE_ON(StreamFake_Send, stream, ONCE);
-    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED), &taken));
+    CHECK(
+        SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED), &taken)
+    );
     POINTERS_EQUAL(&SolidSyslogStreamSenderErrorSource, taken.Source);
 }

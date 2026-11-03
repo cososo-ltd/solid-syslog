@@ -26,6 +26,8 @@ struct PendingEventSlot
     bool Pending;
 };
 
+/* The reported kinds, in slot order. Index is identity: Take reports the
+ * category from this table, so a slot never has to store it. */
 static const uint16_t PENDING_EVENT_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
@@ -72,6 +74,7 @@ void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
         struct PendingEventSlot* slot = &pendingEventSlots[index];
+        /* Plain stores, Pending last: the header states why that is enough. */
         slot->Severity = event->Severity;
         slot->Source = event->Source;
         slot->Detail = event->Detail;
