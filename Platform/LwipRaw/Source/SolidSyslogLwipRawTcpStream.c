@@ -421,15 +421,20 @@ static uint32_t LwipRawTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogLwipR
  * tcp_abort (not tcp_close) because a half-open pcb has no graceful close. */
 /* Errored here means tcp_err fired or the connected callback reported a
  * failure - the attempt was answered, just not with a connection. Both it and
- * the code behind it are read on the lwIP thread that wrote them. */
+ * the code behind it are read on the lwIP thread that wrote them. A reset
+ * has already cost the pcb: tcp_err fires after lwIP freed it, so there is
+ * nothing left to abort. */
 static void LwipRawTcpStream_DoAbort(void* context)
 {
     struct LwipRawTcpStreamCall* call = LwipRawTcpStreamCallFromContext(context);
     struct SolidSyslogLwipRawTcpStream* self = call->Self;
     call->EndedByPeer = self->Errored;
     call->PeerError = self->LastError;
-    tcp_abort(self->Pcb);
-    self->Pcb = NULL;
+    if (LwipRawTcpStream_IsOpen(self))
+    {
+        tcp_abort(self->Pcb);
+        self->Pcb = NULL;
+    }
 }
 
 static bool LwipRawTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
