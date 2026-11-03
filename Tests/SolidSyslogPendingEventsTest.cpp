@@ -3,6 +3,9 @@
 
 #include "CppUTest/TestHarness.h"
 
+#include "AddressFake.h"
+#include "ErrorHandlerFake.h"
+#include "ResolverFake.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
@@ -11,7 +14,14 @@
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogTlsStreamCategories.h"
+#include "StreamFake.h"
+#include "TestUtils.h"
+
+using namespace CososoTesting;
 #include "SolidSyslogPendingEvents.h"
+#include "SolidSyslogSender.h"
+#include "SolidSyslogStreamSender.h"
+#include "SolidSyslogStreamSenderErrors.h"
 
 // clang-format off
 TEST_GROUP(SolidSyslogPendingEvents)
@@ -111,4 +121,82 @@ TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
         LONGS_EQUAL(REPORTED_KINDS[index], taken.Category);
         LONGS_EQUAL((int32_t) index, taken.Detail);
     }
+}
+
+TEST(SolidSyslogPendingEvents, TakeClearsTheSlotSoASecondTakeFindsNothing)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
+
+    CHECK(SolidSyslogPendingEvents_Take(index, &taken));
+    CHECK_FALSE(SolidSyslogPendingEvents_Take(index, &taken));
+}
+
+static int detailNameCalls = 0;
+
+static const char* RaisingDetailName(int32_t detail)
+{
+    static const struct SolidSyslogErrorSource self = {"raising", RaisingDetailName};
+    (void) detail;
+    detailNameCalls++;
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &self, SOLIDSYSLOG_CAT_STORE_FROZEN, 99);
+    return "RAISED";
+}
+
+TEST(SolidSyslogPendingEvents, TheTapNeverNamesTheDetailSoARaisingDetailNameDoesNotRecurse)
+{
+    static const struct SolidSyslogErrorSource source = {"raising", RaisingDetailName};
+    detailNameCalls = 0;
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, SOLIDSYSLOG_CAT_STORE_FROZEN, 1);
+    LONGS_EQUAL(0, detailNameCalls);
+
+    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_STORE_FROZEN);
+    CHECK(SolidSyslogPendingEvents_Take(index, &taken));
+    STRCMP_EQUAL("RAISED", SolidSyslogErrorEvent_DetailName(&taken));
+
+    LONGS_EQUAL(1, detailNameCalls);
+    CHECK(SolidSyslogPendingEvents_Take(index, &taken));
+    LONGS_EQUAL(99, taken.Detail);
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogPendingEventsInsideSend)
+{
+    struct SolidSyslogStream* stream = nullptr;
+    struct SolidSyslogSender* sender = nullptr;
+    struct SolidSyslogErrorEvent taken;
+    int sentinel = 0;
+
+    void setup() override
+    {
+        SolidSyslogPendingEvents_Reset();
+        ResolverFake_Reset();
+        stream = StreamFake_Create();
+        struct SolidSyslogStreamSenderConfig config = {};
+        config.Resolver = ResolverFake_Get();
+        config.Stream = stream;
+        config.Address = AddressFake_Get();
+        sender = SolidSyslogStreamSender_Create(&config);
+        ErrorHandlerFake_Install(&sentinel);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogStreamSender_Destroy(sender);
+        StreamFake_Destroy(stream);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogPendingEventsInsideSend, ADeliveryFailureRaisedInsideSendIsCapturedWithoutRecursion)
+{
+    StreamFake_SetSendFails(stream, true);
+    SolidSyslogSender_Send(sender, "x", 1U);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    CALLED_FAKE_ON(StreamFake_Send, stream, ONCE);
+    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED), &taken));
+    POINTERS_EQUAL(&SolidSyslogStreamSenderErrorSource, taken.Source);
 }
