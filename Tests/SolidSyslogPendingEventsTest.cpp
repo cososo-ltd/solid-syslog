@@ -39,3 +39,13 @@ TEST(SolidSyslogPendingEvents, ARaiseOfAReportedKindFillsItsSlot)
     LONGS_EQUAL(7, taken.Detail);
     CHECK_FALSE(taken.HasNativeCode);
 }
+
+TEST(SolidSyslogPendingEvents, ARaiseWithANativeCodeKeepsItInTheSlot)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_ErrorWithNativeCode(SOLIDSYSLOG_SEVERITY_ERROR, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7, -5);
+
+    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST), &taken));
+    CHECK(taken.HasNativeCode);
+    LONGS_EQUAL(-5, taken.NativeCode);
+}
