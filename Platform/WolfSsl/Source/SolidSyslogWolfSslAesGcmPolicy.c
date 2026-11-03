@@ -50,7 +50,7 @@ void SolidSyslogWolfSslAesGcmPolicy_Initialise(
 )
 {
     struct SolidSyslogWolfSslAesGcmPolicy* self = WolfSslAesGcmPolicy_SelfFromBase(base);
-    self->Base.TrailerSize = AES_GCM_POLICY_TRAILER_SIZE;
+    self->Base.TrailerSize = SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_TRAILER_SIZE;
     self->Base.SealRecord = WolfSslAesGcmPolicy_SealRecord;
     self->Base.OpenRecord = WolfSslAesGcmPolicy_OpenRecord;
     self->Config = *config;
@@ -73,7 +73,7 @@ static inline struct SolidSyslogWolfSslAesGcmPolicy* WolfSslAesGcmPolicy_SelfFro
     return (struct SolidSyslogWolfSslAesGcmPolicy*) base;
 }
 
-/* Seals in place: draws a fresh nonce into Trailer[0..AES_GCM_POLICY_NONCE_SIZE), then
+/* Seals in place: draws a fresh nonce into Trailer[0..SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE), then
  * GcmEncrypt encrypts the body (Content past HeaderLength) and writes the tag to
  * the remaining trailer bytes, authenticating the header (Content[0..HeaderLength))
  * as associated data. Fetches the key on demand and wipes it before returning. */
@@ -85,12 +85,13 @@ static bool WolfSslAesGcmPolicy_SealRecord(
     struct SolidSyslogWolfSslAesGcmPolicy* policy = WolfSslAesGcmPolicy_SelfFromBase(self);
 
     bool sealed = false;
-    uint8_t key[AES_GCM_POLICY_KEY_SIZE];
+    uint8_t key[SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE];
     if (WolfSslAesGcmPolicy_FetchKey(policy, key))
     {
         /* Draw the per-record nonce straight into the trailer; GcmEncrypt reads
          * it back from there and writes the tag immediately after it. */
-        if (wc_RNG_GenerateBlock(policy->Config.Rng, record->Trailer, AES_GCM_POLICY_NONCE_SIZE) == 0)
+        if (wc_RNG_GenerateBlock(policy->Config.Rng, record->Trailer, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE) ==
+            0)
         {
             if (SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt(record, key))
             {
@@ -124,8 +125,10 @@ static bool WolfSslAesGcmPolicy_SealRecord(
 static bool WolfSslAesGcmPolicy_FetchKey(struct SolidSyslogWolfSslAesGcmPolicy* policy, uint8_t* keyOut)
 {
     size_t keyLength = 0U;
-    bool fetched = policy->Config.GetKey(policy->Config.KeyContext, keyOut, AES_GCM_POLICY_KEY_SIZE, &keyLength) &&
-                   (keyLength == (size_t) AES_GCM_POLICY_KEY_SIZE);
+    bool fetched =
+        policy->Config
+            .GetKey(policy->Config.KeyContext, keyOut, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE, &keyLength) &&
+        (keyLength == (size_t) SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE);
     if (!fetched)
     {
         WolfSslAesGcmPolicy_ReportFault(
@@ -159,7 +162,7 @@ static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
     struct SolidSyslogWolfSslAesGcmPolicy* policy = WolfSslAesGcmPolicy_SelfFromBase(self);
 
     enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
-    uint8_t key[AES_GCM_POLICY_KEY_SIZE];
+    uint8_t key[SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE];
     if (WolfSslAesGcmPolicy_FetchKey(policy, key))
     {
         result = SolidSyslogWolfSslAesGcmPolicy_GcmDecrypt(record, key);

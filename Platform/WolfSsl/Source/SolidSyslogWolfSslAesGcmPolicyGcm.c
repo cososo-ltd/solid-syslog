@@ -32,16 +32,16 @@ bool SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityR
     bool ok = false;
     if (wc_AesInit(&aes, NULL, INVALID_DEVID) == 0)
     {
-        ok = (wc_AesGcmSetKey(&aes, key, AES_GCM_POLICY_KEY_SIZE) == 0) &&
+        ok = (wc_AesGcmSetKey(&aes, key, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE) == 0) &&
              (wc_AesGcmEncrypt(
                   &aes,
                   body,
                   body,
                   bodyLength,
                   record->Trailer,
-                  AES_GCM_POLICY_NONCE_SIZE,
-                  &record->Trailer[AES_GCM_POLICY_NONCE_SIZE],
-                  AES_GCM_POLICY_TAG_SIZE,
+                  SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE,
+                  &record->Trailer[SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE],
+                  SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_TAG_SIZE,
                   record->Content,
                   record->HeaderLength
               ) == 0);
@@ -66,7 +66,7 @@ enum SolidSyslogSecurityPolicyOpenResult SolidSyslogWolfSslAesGcmPolicy_GcmDecry
     enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     if (wc_AesInit(&aes, NULL, INVALID_DEVID) == 0)
     {
-        if (wc_AesGcmSetKey(&aes, key, AES_GCM_POLICY_KEY_SIZE) == 0)
+        if (wc_AesGcmSetKey(&aes, key, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE) == 0)
         {
             int verdict = wc_AesGcmDecrypt(
                 &aes,
@@ -74,9 +74,9 @@ enum SolidSyslogSecurityPolicyOpenResult SolidSyslogWolfSslAesGcmPolicy_GcmDecry
                 body,
                 bodyLength,
                 record->Trailer,
-                AES_GCM_POLICY_NONCE_SIZE,
-                &record->Trailer[AES_GCM_POLICY_NONCE_SIZE],
-                AES_GCM_POLICY_TAG_SIZE,
+                SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE,
+                &record->Trailer[SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE],
+                SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_TAG_SIZE,
                 record->Content,
                 record->HeaderLength
             );
