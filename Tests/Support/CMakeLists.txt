@@ -13,6 +13,35 @@ add_library(StoreBench STATIC StoreBench.cpp)
 target_include_directories(StoreBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(StoreBench PUBLIC ${PROJECT_NAME} BlockDeviceFake)
 
+# The stream fake: a Stream whose Open, Send and Close are scripted and
+# counted, and which keeps every byte it accepted so the frames a sender
+# wrote can be read back. A library because the scenario suite links it too.
+add_library(StreamFake STATIC StreamFake.c)
+target_include_directories(StreamFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
+
+# The scenario bench runs the real Core end to end over the fakes above and
+# records what came out, for the scenario suite and the named tests alike.
+# C++ with no CppUTest dependency, so both executables link it.
+add_library(ScenarioBench STATIC ScenarioBench.cpp SyslogFieldParser.cpp)
+target_include_directories(ScenarioBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ScenarioBench PUBLIC ${PROJECT_NAME} AddressFake BlockDeviceFake CounterFake ResolverFake StreamFake)
+
+# An opaque address token for tests whose stream never reads a sockaddr.
+add_library(AddressFake STATIC AddressFake.c)
+target_include_directories(AddressFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(AddressFake PUBLIC ${PROJECT_NAME})
+
+# A Resolver that always answers, and a sequenceId counter with no platform
+# behind it: what a stream sender and a meta SD need to run on any host.
+add_library(ResolverFake STATIC ResolverFake.c)
+target_include_directories(ResolverFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ResolverFake PUBLIC ${PROJECT_NAME})
+
+add_library(CounterFake STATIC CounterFake.c)
+target_include_directories(CounterFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(CounterFake PUBLIC ${PROJECT_NAME})
+
 add_library(ConfigLockFake STATIC ConfigLockFake.c)
 target_include_directories(ConfigLockFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ConfigLockFake PUBLIC ${PROJECT_NAME})

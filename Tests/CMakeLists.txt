@@ -88,6 +88,7 @@ set(TEST_SOURCES
     SolidSyslogTest.cpp
     BlockDeviceFakeTest.cpp
     StoreBenchTest.cpp
+    ScenarioBenchTest.cpp
     SolidSyslogServiceHeldRecordTest.cpp
     SolidSyslogPoolTest.cpp
     SolidSyslogTunablesTest.cpp
@@ -128,9 +129,7 @@ set(TEST_SOURCES
     SolidSyslogTimestampFormatterTest.cpp
     SolidSyslogMessageFormatterTest.cpp
     SolidSyslogUdpPayloadTest.cpp
-    Support/SyslogFieldParser.cpp
     BufferFakeTest.cpp
-    AddressFake.c
     BufferFake.c
     MutexFake.c
     ScratchFake.c
@@ -145,7 +144,8 @@ set(TEST_SOURCES
     FileFakeTest.cpp
     FileFake.c
     StreamFakeTest.cpp
-    StreamFake.c
+    ResolverFakeTest.cpp
+    CounterFakeTest.cpp
     TestAssert.cpp
     SolidSyslogBlockStoreTest.cpp
     SolidSyslogBlockStoreDrainOrderingTest.cpp
@@ -249,7 +249,7 @@ endif()
 
 add_executable(${PROJECT_NAME}Tests ${TEST_SOURCES})
 
-target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench CppUTest CppUTestExt Threads::Threads)
+target_link_libraries(${PROJECT_NAME}Tests PRIVATE ${PROJECT_NAME} ErrorHandlerFake ConfigLockFake BlockDeviceFake StoreBench ScenarioBench StreamFake ResolverFake CounterFake AddressFake CppUTest CppUTestExt Threads::Threads)
 target_include_directories(${PROJECT_NAME}Tests PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source ${CMAKE_CURRENT_SOURCE_DIR}/Support)
 
 if(SOLIDSYSLOG_STDATOMIC)
@@ -286,6 +286,10 @@ endif()
 # The store sweep (S25.01): its own executable so the per-commit junit run
 # stays fast. See Tests/StoreSweep/CMakeLists.txt for the budget.
 add_subdirectory(StoreSweep)
+
+# The scenario suite (S44.01): the real Core over the fakes under scripted
+# faults and seeded random walks. See Tests/Scenario/CMakeLists.txt.
+add_subdirectory(Scenario)
 
 if(SOLIDSYSLOG_OPENSSL)
     add_subdirectory(OpenSslIntegration)
