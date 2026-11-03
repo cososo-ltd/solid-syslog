@@ -79,6 +79,11 @@ if(SOLIDSYSLOG_MBEDTLS)
     add_subdirectory(MbedTlsIntegration)
 endif()
 
+if(SOLIDSYSLOG_WOLFSSL)
+    add_subdirectory(WolfSsl)
+    add_subdirectory(WolfSslIntegration)
+endif()
+
 set(TEST_SOURCES
     SolidSyslogTest.cpp
     BlockDeviceFakeTest.cpp

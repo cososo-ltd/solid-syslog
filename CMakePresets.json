@@ -46,6 +46,14 @@
             }
         },
         {
+            "name": "tunable-override-wolfssl",
+            "displayName": "Tunable Override over the wolfSSL pack (the host BDD target without OpenSSL)",
+            "inherits": "tunable-override-debug",
+            "cacheVariables": {
+                "SOLIDSYSLOG_PLATFORMS": "Posix;StdAtomic;WolfSsl"
+            }
+        },
+        {
             "name": "coverage",
             "displayName": "Coverage",
             "inherits": "debug",
@@ -178,6 +186,7 @@
         { "name": "release",        "configurePreset": "release" },
         { "name": "sanitize",       "configurePreset": "sanitize" },
         { "name": "tunable-override-debug", "configurePreset": "tunable-override-debug" },
+        { "name": "tunable-override-wolfssl", "configurePreset": "tunable-override-wolfssl" },
         { "name": "coverage",       "configurePreset": "coverage" },
         { "name": "tidy",           "configurePreset": "tidy" },
         { "name": "cppcheck",       "configurePreset": "cppcheck" },

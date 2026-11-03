@@ -46,6 +46,28 @@ services:
       - BDD_TARGET=linux
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc' Bdd/features/
 
+  # The same Linux pair driving the wolfSSL build of the target. Only the
+  # binary differs, so EXAMPLE_BINARY names it and the tag filter also leaves
+  # out @tls and @mtls, which that build cannot run until the wolfSSL stream
+  # lands. Never run together with behave-linux: both share one oracle.
+  behave-linux-wolfssl:
+    image: ghcr.io/cososo-ltd/behave@sha256:4c693232c26fa6bbdb2a8451f9f4879f4271a554cbcba356fc7fc38ff5bac65d # sha-be8da62
+    user: "0"
+    volumes:
+      - ..:/workspaces/SolidSyslog
+      - bdd-output-linux:/workspaces/SolidSyslog/Bdd/output
+      - syslog-ng-ctl-linux:/var/lib/syslog-ng
+    working_dir: /workspaces/SolidSyslog
+    networks:
+      - linux
+    depends_on:
+      syslog-ng-linux:
+        condition: service_healthy
+    environment:
+      - BDD_TARGET=linux
+      - EXAMPLE_BINARY=build/tunable-override-wolfssl/Bdd/Targets/SolidSyslogBddTarget
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @tls and not @mtls' Bdd/features/
+
   # Each BDD target pairs with its own syslog-ng instance on its own
   # bridge network so the `syslog-ng` DNS alias is scoped per-pair —
   # if both pairs ever run together (today they don't, by design),

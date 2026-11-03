@@ -12,6 +12,7 @@
 #include "BddTargetInteractive.h"
 #include "BddTargetIps.h"
 #include "BddTargetKey.h"
+#include "BddTargetSecurityPolicy.h"
 #include "BddTargetLanguage.h"
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetServiceThread.h"
@@ -26,10 +27,6 @@
 #include "SolidSyslogStdAtomicCounter.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogConfig.h"
-#include "SolidSyslogCrc16Policy.h"
-#include "SolidSyslogNullSecurityPolicy.h"
-#include "SolidSyslogOpenSslHmacSha256Policy.h"
-#include "SolidSyslogOpenSslAesGcmPolicy.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogMetaSd.h"
@@ -155,31 +152,6 @@ static void OnThresholdCrossed(void* context)
     }
 }
 
-static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
-{
-    struct SolidSyslogSecurityPolicy* policy = NULL;
-    enum BddTargetSecurityPolicy kind = BddTargetStoreSettings_SecurityPolicy();
-    if (kind == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
-    {
-        static const struct SolidSyslogOpenSslHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
-        policy = SolidSyslogOpenSslHmacSha256Policy_Create(&hmacConfig);
-    }
-    else if (kind == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
-    {
-        static const struct SolidSyslogOpenSslAesGcmPolicyConfig aesConfig = {BddTargetKey_Get, NULL};
-        policy = SolidSyslogOpenSslAesGcmPolicy_Create(&aesConfig);
-    }
-    else if (kind == BDD_TARGET_SECURITY_POLICY_NULL)
-    {
-        policy = SolidSyslogNullSecurityPolicy_Get();
-    }
-    else
-    {
-        policy = SolidSyslogCrc16Policy_Create();
-    }
-    return policy;
-}
-
 static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* options)
 {
     bool useFile = (strcmp(options->Store, "file") == 0);
@@ -191,7 +163,7 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
         storeBlockDevice =
             SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
 
-        securityPolicy = CreateSecurityPolicy();
+        securityPolicy = BddTargetSecurityPolicy_Create();
         static struct SolidSyslogBlockStoreConfig storeConfig = {0};
         storeConfig.BlockDevice = storeBlockDevice;
         storeConfig.MaxBlocks = BddTargetStoreSettings_MaxBlocks();
@@ -220,27 +192,6 @@ static void DestroySender(void)
     SolidSyslogPosixResolver_Destroy(sharedResolver);
 }
 
-/* The settings are fixed once the command line is parsed, so the policy to
- * destroy is the one the same setting named at create. */
-static void DestroySecurityPolicy(void)
-{
-    enum BddTargetSecurityPolicy kind = BddTargetStoreSettings_SecurityPolicy();
-    if (kind == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
-    {
-        SolidSyslogOpenSslHmacSha256Policy_Destroy(securityPolicy);
-    }
-    else if (kind == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
-    {
-        SolidSyslogOpenSslAesGcmPolicy_Destroy(securityPolicy);
-    }
-    else if (kind == BDD_TARGET_SECURITY_POLICY_CRC16)
-    {
-        SolidSyslogCrc16Policy_Destroy();
-    }
-    /* else "null": the shared NullSecurityPolicy is immutable - nothing to free. */
-    securityPolicy = NULL;
-}
-
 static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetOptions* options)
 {
     bool useFile = (strcmp(options->Store, "file") == 0);
@@ -249,7 +200,8 @@ static void DestroyStore(struct SolidSyslogStore* store, const struct BddTargetO
     {
         SolidSyslogBlockStore_Destroy(store);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        DestroySecurityPolicy();
+        BddTargetSecurityPolicy_Destroy(securityPolicy);
+        securityPolicy = NULL;
         SolidSyslogPosixFile_Destroy(storeFile);
     }
     /* else: NullStore is shared and immutable - nothing to destroy. */

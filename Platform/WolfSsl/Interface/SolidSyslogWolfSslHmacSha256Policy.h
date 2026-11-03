@@ -1,0 +1,51 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
+/** @file
+ *  HMAC-SHA256 integrity SecurityPolicy via wolfCrypt, for a store that must
+ *  detect tampering of records at rest (authentication only, no confidentiality).
+ *
+ *  What the policy does through its vtable is the substance:
+ *
+ *  - Seal authenticates the whole record content as one buffer (the header/body
+ *    split matters only to AEAD policies, so HeaderLength is ignored) and writes
+ *    the 32-byte tag into the record trailer. It is keyed and fails closed - if
+ *    the key is unavailable or shorter than the SHA-256 output (32 bytes), Seal
+ *    returns false and nothing is stored.
+ *  - Open recomputes the tag and compares it to the stored one in constant time
+ *    (no early exit, no timing oracle). A mismatch is rejected - the expected
+ *    tamper verdict - and is not reported. A key that is unavailable or too
+ *    short, or a wolfCrypt fault, could not run, and is reported.
+ *
+ *  The key is fetched on demand via GetKey and wiped after every computation - it
+ *  is never stored on the instance. */
+#ifndef SOLIDSYSLOGWOLFSSLHMACSHA256POLICY_H
+#define SOLIDSYSLOGWOLFSSLHMACSHA256POLICY_H
+
+#include "SolidSyslogExternC.h"
+#include "SolidSyslogKeyFunction.h"
+
+struct SolidSyslogSecurityPolicy;
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    struct SolidSyslogWolfSslHmacSha256PolicyConfig
+    {
+        SolidSyslogKeyFunction GetKey; /**< Fetches the HMAC key on demand; required. A key shorter than 32
+                                            bytes (the SHA-256 output size) is treated as unavailable. */
+        void* KeyContext; /**< Passed back to GetKey unchanged; NULL is fine. */
+    };
+
+    /** Draw an HMAC policy from the pool. Bad config (NULL GetKey) or an exhausted
+     *  pool falls back to the shared NullSecurityPolicy. */
+    struct SolidSyslogSecurityPolicy* SolidSyslogWolfSslHmacSha256Policy_Create(
+        const struct SolidSyslogWolfSslHmacSha256PolicyConfig* config
+    );
+    /** Release the pool slot; the policy owns no resources beyond the slot (the
+     *  key is fetched per-call). */
+    void SolidSyslogWolfSslHmacSha256Policy_Destroy(struct SolidSyslogSecurityPolicy * base);
+
+SOLIDSYSLOG_EXTERN_C_END
+
+#endif /* SOLIDSYSLOGWOLFSSLHMACSHA256POLICY_H */

@@ -87,6 +87,7 @@ ALIASES = {
     "LwipSocket": ["lwIP", "lwIP (Sockets API)", "Sockets API"],
     "MbedTls": ["Mbed TLS", "mbedTLS", "mbedtls"],
     "OpenSsl": ["OpenSSL"],
+    "WolfSsl": ["wolfSSL", "wolfssl", "wolfCrypt"],
     # Plus-FAT and Plus-TCP are FreeRTOS-Plus-* products, so "FreeRTOS" is part
     # of their own identity as much as it is the kernel pack's — each may name
     # the kernel it sits on. The pack's token stays the pack's, so a page that

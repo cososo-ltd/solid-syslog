@@ -75,3 +75,23 @@ if(SOLIDSYSLOG_MBEDTLS)
         CXX_CPPCHECK ""
     )
 endif()
+
+# wolfSSL fake - same shape as MbedTlsFakes. Headers come from $WOLFSSL_DIR's
+# install; we never link the real library into a target that pulls in this fake.
+if(SOLIDSYSLOG_WOLFSSL)
+    add_library(WolfSslFakes STATIC WolfSslFake.c)
+
+    target_include_directories(WolfSslFakes PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${SOLIDSYSLOG_WOLFSSL_DIR}/include
+    )
+
+    target_link_libraries(WolfSslFakes PUBLIC ${PROJECT_NAME})
+
+    # cppcheck walks the wolfSSL headers and reports style findings inside
+    # them; they are not ours to fix. Disabled per target, as for MbedTlsFakes.
+    set_target_properties(WolfSslFakes PROPERTIES
+        C_CPPCHECK ""
+        CXX_CPPCHECK ""
+    )
+endif()

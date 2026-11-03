@@ -458,6 +458,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `c99` | Core alone at strict `-std=c99`, proving the conformance claim |
 | `c99-platforms` | The POSIX and OpenSSL packs at C99, as a drift check |
 | `tunable-override-debug` | Builds against a user tunables header, and the Linux BDD target |
+| `tunable-override-wolfssl` | The same, with the Linux BDD target over the wolfSSL pack instead of OpenSSL |
 | `msvc-debug` | MSVC build — Windows portability check (requires vcpkg) |
 | `msvc-tunable-override` | The same override mechanism, and the Windows BDD target |
 | `freertos-cross` | ARM Cortex-M3 cross-build of the FreeRTOS-Plus-TCP BDD target |
