@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogExternC.h"
@@ -16,6 +17,10 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void SolidSyslogPendingEvents_Reset(void);
+
+    size_t SolidSyslogPendingEvents_IndexOf(uint16_t category);
+
+    void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event);
 
     bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event);
 

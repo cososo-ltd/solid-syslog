@@ -2,6 +2,7 @@
 
 #include "CppUTest/TestHarness.h"
 
+#include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPendingEvents.h"
 
@@ -24,4 +25,17 @@ TEST(SolidSyslogPendingEvents, NothingIsPendingAfterReset)
     {
         CHECK_FALSE(SolidSyslogPendingEvents_Take(index, &taken));
     }
+}
+
+TEST(SolidSyslogPendingEvents, ARaiseOfAReportedKindFillsItsSlot)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    CHECK(SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST), &taken));
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, taken.Severity);
+    POINTERS_EQUAL(&source, taken.Source);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, taken.Category);
+    LONGS_EQUAL(7, taken.Detail);
+    CHECK_FALSE(taken.HasNativeCode);
 }
