@@ -70,9 +70,19 @@ TEST(ScenarioSuite, ASenderRefusingBeforeAnythingIsQueuedIsNoOutage)
     CHECK_SCENARIO(OLDEST, "DSSSULS");
 }
 
+TEST(ScenarioSuite, ASenderRefusingWhatWasQueuedIsReportedOnce)
+{
+    CHECK_SCENARIO(OLDEST, "LDSSULSDSUS");
+}
+
 TEST(ScenarioSuite, ADeviceFailingAtAPassFreezesTheStoreOnce)
 {
     CHECK_SCENARIO(OLDEST, "LSLSFLSLSLS");
+}
+
+TEST(ScenarioSuite, ADeviceFailingWithNothingQueuedIsNotYetAStoreFault)
+{
+    CHECK_SCENARIO(OLDEST, "LSFSSLS");
 }
 
 TEST(ScenarioSuite, ADeviceFailingDuringAnOutageLosesWhatTheStoreHeld)

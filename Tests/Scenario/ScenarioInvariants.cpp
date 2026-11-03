@@ -105,7 +105,10 @@ std::string NoUniversalError(const ScenarioState& state)
     return reason;
 }
 
-/* One DELIVERY_FAILED opens an outage and one RESTORED closes it. */
+/* One DELIVERY_FAILED opens an outage and one RESTORED closes it, and a
+ * pass that put a send to a refusing sender is inside an open outage. The
+ * edges, not the script, say which run the sender is in: a sender taken up
+ * and down again with nothing sent between is still the one outage. */
 std::string SenderEdgesAlternate(const ScenarioState& state)
 {
     bool failed = false;
@@ -122,6 +125,11 @@ std::string SenderEdgesAlternate(const ScenarioState& state)
             reason = failed ? "" : "RESTORED without DELIVERY_FAILED";
             failed = false;
         }
+    }
+    bool refused = state.SenderDown && (state.Bench.SendsInLastPass() > 0U);
+    if (reason.empty() && refused && !failed)
+    {
+        reason = "a send was refused without DELIVERY_FAILED";
     }
     return reason;
 }
@@ -144,6 +152,9 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
     return reason;
 }
 
+/* A store fault is reported only with the device failed, once the store has
+ * touched the failed device, and FROZEN at most once. The device fails for
+ * good, so a fault reported at any time since is the one for this run. */
 std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
 {
     std::string reason;
@@ -156,6 +167,13 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
         {
             reason = Count("category", events[i].Category) + " with the device working";
         }
+    }
+    size_t reported =
+        CountCategory(events, SOLIDSYSLOG_CAT_STORE_FROZEN) + CountCategory(events, SOLIDSYSLOG_CAT_STORE_WRITE_FAILED);
+    bool exercised = state.DeviceFailed && (state.Bench.DeviceOperationsInLastPass() > 0U);
+    if (reason.empty() && exercised && (reported == 0U))
+    {
+        reason = "the failed device was used without a store fault";
     }
     if (reason.empty() && (CountCategory(events, SOLIDSYSLOG_CAT_STORE_FROZEN) > 1U))
     {
