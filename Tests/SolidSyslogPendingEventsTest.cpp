@@ -1,10 +1,16 @@
 #include <stddef.h>
+#include <stdint.h>
 
 #include "CppUTest/TestHarness.h"
 
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
+#include "SolidSyslogSenderCategories.h"
+#include "SolidSyslogStoreCategories.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogPendingEvents.h"
 
 // clang-format off
@@ -71,5 +77,38 @@ TEST(SolidSyslogPendingEvents, ACategoryOutsideTheSetChangesNothing)
     for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
     {
         CHECK_FALSE(SolidSyslogPendingEvents_Take(index, &taken));
+    }
+}
+
+static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
+    SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+    SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+    SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+    SOLIDSYSLOG_CAT_STORE_FROZEN,
+    SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+    SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
+    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+};
+
+TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    for (size_t kind = 0U; kind < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; kind++)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, REPORTED_KINDS[kind], (int32_t) kind);
+    }
+
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        CHECK(SolidSyslogPendingEvents_Take(index, &taken));
+        LONGS_EQUAL(REPORTED_KINDS[index], taken.Category);
+        LONGS_EQUAL((int32_t) index, taken.Detail);
     }
 }
