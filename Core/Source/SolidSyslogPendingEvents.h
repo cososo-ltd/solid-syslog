@@ -17,21 +17,25 @@
  * the slot's index, so it is not stored. On a 32-bit target a slot is 20 bytes
  * and the table of SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 280 bytes of
  * static RAM; the kind table beside it is 28 bytes of constant data. A 64-bit
- * host pads a slot to 32 bytes.
+ * host pads a slot to 24 bytes.
  *
  * The tap is the whole of what runs on a failing path after the handler, so
  * it must be safe from any task and any context, including inside a Send
  * that is failing and inside a DetailName callback. It therefore calls
- * nothing: no role, no clock, no lock, no name function. Recording is a
- * handful of plain word-sized stores with Pending written last, and Take
- * clears Pending before it copies the fields. The ordering is stated here
- * rather than enforced by volatile or an atomic: volatile on one member
- * orders nothing else against it, and the C99 baseline has no atomics. What
- * the stores do guarantee is that every field of a slot is always a valid
- * value for that kind, so two writers racing on one slot, or a Take copying
- * while a writer lands, leave at worst a mix of two events of the same kind
- * with a set flag. Both said the kind happened, and an event landing during
- * a copy is reported again on the next Take rather than lost. */
+ * nothing: no role, no clock, no lock, no name function. Recording is six
+ * plain word-sized stores with Pending last in source order, and Take clears
+ * Pending before it copies the fields. Nothing enforces that order beyond
+ * the source: the C99 baseline has no atomics, and no lock is taken because
+ * the tap runs inside a failing role on whatever task met the fault. Two
+ * writers racing on one slot, or a Take copying while a writer lands, leave
+ * a slot or a copy mixing fields of two events of the same kind, with the
+ * flag set. Both said the kind happened, and an event landing during a copy
+ * is reported again on the next Take rather than lost. The mix can pair one
+ * event's Source with the other's Detail, and where two backends raise one
+ * category in the same build the detail is then named through the wrong
+ * backend's table, or not at all. The first write of a kind is the other
+ * case: a Take that overtakes it sees a slot still at its zero initial
+ * values, a NULL Source at SOLIDSYSLOG_SEVERITY_EMERGENCY. */
 #ifndef SOLIDSYSLOGPENDINGEVENTS_H
 #define SOLIDSYSLOGPENDINGEVENTS_H
 
@@ -46,9 +50,6 @@
 #define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 14U
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
-
-    /* Clear every slot's Pending flag. */
-    void SolidSyslogPendingEvents_Reset(void);
 
     /* The slot index of a category, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT
      * for a category that is not a reported kind. */

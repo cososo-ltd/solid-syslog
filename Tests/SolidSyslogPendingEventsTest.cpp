@@ -25,14 +25,26 @@ class TEST_SolidSyslogPendingEventsInsideSend_ADeliveryFailureRaisedInsideSendIs
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStreamSenderErrors.h"
 
+/* The table is static and has no production reset: a pending kind is meant to
+ * survive until something takes it. Tests start clean by taking every slot. */
+static void DrainEveryKind(struct SolidSyslogErrorEvent* into)
+{
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        (void) SolidSyslogPendingEvents_Take(index, into);
+    }
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPendingEvents)
 {
     struct SolidSyslogErrorEvent taken;
+    int sentinel = 0;
 
     void setup() override
     {
-        SolidSyslogPendingEvents_Reset();
+        DrainEveryKind(&taken);
+        ErrorHandlerFake_Install(&sentinel);
     }
 
     bool TakeKind(uint16_t category)
@@ -43,7 +55,7 @@ TEST_GROUP(SolidSyslogPendingEvents)
 
 // clang-format on
 
-TEST(SolidSyslogPendingEvents, NothingIsPendingAfterReset)
+TEST(SolidSyslogPendingEvents, NothingIsPendingOnceEveryKindHasBeenTaken)
 {
     for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
     {
@@ -131,6 +143,14 @@ TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
     }
 }
 
+TEST(SolidSyslogPendingEvents, TakeOfACategoryOutsideTheSetFindsNothingAndLeavesTheEventAlone)
+{
+    taken.Detail = 77;
+
+    CHECK_FALSE(TakeKind(SOLIDSYSLOG_CAT_BAD_CONFIG));
+    LONGS_EQUAL(77, taken.Detail);
+}
+
 TEST(SolidSyslogPendingEvents, TakeClearsTheSlotSoASecondTakeFindsNothing)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
@@ -176,7 +196,7 @@ TEST_GROUP(SolidSyslogPendingEventsInsideSend)
 
     void setup() override
     {
-        SolidSyslogPendingEvents_Reset();
+        DrainEveryKind(&taken);
         ResolverFake_Reset();
         stream = StreamFake_Create();
         struct SolidSyslogStreamSenderConfig config = {};

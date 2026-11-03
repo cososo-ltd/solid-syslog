@@ -28,7 +28,7 @@ struct PendingEventSlot
 
 /* The reported kinds, in slot order. Index is identity: Take reports the
  * category from this table, so a slot never has to store it. */
-static const uint16_t PENDING_EVENT_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
+static const uint16_t PendingEvents_Kinds[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
     SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
@@ -45,22 +45,16 @@ static const uint16_t PENDING_EVENT_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] 
     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
 };
 
-static struct PendingEventSlot pendingEventSlots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
-
-void SolidSyslogPendingEvents_Reset(void)
-{
-    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
-    {
-        pendingEventSlots[index].Pending = false;
-    }
-}
+static struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
 
 size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
 {
     size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
-    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    for (size_t index = 0U;
+         (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && (found == SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT);
+         index++)
     {
-        if (PENDING_EVENT_KINDS[index] == category)
+        if (PendingEvents_Kinds[index] == category)
         {
             found = index;
         }
@@ -73,7 +67,7 @@ void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
     size_t index = SolidSyslogPendingEvents_IndexOf(event->Category);
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
-        struct PendingEventSlot* slot = &pendingEventSlots[index];
+        struct PendingEventSlot* slot = &PendingEvents_Slots[index];
         /* Plain stores, Pending last: the header states why that is enough. */
         slot->Severity = event->Severity;
         slot->Source = event->Source;
@@ -89,11 +83,11 @@ bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* e
     bool wasPending = false;
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
-        struct PendingEventSlot* slot = &pendingEventSlots[index];
+        struct PendingEventSlot* slot = &PendingEvents_Slots[index];
         wasPending = slot->Pending;
         slot->Pending = false;
         event->Severity = slot->Severity;
-        event->Category = PENDING_EVENT_KINDS[index];
+        event->Category = PendingEvents_Kinds[index];
         event->HasNativeCode = slot->HasNativeCode;
         event->Source = slot->Source;
         event->Detail = slot->Detail;
