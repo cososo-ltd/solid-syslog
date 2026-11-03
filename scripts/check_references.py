@@ -161,6 +161,18 @@ ALLOWED = [
         "Create function calling it; an integrator never sees it",
     ),
     (
+        "docs/platforms/wolfssl/index.md",
+        "SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt",
+        "declared in the pack's private header and withheld on the Xilinx AF_ALG build; "
+        "the page names it because that is what the link error says and what an "
+        "integrator with the board supplies",
+    ),
+    (
+        "docs/platforms/wolfssl/index.md",
+        "SolidSyslogWolfSslAesGcmPolicy_GcmDecrypt",
+        "the same, for the open side",
+    ),
+    (
         "docs/rfc-compliance.md",
         "SolidSyslogFormatter_BoundedString",
         "Core-internal: named as the place the UTF-8 rule is enforced, which is a "
