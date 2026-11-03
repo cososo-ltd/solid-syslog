@@ -6,11 +6,20 @@
 #include <string.h>
 
 #include "SolidSyslogBlockDeviceDefinition.h"
+#include "SolidSyslogTunables.h"
+
+/* The 4096 bytes the header promises, or twice the worst-case message where
+ * the tunables make that more, so a block sized to hold a worst-case record
+ * fits whatever a user tunables header says. */
+#if (2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE) > 4096U
+#define BLOCKDEVICEFAKE_BLOCK_CAPACITY (2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE)
+#else
+#define BLOCKDEVICEFAKE_BLOCK_CAPACITY 4096U
+#endif
 
 enum
 {
     BLOCKDEVICEFAKE_BLOCKS = 100,
-    BLOCKDEVICEFAKE_BLOCK_CAPACITY = 4096,
     BLOCKDEVICEFAKE_KEPT_WRITES = 1024,
     BLOCKDEVICEFAKE_OVERLAYS = 8
 };
