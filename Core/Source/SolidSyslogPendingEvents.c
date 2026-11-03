@@ -18,8 +18,8 @@
 
 struct PendingEventSlot
 {
-    enum SolidSyslogSeverity Severity;
     const struct SolidSyslogErrorSource* Source;
+    enum SolidSyslogSeverity Severity;
     int32_t Detail;
     int32_t NativeCode;
     bool HasNativeCode;

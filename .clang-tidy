@@ -76,7 +76,7 @@ CheckOptions:
   # alternative. New file-scope helper structs join this list;
   # public tags continue to be subject to StructPrefix above.
   # See docs/NAMING.md "Internal linkage", file-scope struct tags.
-  - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^(SolidSyslog|EscapedContext|Gap|LogRequest|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall)$' }
+  - { key: readability-identifier-naming.StructIgnoredRegexp,  value: '^(SolidSyslog|EscapedContext|Gap|LogRequest|OpenHandle|PendingEventSlot|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall)$' }
 
   # Public enum tags: SolidSyslogClass
   - { key: readability-identifier-naming.EnumCase,              value: CamelCase   }

@@ -119,13 +119,14 @@ TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     for (size_t kind = 0U; kind < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; kind++)
     {
-        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, REPORTED_KINDS[kind], (int32_t) kind);
+        uint16_t category = REPORTED_KINDS[kind]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, category, (int32_t) kind);
     }
 
     for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
     {
         CHECK(SolidSyslogPendingEvents_Take(index, &taken));
-        LONGS_EQUAL(REPORTED_KINDS[index], taken.Category);
+        LONGS_EQUAL(REPORTED_KINDS[index], taken.Category); // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
         LONGS_EQUAL((int32_t) index, taken.Detail);
     }
 }

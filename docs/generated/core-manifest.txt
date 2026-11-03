@@ -16,6 +16,7 @@
 Core/Source/SolidSyslog.c
 Core/Source/SolidSyslogStatic.c
 Core/Source/SolidSyslogError.c
+Core/Source/SolidSyslogPendingEvents.c
 Core/Source/SolidSyslogErrorCategoryName.c
 Core/Source/SolidSyslogErrorName.c
 Core/Source/SolidSyslogSeverityName.c
