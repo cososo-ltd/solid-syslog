@@ -51,6 +51,10 @@ struct LwipRawTcpStreamCall
     const void* SendBuffer;
     void* ReadBuffer;
     size_t Length;
+    /* Whether the setup hop got a pcb, read on the caller's thread. Pcb itself
+       is not: once the hop releases the stack, the tcpip thread may run the
+       error callback that nulls it before the caller looks. */
+    bool PcbCreated;
     err_t ConnectErr;
     /* What ended a failed attempt, read on the lwIP thread by the abort hop:
        the callbacks write Errored and LastError there, and the hop is what
@@ -216,7 +220,7 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
     {
         struct LwipRawTcpStreamCall call = {.Self = self, .Dst = SolidSyslogLwipRawAddress_AsConst(addr)};
         SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoOpenAndConnect, &call);
-        if (LwipRawTcpStream_IsOpen(self))
+        if (call.PcbCreated)
         {
             bool connected = false;
             if (call.ConnectErr == ERR_OK)
@@ -336,7 +340,8 @@ static void LwipRawTcpStream_DoOpenAndConnect(void* context)
     struct LwipRawTcpStreamCall* call = LwipRawTcpStreamCallFromContext(context);
     struct SolidSyslogLwipRawTcpStream* self = call->Self;
     self->Pcb = LwipRawTcpStream_OpenAndConfigurePcb(self);
-    if (LwipRawTcpStream_IsOpen(self))
+    call->PcbCreated = LwipRawTcpStream_IsOpen(self);
+    if (call->PcbCreated)
     {
         self->Connected = false;
         self->Errored = false;

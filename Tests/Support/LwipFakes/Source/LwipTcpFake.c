@@ -31,6 +31,7 @@ static tcp_connected_fn lastConnectedFn = NULL;
 static err_t tcpConnectError = ERR_OK;
 static bool connectCallbackFires = true;
 static err_t connectCallbackResult = ERR_OK;
+static bool connectResetBeforeReturn = false;
 
 static unsigned tcpCloseCallCount = 0U;
 static struct tcp_pcb* lastClosePcb = NULL;
@@ -83,6 +84,7 @@ void LwipTcpFake_Reset(void)
     tcpConnectError = ERR_OK;
     connectCallbackFires = true;
     connectCallbackResult = ERR_OK;
+    connectResetBeforeReturn = false;
 
     tcpCloseCallCount = 0;
     lastClosePcb = NULL;
@@ -177,6 +179,11 @@ void LwipTcpFake_SetConnectCallbackFires(bool fires)
 void LwipTcpFake_SetConnectCallbackResult(int8_t err)
 {
     connectCallbackResult = (err_t) err;
+}
+
+void LwipTcpFake_SetConnectResetBeforeReturn(bool resets)
+{
+    connectResetBeforeReturn = resets;
 }
 
 unsigned LwipTcpFake_TcpConnectCallCount(void)
@@ -370,7 +377,12 @@ err_t tcp_connect(struct tcp_pcb* pcb, const ip_addr_t* ipaddr, u16_t port, tcp_
     /* The fake fires the connected callback synchronously here, inside the
      * marshalled tcp_connect, mirroring production routing the whole
      * setup-and-connect through one marshal hop. */
-    if (ShouldFireConnectCallback(connected))
+    if (connectResetBeforeReturn && (lastErrFn != NULL))
+    {
+        lastErrFn(lastCallbackArg, ERR_RST);
+        --outstandingPcbCount;
+    }
+    else if (ShouldFireConnectCallback(connected))
     {
         (void) connected(lastCallbackArg, pcb, connectCallbackResult);
     }

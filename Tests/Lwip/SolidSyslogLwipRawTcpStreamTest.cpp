@@ -435,6 +435,20 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsRe
     );
 }
 
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheResetLandsBeforeTheHopReturns)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectResetBeforeReturn(true);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ERR_RST
+    );
+}
+
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsARepeatedRefusalOnce)
 {
     ErrorHandlerFake_Install(nullptr);
