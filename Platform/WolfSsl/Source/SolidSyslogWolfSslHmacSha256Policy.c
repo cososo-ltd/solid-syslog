@@ -40,22 +40,22 @@ static inline struct SolidSyslogWolfSslHmacSha256Policy* WolfSslHmacSha256Policy
     struct SolidSyslogSecurityPolicy* base
 );
 static bool WolfSslHmacSha256Policy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
 static enum SolidSyslogSecurityPolicyOpenResult WolfSslHmacSha256Policy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
 static bool WolfSslHmacSha256Policy_ComputeTag(
-    struct SolidSyslogWolfSslHmacSha256Policy* policy,
+    struct SolidSyslogWolfSslHmacSha256Policy* self,
     const uint8_t* data,
     uint16_t length,
     uint8_t* tagOut,
     uint16_t failureCategory
 );
 static bool WolfSslHmacSha256Policy_FetchKey(
-    struct SolidSyslogWolfSslHmacSha256Policy* policy,
+    struct SolidSyslogWolfSslHmacSha256Policy* self,
     uint8_t* keyOut,
     size_t* keyLengthOut
 );
@@ -67,7 +67,7 @@ static bool WolfSslHmacSha256Policy_Hmac(
     uint8_t* tagOut
 );
 static void WolfSslHmacSha256Policy_ReportFault(
-    struct SolidSyslogWolfSslHmacSha256Policy* policy,
+    struct SolidSyslogWolfSslHmacSha256Policy* self,
     uint16_t category,
     enum SolidSyslogHmacSha256PolicyErrors code
 );
@@ -105,13 +105,13 @@ static inline struct SolidSyslogWolfSslHmacSha256Policy* WolfSslHmacSha256Policy
 /* HMAC authenticates the whole content as one buffer - the header/body split
  * only matters to AEAD policies, so HeaderLength is ignored here. */
 static bool WolfSslHmacSha256Policy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
     uint8_t* tag = record->Trailer;
     return WolfSslHmacSha256Policy_ComputeTag(
-        WolfSslHmacSha256Policy_SelfFromBase(self),
+        WolfSslHmacSha256Policy_SelfFromBase(base),
         record->Content,
         record->ContentLength,
         tag,
@@ -126,7 +126,7 @@ static bool WolfSslHmacSha256Policy_SealRecord(
  * open could not run. Shared by seal (writes the record tag) and verify
  * (recomputes for comparison). */
 static bool WolfSslHmacSha256Policy_ComputeTag(
-    struct SolidSyslogWolfSslHmacSha256Policy* policy,
+    struct SolidSyslogWolfSslHmacSha256Policy* self,
     const uint8_t* data,
     uint16_t length,
     uint8_t* tagOut,
@@ -136,18 +136,18 @@ static bool WolfSslHmacSha256Policy_ComputeTag(
     uint8_t key[SOLIDSYSLOG_MAX_HMAC_KEY_SIZE];
     size_t keyLength = 0U;
     bool computed = false;
-    if (WolfSslHmacSha256Policy_FetchKey(policy, key, &keyLength))
+    if (WolfSslHmacSha256Policy_FetchKey(self, key, &keyLength))
     {
         if (WolfSslHmacSha256Policy_Hmac(key, keyLength, data, length, tagOut))
         {
             /* A tag to seal with or verify against: the run of faults is over. */
             computed = true;
-            policy->FaultReported = false;
+            self->FaultReported = false;
         }
         else
         {
             WolfSslHmacSha256Policy_ReportFault(
-                policy,
+                self,
                 failureCategory,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
             );
@@ -163,14 +163,14 @@ static bool WolfSslHmacSha256Policy_ComputeTag(
  * reports) if the key is unavailable, or if its length falls outside
  * [HMAC_SHA256_MIN_KEY_SIZE, sizeof buffer]. */
 static bool WolfSslHmacSha256Policy_FetchKey(
-    struct SolidSyslogWolfSslHmacSha256Policy* policy,
+    struct SolidSyslogWolfSslHmacSha256Policy* self,
     uint8_t* keyOut,
     size_t* keyLengthOut
 )
 {
     size_t keyLength = 0U;
     bool fetched = false;
-    if (policy->Config.GetKey(policy->Config.KeyContext, keyOut, SOLIDSYSLOG_MAX_HMAC_KEY_SIZE, &keyLength))
+    if (self->Config.GetKey(self->Config.KeyContext, keyOut, SOLIDSYSLOG_MAX_HMAC_KEY_SIZE, &keyLength))
     {
         if (WolfSslHmacSha256Policy_KeyLengthIsValid(keyLength))
         {
@@ -180,7 +180,7 @@ static bool WolfSslHmacSha256Policy_FetchKey(
         else
         {
             WolfSslHmacSha256Policy_ReportFault(
-                policy,
+                self,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
             );
@@ -189,7 +189,7 @@ static bool WolfSslHmacSha256Policy_FetchKey(
     else
     {
         WolfSslHmacSha256Policy_ReportFault(
-            policy,
+            self,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
         );
@@ -220,15 +220,15 @@ static bool WolfSslHmacSha256Policy_Hmac(
 
 /* The first fault in a run is the one reported. */
 static void WolfSslHmacSha256Policy_ReportFault(
-    struct SolidSyslogWolfSslHmacSha256Policy* policy,
+    struct SolidSyslogWolfSslHmacSha256Policy* self,
     uint16_t category,
     enum SolidSyslogHmacSha256PolicyErrors code
 )
 {
-    if (!policy->FaultReported)
+    if (!self->FaultReported)
     {
         WolfSslHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
-        policy->FaultReported = true;
+        self->FaultReported = true;
     }
 }
 
@@ -238,14 +238,14 @@ static inline bool WolfSslHmacSha256Policy_KeyLengthIsValid(size_t keyLength)
 }
 
 static enum SolidSyslogSecurityPolicyOpenResult WolfSslHmacSha256Policy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
     enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     if (WolfSslHmacSha256Policy_ComputeTag(
-            WolfSslHmacSha256Policy_SelfFromBase(self),
+            WolfSslHmacSha256Policy_SelfFromBase(base),
             record->Content,
             record->ContentLength,
             expected,

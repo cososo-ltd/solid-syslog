@@ -30,16 +30,16 @@ static inline struct SolidSyslogWolfSslAesGcmPolicy* WolfSslAesGcmPolicy_SelfFro
     struct SolidSyslogSecurityPolicy* base
 );
 static bool WolfSslAesGcmPolicy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
 static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool WolfSslAesGcmPolicy_FetchKey(struct SolidSyslogWolfSslAesGcmPolicy* policy, uint8_t* keyOut);
+static bool WolfSslAesGcmPolicy_FetchKey(struct SolidSyslogWolfSslAesGcmPolicy* self, uint8_t* keyOut);
 static void WolfSslAesGcmPolicy_ReportFault(
-    struct SolidSyslogWolfSslAesGcmPolicy* policy,
+    struct SolidSyslogWolfSslAesGcmPolicy* self,
     uint16_t category,
     enum SolidSyslogAesGcmPolicyErrors code
 );
@@ -78,30 +78,29 @@ static inline struct SolidSyslogWolfSslAesGcmPolicy* WolfSslAesGcmPolicy_SelfFro
  * the remaining trailer bytes, authenticating the header (Content[0..HeaderLength))
  * as associated data. Fetches the key on demand and wipes it before returning. */
 static bool WolfSslAesGcmPolicy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
-    struct SolidSyslogWolfSslAesGcmPolicy* policy = WolfSslAesGcmPolicy_SelfFromBase(self);
+    struct SolidSyslogWolfSslAesGcmPolicy* self = WolfSslAesGcmPolicy_SelfFromBase(base);
 
     bool sealed = false;
     uint8_t key[SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE];
-    if (WolfSslAesGcmPolicy_FetchKey(policy, key))
+    if (WolfSslAesGcmPolicy_FetchKey(self, key))
     {
         /* Draw the per-record nonce straight into the trailer; GcmEncrypt reads
          * it back from there and writes the tag immediately after it. */
-        if (wc_RNG_GenerateBlock(policy->Config.Rng, record->Trailer, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE) ==
-            0)
+        if (wc_RNG_GenerateBlock(self->Config.Rng, record->Trailer, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_NONCE_SIZE) == 0)
         {
             if (SolidSyslogWolfSslAesGcmPolicy_GcmEncrypt(record, key))
             {
                 sealed = true;
-                policy->FaultReported = false;
+                self->FaultReported = false;
             }
             else
             {
                 WolfSslAesGcmPolicy_ReportFault(
-                    policy,
+                    self,
                     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                     SOLIDSYSLOG_AES_GCM_POLICY_ERROR_ENCRYPT_FAILED
                 );
@@ -110,7 +109,7 @@ static bool WolfSslAesGcmPolicy_SealRecord(
         else
         {
             WolfSslAesGcmPolicy_ReportFault(
-                policy,
+                self,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                 SOLIDSYSLOG_AES_GCM_POLICY_ERROR_NONCE_FAILED
             );
@@ -122,17 +121,16 @@ static bool WolfSslAesGcmPolicy_SealRecord(
 
 /* Fetches the AES-256 key on demand. Fails closed (and reports) if the key is
  * unavailable or not exactly 32 bytes - AES-256 admits no other key length. */
-static bool WolfSslAesGcmPolicy_FetchKey(struct SolidSyslogWolfSslAesGcmPolicy* policy, uint8_t* keyOut)
+static bool WolfSslAesGcmPolicy_FetchKey(struct SolidSyslogWolfSslAesGcmPolicy* self, uint8_t* keyOut)
 {
     size_t keyLength = 0U;
     bool fetched =
-        policy->Config
-            .GetKey(policy->Config.KeyContext, keyOut, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE, &keyLength) &&
+        self->Config.GetKey(self->Config.KeyContext, keyOut, SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE, &keyLength) &&
         (keyLength == (size_t) SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE);
     if (!fetched)
     {
         WolfSslAesGcmPolicy_ReportFault(
-            policy,
+            self,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_AES_GCM_POLICY_ERROR_KEY_UNAVAILABLE
         );
@@ -142,34 +140,34 @@ static bool WolfSslAesGcmPolicy_FetchKey(struct SolidSyslogWolfSslAesGcmPolicy* 
 
 /* The first fault in a run is the one reported. */
 static void WolfSslAesGcmPolicy_ReportFault(
-    struct SolidSyslogWolfSslAesGcmPolicy* policy,
+    struct SolidSyslogWolfSslAesGcmPolicy* self,
     uint16_t category,
     enum SolidSyslogAesGcmPolicyErrors code
 )
 {
-    if (!policy->FaultReported)
+    if (!self->FaultReported)
     {
         WolfSslAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
-        policy->FaultReported = true;
+        self->FaultReported = true;
     }
 }
 
 static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
-    struct SolidSyslogWolfSslAesGcmPolicy* policy = WolfSslAesGcmPolicy_SelfFromBase(self);
+    struct SolidSyslogWolfSslAesGcmPolicy* self = WolfSslAesGcmPolicy_SelfFromBase(base);
 
     enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     uint8_t key[SOLIDSYSLOG_WOLFSSL_AES_GCM_POLICY_KEY_SIZE];
-    if (WolfSslAesGcmPolicy_FetchKey(policy, key))
+    if (WolfSslAesGcmPolicy_FetchKey(self, key))
     {
         result = SolidSyslogWolfSslAesGcmPolicy_GcmDecrypt(record, key);
         if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
         {
             WolfSslAesGcmPolicy_ReportFault(
-                policy,
+                self,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
                 SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
             );
@@ -177,7 +175,7 @@ static enum SolidSyslogSecurityPolicyOpenResult WolfSslAesGcmPolicy_OpenRecord(
         else
         {
             /* A verdict: the run of faults is over. */
-            policy->FaultReported = false;
+            self->FaultReported = false;
         }
     }
     wc_ForceZero(key, sizeof key);
