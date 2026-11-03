@@ -45,7 +45,7 @@ static const uint16_t PendingEvents_Kinds[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] 
     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
 };
 
-static struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
+static volatile struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
 
 size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
 {
@@ -67,8 +67,8 @@ void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
     size_t index = SolidSyslogPendingEvents_IndexOf(event->Category);
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
-        struct PendingEventSlot* slot = &PendingEvents_Slots[index];
-        /* Plain stores, Pending last: the header states why that is enough. */
+        volatile struct PendingEventSlot* slot = &PendingEvents_Slots[index];
+        /* Volatile stores, Pending last: the header states what that buys. */
         slot->Severity = event->Severity;
         slot->Source = event->Source;
         slot->Detail = event->Detail;
@@ -83,7 +83,7 @@ bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* e
     bool wasPending = false;
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
-        struct PendingEventSlot* slot = &PendingEvents_Slots[index];
+        volatile struct PendingEventSlot* slot = &PendingEvents_Slots[index];
         wasPending = slot->Pending;
         slot->Pending = false;
         event->Severity = slot->Severity;

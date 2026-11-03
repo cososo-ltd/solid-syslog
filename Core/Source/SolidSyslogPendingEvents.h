@@ -23,19 +23,22 @@
  * it must be safe from any task and any context, including inside a Send
  * that is failing and inside a DetailName callback. It therefore calls
  * nothing: no role, no clock, no lock, no name function. Recording is six
- * plain word-sized stores with Pending last in source order, and Take clears
- * Pending before it copies the fields. Nothing enforces that order beyond
- * the source: the C99 baseline has no atomics, and no lock is taken because
- * the tap runs inside a failing role on whatever task met the fault. Two
- * writers racing on one slot, or a Take copying while a writer lands, leave
+ * word-sized stores with Pending last, and Take clears Pending before it
+ * copies the fields. The slots are volatile, so the compiler keeps the
+ * stores in that order, which is as much as C99 offers: there are no atomics
+ * in the baseline, and no lock is taken because the tap runs inside a
+ * failing role on whatever task met the fault. A multi-core CPU may still
+ * retire the stores out of order; nothing here prevents that. Two writers
+ * racing on one slot, or a Take copying while a writer lands, leave
  * a slot or a copy mixing fields of two events of the same kind, with the
  * flag set. Both said the kind happened, and an event landing during a copy
  * is reported again on the next Take rather than lost. The mix can pair one
  * event's Source with the other's Detail, and where two backends raise one
  * category in the same build the detail is then named through the wrong
  * backend's table, or not at all. The first write of a kind is the other
- * case: a Take that overtakes it sees a slot still at its zero initial
- * values, a NULL Source at SOLIDSYSLOG_SEVERITY_EMERGENCY. */
+ * case: on a core that reorders the stores, a Take that overtakes it can see
+ * a slot still at its zero initial values, a NULL Source at
+ * SOLIDSYSLOG_SEVERITY_EMERGENCY. */
 #ifndef SOLIDSYSLOGPENDINGEVENTS_H
 #define SOLIDSYSLOGPENDINGEVENTS_H
 
