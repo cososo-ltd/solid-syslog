@@ -105,10 +105,11 @@ std::string NoUniversalError(const ScenarioState& state)
     return reason;
 }
 
-/* One DELIVERY_FAILED opens an outage and one RESTORED closes it, and a
- * pass that put a send to a refusing sender is inside an open outage. The
- * edges, not the script, say which run the sender is in: a sender taken up
- * and down again with nothing sent between is still the one outage. */
+/* One DELIVERY_FAILED opens an outage and one RESTORED closes it; a pass
+ * that put a send to a refusing sender is inside an open outage, and one
+ * that put a send through an accepting sender is outside any. The edges, not
+ * the script, say which run the sender is in: a sender taken up and down
+ * again with nothing sent between is still the one outage. */
 std::string SenderEdgesAlternate(const ScenarioState& state)
 {
     bool failed = false;
@@ -126,10 +127,14 @@ std::string SenderEdgesAlternate(const ScenarioState& state)
             failed = false;
         }
     }
-    bool refused = state.SenderDown && (state.Bench.SendsInLastPass() > 0U);
-    if (reason.empty() && refused && !failed)
+    bool sent = state.Bench.SendsInLastPass() > 0U;
+    if (reason.empty() && sent && state.SenderDown && !failed)
     {
         reason = "a send was refused without DELIVERY_FAILED";
+    }
+    if (reason.empty() && sent && !state.SenderDown && failed)
+    {
+        reason = "a send was accepted without RESTORED";
     }
     return reason;
 }
@@ -152,30 +157,34 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
     return reason;
 }
 
-/* A store fault is reported only with the device failed, once the store has
- * touched the failed device, and FROZEN at most once. The device fails for
- * good, so a fault reported at any time since is the one for this run. */
+/* STORE_FROZEN is raised only by a failed device, in a pass that touched
+ * it, once the store has touched it, and at most once. The device fails for
+ * good, so a freeze reported at any time since is the one for this run.
+ * STORE_WRITE_FAILED is the security policy refusing to seal a record, which
+ * the bench cannot provoke, so it has no invariant. */
 std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
 {
     std::string reason;
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
+    bool used = state.Bench.DeviceOperationsInLastPass() > 0U;
     for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
     {
-        bool deviceFault = (events[i].Category == SOLIDSYSLOG_CAT_STORE_FROZEN) ||
-                           (events[i].Category == SOLIDSYSLOG_CAT_STORE_WRITE_FAILED);
-        if (deviceFault && !state.DeviceFailed)
+        bool frozen = events[i].Category == SOLIDSYSLOG_CAT_STORE_FROZEN;
+        if (frozen && !state.DeviceFailed)
         {
-            reason = Count("category", events[i].Category) + " with the device working";
+            reason = "STORE_FROZEN with the device working";
+        }
+        if (frozen && !used)
+        {
+            reason = "STORE_FROZEN in a pass that did not use the device";
         }
     }
-    size_t reported =
-        CountCategory(events, SOLIDSYSLOG_CAT_STORE_FROZEN) + CountCategory(events, SOLIDSYSLOG_CAT_STORE_WRITE_FAILED);
-    bool exercised = state.DeviceFailed && (state.Bench.DeviceOperationsInLastPass() > 0U);
-    if (reason.empty() && exercised && (reported == 0U))
+    size_t reported = CountCategory(events, SOLIDSYSLOG_CAT_STORE_FROZEN);
+    if (reason.empty() && state.DeviceFailed && used && (reported == 0U))
     {
-        reason = "the failed device was used without a store fault";
+        reason = "the failed device was used without STORE_FROZEN";
     }
-    if (reason.empty() && (CountCategory(events, SOLIDSYSLOG_CAT_STORE_FROZEN) > 1U))
+    if (reason.empty() && (reported > 1U))
     {
         reason = "STORE_FROZEN more than once";
     }
