@@ -377,7 +377,7 @@ err_t tcp_connect(struct tcp_pcb* pcb, const ip_addr_t* ipaddr, u16_t port, tcp_
     /* The fake fires the connected callback synchronously here, inside the
      * marshalled tcp_connect, mirroring production routing the whole
      * setup-and-connect through one marshal hop. */
-    if (connectResetBeforeReturn && (lastErrFn != NULL))
+    if ((tcpConnectError == ERR_OK) && connectResetBeforeReturn && (lastErrFn != NULL))
     {
         lastErrFn(lastCallbackArg, ERR_RST);
         --outstandingPcbCount;
@@ -401,11 +401,18 @@ err_t tcp_close(struct tcp_pcb* pcb)
     return tcpCloseError;
 }
 
+/* As lwIP's tcp_abandon: the registered tcp_err is told ERR_ABRT before the
+ * pcb goes, so a wrapper that reads its flags after aborting sees the abort,
+ * not what ended the attempt. */
 void tcp_abort(struct tcp_pcb* pcb)
 {
     LWIP_REQUIRE_MARSHAL_ACTIVE();
     ++tcpAbortCallCount;
     lastAbortPcb = pcb;
+    if (lastErrFn != NULL)
+    {
+        lastErrFn(lastCallbackArg, ERR_ABRT);
+    }
     --outstandingPcbCount;
 }
 
