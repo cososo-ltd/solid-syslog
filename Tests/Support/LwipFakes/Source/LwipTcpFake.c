@@ -32,6 +32,7 @@ static err_t tcpConnectError = ERR_OK;
 static bool connectCallbackFires = true;
 static err_t connectCallbackResult = ERR_OK;
 static bool connectResetBeforeReturn = false;
+static bool resetAfterConnectBeforeReturn = false;
 
 static unsigned tcpCloseCallCount = 0U;
 static struct tcp_pcb* lastClosePcb = NULL;
@@ -85,6 +86,7 @@ void LwipTcpFake_Reset(void)
     connectCallbackFires = true;
     connectCallbackResult = ERR_OK;
     connectResetBeforeReturn = false;
+    resetAfterConnectBeforeReturn = false;
 
     tcpCloseCallCount = 0;
     lastClosePcb = NULL;
@@ -184,6 +186,11 @@ void LwipTcpFake_SetConnectCallbackResult(int8_t err)
 void LwipTcpFake_SetConnectResetBeforeReturn(bool resets)
 {
     connectResetBeforeReturn = resets;
+}
+
+void LwipTcpFake_SetResetAfterConnectBeforeReturn(bool resets)
+{
+    resetAfterConnectBeforeReturn = resets;
 }
 
 unsigned LwipTcpFake_TcpConnectCallCount(void)
@@ -385,6 +392,11 @@ err_t tcp_connect(struct tcp_pcb* pcb, const ip_addr_t* ipaddr, u16_t port, tcp_
     else if (ShouldFireConnectCallback(connected))
     {
         (void) connected(lastCallbackArg, pcb, connectCallbackResult);
+        if (resetAfterConnectBeforeReturn && (lastErrFn != NULL))
+        {
+            lastErrFn(lastCallbackArg, ERR_RST);
+            --outstandingPcbCount;
+        }
     }
     return tcpConnectError;
 }

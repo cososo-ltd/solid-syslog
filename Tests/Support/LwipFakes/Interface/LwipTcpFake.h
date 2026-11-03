@@ -47,6 +47,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * the peer's RST before the caller's thread runs again. Default false. */
     void LwipTcpFake_SetConnectResetBeforeReturn(bool resets);
 
+    /* Whether the peer resets the connection straight after accepting it,
+     * still before tcp_connect returns: the connected callback fires with
+     * ERR_OK, then the registered tcp_err with ERR_RST and the pcb is gone.
+     * Default false. */
+    void LwipTcpFake_SetResetAfterConnectBeforeReturn(bool resets);
+
     unsigned LwipTcpFake_TcpConnectCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastConnectPcb(void);
     const ip_addr_t* LwipTcpFake_LastConnectIpaddr(void);

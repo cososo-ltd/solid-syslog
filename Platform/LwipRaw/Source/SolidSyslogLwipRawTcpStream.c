@@ -221,12 +221,11 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
         SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoOpenAndConnect, &call);
         if (call.PcbCreated)
         {
-            bool connected = false;
             if (call.ConnectErr == ERR_OK)
             {
-                connected = LwipRawTcpStream_WaitForConnectedCallback(self);
+                opened = LwipRawTcpStream_WaitForConnectedCallback(self);
             }
-            if (!connected)
+            if (!opened)
             {
                 /* Abort first: the hop also reads what ended the attempt. */
                 SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoAbort, &call);
@@ -241,7 +240,9 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
                 SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
             );
         }
-        opened = LwipRawTcpStream_IsOpen(self);
+        /* Decided by what the hop and the wait saw, not by Pcb: a connection
+         * the peer resets straight after accepting it was still made, and
+         * its loss is the next Send's to report. */
         if (opened)
         {
             SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);

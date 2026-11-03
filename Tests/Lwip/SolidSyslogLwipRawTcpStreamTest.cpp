@@ -458,6 +458,13 @@ TEST(SolidSyslogLwipRawTcpStream, OpenDoesNotAbortAPcbTheStackHasAlreadyReleased
     CALLED_FAKE(LwipTcpFake_TcpAbort, NEVER);
 }
 
+TEST(SolidSyslogLwipRawTcpStream, OpenSucceedsWhenTheConnectionIsResetAfterItCompletedBeforeTheHopReturns)
+{
+    LwipTcpFake_SetResetAfterConnectBeforeReturn(true);
+
+    CHECK_TRUE(SolidSyslogStream_Open(stream, address));
+}
+
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsARepeatedRefusalOnce)
 {
     ErrorHandlerFake_Install(nullptr);
