@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogPendingEvents.h"
+
 static void Error_NoOpErrorHandler(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
@@ -56,6 +58,7 @@ void SolidSyslog_Error(
 {
     const struct SolidSyslogErrorEvent event = {severity, category, false, source, detail, 0};
     currentHandler(currentContext, &event);
+    SolidSyslogPendingEvents_Record(&event);
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- detail and nativeCode are both codes; every caller passes named values
@@ -69,4 +72,5 @@ void SolidSyslog_ErrorWithNativeCode(
 {
     const struct SolidSyslogErrorEvent event = {severity, category, true, source, detail, nativeCode};
     currentHandler(currentContext, &event);
+    SolidSyslogPendingEvents_Record(&event);
 }
