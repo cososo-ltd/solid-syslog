@@ -104,6 +104,10 @@ static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWol
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
 static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_StandsWithoutASigner(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
 static inline uint32_t WolfSslStream_CheckFailedForPin(enum SolidSyslogTlsAuthorisation verdict);
 static bool WolfSslStream_DigestCertificate(
     void* context,
@@ -589,7 +593,7 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
     if ((self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
         (store->error == ASN_NO_SIGNER_E))
     {
-        verdict = WolfSslStream_LeafMatchesAPin(self, store) ? 1 : 0;
+        verdict = (WolfSslStream_LeafMatchesAPin(self, store) && WolfSslStream_StandsWithoutASigner(self, store)) ? 1 : 0;
     }
     else
     {
@@ -611,6 +615,23 @@ static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream
     );
     self->RefusedChecks |= WolfSslStream_CheckFailedForPin(verdict);
     return verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+}
+
+/* With no anchor wolfSSL stops at the missing signer, and what it found on the
+ * way - the certificate's dates, an unknown critical extension - is never
+ * reported. So the stream checks them itself, parsing the certificate as a
+ * trust anchor is loaded: its own dates and extensions, and nothing above it,
+ * which is what a certificate authorised by a pin is. */
+static inline bool WolfSslStream_StandsWithoutASigner(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
+{
+    const WOLFSSL_BUFFER_INFO* certificate = &store->certs[store->error_depth];
+    wc_InitDecodedCert(&self->DecodedCertificate, certificate->buffer, certificate->length, self->Config.Heap);
+    int error = wc_ParseCert(&self->DecodedCertificate, CA_TYPE, VERIFY, NULL);
+    wc_FreeDecodedCert(&self->DecodedCertificate);
+    return error == 0;
 }
 
 /* Only a match authorises. A pin that will not parse was refused at Open, so a

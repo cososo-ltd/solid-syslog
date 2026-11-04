@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/wolfcrypt/asn.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -42,6 +43,10 @@ struct SolidSyslogWolfSslStream
      * names the check the contract puts first, whichever the library raised
      * last. */
     uint32_t RefusedChecks;
+    /* Where the verify callback parses a certificate the library found no
+     * signer for. Held here rather than on the stack of a callback already
+     * deep inside the handshake; valid only within that one call. */
+    DecodedCert DecodedCertificate;
 };
 
 void SolidSyslogWolfSslStream_Initialise(
