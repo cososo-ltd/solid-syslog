@@ -352,12 +352,13 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
     return ok;
 }
 
-/* A peer is authorised by a chain to trust anchors. With none, there is nothing
- * to check the peer against, so the connection stops rather than reaching a
- * peer this stream cannot identify. */
+/* A peer is authorised by a chain to trust anchors or by a pinned certificate
+ * fingerprint, and RFC 5425 section 4.2.1 makes the second sufficient on its
+ * own. With neither, there is nothing to check the peer against, so the
+ * connection stops rather than reaching a peer this stream cannot identify. */
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
 {
-    return installed->TrustAnchorsInstalled;
+    return installed->TrustAnchorsInstalled || (installed->FingerprintCount > 0U);
 }
 
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self)
