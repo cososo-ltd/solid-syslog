@@ -57,9 +57,10 @@ static struct SolidSyslogStructuredData sdSpy = {SdSpyFormat};
 
 /* A logger with its own identity and one SD of its own, over a passthrough
  * buffer and a store that keeps nothing: a Log goes straight to the sender
- * fake, so the only records Service sends are its reports. */
+ * fake, so the only records Service sends are its reports. A group sets
+ * anything else it needs in config before CreateLogger. */
 // clang-format off
-TEST_GROUP(SolidSyslogServiceEventReport)
+TEST_BASE(PassthroughReportBase)
 {
     struct SolidSyslogSender* fakeSender = nullptr;
     struct SolidSyslogBuffer* buffer = nullptr;
@@ -67,7 +68,7 @@ TEST_GROUP(SolidSyslogServiceEventReport)
     struct SolidSyslogStructuredData* sds[1] = {&sdSpy};
     struct SolidSyslogConfig config = {};
 
-    void setup() override
+    void CreateLogger()
     {
         fakeSender = SenderFake_Create();
         buffer = SolidSyslogPassthroughBuffer_Create(fakeSender);
@@ -83,7 +84,7 @@ TEST_GROUP(SolidSyslogServiceEventReport)
         solidSyslog = SolidSyslog_Create(&config);
     }
 
-    void teardown() override
+    void DestroyLogger() const
     {
         SolidSyslog_Destroy(solidSyslog);
         SolidSyslogPassthroughBuffer_Destroy(buffer);
@@ -98,6 +99,19 @@ TEST_GROUP(SolidSyslogServiceEventReport)
     [[nodiscard]] std::string LastMsg() const
     {
         return SyslogMsg(SenderFake_LastBufferAsString(fakeSender));
+    }
+};
+
+TEST_GROUP_BASE(SolidSyslogServiceEventReport, PassthroughReportBase)
+{
+    void setup() override
+    {
+        CreateLogger();
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
     }
 };
 
@@ -355,6 +369,106 @@ TEST(SolidSyslogServiceEventReport, ARefusedReportIsSentOnceTheSenderRecoversWhi
 
     /* The refused report, the logged record, then the report again. */
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, THRICE);
+    STRCMP_EQUAL("BUFFER_RECORDS_LOST", LastField(SYSLOG_FIELD_MSGID).c_str());
+}
+
+/* The integrator's switch: answers On, and counts the times it is asked. */
+struct ReportingSwitch
+{
+    bool On;
+    unsigned Asked;
+};
+
+static bool IsReportingOn(void* context)
+{
+    auto* reportingSwitch = static_cast<struct ReportingSwitch*>(context);
+    reportingSwitch->Asked++;
+    return reportingSwitch->On;
+}
+
+/* The same logger, with its switch wired to reportingSwitch, which starts on. */
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogServiceEventReportSwitch, PassthroughReportBase)
+{
+    struct ReportingSwitch reportingSwitch = {true, 0U};
+
+    void setup() override
+    {
+        config.IsEventReportingOn = IsReportingOn;
+        config.EventReportingContext = &reportingSwitch;
+        CreateLogger();
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogServiceEventReportSwitch, SwitchedOnTheReportIsMade)
+{
+    RaiseBufferLoss();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, SwitchedOffNoReportIsMade)
+{
+    reportingSwitch.On = false;
+    RaiseBufferLoss();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, AnEventRaisedWhileSwitchedOffIsReportedOnceSwitchedOn)
+{
+    reportingSwitch.On = false;
+    RaiseBufferLoss();
+    SolidSyslog_Service(solidSyslog);
+    reportingSwitch.On = true;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, TheSwitchIsNotAskedWhenNothingIsPending)
+{
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(0, reportingSwitch.Asked);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, TheSwitchIsNotAskedWhileARecordIsHeld)
+{
+    RaiseBufferLoss();
+    SenderFake_FailNextSend(fakeSender);
+    SolidSyslog_Service(solidSyslog);
+    RaiseBufferLoss();
+    SenderFake_FailNextSend(fakeSender);
+
+    SolidSyslog_Service(solidSyslog);
+
+    /* Only by the first pass, which made the report it still holds. */
+    LONGS_EQUAL(1, reportingSwitch.Asked);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, AReportAlreadyMadeIsSentAfterTheSwitchGoesOff)
+{
+    RaiseBufferLoss();
+    SenderFake_FailNextSend(fakeSender);
+    SolidSyslog_Service(solidSyslog);
+    reportingSwitch.On = false;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
     STRCMP_EQUAL("BUFFER_RECORDS_LOST", LastField(SYSLOG_FIELD_MSGID).c_str());
 }
 

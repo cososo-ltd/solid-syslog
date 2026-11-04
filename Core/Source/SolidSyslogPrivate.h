@@ -57,6 +57,8 @@ struct SolidSyslog
     void* DiscardPolicyContext;
     SolidSyslogHaltCallback OnHalt;
     void* HaltContext;
+    SolidSyslogEventReportingFunction IsEventReportingOn;
+    void* EventReportingContext;
     /* Set while the policy answers Halt, when a retaining store refuses a
      * record or the buffer has filled behind the record Service holds; Service
      * then moves nothing until the answer changes. */

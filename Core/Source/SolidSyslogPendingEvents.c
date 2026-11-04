@@ -78,6 +78,16 @@ size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
     return found;
 }
 
+bool SolidSyslogPendingEvents_IsPending(size_t index)
+{
+    bool pending = false;
+    if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
+    {
+        pending = PendingEvents_Slots[index].Pending;
+    }
+    return pending;
+}
+
 bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event)
 {
     bool wasPending = false;

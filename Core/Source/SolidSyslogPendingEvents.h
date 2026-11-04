@@ -62,6 +62,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * for a category that is not one, which Take answers false for. */
     size_t SolidSyslogPendingEvents_IndexOf(uint16_t category);
 
+    /* Whether the slot is pending, leaving it as it is; Take is what clears
+     * it. An index past the table is not pending. */
+    bool SolidSyslogPendingEvents_IsPending(size_t index);
+
     /* Clear the slot's Pending flag, then copy its fields into @p event with
      * the slot's category. Returns whether the slot was pending; the copy is
      * made either way, so @p event is only meaningful on true. Slot order is

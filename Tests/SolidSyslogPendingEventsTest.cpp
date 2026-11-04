@@ -175,6 +175,35 @@ TEST(SolidSyslogPendingEvents, TakeClearsTheSlotSoASecondTakeFindsNothing)
     CHECK_FALSE(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 }
 
+TEST(SolidSyslogPendingEvents, ARaisedKindIsPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    CHECK(SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
+}
+
+TEST(SolidSyslogPendingEvents, AKindNeverRaisedIsNotPending)
+{
+    CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)
+    ));
+}
+
+TEST(SolidSyslogPendingEvents, AskingWhetherAKindIsPendingLeavesItPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    (void) SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+}
+
+TEST(SolidSyslogPendingEvents, AnIndexPastTheTableIsNotPending)
+{
+    CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT));
+}
+
 TEST(SolidSyslogPendingEvents, ClearLeavesNothingPending)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};

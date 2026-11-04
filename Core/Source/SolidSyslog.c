@@ -59,6 +59,7 @@ static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidS
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self);
+static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_t index);
 static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
 static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event);
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
@@ -113,6 +114,12 @@ static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
 static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
 static void SolidSyslog_NullHalt(void* context);
 static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCallback configured, void* context);
+static bool SolidSyslog_ReportingAlwaysOn(void* context);
+static void SolidSyslog_InstallEventReporting(
+    struct SolidSyslog* self,
+    SolidSyslogEventReportingFunction configured,
+    void* context
+);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
@@ -138,6 +145,7 @@ void SolidSyslog_Initialise(
     SolidSyslog_InstallDiscardPolicy(self, config->GetDiscardPolicy, config->DiscardPolicyContext);
     SolidSyslog_InstallHalt(self, config->OnHalt, config->HaltContext);
     SolidSyslog_InstallScratch(self, config->Scratch);
+    SolidSyslog_InstallEventReporting(self, config->IsEventReportingOn, config->EventReportingContext);
 }
 
 void SolidSyslog_Cleanup(struct SolidSyslog* self)
@@ -173,6 +181,8 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->DiscardPolicyContext = NULL;
     self->OnHalt = SolidSyslog_NullHalt;
     self->HaltContext = NULL;
+    self->IsEventReportingOn = SolidSyslog_ReportingAlwaysOn;
+    self->EventReportingContext = NULL;
     self->Halted = false;
 }
 
@@ -192,6 +202,12 @@ static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, vo
 static void SolidSyslog_NullHalt(void* context)
 {
     (void) context;
+}
+
+static bool SolidSyslog_ReportingAlwaysOn(void* context)
+{
+    (void) context;
+    return true;
 }
 
 static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured)
@@ -318,6 +334,19 @@ static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSys
     if (configured != NULL)
     {
         self->Scratch = configured;
+    }
+}
+
+static void SolidSyslog_InstallEventReporting(
+    struct SolidSyslog* self,
+    SolidSyslogEventReportingFunction configured,
+    void* context
+)
+{
+    if (configured != NULL)
+    {
+        self->IsEventReportingOn = configured;
+        self->EventReportingContext = context;
     }
 }
 
@@ -567,7 +596,7 @@ static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self)
      * the table. */
     size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
     struct SolidSyslogErrorEvent event;
-    self->HoldsRecord = SolidSyslog_HasRecordSlot(self) && SolidSyslogPendingEvents_Take(index, &event);
+    self->HoldsRecord = SolidSyslog_IsReportDue(self, index) && SolidSyslogPendingEvents_Take(index, &event);
 
     if (self->HoldsRecord)
     {
@@ -575,6 +604,15 @@ static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self)
     }
 
     return self->HoldsRecord;
+}
+
+/* Due when there is a slot to make the report in and an event waiting; only
+ * then is the integrator's switch asked, and an event it turns down stays
+ * waiting for a pass when the switch is on. */
+static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_t index)
+{
+    return SolidSyslog_HasRecordSlot(self) && SolidSyslogPendingEvents_IsPending(index) &&
+           self->IsEventReportingOn(self->EventReportingContext);
 }
 
 /* The fallback SolidSyslog_Create returns carries no slot, so it takes no

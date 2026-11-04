@@ -558,6 +558,8 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
     struct SolidSyslog* solidSyslog = SolidSyslog_Create(&config);
