@@ -16,6 +16,7 @@ void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream*
     int length = 0;
     const unsigned char* der = wolfSSL_X509_get_der(peer, &length);
     (void) SolidSyslogWolfSslStream_AuthoriseLeaf(self, der, (word32) length);
+    wolfSSL_X509_free(peer);
 }
 
 #endif
