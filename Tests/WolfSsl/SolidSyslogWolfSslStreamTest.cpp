@@ -566,6 +566,22 @@ TEST(SolidSyslogWolfSslStream, OpenRefusesAPinThatIsNotWellFormed)
     );
 }
 
+TEST(SolidSyslogWolfSslStream, OpenWarnsOfASha1PinAndStillConnects)
+{
+    const char* const pins[] = {"sha-1:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_ConnectCallCount());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogWolfSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1
+    );
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThatTheSessionCouldNotBeCreated)
 {
     WolfSslTlsFake_SetNewReturnsNull(true);
