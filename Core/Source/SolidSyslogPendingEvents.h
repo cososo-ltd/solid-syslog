@@ -36,9 +36,8 @@
  * source: both said the kind happened, the mix is a valid event of it, and
  * an event landing during a copy is reported again on the next Take rather
  * than lost. The first write of a kind is the other case: on a core that
- * reorders the stores, a Take that overtakes it can see
- * a slot still at its zero initial values, a NULL Source at
- * SOLIDSYSLOG_SEVERITY_EMERGENCY. */
+ * reorders the stores, a Take that overtakes it can see a slot still at its
+ * zero initial values, a NULL Source at SOLIDSYSLOG_SEVERITY_EMERGENCY. */
 #ifndef SOLIDSYSLOGPENDINGEVENTS_H
 #define SOLIDSYSLOGPENDINGEVENTS_H
 
