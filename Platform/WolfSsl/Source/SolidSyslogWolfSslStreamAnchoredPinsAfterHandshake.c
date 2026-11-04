@@ -8,9 +8,14 @@
 
 #if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
 
+#include <wolfssl/ssl.h>
+
 void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream* self)
 {
-    self->PeerPinned = true;
+    WOLFSSL_X509* peer = wolfSSL_get_peer_certificate(self->Session);
+    int length = 0;
+    const unsigned char* der = wolfSSL_X509_get_der(peer, &length);
+    (void) SolidSyslogWolfSslStream_AuthoriseLeaf(self, der, (word32) length);
 }
 
 #endif
