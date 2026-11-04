@@ -1140,6 +1140,15 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPeerWhoseCertificateMatches
     LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
 }
 
+TEST(SolidSyslogWolfSslStream, VerifyCallbackAuthorisesASha1PinByTheSha1DigestOfTheLeaf)
+{
+    const char* const pins[] = {TEST_SHA1_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(1, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
+}
+
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
 {
     LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
