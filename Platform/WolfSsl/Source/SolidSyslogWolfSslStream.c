@@ -116,6 +116,10 @@ static inline bool WolfSslStream_IsMissingSignerAPinCanWaive(
     const WOLFSSL_X509_STORE_CTX* store
 );
 static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_IsPinCheckedHere(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
 static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
 static bool WolfSslStream_DigestCertificate(
     void* context,
@@ -637,7 +641,7 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
     else
     {
         self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
-        if (WolfSslStream_IsPinned(self) && !WolfSslStream_LeafMatchesAPin(self, store))
+        if (WolfSslStream_IsPinCheckedHere(self, store) && !WolfSslStream_LeafMatchesAPin(self, store))
         {
             verdict = 0;
         }
@@ -656,6 +660,21 @@ static inline bool WolfSslStream_IsMissingSignerAPinCanWaive(
 static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream* self)
 {
     return self->Installed.FingerprintCount > 0U;
+}
+
+/* Pins alone are checked on every call. Beside anchors, a pin is checked
+ * wherever the library reports a fault, so a peer the pins do not name is
+ * named for that first; and on a leaf that verified only where this build's
+ * body checks it here - a build that cannot call back for a verified leaf
+ * checks it once the handshake is done instead. */
+static inline bool WolfSslStream_IsPinCheckedHere(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
+{
+    return WolfSslStream_IsPinned(self) &&
+           (!self->Installed.TrustAnchorsInstalled || (store->error != 0) ||
+            (SolidSyslogWolfSslStream_AnchoredPinCheck() == SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_IN_CALLBACK));
 }
 
 /* A pin is the digest of the leaf. wolfSSL hands the callback the whole chain
