@@ -22,6 +22,7 @@ enum
 static int methodDummy;
 static int ctxDummy;
 static int sessionDummy;
+static int peerCertificateDummy;
 static WOLFSSL_X509_STORE_CTX store;
 
 static int clientMethodExCallCount;
@@ -88,6 +89,13 @@ static int verifyDepths[WOLFSSLTLSFAKE_MAX_SEQUENCE];
 static int verifyDepthsLen;
 static int lastVerifyCallbackResult;
 static int verifyCallbackAcceptCount;
+
+static int getPeerCertificateCallCount;
+static WOLFSSL* lastGetPeerCertificateSsl;
+static bool getPeerCertificateReturnsNull;
+static bool x509GetDerReturnsNull;
+static int x509FreeCallCount;
+static WOLFSSL_X509* lastX509FreeArg;
 
 /* The chain the peer presents: the leaf, then its issuer. */
 static unsigned char leafDer[] = "leaf certificate DER";
@@ -203,6 +211,12 @@ void WolfSslTlsFake_Reset(void)
     verifyDepthsLen = 0;
     lastVerifyCallbackResult = -1;
     verifyCallbackAcceptCount = 0;
+    getPeerCertificateCallCount = 0;
+    lastGetPeerCertificateSsl = NULL;
+    getPeerCertificateReturnsNull = false;
+    x509GetDerReturnsNull = false;
+    x509FreeCallCount = 0;
+    lastX509FreeArg = NULL;
     lastError = 0;
     writeCallCount = 0;
     lastWriteSsl = NULL;
@@ -991,4 +1005,67 @@ int wolfSSL_CTX_use_PrivateKey_buffer(WOLFSSL_CTX* ctx, const unsigned char* in,
     lastUsePrivateKeyBufferSz = sz;
     lastUsePrivateKeyBufferFormat = format;
     return usePrivateKeyBufferReturn;
+}
+
+/* -------------------------------------------------------------------------
+ * The kept peer certificate
+ * ------------------------------------------------------------------------- */
+
+struct WOLFSSL_X509* WolfSslTlsFake_PeerCertificate(void)
+{
+    return (WOLFSSL_X509*) &peerCertificateDummy;
+}
+
+int WolfSslTlsFake_GetPeerCertificateCallCount(void)
+{
+    return getPeerCertificateCallCount;
+}
+
+struct WOLFSSL* WolfSslTlsFake_LastGetPeerCertificateSsl(void)
+{
+    return lastGetPeerCertificateSsl;
+}
+
+void WolfSslTlsFake_SetPeerCertificateReturnsNull(bool returnsNull)
+{
+    getPeerCertificateReturnsNull = returnsNull;
+}
+
+void WolfSslTlsFake_SetX509GetDerReturnsNull(bool returnsNull)
+{
+    x509GetDerReturnsNull = returnsNull;
+}
+
+int WolfSslTlsFake_X509FreeCallCount(void)
+{
+    return x509FreeCallCount;
+}
+
+struct WOLFSSL_X509* WolfSslTlsFake_LastX509FreeArg(void)
+{
+    return lastX509FreeArg;
+}
+
+WOLFSSL_X509* wolfSSL_get_peer_certificate(WOLFSSL* ssl)
+{
+    getPeerCertificateCallCount++;
+    lastGetPeerCertificateSsl = ssl;
+    return getPeerCertificateReturnsNull ? NULL : WolfSslTlsFake_PeerCertificate();
+}
+
+const byte* wolfSSL_X509_get_der(WOLFSSL_X509* x509, int* outSz)
+{
+    const byte* der = NULL;
+    if (!x509GetDerReturnsNull && (x509 == WolfSslTlsFake_PeerCertificate()))
+    {
+        der = leafDer;
+        *outSz = (int) sizeof leafDer;
+    }
+    return der;
+}
+
+void wolfSSL_X509_free(WOLFSSL_X509* x509)
+{
+    x509FreeCallCount++;
+    lastX509FreeArg = x509;
 }

@@ -10,6 +10,7 @@
 struct WOLFSSL;
 struct WOLFSSL_CTX;
 struct WOLFSSL_METHOD;
+struct WOLFSSL_X509;
 struct WOLFSSL_X509_STORE_CTX;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -156,6 +157,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     long WolfSslTlsFake_LastUsePrivateKeyBufferSz(void);
     int WolfSslTlsFake_LastUsePrivateKeyBufferFormat(void);
     void WolfSslTlsFake_SetUsePrivateKeyBufferReturn(int value);
+
+    /* wolfSSL_get_peer_certificate / wolfSSL_X509_get_der / wolfSSL_X509_free,
+       which a build with KEEP_PEER_CERT has. The certificate handed out is a
+       dummy whose DER is the leaf's. */
+    struct WOLFSSL_X509* WolfSslTlsFake_PeerCertificate(void);
+    int WolfSslTlsFake_GetPeerCertificateCallCount(void);
+    struct WOLFSSL* WolfSslTlsFake_LastGetPeerCertificateSsl(void);
+    void WolfSslTlsFake_SetPeerCertificateReturnsNull(bool returnsNull);
+    void WolfSslTlsFake_SetX509GetDerReturnsNull(bool returnsNull);
+    int WolfSslTlsFake_X509FreeCallCount(void);
+    struct WOLFSSL_X509* WolfSslTlsFake_LastX509FreeArg(void);
 
 SOLIDSYSLOG_EXTERN_C_END
 

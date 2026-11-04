@@ -180,6 +180,50 @@ set_target_properties(SolidSyslogWolfSslStreamTest PROPERTIES
 
 solidsyslog_add_test(SolidSyslogWolfSslStreamTest)
 
+# SolidSyslogWolfSslStream with the after-handshake body selected - the build
+# with KEEP_PEER_CERT and without WOLFSSL_ALWAYS_VERIFY_CB, which no wolfSSL in
+# the image is, so the selector is preset. The fakes' build has both flags, so
+# the preset is one the flags can honour.
+add_executable(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest
+    SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_compile_definitions(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PRIVATE
+    SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK=SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PRIVATE
+    ${PROJECT_NAME}
+    AddressFake
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest)
+
 # SolidSyslogWolfSslPemBufferCredentials - the credentials backend that loads
 # PEM from caller-owned buffers onto the context. Driven against WolfSslTlsFake,
 # which captures what reached wolfSSL_CTX_load_verify_buffer and the client
