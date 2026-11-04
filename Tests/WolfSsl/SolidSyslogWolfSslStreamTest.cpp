@@ -1261,6 +1261,15 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackFreesTheCertificateItChecked)
     LONGS_EQUAL(0, WolfSslFake_DecodedCertsOutstanding());
 }
 
+TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPeerWhoseChainVerifiesButWhoseLeafMatchesNoPin)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(0, OpenThenVerify(1, 0));
+}
+
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
 {
     LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
