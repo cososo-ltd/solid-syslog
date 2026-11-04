@@ -108,7 +108,7 @@ endif()
 # wolfSSL fake - same shape as MbedTlsFakes. Headers come from $WOLFSSL_DIR's
 # install; we never link the real library into a target that pulls in this fake.
 if(SOLIDSYSLOG_WOLFSSL)
-    add_library(WolfSslFakes STATIC WolfSslFake.c)
+    add_library(WolfSslFakes STATIC WolfSslFake.c WolfSslTlsFake.c)
 
     target_include_directories(WolfSslFakes PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
