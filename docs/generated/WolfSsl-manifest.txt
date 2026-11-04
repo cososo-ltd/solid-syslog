@@ -18,6 +18,11 @@ Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256PolicyStatic.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyGcm.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentials.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentialsStatic.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
 
 ## Include directories
 

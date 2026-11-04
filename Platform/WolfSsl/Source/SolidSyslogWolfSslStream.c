@@ -104,8 +104,7 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
 static inline bool WolfSslStream_IsRetryableHandshakeError(int error);
 static inline bool WolfSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
-static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self
-);
+static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_Failed(const struct SolidSyslogWolfSslStream* self, uint32_t check);
 static inline bool WolfSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static bool WolfSslStream_SessionIsStillOpen(struct SolidSyslogStream* base);

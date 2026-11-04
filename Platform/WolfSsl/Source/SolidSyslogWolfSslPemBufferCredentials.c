@@ -115,14 +115,12 @@ static inline bool WolfSslPemBufferCredentials_LoadTrustAnchors(
     WOLFSSL_CTX* ctx
 )
 {
-    bool loaded =
-        WolfSslPemBufferCredentials_HasExtent(&self->Config.CaPem) &&
-        (wolfSSL_CTX_load_verify_buffer(
-             ctx,
-             self->Config.CaPem.Bytes,
-             (long) self->Config.CaPem.Length,
-             WOLFSSL_FILETYPE_PEM
-         ) == WOLFSSL_SUCCESS);
+    bool loaded = WolfSslPemBufferCredentials_HasExtent(&self->Config.CaPem) && (wolfSSL_CTX_load_verify_buffer(
+                                                                                     ctx,
+                                                                                     self->Config.CaPem.Bytes,
+                                                                                     (long) self->Config.CaPem.Length,
+                                                                                     WOLFSSL_FILETYPE_PEM
+                                                                                 ) == WOLFSSL_SUCCESS);
     if (!loaded)
     {
         WolfSslPemBufferCredentials_Report(

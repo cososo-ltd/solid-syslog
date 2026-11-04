@@ -371,7 +371,10 @@ TEST(SolidSyslogWolfSslStreamIntegration, AnUntrustedChainIsNamedBeforeTheDatesO
  * never raised and the stream has nothing to put first. The platform page
  * records the shortfall; this pins it, so a wolfSSL that starts checking the
  * name regardless is noticed. */
-TEST(SolidSyslogWolfSslStreamIntegration, ACertificateThatHasExpiredIsNamedForItsDatesEvenWhereItsNameDoesNotMatchEither)
+TEST(
+    SolidSyslogWolfSslStreamIntegration,
+    ACertificateThatHasExpiredIsNamedForItsDatesEvenWhereItsNameDoesNotMatchEither
+)
 {
     CHECK_FALSE(OpenAgainst("server-wrongname-expired.pem", TEST_SERVER_HOSTNAME));
 

@@ -48,18 +48,18 @@ enum
     FAKE_WOLFSSL_CBIO_ERR_WANT_READ = -2
 };
 
-#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
-    {                                                                                                 \
-        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
-        LONGS_EQUAL(WolfSslTlsFake_NewCallCount(), WolfSslTlsFake_FreeCallCount());                   \
-        LONGS_EQUAL(WolfSslTlsFake_CtxNewExCallCount(), WolfSslTlsFake_CtxFreeCallCount());           \
+#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)      \
+    {                                                                                                      \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                              \
+        LONGS_EQUAL(WolfSslTlsFake_NewCallCount(), WolfSslTlsFake_FreeCallCount());                        \
+        LONGS_EQUAL(WolfSslTlsFake_CtxNewExCallCount(), WolfSslTlsFake_CtxFreeCallCount());                \
         LONGS_EQUAL(WolfSslCredentialsFake_InstallCallCount(), WolfSslCredentialsFake_ReleaseCallCount()); \
-        CHECK_ERROR_REPORTED_ONCE(                                                                    \
-            (expectedSeverity),                                                                       \
-            &SolidSyslogWolfSslStreamErrorSource,                                                     \
-            (expectedCategory),                                                                       \
-            (expectedCode)                                                                            \
-        );                                                                                            \
+        CHECK_ERROR_REPORTED_ONCE(                                                                         \
+            (expectedSeverity),                                                                            \
+            &SolidSyslogWolfSslStreamErrorSource,                                                          \
+            (expectedCategory),                                                                            \
+            (expectedCode)                                                                                 \
+        );                                                                                                 \
     }
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \

@@ -58,6 +58,7 @@ backends of this one role.
 |---|---|
 | [OpenSSL credentials](../api/structSolidSyslogOpenSslCredentials.md) | [OpenSSL](../platforms/openssl/index.md) |
 | [Mbed TLS credentials](../api/structSolidSyslogMbedTlsCredentials.md) | [Mbed TLS](../platforms/mbedtls/index.md) |
+| [wolfSSL credentials](../api/structSolidSyslogWolfSslCredentials.md) | [wolfSSL](../platforms/wolfssl/index.md) |
 
 What a TLS Stream must do with them, whichever platform provides it, is the
 [TLS obligations](../tls.md) contract.
