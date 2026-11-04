@@ -1181,6 +1181,16 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackAuthorisesASha1PinByTheSha1DigestOf
     LONGS_EQUAL(1, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
 }
 
+TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPinnedPeerWhoseDatesTheLibraryDidNotReach)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    WolfSslFake_SetParseCertReturn(FAKE_ASN_AFTER_DATE_E);
+
+    LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
+}
+
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
 {
     LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
