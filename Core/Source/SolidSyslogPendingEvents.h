@@ -29,14 +29,14 @@
  * in the baseline, and no lock is taken because the tap runs inside a
  * failing role on whatever task met the fault. A multi-core CPU may still
  * retire the stores out of order; nothing here prevents that. Two writers
- * racing on one slot, or a Take copying while a writer lands, leave
- * a slot or a copy mixing fields of two events of the same kind, with the
- * flag set. Both said the kind happened, and an event landing during a copy
- * is reported again on the next Take rather than lost. The mix can pair one
- * event's Source with the other's Detail, and where two backends raise one
- * category in the same build the detail is then named through the wrong
- * backend's table, or not at all. The first write of a kind is the other
- * case: on a core that reorders the stores, a Take that overtakes it can see
+ * racing on one slot, or a Take copying while a writer lands, leave a slot
+ * or a copy mixing fields of two events of the same kind, with the flag
+ * set. The writers are logging tasks sharing one buffer, since every other
+ * kind is raised on the Service task, so the two events come from one
+ * source: both said the kind happened, the mix is a valid event of it, and
+ * an event landing during a copy is reported again on the next Take rather
+ * than lost. The first write of a kind is the other case: on a core that
+ * reorders the stores, a Take that overtakes it can see
  * a slot still at its zero initial values, a NULL Source at
  * SOLIDSYSLOG_SEVERITY_EMERGENCY. */
 #ifndef SOLIDSYSLOGPENDINGEVENTS_H
