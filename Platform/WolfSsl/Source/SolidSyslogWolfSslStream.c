@@ -598,6 +598,10 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
     else
     {
         self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
+        if ((self->Installed.FingerprintCount > 0U) && !WolfSslStream_LeafMatchesAPin(self, store))
+        {
+            verdict = 0;
+        }
     }
     return verdict;
 }
