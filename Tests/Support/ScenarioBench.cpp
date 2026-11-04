@@ -6,7 +6,6 @@
 #include "AddressFake.h"
 #include "BlockDeviceFake.h"
 #include "CounterFake.h"
-#include "PendingEventsDrain.h"
 #include "ResolverFake.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogBlockStore.h"
@@ -60,20 +59,18 @@ bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
 }
 } // namespace
 
-ScenarioBench::CleanStart::CleanStart(ScenarioBench* bench)
+ScenarioBench::HandlerInstallation::HandlerInstallation(ScenarioBench* bench)
 {
-    PendingEventsDrain_All();
     SolidSyslog_SetErrorHandler(HandleError, bench);
 }
 
-ScenarioBench::CleanStart::~CleanStart()
+ScenarioBench::HandlerInstallation::~HandlerInstallation()
 {
     SolidSyslog_SetErrorHandler(nullptr, nullptr);
 }
 
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
-    : cleanStart(this), options(benchOptions),
-      ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
+    : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
       sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false),
@@ -124,6 +121,8 @@ struct SolidSyslogBuffer* ScenarioBench::CreateBuffer(std::vector<uint8_t>& ring
 
 ScenarioBench::~ScenarioBench()
 {
+    /* The logger goes first. Destroying it also forgets whatever the walk
+     * left pending, so the next bench's logger reports none of it. */
     SolidSyslog_Destroy(logger);
     SolidSyslogStreamSender_Destroy(sender);
     SolidSyslogBlockStore_Destroy(store);

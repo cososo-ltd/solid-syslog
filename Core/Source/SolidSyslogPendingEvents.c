@@ -99,3 +99,11 @@ bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* e
     }
     return wasPending;
 }
+
+void SolidSyslogPendingEvents_Clear(void)
+{
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        PendingEvents_Slots[index].Pending = false;
+    }
+}

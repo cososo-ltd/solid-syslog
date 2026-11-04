@@ -2,26 +2,27 @@
 #include "CppUTest/TestPlugin.h"
 #include "CppUTest/TestRegistry.h"
 
-#include "PendingEventsDrain.h"
+#include "SolidSyslogPendingEvents.h"
 
-/* Every test starts with nothing pending in Core's static event table, so a
- * fault one test raised is never reported by the next test's Service. */
-class PendingEventsDrainPlugin : public TestPlugin
+/* Every test starts with nothing pending in Core's static event table. Only
+ * destroying a logger clears it, and many tests raise a fault with no logger
+ * at all, so without this the next test's Service would report it. */
+class PendingEventsClearPlugin : public TestPlugin
 {
   public:
-    PendingEventsDrainPlugin() : TestPlugin("PendingEventsDrain")
+    PendingEventsClearPlugin() : TestPlugin("PendingEventsClear")
     {
     }
 
     void preTestAction(UtestShell& /*test*/, TestResult& /*result*/) override
     {
-        PendingEventsDrain_All();
+        SolidSyslogPendingEvents_Clear();
     }
 };
 
 int main(int argc, char** argv)
 {
-    PendingEventsDrainPlugin drain;
-    TestRegistry::getCurrentRegistry()->installPlugin(&drain);
+    PendingEventsClearPlugin clear;
+    TestRegistry::getCurrentRegistry()->installPlugin(&clear);
     return CommandLineTestRunner::RunAllTests(argc, argv);
 }

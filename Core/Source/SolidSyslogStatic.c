@@ -11,6 +11,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogPendingEvents.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogPrivate.h"
@@ -86,7 +87,11 @@ void SolidSyslog_Destroy(struct SolidSyslog* handle)
     bool released =
         SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index) &&
         SolidSyslogPoolAllocator_FreeIfInUse(&SolidSyslog_Allocator, index, SolidSyslog_CleanupAtIndex, NULL);
-    if (!released)
+    if (released)
+    {
+        SolidSyslogPendingEvents_Clear();
+    }
+    else
     {
         SolidSyslog_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,

@@ -75,9 +75,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  null-check the result. */
     struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config);
 
-    /** Release the logger's pool slot. Does not free the injected Buffer,
-     *  Sender, Store, or Sd objects; the caller owns those. A NULL, foreign, or
-     *  already-destroyed handle is reported via SolidSyslog_Error and ignored. */
+    /** Release the logger's pool slot, and forget every library event it has
+     *  not yet reported, so a logger created afterwards reports only what
+     *  happens after it. Does not free the injected Buffer, Sender, Store, or
+     *  Sd objects; the caller owns those. A NULL, foreign, or already-destroyed
+     *  handle is reported via SolidSyslog_Error and ignored. */
     void SolidSyslog_Destroy(struct SolidSyslog * handle);
 
 SOLIDSYSLOG_EXTERN_C_END

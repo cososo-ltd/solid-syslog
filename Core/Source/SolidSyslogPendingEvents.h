@@ -66,6 +66,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * returns false. */
     bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event);
 
+    /* Clear every slot's Pending flag, leaving nothing pending. Called by
+     * SolidSyslog_Destroy, so a logger created afterwards reports only what
+     * happens after it. */
+    void SolidSyslogPendingEvents_Clear(void);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGPENDINGEVENTS_H */

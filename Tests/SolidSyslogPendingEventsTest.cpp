@@ -5,12 +5,15 @@
 
 #include "AddressFake.h"
 #include "ErrorHandlerFake.h"
-#include "PendingEventsDrain.h"
 #include "ResolverFake.h"
 #include "SolidSyslogBufferCategories.h"
+#include "SolidSyslogConfig.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileCategories.h"
+#include "SolidSyslogNullBuffer.h"
+#include "SolidSyslogNullSender.h"
+#include "SolidSyslogNullStore.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
@@ -51,7 +54,6 @@ TEST_GROUP(SolidSyslogPendingEvents)
 
     void setup() override
     {
-        PendingEventsDrain_All();
         ErrorHandlerFake_Install(&sentinel);
     }
 
@@ -59,16 +61,24 @@ TEST_GROUP(SolidSyslogPendingEvents)
     {
         return TakeKindInto(category, &taken);
     }
+
+    /* Takes every slot, so the table is empty afterwards whatever it answers. */
+    bool SomethingIsPending()
+    {
+        bool pending = false;
+        for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+        {
+            pending = SolidSyslogPendingEvents_Take(index, &taken) || pending;
+        }
+        return pending;
+    }
 };
 
 // clang-format on
 
-TEST(SolidSyslogPendingEvents, NothingIsPendingOnceEveryKindHasBeenTaken)
+TEST(SolidSyslogPendingEvents, NothingIsPendingWhenATestStarts)
 {
-    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
-    {
-        CHECK_FALSE(SolidSyslogPendingEvents_Take(index, &taken));
-    }
+    CHECK_FALSE(SomethingIsPending());
 }
 
 TEST(SolidSyslogPendingEvents, ARaiseOfAReportedKindFillsItsSlot)
@@ -111,10 +121,7 @@ TEST(SolidSyslogPendingEvents, ACategoryOutsideTheSetChangesNothing)
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_CRITICAL, &source, SOLIDSYSLOG_CAT_BAD_CONFIG, 1);
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_CRITICAL, &source, 0xC000U, 1);
 
-    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
-    {
-        CHECK_FALSE(SolidSyslogPendingEvents_Take(index, &taken));
-    }
+    CHECK_FALSE(SomethingIsPending());
 }
 
 static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
@@ -168,6 +175,32 @@ TEST(SolidSyslogPendingEvents, TakeClearsTheSlotSoASecondTakeFindsNothing)
     CHECK_FALSE(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 }
 
+TEST(SolidSyslogPendingEvents, ClearLeavesNothingPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &source, SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, 3);
+
+    SolidSyslogPendingEvents_Clear();
+
+    CHECK_FALSE(SomethingIsPending());
+}
+
+TEST(SolidSyslogPendingEvents, DestroyingALoggerLeavesNothingPending)
+{
+    struct SolidSyslogConfig config = {};
+    config.Buffer = SolidSyslogNullBuffer_Get();
+    config.Sender = SolidSyslogNullSender_Get();
+    config.Store = SolidSyslogNullStore_Get();
+    struct SolidSyslog* logger = SolidSyslog_Create(&config);
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    SolidSyslog_Destroy(logger);
+
+    CHECK_FALSE(SomethingIsPending());
+}
+
 static int detailNameCalls = 0;
 
 static const char* RaisingDetailName(int32_t detail)
@@ -204,7 +237,6 @@ TEST_GROUP(SolidSyslogPendingEventsInsideSend)
 
     void setup() override
     {
-        PendingEventsDrain_All();
         ResolverFake_Reset();
         stream = StreamFake_Create();
         struct SolidSyslogStreamSenderConfig config = {};
