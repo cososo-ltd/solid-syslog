@@ -111,6 +111,7 @@ add_executable(SolidSyslogWolfSslStreamPoolTest
     SolidSyslogWolfSslStreamPoolTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
@@ -148,6 +149,7 @@ add_executable(SolidSyslogWolfSslStreamTest
     SolidSyslogWolfSslStreamTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
@@ -188,6 +190,7 @@ add_executable(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest
     SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c

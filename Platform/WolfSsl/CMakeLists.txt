@@ -21,6 +21,7 @@ target_sources(SolidSyslogWolfSsl INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslPemBufferCredentials.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslPemBufferCredentialsStatic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslStreamStatic.c
