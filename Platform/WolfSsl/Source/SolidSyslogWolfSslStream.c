@@ -635,8 +635,11 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
     int verdict = preverify;
     if (WolfSslStream_IsMissingSignerAPinCanWaive(self, store))
     {
-        bool waived = WolfSslStream_LeafMatchesAPin(self, store) && WolfSslStream_StandsWithoutASigner(self, store);
-        verdict = waived ? 1 : 0;
+        verdict = 0;
+        if (WolfSslStream_LeafMatchesAPin(self, store) && WolfSslStream_StandsWithoutASigner(self, store))
+        {
+            verdict = 1;
+        }
     }
     else
     {
