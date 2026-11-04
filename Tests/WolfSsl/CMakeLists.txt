@@ -175,3 +175,39 @@ set_target_properties(SolidSyslogWolfSslStreamTest PROPERTIES
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslStreamTest)
+
+# SolidSyslogWolfSslPemBufferCredentials - the credentials backend that loads
+# PEM from caller-owned buffers onto the context. Driven against WolfSslTlsFake,
+# which captures what reached wolfSSL_CTX_load_verify_buffer and the client
+# credential pair.
+add_executable(SolidSyslogWolfSslPemBufferCredentialsTest
+    SolidSyslogWolfSslPemBufferCredentialsTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentialsStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
+)
+
+target_link_libraries(SolidSyslogWolfSslPemBufferCredentialsTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslPemBufferCredentialsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslPemBufferCredentialsTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslPemBufferCredentialsTest)
