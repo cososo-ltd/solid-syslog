@@ -66,9 +66,11 @@ bool SolidSyslogWolfSslStream_AuthoriseLeaf(
 );
 
 /* Defined by whichever body SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK selects.
- * Called once a pinned peer's handshake has completed without the callback
- * having matched a pin, which is where a build that cannot check the pin in
- * the callback checks the leaf it kept. */
+ * The first says whether this build can check a pin where trust anchors are
+ * installed too. The second is called once a pinned peer's handshake has
+ * completed without the callback having matched a pin, which is where a build
+ * that cannot check the pin in the callback checks the leaf it kept. */
+bool SolidSyslogWolfSslStream_ChecksPinsAlongsideAnchors(void);
 void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream* self);
 
 static inline void WolfSslStream_Report(

@@ -95,6 +95,7 @@ static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* se
 static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
@@ -385,6 +386,15 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
     {
         ok = WolfSslStream_FingerprintsAreUsable(&self->Installed);
     }
+    if (ok && !WolfSslStream_BuildCanEnforceBoth(&self->Installed))
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_PINS_WITH_ANCHORS_UNSUPPORTED
+        );
+        ok = false;
+    }
     return ok;
 }
 
@@ -395,6 +405,15 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
 {
     return installed->TrustAnchorsInstalled || (installed->FingerprintCount > 0U);
+}
+
+/* Where anchors and pins are both installed the peer must satisfy both, and a
+ * build that cannot check a pin on a chain that verifies would satisfy only
+ * the chain - so the connection stops rather than enforce half of it. */
+static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    bool both = installed->TrustAnchorsInstalled && (installed->FingerprintCount > 0U);
+    return !both || SolidSyslogWolfSslStream_ChecksPinsAlongsideAnchors();
 }
 
 /* Inspected before the handshake, so a pin that cannot match is reported as
