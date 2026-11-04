@@ -74,6 +74,13 @@ enum
 
 struct SolidSyslogAddress;
 
+/* What a pin is the digest of: the leaf as the peer presented it. */
+struct PeerCertificate
+{
+    const unsigned char* Der;
+    word32 Length;
+};
+
 static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context);
 static uint32_t WolfSslStream_NullVersion(void* context);
 static void WolfSslStream_NullProfile(struct SolidSyslogWolfSslProfile* profile, void* context);
@@ -637,11 +644,21 @@ static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream*
  * for. */
 static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store)
 {
+    return SolidSyslogWolfSslStream_AuthoriseLeaf(self, store->certs[0].buffer, store->certs[0].length);
+}
+
+bool SolidSyslogWolfSslStream_AuthoriseLeaf(
+    struct SolidSyslogWolfSslStream* self,
+    const unsigned char* der,
+    word32 length
+)
+{
+    struct PeerCertificate leaf = {der, length};
     enum SolidSyslogTlsAuthorisation verdict = SolidSyslogTlsFingerprint_Authorise(
         self->Installed.Fingerprints,
         self->Installed.FingerprintCount,
         WolfSslStream_DigestCertificate,
-        &store->certs[0]
+        &leaf
     );
     self->RefusedChecks |= WolfSslStream_CheckFailedForPin(verdict);
     self->PeerPinned = verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
@@ -694,10 +711,10 @@ static bool WolfSslStream_DigestCertificate(
     size_t* length
 )
 {
-    const WOLFSSL_BUFFER_INFO* certificate = (const WOLFSSL_BUFFER_INFO*) context;
+    const struct PeerCertificate* certificate = (const struct PeerCertificate*) context;
     enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
     int size = wc_HashGetDigestSize(type);
-    bool ok = (size > 0) && (wc_Hash(type, certificate->buffer, certificate->length, digest, (word32) size) == 0);
+    bool ok = (size > 0) && (wc_Hash(type, certificate->Der, certificate->Length, digest, (word32) size) == 0);
     if (ok)
     {
         *length = (size_t) size;
@@ -807,6 +824,10 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
  * handshake completed without a pin matching is refused rather than trusted. */
 static inline bool WolfSslStream_PinIsConfirmed(struct SolidSyslogWolfSslStream* self)
 {
+    if (WolfSslStream_IsPinned(self) && !self->PeerPinned)
+    {
+        SolidSyslogWolfSslStream_AuthoriseKeptPeer(self);
+    }
     bool ok = !WolfSslStream_IsPinned(self) || self->PeerPinned;
     if (!ok)
     {

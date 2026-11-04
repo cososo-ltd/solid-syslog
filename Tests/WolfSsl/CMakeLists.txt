@@ -111,6 +111,8 @@ add_executable(SolidSyslogWolfSslStreamPoolTest
     SolidSyslogWolfSslStreamPoolTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
 )
@@ -146,6 +148,8 @@ add_executable(SolidSyslogWolfSslStreamTest
     SolidSyslogWolfSslStreamTest.cpp
     main.cpp
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
 )
