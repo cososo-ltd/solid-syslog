@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
@@ -49,13 +50,20 @@ static inline bool WolfSslStream_ConfigProvidesVersion(const struct SolidSyslogW
 static inline bool WolfSslStream_ConfigProvidesProfile(const struct SolidSyslogWolfSslStreamConfig* config);
 static inline struct SolidSyslogWolfSslStream* WolfSslStream_SelfFromBase(struct SolidSyslogStream* base);
 static inline bool WolfSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool WolfSslStream_IsOpen(const struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
 static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSslStream* self, const char* serverName);
+static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
+    int rc,
+    enum SolidSyslogTlsStreamErrors otherwise
+);
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
@@ -202,12 +210,32 @@ static uint32_t WolfSslStream_Version(struct SolidSyslogStream* base)
 static inline bool WolfSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
 {
     struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
-    bool ok = WolfSslStream_Establish(base, addr);
-    if (ok)
+    bool ok = false;
+    if (WolfSslStream_IsOpen(self))
     {
-        SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+        /* Refused by contract, not reconnected: what is held stays as it is. */
+        WolfSslStream_Report(
+            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN
+        );
+    }
+    else
+    {
+        ok = WolfSslStream_Establish(base, addr);
+        if (ok)
+        {
+            SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+        }
     }
     return ok;
+}
+
+/* Every Open that succeeds installs the credentials and every Close releases
+ * them, so holding them is the one mark of a session still open. */
+static inline bool WolfSslStream_IsOpen(const struct SolidSyslogWolfSslStream* self)
+{
+    return self->CredentialsInstalled;
 }
 
 static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
@@ -245,7 +273,16 @@ static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* se
 static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self)
 {
     self->Context = wolfSSL_CTX_new_ex(wolfTLS_client_method_ex(self->Config.Heap), self->Config.Heap);
-    return self->Context != NULL;
+    bool ok = self->Context != NULL;
+    if (!ok)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
+        );
+    }
+    return ok;
 }
 
 /* Asked once per connection, onto the context and before the session is created
@@ -259,13 +296,40 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
     self->Installed.Fingerprints = NULL;
     self->Installed.FingerprintCount = 0U;
     self->CredentialsInstalled = true;
-    return self->Config.Credentials->Install(self->Config.Credentials, self->Context, &self->Installed);
+    bool ok = self->Config.Credentials->Install(self->Config.Credentials, self->Context, &self->Installed);
+    if (ok && !WolfSslStream_PeerIsAuthorisable(&self->Installed))
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+        );
+        ok = false;
+    }
+    return ok;
+}
+
+/* A peer is authorised by a chain to trust anchors. With none, there is nothing
+ * to check the peer against, so the connection stops rather than reaching a
+ * peer this stream cannot identify. */
+static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    return installed->TrustAnchorsInstalled;
 }
 
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self)
 {
     self->Session = wolfSSL_new(self->Context);
-    return self->Session != NULL;
+    bool ok = self->Session != NULL;
+    if (!ok)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
+        );
+    }
+    return ok;
 }
 
 /* TLS policy owned by the library, set on the session so it cannot leak into
@@ -276,20 +340,91 @@ static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* 
  * sizes are BCP 195 section 4.5. */
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self)
 {
-    return (wolfSSL_SetMinVersion(self->Session, WOLFSSL_TLSV1_2) == WOLFSSL_SUCCESS) &&
-           (wolfSSL_SetMinRsaKey_Sz(self->Session, (short) WOLFSSL_STREAM_MIN_RSA_KEY_BITS) == WOLFSSL_SUCCESS) &&
-           (wolfSSL_SetMinEccKey_Sz(self->Session, (short) WOLFSSL_STREAM_MIN_ECC_KEY_BITS) == WOLFSSL_SUCCESS) &&
-           (wolfSSL_SetMinDhKey_Sz(self->Session, (word16) WOLFSSL_STREAM_MIN_DH_KEY_BITS) == WOLFSSL_SUCCESS);
+    bool ok = (wolfSSL_SetMinVersion(self->Session, WOLFSSL_TLSV1_2) == WOLFSSL_SUCCESS) &&
+              (wolfSSL_SetMinRsaKey_Sz(self->Session, (short) WOLFSSL_STREAM_MIN_RSA_KEY_BITS) == WOLFSSL_SUCCESS) &&
+              (wolfSSL_SetMinEccKey_Sz(self->Session, (short) WOLFSSL_STREAM_MIN_ECC_KEY_BITS) == WOLFSSL_SUCCESS) &&
+              (wolfSSL_SetMinDhKey_Sz(self->Session, (word16) WOLFSSL_STREAM_MIN_DH_KEY_BITS) == WOLFSSL_SUCCESS);
+    if (!ok)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+        );
+    }
+    return ok;
 }
 
 /* The declared name is both what the certificate is checked against and what is
  * sent as the server name indication. */
 static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self)
 {
+    bool ok = true;
     const char* serverName = self->Profile.ServerName;
-    return (wolfSSL_check_domain_name(self->Session, serverName) == WOLFSSL_SUCCESS) &&
-           (wolfSSL_UseSNI(self->Session, WOLFSSL_SNI_HOST_NAME, serverName, (word16) strlen(serverName)) ==
-            WOLFSSL_SUCCESS);
+    if (serverName == NULL)
+    {
+        /* No expected identity supplied - the handshake will accept any cert that
+         * chains to a trusted CA, so the peer is unverified. Surface it as a
+         * WARNING (still connect, preserving the closed-network case) rather than
+         * swallowing the MITM-class default silently. */
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+        );
+    }
+    else if (serverName[0] != '\0')
+    {
+        ok = WolfSslStream_ApplyExpectedPeerName(self, serverName);
+    }
+    else
+    {
+        /* Empty string is the deliberate opt-out: the integrator has no name to
+         * verify against (private CA) and has said so explicitly, so connect
+         * chain-only without a diagnostic. */
+    }
+    return ok;
+}
+
+/* The declared name is both what the certificate is checked against and what is
+ * sent as the server name indication. Both copy the name, so both can fail on
+ * allocation; only the indication says so in its return. */
+static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSslStream* self, const char* serverName)
+{
+    bool ok = false;
+    if (wolfSSL_check_domain_name(self->Session, serverName) != WOLFSSL_SUCCESS)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+        );
+    }
+    else
+    {
+        int rc = wolfSSL_UseSNI(self->Session, WOLFSSL_SNI_HOST_NAME, serverName, (word16) strlen(serverName));
+        ok = rc == WOLFSSL_SUCCESS;
+        if (!ok)
+        {
+            WolfSslStream_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                WolfSslStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED)
+            );
+        }
+    }
+    return ok;
+}
+
+/* wolfSSL names an allocation failure in its return, so say so rather than
+ * report the phase's own fault - which would send an integrator to their
+ * configuration or to the peer, and the allocator is neither. */
+static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
+    int rc,
+    enum SolidSyslogTlsStreamErrors otherwise
+)
+{
+    return (rc == MEMORY_E) ? SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY : otherwise;
 }
 
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self)

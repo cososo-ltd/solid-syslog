@@ -26,6 +26,32 @@ extern "C"
 
 using namespace CososoTesting;
 
+/* wolfSSL return values and codes as the fake answers them; the names are
+   those of ssl.h and error-crypt.h. */
+enum
+{
+    FAKE_WOLFSSL_FAILURE = 0,
+    FAKE_WOLFSSL_SUCCESS = 1,
+    FAKE_MEMORY_E = -125
+};
+
+#define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
+    {                                                                                                 \
+        LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                         \
+        LONGS_EQUAL(WolfSslTlsFake_NewCallCount(), WolfSslTlsFake_FreeCallCount());                   \
+        LONGS_EQUAL(WolfSslTlsFake_CtxNewExCallCount(), WolfSslTlsFake_CtxFreeCallCount());           \
+        LONGS_EQUAL(WolfSslCredentialsFake_InstallCallCount(), WolfSslCredentialsFake_ReleaseCallCount()); \
+        CHECK_ERROR_REPORTED_ONCE(                                                                    \
+            (expectedSeverity),                                                                       \
+            &SolidSyslogWolfSslStreamErrorSource,                                                     \
+            (expectedCategory),                                                                       \
+            (expectedCode)                                                                            \
+        );                                                                                            \
+    }
+
+#define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
+
 static int NoOpSleepCallCount;
 static uint32_t g_lastSleepMs;
 
@@ -334,4 +360,230 @@ TEST(SolidSyslogWolfSslStream, VersionIsZeroWhenNoFunctionIsConfigured)
 TEST(SolidSyslogWolfSslStream, TheErrorSourceNamesItsDetailsThroughTlsStreamErrors)
 {
     POINTERS_EQUAL(SolidSyslogTlsStreamErrors_Name, SolidSyslogWolfSslStreamErrorSource.DetailName);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatTheContextCouldNotBeBuilt)
+{
+    WolfSslTlsFake_SetCtxNewExReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslCredentialsFake_InstallCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_CtxFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogWolfSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenFailsWhenTheCredentialsCannotInstall)
+{
+    WolfSslCredentialsFake_SetInstallSucceeds(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_NewCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+    LONGS_EQUAL(1, WolfSslCredentialsFake_ReleaseCallCount());
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenFailsWhenNothingAuthorisesThePeer)
+{
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_NewCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatTheSessionCouldNotBeCreated)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    LONGS_EQUAL(1, WolfSslCredentialsFake_ReleaseCallCount());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogWolfSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsATlsFloorTheLibraryWouldNotApply)
+{
+    WolfSslTlsFake_SetSetMinVersionReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ConnectCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAnRsaFloorTheLibraryWouldNotApply)
+{
+    WolfSslTlsFake_SetSetMinRsaKeySzReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAnEccFloorTheLibraryWouldNotApply)
+{
+    WolfSslTlsFake_SetSetMinEccKeySzReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsADiffieHellmanFloorTheLibraryWouldNotApply)
+{
+    WolfSslTlsFake_SetSetMinDhKeySzReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAPeerNameTheLibraryWouldNotTake)
+{
+    WolfSslTlsFake_SetCheckDomainNameReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ConnectCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAServerNameIndicationTheLibraryWouldNotTake)
+{
+    WolfSslTlsFake_SetUseSniReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsTheLibraryOutOfMemoryWhenTheServerNameIndicationCannotAllocate)
+{
+    WolfSslTlsFake_SetUseSniReturn(FAKE_MEMORY_E);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenWarnsWhenServerNameIsNull)
+{
+    FakeProfile_Value.ServerName = nullptr;
+
+    SolidSyslogStream_Open(handle, addr);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogWolfSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenNamesNoPeerAndStillConnectsWhenServerNameIsNull)
+{
+    FakeProfile_Value.ServerName = nullptr;
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_CheckDomainNameCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_UseSniCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_ConnectCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenDoesNotWarnWhenServerNameIsEmpty)
+{
+    FakeProfile_Value.ServerName = "";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenNamesNoPeerAndStillConnectsWhenServerNameIsEmpty)
+{
+    FakeProfile_Value.ServerName = "";
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_CheckDomainNameCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_UseSniCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_ConnectCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, OpeningAStreamThatIsAlreadyOpenIsRefusedAndReported)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
+        &SolidSyslogWolfSslStreamErrorSource,
+        SOLIDSYSLOG_CAT_BAD_ARGUMENT,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_ALREADY_OPEN
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSessionItHoldsUntouched)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, StreamFake_OpenCallCount(transport));
+    LONGS_EQUAL(1, WolfSslTlsFake_NewCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
 }
