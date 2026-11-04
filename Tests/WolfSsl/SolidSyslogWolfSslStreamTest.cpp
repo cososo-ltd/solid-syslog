@@ -1219,6 +1219,33 @@ TEST(SolidSyslogWolfSslStream, OpenRefusesAPinnedPeerWhoseHandshakeCompletedWith
     );
 }
 
+TEST(SolidSyslogWolfSslStream, OpenConnectsAPinnedPeerWithNoAnchorsOnceItsMissingSignerIsWaived)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    WolfSslTlsFake_SetVerifyErrors(errors, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogWolfSslStream, APinMatchedOnOneOpenDoesNotConfirmTheNext)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    ArrangeLeafThatVerifies();
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    SolidSyslogStream_Close(handle);
+    WolfSslTlsFake_SetVerifyErrors(nullptr, 0);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThePeersRefusalWhenTheHandshakeEndsOnTheLibrarysOwnVerdictCode)
 {
     int errors[] = {FAKE_ASN_NO_SIGNER_E};
