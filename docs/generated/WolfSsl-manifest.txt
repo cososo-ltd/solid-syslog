@@ -22,6 +22,9 @@ Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentials.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentialsStatic.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
 Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
 
 ## Include directories
