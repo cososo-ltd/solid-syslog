@@ -1130,6 +1130,16 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackWaivesTheMissingSignerOfAPinnedPeer
     LONGS_EQUAL(1, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
 }
 
+TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPeerWhoseCertificateMatchesNoPin)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
+}
+
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
 {
     LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
