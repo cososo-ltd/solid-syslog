@@ -631,6 +631,7 @@ static inline bool WolfSslStream_StandsWithoutASigner(
     wc_InitDecodedCert(&self->DecodedCertificate, certificate->buffer, certificate->length, self->Config.Heap);
     int error = wc_ParseCert(&self->DecodedCertificate, CA_TYPE, VERIFY, NULL);
     wc_FreeDecodedCert(&self->DecodedCertificate);
+    self->RefusedChecks |= WolfSslStream_CheckFailedFor(error);
     return error == 0;
 }
 
