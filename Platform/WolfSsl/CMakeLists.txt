@@ -17,6 +17,7 @@ target_sources(SolidSyslogWolfSsl INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslAesGcmPolicy.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslAesGcmPolicyGcm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SolidSyslogWolfSslNullCredentials.c
 )
 
 target_include_directories(SolidSyslogWolfSsl INTERFACE

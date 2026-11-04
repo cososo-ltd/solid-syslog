@@ -81,3 +81,26 @@ set_target_properties(SolidSyslogWolfSslAesGcmPolicyTest PROPERTIES
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslAesGcmPolicyTest)
+
+# SolidSyslogWolfSslNullCredentials - the credentials Null object. Its Install
+# takes a WOLFSSL_CTX* it never dereferences, so this exe needs neither the
+# fakes nor the upstream include path.
+add_executable(SolidSyslogWolfSslNullCredentialsTest
+    SolidSyslogWolfSslNullCredentialsTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
+)
+
+target_link_libraries(SolidSyslogWolfSslNullCredentialsTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslNullCredentialsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslNullCredentialsTest)
