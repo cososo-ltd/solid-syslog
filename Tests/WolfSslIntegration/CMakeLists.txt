@@ -92,6 +92,14 @@ function(solidsyslog_add_wolfssl_integration target prefix)
 endfunction()
 
 solidsyslog_add_wolfssl_integration(WolfSslIntegrationTests "${SOLIDSYSLOG_WOLFSSL_DIR}")
+
+# The after-handshake body has no wolfSSL in the image to select it - that needs
+# KEEP_PEER_CERT without WOLFSSL_ALWAYS_VERIFY_CB - so the build with both flags
+# runs it by preset, which the pack allows because the flags can honour it.
+solidsyslog_add_wolfssl_integration(WolfSslAfterHandshakeIntegrationTests "${SOLIDSYSLOG_WOLFSSL_DIR}")
+target_compile_definitions(WolfSslAfterHandshakeIntegrationTests PRIVATE
+    SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK=SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
+)
 if(SOLIDSYSLOG_WOLFSSL_BASELINE_DIR)
     solidsyslog_add_wolfssl_integration(WolfSslBaselineIntegrationTests "${SOLIDSYSLOG_WOLFSSL_BASELINE_DIR}")
 endif()

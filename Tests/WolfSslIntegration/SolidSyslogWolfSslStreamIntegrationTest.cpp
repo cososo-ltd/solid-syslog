@@ -16,6 +16,7 @@ extern "C"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogWolfSslCredentialsDefinition.h"
 #include "SolidSyslogWolfSslPemBufferCredentials.h"
+#include "SolidSyslogWolfSslSettings.h"
 #include "SolidSyslogWolfSslStream.h"
 #include "SolidSyslogWolfSslStreamErrors.h"
 #include "WolfSslTestLibrary.h"
@@ -102,6 +103,9 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
     struct SolidSyslogWolfSslPemBufferCredentialsConfig credsConfig = {};
     struct SolidSyslogWolfSslCredentials* credentials = nullptr;
     struct SolidSyslogAddress* addr             = nullptr;
+    struct WolfSslTestMaterial            pinFiles[2]      = {};
+    const char*                           pins[2]          = {};
+    size_t                                pinCount         = 0U;
 
     void setup() override
     {
@@ -198,6 +202,44 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
     bool OpenAgainst(const char* certificate, const char* serverName)
     {
         struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst(certificate, serverName);
+        tlsStream = CreateTlsStream(&config);
+        return SolidSyslogStream_Open(tlsStream, addr);
+    }
+
+    /* Adds the pin the generator wrote to the named file to the credentials:
+       `server.sha256` is the SHA-256 pin of the leaf in `server.pem`. */
+    void Pin(const char* pinFile)
+    {
+        LoadMaterial(pinFile, &pinFiles[pinCount]);
+        pins[pinCount] = reinterpret_cast<const char*>(pinFiles[pinCount].Bytes);
+        pinCount++;
+        credsConfig.PeerFingerprints = pins;
+        credsConfig.PeerFingerprintCount = pinCount;
+    }
+
+    void TrustNoAuthority()
+    {
+        credsConfig.CaPem.Bytes = nullptr;
+        credsConfig.CaPem.Length = 0U;
+    }
+
+    /* Open against the named certificate with no trust anchors, authorised by
+       the named pin alone. */
+    bool OpenPinnedOnlyAgainst(const char* certificate, const char* serverName, const char* pinFile)
+    {
+        struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst(certificate, serverName);
+        TrustNoAuthority();
+        Pin(pinFile);
+        tlsStream = CreateTlsStream(&config);
+        return SolidSyslogStream_Open(tlsStream, addr);
+    }
+
+    /* Open against the named certificate with the fixture's trust anchors and
+       the named pin, both of which the peer must satisfy. */
+    bool OpenAnchoredAndPinnedAgainst(const char* certificate, const char* pinFile)
+    {
+        struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst(certificate, TEST_SERVER_HOSTNAME);
+        Pin(pinFile);
         tlsStream = CreateTlsStream(&config);
         return SolidSyslogStream_Open(tlsStream, addr);
     }
@@ -390,3 +432,165 @@ TEST(SolidSyslogWolfSslStreamIntegration, AKeyBelowTheFloorIsRefusedAsAnUntruste
 
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
 }
+
+/* -------------------------------------------------------------------------
+ * Pins alone. With no trust anchor every chain fails for want of a signer, and
+ * a pin that names the leaf waives that and nothing else - on every build.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinnedSelfSignedCollectorIsAuthorisedWithNoChainAtAll)
+{
+    CHECK_TRUE(OpenPinnedOnlyAgainst("server-selfsigned.pem", TEST_SERVER_HOSTNAME, "server-selfsigned.sha256"));
+
+    LONGS_EQUAL(0, CapturedErrorCount);
+    SolidSyslogStream_Close(tlsStream);
+    CHECK_TRUE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+}
+
+/* wolfSSL calls back for the issuer before the leaf, and an overridden issuer
+   is not taken as a signer, so the leaf fails for want of one too. Both calls
+   must be waived for the leaf's pin. */
+TEST(SolidSyslogWolfSslStreamIntegration, APinnedCollectorPresentingItsIssuerIsAuthorisedWithNoAnchors)
+{
+    CHECK_TRUE(OpenPinnedOnlyAgainst("server-chain.pem", TEST_SERVER_HOSTNAME, "server-chain.sha256"));
+
+    LONGS_EQUAL(0, CapturedErrorCount);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinMatchingNothingThePeerPresentsIsRefused)
+{
+    CHECK_FALSE(OpenPinnedOnlyAgainst("server-selfsigned.pem", TEST_SERVER_HOSTNAME, "server.sha256"));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinDoesNotExtendTheValidityOfACertificateThatHasExpired)
+{
+    CHECK_FALSE(
+        OpenPinnedOnlyAgainst("server-selfsigned-expired.pem", TEST_SERVER_HOSTNAME, "server-selfsigned-expired.sha256")
+    );
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinDoesNotExtendTheValidityOfACertificateNotYetValid)
+{
+    CHECK_FALSE(OpenPinnedOnlyAgainst(
+        "server-selfsigned-notyetvalid.pem",
+        TEST_SERVER_HOSTNAME,
+        "server-selfsigned-notyetvalid.sha256"
+    ));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinDoesNotWaiveANameThatDoesNotMatch)
+{
+    CHECK_FALSE(OpenPinnedOnlyAgainst(
+        "server-selfsigned-wrongname.pem",
+        TEST_SERVER_HOSTNAME,
+        "server-selfsigned-wrongname.sha256"
+    ));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinDoesNotWaiveAKeyBelowTheFloor)
+{
+    CHECK_FALSE(
+        OpenPinnedOnlyAgainst("server-selfsigned-weak.pem", TEST_SERVER_HOSTNAME, "server-selfsigned-weak.sha256")
+    );
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+}
+
+/* A pin is a declaration of identity, so a peer pinned and not named is not
+   reported unnamed. */
+TEST(SolidSyslogWolfSslStreamIntegration, APinnedPeerDeclaredByNoNameConnectsWithoutAReport)
+{
+    CHECK_TRUE(OpenPinnedOnlyAgainst("server-selfsigned.pem", nullptr, "server-selfsigned.sha256"));
+
+    LONGS_EQUAL(0, CapturedErrorCount);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, ASha1PinIsHonouredAndReported)
+{
+    CHECK_TRUE(OpenPinnedOnlyAgainst("server-selfsigned.pem", TEST_SERVER_HOSTNAME, "server-selfsigned.sha1"));
+
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1, LastCapturedError.Detail);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinSetHoldingACertificateTheCollectorNoLongerPresentsKeepsDelivering)
+{
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server-selfsigned.pem", TEST_SERVER_HOSTNAME);
+    TrustNoAuthority();
+    Pin("server-untrusted.sha256");
+    Pin("server-selfsigned.sha256");
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+}
+
+/* -------------------------------------------------------------------------
+ * Anchors and pins together: the peer must satisfy both, which one of three
+ * bodies enforces according to the build.
+ * ------------------------------------------------------------------------- */
+
+#if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK != SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED
+TEST(SolidSyslogWolfSslStreamIntegration, APeerSatisfyingBothTheAnchorAndThePinIsAuthorised)
+{
+    CHECK_TRUE(OpenAnchoredAndPinnedAgainst("server-chain.pem", "server-chain.sha256"));
+
+    LONGS_EQUAL(0, CapturedErrorCount);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, APinDoesNotWaiveAChainThatReachesNoAnchor)
+{
+    CHECK_FALSE(OpenAnchoredAndPinnedAgainst("server-untrusted.pem", "server-untrusted.sha256"));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
+}
+#endif
+
+#if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_IN_CALLBACK
+/* Refused from the callback, before the client's flight - so the server never
+   completes its side. */
+TEST(SolidSyslogWolfSslStreamIntegration, AChainThatVerifiesButMatchesNoPinIsRefusedBeforeTheHandshakeCompletes)
+{
+    CHECK_FALSE(OpenAnchoredAndPinnedAgainst("server.pem", "server-selfsigned.sha256"));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+    CHECK_FALSE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+}
+#endif
+
+#if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
+/* Refused once the handshake is done, which the server sees complete: the
+   client credential, where one is configured, has gone by then. No record
+   reaches the server. */
+TEST(SolidSyslogWolfSslStreamIntegration, AChainThatVerifiesButMatchesNoPinIsRefusedOnceTheHandshakeCompletes)
+{
+    CHECK_FALSE(OpenAnchoredAndPinnedAgainst("server.pem", "server-selfsigned.sha256"));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
+    CHECK_TRUE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+    STRCMP_EQUAL("", WolfSslTestServer_Received(server));
+}
+#endif
+
+#if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED
+/* A build that cannot check a pin on a chain that verifies refuses the pair
+   before the handshake, as configuration it cannot honour. */
+TEST(SolidSyslogWolfSslStreamIntegration, AnchorsAndPinsTogetherAreRefusedByABuildThatCannotCheckBoth)
+{
+    CHECK_FALSE(OpenAnchoredAndPinnedAgainst("server.pem", "server.sha256"));
+
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);
+    UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PINS_WITH_ANCHORS_UNSUPPORTED, LastCapturedError.Detail);
+}
+#endif
