@@ -12,6 +12,8 @@ extern "C"
 #include "WolfSslTlsFake.h"
 }
 
+#include "SolidSyslogTlsStreamErrors.h"
+
 /* The stream on a build with KEEP_PEER_CERT and without
    WOLFSSL_ALWAYS_VERIFY_CB, where the callback never reaches a leaf that
    verifies: a pin beside anchors is checked on the leaf the library kept, once
@@ -67,4 +69,16 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AKeptLeafThatMatchesAPi
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
     CHECK_TRUE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AKeptLeafThatMatchesNoPinIsRefusedAndTheSessionClosed)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
 }
