@@ -13,6 +13,7 @@
 #include <wolfssl/ssl.h>
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/hash.h>
 
 /* wolfSSL compiles its notBefore / notAfter checks out entirely under
  * NO_ASN_TIME, so no certificate in the chain is date-checked and nothing says
@@ -100,6 +101,13 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
+static bool WolfSslStream_DigestCertificate(
+    void* context,
+    enum SolidSyslogTlsHashAlgorithm algorithm,
+    uint8_t* digest,
+    size_t* length
+);
 static inline uint32_t WolfSslStream_CheckFailedFor(int error);
 static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
@@ -577,13 +585,46 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
     if ((self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
         (store->error == ASN_NO_SIGNER_E))
     {
-        verdict = 1;
+        verdict = WolfSslStream_LeafMatchesAPin(self, store) ? 1 : 0;
     }
     else
     {
         self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
     }
     return verdict;
+}
+
+/* A pin is the digest of the leaf. wolfSSL hands the callback the whole chain
+ * the peer presented, leaf first, whichever certificate it is calling back
+ * for. */
+static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store)
+{
+    enum SolidSyslogTlsAuthorisation verdict = SolidSyslogTlsFingerprint_Authorise(
+        self->Installed.Fingerprints,
+        self->Installed.FingerprintCount,
+        WolfSslStream_DigestCertificate,
+        &store->certs[0]
+    );
+    return verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+}
+
+static bool WolfSslStream_DigestCertificate(
+    void* context,
+    enum SolidSyslogTlsHashAlgorithm algorithm,
+    uint8_t* digest,
+    size_t* length
+)
+{
+    const WOLFSSL_BUFFER_INFO* certificate = (const WOLFSSL_BUFFER_INFO*) context;
+    (void) algorithm;
+    int size = wc_HashGetDigestSize(WC_HASH_TYPE_SHA256);
+    bool ok = (size > 0) &&
+              (wc_Hash(WC_HASH_TYPE_SHA256, certificate->buffer, certificate->length, digest, (word32) size) == 0);
+    if (ok)
+    {
+        *length = (size_t) size;
+    }
+    return ok;
 }
 
 /* Every code the stream does not name individually is a certificate that
