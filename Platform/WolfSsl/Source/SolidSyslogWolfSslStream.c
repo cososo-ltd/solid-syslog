@@ -35,6 +35,7 @@
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
+#include "SolidSyslogTlsFingerprint.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWolfSslCredentialsDefinition.h"
@@ -84,6 +85,7 @@ static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* se
 static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self);
@@ -349,6 +351,10 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
         );
         ok = false;
     }
+    if (ok)
+    {
+        ok = WolfSslStream_FingerprintsAreUsable(&self->Installed);
+    }
     return ok;
 }
 
@@ -359,6 +365,23 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
 {
     return installed->TrustAnchorsInstalled || (installed->FingerprintCount > 0U);
+}
+
+/* Inspected before the handshake, so a pin that cannot match is reported as
+ * bad configuration rather than as a refused peer. */
+static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    bool ok = SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount) !=
+              SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED;
+    if (!ok)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
+        );
+    }
+    return ok;
 }
 
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self)
