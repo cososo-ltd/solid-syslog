@@ -67,7 +67,8 @@ enum
     WOLFSSL_STREAM_CHECK_CHAIN_TRUST = 1U,
     WOLFSSL_STREAM_CHECK_NAME = 2U,
     WOLFSSL_STREAM_CHECK_NOT_AFTER = 4U,
-    WOLFSSL_STREAM_CHECK_NOT_BEFORE = 8U
+    WOLFSSL_STREAM_CHECK_NOT_BEFORE = 8U,
+    WOLFSSL_STREAM_CHECK_FINGERPRINT = 16U
 };
 
 struct SolidSyslogAddress;
@@ -587,6 +588,10 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
         (store->error == ASN_NO_SIGNER_E))
     {
         verdict = WolfSslStream_LeafMatchesAPin(self, store) ? 1 : 0;
+        if (verdict == 0)
+        {
+            self->RefusedChecks |= WOLFSSL_STREAM_CHECK_FINGERPRINT;
+        }
     }
     else
     {
@@ -759,7 +764,11 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
 {
     enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
-    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_CHAIN_TRUST))
+    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_FINGERPRINT))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_CHAIN_TRUST))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
     }
