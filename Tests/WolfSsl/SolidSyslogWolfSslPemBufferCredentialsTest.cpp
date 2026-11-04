@@ -206,7 +206,19 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, InstallWithoutTrustAnchorsLoadsNoth
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsNoPeerFingerprints)
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallPassesTheConfiguredPeerFingerprintsThrough)
+{
+    config.PeerFingerprints = TEST_PINS;
+    config.PeerFingerprintCount = 1U;
+    ReCreateWithUpdatedConfig();
+
+    Install();
+
+    POINTERS_EQUAL(TEST_PINS, installed.Fingerprints);
+    UNSIGNED_LONGS_EQUAL(1U, installed.FingerprintCount);
+}
+
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallWithoutPeerFingerprintsReportsNone)
 {
     installed.Fingerprints = TEST_PINS;
     installed.FingerprintCount = 1U;
