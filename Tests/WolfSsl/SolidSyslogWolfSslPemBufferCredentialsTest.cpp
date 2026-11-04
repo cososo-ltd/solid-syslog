@@ -109,6 +109,24 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, CreateWithNullConfigReturnsTheNullC
     );
 }
 
+TEST(SolidSyslogWolfSslPemBufferCredentials, CreateWithAPinCountButNoPinListReturnsTheNullCredentials)
+{
+    config.PeerFingerprints = nullptr;
+    config.PeerFingerprintCount = 1U;
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials = SolidSyslogWolfSslPemBufferCredentials_Create(&config);
+
+    CHECK_NULL_CREDENTIALS(credentials);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_PEER_FINGERPRINT
+    );
+}
+
 TEST(SolidSyslogWolfSslPemBufferCredentials, CreateBeyondThePoolReportsExhaustion)
 {
     struct SolidSyslogWolfSslCredentials* extra[SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE] = {};
