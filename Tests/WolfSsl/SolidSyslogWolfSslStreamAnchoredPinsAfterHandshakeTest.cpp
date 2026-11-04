@@ -82,3 +82,14 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AKeptLeafThatMatchesNoP
     LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
 }
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, TheKeptCertificateIsFreed)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) SolidSyslogStream_Open(handle, AddressFake_Get());
+
+    LONGS_EQUAL(1, WolfSslTlsFake_X509FreeCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_PeerCertificate(), WolfSslTlsFake_LastX509FreeArg());
+}
