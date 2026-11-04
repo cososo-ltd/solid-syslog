@@ -56,6 +56,9 @@ enum
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
                                            "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
 static const char* const TEST_SHA1_PIN = "sha-1:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A";
+/* A pin the fake digest never matches. */
+static const char* const TEST_UNMATCHED_SHA256_PIN = "sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                                     "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
 
 #define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)      \
     {                                                                                                      \
@@ -1134,8 +1137,7 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfOneNotYetVa
 
 TEST(SolidSyslogWolfSslStream, OpenReportsAPeerWhoseCertificateMatchesNoPin)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
     int errors[] = {FAKE_ASN_NO_SIGNER_E};
@@ -1194,8 +1196,7 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAPinnedPeerWhoseNameDoesNotMatch)
 
 TEST(SolidSyslogWolfSslStream, OpenReportsAPinMatchingNothingAheadOfEveryObjectionToTheChain)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
     int errors[] = {FAKE_ASN_AFTER_DATE_E, FAKE_DOMAIN_NAME_MISMATCH, FAKE_ASN_NO_SIGNER_E};
     ArrangeCertificateVerificationFailure(errors, 3);
@@ -1282,8 +1283,7 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackWaivesTheMissingSignerOfAPinnedPeer
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPeerWhoseCertificateMatchesNoPin)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
@@ -1351,8 +1351,7 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackFreesTheCertificateItChecked)
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPeerWhoseChainVerifiesButWhoseLeafMatchesNoPin)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
     LONGS_EQUAL(0, OpenThenVerify(1, 0));

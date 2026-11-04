@@ -29,6 +29,8 @@ enum
 
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
                                            "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
+static const char* const TEST_UNMATCHED_SHA256_PIN = "sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                                     "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
 
 static void NoOpSleep(uint32_t milliseconds)
 {
@@ -81,8 +83,7 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AKeptLeafThatMatchesAPi
 
 TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AKeptLeafThatMatchesNoPinIsRefusedAndTheSessionClosed)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
@@ -158,8 +159,7 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AnUnpinnedPeerHasNothin
 
 TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AVerifiedLeafIsLeftToTheCheckAfterTheHandshake)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
     int errors[] = {0};
     WolfSslTlsFake_SetVerifyErrors(errors, 1);
@@ -172,8 +172,7 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AVerifiedLeafIsLeftToTh
 
 TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AFaultTheLibraryReportsStillNamesAPinThatMatchesNothingFirst)
 {
-    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
-                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    const char* const pins[] = {TEST_UNMATCHED_SHA256_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
     int errors[] = {FAKE_DOMAIN_NAME_MISMATCH};
     WolfSslTlsFake_SetVerifyErrors(errors, 1);
