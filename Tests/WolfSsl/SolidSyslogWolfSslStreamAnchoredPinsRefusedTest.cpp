@@ -25,6 +25,12 @@ using namespace CososoTesting;
    and pins together are refused. This executable is compiled with that body
    selected. */
 
+/* The wolfSSL code the fake answers with, named as in error-crypt.h. */
+enum
+{
+    FAKE_ASN_NO_SIGNER_E = -188
+};
+
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
                                            "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
 
@@ -83,4 +89,20 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, AnchorsAndPinsTogetherAreRefus
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TLS_STREAM_ERROR_PINS_WITH_ANCHORS_UNSUPPORTED
     );
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, APinAloneIsStillCheckedInTheCallbackAndConnects)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    WolfSslTlsFake_SetVerifyErrors(errors, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, AnchorsAloneStillConnect)
+{
+    CHECK_TRUE(SolidSyslogStream_Open(handle, AddressFake_Get()));
 }
