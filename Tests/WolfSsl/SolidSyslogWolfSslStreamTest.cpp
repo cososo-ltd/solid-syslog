@@ -235,6 +235,14 @@ TEST_GROUP(SolidSyslogWolfSslStream)
         ArrangePersistentHandshakeError(errors[count - 1]);
     }
 
+    /* Arrange the call WOLFSSL_ALWAYS_VERIFY_CB makes for a leaf that verified,
+     * which is where a pin is checked on a chain the library accepts. */
+    static void ArrangeLeafThatVerifies()
+    {
+        int errors[] = {0};
+        WolfSslTlsFake_SetVerifyErrors(errors, 1);
+    }
+
     /* Drive the verify callback directly with `preverify` and a store carrying
      * `error`, and return what it answered. */
     [[nodiscard]] int OpenThenVerify(int preverify, int error) const
@@ -593,10 +601,10 @@ TEST(SolidSyslogWolfSslStream, OpenWarnsOfASha1PinAndStillConnects)
 {
     const char* const pins[] = {TEST_SHA1_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    ArrangeLeafThatVerifies();
 
-    SolidSyslogStream_Open(handle, addr);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 
-    LONGS_EQUAL(1, WolfSslTlsFake_ConnectCallCount());
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,
         &SolidSyslogWolfSslStreamErrorSource,
@@ -734,9 +742,10 @@ TEST(SolidSyslogWolfSslStream, OpenDoesNotWarnOfAnUnnamedPeerThatAPinNames)
 {
     const char* const pins[] = {TEST_SHA256_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    ArrangeLeafThatVerifies();
     FakeProfile_Value.ServerName = nullptr;
 
-    SolidSyslogStream_Open(handle, addr);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
 
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }

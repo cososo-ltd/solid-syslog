@@ -124,6 +124,7 @@ static inline enum wc_HashType WolfSslStream_HashTypeFor(enum SolidSyslogTlsHash
 static inline uint32_t WolfSslStream_CheckFailedFor(int error);
 static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_PinIsConfirmed(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_IsRetryableHandshakeError(int error);
 static inline bool WolfSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
@@ -309,6 +310,7 @@ static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const
     struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
     WolfSslStream_PullProfile(self);
     self->RefusedChecks = 0U;
+    self->PeerPinned = false;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && WolfSslStream_BuildContext(self) &&
               WolfSslStream_InstallCredentials(self) && WolfSslStream_CreateSession(self) &&
               WolfSslStream_ApplyTlsPolicy(self) && WolfSslStream_ConfigureExpectedPeerName(self);
@@ -642,7 +644,8 @@ static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream
         &store->certs[0]
     );
     self->RefusedChecks |= WolfSslStream_CheckFailedForPin(verdict);
-    return verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+    self->PeerPinned = verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+    return self->PeerPinned;
 }
 
 /* With no anchor wolfSSL stops at the missing signer, and what it found on the
@@ -769,7 +772,7 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
         int error = wolfSSL_get_error(self->Session, rc);
         if (rc == WOLFSSL_SUCCESS)
         {
-            result = true;
+            result = WolfSslStream_PinIsConfirmed(self);
             done = true;
         }
         else if (!WolfSslStream_IsRetryableHandshakeError(error))
@@ -798,6 +801,19 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
         }
     }
     return result;
+}
+
+/* A pin is only as good as the check that read it, so a pinned peer whose
+ * handshake completed without a pin matching is refused rather than trusted. */
+static inline bool WolfSslStream_PinIsConfirmed(struct SolidSyslogWolfSslStream* self)
+{
+    bool ok = !WolfSslStream_IsPinned(self) || self->PeerPinned;
+    if (!ok)
+    {
+        self->RefusedChecks |= WOLFSSL_STREAM_CHECK_FINGERPRINT;
+        WolfSslStream_ReportHandshakeFailure(self, SOLIDSYSLOG_SEVERITY_ERROR, WolfSslStream_RefusalDetail(self));
+    }
+    return ok;
 }
 
 static inline bool WolfSslStream_IsRetryableHandshakeError(int error)
