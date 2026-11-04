@@ -4,17 +4,15 @@
 
 #include "SolidSyslogWolfSslSettings.h"
 
-#include <stdbool.h>
-
 #include "SolidSyslogWolfSslStreamPrivate.h"
 
 /* The callback reaches the leaf on every handshake, verified or not, so the pin
  * was checked there and nothing is kept to check again. */
 #if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_IN_CALLBACK
 
-bool SolidSyslogWolfSslStream_ChecksPinsAlongsideAnchors(void)
+enum SolidSyslogWolfSslAnchoredPinCheck SolidSyslogWolfSslStream_AnchoredPinCheck(void)
 {
-    return true;
+    return SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_IN_CALLBACK;
 }
 
 void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream* self)

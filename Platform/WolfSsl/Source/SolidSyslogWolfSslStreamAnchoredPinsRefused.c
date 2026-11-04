@@ -4,8 +4,6 @@
 
 #include "SolidSyslogWolfSslSettings.h"
 
-#include <stdbool.h>
-
 #include "SolidSyslogWolfSslStreamPrivate.h"
 
 /* No body can check a pin on a chain that verifies, so anchors and pins
@@ -13,9 +11,9 @@
  * which every unanchored chain reaches. Nothing is kept to check again. */
 #if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED
 
-bool SolidSyslogWolfSslStream_ChecksPinsAlongsideAnchors(void)
+enum SolidSyslogWolfSslAnchoredPinCheck SolidSyslogWolfSslStream_AnchoredPinCheck(void)
 {
-    return false;
+    return SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_REFUSED;
 }
 
 void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream* self)

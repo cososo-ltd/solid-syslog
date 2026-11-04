@@ -444,7 +444,7 @@ static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogT
 static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed)
 {
     bool both = installed->TrustAnchorsInstalled && (installed->FingerprintCount > 0U);
-    return !both || SolidSyslogWolfSslStream_ChecksPinsAlongsideAnchors();
+    return !both || (SolidSyslogWolfSslStream_AnchoredPinCheck() != SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_REFUSED);
 }
 
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self)

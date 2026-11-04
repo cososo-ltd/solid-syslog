@@ -4,17 +4,15 @@
 
 #include "SolidSyslogWolfSslSettings.h"
 
-#include <stdbool.h>
-
 #include "SolidSyslogWolfSslStreamPrivate.h"
 
 #if SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
 
 #include <wolfssl/ssl.h>
 
-bool SolidSyslogWolfSslStream_ChecksPinsAlongsideAnchors(void)
+enum SolidSyslogWolfSslAnchoredPinCheck SolidSyslogWolfSslStream_AnchoredPinCheck(void)
 {
-    return true;
+    return SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_AFTER_HANDSHAKE;
 }
 
 void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream* self)
