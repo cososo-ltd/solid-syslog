@@ -539,6 +539,18 @@ TEST(SolidSyslogWolfSslStream, OpenFailsWhenNothingAuthorisesThePeer)
     );
 }
 
+TEST(SolidSyslogWolfSslStream, OpenWithPinsAndNoAnchorsGoesOnToTheHandshake)
+{
+    const char* const pins[] = {"sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
+                                "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A"};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_ConnectCallCount());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThatTheSessionCouldNotBeCreated)
 {
     WolfSslTlsFake_SetNewReturnsNull(true);
