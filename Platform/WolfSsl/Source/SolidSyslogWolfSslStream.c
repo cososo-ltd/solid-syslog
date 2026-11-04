@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #include "SolidSyslogError.h"
@@ -41,6 +42,16 @@ enum
     WOLFSSL_STREAM_MIN_DH_KEY_BITS = 2048U
 };
 
+/* The checks the verify callback can see the peer fail, as bits of
+ * RefusedChecks. */
+enum
+{
+    WOLFSSL_STREAM_CHECK_CHAIN_TRUST = 1U,
+    WOLFSSL_STREAM_CHECK_NAME = 2U,
+    WOLFSSL_STREAM_CHECK_NOT_AFTER = 4U,
+    WOLFSSL_STREAM_CHECK_NOT_BEFORE = 8U
+};
+
 struct SolidSyslogAddress;
 
 static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context);
@@ -68,6 +79,7 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
+static inline uint32_t WolfSslStream_CheckFailedFor(int error);
 static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_IsRetryableHandshakeError(int error);
@@ -75,6 +87,7 @@ static inline bool WolfSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptM
 static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self
 );
+static inline bool WolfSslStream_Failed(const struct SolidSyslogWolfSslStream* self, uint32_t check);
 static inline void WolfSslStream_Close(struct SolidSyslogStream* base);
 static inline void WolfSslStream_ReleaseCredentials(struct SolidSyslogWolfSslStream* self);
 static uint32_t WolfSslStream_Version(struct SolidSyslogStream* base);
@@ -454,10 +467,45 @@ static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogW
     wolfSSL_SetCertCbCtx(self->Session, self);
 }
 
+/* Called for each check a certificate in the chain fails - and, on a build
+ * with WOLFSSL_ALWAYS_VERIFY_CB, for each certificate that passes. Nothing is
+ * overridden: the library's verdict stands, and the stream only records which
+ * check it was, because the handshake's return carries one code and not
+ * necessarily the one the contract puts first. */
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
-    (void) store;
+    struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) store->userCtx;
+    self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
     return preverify;
+}
+
+/* Every code the stream does not name individually is a certificate that
+ * fails path validation for a reason the integrator's next step - replace the
+ * certificate, not the network - does not depend on, so it reads as untrusted. */
+static inline uint32_t WolfSslStream_CheckFailedFor(int error)
+{
+    uint32_t check = 0U;
+    if (error == 0)
+    {
+        /* The certificate passed; nothing to record. */
+    }
+    else if ((error == DOMAIN_NAME_MISMATCH) || (error == IPADDR_MISMATCH))
+    {
+        check = WOLFSSL_STREAM_CHECK_NAME;
+    }
+    else if (error == ASN_AFTER_DATE_E)
+    {
+        check = WOLFSSL_STREAM_CHECK_NOT_AFTER;
+    }
+    else if (error == ASN_BEFORE_DATE_E)
+    {
+        check = WOLFSSL_STREAM_CHECK_NOT_BEFORE;
+    }
+    else
+    {
+        check = WOLFSSL_STREAM_CHECK_CHAIN_TRUST;
+    }
+    return check;
 }
 
 /* Bridges the integrator-installed getter (or the Null Object substituted at
@@ -544,11 +592,41 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
     return pollMs;
 }
 
-/* Rejected by the peer or the protocol; no check of ours names it. */
+/* The checks accumulate, so a compound verdict resolves by precedence: an
+ * untrusted chain is reported ahead of anything the certificate says about
+ * itself, because a certificate no anchor vouches for is not made acceptable by
+ * the name or the dates it carries; and the name ahead of the dates, as the
+ * contract orders them. With no check recorded the handshake was rejected by
+ * the peer or the protocol, and no check of ours names it. */
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
 {
-    (void) self;
-    return SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
+    enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
+    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_CHAIN_TRUST))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NAME))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NOT_AFTER))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NOT_BEFORE))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
+    else
+    {
+        /* Nothing recorded: the detail already holds the plain rejection. */
+    }
+    return detail;
+}
+
+static inline bool WolfSslStream_Failed(const struct SolidSyslogWolfSslStream* self, uint32_t check)
+{
+    return (self->RefusedChecks & check) != 0U;
 }
 
 static int WolfSslStream_IoSend(WOLFSSL* ssl, char* buf, int sz, void* ctx)

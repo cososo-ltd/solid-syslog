@@ -35,7 +35,14 @@ enum
     FAKE_MEMORY_E = -125,
     FAKE_FATAL_ERROR = -313,
     FAKE_WOLFSSL_ERROR_WANT_READ = 2,
-    FAKE_WOLFSSL_ERROR_WANT_WRITE = 3
+    FAKE_WOLFSSL_ERROR_WANT_WRITE = 3,
+    FAKE_ASN_BEFORE_DATE_E = -150,
+    FAKE_ASN_AFTER_DATE_E = -151,
+    FAKE_ASN_SIG_CONFIRM_E = -155,
+    FAKE_ASN_NO_SIGNER_E = -188,
+    FAKE_DOMAIN_NAME_MISMATCH = -322,
+    FAKE_IPADDR_MISMATCH = -325,
+    FAKE_VERIFY_CERT_ERROR = -329
 };
 
 #define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
@@ -192,6 +199,29 @@ TEST_GROUP(SolidSyslogWolfSslStream)
     {
         int seq[] = {errorCode};
         WolfSslTlsFake_SetConnectErrorSequence(seq, 1);
+    }
+
+    /* Arrange a peer the library refuses: the verify callback sees each of
+     * `errors` in turn, then wolfSSL_connect fails with the last of them. */
+    static void ArrangeCertificateVerificationFailure(const int* errors, int count)
+    {
+        WolfSslTlsFake_SetVerifyErrors(errors, count);
+        ArrangePersistentHandshakeError(errors[count - 1]);
+    }
+
+    /* Drive the verify callback directly with `preverify` and a store carrying
+     * `error`, and return what it answered. */
+    [[nodiscard]] int OpenThenVerify(int preverify, int error)
+    {
+        SolidSyslogStream_Open(handle, addr);
+        auto* verify = WolfSslTlsFake_LastSetVerifyCallback();
+        CHECK_TRUE_TEXT(verify != nullptr, "the stream registered no verify callback");
+        int result = -1;
+        if (verify != nullptr)
+        {
+            result = verify(preverify, WolfSslTlsFake_StoreWithError(error));
+        }
+        return result;
     }
 
     /* Tests needing config tweaks call this to release setup()'s pool slot,
@@ -811,4 +841,169 @@ TEST(SolidSyslogWolfSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASe
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+/* -------------------------------------------------------------------------
+ * The refusal names the check the peer failed. wolfSSL tells the verify
+ * callback one error per call and may call more than once; the stream records
+ * them all and names the first in the contract's order.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatThePeerCertificateHasExpired)
+{
+    int errors[] = {FAKE_ASN_AFTER_DATE_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatThePeerCertificateIsNotYetValid)
+{
+    int errors[] = {FAKE_ASN_BEFORE_DATE_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatThePeerNameDidNotMatch)
+{
+    int errors[] = {FAKE_DOMAIN_NAME_MISMATCH};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatThePeerAddressDidNotMatchAsANameMismatch)
+{
+    int errors[] = {FAKE_IPADDR_MISMATCH};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThatThePeerCertificateIsNotTrusted)
+{
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAVerificationFailureItCannotNameAsUntrusted)
+{
+    int errors[] = {FAKE_ASN_SIG_CONFIRM_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
+{
+    int errors[] = {FAKE_ASN_AFTER_DATE_E, FAKE_ASN_NO_SIGNER_E};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAnUntrustedChainAheadOfTheNameOnItWhicheverWasRaisedLast)
+{
+    int errors[] = {FAKE_ASN_NO_SIGNER_E, FAKE_DOMAIN_NAME_MISMATCH};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsANameMismatchAheadOfTheDatesWhicheverWasRaisedLast)
+{
+    int errors[] = {FAKE_DOMAIN_NAME_MISMATCH, FAKE_ASN_AFTER_DATE_E};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfOneNotYetValid)
+{
+    int errors[] = {FAKE_ASN_BEFORE_DATE_E, FAKE_ASN_AFTER_DATE_E};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsThePeersRefusalWhenTheHandshakeEndsOnTheLibrarysOwnVerdictCode)
+{
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    WolfSslTlsFake_SetVerifyErrors(errors, 1);
+    ArrangePersistentHandshakeError(FAKE_VERIFY_CERT_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, ARefusalRecordedOnOneOpenDoesNotNameTheNext)
+{
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetVerifyErrors(nullptr, 0);
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
+{
+    LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackAcceptsWhatTheLibraryAccepted)
+{
+    LONGS_EQUAL(1, OpenThenVerify(1, 0));
 }
