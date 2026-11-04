@@ -102,10 +102,10 @@ TEST(BddTargetTlsConfig, AnUnknownCipherPolicyNameIsRejectedAndChangesNothing)
     CHECK_CIPHER_POLICY("default");
 }
 
-TEST(BddTargetTlsConfig, ServerNameFallsBackToTheHost)
+TEST(BddTargetTlsConfig, ServerNameDefaultsToTheCollectorsQualifiedNameWhateverTheHost)
 {
     CHECK_TRUE(BddTargetTlsConfig_SetByName("tls-host", "collector-b"));
-    CHECK_SERVER_NAME("collector-b");
+    CHECK_SERVER_NAME("syslog-ng.bdd.test");
 }
 
 TEST(BddTargetTlsConfig, ADeclaredNameIsIndependentOfTheHost)
