@@ -551,6 +551,21 @@ TEST(SolidSyslogWolfSslStream, OpenWithPinsAndNoAnchorsGoesOnToTheHandshake)
     LONGS_EQUAL(1, WolfSslTlsFake_ConnectCallCount());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenRefusesAPinThatIsNotWellFormed)
+{
+    const char* const pins[] = {"sha-256:not-a-digest"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_NewCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
+    );
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThatTheSessionCouldNotBeCreated)
 {
     WolfSslTlsFake_SetNewReturnsNull(true);
