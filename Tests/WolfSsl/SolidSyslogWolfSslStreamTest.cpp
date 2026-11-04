@@ -1096,6 +1096,24 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfOneNotYetVa
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED, ErrorHandlerFake_LastDetail());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenReportsAPeerWhoseCertificateMatchesNoPin)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED
+    );
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThePeersRefusalWhenTheHandshakeEndsOnTheLibrarysOwnVerdictCode)
 {
     int errors[] = {FAKE_ASN_NO_SIGNER_E};
