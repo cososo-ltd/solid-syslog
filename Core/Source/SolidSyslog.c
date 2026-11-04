@@ -63,6 +63,7 @@ static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_
 static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
 static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event);
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
@@ -176,6 +177,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->RecordCapacity = 0U;
     self->RecordLength = 0U;
     self->HoldsRecord = false;
+    self->HeldRecordIsReport = false;
     self->HeldRecordLossReported = false;
     self->GetDiscardPolicy = SolidSyslogDiscardPolicy_Default;
     self->DiscardPolicyContext = NULL;
@@ -481,14 +483,16 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
  * its policy already, and the same policy decides the head: under Oldest it is
  * the next to go, so the buffer's head is taken in its place; under Halt the
  * logger stops, as it does when the store refuses a record; under Newest the
- * held record is kept and retried. */
+ * held record is kept and retried. A report is kept under Oldest too: it is
+ * the account of a loss rather than a record the buffer took, and dropping it
+ * would lose the account and start a loss of its own. */
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self)
 {
     if (self->HoldsRecord && SolidSyslogBuffer_IsFull(self->Buffer))
     {
         enum SolidSyslogDiscardPolicy policy = self->GetDiscardPolicy(self->DiscardPolicyContext);
 
-        if (policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST)
+        if ((policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST) && !self->HeldRecordIsReport)
         {
             SolidSyslog_DropHeldRecord(self);
         }
@@ -498,13 +502,13 @@ static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidS
         }
         else
         {
-            /* Newest: the held record keeps its place. */
+            /* Newest, or a report under Oldest: the held record keeps its place. */
         }
     }
 }
 
 /* The run is marked before the report, so a handler that logs cannot repeat
- * it; it ends when a held record is dealt with. */
+ * it; it ends when a held record from the buffer is dealt with. */
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self)
 {
     bool runStarted = !self->HeldRecordLossReported;
@@ -526,6 +530,7 @@ static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self)
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self)
 {
     self->HoldsRecord = SolidSyslogBuffer_Read(self->Buffer, self->Record, self->RecordCapacity, &self->RecordLength);
+    self->HeldRecordIsReport = false;
 
     return self->HoldsRecord;
 }
@@ -537,10 +542,18 @@ static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self)
     if (self->HoldsRecord)
     {
         self->HoldsRecord = !SolidSyslog_StoreOrSenderTakesHeldRecord(self);
-        self->HeldRecordLossReported = self->HoldsRecord && self->HeldRecordLossReported;
+        self->HeldRecordLossReported = self->HeldRecordLossReported && !SolidSyslog_IsBufferRecordDealtWith(self);
     }
 
     return !self->HoldsRecord;
+}
+
+/* Only a record from the buffer ends a run of drops. The report of a drop is
+ * made in the pass that dropped it, so a report that ended the run would have
+ * every drop in it reported again. */
+static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog* self)
+{
+    return !self->HoldsRecord && !self->HeldRecordIsReport;
 }
 
 /* Offers the held record to the store, and to the sender only when the store
@@ -597,6 +610,7 @@ static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self)
     size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
     struct SolidSyslogErrorEvent event;
     self->HoldsRecord = SolidSyslog_IsReportDue(self, index) && SolidSyslogPendingEvents_Take(index, &event);
+    self->HeldRecordIsReport = self->HoldsRecord;
 
     if (self->HoldsRecord)
     {

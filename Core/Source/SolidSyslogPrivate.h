@@ -50,8 +50,11 @@ struct SolidSyslog
     size_t RecordCapacity;
     size_t RecordLength;
     bool HoldsRecord;
+    /* Whether the record held is a report Service made of one of the
+     * library's own events, rather than a record from the buffer. */
+    bool HeldRecordIsReport;
     /* A report stands for a run of held records dropped because the buffer
-     * filled behind them; a held record dealt with ends the run. */
+     * filled behind them; a record from the buffer dealt with ends the run. */
     bool HeldRecordLossReported;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
     void* DiscardPolicyContext;

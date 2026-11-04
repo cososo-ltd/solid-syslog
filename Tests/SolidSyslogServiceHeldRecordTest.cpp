@@ -458,8 +458,8 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, ARunOfDroppedHeldRecordsIsReportedO
 {
     HoldFirstWithTheRingFullBehindIt();
     ErrorHandlerFake_Install(nullptr);
-    SenderFake_FailNextSend(fakeSender);
-    SolidSyslog_Service(solidSyslog); /* drops "first", holds "third" */
+    SenderFake_FailSendAfter(fakeSender, 1);
+    SolidSyslog_Service(solidSyslog); /* drops "first", sends its report, holds "third" */
     FillTheRingBehindIt();
 
     SenderFake_FailNextSend(fakeSender);

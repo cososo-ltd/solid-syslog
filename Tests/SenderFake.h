@@ -17,6 +17,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const char* SenderFake_LastBufferAsString(struct SolidSyslogSender * sender);
     size_t SenderFake_LastSize(struct SolidSyslogSender * sender);
     void SenderFake_FailNextSend(struct SolidSyslogSender * sender);
+    /* Accepts the next @p accepted sends, then fails one. */
+    void SenderFake_FailSendAfter(struct SolidSyslogSender * sender, int accepted);
 
 SOLIDSYSLOG_EXTERN_C_END
 

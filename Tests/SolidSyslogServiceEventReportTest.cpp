@@ -472,20 +472,26 @@ TEST(SolidSyslogServiceEventReportSwitch, AReportAlreadyMadeIsSentAfterTheSwitch
     STRCMP_EQUAL("BUFFER_RECORDS_LOST", LastField(SYSLOG_FIELD_MSGID).c_str());
 }
 
+static enum SolidSyslogDiscardPolicy PolicyOf(void* context)
+{
+    return *static_cast<enum SolidSyslogDiscardPolicy*>(context);
+}
+
 /* A circular buffer and a store that keeps nothing, over a stream sender
  * whose fake keeps every frame it accepted, so the order a pass sends in can
- * be read back. */
+ * be read back. The logger and the ring answer one discard policy, Oldest
+ * unless a test sets another; a group hands CreateLogger the ring it wants. */
 // clang-format off
-TEST_GROUP(SolidSyslogServiceEventReportOrder)
+TEST_BASE(StreamReportBase)
 {
     struct SolidSyslogStream* stream = nullptr;
     struct SolidSyslogSender* sender = nullptr;
     struct SolidSyslogBuffer* ring = nullptr;
     struct SolidSyslog* solidSyslog = nullptr;
+    enum SolidSyslogDiscardPolicy policy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
-    void setup() override
+    void CreateLogger(uint8_t* ringBytes, size_t ringSize)
     {
-        static uint8_t ringBytes[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)];
         ResolverFake_Reset();
         stream = StreamFake_Create();
         struct SolidSyslogStreamSenderConfig senderConfig = {};
@@ -493,15 +499,17 @@ TEST_GROUP(SolidSyslogServiceEventReportOrder)
         senderConfig.Stream = stream;
         senderConfig.Address = AddressFake_Get();
         sender = SolidSyslogStreamSender_Create(&senderConfig);
-        ring = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ringBytes, sizeof(ringBytes), nullptr, nullptr);
+        ring = SolidSyslogCircularBuffer_Create(SolidSyslogNullMutex_Get(), ringBytes, ringSize, PolicyOf, &policy);
         struct SolidSyslogConfig config = {};
         config.Buffer = ring;
         config.Sender = sender;
         config.Store = SolidSyslogNullStore_Get();
+        config.GetDiscardPolicy = PolicyOf;
+        config.DiscardPolicyContext = &policy;
         solidSyslog = SolidSyslog_Create(&config);
     }
 
-    void teardown() override
+    void DestroyLogger() const
     {
         SolidSyslog_Destroy(solidSyslog);
         SolidSyslogCircularBuffer_Destroy(ring);
@@ -512,6 +520,20 @@ TEST_GROUP(SolidSyslogServiceEventReportOrder)
     [[nodiscard]] std::string FrameMsgId(size_t index) const
     {
         return SyslogField(StreamFake_Frame(stream, index), SYSLOG_FIELD_MSGID);
+    }
+};
+
+TEST_GROUP_BASE(SolidSyslogServiceEventReportOrder, StreamReportBase)
+{
+    void setup() override
+    {
+        static uint8_t ringBytes[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)];
+        CreateLogger(ringBytes, sizeof(ringBytes));
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
     }
 };
 
@@ -534,9 +556,54 @@ TEST(SolidSyslogServiceEventReportOrder, AReportGoesAfterTheHeldRecordAndBeforeT
     STRCMP_EQUAL("second", StreamFake_Frame(stream, 2));
 }
 
-static enum SolidSyslogDiscardPolicy PolicyOf(void* context)
+/* A 16-byte ring that "second" (8 bytes framed) and "third" (7) fill, so
+ * "forth" (7) finds no room. */
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogServiceEventReportBufferFull, StreamReportBase)
 {
-    return *static_cast<enum SolidSyslogDiscardPolicy*>(context);
+    uint8_t ringBytes[16] = {};
+
+    void setup() override
+    {
+        CreateLogger(ringBytes, sizeof(ringBytes));
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
+    }
+
+    /* The sender refuses the report of a loss, and the ring fills while
+     * Service holds it. */
+    void HoldAReportWithTheRingFullBehindIt() const
+    {
+        RaiseBufferLoss();
+        StreamFake_SetSendFails(stream, true);
+        SolidSyslog_Service(solidSyslog);
+        StreamFake_SetSendFails(stream, false);
+        SolidSyslogBuffer_Write(ring, "second", 6);
+        SolidSyslogBuffer_Write(ring, "third", 5);
+        SolidSyslogBuffer_Write(ring, "forth", 5);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogServiceEventReportBufferFull, UnderOldestAHeldReportKeepsItsPlace)
+{
+    HoldAReportWithTheRingFullBehindIt();
+
+    SolidSyslog_Service(solidSyslog);
+
+    STRCMP_CONTAINS(R"(source="TestSource")", StreamFake_Frame(stream, 0));
+}
+
+TEST(SolidSyslogServiceEventReportBufferFull, UnderHaltAHeldReportStillHaltsTheLogger)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldAReportWithTheRingFullBehindIt();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, SolidSyslog_Service(solidSyslog));
 }
 
 /* A store that keeps what it is given, unless told to refuse the next write,
