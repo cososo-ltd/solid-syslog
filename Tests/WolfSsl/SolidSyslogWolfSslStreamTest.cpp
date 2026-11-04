@@ -15,6 +15,7 @@ extern "C"
 #include "SolidSyslogWolfSslStreamErrors.h"
 #include "StreamFake.h"
 #include "WolfSslCredentialsFake.h"
+#include "WolfSslFake.h"
 #include "WolfSslTlsFake.h"
 }
 
@@ -163,6 +164,7 @@ TEST_GROUP(SolidSyslogWolfSslStream)
     void setup() override
     {
         WolfSslTlsFake_Reset();
+        WolfSslFake_Reset();
         WolfSslCredentialsFake_Reset();
         ErrorHandlerFake_Install(nullptr);
         FakeGetHandshakeTimeoutMs_Reset();
@@ -1112,6 +1114,16 @@ TEST(SolidSyslogWolfSslStream, ARefusalRecordedOnOneOpenDoesNotNameTheNext)
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackWaivesTheMissingSignerOfAPinnedPeerWithNoAnchors)
+{
+    const char* const pins[] = {"sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
+                                "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A"};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(1, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
 }
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)

@@ -86,9 +86,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     int WolfSslTlsFake_LastSetVerifyMode(void);
     int (*WolfSslTlsFake_LastSetVerifyCallback(void))(int, struct WOLFSSL_X509_STORE_CTX*);
     void* WolfSslTlsFake_LastCertCbCtx(void);
-    /* A store context a test can hand the verify callback, carrying `error`.
-       Its userCtx is whatever the stream last registered. */
+    /* A store context a test can hand the verify callback, carrying `error`
+       for the certificate at `depth` - 0 the leaf, 1 its issuer. Its userCtx
+       is whatever the stream last registered, and its certs the peer's chain
+       below. */
     struct WOLFSSL_X509_STORE_CTX* WolfSslTlsFake_StoreWithError(int error);
+    struct WOLFSSL_X509_STORE_CTX* WolfSslTlsFake_StoreAt(int error, int depth);
+    /* The DER of each certificate in the chain the peer presents. */
+    const unsigned char* WolfSslTlsFake_LeafDer(void);
+    size_t WolfSslTlsFake_LeafDerLength(void);
+    const unsigned char* WolfSslTlsFake_IssuerDer(void);
+    size_t WolfSslTlsFake_IssuerDerLength(void);
 
     /* wolfSSL_connect, with wolfSSL_get_error answering for it. Each call takes
        the next entry of the sequence: 0 completes the handshake (WOLFSSL_SUCCESS)
@@ -100,9 +108,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void WolfSslTlsFake_SetConnectErrorSequence(const int* errors, int count);
     /* Before wolfSSL_connect answers, the fake calls the registered verify
        callback once per entry with a store carrying that error, as the library
-       does for each check the peer fails. */
+       does for each check the peer fails. An error of 0 is a certificate that
+       verified, called back with preverify 1 as WOLFSSL_ALWAYS_VERIFY_CB does.
+       Each entry is for the depth in the same place of SetVerifyDepths, or for
+       the leaf where that has none. */
     void WolfSslTlsFake_SetVerifyErrors(const int* errors, int count);
+    void WolfSslTlsFake_SetVerifyDepths(const int* depths, int count);
     int WolfSslTlsFake_LastVerifyCallbackResult(void);
+    /* How many of those calls the stream answered by accepting the certificate. */
+    int WolfSslTlsFake_VerifyCallbackAcceptCount(void);
 
     /* wolfSSL_write / wolfSSL_read, with wolfSSL_get_error answering for them.
        The return is what the call answers; the error is what get_error then

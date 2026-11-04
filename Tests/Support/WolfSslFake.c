@@ -9,7 +9,9 @@
 #endif
 #include <string.h>
 #include <wolfssl/wolfcrypt/aes.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/memory.h>
 #include <wolfssl/wolfcrypt/random.h>
@@ -24,7 +26,11 @@ enum
     WOLFSSLFAKE_GCM_KEY = 32,
     WOLFSSLFAKE_GCM_NONCE = 12,
     WOLFSSLFAKE_MAX_AAD = 64,
-    WOLFSSLFAKE_MAX_PLAINTEXT = 256
+    WOLFSSLFAKE_MAX_PLAINTEXT = 256,
+    WOLFSSLFAKE_SHA256_SIZE = 32,
+    WOLFSSLFAKE_SHA1_SIZE = 20,
+    WOLFSSLFAKE_SHA256_DIGEST_BYTE = 0x5A,
+    WOLFSSLFAKE_SHA1_DIGEST_BYTE = 0x1A
 };
 
 static int hmacInitCallCount;
@@ -61,6 +67,24 @@ static int forceZeroCallCount;
 static const void* lastForceZeroBuf;
 static size_t lastForceZeroLen;
 
+static int hashCallCount;
+static enum SolidSyslogTlsHashAlgorithm lastHashAlgorithm;
+static const void* lastHashData;
+static size_t lastHashDataLen;
+static bool sha256Unavailable;
+static bool sha1Unavailable;
+
+static int parseCertCallCount;
+static const void* lastDecodedCertSource;
+static size_t lastDecodedCertSourceLen;
+static void* lastDecodedCertHeap;
+static int lastParseCertType;
+static int lastParseCertVerify;
+static void* lastParseCertCm;
+static int parseCertReturn;
+static int freeDecodedCertCallCount;
+static int decodedCertsOutstanding;
+
 void WolfSslFake_Reset(void)
 {
     hmacInitCallCount = 0;
@@ -93,6 +117,22 @@ void WolfSslFake_Reset(void)
     forceZeroCallCount = 0;
     lastForceZeroBuf = NULL;
     lastForceZeroLen = 0U;
+    hashCallCount = 0;
+    lastHashAlgorithm = SOLIDSYSLOG_TLS_HASH_SHA256;
+    lastHashData = NULL;
+    lastHashDataLen = 0U;
+    sha256Unavailable = false;
+    sha1Unavailable = false;
+    parseCertCallCount = 0;
+    lastDecodedCertSource = NULL;
+    lastDecodedCertSourceLen = 0U;
+    lastDecodedCertHeap = NULL;
+    lastParseCertType = -1;
+    lastParseCertVerify = -1;
+    lastParseCertCm = NULL;
+    parseCertReturn = 0;
+    freeDecodedCertCallCount = 0;
+    decodedCertsOutstanding = 0;
 }
 
 /* -------------------------------------------------------------------------
@@ -450,4 +490,151 @@ const void* WolfSslFake_LastForceZeroBuf(void)
 size_t WolfSslFake_LastForceZeroLen(void)
 {
     return lastForceZeroLen;
+}
+
+/* -------------------------------------------------------------------------
+ * Hash
+ * ------------------------------------------------------------------------- */
+
+int WolfSslFake_HashCallCount(void)
+{
+    return hashCallCount;
+}
+
+enum SolidSyslogTlsHashAlgorithm WolfSslFake_LastHashAlgorithm(void)
+{
+    return lastHashAlgorithm;
+}
+
+const void* WolfSslFake_LastHashData(void)
+{
+    return lastHashData;
+}
+
+size_t WolfSslFake_LastHashDataLen(void)
+{
+    return lastHashDataLen;
+}
+
+void WolfSslFake_SetHashUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm)
+{
+    if (algorithm == SOLIDSYSLOG_TLS_HASH_SHA256)
+    {
+        sha256Unavailable = true;
+    }
+    else
+    {
+        sha1Unavailable = true;
+    }
+}
+
+int wc_HashGetDigestSize(enum wc_HashType hash_type)
+{
+    int size = HASH_TYPE_E;
+    if ((hash_type == WC_HASH_TYPE_SHA256) && !sha256Unavailable)
+    {
+        size = WOLFSSLFAKE_SHA256_SIZE;
+    }
+    else if ((hash_type == WC_HASH_TYPE_SHA) && !sha1Unavailable)
+    {
+        size = WOLFSSLFAKE_SHA1_SIZE;
+    }
+    return size;
+}
+
+int wc_Hash(enum wc_HashType hash_type, const byte* data, word32 data_len, byte* hash, word32 hash_len)
+{
+    hashCallCount++;
+    lastHashData = data;
+    lastHashDataLen = data_len;
+    lastHashAlgorithm = (hash_type == WC_HASH_TYPE_SHA) ? SOLIDSYSLOG_TLS_HASH_SHA1 : SOLIDSYSLOG_TLS_HASH_SHA256;
+    int size = wc_HashGetDigestSize(hash_type);
+    int result = HASH_TYPE_E;
+    if ((size > 0) && (hash_len >= (word32) size))
+    {
+        int fill = (hash_type == WC_HASH_TYPE_SHA) ? WOLFSSLFAKE_SHA1_DIGEST_BYTE : WOLFSSLFAKE_SHA256_DIGEST_BYTE;
+        memset(hash, fill, (size_t) size);
+        result = 0;
+    }
+    return result;
+}
+
+/* -------------------------------------------------------------------------
+ * Decoded certificate
+ * ------------------------------------------------------------------------- */
+
+int WolfSslFake_ParseCertCallCount(void)
+{
+    return parseCertCallCount;
+}
+
+const void* WolfSslFake_LastDecodedCertSource(void)
+{
+    return lastDecodedCertSource;
+}
+
+size_t WolfSslFake_LastDecodedCertSourceLen(void)
+{
+    return lastDecodedCertSourceLen;
+}
+
+void* WolfSslFake_LastDecodedCertHeap(void)
+{
+    return lastDecodedCertHeap;
+}
+
+int WolfSslFake_LastParseCertType(void)
+{
+    return lastParseCertType;
+}
+
+int WolfSslFake_LastParseCertVerify(void)
+{
+    return lastParseCertVerify;
+}
+
+void* WolfSslFake_LastParseCertCm(void)
+{
+    return lastParseCertCm;
+}
+
+void WolfSslFake_SetParseCertReturn(int value)
+{
+    parseCertReturn = value;
+}
+
+int WolfSslFake_FreeDecodedCertCallCount(void)
+{
+    return freeDecodedCertCallCount;
+}
+
+int WolfSslFake_DecodedCertsOutstanding(void)
+{
+    return decodedCertsOutstanding;
+}
+
+void wc_InitDecodedCert(struct DecodedCert* cert, const byte* source, word32 inSz, void* heap)
+{
+    (void) cert;
+    lastDecodedCertSource = source;
+    lastDecodedCertSourceLen = inSz;
+    lastDecodedCertHeap = heap;
+    decodedCertsOutstanding++;
+}
+
+int wc_ParseCert(struct DecodedCert* cert, int type, int verify, void* cm)
+{
+    (void) cert;
+    parseCertCallCount++;
+    lastParseCertType = type;
+    lastParseCertVerify = verify;
+    lastParseCertCm = cm;
+    return parseCertReturn;
+}
+
+void wc_FreeDecodedCert(struct DecodedCert* cert)
+{
+    (void) cert;
+    freeDecodedCertCallCount++;
+    decodedCertsOutstanding--;
 }
