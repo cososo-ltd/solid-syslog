@@ -463,6 +463,10 @@ TEST(SolidSyslogLwipRawTcpStream, OpenSucceedsWhenTheConnectionIsResetAfterItCom
     LwipTcpFake_SetResetAfterConnectBeforeReturn(true);
 
     CHECK_TRUE(SolidSyslogStream_Open(stream, address));
+
+    /* The loss is the next Send's to find, without touching the freed pcb. */
+    CHECK_FALSE(sendBytes());
+    CALLED_FAKE(LwipTcpFake_TcpWrite, NEVER);
 }
 
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsARepeatedRefusalOnce)

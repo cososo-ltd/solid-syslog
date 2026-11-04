@@ -365,6 +365,17 @@ void tcp_sent(struct tcp_pcb* pcb, tcp_sent_fn sent)
     lastSentFn = sent;
 }
 
+/* The stack ending a connection on its own: the registered tcp_err is told
+ * why and the pcb is gone, as lwIP does for a reset and for an abort. */
+static void FireErrAndReleasePcb(err_t err)
+{
+    if (lastErrFn != NULL)
+    {
+        lastErrFn(lastCallbackArg, err);
+    }
+    LwipTcpFake_NotePcbReleasedByErr();
+}
+
 /* Default tcp_connect semantics: when configured to succeed (no immediate
  * error injected, the test wants the cb to fire, and a cb was registered),
  * synchronously invoke the connected callback with the configured result. */
@@ -384,18 +395,16 @@ err_t tcp_connect(struct tcp_pcb* pcb, const ip_addr_t* ipaddr, u16_t port, tcp_
     /* The fake fires the connected callback synchronously here, inside the
      * marshalled tcp_connect, mirroring production routing the whole
      * setup-and-connect through one marshal hop. */
-    if ((tcpConnectError == ERR_OK) && connectResetBeforeReturn && (lastErrFn != NULL))
+    if ((tcpConnectError == ERR_OK) && connectResetBeforeReturn)
     {
-        lastErrFn(lastCallbackArg, ERR_RST);
-        --outstandingPcbCount;
+        FireErrAndReleasePcb(ERR_RST);
     }
     else if (ShouldFireConnectCallback(connected))
     {
         (void) connected(lastCallbackArg, pcb, connectCallbackResult);
-        if (resetAfterConnectBeforeReturn && (lastErrFn != NULL))
+        if (resetAfterConnectBeforeReturn)
         {
-            lastErrFn(lastCallbackArg, ERR_RST);
-            --outstandingPcbCount;
+            FireErrAndReleasePcb(ERR_RST);
         }
     }
     return tcpConnectError;
@@ -421,11 +430,7 @@ void tcp_abort(struct tcp_pcb* pcb)
     LWIP_REQUIRE_MARSHAL_ACTIVE();
     ++tcpAbortCallCount;
     lastAbortPcb = pcb;
-    if (lastErrFn != NULL)
-    {
-        lastErrFn(lastCallbackArg, ERR_ABRT);
-    }
-    --outstandingPcbCount;
+    FireErrAndReleasePcb(ERR_ABRT);
 }
 
 err_t tcp_write(struct tcp_pcb* pcb, const void* dataptr, u16_t len, u8_t apiflags)

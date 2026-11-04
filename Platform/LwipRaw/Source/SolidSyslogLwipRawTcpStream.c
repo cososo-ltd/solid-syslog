@@ -40,9 +40,10 @@ struct SolidSyslogStream;
 
 /* Per-operation parameters carried across one marshal hop. Each public op
  * fills only the fields it needs (Close sets just Self); what the hop
- * observed comes back to the caller in the same struct. One struct per class so the void*-context recovery has a single
- * cast site (LwipRawTcpStreamCallFromContext) - see D.002 in
- * docs/misra-deviations.md. Send/Read fields never overlap in one call. */
+ * observed comes back to the caller in the same struct. One struct per class
+ * so the void*-context recovery has a single cast site
+ * (LwipRawTcpStreamCallFromContext) - see D.002 in docs/misra-deviations.md.
+ * Send/Read fields never overlap in one call. */
 struct LwipRawTcpStreamCall
 {
     struct SolidSyslogLwipRawTcpStream* Self;
@@ -422,10 +423,10 @@ static uint32_t LwipRawTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogLwipR
 /* Connect failed or timed out. Errored means tcp_err fired or the connected
  * callback reported a failure - the attempt was answered, just not with a
  * connection - and both it and the code behind it are read on the lwIP thread
- * that wrote them, before the abort can overwrite them. A half-open pcb has
- * no graceful close, so what is still held is released with tcp_abort; a
- * reset has already cost the pcb, since tcp_err fires after lwIP freed it,
- * and then there is nothing left to abort. */
+ * that wrote them. A half-open pcb has no graceful close, so what is still
+ * held is released with tcp_abort, detached first so the abort's own tcp_err
+ * cannot reach the flags. A reset has already cost the pcb: lwIP frees it as
+ * soon as tcp_err returns, and then there is nothing left to abort. */
 static void LwipRawTcpStream_DoAbort(void* context)
 {
     struct LwipRawTcpStreamCall* call = LwipRawTcpStreamCallFromContext(context);
@@ -434,6 +435,7 @@ static void LwipRawTcpStream_DoAbort(void* context)
     call->PeerError = self->LastError;
     if (LwipRawTcpStream_IsOpen(self))
     {
+        LwipRawTcpStream_DetachPcb(self->Pcb);
         tcp_abort(self->Pcb);
         self->Pcb = NULL;
     }
@@ -724,10 +726,11 @@ static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_
     return ERR_OK;
 }
 
-/* lwIP fires tcp_err for fatal events (RST, OOM, ABRT) AFTER releasing the
- * pcb upstream - we must null our Pcb pointer and NOT call tcp_close.
- * Subsequent Stream_Close sees Pcb == NULL and is a safe no-op. Runs on the
- * lwIP thread, touches no lwIP API. */
+/* lwIP fires tcp_err for fatal events (RST, OOM, ABRT) and frees the pcb
+ * itself - just before this call for an abort, as soon as it returns for a
+ * reset - so we null our Pcb pointer and do NOT call tcp_close. Subsequent
+ * Stream_Close sees Pcb == NULL and is a safe no-op. Runs on the lwIP
+ * thread, touches no lwIP API. */
 static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromArg(arg);
