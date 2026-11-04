@@ -730,6 +730,17 @@ TEST(SolidSyslogWolfSslStream, OpenWarnsWhenServerNameIsNull)
     );
 }
 
+TEST(SolidSyslogWolfSslStream, OpenDoesNotWarnOfAnUnnamedPeerThatAPinNames)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    FakeProfile_Value.ServerName = nullptr;
+
+    SolidSyslogStream_Open(handle, addr);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
 TEST(SolidSyslogWolfSslStream, OpenNamesNoPeerAndStillConnectsWhenServerNameIsNull)
 {
     FakeProfile_Value.ServerName = nullptr;
