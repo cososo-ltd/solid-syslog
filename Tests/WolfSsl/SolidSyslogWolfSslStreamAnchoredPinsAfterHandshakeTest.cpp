@@ -19,10 +19,12 @@ extern "C"
    verifies: a pin beside anchors is checked on the leaf the library kept, once
    the handshake is done. This executable is compiled with that body selected. */
 
-/* The wolfSSL code the fake answers with, named as in error-crypt.h. */
+/* The wolfSSL codes the fake answers with, named as in error-crypt.h and
+   error-ssl.h. */
 enum
 {
-    FAKE_ASN_NO_SIGNER_E = -188
+    FAKE_ASN_NO_SIGNER_E = -188,
+    FAKE_DOMAIN_NAME_MISMATCH = -322
 };
 
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
@@ -166,4 +168,18 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AVerifiedLeafIsLeftToTh
 
     LONGS_EQUAL(1, WolfSslTlsFake_LastVerifyCallbackResult());
     LONGS_EQUAL(1, WolfSslTlsFake_GetPeerCertificateCallCount());
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AFaultTheLibraryReportsStillNamesAPinThatMatchesNothingFirst)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_DOMAIN_NAME_MISMATCH};
+    WolfSslTlsFake_SetVerifyErrors(errors, 1);
+    WolfSslTlsFake_SetConnectErrorSequence(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
 }

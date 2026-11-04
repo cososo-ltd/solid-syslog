@@ -106,3 +106,15 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, AnchorsAloneStillConnect)
 {
     CHECK_TRUE(SolidSyslogStream_Open(handle, AddressFake_Get()));
 }
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, APinAloneWhoseHandshakeCompletedWithoutAMatchIsRefused)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_GetPeerCertificateCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
+}
