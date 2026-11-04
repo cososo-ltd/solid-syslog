@@ -103,6 +103,11 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_IsMissingSignerAPinCanWaive(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
+static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
 static inline bool WolfSslStream_StandsWithoutASigner(
     struct SolidSyslogWolfSslStream* self,
@@ -582,28 +587,43 @@ static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogW
 }
 
 /* Called for each check a certificate in the chain fails - and, on a build
- * with WOLFSSL_ALWAYS_VERIFY_CB, for each certificate that passes. Nothing is
- * overridden: the library's verdict stands, and the stream only records which
- * check it was, because the handshake's return carries one code and not
- * necessarily the one the contract puts first. */
+ * with WOLFSSL_ALWAYS_VERIFY_CB, for the leaf once it passes. The library's
+ * verdict stands but for one objection: with pins and no anchors there is no
+ * signer for any chain to reach, so a missing one is waived for a peer a pin
+ * names. A pin that names nothing refuses the peer whatever the chain says.
+ * Every check is recorded as it is decided, because the handshake's return
+ * carries one code and not necessarily the one the contract puts first. */
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
     struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) store->userCtx;
     int verdict = preverify;
-    if ((self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
-        (store->error == ASN_NO_SIGNER_E))
+    if (WolfSslStream_IsMissingSignerAPinCanWaive(self, store))
     {
-        verdict = (WolfSslStream_LeafMatchesAPin(self, store) && WolfSslStream_StandsWithoutASigner(self, store)) ? 1 : 0;
+        bool waived = WolfSslStream_LeafMatchesAPin(self, store) && WolfSslStream_StandsWithoutASigner(self, store);
+        verdict = waived ? 1 : 0;
     }
     else
     {
         self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
-        if ((self->Installed.FingerprintCount > 0U) && !WolfSslStream_LeafMatchesAPin(self, store))
+        if (WolfSslStream_IsPinned(self) && !WolfSslStream_LeafMatchesAPin(self, store))
         {
             verdict = 0;
         }
     }
     return verdict;
+}
+
+static inline bool WolfSslStream_IsMissingSignerAPinCanWaive(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
+{
+    return WolfSslStream_IsPinned(self) && !self->Installed.TrustAnchorsInstalled && (store->error == ASN_NO_SIGNER_E);
+}
+
+static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream* self)
+{
+    return self->Installed.FingerprintCount > 0U;
 }
 
 /* A pin is the digest of the leaf. wolfSSL hands the callback the whole chain
