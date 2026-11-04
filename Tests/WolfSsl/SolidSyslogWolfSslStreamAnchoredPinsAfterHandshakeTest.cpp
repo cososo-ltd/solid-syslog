@@ -93,3 +93,14 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, TheKeptCertificateIsFre
     LONGS_EQUAL(1, WolfSslTlsFake_X509FreeCallCount());
     POINTERS_EQUAL(WolfSslTlsFake_PeerCertificate(), WolfSslTlsFake_LastX509FreeArg());
 }
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, NoKeptCertificateIsAPinWhoseDigestCannotBeTaken)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    WolfSslTlsFake_SetPeerCertificateReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE, ErrorHandlerFake_LastDetail());
+}
