@@ -1158,6 +1158,33 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAPinnedPeerWhoseCertificateHasExpired)
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED, ErrorHandlerFake_LastDetail());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenReportsAPinnedPeerWhoseNameDoesNotMatch)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_ASN_NO_SIGNER_E, FAKE_DOMAIN_NAME_MISMATCH};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_LastVerifyCallbackResult());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAPinMatchingNothingAheadOfEveryObjectionToTheChain)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_ASN_AFTER_DATE_E, FAKE_DOMAIN_NAME_MISMATCH, FAKE_ASN_NO_SIGNER_E};
+    ArrangeCertificateVerificationFailure(errors, 3);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThePeersRefusalWhenTheHandshakeEndsOnTheLibrarysOwnVerdictCode)
 {
     int errors[] = {FAKE_ASN_NO_SIGNER_E};
@@ -1268,6 +1295,31 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPeerWhoseChainVerifiesButWh
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
     LONGS_EQUAL(0, OpenThenVerify(1, 0));
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackWaivesNoMissingSignerWhereAnchorsAreInstalled)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackWaivesNoObjectionToAPinnedPeerButTheMissingSigner)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_SIG_CONFIRM_E));
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesAPinnedPeerWithAnchorsToTheLibrarysVerdict)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    LONGS_EQUAL(1, OpenThenVerify(1, 0));
 }
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
