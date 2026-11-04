@@ -5,6 +5,7 @@
 
 #include "AddressFake.h"
 #include "ErrorHandlerFake.h"
+#include "PendingEventsDrain.h"
 #include "ResolverFake.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogError.h"
@@ -24,16 +25,6 @@ class TEST_SolidSyslogPendingEventsInsideSend_ADeliveryFailureRaisedInsideSendIs
 #include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStreamSenderErrors.h"
-
-/* The table is static and has no production reset: a pending kind is meant to
- * survive until something takes it. Tests start clean by taking every slot. */
-static void DrainEveryKind(struct SolidSyslogErrorEvent* into)
-{
-    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
-    {
-        (void) SolidSyslogPendingEvents_Take(index, into);
-    }
-}
 
 /* Take every slot; true when the one holding @p category was pending, and
  * then it is what @p into holds. The table's order is its own business. */
@@ -55,12 +46,12 @@ static bool TakeKindInto(uint16_t category, struct SolidSyslogErrorEvent* into)
 // clang-format off
 TEST_GROUP(SolidSyslogPendingEvents)
 {
-    struct SolidSyslogErrorEvent taken;
+    struct SolidSyslogErrorEvent taken = {};
     int sentinel = 0;
 
     void setup() override
     {
-        DrainEveryKind(&taken);
+        PendingEventsDrain_All();
         ErrorHandlerFake_Install(&sentinel);
     }
 
@@ -208,12 +199,12 @@ TEST_GROUP(SolidSyslogPendingEventsInsideSend)
 {
     struct SolidSyslogStream* stream = nullptr;
     struct SolidSyslogSender* sender = nullptr;
-    struct SolidSyslogErrorEvent taken;
+    struct SolidSyslogErrorEvent taken = {};
     int sentinel = 0;
 
     void setup() override
     {
-        DrainEveryKind(&taken);
+        PendingEventsDrain_All();
         ResolverFake_Reset();
         stream = StreamFake_Create();
         struct SolidSyslogStreamSenderConfig config = {};

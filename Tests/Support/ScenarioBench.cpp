@@ -6,6 +6,7 @@
 #include "AddressFake.h"
 #include "BlockDeviceFake.h"
 #include "CounterFake.h"
+#include "PendingEventsDrain.h"
 #include "ResolverFake.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogBlockStore.h"
@@ -59,18 +60,20 @@ bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
 }
 } // namespace
 
-ScenarioBench::HandlerInstallation::HandlerInstallation(ScenarioBench* bench)
+ScenarioBench::CleanStart::CleanStart(ScenarioBench* bench)
 {
+    PendingEventsDrain_All();
     SolidSyslog_SetErrorHandler(HandleError, bench);
 }
 
-ScenarioBench::HandlerInstallation::~HandlerInstallation()
+ScenarioBench::CleanStart::~CleanStart()
 {
     SolidSyslog_SetErrorHandler(nullptr, nullptr);
 }
 
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
-    : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
+    : cleanStart(this), options(benchOptions),
+      ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
       sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false),

@@ -20,12 +20,19 @@ add_library(StreamFake STATIC StreamFake.c)
 target_include_directories(StreamFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
 
+# Takes every slot of Core's static pending-event table, so a test starts
+# with nothing pending. Reaches into Core/Source for the table's header.
+add_library(PendingEventsDrain STATIC PendingEventsDrain.c)
+target_include_directories(PendingEventsDrain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(PendingEventsDrain PRIVATE ${CMAKE_SOURCE_DIR}/Core/Source)
+target_link_libraries(PendingEventsDrain PUBLIC ${PROJECT_NAME})
+
 # The scenario bench runs the real Core end to end over the fakes above and
 # records what came out, for the scenario suite and the named tests alike.
 # C++ with no CppUTest dependency, so both executables link it.
 add_library(ScenarioBench STATIC ScenarioBench.cpp SyslogFieldParser.cpp)
 target_include_directories(ScenarioBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ScenarioBench PUBLIC ${PROJECT_NAME} AddressFake BlockDeviceFake CounterFake ResolverFake StreamFake)
+target_link_libraries(ScenarioBench PUBLIC ${PROJECT_NAME} AddressFake BlockDeviceFake CounterFake PendingEventsDrain ResolverFake StreamFake)
 
 # An opaque address token for tests whose stream never reads a sockaddr.
 add_library(AddressFake STATIC AddressFake.c)

@@ -104,17 +104,19 @@ class ScenarioBench
     ScenarioBench& operator=(const ScenarioBench&) = delete;
 
   private:
-    /* Installed before any Core object is created, so a Create that reports
-     * is on the record; the first member, so that it is. */
-    struct HandlerInstallation
+    /* Done before any Core object is created, so a Create that reports is on
+     * the record and nothing an earlier walk left pending is reported in this
+     * one: empties the pending-event table and installs the handler. The first
+     * member, so that it runs first. */
+    struct CleanStart
     {
-        explicit HandlerInstallation(ScenarioBench* bench);
-        ~HandlerInstallation();
-        HandlerInstallation(const HandlerInstallation&) = delete;
-        HandlerInstallation& operator=(const HandlerInstallation&) = delete;
+        explicit CleanStart(ScenarioBench* bench);
+        ~CleanStart();
+        CleanStart(const CleanStart&) = delete;
+        CleanStart& operator=(const CleanStart&) = delete;
     };
 
-    HandlerInstallation handler;
+    CleanStart cleanStart;
     ScenarioBenchOptions options;
     std::vector<uint8_t> ring;
     struct SolidSyslogBlockDevice* device;
