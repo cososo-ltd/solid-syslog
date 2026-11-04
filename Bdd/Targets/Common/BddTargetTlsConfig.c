@@ -28,6 +28,12 @@ enum
     BDD_TARGET_TLS_MAX_NAME = 64
 };
 
+/* The identity a target expects of the collector unless a scenario says
+   otherwise: the collector's fully qualified name rather than the bare service
+   name it is reached by, because a TLS library may validate a declared name as
+   a hostname and refuse one with a single label. */
+static const char* const BDD_TARGET_TLS_DEFAULT_SERVER_NAME = "syslog-ng.bdd.test";
+
 static const char* tlsHost;
 static const char* tlsServerName;
 static bool serverNameSuppressed;
@@ -129,7 +135,7 @@ const char* BddTargetTlsConfig_GetServerName(void)
     const char* result = NULL;
     if (!serverNameSuppressed)
     {
-        result = (tlsServerName != NULL) ? tlsServerName : BddTargetTlsConfig_GetHost();
+        result = (tlsServerName != NULL) ? tlsServerName : BDD_TARGET_TLS_DEFAULT_SERVER_NAME;
     }
     return result;
 }
