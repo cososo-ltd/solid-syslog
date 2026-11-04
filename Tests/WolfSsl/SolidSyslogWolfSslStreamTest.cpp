@@ -1196,6 +1196,20 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAPinMatchingNothingAheadOfEveryObjecti
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED, ErrorHandlerFake_LastDetail());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenRefusesAPinnedPeerWhoseHandshakeCompletedWithoutAPinMatching)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED
+    );
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThePeersRefusalWhenTheHandshakeEndsOnTheLibrarysOwnVerdictCode)
 {
     int errors[] = {FAKE_ASN_NO_SIGNER_E};
