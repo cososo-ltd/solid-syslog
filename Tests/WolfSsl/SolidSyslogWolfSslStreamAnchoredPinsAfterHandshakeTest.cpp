@@ -153,3 +153,17 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AnUnpinnedPeerHasNothin
 
     LONGS_EQUAL(0, WolfSslTlsFake_GetPeerCertificateCallCount());
 }
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AVerifiedLeafIsLeftToTheCheckAfterTheHandshake)
+{
+    const char* const pins[] = {"sha-256:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+                                "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {0};
+    WolfSslTlsFake_SetVerifyErrors(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_LastVerifyCallbackResult());
+    LONGS_EQUAL(1, WolfSslTlsFake_GetPeerCertificateCallCount());
+}
