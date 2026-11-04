@@ -32,7 +32,10 @@ enum
 {
     FAKE_WOLFSSL_FAILURE = 0,
     FAKE_WOLFSSL_SUCCESS = 1,
-    FAKE_MEMORY_E = -125
+    FAKE_MEMORY_E = -125,
+    FAKE_FATAL_ERROR = -313,
+    FAKE_WOLFSSL_ERROR_WANT_READ = 2,
+    FAKE_WOLFSSL_ERROR_WANT_WRITE = 3
 };
 
 #define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
@@ -162,6 +165,33 @@ TEST_GROUP(SolidSyslogWolfSslStream)
     {
         SolidSyslogWolfSslStream_Destroy(handle);
         StreamFake_Destroy(transport);
+    }
+
+    /* Replaces the default Null-getter handle with one that uses the fake
+     * handshake-timeout getter. Each test sets only the fake-getter return
+     * value (or context) it needs different from the defaults restored in
+     * setup(). */
+    void RecreateHandleWithFakeHandshakeGetter()
+    {
+        SolidSyslogWolfSslStream_Destroy(handle);
+        config.GetHandshakeTimeoutMs = FakeGetHandshakeTimeoutMs;
+        handle                        = SolidSyslogWolfSslStream_Create(&config);
+    }
+
+    /* Arrange wolfSSL_connect to first want more I/O, then succeed on the next
+     * call - exercises the bounded handshake retry loop's progress path. */
+    static void ArrangeHandshakeRetryThenSucceed(int wantError)
+    {
+        int seq[] = {wantError, 0};
+        WolfSslTlsFake_SetConnectErrorSequence(seq, 2);
+    }
+
+    /* Arrange wolfSSL_connect to fail with `errorCode` on every call - used
+     * both for the persistent-WANT (budget-exhausted) and hard-error paths. */
+    static void ArrangePersistentHandshakeError(int errorCode)
+    {
+        int seq[] = {errorCode};
+        WolfSslTlsFake_SetConnectErrorSequence(seq, 1);
     }
 
     /* Tests needing config tweaks call this to release setup()'s pool slot,
@@ -586,4 +616,199 @@ TEST(SolidSyslogWolfSslStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSessionIt
     LONGS_EQUAL(1, WolfSslTlsFake_NewCallCount());
     LONGS_EQUAL(0, WolfSslTlsFake_FreeCallCount());
     LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
+}
+
+/* -------------------------------------------------------------------------
+ * Bounded handshake retry loop. wolfSSL_connect under non-blocking transport
+ * answers WANT_READ / WANT_WRITE between RTTs; the loop must drive it to
+ * completion within a bounded budget so a wedged peer doesn't burn the service
+ * thread indefinitely.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, OpenReturnsFalseWhenTheHandshakeFails)
+{
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogWolfSslStream, OpenRetriesTheHandshakeOnWantRead)
+{
+    ArrangeHandshakeRetryThenSucceed(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    CALLED_FAKE(WolfSslTlsFake_Connect, TWICE);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenSleepsBetweenHandshakeRetries)
+{
+    ArrangeHandshakeRetryThenSucceed(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    CALLED_FUNCTION(NoOpSleep, ONCE);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenRetriesTheHandshakeOnWantWrite)
+{
+    ArrangeHandshakeRetryThenSucceed(FAKE_WOLFSSL_ERROR_WANT_WRITE);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    CALLED_FAKE(WolfSslTlsFake_Connect, TWICE);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenClosesTransportAndFreesTheSessionWhenTheHandshakeBudgetExhausts)
+{
+    ArrangePersistentHandshakeError(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_SEVERITY(
+        transport,
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenInvokesTheConfiguredHandshakeTimeoutGetter)
+{
+    RecreateHandleWithFakeHandshakeGetter();
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, FakeGetHandshakeTimeoutMs_CallCount);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenUsesTheGettersReturnValueAsTheHandshakeBudget)
+{
+    /* 50 ms budget against the 10 ms poll interval -> five sleeps before
+       declaring HANDSHAKE_TIMEOUT and unwinding. */
+    FakeGetHandshakeTimeoutMs_ReturnValue = 50U;
+    RecreateHandleWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(5, NoOpSleepCallCount);
+}
+
+TEST(SolidSyslogWolfSslStream, HandshakePollSleepsTenMilliseconds)
+{
+    ArrangeHandshakeRetryThenSucceed(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    UNSIGNED_LONGS_EQUAL(10U, g_lastSleepMs);
+}
+
+TEST(SolidSyslogWolfSslStream, HandshakeLastPollSleepsOnlyWhatIsLeftOfTheBudget)
+{
+    FakeGetHandshakeTimeoutMs_ReturnValue = 25U;
+    RecreateHandleWithFakeHandshakeGetter();
+    ArrangePersistentHandshakeError(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(3, NoOpSleepCallCount);
+    UNSIGNED_LONGS_EQUAL(5U, g_lastSleepMs);
+}
+
+TEST(SolidSyslogWolfSslStream, TheGetterReceivesANullContextWhenNoneIsConfigured)
+{
+    RecreateHandleWithFakeHandshakeGetter();
+
+    SolidSyslogStream_Open(handle, addr);
+
+    POINTERS_EQUAL(nullptr, FakeGetHandshakeTimeoutMs_LastContext);
+}
+
+TEST(SolidSyslogWolfSslStream, TheGetterReceivesTheConfiguredContext)
+{
+    config.HandshakeTimeoutContext = &heap;
+    RecreateHandleWithFakeHandshakeGetter();
+
+    SolidSyslogStream_Open(handle, addr);
+
+    POINTERS_EQUAL(&heap, FakeGetHandshakeTimeoutMs_LastContext);
+}
+
+TEST(SolidSyslogWolfSslStream, ASecondOpenAfterAFailedFirstOpenSucceeds)
+{
+    int handshakeSequence[] = {FAKE_FATAL_ERROR, 0};
+    WolfSslTlsFake_SetConnectErrorSequence(handshakeSequence, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(2, StreamFake_OpenCallCount(transport));
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+    LONGS_EQUAL(2, WolfSslTlsFake_CtxNewExCallCount());
+    LONGS_EQUAL(2, WolfSslTlsFake_NewCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenClosesTransportAndFreesTheSessionWhenTheHandshakeFailsHard)
+{
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(WolfSslTlsFake_Connect, ONCE);
+    CALLED_FUNCTION(NoOpSleep, NEVER);
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsTheLibraryOutOfMemoryWhenTheHandshakeCannotAllocate)
+{
+    ArrangePersistentHandshakeError(FAKE_MEMORY_E);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+/* The sender retries a refused handshake every service pass; one run of the
+ * same refusal is one report. */
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedHandshakeRejectionOnce)
+{
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsADifferentHandshakeFailureInTheSameRun)
+{
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    ArrangePersistentHandshakeError(FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASessionInBetween)
+{
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    ArrangePersistentHandshakeError(0);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    SolidSyslogStream_Close(handle);
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }

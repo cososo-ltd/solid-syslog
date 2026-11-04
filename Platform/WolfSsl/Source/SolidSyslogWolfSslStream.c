@@ -35,6 +35,7 @@ const struct SolidSyslogErrorSource SolidSyslogWolfSslStreamErrorSource = {
  * setter takes. */
 enum
 {
+    HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 10U,
     WOLFSSL_STREAM_MIN_RSA_KEY_BITS = 2048,
     WOLFSSL_STREAM_MIN_ECC_KEY_BITS = 224,
     WOLFSSL_STREAM_MIN_DH_KEY_BITS = 2048U
@@ -67,7 +68,13 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
+static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_IsRetryableHandshakeError(int error);
+static inline bool WolfSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
+static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
+static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self
+);
 static inline void WolfSslStream_Close(struct SolidSyslogStream* base);
 static inline void WolfSslStream_ReleaseCredentials(struct SolidSyslogWolfSslStream* self);
 static uint32_t WolfSslStream_Version(struct SolidSyslogStream* base);
@@ -453,9 +460,95 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
     return preverify;
 }
 
+/* Bridges the integrator-installed getter (or the Null Object substituted at
+ * config-copy time) to the bounded handshake deadline. Invoked at the start
+ * of each handshake attempt so runtime-tunable values take effect on the next
+ * reconnect. */
+static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self)
+{
+    return self->Config.GetHandshakeTimeoutMs(self->Config.HandshakeTimeoutContext);
+}
+
+/* Drive wolfSSL_connect to completion under non-blocking transport. Each call
+ * may want more I/O while waiting for the multi-RTT handshake to progress; the
+ * loop sleeps briefly between attempts (avoiding a busy spin) until either the
+ * handshake completes, hits a hard error, or the bounded budget expires. Each
+ * non-success exit emits a distinct code so the integrator can tell rejection
+ * from timeout. */
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self)
 {
-    return wolfSSL_connect(self->Session) == WOLFSSL_SUCCESS;
+    uint32_t budgetMs = WolfSslStream_ResolveHandshakeTimeoutMs(self);
+    uint32_t totalSleptMs = 0U;
+    bool result = false;
+    bool done = false;
+
+    while (!done)
+    {
+        int rc = wolfSSL_connect(self->Session);
+        int error = wolfSSL_get_error(self->Session, rc);
+        if (rc == WOLFSSL_SUCCESS)
+        {
+            result = true;
+            done = true;
+        }
+        else if (!WolfSslStream_IsRetryableHandshakeError(error))
+        {
+            WolfSslStream_ReportHandshakeFailure(
+                self,
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                WolfSslStream_InitDetail(error, WolfSslStream_RefusalDetail(self))
+            );
+            done = true;
+        }
+        else if (WolfSslStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
+        {
+            WolfSslStream_ReportHandshakeFailure(
+                self,
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
+            );
+            done = true;
+        }
+        else
+        {
+            uint32_t pollMs = WolfSslStream_HandshakePollMs(totalSleptMs, budgetMs);
+            self->Config.Sleep(pollMs);
+            totalSleptMs += pollMs;
+        }
+    }
+    return result;
+}
+
+static inline bool WolfSslStream_IsRetryableHandshakeError(int error)
+{
+    return (error == WOLFSSL_ERROR_WANT_READ) || (error == WOLFSSL_ERROR_WANT_WRITE);
+}
+
+static inline bool WolfSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    return totalSleptMs >= budgetMs;
+}
+
+/* The poll interval, or what is left of the budget where that is less, so the
+ * sleeps requested never add up to more than the budget. How long each sleep
+ * really takes, and the handshake itself, can still carry the attempt past it.
+ * Called only while budget remains. */
+static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs)
+{
+    uint32_t pollMs = (uint32_t) HANDSHAKE_POLL_INTERVAL_MILLISECONDS;
+    uint32_t remainingMs = budgetMs - totalSleptMs;
+    if (remainingMs < pollMs)
+    {
+        pollMs = remainingMs;
+    }
+    return pollMs;
+}
+
+/* Rejected by the peer or the protocol; no check of ours names it. */
+static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
+{
+    (void) self;
+    return SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
 }
 
 static int WolfSslStream_IoSend(WOLFSSL* ssl, char* buf, int sz, void* ctx)
