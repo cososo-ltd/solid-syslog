@@ -19,6 +19,12 @@ extern "C"
    verifies: a pin beside anchors is checked on the leaf the library kept, once
    the handshake is done. This executable is compiled with that body selected. */
 
+/* The wolfSSL code the fake answers with, named as in error-crypt.h. */
+enum
+{
+    FAKE_ASN_NO_SIGNER_E = -188
+};
+
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
                                            "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
 
@@ -103,4 +109,47 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, NoKeptCertificateIsAPin
     CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
 
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AKeptCertificateWithNoDerIsAPinWhoseDigestCannotBeTaken)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    WolfSslTlsFake_SetX509GetDerReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, TheLeafDigestedIsTheOneTheSessionKept)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) SolidSyslogStream_Open(handle, AddressFake_Get());
+
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastGetPeerCertificateSsl());
+    POINTERS_EQUAL(WolfSslTlsFake_LeafDer(), WolfSslFake_LastHashData());
+    UNSIGNED_LONGS_EQUAL(WolfSslTlsFake_LeafDerLength(), WolfSslFake_LastHashDataLen());
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, APinTheCallbackMatchedIsNotCheckedAgain)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    WolfSslTlsFake_SetVerifyErrors(errors, 1);
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_GetPeerCertificateCallCount());
+}
+
+TEST(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake, AnUnpinnedPeerHasNothingCheckedAfterTheHandshake)
+{
+    CHECK_TRUE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_GetPeerCertificateCallCount());
 }
