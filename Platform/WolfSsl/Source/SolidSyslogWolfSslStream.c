@@ -466,14 +466,18 @@ static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWol
     if (serverName == NULL)
     {
         /* No expected identity supplied - the handshake will accept any cert that
-         * chains to a trusted CA, so the peer is unverified. Surface it as a
+         * chains to a trusted CA, so the peer is unverified unless a pin names
+         * it, which is a stronger declaration than a name. Surface it as a
          * WARNING (still connect, preserving the closed-network case) rather than
          * swallowing the MITM-class default silently. */
-        WolfSslStream_Report(
-            SOLIDSYSLOG_SEVERITY_WARNING,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
-        );
+        if (!WolfSslStream_IsPinned(self))
+        {
+            WolfSslStream_Report(
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+            );
+        }
     }
     else if (serverName[0] != '\0')
     {
