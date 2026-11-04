@@ -573,8 +573,17 @@ static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogW
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
     struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) store->userCtx;
-    self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
-    return preverify;
+    int verdict = preverify;
+    if ((self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
+        (store->error == ASN_NO_SIGNER_E))
+    {
+        verdict = 1;
+    }
+    else
+    {
+        self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
+    }
+    return verdict;
 }
 
 /* Every code the stream does not name individually is a certificate that
