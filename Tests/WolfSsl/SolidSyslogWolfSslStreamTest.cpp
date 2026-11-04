@@ -37,6 +37,8 @@ enum
     FAKE_FATAL_ERROR = -313,
     FAKE_WOLFSSL_ERROR_WANT_READ = 2,
     FAKE_WOLFSSL_ERROR_WANT_WRITE = 3,
+    FAKE_VERIFY = 1,
+    FAKE_CA_TYPE = 6,
     FAKE_ASN_BEFORE_DATE_E = -150,
     FAKE_ASN_AFTER_DATE_E = -151,
     FAKE_ASN_SIG_CONFIRM_E = -155,
@@ -244,6 +246,20 @@ TEST_GROUP(SolidSyslogWolfSslStream)
         if (verify != nullptr)
         {
             result = verify(preverify, WolfSslTlsFake_StoreWithError(error));
+        }
+        return result;
+    }
+
+    /* As OpenThenVerify, for the certificate at `depth` of the peer's chain. */
+    [[nodiscard]] int OpenThenVerifyAt(int preverify, int error, int depth) const
+    {
+        SolidSyslogStream_Open(handle, addr);
+        auto* verify = WolfSslTlsFake_LastSetVerifyCallback();
+        CHECK_TRUE_TEXT(verify != nullptr, "the stream registered no verify callback");
+        int result = -1;
+        if (verify != nullptr)
+        {
+            result = verify(preverify, WolfSslTlsFake_StoreAt(error, depth));
         }
         return result;
     }
@@ -1203,6 +1219,46 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackRefusesAPinnedPeerWhoseDatesTheLibr
     WolfSslFake_SetParseCertReturn(FAKE_ASN_AFTER_DATE_E);
 
     LONGS_EQUAL(0, OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E));
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackAuthorisesByTheLeafWhicheverCertificateItIsCalledFor)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) OpenThenVerifyAt(0, FAKE_ASN_NO_SIGNER_E, 1);
+
+    POINTERS_EQUAL(WolfSslTlsFake_LeafDer(), WolfSslFake_LastHashData());
+    UNSIGNED_LONGS_EQUAL(WolfSslTlsFake_LeafDerLength(), WolfSslFake_LastHashDataLen());
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackChecksTheCertificateItIsCalledForAsATrustAnchorOnTheConfiguredHeap)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) OpenThenVerifyAt(0, FAKE_ASN_NO_SIGNER_E, 1);
+
+    POINTERS_EQUAL(WolfSslTlsFake_IssuerDer(), WolfSslFake_LastDecodedCertSource());
+    UNSIGNED_LONGS_EQUAL(WolfSslTlsFake_IssuerDerLength(), WolfSslFake_LastDecodedCertSourceLen());
+    POINTERS_EQUAL(&heap, WolfSslFake_LastDecodedCertHeap());
+    LONGS_EQUAL(FAKE_CA_TYPE, WolfSslFake_LastParseCertType());
+    LONGS_EQUAL(FAKE_VERIFY, WolfSslFake_LastParseCertVerify());
+    POINTERS_EQUAL(nullptr, WolfSslFake_LastParseCertCm());
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackFreesTheCertificateItChecked)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) OpenThenVerify(0, FAKE_ASN_NO_SIGNER_E);
+
+    LONGS_EQUAL(1, WolfSslFake_FreeDecodedCertCallCount());
+    LONGS_EQUAL(0, WolfSslFake_DecodedCertsOutstanding());
 }
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
