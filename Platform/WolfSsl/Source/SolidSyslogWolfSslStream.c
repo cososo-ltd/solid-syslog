@@ -714,7 +714,8 @@ static bool WolfSslStream_DigestCertificate(
     const struct PeerCertificate* certificate = (const struct PeerCertificate*) context;
     enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
     int size = wc_HashGetDigestSize(type);
-    bool ok = (size > 0) && (wc_Hash(type, certificate->Der, certificate->Length, digest, (word32) size) == 0);
+    bool ok = (certificate->Der != NULL) && (size > 0) &&
+              (wc_Hash(type, certificate->Der, certificate->Length, digest, (word32) size) == 0);
     if (ok)
     {
         *length = (size_t) size;
