@@ -24,6 +24,8 @@ extern "C"
 #include "WolfSslTestServer.h"
 }
 
+#include <array>
+
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTlsStreamErrors.h"
@@ -103,9 +105,9 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
     struct SolidSyslogWolfSslPemBufferCredentialsConfig credsConfig = {};
     struct SolidSyslogWolfSslCredentials* credentials = nullptr;
     struct SolidSyslogAddress* addr             = nullptr;
-    struct WolfSslTestMaterial            pinFiles[2]      = {};
-    const char*                           pins[2]          = {};
-    size_t                                pinCount         = 0U;
+    std::array<struct WolfSslTestMaterial, 2> pinFiles = {};
+    std::array<const char*, 2>                pins     = {};
+    size_t                                    pinCount = 0U;
 
     void setup() override
     {
@@ -210,10 +212,10 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
        `server.sha256` is the SHA-256 pin of the leaf in `server.pem`. */
     void Pin(const char* pinFile)
     {
-        LoadMaterial(pinFile, &pinFiles[pinCount]);
-        pins[pinCount] = reinterpret_cast<const char*>(pinFiles[pinCount].Bytes);
+        LoadMaterial(pinFile, &pinFiles.at(pinCount));
+        pins.at(pinCount) = reinterpret_cast<const char*>(pinFiles.at(pinCount).Bytes);
         pinCount++;
-        credsConfig.PeerFingerprints = pins;
+        credsConfig.PeerFingerprints = pins.data();
         credsConfig.PeerFingerprintCount = pinCount;
     }
 

@@ -75,7 +75,7 @@ enum
 struct SolidSyslogAddress;
 
 /* What a pin is the digest of: the leaf as the peer presented it. */
-struct PeerCertificate
+struct WolfSslStreamPeerCertificate
 {
     const unsigned char* Der;
     word32 Length;
@@ -694,7 +694,7 @@ bool SolidSyslogWolfSslStream_AuthoriseLeaf(
     word32 length
 )
 {
-    struct PeerCertificate leaf = {der, length};
+    struct WolfSslStreamPeerCertificate leaf = {der, length};
     enum SolidSyslogTlsAuthorisation verdict = SolidSyslogTlsFingerprint_Authorise(
         self->Installed.Fingerprints,
         self->Installed.FingerprintCount,
@@ -713,7 +713,7 @@ static bool WolfSslStream_DigestCertificate(
     size_t* length
 )
 {
-    const struct PeerCertificate* certificate = (const struct PeerCertificate*) context;
+    const struct WolfSslStreamPeerCertificate* certificate = (const struct WolfSslStreamPeerCertificate*) context;
     enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
     int size = wc_HashGetDigestSize(type);
     bool ok = (certificate->Der != NULL) && (size > 0) &&
