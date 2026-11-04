@@ -1128,6 +1128,20 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAPinWhoseDigestTheBuildCannotCompute)
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE, ErrorHandlerFake_LastDetail());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenReportsAPinnedPeerWhoseCertificateHasExpired)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+    WolfSslFake_SetParseCertReturn(FAKE_ASN_AFTER_DATE_E);
+    int errors[] = {FAKE_ASN_NO_SIGNER_E};
+    ArrangeCertificateVerificationFailure(errors, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED, ErrorHandlerFake_LastDetail());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsThePeersRefusalWhenTheHandshakeEndsOnTheLibrarysOwnVerdictCode)
 {
     int errors[] = {FAKE_ASN_NO_SIGNER_E};
