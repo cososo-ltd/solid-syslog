@@ -39,11 +39,11 @@ struct SolidSyslogAddress;
 struct SolidSyslogStream;
 
 /* Per-operation parameters carried across one marshal hop. Each public op
- * fills only the fields it needs (Close/Abort set just Self); read-back
- * results (ConnectErr / SendResult / ReadResult) are returned in the same
- * struct. One struct per class so the void*-context recovery has a single
- * cast site (LwipRawTcpStreamCallFromContext) - see D.002 in
- * docs/misra-deviations.md. Send/Read fields never overlap in one call. */
+ * fills only the fields it needs (Close sets just Self); what the hop
+ * observed comes back to the caller in the same struct. One struct per class
+ * so the void*-context recovery has a single cast site
+ * (LwipRawTcpStreamCallFromContext) - see D.002 in docs/misra-deviations.md.
+ * Send/Read fields never overlap in one call. */
 struct LwipRawTcpStreamCall
 {
     struct SolidSyslogLwipRawTcpStream* Self;
@@ -51,6 +51,10 @@ struct LwipRawTcpStreamCall
     const void* SendBuffer;
     void* ReadBuffer;
     size_t Length;
+    /* Whether the setup hop got a pcb, read on the caller's thread. Pcb itself
+       is not: once the hop releases the stack, the tcpip thread may run the
+       error callback that nulls it before the caller looks. */
+    bool PcbCreated;
     err_t ConnectErr;
     /* What ended a failed attempt, read on the lwIP thread by the abort hop:
        the callbacks write Errored and LastError there, and the hop is what
@@ -216,14 +220,13 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
     {
         struct LwipRawTcpStreamCall call = {.Self = self, .Dst = SolidSyslogLwipRawAddress_AsConst(addr)};
         SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoOpenAndConnect, &call);
-        if (LwipRawTcpStream_IsOpen(self))
+        if (call.PcbCreated)
         {
-            bool connected = false;
             if (call.ConnectErr == ERR_OK)
             {
-                connected = LwipRawTcpStream_WaitForConnectedCallback(self);
+                opened = LwipRawTcpStream_WaitForConnectedCallback(self);
             }
-            if (!connected)
+            if (!opened)
             {
                 /* Abort first: the hop also reads what ended the attempt. */
                 SolidSyslogLwipRaw_Marshal(LwipRawTcpStream_DoAbort, &call);
@@ -238,7 +241,9 @@ static bool LwipRawTcpStream_Open(struct SolidSyslogStream* base, const struct S
                 SOLIDSYSLOG_TCP_STREAM_ERROR_ENDPOINT_UNAVAILABLE
             );
         }
-        opened = LwipRawTcpStream_IsOpen(self);
+        /* Decided by what the hop and the wait saw, not by Pcb: a connection
+         * the peer resets straight after accepting it was still made, and
+         * its loss is the next Send's to report. */
         if (opened)
         {
             SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
@@ -328,15 +333,18 @@ static void LwipRawTcpStream_ReportFailedAttempt(
 
 /* The setup-and-connect hop: tcp_new + pcb configuration + tcp_connect all
  * run on the lwIP-owning thread in one marshalled batch. The connected_cb
- * may fire here (synchronously, on the same thread) - it only flips volatile
- * flags. The bounded spin that waits for those flags stays on the caller's
- * thread (sleeping the lwIP thread mid-connect would starve RX/timers). */
+ * may fire here (synchronously, on the same thread) - it only sets the
+ * Connected / Errored flags. The bounded spin that polls those flags stays on
+ * the caller's thread (sleeping the lwIP thread mid-connect would starve
+ * RX/timers); each poll sleeps through an opaque call, so the flags are
+ * re-read rather than cached. */
 static void LwipRawTcpStream_DoOpenAndConnect(void* context)
 {
     struct LwipRawTcpStreamCall* call = LwipRawTcpStreamCallFromContext(context);
     struct SolidSyslogLwipRawTcpStream* self = call->Self;
     self->Pcb = LwipRawTcpStream_OpenAndConfigurePcb(self);
-    if (LwipRawTcpStream_IsOpen(self))
+    call->PcbCreated = LwipRawTcpStream_IsOpen(self);
+    if (call->PcbCreated)
     {
         self->Connected = false;
         self->Errored = false;
@@ -412,19 +420,25 @@ static uint32_t LwipRawTcpStream_ResolveConnectTimeoutMs(struct SolidSyslogLwipR
     return (ms > SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX) ? SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS_MAX : ms;
 }
 
-/* Connect failed or timed out - release the pcb cleanly on the lwIP thread.
- * tcp_abort (not tcp_close) because a half-open pcb has no graceful close. */
-/* Errored here means tcp_err fired or the connected callback reported a
- * failure - the attempt was answered, just not with a connection. Both it and
- * the code behind it are read on the lwIP thread that wrote them. */
+/* Connect failed or timed out. Errored means tcp_err fired or the connected
+ * callback reported a failure - the attempt was answered, just not with a
+ * connection - and both it and the code behind it are read on the lwIP thread
+ * that wrote them. A half-open pcb has no graceful close, so what is still
+ * held is released with tcp_abort, detached first so the abort's own tcp_err
+ * cannot reach the flags. A reset has already cost the pcb: lwIP frees it as
+ * soon as tcp_err returns, and then there is nothing left to abort. */
 static void LwipRawTcpStream_DoAbort(void* context)
 {
     struct LwipRawTcpStreamCall* call = LwipRawTcpStreamCallFromContext(context);
     struct SolidSyslogLwipRawTcpStream* self = call->Self;
     call->EndedByPeer = self->Errored;
     call->PeerError = self->LastError;
-    tcp_abort(self->Pcb);
-    self->Pcb = NULL;
+    if (LwipRawTcpStream_IsOpen(self))
+    {
+        LwipRawTcpStream_DetachPcb(self->Pcb);
+        tcp_abort(self->Pcb);
+        self->Pcb = NULL;
+    }
 }
 
 static bool LwipRawTcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
@@ -712,10 +726,11 @@ static err_t LwipRawTcpStream_SentCallback(void* arg, struct tcp_pcb* tpcb, u16_
     return ERR_OK;
 }
 
-/* lwIP fires tcp_err for fatal events (RST, OOM, ABRT) AFTER releasing the
- * pcb upstream - we must null our Pcb pointer and NOT call tcp_close.
- * Subsequent Stream_Close sees Pcb == NULL and is a safe no-op. Runs on the
- * lwIP thread, touches no lwIP API. */
+/* lwIP fires tcp_err for fatal events (RST, OOM, ABRT) and frees the pcb
+ * itself - just before this call for an abort, as soon as it returns for a
+ * reset - so we null our Pcb pointer and do NOT call tcp_close. Subsequent
+ * Stream_Close sees Pcb == NULL and is a safe no-op. Runs on the lwIP
+ * thread, touches no lwIP API. */
 static void LwipRawTcpStream_ErrCallback(void* arg, err_t err)
 {
     struct SolidSyslogLwipRawTcpStream* self = LwipRawTcpStream_SelfFromArg(arg);

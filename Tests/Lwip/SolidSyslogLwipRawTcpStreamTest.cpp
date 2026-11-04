@@ -435,6 +435,40 @@ TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheConnectionIsRe
     );
 }
 
+TEST(SolidSyslogLwipRawTcpStream, OpenReportsConnectRefusedWhenTheResetLandsBeforeTheHopReturns)
+{
+    ErrorHandlerFake_Install(nullptr);
+    LwipTcpFake_SetConnectResetBeforeReturn(true);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_CODE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ERR_RST
+    );
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenDoesNotAbortAPcbTheStackHasAlreadyReleased)
+{
+    LwipTcpFake_SetConnectResetBeforeReturn(true);
+
+    SolidSyslogStream_Open(stream, address);
+
+    CALLED_FAKE(LwipTcpFake_TcpAbort, NEVER);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, OpenSucceedsWhenTheConnectionIsResetAfterItCompletedBeforeTheHopReturns)
+{
+    LwipTcpFake_SetResetAfterConnectBeforeReturn(true);
+
+    CHECK_TRUE(SolidSyslogStream_Open(stream, address));
+
+    /* The loss is the next Send's to find, without touching the freed pcb. */
+    CHECK_FALSE(sendBytes());
+    CALLED_FAKE(LwipTcpFake_TcpWrite, NEVER);
+}
+
 TEST(SolidSyslogLwipRawTcpStream, OpenReportsARepeatedRefusalOnce)
 {
     ErrorHandlerFake_Install(nullptr);

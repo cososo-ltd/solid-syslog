@@ -41,6 +41,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* The err passed to the connected_cb when it fires. Default ERR_OK. */
     void LwipTcpFake_SetConnectCallbackResult(int8_t err);
 
+    /* Whether tcp_connect answers the SYN with a reset before it returns: the
+     * registered tcp_err fires with ERR_RST and lwIP has released the pcb by
+     * the time the caller sees the return. Models the tcpip thread processing
+     * the peer's RST before the caller's thread runs again. Default false. */
+    void LwipTcpFake_SetConnectResetBeforeReturn(bool resets);
+
+    /* Whether the peer resets the connection straight after accepting it,
+     * still before tcp_connect returns: the connected callback fires with
+     * ERR_OK, then the registered tcp_err with ERR_RST and the pcb is gone.
+     * Default false. */
+    void LwipTcpFake_SetResetAfterConnectBeforeReturn(bool resets);
+
     unsigned LwipTcpFake_TcpConnectCallCount(void);
     struct tcp_pcb* LwipTcpFake_LastConnectPcb(void);
     const ip_addr_t* LwipTcpFake_LastConnectIpaddr(void);

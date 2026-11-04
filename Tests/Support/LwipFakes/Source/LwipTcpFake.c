@@ -31,6 +31,8 @@ static tcp_connected_fn lastConnectedFn = NULL;
 static err_t tcpConnectError = ERR_OK;
 static bool connectCallbackFires = true;
 static err_t connectCallbackResult = ERR_OK;
+static bool connectResetBeforeReturn = false;
+static bool resetAfterConnectBeforeReturn = false;
 
 static unsigned tcpCloseCallCount = 0U;
 static struct tcp_pcb* lastClosePcb = NULL;
@@ -83,6 +85,8 @@ void LwipTcpFake_Reset(void)
     tcpConnectError = ERR_OK;
     connectCallbackFires = true;
     connectCallbackResult = ERR_OK;
+    connectResetBeforeReturn = false;
+    resetAfterConnectBeforeReturn = false;
 
     tcpCloseCallCount = 0;
     lastClosePcb = NULL;
@@ -177,6 +181,16 @@ void LwipTcpFake_SetConnectCallbackFires(bool fires)
 void LwipTcpFake_SetConnectCallbackResult(int8_t err)
 {
     connectCallbackResult = (err_t) err;
+}
+
+void LwipTcpFake_SetConnectResetBeforeReturn(bool resets)
+{
+    connectResetBeforeReturn = resets;
+}
+
+void LwipTcpFake_SetResetAfterConnectBeforeReturn(bool resets)
+{
+    resetAfterConnectBeforeReturn = resets;
 }
 
 unsigned LwipTcpFake_TcpConnectCallCount(void)
@@ -351,6 +365,17 @@ void tcp_sent(struct tcp_pcb* pcb, tcp_sent_fn sent)
     lastSentFn = sent;
 }
 
+/* The stack ending a connection on its own: the registered tcp_err is told
+ * why and the pcb is gone, as lwIP does for a reset and for an abort. */
+static void FireErrAndReleasePcb(err_t err)
+{
+    if (lastErrFn != NULL)
+    {
+        lastErrFn(lastCallbackArg, err);
+    }
+    LwipTcpFake_NotePcbReleasedByErr();
+}
+
 /* Default tcp_connect semantics: when configured to succeed (no immediate
  * error injected, the test wants the cb to fire, and a cb was registered),
  * synchronously invoke the connected callback with the configured result. */
@@ -370,9 +395,17 @@ err_t tcp_connect(struct tcp_pcb* pcb, const ip_addr_t* ipaddr, u16_t port, tcp_
     /* The fake fires the connected callback synchronously here, inside the
      * marshalled tcp_connect, mirroring production routing the whole
      * setup-and-connect through one marshal hop. */
-    if (ShouldFireConnectCallback(connected))
+    if ((tcpConnectError == ERR_OK) && connectResetBeforeReturn)
+    {
+        FireErrAndReleasePcb(ERR_RST);
+    }
+    else if (ShouldFireConnectCallback(connected))
     {
         (void) connected(lastCallbackArg, pcb, connectCallbackResult);
+        if (resetAfterConnectBeforeReturn)
+        {
+            FireErrAndReleasePcb(ERR_RST);
+        }
     }
     return tcpConnectError;
 }
@@ -389,12 +422,15 @@ err_t tcp_close(struct tcp_pcb* pcb)
     return tcpCloseError;
 }
 
+/* As lwIP's tcp_abandon: the registered tcp_err is told ERR_ABRT before the
+ * pcb goes, so a wrapper that reads its flags after aborting sees the abort,
+ * not what ended the attempt. */
 void tcp_abort(struct tcp_pcb* pcb)
 {
     LWIP_REQUIRE_MARSHAL_ACTIVE();
     ++tcpAbortCallCount;
     lastAbortPcb = pcb;
-    --outstandingPcbCount;
+    FireErrAndReleasePcb(ERR_ABRT);
 }
 
 err_t tcp_write(struct tcp_pcb* pcb, const void* dataptr, u16_t len, u8_t apiflags)
