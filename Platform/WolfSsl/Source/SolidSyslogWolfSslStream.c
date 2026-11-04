@@ -1,0 +1,352 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
+#include "SolidSyslogWolfSslSettings.h"
+
+#include "SolidSyslogWolfSslStream.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+#include <wolfssl/ssl.h>
+
+#include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullStream.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogStream.h"
+#include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTlsCredentialsInstalled.h"
+#include "SolidSyslogTlsStreamCategories.h"
+#include "SolidSyslogTunables.h"
+#include "SolidSyslogWolfSslCredentialsDefinition.h"
+#include "SolidSyslogWolfSslStreamErrors.h"
+#include "SolidSyslogWolfSslStreamPrivate.h"
+
+const struct SolidSyslogErrorSource SolidSyslogWolfSslStreamErrorSource = {
+    "WolfSslStream",
+    SolidSyslogTlsStreamErrors_Name
+};
+
+/* The BCP 195 section 4.5 cryptographic floor, in the units each wolfSSL
+ * setter takes. */
+enum
+{
+    WOLFSSL_STREAM_MIN_RSA_KEY_BITS = 2048,
+    WOLFSSL_STREAM_MIN_ECC_KEY_BITS = 224,
+    WOLFSSL_STREAM_MIN_DH_KEY_BITS = 2048U
+};
+
+struct SolidSyslogAddress;
+
+static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context);
+static uint32_t WolfSslStream_NullVersion(void* context);
+static void WolfSslStream_NullProfile(struct SolidSyslogWolfSslProfile* profile, void* context);
+static inline bool WolfSslStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogWolfSslStreamConfig* config);
+static inline bool WolfSslStream_ConfigProvidesVersion(const struct SolidSyslogWolfSslStreamConfig* config);
+static inline bool WolfSslStream_ConfigProvidesProfile(const struct SolidSyslogWolfSslStreamConfig* config);
+static inline struct SolidSyslogWolfSslStream* WolfSslStream_SelfFromBase(struct SolidSyslogStream* base);
+static inline bool WolfSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr);
+static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self);
+static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
+static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
+static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
+static inline void WolfSslStream_Close(struct SolidSyslogStream* base);
+static inline void WolfSslStream_ReleaseCredentials(struct SolidSyslogWolfSslStream* self);
+static uint32_t WolfSslStream_Version(struct SolidSyslogStream* base);
+static int WolfSslStream_IoSend(WOLFSSL* ssl, char* buf, int sz, void* ctx);
+static int WolfSslStream_IoRecv(WOLFSSL* ssl, char* buf, int sz, void* ctx);
+
+void SolidSyslogWolfSslStream_Initialise(
+    struct SolidSyslogStream* base,
+    const struct SolidSyslogWolfSslStreamConfig* config
+)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    self->Base.Open = WolfSslStream_Open;
+    self->Base.Close = WolfSslStream_Close;
+    self->Base.Version = WolfSslStream_Version;
+    self->Config = *config;
+    self->Context = NULL;
+    self->Session = NULL;
+    self->CredentialsInstalled = false;
+    self->OpenHealth = (struct SolidSyslogStreamOpenHealth) {0};
+    if (WolfSslStream_ConfigProvidesHandshakeGetter(config) == false)
+    {
+        /* Substitute the Null Object so the bounded-handshake loop has a
+         * single code path regardless of whether the integrator wired
+         * runtime tuning. */
+        self->Config.GetHandshakeTimeoutMs = WolfSslStream_NullHandshakeTimeoutGetter;
+        self->Config.HandshakeTimeoutContext = NULL;
+    }
+    if (WolfSslStream_ConfigProvidesVersion(config) == false)
+    {
+        self->Config.Version = WolfSslStream_NullVersion;
+        self->Config.VersionContext = NULL;
+    }
+    if (WolfSslStream_ConfigProvidesProfile(config) == false)
+    {
+        self->Config.Profile = WolfSslStream_NullProfile;
+        self->Config.ProfileContext = NULL;
+    }
+}
+
+/* Null Object substituted in Initialise when the integrator does not install a
+ * getter - returns the compile-time tunable so the bounded-handshake path is a
+ * single code path regardless of whether the integrator wired runtime tuning. */
+static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context)
+{
+    (void) context;
+    return (uint32_t) SOLIDSYSLOG_TLS_HANDSHAKE_TIMEOUT_MS;
+}
+
+static inline bool WolfSslStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogWolfSslStreamConfig* config)
+{
+    return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+}
+
+/* Null Object substituted at Initialise when the integrator installs no version
+ * function - reports an unchanging configuration, so the sender never reconnects
+ * on this stream's account. */
+static uint32_t WolfSslStream_NullVersion(void* context)
+{
+    (void) context;
+    return 0U;
+}
+
+static inline bool WolfSslStream_ConfigProvidesVersion(const struct SolidSyslogWolfSslStreamConfig* config)
+{
+    return (config != NULL) && (config->Version != NULL);
+}
+
+/* Null Object substituted at Initialise when the integrator supplies no profile -
+ * leaves every field at the library default. */
+static void WolfSslStream_NullProfile(struct SolidSyslogWolfSslProfile* profile, void* context)
+{
+    (void) context;
+    (void) profile;
+}
+
+static inline bool WolfSslStream_ConfigProvidesProfile(const struct SolidSyslogWolfSslStreamConfig* config)
+{
+    return (config != NULL) && (config->Profile != NULL);
+}
+
+static inline struct SolidSyslogWolfSslStream* WolfSslStream_SelfFromBase(struct SolidSyslogStream* base)
+{
+    return (struct SolidSyslogWolfSslStream*) base;
+}
+
+void SolidSyslogWolfSslStream_Cleanup(struct SolidSyslogStream* base)
+{
+    /* An integrator who destroys a still-Open stream must not leak the
+     * underlying TLS state. */
+    WolfSslStream_Close(base);
+    /* Overwrite the abstract base with the shared NullStream vtable so
+     * use-after-destroy is a safe no-op rather than a NULL-fn-pointer crash. */
+    *base = *SolidSyslogNullStream_Get();
+}
+
+/* Idempotent: everything freed here is set NULL as it goes, so a second Close
+ * finds nothing to free, and the transport's own Close is idempotent on every
+ * Stream impl. close_notify is sent once and not waited for - the collector's
+ * reply would need another service pass to arrive, and nothing is read on a
+ * session being torn down. */
+static inline void WolfSslStream_Close(struct SolidSyslogStream* base)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    if (self->Session != NULL)
+    {
+        (void) wolfSSL_shutdown(self->Session);
+        wolfSSL_free(self->Session);
+        self->Session = NULL;
+    }
+    /* The context holds the credentials' material until it is freed, so the
+       credentials are told the window has closed only after wolfSSL has let go
+       of it. */
+    if (self->Context != NULL)
+    {
+        wolfSSL_CTX_free(self->Context);
+        self->Context = NULL;
+    }
+    WolfSslStream_ReleaseCredentials(self);
+    SolidSyslogStream_Close(self->Config.Transport);
+}
+
+/* Answers every Install, so the integrator is always told when the credential
+ * window has closed - including on the paths where Open failed part way. */
+static inline void WolfSslStream_ReleaseCredentials(struct SolidSyslogWolfSslStream* self)
+{
+    if (self->CredentialsInstalled)
+    {
+        self->CredentialsInstalled = false;
+        self->Config.Credentials->Release(self->Config.Credentials);
+    }
+}
+
+static uint32_t WolfSslStream_Version(struct SolidSyslogStream* base)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    return self->Config.Version(self->Config.VersionContext);
+}
+
+static inline bool WolfSslStream_Open(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    bool ok = WolfSslStream_Establish(base, addr);
+    if (ok)
+    {
+        SolidSyslogStreamOpenHealth_Opened(&self->OpenHealth);
+    }
+    return ok;
+}
+
+static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const struct SolidSyslogAddress* addr)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    WolfSslStream_PullProfile(self);
+    self->RefusedChecks = 0U;
+    bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && WolfSslStream_BuildContext(self) &&
+              WolfSslStream_InstallCredentials(self) && WolfSslStream_CreateSession(self) &&
+              WolfSslStream_ApplyTlsPolicy(self) && WolfSslStream_ConfigureExpectedPeerName(self);
+    if (ok)
+    {
+        WolfSslStream_InstallTransportCallbacks(self);
+        WolfSslStream_ApplyPeerVerificationPolicy(self);
+        ok = WolfSslStream_PerformHandshake(self);
+    }
+    if (!ok)
+    {
+        WolfSslStream_Close(base);
+    }
+    return ok;
+}
+
+/* One snapshot per connection: every later step reads the same answer, however
+ * the integrator's own state moves while the handshake is in progress. */
+static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* self)
+{
+    self->Profile = (struct SolidSyslogWolfSslProfile) {0};
+    self->Config.Profile(&self->Profile, self->Config.ProfileContext);
+}
+
+/* A context per connection, on the integrator's heap hint, so nothing of one
+ * connection's material survives into the next. wolfSSL_CTX_new_ex takes the
+ * method over whatever it returns, so a NULL here leaks nothing. */
+static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self)
+{
+    self->Context = wolfSSL_CTX_new_ex(wolfTLS_client_method_ex(self->Config.Heap), self->Config.Heap);
+    return self->Context != NULL;
+}
+
+/* Asked once per connection, onto the context and before the session is created
+ * from it, so what is installed is what the session inherits. The flag is set
+ * before the call rather than after it: the contract is one Release per Install
+ * call whatever that call returned, which is what spares every backend a
+ * rollback path of its own. */
+static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self)
+{
+    self->Installed.TrustAnchorsInstalled = false;
+    self->Installed.Fingerprints = NULL;
+    self->Installed.FingerprintCount = 0U;
+    self->CredentialsInstalled = true;
+    return self->Config.Credentials->Install(self->Config.Credentials, self->Context, &self->Installed);
+}
+
+static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self)
+{
+    self->Session = wolfSSL_new(self->Context);
+    return self->Session != NULL;
+}
+
+/* TLS policy owned by the library, set on the session so it cannot leak into
+ * anything the integrator builds from a context of their own. The floor is
+ * TLS 1.2, stated here so downgrade resistance does not depend on how the
+ * library was built; no ceiling is set, because RFC 9662, which updates RFC
+ * 5425, requires TLS 1.3 to be preferred wherever it is implemented. The key
+ * sizes are BCP 195 section 4.5. */
+static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self)
+{
+    return (wolfSSL_SetMinVersion(self->Session, WOLFSSL_TLSV1_2) == WOLFSSL_SUCCESS) &&
+           (wolfSSL_SetMinRsaKey_Sz(self->Session, (short) WOLFSSL_STREAM_MIN_RSA_KEY_BITS) == WOLFSSL_SUCCESS) &&
+           (wolfSSL_SetMinEccKey_Sz(self->Session, (short) WOLFSSL_STREAM_MIN_ECC_KEY_BITS) == WOLFSSL_SUCCESS) &&
+           (wolfSSL_SetMinDhKey_Sz(self->Session, (word16) WOLFSSL_STREAM_MIN_DH_KEY_BITS) == WOLFSSL_SUCCESS);
+}
+
+/* The declared name is both what the certificate is checked against and what is
+ * sent as the server name indication. */
+static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self)
+{
+    const char* serverName = self->Profile.ServerName;
+    return (wolfSSL_check_domain_name(self->Session, serverName) == WOLFSSL_SUCCESS) &&
+           (wolfSSL_UseSNI(self->Session, WOLFSSL_SNI_HOST_NAME, serverName, (word16) strlen(serverName)) ==
+            WOLFSSL_SUCCESS);
+}
+
+static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self)
+{
+    wolfSSL_SSLSetIORecv(self->Session, WolfSslStream_IoRecv);
+    wolfSSL_SSLSetIOSend(self->Session, WolfSslStream_IoSend);
+    wolfSSL_SetIOReadCtx(self->Session, self);
+    wolfSSL_SetIOWriteCtx(self->Session, self);
+}
+
+/* The peer must present a certificate and it must verify; the callback records
+ * what the library found wrong, so the refusal can name the check. */
+static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self)
+{
+    wolfSSL_set_verify(
+        self->Session,
+        WOLFSSL_VERIFY_PEER | WOLFSSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+        WolfSslStream_VerifyPeer
+    );
+    wolfSSL_SetCertCbCtx(self->Session, self);
+}
+
+static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store)
+{
+    (void) store;
+    return preverify;
+}
+
+static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self)
+{
+    return wolfSSL_connect(self->Session) == WOLFSSL_SUCCESS;
+}
+
+static int WolfSslStream_IoSend(WOLFSSL* ssl, char* buf, int sz, void* ctx)
+{
+    struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) ctx;
+    (void) ssl;
+    return SolidSyslogStream_Send(self->Config.Transport, buf, (size_t) sz) ? sz : WOLFSSL_CBIO_ERR_GENERAL;
+}
+
+static int WolfSslStream_IoRecv(WOLFSSL* ssl, char* buf, int sz, void* ctx)
+{
+    struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) ctx;
+    (void) ssl;
+    SolidSyslogSsize n = SolidSyslogStream_Read(self->Config.Transport, buf, (size_t) sz);
+    int result = WOLFSSL_CBIO_ERR_GENERAL;
+    if (n > 0)
+    {
+        result = (int) n;
+    }
+    else if (n == 0)
+    {
+        result = WOLFSSL_CBIO_ERR_WANT_READ;
+    }
+    else
+    {
+        /* Transport-level error; a general failure aborts the handshake / read. */
+    }
+    return result;
+}

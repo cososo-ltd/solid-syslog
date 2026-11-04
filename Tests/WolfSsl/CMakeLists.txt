@@ -104,3 +104,74 @@ target_include_directories(SolidSyslogWolfSslNullCredentialsTest PRIVATE
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslNullCredentialsTest)
+
+# SolidSyslogWolfSslStream pool: Create / Destroy over the static pool, the
+# config validation and the config-lock slot walk.
+add_executable(SolidSyslogWolfSslStreamPoolTest
+    SolidSyslogWolfSslStreamPoolTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamPoolTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamPoolTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamPoolTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamPoolTest)
+
+# SolidSyslogWolfSslStream: vtable behaviour driven against WolfSslTlsFake,
+# the link-time double for the wolfSSL TLS API.
+add_executable(SolidSyslogWolfSslStreamTest
+    SolidSyslogWolfSslStreamTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamTest PRIVATE
+    ${PROJECT_NAME}
+    AddressFake
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamTest)
