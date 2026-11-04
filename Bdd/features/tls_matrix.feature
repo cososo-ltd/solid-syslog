@@ -195,6 +195,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
+  @name_before_dates
   Scenario: A name that does not match is named ahead of the dates the certificate carries
     Given the syslog oracle is running
     And the collector presents "wrong-name-and-expired"
