@@ -120,6 +120,7 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:195
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:492
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:869
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:881
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:716
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1019
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1026
 misra-c2012-11.5:Core/Source/SolidSyslog.c:653
