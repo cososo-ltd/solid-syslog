@@ -46,8 +46,8 @@ or check.
 
 ## Credentials come from a credentials source
 
-Where trust anchors and the mutual-TLS client credential come from is the
-integrator's choice rather than this adapter's. The
+Where trust anchors, pinned peer fingerprints and the mutual-TLS client
+credential come from is the integrator's choice rather than this adapter's. The
 stream is wired to a `SolidSyslogWolfSslCredentials`, asked once per connection
 to install its material on the `WOLFSSL_CTX` built for that connection and told
 once per connection when that material is no longer needed. A source backed by
@@ -81,13 +81,16 @@ same lock and a non-recursive one deadlocks.
 ## What it depends on in your build
 
 The pack compiles against the builds below. What a choice costs is stated
-beside it; the two the pack refuses are refused at build time, so the cost is
+beside it; a choice the pack refuses is refused at build time, so the cost is
 never a silent one.
 
 | Build choice | What the pack does with it |
 |---|---|
 | `HAVE_SNI` (on in a `./configure` build) | Sends the expected peer name as the server name indication. Without it the indication cannot be set, and a connection that declares a name fails at Open as `SERVER_NAME_NOT_APPLIED`; a connection that declares none is unaffected |
 | `WOLFSSL_IP_ALT_NAME` (`--enable-ip-alt-name`) | Matches an expected address literal against the certificate's `iPAddress` entries. Without it no address ever matches, and a peer expected by address is refused as `PEER_NAME_MISMATCHED` on every connection; expect the peer by name instead |
+| `WOLFSSL_ALWAYS_VERIFY_CB`, `KEEP_PEER_CERT` (define either) | Decide how a pin is checked where trust anchors are installed too, below. With `WOLFSSL_ALWAYS_VERIFY_CB` it is checked in the verify callback, before the client's credential is sent. With only `KEEP_PEER_CERT` it is checked once the handshake has completed, against the certificate the library kept. With neither, anchors and pins together are refused at Open as `PINS_WITH_ANCHORS_UNSUPPORTED`; pins alone, and anchors alone, work on any build |
+| `NO_HASH_WRAPPER` | Removes `wc_Hash`, which the stream computes a pin's digest with. A build that defines it does not link the stream |
+| `NO_SHA`, `NO_SHA256` | Compile out the hash a pin names. A pin under a hash the build lacks is skipped, and a peer that no other pin names is refused as `FINGERPRINT_DIGEST_UNAVAILABLE` |
 | `WOLFSSL_TLS13` (`--enable-tls13`, on in a `./configure` build) | Negotiates TLS 1.3 where the collector offers it. Without it the connection is TLS 1.2, which the floor permits |
 | `NO_ASN_TIME` | Compiles the validity-period check out. The adapter will not build with it set, below |
 | RSA, finite-field Diffie-Hellman and ECC (`NO_RSA`, `NO_DH`, `HAVE_ECC`) | The pack sets the key-size floor for all three, so a build that trims any of them out does not compile the stream. A trimmed build is not supported |
@@ -135,19 +138,16 @@ Each role's codes are the whole vocabulary that role can express, so some
 describe faults this pack cannot have and it never raises them.
 
 From the TLS-stream codes it does not raise `NULL_RNG`: no generator is handed
-to the stream. Nor the fingerprint codes `FINGERPRINT_MALFORMED`,
-`FINGERPRINT_SHA1`, `FINGERPRINT_DIGEST_UNAVAILABLE` and
-`PEER_FINGERPRINT_MISMATCHED`, nor `CIPHER_POLICY_REJECTED`: pins and a
-ciphersuite policy are outstanding under
-[S34.03](https://github.com/cososo-ltd/solid-syslog/issues/1122) and
+to the stream. Nor `CIPHER_POLICY_REJECTED`: a ciphersuite policy is
+outstanding under
 [S34.04](https://github.com/cososo-ltd/solid-syslog/issues/1123), below.
 `HANDSHAKE_REJECTED` covers what the peer or the protocol refused and no check
 of this stream names, which includes a Diffie-Hellman group or a ciphersuite
 below the floor.
 
-From the credentials codes it does not raise `NULL_RNG`, `ALREADY_IN_USE` or
-`NULL_PEER_FINGERPRINT`: the PEM-buffer source needs no generator, holds
-nothing between connections so it is never in use, and takes no pins. Nor `PEM_NOT_TERMINATED`: wolfSSL reads a buffer to the
+From the credentials codes it does not raise `NULL_RNG` or `ALREADY_IN_USE`:
+the PEM-buffer source needs no generator, and holds nothing between
+connections, so it is never in use. Nor `PEM_NOT_TERMINATED`: wolfSSL reads a buffer to the
 length it is given and needs no terminator. Nor `TRUST_ANCHORS_NOT_LOADED`: the
 source parses a buffer and reports `TRUST_ANCHORS_NOT_PARSED` if that fails.
 Nor `CLIENT_CREDENTIAL_MISMATCHED`: whether a client key matches its
@@ -171,6 +171,10 @@ label, a wildcard, a leading dot - fails the connection at Open as
 `SERVER_NAME_NOT_APPLIED`, which names the configuration rather than the peer.
 A collector reached by a bare host name is declared by its fully qualified one.
 
+A pinned peer needs no name. A pin declares the peer's identity more strongly
+than a name does, so a connection that pins the peer and declares no name is
+not reported as unnamed; one that declares a name still has it checked.
+
 An expected identity that is an address literal - digits and dots, or anything
 with a colon in it - is declared to wolfSSL as an address and matched against
 the certificate's `iPAddress` entries alone, never against a DNS name or Common
@@ -186,6 +190,35 @@ and to the handshake alike. A certificate whose key is below the floor is
 refused as `PEER_CERTIFICATE_UNTRUSTED`, with the rest of what the chain fails
 on. No ceiling is set: RFC 9662 requires TLS 1.3 to be preferred wherever it is
 implemented, and a build with `WOLFSSL_TLS13` negotiates it.
+
+Pinned peer fingerprints are read from the credentials source at each Open and
+checked against the leaf the collector presents, by its SHA-256 or SHA-1 digest
+as each pin names. A pin that will not parse fails the connection at Open as
+`FINGERPRINT_MALFORMED`, and a `sha-1` pin is reported as `FINGERPRINT_SHA1` on
+every connection that uses one.
+
+With pins and no trust anchors, every chain fails wolfSSL's verification for
+want of a signer, and that is the one objection a matching pin waives. A
+collector with no PKI is authorised by its pin alone, whether it presents a
+self-signed certificate or one with its issuer behind it. wolfSSL stops at the
+missing signer and reports nothing it found before it, so the stream checks
+what would otherwise go unchecked: each certificate whose missing signer it
+waives is parsed again as a trust anchor would be, and one outside its validity
+period is refused as `PEER_CERTIFICATE_EXPIRED` or
+`PEER_CERTIFICATE_NOT_YET_VALID`, as the contract requires of a pin. A name that
+does not match, and a key below the floor, are refused as they would be without
+a pin.
+
+With pins and trust anchors both installed, the peer must chain to an anchor
+and match a pin. How the pin is checked on a chain that verifies depends on the
+build, as the table above says: wolfSSL calls the verify callback on a
+certificate that verifies only under `WOLFSSL_ALWAYS_VERIFY_CB`. A build may
+choose a weaker check than its flags allow by defining
+`SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK` to
+`SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE` or
+`SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED` - the refusal, say, rather than a
+check made after the client credential has gone. A choice the flags cannot
+honour stops the build.
 
 Each connection is a fresh session with none supplied to resume, and the stream
 never enables early data or renegotiation, so it meets the contract's
@@ -217,15 +250,15 @@ The refusal names the checks in the contract's order where wolfSSL raises more
 than one, with one exception. A certificate that is both misnamed and outside
 its validity period is named for its dates: wolfSSL treats the date failure as
 fatal before it checks the name, so the name is never raised and the stream has
-nothing to put first. The peer is refused either way. Whether the three packs
-should name a refusal in one order, and which, is open under
+nothing to put first. The peer is refused either way. Whether that order, and
+the contract's, should change is open under
 [#1133](https://github.com/cososo-ltd/solid-syslog/issues/1133).
 
-Pinned peer fingerprints are not yet enforced, and so cannot be configured: the
-shipped credentials source carries none, and a connection is authorised by its
-chain alone. A source that reported pins would see them ignored, which is why
-none does. Pins and the peer-name states that go with them arrive under
-[S34.03](https://github.com/cososo-ltd/solid-syslog/issues/1122).
+On a build with `KEEP_PEER_CERT` and without `WOLFSSL_ALWAYS_VERIFY_CB`, a pin
+beside trust anchors is checked once the handshake has completed, so a collector
+whose chain verifies and whose certificate matches no pin is refused after the
+device has sent its client credential, where one is configured. No record is
+sent to it. Build with `WOLFSSL_ALWAYS_VERIFY_CB` to refuse it first.
 
 Of the cryptographic floor, what a certificate in the chain may be signed with
 is not pinned. wolfSSL offers no per-connection way to refuse a chain

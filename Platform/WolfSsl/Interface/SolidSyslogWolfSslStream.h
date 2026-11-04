@@ -28,8 +28,9 @@
  *    other TLS return (alert, transport error) - fail-fast, and store-and-forward
  *    replays after the reconnect.
  *
- *  Peer identity comes from the profile's ServerName, asked for at each Open.
- *  No key material reaches this stream: it asks its credentials source to
+ *  Peer identity comes from the profile's ServerName, asked for at each Open,
+ *  and from any fingerprints the credentials source pins. No key material
+ *  reaches this stream: it asks its credentials source to
  *  install onto the context at Open and tells it at Close, so a deployment can
  *  keep material out of memory between connections. The context and the
  *  session are both built per connection and freed at Close, so nothing of one
@@ -64,9 +65,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  library matches it as a DNS name, which an iPAddress entry never
          *  satisfies, and the peer is refused as PEER_NAME_MISMATCHED. NULL
          *  declares no name: the peer is only chain-authenticated and a WARNING
-         *  says so (MITM-class). "" is the no-name-check opt-out (closed network
-         *  / private CA): the peer must still satisfy whatever the credentials
-         *  installed, but the endpoint identity is not checked; no diagnostic. */
+         *  says so (MITM-class) - unless the credentials pin it, which declares
+         *  its identity more strongly than a name, and nothing is reported. ""
+         *  is the no-name-check opt-out (closed network / private CA): the peer
+         *  must still satisfy whatever the credentials installed, but the
+         *  endpoint identity is not checked; no diagnostic. */
         const char* ServerName;
     };
 
