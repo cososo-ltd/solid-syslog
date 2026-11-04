@@ -57,6 +57,10 @@ static int checkDomainNameCallCount;
 static WOLFSSL* lastCheckDomainNameSsl;
 static const char* lastCheckDomainName;
 static int checkDomainNameReturn;
+static int checkIpAddressCallCount;
+static WOLFSSL* lastCheckIpAddressSsl;
+static const char* lastCheckIpAddress;
+static int checkIpAddressReturn;
 static int useSniCallCount;
 static WOLFSSL* lastUseSniSsl;
 static unsigned char lastUseSniType;
@@ -165,6 +169,10 @@ void WolfSslTlsFake_Reset(void)
     lastCheckDomainNameSsl = NULL;
     lastCheckDomainName = NULL;
     checkDomainNameReturn = WOLFSSL_SUCCESS;
+    checkIpAddressCallCount = 0;
+    lastCheckIpAddressSsl = NULL;
+    lastCheckIpAddress = NULL;
+    checkIpAddressReturn = WOLFSSL_SUCCESS;
     useSniCallCount = 0;
     lastUseSniSsl = NULL;
     lastUseSniType = 0xFFU;
@@ -470,6 +478,34 @@ int wolfSSL_check_domain_name(WOLFSSL* ssl, const char* dn)
     lastCheckDomainNameSsl = ssl;
     lastCheckDomainName = dn;
     return checkDomainNameReturn;
+}
+
+int WolfSslTlsFake_CheckIpAddressCallCount(void)
+{
+    return checkIpAddressCallCount;
+}
+
+struct WOLFSSL* WolfSslTlsFake_LastCheckIpAddressSsl(void)
+{
+    return lastCheckIpAddressSsl;
+}
+
+const char* WolfSslTlsFake_LastCheckIpAddress(void)
+{
+    return lastCheckIpAddress;
+}
+
+void WolfSslTlsFake_SetCheckIpAddressReturn(int value)
+{
+    checkIpAddressReturn = value;
+}
+
+int wolfSSL_check_ip_address(WOLFSSL* ssl, const char* ipaddr)
+{
+    checkIpAddressCallCount++;
+    lastCheckIpAddressSsl = ssl;
+    lastCheckIpAddress = ipaddr;
+    return checkIpAddressReturn;
 }
 
 int WolfSslTlsFake_UseSniCallCount(void)

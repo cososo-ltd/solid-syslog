@@ -63,6 +63,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct WOLFSSL* WolfSslTlsFake_LastCheckDomainNameSsl(void);
     const char* WolfSslTlsFake_LastCheckDomainName(void);
     void WolfSslTlsFake_SetCheckDomainNameReturn(int value);
+    int WolfSslTlsFake_CheckIpAddressCallCount(void);
+    struct WOLFSSL* WolfSslTlsFake_LastCheckIpAddressSsl(void);
+    const char* WolfSslTlsFake_LastCheckIpAddress(void);
+    void WolfSslTlsFake_SetCheckIpAddressReturn(int value);
     int WolfSslTlsFake_UseSniCallCount(void);
     struct WOLFSSL* WolfSslTlsFake_LastUseSniSsl(void);
     unsigned char WolfSslTlsFake_LastUseSniType(void);

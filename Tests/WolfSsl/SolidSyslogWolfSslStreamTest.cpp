@@ -355,6 +355,63 @@ TEST(SolidSyslogWolfSslStream, OpenSendsTheExpectedPeerNameAsTheServerNameIndica
     LONGS_EQUAL(strlen("syslog.example.com"), WolfSslTlsFake_LastUseSniSize());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenDeclaresAnAddressLiteralAsTheExpectedAddressRatherThanAName)
+{
+    FakeProfile_Value.ServerName = "127.0.0.1";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, WolfSslTlsFake_CheckDomainNameCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_CheckIpAddressCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastCheckIpAddressSsl());
+    STRCMP_EQUAL("127.0.0.1", WolfSslTlsFake_LastCheckIpAddress());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenDeclaresAnIpv6LiteralAsTheExpectedAddress)
+{
+    FakeProfile_Value.ServerName = "fe80::1";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, WolfSslTlsFake_CheckDomainNameCallCount());
+    STRCMP_EQUAL("fe80::1", WolfSslTlsFake_LastCheckIpAddress());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenSendsAnAddressLiteralAsTheServerNameIndicationToo)
+{
+    FakeProfile_Value.ServerName = "127.0.0.1";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_UseSniCallCount());
+    STRCMP_EQUAL("127.0.0.1", static_cast<const char*>(WolfSslTlsFake_LastUseSniData()));
+}
+
+TEST(SolidSyslogWolfSslStream, OpenDeclaresANameWithDigitsInItAsAName)
+{
+    FakeProfile_Value.ServerName = "collector1.example.com";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_CheckDomainNameCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_CheckIpAddressCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAnExpectedAddressTheLibraryWouldNotTake)
+{
+    FakeProfile_Value.ServerName = "127.0.0.1";
+    WolfSslTlsFake_SetCheckIpAddressReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ConnectCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
+    );
+}
+
 TEST(SolidSyslogWolfSslStream, OpenInstallsTheIoCallbacksWithTheStreamAsTheirContext)
 {
     SolidSyslogStream_Open(handle, addr);

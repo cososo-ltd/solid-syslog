@@ -11,7 +11,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * no-op (the fd is supplied at Create time and assumed already-connected,
      * e.g. one end of a Unix socketpair). Send / Read use blocking write()
      * and read(); Close closes the fd. Used by the integration tests as the
-     * client-side transport injected into SolidSyslogMbedTlsStream. */
+     * client-side transport injected into a TLS stream under test. */
     struct SolidSyslogStream* SocketStream_Create(int fd);
     void SocketStream_Destroy(struct SolidSyslogStream * self);
 

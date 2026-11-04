@@ -14,6 +14,20 @@
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
+/* wolfSSL compiles its notBefore / notAfter checks out entirely under
+ * NO_ASN_TIME, so no certificate in the chain is date-checked and nothing says
+ * so at runtime. The TLS contract requires the validity period to be checked,
+ * which is a promise that would then silently not hold, so the build stops
+ * here rather than shipping it.
+ *
+ * A target with no clock cannot check dates and is a legitimate deployment.
+ * Define SOLIDSYSLOG_WOLFSSL_NO_VALIDITY_CHECK to say so deliberately; the
+ * obligation is then knowingly unmet rather than quietly missing. */
+#if defined(NO_ASN_TIME) && !defined(SOLIDSYSLOG_WOLFSSL_NO_VALIDITY_CHECK)
+#error \
+    "NO_ASN_TIME is set, so certificate validity is not checked. Build wolfSSL with ASN time, or define SOLIDSYSLOG_WOLFSSL_NO_VALIDITY_CHECK to accept that."
+#endif
+
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNullStream.h"
@@ -74,6 +88,9 @@ static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* 
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSslStream* self, const char* serverName);
+static inline int WolfSslStream_DeclareExpectedPeer(struct SolidSyslogWolfSslStream* self, const char* serverName);
+static inline bool WolfSslStream_IsAddressLiteral(const char* name);
+static inline bool WolfSslStream_IsDigitOrDot(char c);
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
     int rc,
     enum SolidSyslogTlsStreamErrors otherwise
@@ -419,7 +436,7 @@ static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWol
 static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSslStream* self, const char* serverName)
 {
     bool ok = false;
-    if (wolfSSL_check_domain_name(self->Session, serverName) != WOLFSSL_SUCCESS)
+    if (WolfSslStream_DeclareExpectedPeer(self, serverName) != WOLFSSL_SUCCESS)
     {
         WolfSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
@@ -441,6 +458,43 @@ static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSsl
         }
     }
     return ok;
+}
+
+/* wolfSSL keeps a name and an address apart: a name is matched against the
+ * dNSName entries or the Common Name, and validated as a hostname when it is
+ * declared; an address only ever against the iPAddress entries. The contract
+ * wants the same split, so which call takes the declaration is decided here
+ * rather than left to the library's hostname rules to refuse. */
+static inline int WolfSslStream_DeclareExpectedPeer(struct SolidSyslogWolfSslStream* self, const char* serverName)
+{
+    return WolfSslStream_IsAddressLiteral(serverName) ? wolfSSL_check_ip_address(self->Session, serverName)
+                                                      : wolfSSL_check_domain_name(self->Session, serverName);
+}
+
+/* A colon is only ever in an IPv6 literal, and a name made of nothing but
+ * digits and dots is an IPv4 one - no hostname has an all-numeric last label.
+ * What the literal is worth is the library's to judge against the certificate. */
+static inline bool WolfSslStream_IsAddressLiteral(const char* name)
+{
+    bool onlyDigitsAndDots = true;
+    bool hasColon = false;
+    for (size_t index = 0U; name[index] != '\0'; index++)
+    {
+        if (name[index] == ':')
+        {
+            hasColon = true;
+        }
+        if (!WolfSslStream_IsDigitOrDot(name[index]))
+        {
+            onlyDigitsAndDots = false;
+        }
+    }
+    return hasColon || onlyDigitsAndDots;
+}
+
+static inline bool WolfSslStream_IsDigitOrDot(char c)
+{
+    return ((c >= '0') && (c <= '9')) || (c == '.');
 }
 
 /* wolfSSL names an allocation failure in its return, so say so rather than
