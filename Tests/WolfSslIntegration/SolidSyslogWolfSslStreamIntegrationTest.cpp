@@ -5,9 +5,6 @@ extern "C"
 #ifndef WOLFSSL_USER_SETTINGS
 #include <wolfssl/options.h>
 #endif
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <wolfssl/version.h>
@@ -22,6 +19,7 @@ extern "C"
 #include "SolidSyslogWolfSslStream.h"
 #include "SolidSyslogWolfSslStreamErrors.h"
 #include "WolfSslTestLibrary.h"
+#include "WolfSslTestMaterial.h"
 #include "WolfSslTestServer.h"
 }
 
@@ -38,26 +36,14 @@ void NoOpSleep(uint32_t milliseconds)
     (void) milliseconds;
 }
 
-/* A PEM file from the material generated at configure time, read whole. The
-   buffers outlive every connection made with them: the fixture holds them. */
-struct Material
+/* The fixture asserts the material is there, so a missing generator run reads
+   as one failure and not as a refused handshake. */
+void LoadMaterial(const char* name, struct WolfSslTestMaterial* out)
 {
-    unsigned char Bytes[8192];
-    size_t Length;
-    char Path[512];
-};
-
-void LoadMaterial(const char* name, struct Material* out)
-{
-    (void) snprintf(out->Path, sizeof(out->Path), "%s/%s", WOLFSSL_TEST_MATERIAL_DIR, name);
-    out->Length = 0U;
-    FILE* file = fopen(out->Path, "rb");
-    if (file != nullptr)
-    {
-        out->Length = fread(out->Bytes, 1U, sizeof(out->Bytes), file);
-        (void) fclose(file);
-    }
-    CHECK_TRUE_TEXT(out->Length > 0U, "test material missing - was the configure-time generator run?");
+    CHECK_TRUE_TEXT(
+        WolfSslTestMaterial_Load(name, out),
+        "test material missing - was the configure-time generator run?"
+    );
 }
 } // namespace
 
@@ -110,9 +96,9 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
 {
     struct IntegrationProfileValues profileValues = {};
     int                        fds[2]           = {-1, -1};
-    struct Material            trustedCa        = {};
-    struct Material            serverCert       = {};
-    struct Material            serverKey        = {};
+    struct WolfSslTestMaterial            trustedCa        = {};
+    struct WolfSslTestMaterial            serverCert       = {};
+    struct WolfSslTestMaterial            serverKey        = {};
     struct WolfSslTestServer*  server           = nullptr;
     struct SolidSyslogStream*  clientTransport  = nullptr;
     struct SolidSyslogStream*  tlsStream        = nullptr;
@@ -165,7 +151,7 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
     struct SolidSyslogStream* StartServerPresenting(const char* certificate)
     {
         char keyName[64];
-        (void) snprintf(keyName, sizeof(keyName), "%.*s.key", (int) (strlen(certificate) - 4U), certificate);
+        WolfSslTestMaterial_KeyNameFor(certificate, keyName, sizeof(keyName));
         LoadMaterial(certificate, &serverCert);
         LoadMaterial(keyName, &serverKey);
         struct WolfSslTestServerConfig serverConfig = {};
@@ -248,12 +234,29 @@ TEST(SolidSyslogWolfSslStreamIntegration, ARecordSentAfterTheHandshakeReachesThe
     /* A send first reads what the peer has sent, as the production transports
        answer would-block; the handshake above ran blocking so it needed no
        poll loop. */
-    fcntl(fds[0], F_SETFL, O_NONBLOCK);
+    SocketStream_SetNonBlocking(clientTransport);
 
     CHECK_TRUE(SolidSyslogStream_Send(tlsStream, "<134>1 - - - - - - hello", 24U));
     SolidSyslogStream_Close(tlsStream);
 
     STRCMP_EQUAL("<134>1 - - - - - - hello", WolfSslTestServer_Received(server));
+}
+
+/* No session exists before Open, and the stream hands the library a NULL one
+ * rather than guarding it: wolfSSL refuses that as a bad argument, which the
+ * read maps to a closed session. Pinned here because only the real library can
+ * prove what it does with a NULL. */
+TEST(SolidSyslogWolfSslStreamIntegration, SendBeforeOpenIsRefusedAndReachesNoServer)
+{
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Send(tlsStream, "x", 1U));
+
+    LONGS_EQUAL(0, CapturedErrorCount);
+    SocketStream_Destroy(clientTransport);
+    clientTransport = nullptr;
+    CHECK_FALSE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
 }
 
 TEST(SolidSyslogWolfSslStreamIntegration, HandshakeFailsWhenServerCertSignedByUntrustedCa)

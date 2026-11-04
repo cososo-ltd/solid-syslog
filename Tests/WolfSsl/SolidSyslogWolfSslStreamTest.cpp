@@ -227,7 +227,7 @@ TEST_GROUP(SolidSyslogWolfSslStream)
 
     /* Drive the verify callback directly with `preverify` and a store carrying
      * `error`, and return what it answered. */
-    [[nodiscard]] int OpenThenVerify(int preverify, int error)
+    [[nodiscard]] int OpenThenVerify(int preverify, int error) const
     {
         SolidSyslogStream_Open(handle, addr);
         auto* verify = WolfSslTlsFake_LastSetVerifyCallback();

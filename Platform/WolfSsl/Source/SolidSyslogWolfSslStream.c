@@ -46,8 +46,8 @@ const struct SolidSyslogErrorSource SolidSyslogWolfSslStreamErrorSource = {
     SolidSyslogTlsStreamErrors_Name
 };
 
-/* The BCP 195 section 4.5 cryptographic floor, in the units each wolfSSL
- * setter takes. */
+/* The handshake poll, the read-before-write probe, and the BCP 195 section 4.5
+ * cryptographic floor in the units each wolfSSL setter takes. */
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 10U,

@@ -18,6 +18,7 @@ set(WOLFSSL_INTEGRATION_SOURCES
     WolfSslTestRng.c
     WolfSslTestServer.c
     WolfSslTestLibrary.c
+    WolfSslTestMaterial.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/SocketStream.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256Policy.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256PolicyStatic.c

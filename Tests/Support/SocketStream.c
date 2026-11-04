@@ -47,6 +47,12 @@ void SocketStream_Destroy(struct SolidSyslogStream* self)
     free(self);
 }
 
+void SocketStream_SetNonBlocking(struct SolidSyslogStream* self)
+{
+    struct SocketStream* stream = (struct SocketStream*) self;
+    (void) fcntl(stream->Fd, F_SETFL, fcntl(stream->Fd, F_GETFL) | O_NONBLOCK);
+}
+
 static bool SocketStream_Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
 {
     /* The fd is pre-connected (e.g. socketpair); Open is a no-op so the test
