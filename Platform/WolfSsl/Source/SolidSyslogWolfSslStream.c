@@ -108,6 +108,7 @@ static bool WolfSslStream_DigestCertificate(
     uint8_t* digest,
     size_t* length
 );
+static inline enum wc_HashType WolfSslStream_HashTypeFor(enum SolidSyslogTlsHashAlgorithm algorithm);
 static inline uint32_t WolfSslStream_CheckFailedFor(int error);
 static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
@@ -616,15 +617,24 @@ static bool WolfSslStream_DigestCertificate(
 )
 {
     const WOLFSSL_BUFFER_INFO* certificate = (const WOLFSSL_BUFFER_INFO*) context;
-    (void) algorithm;
-    int size = wc_HashGetDigestSize(WC_HASH_TYPE_SHA256);
-    bool ok = (size > 0) &&
-              (wc_Hash(WC_HASH_TYPE_SHA256, certificate->buffer, certificate->length, digest, (word32) size) == 0);
+    enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
+    int size = wc_HashGetDigestSize(type);
+    bool ok = (size > 0) && (wc_Hash(type, certificate->buffer, certificate->length, digest, (word32) size) == 0);
     if (ok)
     {
         *length = (size_t) size;
     }
     return ok;
+}
+
+static inline enum wc_HashType WolfSslStream_HashTypeFor(enum SolidSyslogTlsHashAlgorithm algorithm)
+{
+    enum wc_HashType type = WC_HASH_TYPE_SHA256;
+    if (algorithm == SOLIDSYSLOG_TLS_HASH_SHA1)
+    {
+        type = WC_HASH_TYPE_SHA;
+    }
+    return type;
 }
 
 /* Every code the stream does not name individually is a certificate that
