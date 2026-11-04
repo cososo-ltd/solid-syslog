@@ -11,6 +11,7 @@
 #endif
 #include <string.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/settings.h>
 
 enum
@@ -86,6 +87,7 @@ static int writeCallCount;
 static WOLFSSL* lastWriteSsl;
 static const void* lastWriteData;
 static int lastWriteSz;
+static bool writeEchoesSize;
 static int writeReturn;
 static int readCallCount;
 static WOLFSSL* lastReadSsl;
@@ -188,7 +190,8 @@ void WolfSslTlsFake_Reset(void)
     lastWriteSsl = NULL;
     lastWriteData = NULL;
     lastWriteSz = 0;
-    writeReturn = -1;
+    writeEchoesSize = true;
+    writeReturn = 0;
     readCallCount = 0;
     lastReadSsl = NULL;
     lastReadData = NULL;
@@ -681,19 +684,30 @@ int WolfSslTlsFake_LastWriteSz(void)
 
 void WolfSslTlsFake_SetWriteReturn(int value)
 {
+    writeEchoesSize = false;
     writeReturn = value;
 }
 
+/* As the library: a NULL session is refused with BAD_FUNC_ARG. */
 int wolfSSL_write(WOLFSSL* ssl, const void* data, int sz)
 {
     writeCallCount++;
     lastWriteSsl = ssl;
     lastWriteData = data;
     lastWriteSz = sz;
-    int rc = (writeReturn == -1) ? sz : writeReturn;
-    if (rc <= 0)
+    int rc = writeEchoesSize ? sz : writeReturn;
+    if (ssl == NULL)
+    {
+        rc = BAD_FUNC_ARG;
+        lastError = BAD_FUNC_ARG;
+    }
+    else if (rc <= 0)
     {
         lastError = WOLFSSL_FATAL_ERROR;
+    }
+    else
+    {
+        /* Written in full. */
     }
     return rc;
 }
@@ -739,9 +753,18 @@ int wolfSSL_read(WOLFSSL* ssl, void* data, int sz)
     lastReadData = data;
     lastReadSz = sz;
     int rc = SequenceAt(readReturnSequence, readReturnSequenceLen, callIndex);
-    if (rc <= 0)
+    if (ssl == NULL)
+    {
+        rc = BAD_FUNC_ARG;
+        lastError = BAD_FUNC_ARG;
+    }
+    else if (rc <= 0)
     {
         lastError = readError;
+    }
+    else
+    {
+        /* Bytes delivered. */
     }
     return rc;
 }

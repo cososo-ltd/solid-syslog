@@ -42,7 +42,10 @@ enum
     FAKE_ASN_NO_SIGNER_E = -188,
     FAKE_DOMAIN_NAME_MISMATCH = -322,
     FAKE_IPADDR_MISMATCH = -325,
-    FAKE_VERIFY_CERT_ERROR = -329
+    FAKE_VERIFY_CERT_ERROR = -329,
+    FAKE_WOLFSSL_ERROR_ZERO_RETURN = 6,
+    FAKE_WOLFSSL_CBIO_ERR_GENERAL = -1,
+    FAKE_WOLFSSL_CBIO_ERR_WANT_READ = -2
 };
 
 #define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode) \
@@ -130,10 +133,21 @@ extern "C" void FakeProfile(struct SolidSyslogWolfSslProfile* profile, void* con
 
 /* What the stream had already done when the credentials were asked to install. */
 int NewsSeenAtInstall = -1;
+int ConnectsSeenAtInstall = -1;
 
 extern "C" void CaptureNewsAtInstall(void)
 {
     NewsSeenAtInstall = WolfSslTlsFake_NewCallCount();
+    ConnectsSeenAtInstall = WolfSslTlsFake_ConnectCallCount();
+}
+
+/* What wolfSSL had already let go of when the credentials were told the window
+   had closed. */
+int CtxFreesSeenAtRelease = -1;
+
+extern "C" void CaptureCtxFreesAtRelease(void)
+{
+    CtxFreesSeenAtRelease = WolfSslTlsFake_CtxFreeCallCount();
 }
 } // namespace
 
@@ -158,6 +172,8 @@ TEST_GROUP(SolidSyslogWolfSslStream)
         NoOpSleepCallCount = 0;
         g_lastSleepMs = 0;
         NewsSeenAtInstall = -1;
+        ConnectsSeenAtInstall = -1;
+        CtxFreesSeenAtRelease = -1;
         transport = StreamFake_Create();
         config.Transport = transport;
         config.Sleep = NoOpSleep;
@@ -1006,4 +1022,448 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackLeavesEnforcementToTheLibrary)
 TEST(SolidSyslogWolfSslStream, VerifyCallbackAcceptsWhatTheLibraryAccepted)
 {
     LONGS_EQUAL(1, OpenThenVerify(1, 0));
+}
+
+/* -------------------------------------------------------------------------
+ * Send: reads what the peer has sent first, then writes all or nothing.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, SendForwardsBufferToSslWriteOnTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_WriteCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastWriteSsl());
+    POINTERS_EQUAL(payload, WolfSslTlsFake_LastWriteData());
+    LONGS_EQUAL(sizeof(payload), WolfSslTlsFake_LastWriteSz());
+}
+
+TEST(SolidSyslogWolfSslStream, SendReturnsTrueWhenSslWriteWritesAllBytes)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+
+    CHECK_TRUE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogWolfSslStream, SendReturnsFalseWhenSslWriteWritesPartial)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetWriteReturn(2);
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogWolfSslStream, SendReturnsFalseWhenSslWriteFails)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetWriteReturn(-1);
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogWolfSslStream, SendClosesTheSessionAndTransportOnWriteFailure)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetWriteReturn(-1);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, SendClosesTheSessionAndTransportOnShortWrite)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetWriteReturn(2);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, SendRefusesTheRecordWhenThePeerHasClosedTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(0, FAKE_WOLFSSL_ERROR_ZERO_RETURN);
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogWolfSslStream, SendWritesNothingToASessionThePeerHasClosed)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(0, FAKE_WOLFSSL_ERROR_ZERO_RETURN);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_WriteCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, SendClosesTheSessionAndTransportWhenThePeerHasClosedTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(0, FAKE_WOLFSSL_ERROR_ZERO_RETURN);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, SendRefusesTheRecordWhenDataWaitsAheadOfThePeerClosingTheSession)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    const int reads[] = {5, 0};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturnSequence(reads, 2, FAKE_WOLFSSL_ERROR_ZERO_RETURN);
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogWolfSslStream, SendWritesToAPeerThatNeverStopsSending)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(5, 0);
+
+    CHECK_TRUE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+}
+
+TEST(SolidSyslogWolfSslStream, SendReadsEightTimesSixteenBytesBeforeGivingUpOnAPeerThatNeverStopsSending)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(5, 0);
+
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    LONGS_EQUAL(8, WolfSslTlsFake_ReadCallCount());
+    LONGS_EQUAL(16, WolfSslTlsFake_LastReadSz());
+}
+
+TEST(SolidSyslogWolfSslStream, SendOnAStreamThatIsNotOpenIsRefusedWithoutWriting)
+{
+    const unsigned char payload[] = {0x10, 0x20, 0x30};
+
+    CHECK_FALSE(SolidSyslogStream_Send(handle, payload, sizeof(payload)));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_WriteCallCount());
+}
+
+/* -------------------------------------------------------------------------
+ * Read
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, ReadForwardsBufferToSslReadOnTheSession)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(3, 0);
+
+    SolidSyslogStream_Read(handle, buffer, sizeof(buffer));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_ReadCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastReadSsl());
+    POINTERS_EQUAL(buffer, WolfSslTlsFake_LastReadData());
+    LONGS_EQUAL(sizeof(buffer), WolfSslTlsFake_LastReadSz());
+}
+
+TEST(SolidSyslogWolfSslStream, ReadReturnsByteCountWhenSslReadReturnsPositive)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(5, 0);
+
+    LONGS_EQUAL(5, SolidSyslogStream_Read(handle, buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogWolfSslStream, ReadReturnsZeroOnWantRead)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(-1, FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    LONGS_EQUAL(0, SolidSyslogStream_Read(handle, buffer, sizeof(buffer)));
+}
+
+TEST(SolidSyslogWolfSslStream, ReadDoesNotCloseOnWantRead)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(-1, FAKE_WOLFSSL_ERROR_WANT_READ);
+
+    SolidSyslogStream_Read(handle, buffer, sizeof(buffer));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(0, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, ReadReturnsNegativeOnSslReadError)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(-1, FAKE_FATAL_ERROR);
+
+    CHECK(SolidSyslogStream_Read(handle, buffer, sizeof(buffer)) < 0);
+}
+
+TEST(SolidSyslogWolfSslStream, ReadClosesTheSessionAndTransportOnHardError)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(-1, FAKE_FATAL_ERROR);
+
+    SolidSyslogStream_Read(handle, buffer, sizeof(buffer));
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, ReadClosesTheSessionWhenThePeerHasClosedIt)
+{
+    unsigned char buffer[8];
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetReadReturn(0, FAKE_WOLFSSL_ERROR_ZERO_RETURN);
+
+    CHECK(SolidSyslogStream_Read(handle, buffer, sizeof(buffer)) < 0);
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+/* -------------------------------------------------------------------------
+ * The I/O callbacks bridge the Stream contract to wolfSSL's.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, IoSendCallbackForwardsBufferToTransport)
+{
+    SolidSyslogStream_Open(handle, addr);
+    auto* ioSend = WolfSslTlsFake_LastIoSendCallback();
+    void* context = WolfSslTlsFake_LastIoWriteCtx();
+    char payload[] = {'\xAA', '\xBB', '\xCC'};
+
+    int rc = ioSend(WolfSslTlsFake_Session(), payload, sizeof(payload), context);
+
+    LONGS_EQUAL((int) sizeof(payload), rc);
+    LONGS_EQUAL(1, StreamFake_SendCallCount(transport));
+    POINTERS_EQUAL(payload, StreamFake_LastSendBuf(transport));
+    LONGS_EQUAL(sizeof(payload), StreamFake_LastSendSize(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, IoSendCallbackReturnsAGeneralErrorWhenTheTransportFails)
+{
+    SolidSyslogStream_Open(handle, addr);
+    auto* ioSend = WolfSslTlsFake_LastIoSendCallback();
+    void* context = WolfSslTlsFake_LastIoWriteCtx();
+    char payload[] = {'\xAA'};
+    StreamFake_SetSendFails(transport, true);
+
+    int rc = ioSend(WolfSslTlsFake_Session(), payload, sizeof(payload), context);
+
+    LONGS_EQUAL(FAKE_WOLFSSL_CBIO_ERR_GENERAL, rc);
+}
+
+TEST(SolidSyslogWolfSslStream, IoRecvCallbackForwardsBufferToTransport)
+{
+    SolidSyslogStream_Open(handle, addr);
+    auto* ioRecv = WolfSslTlsFake_LastIoRecvCallback();
+    void* context = WolfSslTlsFake_LastIoReadCtx();
+    char buffer[16];
+    StreamFake_SetReadReturn(transport, 4);
+
+    int rc = ioRecv(WolfSslTlsFake_Session(), buffer, sizeof(buffer), context);
+
+    LONGS_EQUAL(4, rc);
+    LONGS_EQUAL(1, StreamFake_ReadCallCount(transport));
+    POINTERS_EQUAL(buffer, StreamFake_LastReadBuf(transport));
+    LONGS_EQUAL(sizeof(buffer), StreamFake_LastReadSize(transport));
+}
+
+TEST(SolidSyslogWolfSslStream, IoRecvCallbackReturnsWantReadWhenTheTransportWouldBlock)
+{
+    SolidSyslogStream_Open(handle, addr);
+    auto* ioRecv = WolfSslTlsFake_LastIoRecvCallback();
+    void* context = WolfSslTlsFake_LastIoReadCtx();
+    char buffer[16];
+    StreamFake_SetReadReturn(transport, 0);
+
+    int rc = ioRecv(WolfSslTlsFake_Session(), buffer, sizeof(buffer), context);
+
+    LONGS_EQUAL(FAKE_WOLFSSL_CBIO_ERR_WANT_READ, rc);
+}
+
+TEST(SolidSyslogWolfSslStream, IoRecvCallbackReturnsAGeneralErrorWhenTheTransportFails)
+{
+    SolidSyslogStream_Open(handle, addr);
+    auto* ioRecv = WolfSslTlsFake_LastIoRecvCallback();
+    void* context = WolfSslTlsFake_LastIoReadCtx();
+    char buffer[16];
+    StreamFake_SetReadReturn(transport, -1);
+
+    int rc = ioRecv(WolfSslTlsFake_Session(), buffer, sizeof(buffer), context);
+
+    LONGS_EQUAL(FAKE_WOLFSSL_CBIO_ERR_GENERAL, rc);
+}
+
+/* -------------------------------------------------------------------------
+ * Close: close_notify once, the session before the context, the credentials
+ * after both, the transport last.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, CloseSendsCloseNotifyOnceOnTheSessionFromOpen)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_ShutdownCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastShutdownArg());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseFreesTheSessionThenTheContextFromOpen)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastFreeArg());
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Ctx(), WolfSslTlsFake_LastCtxFreeArg());
+    LONGS_EQUAL(1, WolfSslTlsFake_FreesSeenAtCtxFree());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseTwiceSendsCloseNotifyAndFreesOnce)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_ShutdownCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseAfterAnInternalCloseFromASendFailureDoesNotDoubleFree)
+{
+    const unsigned char payload[] = {0x10};
+    SolidSyslogStream_Open(handle, addr);
+    WolfSslTlsFake_SetWriteReturn(-1);
+    SolidSyslogStream_Send(handle, payload, sizeof(payload));
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(1, WolfSslTlsFake_CtxFreeCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseWithoutAnOpenTouchesNoSession)
+{
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ShutdownCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_FreeCallCount());
+    LONGS_EQUAL(0, WolfSslTlsFake_CtxFreeCallCount());
+    LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));
+}
+
+/* -------------------------------------------------------------------------
+ * One Release for every Install.
+ * ------------------------------------------------------------------------- */
+
+TEST(SolidSyslogWolfSslStream, OpenInstallsTheCredentialsBeforeTheHandshake)
+{
+    WolfSslCredentialsFake_SetInstallObserver(CaptureNewsAtInstall);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, ConnectsSeenAtInstall);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenDoesNotHandshakeWhenTheCredentialsCannotInstall)
+{
+    WolfSslCredentialsFake_SetInstallSucceeds(false);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ConnectCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseReleasesTheCredentialsItInstalled)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, WolfSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, AFailedInstallIsStillAnsweredByARelease)
+{
+    WolfSslCredentialsFake_SetInstallSucceeds(false);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, AnOpenThatFailedLaterIsStillAnsweredByARelease)
+{
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseWithoutAnOpenReleasesNothing)
+{
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(0, WolfSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, CloseTwiceReleasesOnlyOnce)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, WolfSslCredentialsFake_ReleaseCallCount());
+}
+
+TEST(SolidSyslogWolfSslStream, CredentialsAreReleasedAfterTheContextIsFreed)
+{
+    WolfSslCredentialsFake_SetReleaseObserver(CaptureCtxFreesAtRelease);
+    SolidSyslogStream_Open(handle, addr);
+
+    SolidSyslogStream_Close(handle);
+
+    LONGS_EQUAL(1, CtxFreesSeenAtRelease);
+}
+
+TEST(SolidSyslogWolfSslStream, ASecondOpenInstallsTheCredentialsAgain)
+{
+    SolidSyslogStream_Open(handle, addr);
+    SolidSyslogStream_Close(handle);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(2, WolfSslCredentialsFake_InstallCallCount());
 }

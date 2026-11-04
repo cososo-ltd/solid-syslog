@@ -37,6 +37,8 @@ const struct SolidSyslogErrorSource SolidSyslogWolfSslStreamErrorSource = {
 enum
 {
     HANDSHAKE_POLL_INTERVAL_MILLISECONDS = 10U,
+    WOLFSSL_STREAM_DISCARD_BYTES = 16U,
+    WOLFSSL_STREAM_MAX_READS_BEFORE_WRITE = 8U,
     WOLFSSL_STREAM_MIN_RSA_KEY_BITS = 2048,
     WOLFSSL_STREAM_MIN_ECC_KEY_BITS = 224,
     WOLFSSL_STREAM_MIN_DH_KEY_BITS = 2048U
@@ -88,6 +90,9 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self
 );
 static inline bool WolfSslStream_Failed(const struct SolidSyslogWolfSslStream* self, uint32_t check);
+static inline bool WolfSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
+static bool WolfSslStream_SessionIsStillOpen(struct SolidSyslogStream* base);
+static inline SolidSyslogSsize WolfSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
 static inline void WolfSslStream_Close(struct SolidSyslogStream* base);
 static inline void WolfSslStream_ReleaseCredentials(struct SolidSyslogWolfSslStream* self);
 static uint32_t WolfSslStream_Version(struct SolidSyslogStream* base);
@@ -101,6 +106,8 @@ void SolidSyslogWolfSslStream_Initialise(
 {
     struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
     self->Base.Open = WolfSslStream_Open;
+    self->Base.Send = WolfSslStream_Send;
+    self->Base.Read = WolfSslStream_Read;
     self->Base.Close = WolfSslStream_Close;
     self->Base.Version = WolfSslStream_Version;
     self->Config = *config;
@@ -627,6 +634,71 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const 
 static inline bool WolfSslStream_Failed(const struct SolidSyslogWolfSslStream* self, uint32_t check)
 {
     return (self->RefusedChecks & check) != 0U;
+}
+
+/* TLS-level write failure means the session state is unrecoverable - close
+ * so the StreamSender reconnect path runs on the next tick. Fail-fast is the
+ * contract every TLS stream adapter honours. */
+static inline bool WolfSslStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    bool ok = false;
+    if (WolfSslStream_SessionIsStillOpen(base))
+    {
+        int rc = wolfSSL_write(self->Session, buffer, (int) size);
+        ok = (rc > 0) && ((size_t) rc == size);
+        if (!ok)
+        {
+            WolfSslStream_Close(base);
+        }
+    }
+    return ok;
+}
+
+/* wolfSSL_write does not look at what the peer has sent, so a collector that
+ * has closed the session - a close_notify and a FIN - still has the record
+ * accepted, and the transport beneath may not see the FIN behind the unread
+ * alert. Read what is waiting first: an alert or a closed transport ends the
+ * session here, and Read closes it. A collector sends no application data, so
+ * any that arrives is discarded; a peer that keeps sending is plainly still
+ * there, and the record goes out once the bound is reached. */
+static bool WolfSslStream_SessionIsStillOpen(struct SolidSyslogStream* base)
+{
+    unsigned char discard[WOLFSSL_STREAM_DISCARD_BYTES];
+    SolidSyslogSsize pending = WolfSslStream_Read(base, discard, sizeof(discard));
+    uint32_t reads = 1U;
+    while ((pending > 0) && (reads < WOLFSSL_STREAM_MAX_READS_BEFORE_WRITE))
+    {
+        pending = WolfSslStream_Read(base, discard, sizeof(discard));
+        reads++;
+    }
+    return pending >= 0;
+}
+
+/* wolfSSL_read has two distinct outcomes worth keeping straight:
+ *   1. Steady-state read: bytes available -> positive count; nothing to read
+ *      right now -> WANT_READ -> return 0, mirroring the transport contract.
+ *   2. Any other return (close_notify, a fatal alert, a hard transport error,
+ *      a session that is not open) is fatal under fail-fast semantics - close
+ *      internally; the caller reopens and store-and-forward replays. */
+static inline SolidSyslogSsize WolfSslStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size)
+{
+    struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
+    int rc = wolfSSL_read(self->Session, buffer, (int) size);
+    SolidSyslogSsize result = -1;
+    if (rc > 0)
+    {
+        result = (SolidSyslogSsize) rc;
+    }
+    else if (wolfSSL_get_error(self->Session, rc) == WOLFSSL_ERROR_WANT_READ)
+    {
+        result = 0;
+    }
+    else
+    {
+        WolfSslStream_Close(base);
+    }
+    return result;
 }
 
 static int WolfSslStream_IoSend(WOLFSSL* ssl, char* buf, int sz, void* ctx)
