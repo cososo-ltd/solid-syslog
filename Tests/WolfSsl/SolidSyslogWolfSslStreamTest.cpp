@@ -49,6 +49,12 @@ enum
     FAKE_WOLFSSL_CBIO_ERR_WANT_READ = -2
 };
 
+/* The pins the fake digest matches: wc_Hash answers 32 bytes of 0x5A under
+   SHA-256 and 20 of 0x1A under SHA-1, whatever it is given. */
+static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
+                                           "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
+static const char* const TEST_SHA1_PIN = "sha-1:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A";
+
 #define CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, expectedSeverity, expectedCategory, expectedCode)      \
     {                                                                                                      \
         LONGS_EQUAL(1, StreamFake_CloseCallCount(transport));                                              \
@@ -543,8 +549,7 @@ TEST(SolidSyslogWolfSslStream, OpenFailsWhenNothingAuthorisesThePeer)
 
 TEST(SolidSyslogWolfSslStream, OpenWithPinsAndNoAnchorsGoesOnToTheHandshake)
 {
-    const char* const pins[] = {"sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
-                                "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A"};
+    const char* const pins[] = {TEST_SHA256_PIN};
     WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
@@ -570,7 +575,7 @@ TEST(SolidSyslogWolfSslStream, OpenRefusesAPinThatIsNotWellFormed)
 
 TEST(SolidSyslogWolfSslStream, OpenWarnsOfASha1PinAndStillConnects)
 {
-    const char* const pins[] = {"sha-1:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A:1A"};
+    const char* const pins[] = {TEST_SHA1_PIN};
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
     SolidSyslogStream_Open(handle, addr);
@@ -1118,8 +1123,7 @@ TEST(SolidSyslogWolfSslStream, ARefusalRecordedOnOneOpenDoesNotNameTheNext)
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackWaivesTheMissingSignerOfAPinnedPeerWithNoAnchors)
 {
-    const char* const pins[] = {"sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
-                                "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A"};
+    const char* const pins[] = {TEST_SHA256_PIN};
     WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
     WolfSslCredentialsFake_SetFingerprints(pins, 1U);
 
