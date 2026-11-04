@@ -254,8 +254,8 @@ TEST(SolidSyslogWolfSslStreamIntegration, SendBeforeOpenIsRefusedAndReachesNoSer
     CHECK_FALSE(SolidSyslogStream_Send(tlsStream, "x", 1U));
 
     LONGS_EQUAL(0, CapturedErrorCount);
-    SocketStream_Destroy(clientTransport);
-    clientTransport = nullptr;
+    /* Closing the client end is what lets the server's accept return. */
+    SolidSyslogStream_Close(clientTransport);
     CHECK_FALSE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
 }
 
