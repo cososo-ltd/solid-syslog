@@ -68,7 +68,8 @@ enum
     WOLFSSL_STREAM_CHECK_NAME = 2U,
     WOLFSSL_STREAM_CHECK_NOT_AFTER = 4U,
     WOLFSSL_STREAM_CHECK_NOT_BEFORE = 8U,
-    WOLFSSL_STREAM_CHECK_FINGERPRINT = 16U
+    WOLFSSL_STREAM_CHECK_FINGERPRINT = 16U,
+    WOLFSSL_STREAM_CHECK_FINGERPRINT_DIGEST = 32U
 };
 
 struct SolidSyslogAddress;
@@ -103,6 +104,7 @@ static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWol
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
 static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
+static inline uint32_t WolfSslStream_CheckFailedForPin(enum SolidSyslogTlsAuthorisation verdict);
 static bool WolfSslStream_DigestCertificate(
     void* context,
     enum SolidSyslogTlsHashAlgorithm algorithm,
@@ -588,10 +590,6 @@ static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store
         (store->error == ASN_NO_SIGNER_E))
     {
         verdict = WolfSslStream_LeafMatchesAPin(self, store) ? 1 : 0;
-        if (verdict == 0)
-        {
-            self->RefusedChecks |= WOLFSSL_STREAM_CHECK_FINGERPRINT;
-        }
     }
     else
     {
@@ -611,7 +609,29 @@ static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream
         WolfSslStream_DigestCertificate,
         &store->certs[0]
     );
+    self->RefusedChecks |= WolfSslStream_CheckFailedForPin(verdict);
     return verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+}
+
+/* Only a match authorises. A pin that will not parse was refused at Open, so a
+ * verdict that is neither a match nor an uncomputable digest is a peer the pins
+ * do not name. */
+static inline uint32_t WolfSslStream_CheckFailedForPin(enum SolidSyslogTlsAuthorisation verdict)
+{
+    uint32_t check = WOLFSSL_STREAM_CHECK_FINGERPRINT;
+    if (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED)
+    {
+        check = 0U;
+    }
+    else if (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
+    {
+        check = WOLFSSL_STREAM_CHECK_FINGERPRINT_DIGEST;
+    }
+    else
+    {
+        /* No pin names the peer, which the check already holds. */
+    }
+    return check;
 }
 
 static bool WolfSslStream_DigestCertificate(
@@ -764,7 +784,11 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
 {
     enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
-    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_FINGERPRINT))
+    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_FINGERPRINT_DIGEST))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_FINGERPRINT))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED;
     }
