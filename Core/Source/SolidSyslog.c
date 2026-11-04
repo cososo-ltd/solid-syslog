@@ -15,11 +15,13 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogEventSd.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMessageFormatter.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogPendingEvents.h"
 #include "SolidSyslogPrivate.h"
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogScratch.h"
@@ -31,6 +33,10 @@
 #include "SolidSyslogTunables.h"
 
 const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog", SolidSyslogErrors_Name};
+
+/* The MSG of every report Service makes of a pending event; the record's
+ * MSGID and the library's SD element say which event it was. */
+static const char SolidSyslog_ReportMsg[] = "SolidSyslog event";
 
 struct SolidSyslogBuffer;
 struct SolidSyslogHeaderField;
@@ -52,6 +58,9 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self);
+static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
+static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event);
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
@@ -110,12 +119,13 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 void SolidSyslog_Initialise(
     struct SolidSyslog* self,
     const struct SolidSyslogConfig* config,
-    char* record,
+    SolidSyslogFormatterStorage* recordStorage,
     size_t recordCapacity
 )
 {
     SolidSyslog_ResetToDefaults(self);
-    self->Record = record;
+    self->RecordStorage = recordStorage;
+    self->Record = SolidSyslogFormatter_Bytes(SolidSyslogFormatter_Create(recordStorage, recordCapacity));
     self->RecordCapacity = recordCapacity;
     SolidSyslog_InstallBuffer(self, config->Buffer);
     SolidSyslog_InstallSender(self, config->Sender);
@@ -153,6 +163,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
+    self->RecordStorage = NULL;
     self->Record = NULL;
     self->RecordCapacity = 0U;
     self->RecordLength = 0U;
@@ -422,6 +433,11 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(self);
     bool dealtWith = !self->Halted && SolidSyslog_DealWithHeldRecord(self);
 
+    if (dealtWith && SolidSyslog_HoldPendingReport(self))
+    {
+        dealtWith = SolidSyslog_DealWithHeldRecord(self);
+    }
+
     while (dealtWith && !self->Halted && SolidSyslog_HoldNextRecord(self))
     {
         drained = true;
@@ -541,6 +557,49 @@ static inline void SolidSyslog_Halt(struct SolidSyslog* self)
 {
     self->Halted = true;
     self->OnHalt(self->HaltContext);
+}
+
+/* Takes the pending event into the free slot as a report, formatted as a
+ * record of the logger's own. Says whether there was one to take. */
+static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self)
+{
+    /* A buffer loss is the one kind reported so far; the other kinds wait in
+     * the table. */
+    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
+    struct SolidSyslogErrorEvent event;
+    self->HoldsRecord = SolidSyslog_HasRecordSlot(self) && SolidSyslogPendingEvents_Take(index, &event);
+
+    if (self->HoldsRecord)
+    {
+        SolidSyslog_FormatReport(self, &event);
+    }
+
+    return self->HoldsRecord;
+}
+
+/* The fallback SolidSyslog_Create returns carries no slot, so it takes no
+ * event and leaves each one for a logger that can report it. */
+static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self)
+{
+    return self->RecordStorage != NULL;
+}
+
+static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event)
+{
+    struct SolidSyslogMessage message = {
+        SOLIDSYSLOG_FACILITY_SYSLOG,
+        event->Severity,
+        SolidSyslogErrorCategory_Name(event->Category),
+        SolidSyslog_ReportMsg
+    };
+    struct SolidSyslogEventSd eventSd;
+    struct SolidSyslogStructuredData* sd = SolidSyslogEventSd_Initialise(&eventSd, event);
+    struct SolidSyslogFormatter* formatter = SolidSyslogFormatter_Create(self->RecordStorage, self->RecordCapacity);
+
+    SolidSyslogMessageFormatter_Format(formatter, &message, &self->Format, &sd, 1U);
+    /* Trims a truncated multi-byte tail in place; Record already points here. */
+    (void) SolidSyslogFormatter_AsFormattedBuffer(formatter);
+    self->RecordLength = SolidSyslogFormatter_Length(formatter);
 }
 
 /* Sends one record the store hands out. The slot is the staging buffer; the

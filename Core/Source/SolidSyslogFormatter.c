@@ -544,3 +544,8 @@ size_t SolidSyslogFormatter_Length(const struct SolidSyslogFormatter* formatter)
 {
     return formatter->Position;
 }
+
+char* SolidSyslogFormatter_Bytes(struct SolidSyslogFormatter* formatter)
+{
+    return formatter->Buffer;
+}

@@ -11,6 +11,7 @@
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogFormatter.h"
 #include "SolidSyslogMessageFormatter.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogTimestamp.h"
@@ -36,12 +37,15 @@ struct SolidSyslog
      * has gone. Service alone puts a record in the slot, from the one task that
      * calls it.
      *
-     * The storage is the pool entry's, not the instance's: Create points Record
-     * at it, and Cleanup takes it away, leaving Record NULL and RecordCapacity
-     * 0. Destroy and the fallback SolidSyslog_Create returns both go through
-     * Cleanup, so the fallback carries no slot. Cleanup also installs the Null
-     * buffer and store, which deliver no record, so a NULL Record never meets a
-     * Read that could write into it. */
+     * The storage is the pool entry's, not the instance's: Create points
+     * RecordStorage at it, and Record at the formatter's bytes within it, so
+     * Service can format its own report into the slot it sends from. Cleanup
+     * takes it away, leaving both NULL and RecordCapacity 0. Destroy and the
+     * fallback SolidSyslog_Create returns both go through Cleanup, so the
+     * fallback carries no slot. Cleanup also installs the Null buffer and
+     * store, which deliver no record, so a NULL Record never meets a Read that
+     * could write into it. */
+    SolidSyslogFormatterStorage* RecordStorage;
     char* Record;
     size_t RecordCapacity;
     size_t RecordLength;
@@ -62,7 +66,7 @@ struct SolidSyslog
 void SolidSyslog_Initialise(
     struct SolidSyslog* self,
     const struct SolidSyslogConfig* config,
-    char* record,
+    SolidSyslogFormatterStorage* recordStorage,
     size_t recordCapacity
 );
 void SolidSyslog_Cleanup(struct SolidSyslog* self);

@@ -40,22 +40,41 @@ bool ParseDecimal(const std::string& text, unsigned* value)
     return parsed;
 }
 
-/* The meta SD's sequenceId, from the frame's SDATA. */
-bool ParseSequenceId(const std::string& sdata, unsigned* sequenceId)
+/* The value of the quoted param that @p key opens, from a frame's SDATA. */
+bool ParseQuoted(const std::string& sdata, const std::string& key, std::string* value)
 {
-    const std::string key = "sequenceId=\"";
     size_t start = sdata.find(key);
     bool found = start != std::string::npos;
     size_t valueStart = found ? (start + key.size()) : 0U;
     size_t end = found ? sdata.find('"', valueStart) : std::string::npos;
     found = found && (end != std::string::npos);
-    return found && ParseDecimal(sdata.substr(valueStart, end - valueStart), sequenceId);
+    *value = found ? sdata.substr(valueStart, end - valueStart) : std::string();
+    return found;
+}
+
+/* The meta SD's sequenceId, from the frame's SDATA. */
+bool ParseSequenceId(const std::string& sdata, unsigned* sequenceId)
+{
+    std::string text;
+    return ParseQuoted(sdata, R"(sequenceId=")", &text) && ParseDecimal(text, sequenceId);
 }
 
 bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
 {
     return (SyslogField(frame, SYSLOG_FIELD_MSGID) == MESSAGE_ID) && ParseDecimal(SyslogMsg(frame), ordinal) &&
            ParseSequenceId(SyslogField(frame, SYSLOG_FIELD_SDATA), sequenceId);
+}
+
+/* A report the logger made of its own event: the library's element is there,
+ * and its category param names the category the MSGID does. */
+bool ParseReport(const char* frame, std::string* category)
+{
+    std::string sdata = SyslogField(frame, SYSLOG_FIELD_SDATA);
+    std::string named;
+    bool parsed =
+        (sdata.find("[solidsyslog@67478 ") != std::string::npos) && ParseQuoted(sdata, R"(category=")", &named);
+    *category = SyslogField(frame, SYSLOG_FIELD_MSGID);
+    return parsed && (named == *category);
 }
 } // namespace
 
@@ -160,11 +179,17 @@ void ScenarioBench::TakeNewFrames()
 {
     for (; framesSeen < StreamFake_FrameCount(stream); framesSeen++)
     {
+        const char* frame = StreamFake_Frame(stream, framesSeen);
         ScenarioDelivery delivery = {0U, 0U, passes};
+        ScenarioReport report = {std::string(), passes};
 
-        if (ParseFrame(StreamFake_Frame(stream, framesSeen), &delivery.Ordinal, &delivery.SequenceId))
+        if (ParseFrame(frame, &delivery.Ordinal, &delivery.SequenceId))
         {
             delivered.push_back(delivery);
+        }
+        else if (ParseReport(frame, &report.Category))
+        {
+            reports.push_back(report);
         }
         else
         {
@@ -212,6 +237,11 @@ size_t ScenarioBench::Passes() const
 const std::vector<ScenarioDelivery>& ScenarioBench::Delivered() const
 {
     return delivered;
+}
+
+const std::vector<ScenarioReport>& ScenarioBench::Reports() const
+{
+    return reports;
 }
 
 const std::vector<ScenarioEvent>& ScenarioBench::Events() const

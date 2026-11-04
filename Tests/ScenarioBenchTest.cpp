@@ -80,6 +80,21 @@ TEST(ScenarioBench, AFullBufferUnderNewestRefusesAndIsReportedOnceFromTheLog)
     LONGS_EQUAL(0, bench.Events()[0].Pass);
 }
 
+TEST(ScenarioBench, ALossTheLoggerReportsIsAReportFrameNotGarbage)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    ScenarioBench bench(options);
+    for (unsigned i = 0U; i < (SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4U) / 32U) + 20U; i++)
+    {
+        bench.Log();
+    }
+    bench.Service();
+    LONGS_EQUAL(0, bench.Garbage());
+    LONGS_EQUAL(1, bench.Reports().size());
+    STRCMP_EQUAL("BUFFER_RECORDS_LOST", bench.Reports()[0].Category.c_str());
+    LONGS_EQUAL(1, bench.Reports()[0].Pass);
+}
+
 TEST(ScenarioBench, AServicePassRecordsItsDeviceWorkAndSends)
 {
     ScenarioBench bench(options);

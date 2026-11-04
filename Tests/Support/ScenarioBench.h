@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "SolidSyslogDiscardPolicy.h"
@@ -43,6 +44,15 @@ struct ScenarioDelivery
     size_t Pass; /* the Service pass that delivered it */
 };
 
+/* One report the logger made of its own event: a frame carrying the
+ * library's solidsyslog element, whose MSGID names the same category as the
+ * element's category param. */
+struct ScenarioReport
+{
+    std::string Category;
+    size_t Pass; /* the Service pass that delivered it */
+};
+
 /* One event the error handler was told. */
 struct ScenarioEvent
 {
@@ -76,9 +86,11 @@ class ScenarioBench
     unsigned Logged() const;
     size_t Passes() const;
     const std::vector<ScenarioDelivery>& Delivered() const;
+    const std::vector<ScenarioReport>& Reports() const;
     const std::vector<ScenarioEvent>& Events() const;
 
-    /* Frames the stream received that did not parse as a record of this bench. */
+    /* Frames the stream received that parsed neither as a record of this
+     * bench nor as a report. */
     size_t Garbage() const;
 
     /* Calls of the logger's halt callback. */
@@ -130,6 +142,7 @@ class ScenarioBench
     unsigned logged;
     size_t passes;
     std::vector<ScenarioDelivery> delivered;
+    std::vector<ScenarioReport> reports;
     std::vector<ScenarioEvent> events;
     size_t garbage;
     size_t halts;

@@ -125,6 +125,7 @@ set(TEST_SOURCES
     SolidSyslogErrorTest.cpp
     SolidSyslogErrorNamesTest.cpp
     SolidSyslogPendingEventsTest.cpp
+    SolidSyslogServiceEventReportTest.cpp
     SolidSyslogConfigLockTest.cpp
     SolidSyslogFormatterTest.cpp
     SolidSyslogTimestampFormatterTest.cpp

@@ -58,6 +58,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * SolidSyslog_Error after the handler. */
     void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event);
 
+    /* The slot index of a reported kind, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT
+     * for a category that is not one, which Take answers false for. */
+    size_t SolidSyslogPendingEvents_IndexOf(uint16_t category);
+
     /* Clear the slot's Pending flag, then copy its fields into @p event with
      * the slot's category. Returns whether the slot was pending; the copy is
      * made either way, so @p event is only meaningful on true. Slot order is
