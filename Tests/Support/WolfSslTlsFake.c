@@ -748,8 +748,7 @@ int wolfSSL_connect(WOLFSSL* ssl)
         {
             int depth = (i < verifyDepthsLen) ? verifyDepths[i] : 0;
             int preverify = (verifyErrors[i] == 0) ? 1 : 0;
-            lastVerifyCallbackResult =
-                lastSetVerifyCallback(preverify, WolfSslTlsFake_StoreAt(verifyErrors[i], depth));
+            lastVerifyCallbackResult = lastSetVerifyCallback(preverify, WolfSslTlsFake_StoreAt(verifyErrors[i], depth));
             if (lastVerifyCallbackResult != 0)
             {
                 verifyCallbackAcceptCount++;
