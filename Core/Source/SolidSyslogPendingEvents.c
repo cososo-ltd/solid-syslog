@@ -47,7 +47,27 @@ static const uint16_t PendingEvents_Kinds[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] 
 
 static volatile struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
 
-size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
+static size_t PendingEvents_IndexOf(uint16_t category);
+
+void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
+{
+    size_t index = PendingEvents_IndexOf(event->Category);
+    if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
+    {
+        volatile struct PendingEventSlot* slot = &PendingEvents_Slots[index];
+        /* Volatile stores, Pending last: the header states what that buys. */
+        slot->Severity = event->Severity;
+        slot->Source = event->Source;
+        slot->Detail = event->Detail;
+        slot->NativeCode = event->NativeCode;
+        slot->HasNativeCode = event->HasNativeCode;
+        slot->Pending = true;
+    }
+}
+
+/* The slot index of a category, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT for
+ * a category that is not a reported kind. */
+static size_t PendingEvents_IndexOf(uint16_t category)
 {
     size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
     for (size_t index = 0U;
@@ -60,22 +80,6 @@ size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
         }
     }
     return found;
-}
-
-void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
-{
-    size_t index = SolidSyslogPendingEvents_IndexOf(event->Category);
-    if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
-    {
-        volatile struct PendingEventSlot* slot = &PendingEvents_Slots[index];
-        /* Volatile stores, Pending last: the header states what that buys. */
-        slot->Severity = event->Severity;
-        slot->Source = event->Source;
-        slot->Detail = event->Detail;
-        slot->NativeCode = event->NativeCode;
-        slot->HasNativeCode = event->HasNativeCode;
-        slot->Pending = true;
-    }
 }
 
 bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event)

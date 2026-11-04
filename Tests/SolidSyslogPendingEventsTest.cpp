@@ -35,6 +35,23 @@ static void DrainEveryKind(struct SolidSyslogErrorEvent* into)
     }
 }
 
+/* Take every slot; true when the one holding @p category was pending, and
+ * then it is what @p into holds. The table's order is its own business. */
+static bool TakeKindInto(uint16_t category, struct SolidSyslogErrorEvent* into)
+{
+    bool found = false;
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        struct SolidSyslogErrorEvent candidate = {};
+        if (SolidSyslogPendingEvents_Take(index, &candidate) && (candidate.Category == category))
+        {
+            *into = candidate;
+            found = true;
+        }
+    }
+    return found;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPendingEvents)
 {
@@ -49,7 +66,7 @@ TEST_GROUP(SolidSyslogPendingEvents)
 
     bool TakeKind(uint16_t category)
     {
-        return SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(category), &taken);
+        return TakeKindInto(category, &taken);
     }
 };
 
@@ -143,11 +160,11 @@ TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
     }
 }
 
-TEST(SolidSyslogPendingEvents, TakeOfACategoryOutsideTheSetFindsNothingAndLeavesTheEventAlone)
+TEST(SolidSyslogPendingEvents, TakePastTheTableFindsNothingAndLeavesTheEventAlone)
 {
     taken.Detail = 77;
 
-    CHECK_FALSE(TakeKind(SOLIDSYSLOG_CAT_BAD_CONFIG));
+    CHECK_FALSE(SolidSyslogPendingEvents_Take(SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT, &taken));
     LONGS_EQUAL(77, taken.Detail);
 }
 
@@ -223,8 +240,6 @@ TEST(SolidSyslogPendingEventsInsideSend, ADeliveryFailureRaisedInsideSendIsCaptu
 
     CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
     CALLED_FAKE_ON(StreamFake_Send, stream, ONCE);
-    CHECK(
-        SolidSyslogPendingEvents_Take(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED), &taken)
-    );
+    CHECK(TakeKindInto(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, &taken));
     POINTERS_EQUAL(&SolidSyslogStreamSenderErrorSource, taken.Source);
 }

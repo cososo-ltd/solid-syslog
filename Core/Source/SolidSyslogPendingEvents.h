@@ -54,10 +54,6 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* The slot index of a category, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT
-     * for a category that is not a reported kind. */
-    size_t SolidSyslogPendingEvents_IndexOf(uint16_t category);
-
     /* Record an event in its kind's slot, overwriting whatever the slot held;
      * an event of an unreported category changes nothing. Called by
      * SolidSyslog_Error after the handler. */
@@ -65,8 +61,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Clear the slot's Pending flag, then copy its fields into @p event with
      * the slot's category. Returns whether the slot was pending; the copy is
-     * made either way, so @p event is only meaningful on true. An index past
-     * the table leaves @p event untouched and returns false. */
+     * made either way, so @p event is only meaningful on true. Slot order is
+     * the table's own: a reader walks every index and reads the category
+     * from the event. An index past the table leaves @p event untouched and
+     * returns false. */
     bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event);
 
 SOLIDSYSLOG_EXTERN_C_END
