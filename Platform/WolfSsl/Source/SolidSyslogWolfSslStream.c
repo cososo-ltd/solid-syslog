@@ -371,15 +371,29 @@ static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsC
  * bad configuration rather than as a refused peer. */
 static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
 {
-    bool ok = SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount) !=
-              SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED;
-    if (!ok)
+    bool ok = true;
+    enum SolidSyslogTlsFingerprintListState state =
+        SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount);
+    if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED)
     {
         WolfSslStream_Report(
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
         );
+        ok = false;
+    }
+    else if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_USES_SHA1)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1
+        );
+    }
+    else
+    {
+        /* Well formed, or no pins at all. */
     }
     return ok;
 }
