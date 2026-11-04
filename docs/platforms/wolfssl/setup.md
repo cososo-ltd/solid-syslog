@@ -65,9 +65,9 @@ only report of it has already gone by.
 wolfSSL_Init();
 ```
 
-Once, before the first connection, and `wolfSSL_Cleanup` once after the last.
-The stream does neither, so a device that already runs wolfSSL for something
-else keeps that arrangement and calls nothing extra.
+Before the first connection, and `wolfSSL_Cleanup` after the last; the stream
+calls neither. Who owns the two calls, and why, is on the
+[wolfSSL](index.md#requirements) page.
 
 ## 3. The transport
 
@@ -87,9 +87,7 @@ static const unsigned char CA_PEM[] = "-----BEGIN CERTIFICATE-----\n...";
 static const struct SolidSyslogWolfSslPemBufferCredentialsConfig credentialsConfig = {
     {CA_PEM, sizeof CA_PEM - 1U}, /* CaPem */
     {NULL, 0U},                   /* ClientCertPem */
-    {NULL, 0U},                   /* ClientKeyPem */
-    NULL,                         /* PeerFingerprints */
-    0U                            /* PeerFingerprintCount */
+    {NULL, 0U}                    /* ClientKeyPem */
 };
 struct SolidSyslogWolfSslCredentials* credentials =
     SolidSyslogWolfSslPemBufferCredentials_Create(&credentialsConfig);
@@ -235,7 +233,7 @@ detail, or a connection in between, reports again.
 | the peer's certificate is outside its validity period | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_CERTIFICATE_EXPIRED`, `PEER_CERTIFICATE_NOT_YET_VALID` | as above |
 | the peer or the protocol refused, and no check of the stream names it | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | as above |
 | the handshake did not finish within the budget | `WARNING` | `TLS_STREAM_HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | as above |
-| credentials config NULL, or a pin count with no list or a NULL pin | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_PEER_FINGERPRINT` | Null credentials returned |
+| credentials config NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG` | Null credentials returned |
 | the trust anchors would not parse, or the buffer has no extent | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_PARSED` | the attempt fails |
 | one half of the client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_INCOMPLETE` | connects without it |
 | the client credential would not parse, or has no extent | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_NOT_PARSED` | connects without it |

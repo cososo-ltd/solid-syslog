@@ -8,7 +8,7 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* A PEM file from the material generated at configure time, read whole.
+    /* A PEM file from the material generated at build time, read whole.
        The buffers outlive every connection made with them: the fixture holds
        them. */
     struct WolfSslTestMaterial
@@ -19,7 +19,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /* Reads `name` from WOLFSSL_TEST_MATERIAL_DIR. False where the file is
-       missing or empty - the configure-time generator did not run. */
+       missing or empty - the build-time generator did not run. */
     bool WolfSslTestMaterial_Load(const char* name, struct WolfSslTestMaterial* out);
 
     /* The key file that pairs with a certificate file: `server.pem` -> `server.key`. */

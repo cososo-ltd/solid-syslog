@@ -11,7 +11,6 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
-#include "SolidSyslogTlsFingerprint.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWolfSslCredentialsDefinition.h"
 #include "SolidSyslogWolfSslNullCredentials.h"
@@ -67,14 +66,6 @@ static inline bool WolfSslPemBufferCredentials_IsValidConfig(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_CONFIG
-        );
-    }
-    else if (!SolidSyslogTlsFingerprint_ListIsPresent(config->PeerFingerprints, config->PeerFingerprintCount))
-    {
-        WolfSslPemBufferCredentials_Report(
-            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_PEER_FINGERPRINT
         );
     }
     else

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Generates the test-only certificate material the wolfSSL stream integration
-# tests present to the stream. Run at configure time into the build tree, never
+# tests present to the stream. Run at build time into the build tree, never
 # committed: neither wolfSSL build in the image can issue a certificate, and the
 # OpenSSL command-line tool can, including into a validity window that has
 # closed or not yet opened.

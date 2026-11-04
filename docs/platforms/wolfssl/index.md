@@ -46,8 +46,8 @@ or check.
 
 ## Credentials come from a credentials source
 
-Where trust anchors, pinned peer fingerprints and the mutual-TLS client
-credential come from is the integrator's choice rather than this adapter's. The
+Where trust anchors and the mutual-TLS client credential come from is the
+integrator's choice rather than this adapter's. The
 stream is wired to a `SolidSyslogWolfSslCredentials`, asked once per connection
 to install its material on the `WOLFSSL_CTX` built for that connection and told
 once per connection when that material is no longer needed. A source backed by
@@ -80,13 +80,15 @@ same lock and a non-recursive one deadlocks.
 
 ## What it depends on in your build
 
-The pack compiles against whatever build you have, and what each choice costs is
-stated here rather than refused at build time.
+The pack compiles against the builds below. What a choice costs is stated
+beside it; the two the pack refuses are refused at build time, so the cost is
+never a silent one.
 
 | Build choice | What the pack does with it |
 |---|---|
 | `HAVE_SNI` (on in a `./configure` build) | Sends the expected peer name as the server name indication. Without it the indication cannot be set, and a connection that declares a name fails at Open as `SERVER_NAME_NOT_APPLIED`; a connection that declares none is unaffected |
 | `WOLFSSL_IP_ALT_NAME` (`--enable-ip-alt-name`) | Matches an expected address literal against the certificate's `iPAddress` entries. Without it no address ever matches, and a peer expected by address is refused as `PEER_NAME_MISMATCHED` on every connection; expect the peer by name instead |
+| `WOLFSSL_TLS13` (`--enable-tls13`, on in a `./configure` build) | Negotiates TLS 1.3 where the collector offers it. Without it the connection is TLS 1.2, which the floor permits |
 | `NO_ASN_TIME` | Compiles the validity-period check out. The adapter will not build with it set, below |
 | RSA, finite-field Diffie-Hellman and ECC (`NO_RSA`, `NO_DH`, `HAVE_ECC`) | The pack sets the key-size floor for all three, so a build that trims any of them out does not compile the stream. A trimmed build is not supported |
 | `HAVE_AESGCM` (on by default) | The AES-GCM policy. A build without it has no `wc_AesGcmEncrypt` to link |
@@ -143,9 +145,9 @@ ciphersuite policy are outstanding under
 of this stream names, which includes a Diffie-Hellman group or a ciphersuite
 below the floor.
 
-From the credentials codes it does not raise `NULL_RNG` or `ALREADY_IN_USE`:
-the PEM-buffer source needs no generator and holds nothing between connections,
-so it is never in use. Nor `PEM_NOT_TERMINATED`: wolfSSL reads a buffer to the
+From the credentials codes it does not raise `NULL_RNG`, `ALREADY_IN_USE` or
+`NULL_PEER_FINGERPRINT`: the PEM-buffer source needs no generator, holds
+nothing between connections so it is never in use, and takes no pins. Nor `PEM_NOT_TERMINATED`: wolfSSL reads a buffer to the
 length it is given and needs no terminator. Nor `TRUST_ANCHORS_NOT_LOADED`: the
 source parses a buffer and reports `TRUST_ANCHORS_NOT_PARSED` if that fails.
 Nor `CLIENT_CREDENTIAL_MISMATCHED`: whether a client key matches its
@@ -215,13 +217,15 @@ The refusal names the checks in the contract's order where wolfSSL raises more
 than one, with one exception. A certificate that is both misnamed and outside
 its validity period is named for its dates: wolfSSL treats the date failure as
 fatal before it checks the name, so the name is never raised and the stream has
-nothing to put first. The peer is refused either way.
+nothing to put first. The peer is refused either way. Whether the three packs
+should name a refusal in one order, and which, is open under
+[#1133](https://github.com/cososo-ltd/solid-syslog/issues/1133).
 
-Pinned peer fingerprints are carried by the credentials source and read by the
-stream, but not yet enforced: a connection is authorised by its chain alone,
-and a configuration with pins and no anchors is refused as
-`NO_PEER_AUTHORISATION`. Pins and the peer-name states that go with them arrive
-under [S34.03](https://github.com/cososo-ltd/solid-syslog/issues/1122).
+Pinned peer fingerprints are not yet enforced, and so cannot be configured: the
+shipped credentials source carries none, and a connection is authorised by its
+chain alone. A source that reported pins would see them ignored, which is why
+none does. Pins and the peer-name states that go with them arrive under
+[S34.03](https://github.com/cososo-ltd/solid-syslog/issues/1122).
 
 Of the cryptographic floor, what a certificate in the chain may be signed with
 is not pinned. wolfSSL offers no per-connection way to refuse a chain

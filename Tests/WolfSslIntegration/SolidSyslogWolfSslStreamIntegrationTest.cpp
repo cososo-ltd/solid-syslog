@@ -40,10 +40,7 @@ void NoOpSleep(uint32_t milliseconds)
    as one failure and not as a refused handshake. */
 void LoadMaterial(const char* name, struct WolfSslTestMaterial* out)
 {
-    CHECK_TRUE_TEXT(
-        WolfSslTestMaterial_Load(name, out),
-        "test material missing - was the configure-time generator run?"
-    );
+    CHECK_TRUE_TEXT(WolfSslTestMaterial_Load(name, out), "test material missing - was the build-time generator run?");
 }
 } // namespace
 

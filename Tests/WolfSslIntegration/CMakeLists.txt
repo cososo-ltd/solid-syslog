@@ -33,10 +33,10 @@ set(WOLFSSL_INTEGRATION_SOURCES
 )
 
 # The certificates the stream tests present. Neither wolfSSL build can issue
-# one, so the OpenSSL command-line tool makes them at configure time, into the
-# build tree: a validity window that has closed or not yet opened needs a
-# generator that can back-date, and committing keys is avoided. The suite
-# reads them by path from WOLFSSL_TEST_MATERIAL_DIR.
+# one, so the OpenSSL command-line tool makes them at build time, into the
+# build tree, when the test executables are built: a validity window that has
+# closed or not yet opened needs a generator that can back-date, and committing
+# keys is avoided. The suite reads them by path from WOLFSSL_TEST_MATERIAL_DIR.
 set(WOLFSSL_TEST_MATERIAL_DIR "${CMAKE_CURRENT_BINARY_DIR}/material")
 add_custom_command(
     OUTPUT "${WOLFSSL_TEST_MATERIAL_DIR}/generated.stamp"
