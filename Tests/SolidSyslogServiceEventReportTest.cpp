@@ -668,6 +668,22 @@ TEST(SolidSyslogServiceEventReportWithAStore, AHaltedLoggerMakesNoReport)
     LONGS_EQUAL(0, StoreFake_WriteCallCount(store));
 }
 
+TEST(SolidSyslogServiceEventReportWithAStore, AHaltMetDealingWithTheHeldRecordMakesNoReportThatPass)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    StoreFake_SetTransient(true);
+    RaiseBufferLoss();
+    SenderFake_FailNextSend(fakeSender);
+    SolidSyslog_Service(solidSyslog); /* the store keeps nothing and the sender refuses: the report is held */
+    StoreFake_SetTransient(false);
+    StoreFake_FailNextWrite();
+    RaiseBufferLoss();
+
+    SolidSyslog_Service(solidSyslog); /* the store refuses the held report, which halts the logger */
+
+    LONGS_EQUAL(0, StoreFake_WriteCallCount(store));
+}
+
 TEST(SolidSyslogServiceEventReportWithAStore, ThePendingReportIsMadeOnceTheHaltLifts)
 {
     HaltOnARefusedReport();
