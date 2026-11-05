@@ -91,6 +91,19 @@ TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, AnchorsAndPinsTogetherAreRefus
     );
 }
 
+/* The sender retries a refused Open every service pass; one run of the same
+ * refusal is one report. */
+TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, ARepeatedRefusalOfAnchorsAndPinsTogetherIsReportedOnce)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+    CHECK_FALSE(SolidSyslogStream_Open(handle, AddressFake_Get()));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
 TEST(SolidSyslogWolfSslStreamAnchoredPinsRefused, APinAloneIsStillCheckedInTheCallbackAndConnects)
 {
     const char* const pins[] = {TEST_SHA256_PIN};
