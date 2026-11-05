@@ -52,6 +52,7 @@ void SolidSyslogOpenSslPemFileCredentials_Initialise(
     self->Base.Install = OpenSslPemFileCredentials_Install;
     self->Base.Release = OpenSslPemFileCredentials_Release;
     self->Config = *config;
+    self->InstallHealth = (struct SolidSyslogStreamOpenHealth) {0};
 }
 
 static inline struct SolidSyslogOpenSslPemFileCredentials* OpenSslPemFileCredentials_SelfFromBase(
@@ -82,12 +83,17 @@ static bool OpenSslPemFileCredentials_Install(
         ok = installed->TrustAnchorsInstalled;
         if (!ok)
         {
-            OpenSslPemFileCredentials_Report(
+            OpenSslPemFileCredentials_ReportInstallFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_TRUST_ANCHORS_NOT_LOADED
             );
         }
+    }
+    if (ok)
+    {
+        SolidSyslogStreamOpenHealth_Opened(&self->InstallHealth);
     }
     OpenSslPemFileCredentials_ConfigureClientIdentity(ctx, &self->Config);
     return ok;

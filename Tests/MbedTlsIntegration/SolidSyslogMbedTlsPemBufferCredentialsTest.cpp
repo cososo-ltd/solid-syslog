@@ -373,6 +373,84 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsTrustAnchorsItCannotP
     );
 }
 
+/* The stream asks on every Open and the sender retries every service pass;
+ * one run of the same refusal is one report. */
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsARepeatedTrustAnchorBufferThatIsNotTerminatedOnce)
+{
+    config.CaPem.Length -= 1U;
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+
+    LONGS_EQUAL(1, PemBufferCapturedErrorCount);
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsRepeatedTrustAnchorsItCannotParseOnce)
+{
+    caPem[20] = 'X';
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+
+    LONGS_EQUAL(1, PemBufferCapturedErrorCount);
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, ARepeatedInstallRefusedWhileTheFirstIsOutstandingIsReportedOnce)
+{
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    CHECK_TRUE(credentials->Install(credentials, &conf, &installed));
+    mbedtls_ssl_config secondConf = {};
+    mbedtls_ssl_config_init(&secondConf);
+    struct SolidSyslogTlsCredentialsInstalled secondInstalled = {};
+    credentials->Install(credentials, &secondConf, &secondInstalled);
+    credentials->Release(credentials);
+
+    credentials->Install(credentials, &secondConf, &secondInstalled);
+    credentials->Release(credentials);
+
+    LONGS_EQUAL(1, PemBufferCapturedErrorCount);
+    mbedtls_ssl_config_free(&secondConf);
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsTheSameRefusalAgainAfterAnInstallInBetween)
+{
+    const unsigned char intact = caPem[20];
+    caPem[20] = 'X';
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+    caPem[20] = intact;
+    CHECK_TRUE(credentials->Install(credentials, &conf, &installed));
+    credentials->Release(credentials);
+    caPem[20] = 'X';
+
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+
+    LONGS_EQUAL(2, PemBufferCapturedErrorCount);
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, ASourceCreatedInAReusedSlotReportsItsFirstRefusal)
+{
+    caPem[20] = 'X';
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+    SolidSyslogMbedTlsPemBufferCredentials_Destroy(credentials);
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    credentials->Install(credentials, &conf, &installed);
+    credentials->Release(credentials);
+
+    LONGS_EQUAL(2, PemBufferCapturedErrorCount);
+}
+
 TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallPresentsAParsedClientCredential)
 {
     GiveAClientCredential();

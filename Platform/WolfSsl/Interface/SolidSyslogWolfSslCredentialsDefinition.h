@@ -45,6 +45,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  connects and before the session is created from the context, so
          *  what is installed here is what the session inherits.
          *
+         *  Report a refusal that fails Install once per run of the same detail,
+         *  not once per call: the stream calls Install on every Open and the
+         *  sender retries every servicing pass. A different detail is new
+         *  information and reports; an Install that returns true re-arms it.
+         *
          *  @retval false the material that authorises the peer could not be
          *          produced; the connection attempt fails and the sender
          *          retries on its next pass. A fault in the client's own

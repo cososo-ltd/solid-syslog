@@ -39,6 +39,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  @p installed what the stream cannot read back out of @p conf.
          *  Called from Open, after the transport connects.
          *
+         *  Report a refusal that fails Install once per run of the same detail,
+         *  not once per call: the stream calls Install on every Open and the
+         *  sender retries every servicing pass. A different detail is new
+         *  information and reports; an Install that returns true re-arms it.
+         *
          *  @retval false the material that authorises the peer could not be
          *          produced; the connection attempt fails and the sender
          *          retries on its next pass. A fault in the client's own

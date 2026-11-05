@@ -196,10 +196,12 @@ from `SolidSyslogTlsStreamErrors.h` or `SolidSyslogTlsCredentialsErrors.h`; the
 `SOLIDSYSLOG_TLS_STREAM_ERROR_` and `SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_`
 prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 `SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED` and
-`SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED`. A failure of the stream's own that
-ends an Open is reported once per run of the same detail, because the sender
-retries it on every service pass; a different detail, or a connection in
-between, reports again.
+`SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED`. A connection attempt that fails is
+not reported on every service pass. The stream and its credentials source each
+report a failure once per run of the same detail: a different detail reports,
+and the run ends when the stream completes a session or the source next
+installs its material. A fault in the client's own credential does not fail the
+attempt and is reported every time.
 
 | What happened | Severity | Category | Detail | Then |
 |---|---|---|---|---|
