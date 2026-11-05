@@ -71,6 +71,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  must still satisfy whatever the credentials installed, but the
          *  endpoint identity is not checked; no diagnostic. */
         const char* ServerName;
+        /** Ciphersuite policy, as wolfSSL takes it: names separated by colons,
+         *  each in wolfSSL's own spelling (`ECDHE-RSA-AES128-GCM-SHA256`,
+         *  `TLS13-AES128-GCM-SHA256`) or the IANA one. One list covers both TLS
+         *  versions, so a policy for a collector that may negotiate either names
+         *  a suite for each. NULL leaves every ciphersuite the build enables.
+         *  wolfSSL keeps a name it knows and drops one it does not without
+         *  saying so; a list in which it knows no name is rejected, and that
+         *  rejection fails the connection at Open as CIPHER_POLICY_REJECTED.
+         *  Groups and signature algorithms are not selectable through it. */
+        const char* CipherList;
     };
 
     /** Called at each Open to fill @p profile. Runs on the servicing thread, so a

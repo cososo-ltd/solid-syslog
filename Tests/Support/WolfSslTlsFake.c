@@ -63,6 +63,10 @@ static WOLFSSL* lastCheckIpAddressSsl;
 static const char* lastCheckIpAddress;
 static int checkIpAddressReturn;
 static int useSniCallCount;
+static int setCipherListCallCount;
+static WOLFSSL* lastSetCipherListSsl;
+static const char* lastSetCipherList;
+static int setCipherListReturn;
 static WOLFSSL* lastUseSniSsl;
 static unsigned char lastUseSniType;
 static const void* lastUseSniData;
@@ -189,6 +193,10 @@ void WolfSslTlsFake_Reset(void)
     lastCheckIpAddressSsl = NULL;
     lastCheckIpAddress = NULL;
     checkIpAddressReturn = WOLFSSL_SUCCESS;
+    setCipherListCallCount = 0;
+    lastSetCipherListSsl = NULL;
+    lastSetCipherList = NULL;
+    setCipherListReturn = WOLFSSL_SUCCESS;
     useSniCallCount = 0;
     lastUseSniSsl = NULL;
     lastUseSniType = 0xFFU;
@@ -530,6 +538,34 @@ int wolfSSL_check_ip_address(WOLFSSL* ssl, const char* ipaddr)
     lastCheckIpAddressSsl = ssl;
     lastCheckIpAddress = ipaddr;
     return checkIpAddressReturn;
+}
+
+int WolfSslTlsFake_SetCipherListCallCount(void)
+{
+    return setCipherListCallCount;
+}
+
+struct WOLFSSL* WolfSslTlsFake_LastSetCipherListSsl(void)
+{
+    return lastSetCipherListSsl;
+}
+
+const char* WolfSslTlsFake_LastSetCipherList(void)
+{
+    return lastSetCipherList;
+}
+
+void WolfSslTlsFake_SetSetCipherListReturn(int value)
+{
+    setCipherListReturn = value;
+}
+
+int wolfSSL_set_cipher_list(WOLFSSL* ssl, const char* list)
+{
+    setCipherListCallCount++;
+    lastSetCipherListSsl = ssl;
+    lastSetCipherList = list;
+    return setCipherListReturn;
 }
 
 int WolfSslTlsFake_UseSniCallCount(void)

@@ -370,6 +370,17 @@ TEST(SolidSyslogWolfSslStream, OpenRaisesTheDiffieHellmanFloorTo2048Bits)
     LONGS_EQUAL(2048, WolfSslTlsFake_LastMinDhKeySz());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenAppliesTheProfilesCipherPolicyToTheSession)
+{
+    FakeProfile_Value.CipherList = "ECDHE-RSA-AES128-GCM-SHA256";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_SetCipherListCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastSetCipherListSsl());
+    STRCMP_EQUAL("ECDHE-RSA-AES128-GCM-SHA256", WolfSslTlsFake_LastSetCipherList());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenSetsTheExpectedPeerNameOnTheSession)
 {
     SolidSyslogStream_Open(handle, addr);
