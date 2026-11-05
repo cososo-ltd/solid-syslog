@@ -205,6 +205,33 @@ TEST(SolidSyslogPendingEvents, AnIndexPastTheTableIsNotPending)
     CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT));
 }
 
+TEST(SolidSyslogPendingEvents, NoKindIsPendingInATableNoEventHasReached)
+{
+    CHECK_FALSE(SolidSyslogPendingEvents_AnyPending());
+}
+
+TEST(SolidSyslogPendingEvents, AnEventOfEachReportedKindIsFoundPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    for (uint16_t category : REPORTED_KINDS)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, category, 7);
+
+        CHECK(SolidSyslogPendingEvents_AnyPending());
+        CHECK(TakeKind(category));
+    }
+}
+
+TEST(SolidSyslogPendingEvents, AskingWhetherAnyKindIsPendingLeavesItPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    (void) SolidSyslogPendingEvents_AnyPending();
+
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+}
+
 /* The least severe severity each kind is raised at, in table order. */
 static const enum SolidSyslogSeverity KIND_SEVERITIES[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_SEVERITY_ERROR,

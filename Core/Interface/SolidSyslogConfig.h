@@ -77,10 +77,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Asked, with EventReportingContext, on the task that calls
          *  SolidSyslog_Service, each time Service is about to report one of the
          *  library's own events: the logger holds no record and an event is
-         *  waiting. False leaves the event waiting, to be reported on a pass
-         *  when the answer is true. A report already made is not held back.
-         *  Because it is asked rather than read once at Create, a device can
-         *  turn reporting off and on while it runs. NULL means on. */
+         *  waiting. False leaves that event, and any the pass had still to
+         *  report, waiting for a pass when the answer is true, and lets this
+         *  pass return SOLIDSYSLOG_SERVICE_IDLE. A loop waiting on IDLE is not
+         *  woken when the answer turns true; the next Log, or a poll, makes the
+         *  report. A report already made is not held back. Because it is asked
+         *  rather than read once at Create, a device can turn reporting off and
+         *  on while it runs. NULL means on. */
         SolidSyslogEventReportingFunction IsEventReportingOn;
         void* EventReportingContext; /**< Passed back to IsEventReportingOn unchanged. */
     };

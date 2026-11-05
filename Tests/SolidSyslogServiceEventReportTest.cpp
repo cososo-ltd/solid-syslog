@@ -25,10 +25,12 @@
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogStore.h"
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 #include "SolidSyslogTlsStreamCategories.h"
+#include "SolidSyslogTunables.h"
 #include "StoreFake.h"
 #include "StreamFake.h"
 #include "StringFake.h"
@@ -400,6 +402,21 @@ TEST(SolidSyslogServiceEventReport, AKindOutsideTheReportedSetIsNotReported)
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 }
 
+TEST(SolidSyslogServiceEventReport, APassThatReportsEveryEventWaitingIsIdle)
+{
+    RaiseBufferLoss();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(solidSyslog));
+}
+
+TEST(SolidSyslogServiceEventReport, TheFallbackLoggerIsIdleWithAnEventWaiting)
+{
+    struct SolidSyslog* fallback = SolidSyslog_Create(nullptr);
+    RaiseBufferLoss();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(fallback));
+}
+
 TEST(SolidSyslogServiceEventReport, ARefusedReportBlocksThePass)
 {
     RaiseBufferLoss();
@@ -505,6 +522,14 @@ TEST(SolidSyslogServiceEventReportSwitch, SwitchedOffItIsAskedOnceAPass)
     SolidSyslog_Service(solidSyslog);
 
     LONGS_EQUAL(1, reportingSwitch.Asked);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, APassWhoseSwitchTurnedAReportDownIsIdle)
+{
+    reportingSwitch.On = false;
+    RaiseBufferLoss();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(solidSyslog));
 }
 
 TEST(SolidSyslogServiceEventReportSwitch, TheSwitchIsNotAskedWhileARecordIsHeld)
@@ -669,11 +694,20 @@ static void RaisingSender_Disconnect(struct SolidSyslogSender* /* base */)
 
 static struct SolidSyslogSender raisingSender = {RaisingSender_Send, RaisingSender_Disconnect};
 
+/* Arms the raising sender: it raises an event of @p category as it takes the
+ * next record. */
+static void RaiseOnNextSend(uint16_t category)
+{
+    raisesOnNextSend = true;
+    categoryToRaise = category;
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogServiceEventReportRaisedMidPass)
 {
     struct SolidSyslogSender* fakeSender = nullptr;
     struct SolidSyslog* solidSyslog = nullptr;
+    struct ReportingSwitch reportingSwitch = {true, 0U};
 
     void setup() override
     {
@@ -684,6 +718,8 @@ TEST_GROUP(SolidSyslogServiceEventReportRaisedMidPass)
         config.Buffer = SolidSyslogNullBuffer_Get();
         config.Sender = &raisingSender;
         config.Store = SolidSyslogNullStore_Get();
+        config.IsEventReportingOn = IsReportingOn;
+        config.EventReportingContext = &reportingSwitch;
         solidSyslog = SolidSyslog_Create(&config);
     }
 
@@ -699,8 +735,7 @@ TEST_GROUP(SolidSyslogServiceEventReportRaisedMidPass)
 TEST(SolidSyslogServiceEventReportRaisedMidPass, AKindRaisedAtASlotThePassHasWalkedIsNotReportedThatPass)
 {
     RaiseBufferLoss();
-    raisesOnNextSend = true;
-    categoryToRaise = SOLIDSYSLOG_CAT_FILE_IO_FAILED;
+    RaiseOnNextSend(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
 
     SolidSyslog_Service(solidSyslog);
 
@@ -710,13 +745,98 @@ TEST(SolidSyslogServiceEventReportRaisedMidPass, AKindRaisedAtASlotThePassHasWal
 TEST(SolidSyslogServiceEventReportRaisedMidPass, AKindRaisedAtASlotThePassHasWalkedIsReportedTheNextPass)
 {
     RaiseBufferLoss();
-    raisesOnNextSend = true;
-    categoryToRaise = SOLIDSYSLOG_CAT_FILE_IO_FAILED;
+    RaiseOnNextSend(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
     SolidSyslog_Service(solidSyslog);
 
     SolidSyslog_Service(solidSyslog);
 
     STRCMP_EQUAL("FILE_IO_FAILED", SyslogField(SenderFake_LastBufferAsString(fakeSender), SYSLOG_FIELD_MSGID).c_str());
+}
+
+TEST(SolidSyslogServiceEventReportRaisedMidPass, AKindLeftWaitingByThePassMakesItReady)
+{
+    RaiseBufferLoss();
+    RaiseOnNextSend(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_READY, SolidSyslog_Service(solidSyslog));
+}
+
+TEST(SolidSyslogServiceEventReportRaisedMidPass, AReportTurnedDownInOnePassLeavesTheNextFreeToBeReady)
+{
+    reportingSwitch.On = false;
+    RaiseBufferLoss();
+    SolidSyslog_Service(solidSyslog);
+    reportingSwitch.On = true;
+    RaiseOnNextSend(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_READY, SolidSyslog_Service(solidSyslog));
+}
+
+/* Two loggers over the one table of events: this one sends through the raising
+ * sender from a store the test fills, under the switch, and the other takes
+ * whatever is waiting when it is serviced. */
+// clang-format off
+TEST_GROUP(SolidSyslogServiceEventReportTwoLoggers)
+{
+    struct SolidSyslogSender* fakeSender = nullptr;
+    struct SolidSyslogSender* otherSender = nullptr;
+    struct SolidSyslogStore* store = nullptr;
+    struct SolidSyslog* solidSyslog = nullptr;
+    struct SolidSyslog* other = nullptr;
+    struct ReportingSwitch reportingSwitch = {true, 0U};
+
+    void setup() override
+    {
+        fakeSender = SenderFake_Create();
+        wrappedSender = fakeSender;
+        raisesOnNextSend = false;
+        store = StoreFake_Create();
+        struct SolidSyslogConfig config = {};
+        config.Buffer = SolidSyslogNullBuffer_Get();
+        config.Sender = &raisingSender;
+        config.Store = store;
+        config.IsEventReportingOn = IsReportingOn;
+        config.EventReportingContext = &reportingSwitch;
+        solidSyslog = SolidSyslog_Create(&config);
+
+        otherSender = SenderFake_Create();
+        struct SolidSyslogConfig otherConfig = {};
+        otherConfig.Buffer = SolidSyslogNullBuffer_Get();
+        otherConfig.Sender = otherSender;
+        otherConfig.Store = SolidSyslogNullStore_Get();
+        other = SolidSyslog_Create(&otherConfig);
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_Destroy(other);
+        SolidSyslog_Destroy(solidSyslog);
+        SenderFake_Destroy(otherSender);
+        StoreFake_Destroy();
+        SenderFake_Destroy(fakeSender);
+    }
+};
+
+// clang-format on
+
+/* At pool size 1 the second Create gets the fallback, which takes no event,
+ * so the test exits rather than being compiled out. */
+TEST(SolidSyslogServiceEventReportTwoLoggers, AReportTurnedDownThatTheOtherLoggerMadeLeavesTheNextPassFreeToBeReady)
+{
+    if (SOLIDSYSLOG_POOL_SIZE < 2U)
+    {
+        UT_PRINT("Pool size < 2 - two loggers only observable under tunable-override-debug");
+        TEST_EXIT;
+    }
+    reportingSwitch.On = false;
+    RaiseBufferLoss();
+    SolidSyslog_Service(solidSyslog);
+    SolidSyslog_Service(other);
+    reportingSwitch.On = true;
+    SolidSyslogStore_Write(store, "stored", 6);
+    RaiseOnNextSend(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_READY, SolidSyslog_Service(solidSyslog));
 }
 
 /* A 16-byte ring that "second" (8 bytes framed) and "third" (7) fill, so

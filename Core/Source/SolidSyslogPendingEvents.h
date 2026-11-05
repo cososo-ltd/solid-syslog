@@ -68,6 +68,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * it. An index past the table is not pending. */
     bool SolidSyslogPendingEvents_IsPending(size_t index);
 
+    /* Whether any slot is pending, leaving every slot as it is. */
+    bool SolidSyslogPendingEvents_AnyPending(void);
+
     /* Clear the slot's Pending flag, then copy its fields into @p event with
      * the slot's category. Returns whether the slot was pending; the copy is
      * made either way, so @p event is only meaningful on true. Slot order is

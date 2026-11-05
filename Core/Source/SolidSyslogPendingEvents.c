@@ -132,6 +132,16 @@ bool SolidSyslogPendingEvents_IsPending(size_t index)
     return pending;
 }
 
+bool SolidSyslogPendingEvents_AnyPending(void)
+{
+    bool pending = false;
+    for (size_t index = 0U; (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && !pending; index++)
+    {
+        pending = PendingEvents_Slots[index].Pending;
+    }
+    return pending;
+}
+
 bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event)
 {
     bool wasPending = false;

@@ -62,6 +62,9 @@ struct SolidSyslog
     void* HaltContext;
     SolidSyslogEventReportingFunction IsEventReportingOn;
     void* EventReportingContext;
+    /* Whether the switch turned a report down this pass; each pass starts
+     * without. */
+    bool ReportTurnedDown;
     /* Set while the policy answers Halt, when a retaining store refuses a
      * record or the buffer has filled behind the record Service holds; Service
      * then moves nothing until the answer changes. */
