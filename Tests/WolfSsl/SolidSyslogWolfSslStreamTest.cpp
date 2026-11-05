@@ -1354,6 +1354,17 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackAuthorisesByTheLeafWhicheverCertifi
     UNSIGNED_LONGS_EQUAL(WolfSslTlsFake_LeafDerLength(), WolfSslFake_LastHashDataLen());
 }
 
+TEST(SolidSyslogWolfSslStream, VerifyCallbackDigestsTheLeafOnTheConfiguredHeap)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) OpenThenVerifyAt(0, FAKE_ASN_NO_SIGNER_E, 1);
+
+    POINTERS_EQUAL(&heap, WolfSslFake_LastHashHeap());
+}
+
 TEST(SolidSyslogWolfSslStream, VerifyCallbackChecksTheCertificateItIsCalledForAsATrustAnchorOnTheConfiguredHeap)
 {
     const char* const pins[] = {TEST_SHA256_PIN};

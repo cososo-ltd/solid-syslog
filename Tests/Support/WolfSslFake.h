@@ -114,6 +114,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     enum SolidSyslogTlsHashAlgorithm WolfSslFake_LastHashAlgorithm(void);
     const void* WolfSslFake_LastHashData(void);
     size_t WolfSslFake_LastHashDataLen(void);
+    void* WolfSslFake_LastHashHeap(void);
     void WolfSslFake_SetHashUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm);
 
     /* wc_InitDecodedCert / wc_ParseCert / wc_FreeDecodedCert - the stream's

@@ -71,6 +71,7 @@ static int hashCallCount;
 static enum SolidSyslogTlsHashAlgorithm lastHashAlgorithm;
 static const void* lastHashData;
 static size_t lastHashDataLen;
+static void* lastHashHeap;
 static bool sha256Unavailable;
 static bool sha1Unavailable;
 
@@ -121,6 +122,7 @@ void WolfSslFake_Reset(void)
     lastHashAlgorithm = SOLIDSYSLOG_TLS_HASH_SHA256;
     lastHashData = NULL;
     lastHashDataLen = 0U;
+    lastHashHeap = NULL;
     sha256Unavailable = false;
     sha1Unavailable = false;
     parseCertCallCount = 0;
@@ -526,6 +528,11 @@ void WolfSslFake_SetHashUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm)
     {
         sha1Unavailable = true;
     }
+}
+
+void* WolfSslFake_LastHashHeap(void)
+{
+    return lastHashHeap;
 }
 
 int wc_HashGetDigestSize(enum wc_HashType hash_type)
