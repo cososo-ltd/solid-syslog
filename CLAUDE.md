@@ -464,6 +464,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `freertos-cross` | ARM Cortex-M3 cross-build of the FreeRTOS-Plus-TCP BDD target |
 | `freertos-cross-lwip` | The same, over the lwIP Raw API with ChaN FatFs |
 | `cmsis-cross-lwip` | The same, over CMSIS-RTOS2, the lwIP Sockets API and LittleFS |
+| `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack, with wolfSSL built from source |
 | `release` | Release build — optimisations enabled, no instrumentation |
 
 Build and test: `cmake --preset <name> && cmake --build --preset <name> --target junit`

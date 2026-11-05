@@ -487,6 +487,10 @@ solidsyslog_declare_path(SOLIDSYSLOG_WOLFSSL_BASELINE_DIR
     "Path to an installed wolfSSL from a bare ./configure, the build an integrator has (SolidSyslog's own integration tests only)"
     WOLFSSL_BASELINE_DIR)
 
+solidsyslog_declare_path(SOLIDSYSLOG_WOLFSSL_SOURCE_DIR
+    "Path to the wolfSSL source tree, for a target that compiles it under its own user_settings.h (SolidSyslog's BDD targets only)"
+    WOLFSSL_SOURCE_DIR)
+
 solidsyslog_declare_path(SOLIDSYSLOG_LITTLEFS_PATH
     "Path to the LittleFS source tree (SolidSyslog's own tests only)"
     LITTLEFS_PATH)
@@ -505,9 +509,10 @@ solidsyslog_declare_path(SOLIDSYSLOG_FATFS_PATH
 
 # Selecting a pack without telling us where its upstream lives is perfectly
 # valid for a consumer, and impossible for our own suite. Name the variable to
-# set rather than failing three directories down on a missing lwip/opt.h.
+# set rather than failing three directories down on a missing lwip/opt.h. A
+# cross build configures no tests, so it has nothing to require a path for.
 function(solidsyslog_require_path_for_tests pack_option path_variable environment_fallback)
-    if(SOLIDSYSLOG_BUILD_TESTING AND ${pack_option} AND NOT ${path_variable})
+    if(SOLIDSYSLOG_BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING AND ${pack_option} AND NOT ${path_variable})
         message(FATAL_ERROR
             "${pack_option}=ON with SOLIDSYSLOG_BUILD_TESTING=ON, but ${path_variable} "
             "is empty. The pack itself needs no path — its sources compile against your "

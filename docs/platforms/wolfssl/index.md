@@ -24,11 +24,13 @@ adapter reads that file through wolfSSL's own `settings.h` instead. Either way
 the features your build enables are the features it gets, and the adapter asks
 for no configure flag.
 
-wolfSSL 5.x. The pack is tested against 5.9.4 twice in CI: once against a build
-with the options it asks for, and once against a bare `./configure`, so it is
-known to compile, link and work on the build an integrator has rather than only
-on the one it prefers. The build choices that change what it does are listed
-below.
+wolfSSL 5.x. The pack is tested against 5.9.4 on both routes in CI. As a
+`./configure` build it runs twice: once against a build with the options it
+asks for, and once against a bare `./configure`, so it is known to compile,
+link and work on the build an integrator has rather than only on the one it
+prefers. As a `user_settings.h` build it runs on an embedded target, with
+wolfSSL compiled from source into the image, static memory and no filesystem.
+The build choices that change what it does are listed below.
 
 wolfSSL is dual-licensed, GPLv3 or commercial, since 5.8.2; earlier releases
 were GPLv2. SolidSyslog links your build and ships none of it, so the licence
@@ -302,3 +304,11 @@ wolfSSL then reads every certificate as outside its validity period - so a peer
 that is plainly current is refused as not yet valid. The build will not tell
 you; supply the clock. A coarse one is enough: X.509 asks only which side of a
 window the device is on.
+
+`USER_TIME` is the smallest way to supply one. With it wolfSSL declares
+`time_t XTIME(time_t* timer)` and calls it, so your build defines a function of
+that name returning seconds since the Unix epoch, and wolfSSL converts the
+result with a `gmtime` of its own. Where the toolchain already has `time_t` and
+`struct tm`, define `HAVE_TIME_T_TYPE` and `HAVE_TM_TYPE` beside it and include
+`<time.h>` from `user_settings.h`, or wolfSSL declares both types a second
+time.
