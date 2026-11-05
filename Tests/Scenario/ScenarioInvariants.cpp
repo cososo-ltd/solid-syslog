@@ -358,6 +358,46 @@ std::string ALossIsReportedOncePerRun(const ScenarioState& state)
     return reason;
 }
 
+/* A raise stands for a fault until it clears, so a pass after one in which
+ * nothing was logged and nothing changed has no new fault to raise: a category
+ * raised in both is one raised again for the same fault - a raise that does
+ * not latch, or a report feeding the fault it reports. The one run such a pass
+ * can start afresh is the store's refusals or seal failures, which a record
+ * kept since the last raise ends. */
+std::string QuietPassesGoQuiet(const ScenarioState& state)
+{
+    std::string reason;
+    if (state.QuietSinceLastPass)
+    {
+        const std::vector<ScenarioEvent>& events = state.Bench.Events();
+        size_t pass = state.Bench.Passes();
+        std::set<uint16_t> raisedLastPass;
+        std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> keptAtLastRaise;
+        for (size_t i = 0U; i < state.EventsJudged; i++)
+        {
+            if (events[i].Pass == (pass - 1U))
+            {
+                raisedLastPass.insert(events[i].Category);
+                keptAtLastRaise[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] =
+                    events[i].RecordsKept;
+            }
+        }
+        for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
+        {
+            auto lastRaise =
+                keptAtLastRaise.find(std::make_tuple(events[i].Source, events[i].Category, events[i].Detail));
+            bool runEnded = IsEndedByARecordKept(events[i]) && (lastRaise != keptAtLastRaise.end()) &&
+                            (events[i].RecordsKept != lastRaise->second);
+            if ((raisedLastPass.count(events[i].Category) != 0U) && !runEnded)
+            {
+                reason = NameOf(events[i].Category) + " " + Count("detail", static_cast<size_t>(events[i].Detail)) +
+                         " raised again in a quiet " + Count("pass", pass);
+            }
+        }
+    }
+    return reason;
+}
+
 bool IsHeldRecordDrop(const ScenarioEvent& event)
 {
     return (event.Source == &SolidSyslogErrorSource) && (event.Detail == SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED);
@@ -455,6 +495,7 @@ const Invariant AFTER_EVERY_PASS[] = {
     {"sender edges follow the fault", SenderEdgesFollowTheFault},
     {"store faults follow the device", StoreFaultsFollowTheDevice},
     {"a loss is reported once per run", ALossIsReportedOncePerRun},
+    {"quiet passes go quiet", QuietPassesGoQuiet},
     {"a run of held drops is reported once", ARunOfHeldDropsIsReportedOnce},
     {"halted only under halt", HaltedOnlyUnderHalt},
     {"nothing moves while halted", NothingMovesWhileHalted},

@@ -66,7 +66,8 @@ class Driver
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   0U,
-                                  0U
+                                  0U,
+                                  false
                               }
     {
     }
@@ -88,6 +89,7 @@ class Driver
     ScenarioVerdict Apply(char step)
     {
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
+        state.QuietSinceLastPass = state.QuietSinceLastPass && (step == 'S');
         switch (step)
         {
             case 'L':
@@ -152,6 +154,7 @@ class Driver
         ScenarioVerdict verdict = ScenarioInvariants_CheckAfterPass(state);
         state.EventsJudged = bench.Events().size();
         state.PolicyChangesSinceLastPass = 0U;
+        state.QuietSinceLastPass = true;
         return verdict;
     }
 
@@ -162,6 +165,7 @@ class Driver
         SetSender(false);
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
         bench.SetReporting(true);
+        state.QuietSinceLastPass = false;
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
         size_t allowance = bench.Logged() + DRAIN_SLACK;
         bool idle = false; /* the script's last status says nothing about what it logged since */
