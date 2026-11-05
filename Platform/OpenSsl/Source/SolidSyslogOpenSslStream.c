@@ -70,7 +70,7 @@ static inline BIO_METHOD* OpenSslStream_CreateTransportBioMethod(void);
 static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_InstallCredentials(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
-static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool OpenSslStream_FingerprintsAreUsable(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
 static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
@@ -256,7 +256,8 @@ static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpe
     bool ok = SSL_get0_peer_certificate(self->Ssl) != NULL;
     if (!ok)
     {
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
@@ -273,9 +274,10 @@ static inline bool OpenSslStream_NoNameObjectionIsOutstanding(struct SolidSyslog
     bool ok = self->NameObjection == X509_V_OK;
     if (!ok)
     {
-        OpenSslStream_ReportHandshakeFailure(
+        OpenSslStream_ReportOpenFailure(
             self,
             SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
         );
     }
@@ -357,7 +359,8 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
               OpenSslStream_ConfigureProtocolFloor(self->Ctx);
     if (!ok)
     {
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
@@ -367,7 +370,8 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
     {
         /* An integrator string the library rejected: their configuration, not
          * the library failing to come up. */
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
@@ -407,7 +411,8 @@ static inline bool OpenSslStream_InstallCredentials(struct SolidSyslogOpenSslStr
     bool ok = self->Config.Credentials->Install(self->Config.Credentials, self->Ctx, &self->Installed);
     if (ok && !OpenSslStream_PeerIsAuthorisable(&self->Installed))
     {
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
@@ -416,7 +421,7 @@ static inline bool OpenSslStream_InstallCredentials(struct SolidSyslogOpenSslStr
     }
     if (ok)
     {
-        ok = OpenSslStream_FingerprintsAreUsable(&self->Installed);
+        ok = OpenSslStream_FingerprintsAreUsable(self);
     }
     return ok;
 }
@@ -432,14 +437,15 @@ static inline bool OpenSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsC
 
 /* Inspected before the handshake, so a pin that cannot match is reported as
  * bad configuration rather than as a refused peer. */
-static inline bool OpenSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+static inline bool OpenSslStream_FingerprintsAreUsable(struct SolidSyslogOpenSslStream* self)
 {
     bool ok = true;
     enum SolidSyslogTlsFingerprintListState state =
-        SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount);
+        SolidSyslogTlsFingerprint_InspectList(self->Installed.Fingerprints, self->Installed.FingerprintCount);
     if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED)
     {
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
@@ -797,7 +803,8 @@ static inline bool OpenSslStream_InitSslSession(struct SolidSyslogOpenSslStream*
     }
     else
     {
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
@@ -826,7 +833,8 @@ static inline bool OpenSslStream_AttachTransportBio(struct SolidSyslogOpenSslStr
     }
     else
     {
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
@@ -965,7 +973,8 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
         /* X509_check_host reads a checked name beginning with a dot as a
          * sub-domain pattern matching any depth below it - not the one identity
          * the profile declares. Refused before it reaches SNI or the verifier. */
-        OpenSslStream_Report(
+        OpenSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
@@ -977,7 +986,8 @@ static inline bool OpenSslStream_ConfigureExpectedHostname(struct SolidSyslogOpe
         ok = (SSL_set_tlsext_host_name(self->Ssl, serverName) == 1) && (SSL_set1_host(self->Ssl, serverName) == 1);
         if (!ok)
         {
-            OpenSslStream_Report(
+            OpenSslStream_ReportOpenFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
@@ -1083,18 +1093,20 @@ static inline bool OpenSslStream_PerformHandshake(struct SolidSyslogOpenSslStrea
             int err = SSL_get_error(self->Ssl, rc);
             if (!OpenSslStream_IsRetryableSslError(err))
             {
-                OpenSslStream_ReportHandshakeFailure(
+                OpenSslStream_ReportOpenFailure(
                     self,
                     SOLIDSYSLOG_SEVERITY_ERROR,
+                    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                     OpenSslStream_RefusalDetail(self)
                 );
                 done = true;
             }
             else if (OpenSslStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
             {
-                OpenSslStream_ReportHandshakeFailure(
+                OpenSslStream_ReportOpenFailure(
                     self,
                     SOLIDSYSLOG_SEVERITY_WARNING,
+                    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                     SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
                 );
                 done = true;

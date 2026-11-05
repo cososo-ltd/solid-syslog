@@ -77,6 +77,16 @@ static const char* const TEST_UNMATCHED_SHA256_PIN = "sha-256:00:00:00:00:00:00:
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
+/* The sender retries a refused Open every service pass; one run of the same
+ * refusal is one report. */
+#define CHECK_REPEATED_OPEN_REPORTS_ONCE(expectedCode)              \
+    {                                                               \
+        CHECK_FALSE(SolidSyslogStream_Open(handle, addr));          \
+        CHECK_FALSE(SolidSyslogStream_Open(handle, addr));          \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                 \
+        LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail()); \
+    }
+
 static int NoOpSleepCallCount;
 static uint32_t g_lastSleepMs;
 
@@ -1032,6 +1042,104 @@ TEST(SolidSyslogWolfSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASe
     CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
     SolidSyslogStream_Close(handle);
     ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedContextFailureOnce)
+{
+    WolfSslTlsFake_SetCtxNewExReturnsNull(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedLackOfPeerAuthorisationOnce)
+{
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedMalformedPinOnce)
+{
+    const char* const pins[] = {"sha-256:not-a-digest"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedSessionFailureOnce)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedFloorTheLibraryWouldNotApplyOnce)
+{
+    WolfSslTlsFake_SetSetMinVersionReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedCipherPolicyRejectionOnce)
+{
+    FakeProfile_Value.CipherList = "NOT-A-SUITE-THIS-BUILD-KNOWS";
+    WolfSslTlsFake_SetSetCipherListReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedPeerNameTheLibraryWouldNotTakeOnce)
+{
+    WolfSslTlsFake_SetCheckDomainNameReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedServerNameIndicationTheLibraryWouldNotTakeOnce)
+{
+    WolfSslTlsFake_SetUseSniReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsADifferentRefusalInTheSameRun)
+{
+    WolfSslTlsFake_SetCtxNewExReturnsNull(true);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetCtxNewExReturnsNull(false);
+    WolfSslTlsFake_SetNewReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAHandshakeRejectionAfterARefusalInTheSameRun)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetNewReturnsNull(false);
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, ErrorHandlerFake_LastCategory());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsTheSameRefusalAgainAfterASessionInBetween)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetNewReturnsNull(false);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    SolidSyslogStream_Close(handle);
+    WolfSslTlsFake_SetNewReturnsNull(true);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
 

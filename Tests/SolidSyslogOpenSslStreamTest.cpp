@@ -40,6 +40,16 @@ using namespace CososoTesting;
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
+/* The sender retries a refused Open every service pass; one run of the same
+ * refusal is one report. */
+#define CHECK_REPEATED_OPEN_REPORTS_ONCE(expectedCode)              \
+    {                                                               \
+        CHECK_FALSE(SolidSyslogStream_Open(stream, addr));          \
+        CHECK_FALSE(SolidSyslogStream_Open(stream, addr));          \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                 \
+        LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail()); \
+    }
+
 /* The callback is installed, and refuses rather than prompts when asked. */
 #define CHECK_PASSPHRASE_CALLBACK_REFUSES(cb)                    \
     {                                                            \
@@ -1172,6 +1182,122 @@ TEST(SolidSyslogOpenSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASe
     CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
     SolidSyslogStream_Close(stream);
     OpenSslFake_SetConnectFails(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedContextFailureOnce)
+{
+    OpenSslFake_SetCtxNewFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedCipherPolicyRejectionOnce)
+{
+    FakeProfile_Value.CipherList = "not-a-real-cipher";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetCipherListFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedLackOfPeerAuthorisationOnce)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedMalformedPinOnce)
+{
+    static const char* const pins[] = {"sha-256:AA"};
+    OpenSslCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedSessionFailureOnce)
+{
+    OpenSslFake_SetSslNewFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedTransportBioFailureOnce)
+{
+    OpenSslFake_SetBioNewFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedServerNameBeginningWithADotOnce)
+{
+    FakeProfile_Value.ServerName = ".logs.example";
+    ReCreateStreamWithUpdatedConfig();
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedServerNameTheLibraryWouldNotTakeOnce)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetSet1HostFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedPeerThatPresentedNoCertificateOnce)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetPeerCertificatePresent(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsADifferentRefusalInTheSameRun)
+{
+    OpenSslFake_SetCtxNewFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetCtxNewFails(false);
+    OpenSslFake_SetSslNewFails(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsAHandshakeRejectionAfterARefusalInTheSameRun)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetSslNewFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetSslNewFails(false);
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, ErrorHandlerFake_LastCategory());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsTheSameRefusalAgainAfterASessionInBetween)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetSslNewFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetSslNewFails(false);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    SolidSyslogStream_Close(stream);
+    OpenSslFake_SetSslNewFails(true);
 
     CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
 

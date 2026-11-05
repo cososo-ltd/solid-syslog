@@ -192,11 +192,14 @@ outlive it.
 
 `event->Source` is `&SolidSyslogOpenSslStreamErrorSource` or
 `&SolidSyslogOpenSslPemFileCredentialsErrorSource`. `event->Detail` is a code
-from `SolidSyslogTlsStreamErrors.h` or `SolidSyslogTlsCredentialsErrors.h`;
-the `SOLIDSYSLOG_TLS_STREAM_ERROR_` and `SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_`
+from `SolidSyslogTlsStreamErrors.h` or `SolidSyslogTlsCredentialsErrors.h`; the
+`SOLIDSYSLOG_TLS_STREAM_ERROR_` and `SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_`
 prefixes are dropped below. `HANDSHAKE_FAILED` and `INIT_FAILED` are
 `SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED` and
-`SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED`.
+`SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED`. A failure of the stream's own that
+ends an Open is reported once per run of the same detail, because the sender
+retries it on every service pass; a different detail, or a connection in
+between, reports again.
 
 | What happened | Severity | Category | Detail | Then |
 |---|---|---|---|---|

@@ -45,6 +45,16 @@ using namespace CososoTesting;
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
+/* The sender retries a refused Open every service pass; one run of the same
+ * refusal is one report. */
+#define CHECK_REPEATED_OPEN_REPORTS_ONCE(expectedCode)              \
+    {                                                               \
+        CHECK_FALSE(SolidSyslogStream_Open(handle, addr));          \
+        CHECK_FALSE(SolidSyslogStream_Open(handle, addr));          \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                 \
+        LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail()); \
+    }
+
 /* Records what mbedTLS had already done by the time the credentials were told
    the window had closed. */
 static int SslConfigFreesSeenAtRelease;
@@ -575,6 +585,96 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsTheSameHandshakeRejectionAgainAfterASe
     CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
     SolidSyslogStream_Close(handle);
     ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedDefaultsFailureOnce)
+{
+    MbedTlsFake_SetSslConfigDefaultsReturn(-1);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedLackOfPeerAuthorisationOnce)
+{
+    MbedTlsCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedMalformedPinOnce)
+{
+    static const char* const pins[] = {"sha-256:AA"};
+    MbedTlsCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedSessionFailureOnce)
+{
+    MbedTlsFake_SetSslSetupReturn(-1);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedServerNameBeginningWithADotOnce)
+{
+    FakeProfile_Value.ServerName = ".syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsARepeatedServerNameTheLibraryWouldNotTakeOnce)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslSetHostnameReturn(-1);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsADifferentRefusalInTheSameRun)
+{
+    MbedTlsFake_SetSslConfigDefaultsReturn(-1);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    MbedTlsFake_SetSslConfigDefaultsReturn(0);
+    MbedTlsFake_SetSslSetupReturn(-1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsAHandshakeRejectionAfterARefusalInTheSameRun)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslSetupReturn(-1);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    MbedTlsFake_SetSslSetupReturn(0);
+    ArrangePersistentHandshakeError(MBEDTLS_ERR_SSL_BAD_INPUT_DATA);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, ErrorHandlerFake_LastCategory());
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheSameRefusalAgainAfterASessionInBetween)
+{
+    FakeProfile_Value.ServerName = "syslog.example.com";
+    ReCreateHandleWithUpdatedConfig();
+    MbedTlsFake_SetSslSetupReturn(-1);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    MbedTlsFake_SetSslSetupReturn(0);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    SolidSyslogStream_Close(handle);
+    MbedTlsFake_SetSslSetupReturn(-1);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
 
