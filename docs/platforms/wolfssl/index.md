@@ -261,14 +261,6 @@ context and presented when the collector asks for one.
 
 Certificate validity is checked only where the build carries a clock, below.
 
-The refusal names the checks in the contract's order where wolfSSL raises more
-than one, with one exception. A certificate that is both misnamed and outside
-its validity period is named for its dates: wolfSSL treats the date failure as
-fatal before it checks the name, so the name is never raised and the stream has
-nothing to put first. The peer is refused either way. Whether that order, and
-the contract's, should change is open under
-[#1133](https://github.com/cososo-ltd/solid-syslog/issues/1133).
-
 On a build with `KEEP_PEER_CERT` and without `WOLFSSL_ALWAYS_VERIFY_CB`, a pin
 beside trust anchors is checked once the handshake has completed, so a collector
 whose chain verifies and whose certificate matches no pin is refused after the

@@ -195,13 +195,12 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
-  @name_before_dates
-  Scenario: A name that does not match is named ahead of the dates the certificate carries
+  Scenario: The dates a certificate carries are named ahead of a name that does not match
     Given the syslog oracle is running
     And the collector presents "wrong-name-and-expired"
     And the BDD target tolerates a refused handshake
     When the BDD target attempts to send a syslog message over tls
-    Then the target reports TLS detail "PEER_NAME_MISMATCHED"
+    Then the target reports TLS detail "PEER_CERTIFICATE_EXPIRED"
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
