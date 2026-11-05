@@ -493,7 +493,10 @@ static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream*
 
 static inline void WolfSslStream_ApplyCipherPolicy(struct SolidSyslogWolfSslStream* self)
 {
-    (void) wolfSSL_set_cipher_list(self->Session, self->Profile.CipherList);
+    if (self->Profile.CipherList != NULL)
+    {
+        (void) wolfSSL_set_cipher_list(self->Session, self->Profile.CipherList);
+    }
 }
 
 /* The declared name is both what the certificate is checked against and what is

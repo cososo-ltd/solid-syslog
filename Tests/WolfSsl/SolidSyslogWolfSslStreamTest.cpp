@@ -381,6 +381,13 @@ TEST(SolidSyslogWolfSslStream, OpenAppliesTheProfilesCipherPolicyToTheSession)
     STRCMP_EQUAL("ECDHE-RSA-AES128-GCM-SHA256", WolfSslTlsFake_LastSetCipherList());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenLeavesTheBuildsCiphersuitesAloneWhenTheProfileNamesNoPolicy)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, WolfSslTlsFake_SetCipherListCallCount());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenSetsTheExpectedPeerNameOnTheSession)
 {
     SolidSyslogStream_Open(handle, addr);
