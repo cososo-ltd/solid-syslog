@@ -142,7 +142,10 @@ synchronously, the object only has to be valid across the call, but don't share 
 mutable SD object across threads that log concurrently: if one thread repoints
 `self->event` while another is mid-`Format`, the second thread emits the wrong data. Give
 each call site its own SD instance, or keep the object immutable. A stateless SD (like the
-first example) is never affected.
+first example) is never affected. An SD in `Config.Sd[]` is formatted for every record,
+including the logger's reports of its own events from `SolidSyslog_Service`, so it is
+always shared; the [Format contract](../api/SolidSyslogStructuredDataDefinition_8h.md)
+states what that requires.
 
 ## Values and escaping
 

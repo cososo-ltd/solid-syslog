@@ -35,7 +35,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /** Fills @p timestamp with the current time, or zeroes it to signal "no
-     *  usable timestamp". Installed as SolidSyslogConfig.Clock. */
+     *  usable timestamp". Installed as SolidSyslogConfig.Clock. Called for
+     *  every record the logger formats: inside SolidSyslog_Log on any task that
+     *  logs, and inside SolidSyslog_Service when the logger reports one of its
+     *  own events. Those calls can overlap, so a clock must be safe to call
+     *  concurrently. */
     typedef void (*SolidSyslogClockFunction)(struct SolidSyslogTimestamp* timestamp);
 
 SOLIDSYSLOG_EXTERN_C_END
