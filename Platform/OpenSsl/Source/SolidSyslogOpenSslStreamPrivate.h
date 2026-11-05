@@ -75,11 +75,12 @@ static inline void OpenSslStream_Report(
     SolidSyslog_Error(severity, &SolidSyslogOpenSslStreamErrorSource, category, (int32_t) code);
 }
 
-/* A failed handshake, reported once per run of the same detail as the Open
- * contract requires: the sender retries every service pass. */
-static inline void OpenSslStream_ReportHandshakeFailure(
+/* A failure that ends an Open, reported once per run of the same detail as
+ * the Open contract requires: the sender retries every service pass. */
+static inline void OpenSslStream_ReportOpenFailure(
     struct SolidSyslogOpenSslStream* self,
     enum SolidSyslogSeverity severity,
+    uint16_t category,
     enum SolidSyslogTlsStreamErrors code
 )
 {
@@ -87,7 +88,7 @@ static inline void OpenSslStream_ReportHandshakeFailure(
         &self->OpenHealth,
         &SolidSyslogOpenSslStreamErrorSource,
         severity,
-        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        category,
         (int32_t) code
     );
 }
