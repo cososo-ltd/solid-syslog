@@ -370,6 +370,24 @@ TEST(SolidSyslogWolfSslStream, OpenRaisesTheDiffieHellmanFloorTo2048Bits)
     LONGS_EQUAL(2048, WolfSslTlsFake_LastMinDhKeySz());
 }
 
+TEST(SolidSyslogWolfSslStream, OpenAppliesTheProfilesCipherPolicyToTheSession)
+{
+    FakeProfile_Value.CipherList = "ECDHE-RSA-AES128-GCM-SHA256";
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(1, WolfSslTlsFake_SetCipherListCallCount());
+    POINTERS_EQUAL(WolfSslTlsFake_Session(), WolfSslTlsFake_LastSetCipherListSsl());
+    STRCMP_EQUAL("ECDHE-RSA-AES128-GCM-SHA256", WolfSslTlsFake_LastSetCipherList());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenLeavesTheBuildsCiphersuitesAloneWhenTheProfileNamesNoPolicy)
+{
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, WolfSslTlsFake_SetCipherListCallCount());
+}
+
 TEST(SolidSyslogWolfSslStream, OpenSetsTheExpectedPeerNameOnTheSession)
 {
     SolidSyslogStream_Open(handle, addr);
@@ -684,6 +702,21 @@ TEST(SolidSyslogWolfSslStream, OpenReportsADiffieHellmanFloorTheLibraryWouldNotA
         transport,
         SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
         SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
+    );
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsACipherPolicyTheLibraryRejects)
+{
+    FakeProfile_Value.CipherList = "NOT-A-SUITE-THIS-BUILD-KNOWS";
+    WolfSslTlsFake_SetSetCipherListReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ConnectCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
     );
 }
 

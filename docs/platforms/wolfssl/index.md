@@ -137,10 +137,7 @@ Each role's codes are the whole vocabulary that role can express, so some
 describe faults this pack cannot have and it never raises them.
 
 From the TLS-stream codes it does not raise `NULL_RNG`: no generator is handed
-to the stream. Nor `CIPHER_POLICY_REJECTED`: a ciphersuite policy is
-outstanding under
-[S34.04](https://github.com/cososo-ltd/solid-syslog/issues/1123), below.
-`HANDSHAKE_REJECTED` covers what the peer or the protocol refused and no check
+to the stream. `HANDSHAKE_REJECTED` covers what the peer or the protocol refused and no check
 of this stream names, which includes a Diffie-Hellman group or a ciphersuite
 below the floor.
 
@@ -159,8 +156,8 @@ The at-rest policies raise every code their roles define.
 
 ## What a connection is made with
 
-The stream asks for a profile once per connection and takes the expected peer
-name from it. Nothing is stored between connections, so a change is a matter of
+The stream asks for a profile once per connection, and takes the expected peer
+name and the cipher policy from it. Nothing is stored between connections, so a change is a matter of
 returning something different and moving the stream's version.
 
 A name is validated by wolfSSL as a hostname when it is declared: labels of
@@ -189,6 +186,24 @@ and to the handshake alike. A certificate whose key is below the floor is
 refused as `PEER_CERTIFICATE_UNTRUSTED`, with the rest of what the chain fails
 on. No ceiling is set: RFC 9662 requires TLS 1.3 to be preferred wherever it is
 implemented, and a build with `WOLFSSL_TLS13` negotiates it.
+
+The cipher policy is one list for both TLS versions, in the form wolfSSL takes:
+names separated by colons, each in wolfSSL's own spelling, such as
+`ECDHE-RSA-AES128-GCM-SHA256` and `TLS13-AES128-GCM-SHA256`, or in the IANA
+one. A list that names a suite for each version is the whole of what is
+offered, on any build. A list that names one version only offers nothing at the
+other, except on a wolfSSL built with `OPENSSL_EXTRA`, which updates the
+version the list names and keeps the other version's suites as they were. Name
+a suite for each version to bind both.
+Leave the policy unset and every suite the build enables is offered; an empty
+list and the keywords `ALL`, `DEFAULT` and `HIGH` ask for the same. wolfSSL
+keeps the names it knows and drops the rest without reporting them, so it
+rejects a list only where it knows none of its names. That fails the connection
+at Open as `CIPHER_POLICY_REJECTED`, before any handshake, and nothing is
+widened to compensate. A suite the build knows and the collector will not
+negotiate is refused in the handshake as `HANDSHAKE_REJECTED`. Key-exchange
+groups and signature algorithms are not selectable through the list, and the
+key-size floors apply whatever it names.
 
 Pinned peer fingerprints are read from the credentials source at each Open and
 checked against the leaf the collector presents, by its SHA-256 or SHA-1 digest
@@ -237,9 +252,7 @@ eight reads of up to 16 bytes each, so a close behind more than that goes
 unnoticed.
 
 A client credential supplied to the PEM-buffer source is loaded onto the
-context and presented when the collector asks for one. Mutual TLS, a
-ciphersuite policy and the rotation cells of the BDD matrix are proved under
-[S34.04](https://github.com/cososo-ltd/solid-syslog/issues/1123).
+context and presented when the collector asks for one.
 
 ## Where it falls short of the contract
 

@@ -14,7 +14,8 @@
  *    this connection, asks the credentials source to install the material onto
  *    it, creates the session, applies the library-owned TLS policy (TLS 1.2
  *    floor, the BCP 195 section 4.5 key-size floors, a required peer
- *    certificate), installs the peer identity, then drives the handshake to
+ *    certificate) and the profile's cipher policy, installs the peer identity,
+ *    then drives the handshake to
  *    completion. The non-blocking transport means each wolfSSL_connect may want
  *    more I/O; the injected Sleep bridges those polls until the handshake
  *    completes, hits a hard error (HANDSHAKE_REJECTED, or the check the peer
@@ -71,6 +72,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  must still satisfy whatever the credentials installed, but the
          *  endpoint identity is not checked; no diagnostic. */
         const char* ServerName;
+        /** Ciphersuite policy, as wolfSSL takes it: names separated by colons,
+         *  each in wolfSSL's own spelling (`ECDHE-RSA-AES128-GCM-SHA256`,
+         *  `TLS13-AES128-GCM-SHA256`) or the IANA one. One list covers both TLS
+         *  versions, so a policy for a collector that may negotiate either names
+         *  a suite for each - a build with OPENSSL_EXTRA keeps the suites of a
+         *  version the list leaves unnamed. NULL leaves every ciphersuite the
+         *  build enables.
+         *  wolfSSL keeps a name it knows and drops one it does not without
+         *  saying so; a list in which it knows no name is rejected, and that
+         *  rejection fails the connection at Open as CIPHER_POLICY_REJECTED.
+         *  Groups and signature algorithms are not selectable through it. */
+        const char* CipherList;
     };
 
     /** Called at each Open to fill @p profile. Runs on the servicing thread, so a

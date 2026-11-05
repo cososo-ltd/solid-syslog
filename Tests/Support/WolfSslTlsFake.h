@@ -59,6 +59,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* How many sessions had been created when the floors were last set. */
     int WolfSslTlsFake_NewsSeenAtSetMinVersion(void);
 
+    /* wolfSSL_set_cipher_list */
+    int WolfSslTlsFake_SetCipherListCallCount(void);
+    struct WOLFSSL* WolfSslTlsFake_LastSetCipherListSsl(void);
+    const char* WolfSslTlsFake_LastSetCipherList(void);
+    void WolfSslTlsFake_SetSetCipherListReturn(int value);
+
     /* wolfSSL_check_domain_name / wolfSSL_UseSNI */
     int WolfSslTlsFake_CheckDomainNameCallCount(void);
     struct WOLFSSL* WolfSslTlsFake_LastCheckDomainNameSsl(void);
