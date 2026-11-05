@@ -10,7 +10,10 @@
 #
 # One authority is the trust anchor; a second exists so a leaf can fail to
 # chain. Each server certificate carries exactly one fault except the two that
-# carry two, which prove the order the refusal names them in.
+# carry two, which prove the order the refusal names them in. The self-signed
+# ones are the collectors a pin authorises with no chain at all, and every
+# server certificate has its pins written beside it, computed here rather than
+# by the library under test.
 
 set -euo pipefail
 
@@ -65,6 +68,42 @@ sign_leaf_between() {
     rm -rf "$db"
 }
 
+# $1 = basename, $2 = extension text. Signed with its own key.
+self_sign() {
+    openssl x509 -req -in "$1.csr" -signkey "$1.key" -out "$1.pem" -days "$DAYS" -sha256 \
+        -extfile <(printf "%s\n" "$2") 2>/dev/null
+}
+
+# As sign_leaf_between, signed with its own key.
+# $1 = basename, $2 = extension text, $3 = notBefore, $4 = notAfter.
+self_sign_between() {
+    local db="cadb-$1"
+    mkdir -p "$db/newcerts"
+    : > "$db/index.txt"
+    echo 01 > "$db/serial"
+    openssl ca -batch -selfsign \
+        -config <(printf '%s\n' \
+            "[ca]" "default_ca = CA_default" "[CA_default]" \
+            "database = $db/index.txt" "new_certs_dir = $db/newcerts" "serial = $db/serial" \
+            "default_md = sha256" "policy = policy_any" "email_in_dn = no" \
+            "rand_serial = no" "unique_subject = no" \
+            "[policy_any]" "commonName = supplied") \
+        -keyfile "$1.key" \
+        -startdate "$3" -enddate "$4" \
+        -extfile <(printf "%s\n" "$2") \
+        -in "$1.csr" -out "$1.pem" -notext 2>/dev/null
+    rm -rf "$db"
+}
+
+# The RFC 5425 section 4.2.2 pins of the leaf in $1.pem, one file per hash.
+write_pins() {
+    local sha256 sha1
+    sha256=$(openssl x509 -in "$1.pem" -noout -fingerprint -sha256 | cut -d= -f2)
+    sha1=$(openssl x509 -in "$1.pem" -noout -fingerprint -sha1 | cut -d= -f2)
+    printf 'sha-256:%s' "$sha256" > "$1.sha256"
+    printf 'sha-1:%s' "$sha1" > "$1.sha1"
+}
+
 openssl genrsa -out ca.key 2048 2>/dev/null
 openssl req -x509 -new -nodes -key ca.key -sha256 -days "$DAYS" \
     -subj "/CN=SolidSyslog wolfSSL Test CA" -out ca.pem
@@ -108,6 +147,34 @@ sign_leaf_between server-wrongname-expired ca "$SAN_OTHER" "$EXPIRED_FROM" "$EXP
 # Sound in every respect but the key, which is below the BCP 195 floor.
 make_csr server-weak "/CN=$NAME" 1024
 sign_leaf server-weak ca "$SAN_NAME"
+
+# A collector with no PKI: self-signed, sound in every respect.
+make_csr server-selfsigned "/CN=$NAME" 2048
+self_sign server-selfsigned "$SAN_NAME"
+
+# Self-signed, window closed.
+make_csr server-selfsigned-expired "/CN=$NAME" 2048
+self_sign_between server-selfsigned-expired "$SAN_NAME" "$EXPIRED_FROM" "$EXPIRED_TO"
+
+# Self-signed, window not yet open.
+make_csr server-selfsigned-notyetvalid "/CN=$NAME" 2048
+self_sign_between server-selfsigned-notyetvalid "$SAN_NAME" "$FUTURE_FROM" "$FUTURE_TO"
+
+# Self-signed, wrong name.
+make_csr server-selfsigned-wrongname "/CN=other.example.com" 2048
+self_sign server-selfsigned-wrongname "$SAN_OTHER"
+
+# Self-signed, key below the BCP 195 floor.
+make_csr server-selfsigned-weak "/CN=$NAME" 1024
+self_sign server-selfsigned-weak "$SAN_NAME"
+
+# The happy-path collector presenting its issuer behind it.
+cat server.pem ca.pem > server-chain.pem
+cp server.key server-chain.key
+
+for certificate in server*.pem; do
+    write_pins "${certificate%.pem}"
+done
 
 rm -f ./*.csr ./*.srl
 touch generated.stamp

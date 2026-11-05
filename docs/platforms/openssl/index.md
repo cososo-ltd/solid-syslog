@@ -61,7 +61,9 @@ nothing here applies a library preset, or `NULL_RNG`, because OpenSSL carries it
 own entropy source and the configuration asks for none. Nor
 `LIBRARY_OUT_OF_MEMORY`: OpenSSL's handshake raises an allocation failure as the
 same generic error its other crypto failures use, so this pack cannot tell one
-from the other and does not guess.
+from the other and does not guess. Nor `PINS_WITH_ANCHORS_UNSUPPORTED`: OpenSSL
+calls the verify callback for every certificate in the chain, so a pin beside
+trust anchors is always checked.
 
 From the credentials codes it does not raise `NULL_RNG` for the same reason, nor
 `PEM_NOT_TERMINATED`, `TRUST_ANCHORS_NOT_PARSED` or `CLIENT_CREDENTIAL_NOT_PARSED`:

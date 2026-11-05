@@ -10,9 +10,10 @@ bool WolfSslTestMaterial_Load(const char* name, struct WolfSslTestMaterial* out)
     FILE* file = fopen(out->Path, "rb");
     if (file != NULL)
     {
-        out->Length = fread(out->Bytes, 1U, sizeof(out->Bytes), file);
+        out->Length = fread(out->Bytes, 1U, sizeof(out->Bytes) - 1U, file);
         (void) fclose(file);
     }
+    out->Bytes[out->Length] = '\0';
     return out->Length > 0U;
 }
 

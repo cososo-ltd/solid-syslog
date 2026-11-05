@@ -87,7 +87,9 @@ static const unsigned char CA_PEM[] = "-----BEGIN CERTIFICATE-----\n...";
 static const struct SolidSyslogWolfSslPemBufferCredentialsConfig credentialsConfig = {
     {CA_PEM, sizeof CA_PEM - 1U}, /* CaPem */
     {NULL, 0U},                   /* ClientCertPem */
-    {NULL, 0U}                    /* ClientKeyPem */
+    {NULL, 0U},                   /* ClientKeyPem */
+    NULL,                         /* PeerFingerprints */
+    0U                            /* PeerFingerprintCount */
 };
 struct SolidSyslogWolfSslCredentials* credentials =
     SolidSyslogWolfSslPemBufferCredentials_Create(&credentialsConfig);
@@ -97,6 +99,33 @@ The length is the PEM's own; no terminator is needed. Supply `ClientCertPem`
 and `ClientKeyPem` together for mutual TLS, or neither. The buffers are read at
 every connection, so they must outlive the stream; rotating them in place and
 moving the stream's version, below, is how material changes without a restart.
+
+**Pinning the collector's certificate**, instead of or as well as a CA:
+
+```c
+static const char* const PINS[] = {
+    "sha-256:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:"
+    "7A:F1:9E:9D:0C:44:1B:23:5D:87:6E:A0:31:F5:C2:98",
+};
+
+static const struct SolidSyslogWolfSslPemBufferCredentialsConfig pinnedConfig = {
+    {NULL, 0U}, /* CaPem - none: the pin alone authorises */
+    {NULL, 0U}, /* ClientCertPem */
+    {NULL, 0U}, /* ClientKeyPem */
+    PINS,       /* PeerFingerprints */
+    1U          /* PeerFingerprintCount */
+};
+```
+
+A pin is the digest of the collector's DER certificate, which any certificate
+tool prints as its SHA-256 fingerprint; put `sha-256:` in front of it, in
+either case. A collector with no PKI - a self-signed certificate - is
+authorised by its pin alone, on any wolfSSL build. With a CA as well, the
+collector must satisfy both, and how the pin is then checked depends on your
+build, as the [wolfSSL](index.md#what-it-depends-on-in-your-build) page says.
+Across a renewal, list the current certificate and the next together. Why, and
+what a `sha-1` pin costs, is under
+[TLS obligations](../../tls.md#accept-a-peer-authorised-by-certificate-fingerprint).
 
 ## 5. The profile
 
@@ -114,8 +143,8 @@ matched against the certificate's `iPAddress` entry instead. A single-label
 name is one wolfSSL will not take, and the connection is refused at Open as
 `SERVER_NAME_NOT_APPLIED`; declare the collector by its fully qualified name.
 Leaving `ServerName` NULL connects on the chain alone and warns on every
-connection; `""` does the same without the warning, for a private CA that
-issues to no name.
+connection, unless a pin names the collector; `""` does the same without the
+warning, for a private CA that issues to no name.
 
 ## 6. The stream and the sender
 
@@ -224,16 +253,21 @@ detail, or a connection in between, reports again.
 | Open on a stream already open | `CRITICAL` | `BAD_ARGUMENT` | `ALREADY_OPEN` | refused; the session held is untouched |
 | wolfSSL would not build the context or the session | `ERROR` | `TLS_STREAM_INIT_FAILED` | `CONTEXT_INIT_FAILED`, `SESSION_INIT_FAILED` | the attempt fails; the sender retries |
 | wolfSSL would not take the TLS 1.2 floor or a key-size floor | `ERROR` | `TLS_STREAM_INIT_FAILED` | `DEFAULTS_NOT_APPLIED` | as above |
-| the credentials installed no anchors | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | the attempt fails before any handshake |
-| the profile named no peer | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | connects, chain-authenticated only |
+| the credentials installed neither anchors nor a pin | `ERROR` | `BAD_CONFIG` | `NO_PEER_AUTHORISATION` | the attempt fails before any handshake |
+| a pin not in the RFC 5425 form | `ERROR` | `BAD_CONFIG` | `FINGERPRINT_MALFORMED` | the attempt fails before any handshake |
+| a pin naming `sha-1` | `WARNING` | `BAD_CONFIG` | `FINGERPRINT_SHA1` | connects |
+| anchors and a pin together, on a build that cannot check both | `ERROR` | `BAD_CONFIG` | `PINS_WITH_ANCHORS_UNSUPPORTED` | the attempt fails before any handshake |
+| the profile named no peer and no pin names it | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | connects, chain-authenticated only |
 | wolfSSL would not take the name or the indication | `ERROR` | `BAD_CONFIG` | `SERVER_NAME_NOT_APPLIED` | the attempt fails |
 | wolfSSL ran out of memory at any of those | `ERROR` | that step's category | `LIBRARY_OUT_OF_MEMORY` | the attempt fails |
-| the peer's chain reaches no anchor, or fails a check the stream does not name | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_CERTIFICATE_UNTRUSTED` | refused; the sender retries |
+| the peer's certificate matches no pin | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_FINGERPRINT_MISMATCHED` | refused; the sender retries |
+| no pin names a hash the build can compute, or no certificate was kept to digest | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | as above |
+| the peer's chain reaches no anchor, or fails a check the stream does not name | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_CERTIFICATE_UNTRUSTED` | as above |
 | the peer's certificate does not carry the expected name or address | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_NAME_MISMATCHED` | as above |
 | the peer's certificate is outside its validity period | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_CERTIFICATE_EXPIRED`, `PEER_CERTIFICATE_NOT_YET_VALID` | as above |
 | the peer or the protocol refused, and no check of the stream names it | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `HANDSHAKE_REJECTED` | as above |
 | the handshake did not finish within the budget | `WARNING` | `TLS_STREAM_HANDSHAKE_FAILED` | `HANDSHAKE_TIMEOUT` | as above |
-| credentials config NULL | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG` | Null credentials returned |
+| credentials config NULL, or a pin count with no list or a NULL pin | `CRITICAL` | `BAD_CONFIG` | `NULL_CONFIG`, `NULL_PEER_FINGERPRINT` | Null credentials returned |
 | the trust anchors would not parse, or the buffer has no extent | `ERROR` | `BAD_CONFIG` | `TRUST_ANCHORS_NOT_PARSED` | the attempt fails |
 | one half of the client credential | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_INCOMPLETE` | connects without it |
 | the client credential would not parse, or has no extent | `WARNING` | `BAD_CONFIG` | `CLIENT_CREDENTIAL_NOT_PARSED` | connects without it |

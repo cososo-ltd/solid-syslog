@@ -88,8 +88,8 @@ static bool WolfSslPemBufferCredentials_Install(
 {
     struct SolidSyslogWolfSslPemBufferCredentials* self = WolfSslPemBufferCredentials_SelfFromBase(base);
     installed->TrustAnchorsInstalled = false;
-    installed->Fingerprints = NULL;
-    installed->FingerprintCount = 0U;
+    installed->Fingerprints = self->Config.PeerFingerprints;
+    installed->FingerprintCount = self->Config.PeerFingerprintCount;
     bool ok = true;
     if (WolfSslPemBufferCredentials_IsSupplied(&self->Config.CaPem))
     {
@@ -98,7 +98,7 @@ static bool WolfSslPemBufferCredentials_Install(
     }
     else
     {
-        /* No anchors: the stream refuses the connection, and says so. */
+        /* No anchors configured is legitimate - a pin alone can authorise. */
     }
     if (ok)
     {

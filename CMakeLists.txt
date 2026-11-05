@@ -480,7 +480,7 @@ solidsyslog_declare_path(SOLIDSYSLOG_MBEDTLS_DIR
     MBEDTLS_DIR)
 
 solidsyslog_declare_path(SOLIDSYSLOG_WOLFSSL_DIR
-    "Path to an installed wolfSSL (include/ and lib/) built with the options the pack asks for (SolidSyslog's own tests and BDD targets only)"
+    "Path to an installed wolfSSL (include/ and lib/) built with WOLFSSL_ALWAYS_VERIFY_CB and KEEP_PEER_CERT, so the tests reach every anchored-pin body (SolidSyslog's own tests and BDD targets only)"
     WOLFSSL_DIR)
 
 solidsyslog_declare_path(SOLIDSYSLOG_WOLFSSL_BASELINE_DIR

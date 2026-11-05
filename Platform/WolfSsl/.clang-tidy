@@ -11,10 +11,11 @@
 #
 # clang-tidy CheckOption values do not merge across the hierarchy - the
 # latest-encountered value wins. The pattern below therefore re-states the
-# root .clang-tidy whitelist plus the wolfSSL namespace. Keep in sync.
+# root .clang-tidy whitelist plus the wolfSSL namespace and this pack's own
+# file-scope helper tags. Keep in sync.
 InheritParentConfig: true
 CheckOptions:
   - {
       key: readability-identifier-naming.StructIgnoredRegexp,
-      value: "^(SolidSyslog|EscapedContext|Gap|LogRequest|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall|WC_RNG|WOLFSSL|WOLFSSL_[A-Z0-9_]+|wc_[A-Za-z0-9_]+)$",
+      value: "^(SolidSyslog|EscapedContext|Gap|LogRequest|OpenHandle|LwipRawDatagramCall|LwipRawDnsResolverCall|LwipRawTcpStreamCall|WolfSslStreamPeerCertificate|WC_RNG|WOLFSSL|WOLFSSL_[A-Z0-9_]+|wc_[A-Za-z0-9_]+)$",
     }

@@ -8,9 +8,9 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* A PEM file from the material generated at build time, read whole.
-       The buffers outlive every connection made with them: the fixture holds
-       them. */
+    /* A PEM or pin file from the material generated at build time, read
+       whole and terminated, so a pin reads as a string. The buffers outlive
+       every connection made with them: the fixture holds them. */
     struct WolfSslTestMaterial
     {
         unsigned char Bytes[8192];

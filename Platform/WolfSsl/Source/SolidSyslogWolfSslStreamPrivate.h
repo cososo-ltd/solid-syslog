@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/wolfcrypt/asn.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -42,6 +43,12 @@ struct SolidSyslogWolfSslStream
      * names the check the contract puts first, whichever the library raised
      * last. */
     uint32_t RefusedChecks;
+    /* Whether the leaf matched a pin, as the verify callback last found it. */
+    bool PeerPinned;
+    /* Where the verify callback parses a certificate the library found no
+     * signer for. Held here rather than on the stack of a callback already
+     * deep inside the handshake; valid only within that one call. */
+    DecodedCert DecodedCertificate;
 };
 
 void SolidSyslogWolfSslStream_Initialise(
@@ -49,6 +56,30 @@ void SolidSyslogWolfSslStream_Initialise(
     const struct SolidSyslogWolfSslStreamConfig* config
 );
 void SolidSyslogWolfSslStream_Cleanup(struct SolidSyslogStream* base);
+
+/* Authorises the peer by the DER of its leaf, recording the verdict; true where
+ * a pin names it. A NULL leaf is one whose digest cannot be taken. */
+bool SolidSyslogWolfSslStream_AuthoriseLeaf(
+    struct SolidSyslogWolfSslStream* self,
+    const unsigned char* der,
+    word32 length
+);
+
+/* Where a pin beside trust anchors is checked, as the body this build selects
+ * answers it. */
+enum SolidSyslogWolfSslAnchoredPinCheck
+{
+    SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_IN_CALLBACK,
+    SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_AFTER_HANDSHAKE,
+    SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_REFUSED
+};
+
+/* Defined by whichever body SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK selects.
+ * AuthoriseKeptPeer is called once a pinned peer's handshake has completed
+ * without the callback having matched a pin, which is where a build that
+ * cannot check the pin in the callback checks the leaf it kept. */
+enum SolidSyslogWolfSslAnchoredPinCheck SolidSyslogWolfSslStream_AnchoredPinCheck(void);
+void SolidSyslogWolfSslStream_AuthoriseKeptPeer(struct SolidSyslogWolfSslStream* self);
 
 static inline void WolfSslStream_Report(
     enum SolidSyslogSeverity severity,

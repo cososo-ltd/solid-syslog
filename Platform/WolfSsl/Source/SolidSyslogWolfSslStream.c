@@ -13,6 +13,7 @@
 #include <wolfssl/ssl.h>
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/hash.h>
 
 /* wolfSSL compiles its notBefore / notAfter checks out entirely under
  * NO_ASN_TIME, so no certificate in the chain is date-checked and nothing says
@@ -35,6 +36,7 @@
 #include "SolidSyslogStream.h"
 #include "SolidSyslogStreamDefinition.h"
 #include "SolidSyslogTlsCredentialsInstalled.h"
+#include "SolidSyslogTlsFingerprint.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 #include "SolidSyslogWolfSslCredentialsDefinition.h"
@@ -65,10 +67,19 @@ enum
     WOLFSSL_STREAM_CHECK_CHAIN_TRUST = 1U,
     WOLFSSL_STREAM_CHECK_NAME = 2U,
     WOLFSSL_STREAM_CHECK_NOT_AFTER = 4U,
-    WOLFSSL_STREAM_CHECK_NOT_BEFORE = 8U
+    WOLFSSL_STREAM_CHECK_NOT_BEFORE = 8U,
+    WOLFSSL_STREAM_CHECK_FINGERPRINT = 16U,
+    WOLFSSL_STREAM_CHECK_FINGERPRINT_DIGEST = 32U
 };
 
 struct SolidSyslogAddress;
+
+/* What a pin is the digest of: the leaf as the peer presented it. */
+struct WolfSslStreamPeerCertificate
+{
+    const unsigned char* Der;
+    word32 Length;
+};
 
 static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context);
 static uint32_t WolfSslStream_NullVersion(void* context);
@@ -84,6 +95,8 @@ static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* se
 static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self);
@@ -98,9 +111,32 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_InitDetail(
 static inline void WolfSslStream_InstallTransportCallbacks(struct SolidSyslogWolfSslStream* self);
 static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogWolfSslStream* self);
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_IsMissingSignerAPinCanWaive(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
+static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_IsPinCheckedHere(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
+static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
+static bool WolfSslStream_DigestCertificate(
+    void* context,
+    enum SolidSyslogTlsHashAlgorithm algorithm,
+    uint8_t* digest,
+    size_t* length
+);
+static inline enum wc_HashType WolfSslStream_HashTypeFor(enum SolidSyslogTlsHashAlgorithm algorithm);
+static inline uint32_t WolfSslStream_CheckFailedForPin(enum SolidSyslogTlsAuthorisation verdict);
+static inline bool WolfSslStream_StandsWithoutASigner(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
 static inline uint32_t WolfSslStream_CheckFailedFor(int error);
 static inline uint32_t WolfSslStream_ResolveHandshakeTimeoutMs(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_PinIsConfirmed(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_IsRetryableHandshakeError(int error);
 static inline bool WolfSslStream_IsHandshakeBudgetExhausted(uint32_t totalSleptMs, uint32_t budgetMs);
 static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint32_t budgetMs);
@@ -286,6 +322,7 @@ static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const
     struct SolidSyslogWolfSslStream* self = WolfSslStream_SelfFromBase(base);
     WolfSslStream_PullProfile(self);
     self->RefusedChecks = 0U;
+    self->PeerPinned = false;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && WolfSslStream_BuildContext(self) &&
               WolfSslStream_InstallCredentials(self) && WolfSslStream_CreateSession(self) &&
               WolfSslStream_ApplyTlsPolicy(self) && WolfSslStream_ConfigureExpectedPeerName(self);
@@ -349,15 +386,69 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
         );
         ok = false;
     }
+    if (ok)
+    {
+        ok = WolfSslStream_FingerprintsAreUsable(&self->Installed);
+    }
+    if (ok && !WolfSslStream_BuildCanEnforceBoth(&self->Installed))
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_PINS_WITH_ANCHORS_UNSUPPORTED
+        );
+        ok = false;
+    }
     return ok;
 }
 
-/* A peer is authorised by a chain to trust anchors. With none, there is nothing
- * to check the peer against, so the connection stops rather than reaching a
- * peer this stream cannot identify. */
+/* A peer is authorised by a chain to trust anchors or by a pinned certificate
+ * fingerprint, and RFC 5425 section 4.2.1 makes the second sufficient on its
+ * own. With neither, there is nothing to check the peer against, so the
+ * connection stops rather than reaching a peer this stream cannot identify. */
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed)
 {
-    return installed->TrustAnchorsInstalled;
+    return installed->TrustAnchorsInstalled || (installed->FingerprintCount > 0U);
+}
+
+/* Inspected before the handshake, so a pin that cannot match is reported as
+ * bad configuration rather than as a refused peer. */
+static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    bool ok = true;
+    enum SolidSyslogTlsFingerprintListState state =
+        SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount);
+    if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
+        );
+        ok = false;
+    }
+    else if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_USES_SHA1)
+    {
+        WolfSslStream_Report(
+            SOLIDSYSLOG_SEVERITY_WARNING,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_SHA1
+        );
+    }
+    else
+    {
+        /* Well formed, or no pins at all. */
+    }
+    return ok;
+}
+
+/* Where anchors and pins are both installed the peer must satisfy both, and a
+ * build that cannot check a pin on a chain that verifies would satisfy only
+ * the chain - so the connection stops rather than enforce half of it. */
+static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed)
+{
+    bool both = installed->TrustAnchorsInstalled && (installed->FingerprintCount > 0U);
+    return !both || (SolidSyslogWolfSslStream_AnchoredPinCheck() != SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_REFUSED);
 }
 
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self)
@@ -407,14 +498,18 @@ static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWol
     if (serverName == NULL)
     {
         /* No expected identity supplied - the handshake will accept any cert that
-         * chains to a trusted CA, so the peer is unverified. Surface it as a
+         * chains to a trusted CA, so the peer is unverified unless a pin names
+         * it, which is a stronger declaration than a name. Surface it as a
          * WARNING (still connect, preserving the closed-network case) rather than
          * swallowing the MITM-class default silently. */
-        WolfSslStream_Report(
-            SOLIDSYSLOG_SEVERITY_WARNING,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
-        );
+        if (!WolfSslStream_IsPinned(self))
+        {
+            WolfSslStream_Report(
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_SET
+            );
+        }
     }
     else if (serverName[0] != '\0')
     {
@@ -528,15 +623,155 @@ static inline void WolfSslStream_ApplyPeerVerificationPolicy(struct SolidSyslogW
 }
 
 /* Called for each check a certificate in the chain fails - and, on a build
- * with WOLFSSL_ALWAYS_VERIFY_CB, for each certificate that passes. Nothing is
- * overridden: the library's verdict stands, and the stream only records which
- * check it was, because the handshake's return carries one code and not
- * necessarily the one the contract puts first. */
+ * with WOLFSSL_ALWAYS_VERIFY_CB, for the leaf once it passes. The library's
+ * verdict stands but for one objection: with pins and no anchors there is no
+ * signer for any chain to reach, so a missing one is waived for a peer a pin
+ * names. A pin that names nothing refuses the peer whatever the chain says.
+ * Every check is recorded as it is decided, because the handshake's return
+ * carries one code and not necessarily the one the contract puts first. */
 static int WolfSslStream_VerifyPeer(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
     struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) store->userCtx;
-    self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
-    return preverify;
+    int verdict = preverify;
+    if (WolfSslStream_IsMissingSignerAPinCanWaive(self, store))
+    {
+        verdict = 0;
+        if (WolfSslStream_LeafMatchesAPin(self, store) && WolfSslStream_StandsWithoutASigner(self, store))
+        {
+            verdict = 1;
+        }
+    }
+    else
+    {
+        self->RefusedChecks |= WolfSslStream_CheckFailedFor(store->error);
+        if (WolfSslStream_IsPinCheckedHere(self, store) && !WolfSslStream_LeafMatchesAPin(self, store))
+        {
+            verdict = 0;
+        }
+    }
+    return verdict;
+}
+
+static inline bool WolfSslStream_IsMissingSignerAPinCanWaive(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
+{
+    return WolfSslStream_IsPinned(self) && !self->Installed.TrustAnchorsInstalled && (store->error == ASN_NO_SIGNER_E);
+}
+
+static inline bool WolfSslStream_IsPinned(const struct SolidSyslogWolfSslStream* self)
+{
+    return self->Installed.FingerprintCount > 0U;
+}
+
+/* Pins alone are checked on every call. Beside anchors, a pin is checked
+ * wherever the library reports a fault, so a peer the pins do not name is
+ * named for that first; and on a leaf that verified only where this build's
+ * body checks it here - a build that cannot call back for a verified leaf
+ * checks it once the handshake is done instead. */
+static inline bool WolfSslStream_IsPinCheckedHere(
+    const struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
+{
+    return WolfSslStream_IsPinned(self) &&
+           (!self->Installed.TrustAnchorsInstalled || (store->error != 0) ||
+            (SolidSyslogWolfSslStream_AnchoredPinCheck() == SOLIDSYSLOG_WOLFSSL_PIN_BESIDE_ANCHORS_IN_CALLBACK));
+}
+
+/* A pin is the digest of the leaf. wolfSSL hands the callback the whole chain
+ * the peer presented, leaf first, whichever certificate it is calling back
+ * for. */
+static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store)
+{
+    return SolidSyslogWolfSslStream_AuthoriseLeaf(self, store->certs[0].buffer, store->certs[0].length);
+}
+
+bool SolidSyslogWolfSslStream_AuthoriseLeaf(
+    struct SolidSyslogWolfSslStream* self,
+    const unsigned char* der,
+    word32 length
+)
+{
+    struct WolfSslStreamPeerCertificate leaf = {der, length};
+    enum SolidSyslogTlsAuthorisation verdict = SolidSyslogTlsFingerprint_Authorise(
+        self->Installed.Fingerprints,
+        self->Installed.FingerprintCount,
+        WolfSslStream_DigestCertificate,
+        &leaf
+    );
+    self->RefusedChecks |= WolfSslStream_CheckFailedForPin(verdict);
+    self->PeerPinned = verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED;
+    return self->PeerPinned;
+}
+
+static bool WolfSslStream_DigestCertificate(
+    void* context,
+    enum SolidSyslogTlsHashAlgorithm algorithm,
+    uint8_t* digest,
+    size_t* length
+)
+{
+    const struct WolfSslStreamPeerCertificate* certificate = (const struct WolfSslStreamPeerCertificate*) context;
+    enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
+    int size = wc_HashGetDigestSize(type);
+    bool ok = (certificate->Der != NULL) && (size > 0) &&
+              (wc_Hash(type, certificate->Der, certificate->Length, digest, (word32) size) == 0);
+    if (ok)
+    {
+        *length = (size_t) size;
+    }
+    return ok;
+}
+
+static inline enum wc_HashType WolfSslStream_HashTypeFor(enum SolidSyslogTlsHashAlgorithm algorithm)
+{
+    enum wc_HashType type = WC_HASH_TYPE_SHA256;
+    if (algorithm == SOLIDSYSLOG_TLS_HASH_SHA1)
+    {
+        type = WC_HASH_TYPE_SHA;
+    }
+    return type;
+}
+
+/* Only a match authorises. A pin that will not parse was refused at Open, so a
+ * verdict that is neither a match nor an uncomputable digest is a peer the pins
+ * do not name. */
+static inline uint32_t WolfSslStream_CheckFailedForPin(enum SolidSyslogTlsAuthorisation verdict)
+{
+    uint32_t check = WOLFSSL_STREAM_CHECK_FINGERPRINT;
+    if (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_MATCHED)
+    {
+        check = 0U;
+    }
+    else if (verdict == SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE)
+    {
+        check = WOLFSSL_STREAM_CHECK_FINGERPRINT_DIGEST;
+    }
+    else
+    {
+        /* No pin names the peer, which the check already holds. */
+    }
+    return check;
+}
+
+/* With no anchor wolfSSL stops at the missing signer, and what it found on the
+ * way - the certificate's dates, an unknown critical extension - is never
+ * reported. So the stream checks them itself, parsing the certificate as a
+ * trust anchor is loaded: its own dates and extensions, and nothing above it,
+ * which is what a certificate authorised by a pin is. */
+static inline bool WolfSslStream_StandsWithoutASigner(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
+{
+    const WOLFSSL_BUFFER_INFO* certificate = &store->certs[store->error_depth];
+    wc_InitDecodedCert(&self->DecodedCertificate, certificate->buffer, certificate->length, self->Config.Heap);
+    int error = wc_ParseCert(&self->DecodedCertificate, CA_TYPE, VERIFY, NULL);
+    wc_FreeDecodedCert(&self->DecodedCertificate);
+    self->RefusedChecks |= WolfSslStream_CheckFailedFor(error);
+    return error == 0;
 }
 
 /* Every code the stream does not name individually is a certificate that
@@ -596,7 +831,7 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
         int error = wolfSSL_get_error(self->Session, rc);
         if (rc == WOLFSSL_SUCCESS)
         {
-            result = true;
+            result = WolfSslStream_PinIsConfirmed(self);
             done = true;
         }
         else if (!WolfSslStream_IsRetryableHandshakeError(error))
@@ -625,6 +860,23 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
         }
     }
     return result;
+}
+
+/* A pin is only as good as the check that read it, so a pinned peer whose
+ * handshake completed without a pin matching is refused rather than trusted. */
+static inline bool WolfSslStream_PinIsConfirmed(struct SolidSyslogWolfSslStream* self)
+{
+    if (WolfSslStream_IsPinned(self) && !self->PeerPinned)
+    {
+        SolidSyslogWolfSslStream_AuthoriseKeptPeer(self);
+    }
+    bool ok = !WolfSslStream_IsPinned(self) || self->PeerPinned;
+    if (!ok)
+    {
+        self->RefusedChecks |= WOLFSSL_STREAM_CHECK_FINGERPRINT;
+        WolfSslStream_ReportHandshakeFailure(self, SOLIDSYSLOG_SEVERITY_ERROR, WolfSslStream_RefusalDetail(self));
+    }
+    return ok;
 }
 
 static inline bool WolfSslStream_IsRetryableHandshakeError(int error)
@@ -661,7 +913,15 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
 {
     enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED;
-    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_CHAIN_TRUST))
+    if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_FINGERPRINT_DIGEST))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_DIGEST_UNAVAILABLE;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_FINGERPRINT))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_CHAIN_TRUST))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
     }

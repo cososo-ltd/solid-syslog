@@ -22,6 +22,7 @@ enum
 static int methodDummy;
 static int ctxDummy;
 static int sessionDummy;
+static int peerCertificateDummy;
 static WOLFSSL_X509_STORE_CTX store;
 
 static int clientMethodExCallCount;
@@ -84,7 +85,22 @@ static int connectErrorSequence[WOLFSSLTLSFAKE_MAX_SEQUENCE];
 static int connectErrorSequenceLen;
 static int verifyErrors[WOLFSSLTLSFAKE_MAX_SEQUENCE];
 static int verifyErrorsLen;
+static int verifyDepths[WOLFSSLTLSFAKE_MAX_SEQUENCE];
+static int verifyDepthsLen;
 static int lastVerifyCallbackResult;
+static int verifyCallbackAcceptCount;
+
+static int getPeerCertificateCallCount;
+static WOLFSSL* lastGetPeerCertificateSsl;
+static bool getPeerCertificateReturnsNull;
+static bool x509GetDerReturnsNull;
+static int x509FreeCallCount;
+static WOLFSSL_X509* lastX509FreeArg;
+
+/* The chain the peer presents: the leaf, then its issuer. */
+static unsigned char leafDer[] = "leaf certificate DER";
+static unsigned char issuerDer[] = "issuer certificate DER";
+static WOLFSSL_BUFFER_INFO peerChain[2];
 static int lastError;
 
 static int writeCallCount;
@@ -192,7 +208,15 @@ void WolfSslTlsFake_Reset(void)
     connectErrorSequence[0] = 0;
     connectErrorSequenceLen = 1;
     verifyErrorsLen = 0;
+    verifyDepthsLen = 0;
     lastVerifyCallbackResult = -1;
+    verifyCallbackAcceptCount = 0;
+    getPeerCertificateCallCount = 0;
+    lastGetPeerCertificateSsl = NULL;
+    getPeerCertificateReturnsNull = false;
+    x509GetDerReturnsNull = false;
+    x509FreeCallCount = 0;
+    lastX509FreeArg = NULL;
     lastError = 0;
     writeCallCount = 0;
     lastWriteSsl = NULL;
@@ -636,10 +660,42 @@ void wolfSSL_SetCertCbCtx(WOLFSSL* ssl, void* ctx)
 
 struct WOLFSSL_X509_STORE_CTX* WolfSslTlsFake_StoreWithError(int error)
 {
+    return WolfSslTlsFake_StoreAt(error, 0);
+}
+
+struct WOLFSSL_X509_STORE_CTX* WolfSslTlsFake_StoreAt(int error, int depth)
+{
     memset(&store, 0, sizeof store);
+    peerChain[0].buffer = leafDer;
+    peerChain[0].length = (word32) sizeof leafDer;
+    peerChain[1].buffer = issuerDer;
+    peerChain[1].length = (word32) sizeof issuerDer;
     store.error = error;
+    store.error_depth = depth;
+    store.certs = peerChain;
+    store.totalCerts = 2;
     store.userCtx = lastCertCbCtx;
     return &store;
+}
+
+const unsigned char* WolfSslTlsFake_LeafDer(void)
+{
+    return leafDer;
+}
+
+size_t WolfSslTlsFake_LeafDerLength(void)
+{
+    return sizeof leafDer;
+}
+
+const unsigned char* WolfSslTlsFake_IssuerDer(void)
+{
+    return issuerDer;
+}
+
+size_t WolfSslTlsFake_IssuerDerLength(void)
+{
+    return sizeof issuerDer;
 }
 
 /* -------------------------------------------------------------------------
@@ -666,9 +722,19 @@ void WolfSslTlsFake_SetVerifyErrors(const int* errors, int count)
     CopySequence(verifyErrors, &verifyErrorsLen, errors, count);
 }
 
+void WolfSslTlsFake_SetVerifyDepths(const int* depths, int count)
+{
+    CopySequence(verifyDepths, &verifyDepthsLen, depths, count);
+}
+
 int WolfSslTlsFake_LastVerifyCallbackResult(void)
 {
     return lastVerifyCallbackResult;
+}
+
+int WolfSslTlsFake_VerifyCallbackAcceptCount(void)
+{
+    return verifyCallbackAcceptCount;
 }
 
 int wolfSSL_connect(WOLFSSL* ssl)
@@ -680,7 +746,13 @@ int wolfSSL_connect(WOLFSSL* ssl)
     {
         for (int i = 0; i < verifyErrorsLen; i++)
         {
-            lastVerifyCallbackResult = lastSetVerifyCallback(0, WolfSslTlsFake_StoreWithError(verifyErrors[i]));
+            int depth = (i < verifyDepthsLen) ? verifyDepths[i] : 0;
+            int preverify = (verifyErrors[i] == 0) ? 1 : 0;
+            lastVerifyCallbackResult = lastSetVerifyCallback(preverify, WolfSslTlsFake_StoreAt(verifyErrors[i], depth));
+            if (lastVerifyCallbackResult != 0)
+            {
+                verifyCallbackAcceptCount++;
+            }
         }
     }
     lastError = SequenceAt(connectErrorSequence, connectErrorSequenceLen, callIndex);
@@ -932,4 +1004,67 @@ int wolfSSL_CTX_use_PrivateKey_buffer(WOLFSSL_CTX* ctx, const unsigned char* in,
     lastUsePrivateKeyBufferSz = sz;
     lastUsePrivateKeyBufferFormat = format;
     return usePrivateKeyBufferReturn;
+}
+
+/* -------------------------------------------------------------------------
+ * The kept peer certificate
+ * ------------------------------------------------------------------------- */
+
+struct WOLFSSL_X509* WolfSslTlsFake_PeerCertificate(void)
+{
+    return (WOLFSSL_X509*) &peerCertificateDummy;
+}
+
+int WolfSslTlsFake_GetPeerCertificateCallCount(void)
+{
+    return getPeerCertificateCallCount;
+}
+
+struct WOLFSSL* WolfSslTlsFake_LastGetPeerCertificateSsl(void)
+{
+    return lastGetPeerCertificateSsl;
+}
+
+void WolfSslTlsFake_SetPeerCertificateReturnsNull(bool returnsNull)
+{
+    getPeerCertificateReturnsNull = returnsNull;
+}
+
+void WolfSslTlsFake_SetX509GetDerReturnsNull(bool returnsNull)
+{
+    x509GetDerReturnsNull = returnsNull;
+}
+
+int WolfSslTlsFake_X509FreeCallCount(void)
+{
+    return x509FreeCallCount;
+}
+
+struct WOLFSSL_X509* WolfSslTlsFake_LastX509FreeArg(void)
+{
+    return lastX509FreeArg;
+}
+
+WOLFSSL_X509* wolfSSL_get_peer_certificate(WOLFSSL* ssl)
+{
+    getPeerCertificateCallCount++;
+    lastGetPeerCertificateSsl = ssl;
+    return getPeerCertificateReturnsNull ? NULL : WolfSslTlsFake_PeerCertificate();
+}
+
+const byte* wolfSSL_X509_get_der(WOLFSSL_X509* x509, int* outSz)
+{
+    const byte* der = NULL;
+    if (!x509GetDerReturnsNull && (x509 == WolfSslTlsFake_PeerCertificate()))
+    {
+        der = leafDer;
+        *outSz = (int) sizeof leafDer;
+    }
+    return der;
+}
+
+void wolfSSL_X509_free(WOLFSSL_X509* x509)
+{
+    x509FreeCallCount++;
+    lastX509FreeArg = x509;
 }

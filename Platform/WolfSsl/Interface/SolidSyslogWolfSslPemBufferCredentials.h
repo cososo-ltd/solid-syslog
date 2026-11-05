@@ -4,10 +4,8 @@
 
 /** @file
  *  The wolfSSL credentials backend that loads PEM from caller-owned buffers:
- *  trust anchors and an optional client credential for mutual TLS. It carries
- *  no pinned peer fingerprints, because this stream does not yet enforce a pin
- *  and a pin that is configured must never be quietly ignored; a pinning
- *  source arrives with the enforcement. Nothing is parsed at Create - each
+ *  trust anchors, an optional client credential for mutual TLS, and the pinned
+ *  peer fingerprints the stream reads. Nothing is parsed at Create - each
  *  buffer is handed to wolfSSL at the stream's Open, onto the context built for
  *  that connection, and freed with it at Close. So the backend holds no
  *  material of its own between connections, a change to a buffer's contents
@@ -42,8 +40,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogWolfSslPemBufferCredentialsConfig
     {
         /** Trust anchors the peer certificate must chain to; an unsupplied
-         *  buffer installs none, and the stream then refuses to connect, since
-         *  nothing else authorises the peer. */
+         *  buffer installs none, which leaves the peer authorised only by a
+         *  pin, and refused where none is configured either. */
         struct SolidSyslogWolfSslPemBuffer CaPem;
         /** Leaf certificate (plus intermediates, leaf first) for mutual TLS.
          *  Certificate and key are all-or-nothing - supplying one without the
@@ -54,6 +52,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  checked here - a mismatch surfaces when the collector refuses the
          *  handshake. */
         struct SolidSyslogWolfSslPemBuffer ClientKeyPem;
+        /** Fingerprints of certificates the peer may present, any one of which
+         *  authorises it. Each is the RFC 5425 section 4.2.2 form: the IANA hash
+         *  name, a colon, then the digest of the DER certificate as
+         *  colon-separated hexadecimal bytes in either case, e.g.
+         *  `sha-256:E1:2D:...`. `sha-256` and `sha-1` are accepted; a `sha-1`
+         *  pin is reported on every connection. A pin in any other form is
+         *  reported when the stream opens and that attempt fails. NULL with a
+         *  count of zero pins no peer; a count with no list behind it, or a
+         *  NULL pin in one, is reported at Create, which returns the Null
+         *  credentials. The array and the strings must outlive the
+         *  credentials. */
+        const char* const * PeerFingerprints;
+        size_t PeerFingerprintCount;
     };
 
     /** Draw a credentials instance from the pool. A NULL config is reported

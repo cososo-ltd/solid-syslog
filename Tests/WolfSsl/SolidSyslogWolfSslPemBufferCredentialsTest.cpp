@@ -109,6 +109,38 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, CreateWithNullConfigReturnsTheNullC
     );
 }
 
+TEST(SolidSyslogWolfSslPemBufferCredentials, CreateWithAPinCountButNoPinListReturnsTheNullCredentials)
+{
+    config.PeerFingerprints = nullptr;
+    config.PeerFingerprintCount = 1U;
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials = SolidSyslogWolfSslPemBufferCredentials_Create(&config);
+
+    CHECK_NULL_CREDENTIALS(credentials);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_PEER_FINGERPRINT
+    );
+}
+
+TEST(SolidSyslogWolfSslPemBufferCredentials, CreateWithAMissingPinInTheListReturnsTheNullCredentials)
+{
+    const char* const pins[] = {nullptr};
+    config.PeerFingerprints = pins;
+    config.PeerFingerprintCount = 1U;
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+    ErrorHandlerFake_Install(nullptr);
+
+    credentials = SolidSyslogWolfSslPemBufferCredentials_Create(&config);
+
+    CHECK_NULL_CREDENTIALS(credentials);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_NULL_PEER_FINGERPRINT, ErrorHandlerFake_LastDetail());
+}
+
 TEST(SolidSyslogWolfSslPemBufferCredentials, CreateBeyondThePoolReportsExhaustion)
 {
     struct SolidSyslogWolfSslCredentials* extra[SOLIDSYSLOG_TLS_CREDENTIALS_POOL_SIZE] = {};
@@ -206,7 +238,19 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, InstallWithoutTrustAnchorsLoadsNoth
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsNoPeerFingerprints)
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallPassesTheConfiguredPeerFingerprintsThrough)
+{
+    config.PeerFingerprints = TEST_PINS;
+    config.PeerFingerprintCount = 1U;
+    ReCreateWithUpdatedConfig();
+
+    Install();
+
+    POINTERS_EQUAL(TEST_PINS, installed.Fingerprints);
+    UNSIGNED_LONGS_EQUAL(1U, installed.FingerprintCount);
+}
+
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallWithoutPeerFingerprintsReportsNone)
 {
     installed.Fingerprints = TEST_PINS;
     installed.FingerprintCount = 1U;

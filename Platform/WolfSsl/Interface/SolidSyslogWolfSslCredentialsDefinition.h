@@ -34,12 +34,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  being made and released when it ends. */
     struct SolidSyslogWolfSslCredentials
     {
-        /** Install trust anchors, any pinned peer fingerprints, and - for
-         *  mutual TLS - the client credential onto @p ctx, reporting through
-         *  @p installed what the stream cannot read back out of @p ctx. Called
-         *  from Open, after the transport connects and before the session is
-         *  created from the context, so what is installed here is what the
-         *  session inherits.
+        /** Install trust anchors and - for mutual TLS - the client credential
+         *  onto @p ctx, and report through @p installed what the stream cannot
+         *  read back out of @p ctx: whether anchors were installed, and the
+         *  fingerprints that pin the peer. The stream enforces what is
+         *  reported. Either anchors or pins authorise a peer on their own;
+         *  where both are reported the peer must satisfy both, and a build of
+         *  wolfSSL that cannot check a pin on a chain that verifies refuses
+         *  the connection instead. Called from Open, after the transport
+         *  connects and before the session is created from the context, so
+         *  what is installed here is what the session inherits.
          *
          *  @retval false the material that authorises the peer could not be
          *          produced; the connection attempt fails and the sender

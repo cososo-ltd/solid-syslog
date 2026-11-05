@@ -1141,6 +1141,7 @@ jobs:
           -DTICK_TYPE_WIDTH_32_BITS=1
           -DTICK_TYPE_WIDTH_64_BITS=2
           -DconfigTICK_TYPE_WIDTH_IN_BITS=1
+          -DKEEP_PEER_CERT=1
           -ICore/Interface
           -ICore/Source
           -IPlatform/StdAtomic/Interface
@@ -1202,6 +1203,10 @@ jobs:
       # as a VLA (18.8). Core/Source is on the path for the same reason: a
       # platform pack that puts SolidSyslogFormatter storage on the stack
       # sizes it with a macro from Core/Source/SolidSyslogFormatter.h.
+      # KEEP_PEER_CERT picks which of the wolfSSL stream's anchored-pin bodies
+      # is scanned: with no wolfSSL header on the path no flag is defined, and
+      # only the refused body would be seen. The after-handshake body calls
+      # back into the stream, so it is the one analysed with it.
       # ----------------------------------------------------------------
 
       - name: Run cppcheck-misra
@@ -1229,6 +1234,7 @@ jobs:
             -DTICK_TYPE_WIDTH_32_BITS=1 \
             -DTICK_TYPE_WIDTH_64_BITS=2 \
             -DconfigTICK_TYPE_WIDTH_IN_BITS=1 \
+            -DKEEP_PEER_CERT=1 \
             -DMAXHOSTNAMELEN=256 \
             -DINET_ADDR_LEN=18 \
             -ICore/Interface \
@@ -1294,6 +1300,7 @@ jobs:
             -DTICK_TYPE_WIDTH_32_BITS=1 \
             -DTICK_TYPE_WIDTH_64_BITS=2 \
             -DconfigTICK_TYPE_WIDTH_IN_BITS=1 \
+            -DKEEP_PEER_CERT=1 \
             -DMAXHOSTNAMELEN=256 \
             -DINET_ADDR_LEN=18 \
             -ICore/Interface \

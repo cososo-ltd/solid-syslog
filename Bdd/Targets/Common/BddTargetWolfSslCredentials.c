@@ -49,11 +49,8 @@ static bool BddTargetWolfSslCredentials_Install(
 )
 {
     (void) self;
-    /* No pins reach the stream until it enforces them: the pin cells are
-       outside this lane, and a pin a scenario did set must not be quietly
-       dropped on the floor by a stream that would not check it. */
-    installed->Fingerprints = NULL;
-    installed->FingerprintCount = 0U;
+    installed->Fingerprints = BddTargetTlsConfig_GetPeerFingerprints();
+    installed->FingerprintCount = BddTargetTlsConfig_GetPeerFingerprintCount();
     installed->TrustAnchorsInstalled = false;
 
     bool ok = true;
