@@ -54,6 +54,7 @@ static struct SolidSyslogAddress* address;
 static struct SolidSyslogSender* sender;
 
 static void EnsureWolfSslInitialised(void);
+static void EnsureWolfSslMemoryLoaded(void);
 static void DispatchEndpoint(struct SolidSyslogEndpoint* endpoint, void* context);
 static uint32_t DispatchEndpointVersion(void* context);
 static void BddTargetTlsSender_Profile(struct SolidSyslogWolfSslProfile* profile, void* context);
@@ -105,21 +106,35 @@ static void EnsureWolfSslInitialised(void)
 {
     if (!wolfSslInitialised)
     {
-        BddTargetWolfSslPort_Initialise();
-        int loaded = wc_LoadStaticMemory(&wolfSslHeap, wolfSslMemory, sizeof(wolfSslMemory), WOLFMEM_GENERAL, 1);
-        if (loaded != 0)
+        EnsureWolfSslMemoryLoaded();
+        if (wolfSslHeap != NULL)
         {
-            (void) printf("[wolfssl] static memory load FAILED rc=%d; TLS slot will be unusable\r\n", loaded);
-        }
-        else
-        {
-            (void) wolfSSL_SetGlobalHeapHint(wolfSslHeap);
             int initialised = wolfSSL_Init();
             if (initialised != WOLFSSL_SUCCESS)
             {
                 (void) printf("[wolfssl] wolfSSL_Init FAILED rc=%d; TLS slot will be unusable\r\n", initialised);
             }
             wolfSslInitialised = initialised == WOLFSSL_SUCCESS;
+        }
+    }
+}
+
+/* Once only, however often bring-up is retried: loading the region a second
+   time would rebuild the pool under whatever was already drawn from it. */
+static void EnsureWolfSslMemoryLoaded(void)
+{
+    if (wolfSslHeap == NULL)
+    {
+        BddTargetWolfSslPort_Initialise();
+        int loaded = wc_LoadStaticMemory(&wolfSslHeap, wolfSslMemory, sizeof(wolfSslMemory), WOLFMEM_GENERAL, 1);
+        if (loaded != 0)
+        {
+            (void) printf("[wolfssl] static memory load FAILED rc=%d; TLS slot will be unusable\r\n", loaded);
+            wolfSslHeap = NULL;
+        }
+        else
+        {
+            (void) wolfSSL_SetGlobalHeapHint(wolfSslHeap);
         }
     }
 }
