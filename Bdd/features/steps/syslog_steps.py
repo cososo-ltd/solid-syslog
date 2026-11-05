@@ -1609,12 +1609,21 @@ def step_check_replayed_sequence_ids(context, id_list):
         )
 
 
+def _is_library_report(fields):
+    """A record the logger made of one of its own events: it carries the
+    library's own SD element."""
+    return "[solidsyslog@67478 " in fields.get("STRUCTURED_DATA", "")
+
+
 def _outage_seq_ids(context):
-    """Collected sequenceIds in oracle log, excluding the pre-outage seqId 1.
-    Used by the discard-policy structural assertions."""
+    """Collected sequenceIds in oracle log, excluding the pre-outage seqId 1
+    and the logger's reports, which take their number when Service makes
+    them. Used by the discard-policy structural assertions."""
     ids = []
     for line in context.all_lines:
         fields = parse_oracle_line(line, context.oracle_format)
+        if _is_library_report(fields):
+            continue
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         if match:
@@ -1687,6 +1696,16 @@ def step_outage_messages_contiguous(context):
     assert ids == expected, (
         f"Expected contiguous outage sequenceIds {expected}, got {ids}"
     )
+
+
+@then("the syslog oracle received a report that the buffer lost records")
+def step_oracle_received_buffer_loss_report(context):
+    reports = [
+        fields
+        for fields in (parse_oracle_line(line, context.oracle_format) for line in context.all_lines)
+        if _is_library_report(fields) and fields.get("MSGID") == "BUFFER_RECORDS_LOST"
+    ]
+    assert reports, "Expected the logger's report that the buffer lost records; none arrived"
 
 
 @then("the last message has sequenceId {value:d}")

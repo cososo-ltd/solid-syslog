@@ -14,6 +14,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogNullMutex.h"
+#include "SolidSyslogNullStore.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogStreamSender.h"
 #include "StreamFake.h"
@@ -40,22 +41,42 @@ bool ParseDecimal(const std::string& text, unsigned* value)
     return parsed;
 }
 
-/* The meta SD's sequenceId, from the frame's SDATA. */
-bool ParseSequenceId(const std::string& sdata, unsigned* sequenceId)
+/* The value of the quoted param that @p key opens, from a frame's SDATA. */
+bool ParseQuoted(const std::string& sdata, const std::string& key, std::string* value)
 {
-    const std::string key = "sequenceId=\"";
     size_t start = sdata.find(key);
     bool found = start != std::string::npos;
     size_t valueStart = found ? (start + key.size()) : 0U;
     size_t end = found ? sdata.find('"', valueStart) : std::string::npos;
     found = found && (end != std::string::npos);
-    return found && ParseDecimal(sdata.substr(valueStart, end - valueStart), sequenceId);
+    *value = found ? sdata.substr(valueStart, end - valueStart) : std::string();
+    return found;
+}
+
+/* The meta SD's sequenceId, from the frame's SDATA. */
+bool ParseSequenceId(const std::string& sdata, unsigned* sequenceId)
+{
+    std::string text;
+    return ParseQuoted(sdata, R"(sequenceId=")", &text) && ParseDecimal(text, sequenceId);
 }
 
 bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
 {
     return (SyslogField(frame, SYSLOG_FIELD_MSGID) == MESSAGE_ID) && ParseDecimal(SyslogMsg(frame), ordinal) &&
            ParseSequenceId(SyslogField(frame, SYSLOG_FIELD_SDATA), sequenceId);
+}
+
+/* A report the logger made of its own event: the library's element is there,
+ * its category param names the category the MSGID does, and the meta SD
+ * numbers it as it does a record. */
+bool ParseReport(const char* frame, std::string* category, unsigned* sequenceId)
+{
+    std::string sdata = SyslogField(frame, SYSLOG_FIELD_SDATA);
+    std::string named;
+    bool parsed = (sdata.find("[solidsyslog@67478 ") != std::string::npos) &&
+                  ParseQuoted(sdata, R"(category=")", &named) && ParseSequenceId(sdata, sequenceId);
+    *category = SyslogField(frame, SYSLOG_FIELD_MSGID);
+    return parsed && (named == *category);
 }
 } // namespace
 
@@ -75,7 +96,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
       sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false),
       framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U),
-      maxSendsInOnePass(0U)
+      maxSendsInOnePass(0U), reporting(true), reportsMade(0U), eventsWhenLastReportMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
@@ -87,7 +108,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     storeConfig.MaxBlocks = options.MaxBlocks;
     storeConfig.GetDiscardPolicy = GetDiscardPolicy;
     storeConfig.DiscardPolicyContext = this;
-    store = SolidSyslogBlockStore_Create(&storeConfig);
+    store = options.HasStore ? SolidSyslogBlockStore_Create(&storeConfig) : SolidSyslogNullStore_Get();
 
     struct SolidSyslogStreamSenderConfig senderConfig = {};
     senderConfig.Resolver = ResolverFake_Get();
@@ -105,6 +126,8 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     config.DiscardPolicyContext = this;
     config.OnHalt = OnHalt;
     config.HaltContext = this;
+    config.IsEventReportingOn = IsReportingOn;
+    config.EventReportingContext = this;
     logger = SolidSyslog_Create(&config);
 }
 
@@ -121,9 +144,14 @@ struct SolidSyslogBuffer* ScenarioBench::CreateBuffer(std::vector<uint8_t>& ring
 
 ScenarioBench::~ScenarioBench()
 {
+    /* The logger goes first. Destroying it also forgets whatever the walk
+     * left pending, so the next bench's logger reports none of it. */
     SolidSyslog_Destroy(logger);
     SolidSyslogStreamSender_Destroy(sender);
-    SolidSyslogBlockStore_Destroy(store);
+    if (options.HasStore)
+    {
+        SolidSyslogBlockStore_Destroy(store);
+    }
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogMetaSd_Destroy(metaSd);
     CounterFake_Destroy(counter);
@@ -158,11 +186,17 @@ void ScenarioBench::TakeNewFrames()
 {
     for (; framesSeen < StreamFake_FrameCount(stream); framesSeen++)
     {
+        const char* frame = StreamFake_Frame(stream, framesSeen);
         ScenarioDelivery delivery = {0U, 0U, passes};
+        ScenarioReport report = {std::string(), 0U, passes};
 
-        if (ParseFrame(StreamFake_Frame(stream, framesSeen), &delivery.Ordinal, &delivery.SequenceId))
+        if (ParseFrame(frame, &delivery.Ordinal, &delivery.SequenceId))
         {
             delivered.push_back(delivery);
+        }
+        else if (ParseReport(frame, &report.Category, &report.SequenceId))
+        {
+            reports.push_back(report);
         }
         else
         {
@@ -197,6 +231,11 @@ void ScenarioBench::SetDiscardPolicy(enum SolidSyslogDiscardPolicy policy)
     options.DiscardPolicy = policy;
 }
 
+void ScenarioBench::SetReporting(bool on)
+{
+    reporting = on;
+}
+
 unsigned ScenarioBench::Logged() const
 {
     return logged;
@@ -212,6 +251,11 @@ const std::vector<ScenarioDelivery>& ScenarioBench::Delivered() const
     return delivered;
 }
 
+const std::vector<ScenarioReport>& ScenarioBench::Reports() const
+{
+    return reports;
+}
+
 const std::vector<ScenarioEvent>& ScenarioBench::Events() const
 {
     return events;
@@ -225,6 +269,16 @@ size_t ScenarioBench::Garbage() const
 size_t ScenarioBench::Halts() const
 {
     return halts;
+}
+
+size_t ScenarioBench::ReportsMade() const
+{
+    return reportsMade;
+}
+
+size_t ScenarioBench::EventsWhenLastReportMade() const
+{
+    return eventsWhenLastReportMade;
 }
 
 size_t ScenarioBench::DeviceOperationsInLastPass() const
@@ -276,4 +330,19 @@ enum SolidSyslogDiscardPolicy ScenarioBench::GetDiscardPolicy(void* context)
 void ScenarioBench::OnHalt(void* context)
 {
     static_cast<ScenarioBench*>(context)->halts++;
+}
+
+bool ScenarioBench::IsReportingOn(void* context)
+{
+    return static_cast<ScenarioBench*>(context)->OnReportingAsked();
+}
+
+bool ScenarioBench::OnReportingAsked()
+{
+    if (reporting)
+    {
+        reportsMade++;
+        eventsWhenLastReportMade = events.size();
+    }
+    return reporting;
 }

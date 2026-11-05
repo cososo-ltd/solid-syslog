@@ -8,7 +8,9 @@
  *  formats. It always carries sequenceId, taken from one Increment of the
  *  injected AtomicCounter per message, and optionally sysUpTime and language.
  *  The two optional PARAMs are independently omitted when their config member is
- *  NULL, so a bare meta element is just [meta sequenceId="..."]. */
+ *  NULL, so a bare meta element is just [meta sequenceId="..."]. The logger's
+ *  reports of its own events carry it too, numbered when Service makes them,
+ *  so a report can arrive ahead of records numbered before it. */
 #ifndef SOLIDSYSLOGMETASD_H
 #define SOLIDSYSLOGMETASD_H
 

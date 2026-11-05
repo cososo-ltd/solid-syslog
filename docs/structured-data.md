@@ -97,7 +97,9 @@ logger.
   IANA Private Enterprise Number (PEN); `32473` is the reserved example/documentation PEN.
 
 Register for a PEN through IANA before shipping a private `SD-ID`; until then `32473` is the
-correct placeholder.
+correct placeholder. The element the library adds to reports of its own events,
+`solidsyslog@67478`, uses the PEN registered to Cozens Software Solutions Limited. Register
+your own number rather than reuse it.
 
 Keep your `SD-ID` and `PARAM-NAME`s within RFC 5424 section 6.3.2: printable US-ASCII excluding
 `=`, `]`, `"`, and space. You write these as compile-time constants, so this is yours to get
@@ -140,7 +142,10 @@ synchronously, the object only has to be valid across the call, but don't share 
 mutable SD object across threads that log concurrently: if one thread repoints
 `self->event` while another is mid-`Format`, the second thread emits the wrong data. Give
 each call site its own SD instance, or keep the object immutable. A stateless SD (like the
-first example) is never affected.
+first example) is never affected. An SD in `Config.Sd[]` is formatted for every record,
+including the logger's reports of its own events from `SolidSyslog_Service`, so it is
+always shared; the [Format contract](api/structSolidSyslogStructuredData.md)
+states what that requires.
 
 ## Values and escaping
 

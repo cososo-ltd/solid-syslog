@@ -15,7 +15,8 @@ struct SenderFake
     int DisconnectCount;
     char LastBuffer[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
     size_t LastSize;
-    bool FailNextSend;
+    /* Counts down to the send that fails; zero means none is due. */
+    int SendsUntilFailure;
 };
 
 static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size)
@@ -27,10 +28,13 @@ static bool Send(struct SolidSyslogSender* self, const void* buffer, size_t size
     fake->LastSize = size;
     fake->SendCount++;
 
-    if (fake->FailNextSend)
+    if (fake->SendsUntilFailure > 0)
     {
-        fake->FailNextSend = false;
-        return false;
+        fake->SendsUntilFailure--;
+        if (fake->SendsUntilFailure == 0)
+        {
+            return false;
+        }
     }
     return true;
 }
@@ -61,7 +65,7 @@ void SenderFake_Reset(struct SolidSyslogSender* sender)
     fake->DisconnectCount = 0;
     fake->LastBuffer[0] = '\0';
     fake->LastSize = 0;
-    fake->FailNextSend = false;
+    fake->SendsUntilFailure = 0;
 }
 
 int SenderFake_SendCallCount(struct SolidSyslogSender* sender)
@@ -86,5 +90,10 @@ size_t SenderFake_LastSize(struct SolidSyslogSender* sender)
 
 void SenderFake_FailNextSend(struct SolidSyslogSender* sender)
 {
-    ((struct SenderFake*) sender)->FailNextSend = true;
+    SenderFake_FailSendAfter(sender, 0);
+}
+
+void SenderFake_FailSendAfter(struct SolidSyslogSender* sender, int accepted)
+{
+    ((struct SenderFake*) sender)->SendsUntilFailure = accepted + 1;
 }

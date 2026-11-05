@@ -3,6 +3,7 @@ set(SOURCES
     SolidSyslogStatic.c
     SolidSyslogError.c
     SolidSyslogPendingEvents.c
+    SolidSyslogEventSd.c
     SolidSyslogErrorCategoryName.c
     SolidSyslogErrorName.c
     SolidSyslogSeverityName.c

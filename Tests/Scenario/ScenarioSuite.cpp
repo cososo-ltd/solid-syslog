@@ -18,11 +18,18 @@ const size_t WALK_STEPS = 300U;
 /* Passes the drain allows beyond one per record before it is a spin. */
 const size_t DRAIN_SLACK = 50U;
 
-const std::array<ScenarioRig, 3> RIGS = {{SCENARIO_RIG_OLDEST, SCENARIO_RIG_NEWEST, SCENARIO_RIG_HALT}};
+const std::array<ScenarioRig, 6> RIGS = {
+    {SCENARIO_RIG_OLDEST,
+     SCENARIO_RIG_NEWEST,
+     SCENARIO_RIG_HALT,
+     SCENARIO_RIG_OLDEST_NO_STORE,
+     SCENARIO_RIG_NEWEST_NO_STORE,
+     SCENARIO_RIG_HALT_NO_STORE}
+};
 
 /* A step's letter and its weight in a thousand draws. Logging outruns
- * Service, outages are short and recover, and a device failure is rare
- * enough that most walks never see one. */
+ * Service, outages are short and recover, a device failure is rare enough
+ * that most walks never see one, and reporting is mostly on. */
 struct Step
 {
     char Letter;
@@ -30,14 +37,16 @@ struct Step
 };
 
 const Step STEPS[] = {
-    {'L', 450U},
-    {'S', 350U},
+    {'L', 440U},
+    {'S', 335U},
     {'D', 40U},
     {'U', 60U},
     {'F', 1U},
     {'O', 33U},
     {'N', 33U},
     {'H', 33U},
+    {'Q', 10U},
+    {'R', 15U},
 };
 const unsigned WEIGHT_TOTAL = 1000U;
 
@@ -53,7 +62,7 @@ class Driver
                                   false,
                                   rig.Options.DiscardPolicy,
                                   (rig.Options.DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT) ? 1U : 0U,
-                                  false,
+                                  0U,
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   0U,
@@ -106,6 +115,12 @@ class Driver
             case 'H':
                 SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_HALT);
                 break;
+            case 'Q':
+                bench.SetReporting(false);
+                break;
+            case 'R':
+                bench.SetReporting(true);
+                break;
             default:
                 verdict.Passed = false;
                 verdict.Invariant = "the script is well formed";
@@ -124,7 +139,7 @@ class Driver
     void SetPolicy(enum SolidSyslogDiscardPolicy policy)
     {
         bench.SetDiscardPolicy(policy);
-        state.PolicyChangedSinceLastPass = state.PolicyChangedSinceLastPass || (policy != state.Policy);
+        state.PolicyChangesSinceLastPass += (policy != state.Policy) ? 1U : 0U;
         state.HaltPeriods += ((policy == SOLIDSYSLOG_DISCARD_POLICY_HALT) && (policy != state.Policy)) ? 1U : 0U;
         state.Policy = policy;
     }
@@ -136,7 +151,7 @@ class Driver
         state.Status = bench.Service();
         ScenarioVerdict verdict = ScenarioInvariants_CheckAfterPass(state);
         state.EventsJudged = bench.Events().size();
-        state.PolicyChangedSinceLastPass = false;
+        state.PolicyChangesSinceLastPass = 0U;
         return verdict;
     }
 
@@ -146,6 +161,7 @@ class Driver
     {
         SetSender(false);
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+        bench.SetReporting(true);
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
         size_t allowance = bench.Logged() + DRAIN_SLACK;
         bool idle = false; /* the script's last status says nothing about what it logged since */

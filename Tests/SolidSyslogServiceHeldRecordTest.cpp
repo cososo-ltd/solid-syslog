@@ -433,9 +433,9 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderOldestTheHeldRecordIsDroppedAn
 
     SolidSyslog_Service(solidSyslog);
 
-    /* The failed attempt, then "third" and "forth": "first" went, as did
-     * "second" when the ring made room. */
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, THRICE);
+    /* The failed attempt, the report of the loss, then "third" and "forth":
+     * "first" went, as did "second" when the ring made room. */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 4);
     STRCMP_EQUAL("forth", SenderFake_LastBufferAsString(fakeSender));
 }
 
@@ -458,8 +458,8 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, ARunOfDroppedHeldRecordsIsReportedO
 {
     HoldFirstWithTheRingFullBehindIt();
     ErrorHandlerFake_Install(nullptr);
-    SenderFake_FailNextSend(fakeSender);
-    SolidSyslog_Service(solidSyslog); /* drops "first", holds "third" */
+    SenderFake_FailSendAfter(fakeSender, 1);
+    SolidSyslog_Service(solidSyslog); /* drops "first", sends its report, holds "third" */
     FillTheRingBehindIt();
 
     SenderFake_FailNextSend(fakeSender);
@@ -500,9 +500,9 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderNewestTheHeldRecordIsKept)
 
     SolidSyslog_Service(solidSyslog);
 
-    /* The failed attempt, then "first", "second" and "third"; "forth" was
-     * refused by the ring. */
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 4);
+    /* The failed attempt, then "first", the report that the ring refused
+     * "forth", then "second" and "third". */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
     STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
 }
 
@@ -526,7 +526,9 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnce
     policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
     SolidSyslog_Service(solidSyslog);
 
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 4);
+    /* The failed attempt, then "first", the report that the ring refused
+     * "forth", then "second" and "third". */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
     STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
 }
 

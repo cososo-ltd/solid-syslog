@@ -11,6 +11,8 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogFormatter.h"
+#include "SolidSyslogPendingEvents.h"
 #include "SolidSyslogPoolAllocator.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogPrivate.h"
@@ -51,9 +53,11 @@ struct SolidSyslog* SolidSyslog_Create(const struct SolidSyslogConfig* config)
         if (SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index))
         {
             /* Each pool entry's record slot, kept beside the pool rather than
-             * in the struct so that the fallback carries none. */
-            static char records[SOLIDSYSLOG_POOL_SIZE][SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-            SolidSyslog_Initialise(&SolidSyslog_Pool[index], config, records[index], sizeof(records[index]));
+             * in the struct so that the fallback carries none. Formatter
+             * storage, so that Service formats its own report in place. */
+            static SolidSyslogFormatterStorage
+                records[SOLIDSYSLOG_POOL_SIZE][SOLIDSYSLOG_FORMATTER_STORAGE_SIZE(SOLIDSYSLOG_MAX_MESSAGE_SIZE)];
+            SolidSyslog_Initialise(&SolidSyslog_Pool[index], config, records[index], SOLIDSYSLOG_MAX_MESSAGE_SIZE);
             result = &SolidSyslog_Pool[index];
         }
         else
@@ -86,7 +90,11 @@ void SolidSyslog_Destroy(struct SolidSyslog* handle)
     bool released =
         SolidSyslogPoolAllocator_IndexIsValid(&SolidSyslog_Allocator, index) &&
         SolidSyslogPoolAllocator_FreeIfInUse(&SolidSyslog_Allocator, index, SolidSyslog_CleanupAtIndex, NULL);
-    if (!released)
+    if (released)
+    {
+        SolidSyslogPendingEvents_Clear();
+    }
+    else
     {
         SolidSyslog_Report(
             SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,

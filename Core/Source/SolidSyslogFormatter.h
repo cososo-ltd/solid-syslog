@@ -71,6 +71,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     const char* SolidSyslogFormatter_AsFormattedBuffer(struct SolidSyslogFormatter * formatter);
     size_t SolidSyslogFormatter_Length(const struct SolidSyslogFormatter* formatter);
 
+    /* The formatter's byte area, writable: where AsFormattedBuffer points,
+     * without its trim. For an owner that lends the storage to something
+     * other than the formatter between uses - the logger's record slot,
+     * which a buffer or store read fills directly. Writing through it moves
+     * nothing; the next Create on the storage starts afresh. */
+    char* SolidSyslogFormatter_Bytes(struct SolidSyslogFormatter * formatter);
+
 SOLIDSYSLOG_EXTERN_C_END
 
 #endif /* SOLIDSYSLOGFORMATTER_H */

@@ -127,3 +127,21 @@ TEST(StoreFake, WriteCountIgnoresFailedWrite)
     SolidSyslogStore_Write(store, "b", 1);
     CALLED_FAKE_ON(StoreFake_Write, store, ONCE);
 }
+
+TEST(StoreFake, IsNotTransientByDefault)
+{
+    CHECK_FALSE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(StoreFake, ATransientStoreSaysSo)
+{
+    StoreFake_SetTransient(true);
+    CHECK_TRUE(SolidSyslogStore_IsTransient(store));
+}
+
+TEST(StoreFake, ATransientStoreKeepsNothing)
+{
+    StoreFake_SetTransient(true);
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, "a", 1));
+    CALLED_FAKE_ON(StoreFake_Write, store, NEVER);
+}

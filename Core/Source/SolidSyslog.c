@@ -15,11 +15,13 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogEventSd.h"
 #include "SolidSyslogFormatter.h"
 #include "SolidSyslogMessageFormatter.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
+#include "SolidSyslogPendingEvents.h"
 #include "SolidSyslogPrivate.h"
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogScratch.h"
@@ -52,7 +54,12 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self);
+static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_t index);
+static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
+static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event);
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
@@ -104,18 +111,25 @@ static void SolidSyslog_NullClock(struct SolidSyslogTimestamp* ts);
 static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, void* context);
 static void SolidSyslog_NullHalt(void* context);
 static void SolidSyslog_InstallHalt(struct SolidSyslog* self, SolidSyslogHaltCallback configured, void* context);
+static bool SolidSyslog_ReportingAlwaysOn(void* context);
+static void SolidSyslog_InstallEventReporting(
+    struct SolidSyslog* self,
+    SolidSyslogEventReportingFunction configured,
+    void* context
+);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
 void SolidSyslog_Initialise(
     struct SolidSyslog* self,
     const struct SolidSyslogConfig* config,
-    char* record,
+    SolidSyslogFormatterStorage* recordStorage,
     size_t recordCapacity
 )
 {
     SolidSyslog_ResetToDefaults(self);
-    self->Record = record;
+    self->RecordStorage = recordStorage;
+    self->Record = SolidSyslogFormatter_Bytes(SolidSyslogFormatter_Create(recordStorage, recordCapacity));
     self->RecordCapacity = recordCapacity;
     SolidSyslog_InstallBuffer(self, config->Buffer);
     SolidSyslog_InstallSender(self, config->Sender);
@@ -128,6 +142,7 @@ void SolidSyslog_Initialise(
     SolidSyslog_InstallDiscardPolicy(self, config->GetDiscardPolicy, config->DiscardPolicyContext);
     SolidSyslog_InstallHalt(self, config->OnHalt, config->HaltContext);
     SolidSyslog_InstallScratch(self, config->Scratch);
+    SolidSyslog_InstallEventReporting(self, config->IsEventReportingOn, config->EventReportingContext);
 }
 
 void SolidSyslog_Cleanup(struct SolidSyslog* self)
@@ -153,15 +168,19 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->Format.GetProcessIdContext = NULL;
     self->Format.Sd = NULL;
     self->Format.SdCount = 0;
+    self->RecordStorage = NULL;
     self->Record = NULL;
     self->RecordCapacity = 0U;
     self->RecordLength = 0U;
     self->HoldsRecord = false;
+    self->HeldRecordIsReport = false;
     self->HeldRecordLossReported = false;
     self->GetDiscardPolicy = SolidSyslogDiscardPolicy_Default;
     self->DiscardPolicyContext = NULL;
     self->OnHalt = SolidSyslog_NullHalt;
     self->HaltContext = NULL;
+    self->IsEventReportingOn = SolidSyslog_ReportingAlwaysOn;
+    self->EventReportingContext = NULL;
     self->Halted = false;
 }
 
@@ -181,6 +200,12 @@ static void SolidSyslog_NullHeaderField(struct SolidSyslogHeaderField* field, vo
 static void SolidSyslog_NullHalt(void* context)
 {
     (void) context;
+}
+
+static bool SolidSyslog_ReportingAlwaysOn(void* context)
+{
+    (void) context;
+    return true;
 }
 
 static void SolidSyslog_InstallBuffer(struct SolidSyslog* self, struct SolidSyslogBuffer* configured)
@@ -310,6 +335,19 @@ static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSys
     }
 }
 
+static void SolidSyslog_InstallEventReporting(
+    struct SolidSyslog* self,
+    SolidSyslogEventReportingFunction configured,
+    void* context
+)
+{
+    if (configured != NULL)
+    {
+        self->IsEventReportingOn = configured;
+        self->EventReportingContext = context;
+    }
+}
+
 static void SolidSyslog_InstallStructuredData(
     struct SolidSyslog* self,
     struct SolidSyslogStructuredData** configured,
@@ -422,6 +460,11 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(self);
     bool dealtWith = !self->Halted && SolidSyslog_DealWithHeldRecord(self);
 
+    if (dealtWith && !self->Halted && SolidSyslog_HoldPendingReport(self))
+    {
+        dealtWith = SolidSyslog_DealWithHeldRecord(self);
+    }
+
     while (dealtWith && !self->Halted && SolidSyslog_HoldNextRecord(self))
     {
         drained = true;
@@ -436,14 +479,16 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
  * its policy already, and the same policy decides the head: under Oldest it is
  * the next to go, so the buffer's head is taken in its place; under Halt the
  * logger stops, as it does when the store refuses a record; under Newest the
- * held record is kept and retried. */
+ * held record is kept and retried. A report is kept under Oldest too: it is
+ * the account of a loss rather than a record the buffer took, and dropping it
+ * would lose the account and start a loss of its own. */
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self)
 {
     if (self->HoldsRecord && SolidSyslogBuffer_IsFull(self->Buffer))
     {
         enum SolidSyslogDiscardPolicy policy = self->GetDiscardPolicy(self->DiscardPolicyContext);
 
-        if (policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST)
+        if ((policy == SOLIDSYSLOG_DISCARD_POLICY_OLDEST) && !self->HeldRecordIsReport)
         {
             SolidSyslog_DropHeldRecord(self);
         }
@@ -453,13 +498,13 @@ static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidS
         }
         else
         {
-            /* Newest: the held record keeps its place. */
+            /* Newest, or a report under Oldest: the held record keeps its place. */
         }
     }
 }
 
 /* The run is marked before the report, so a handler that logs cannot repeat
- * it; it ends when a held record is dealt with. */
+ * it; it ends when a held record from the buffer is dealt with. */
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self)
 {
     bool runStarted = !self->HeldRecordLossReported;
@@ -481,6 +526,7 @@ static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self)
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self)
 {
     self->HoldsRecord = SolidSyslogBuffer_Read(self->Buffer, self->Record, self->RecordCapacity, &self->RecordLength);
+    self->HeldRecordIsReport = false;
 
     return self->HoldsRecord;
 }
@@ -492,10 +538,18 @@ static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self)
     if (self->HoldsRecord)
     {
         self->HoldsRecord = !SolidSyslog_StoreOrSenderTakesHeldRecord(self);
-        self->HeldRecordLossReported = self->HoldsRecord && self->HeldRecordLossReported;
+        self->HeldRecordLossReported = self->HeldRecordLossReported && !SolidSyslog_IsBufferRecordDealtWith(self);
     }
 
     return !self->HoldsRecord;
+}
+
+/* Only a record from the buffer ends a run of drops. The report of a drop is
+ * made in the pass that dropped it, so a report that ended the run would have
+ * every drop in it reported again. */
+static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog* self)
+{
+    return !self->HoldsRecord && !self->HeldRecordIsReport;
 }
 
 /* Offers the held record to the store, and to the sender only when the store
@@ -541,6 +595,58 @@ static inline void SolidSyslog_Halt(struct SolidSyslog* self)
 {
     self->Halted = true;
     self->OnHalt(self->HaltContext);
+}
+
+/* Takes the pending event into the free slot as a report, formatted as a
+ * record of the logger's own. Says whether there was one to take. */
+static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self)
+{
+    /* A buffer loss is the one kind reported so far; the other kinds wait in
+     * the table. */
+    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
+    struct SolidSyslogErrorEvent event;
+    self->HoldsRecord = SolidSyslog_IsReportDue(self, index) && SolidSyslogPendingEvents_Take(index, &event);
+    self->HeldRecordIsReport = self->HoldsRecord;
+
+    if (self->HoldsRecord)
+    {
+        SolidSyslog_FormatReport(self, &event);
+    }
+
+    return self->HoldsRecord;
+}
+
+/* Due when there is a slot to make the report in and an event waiting; only
+ * then is the integrator's switch asked, and an event it turns down stays
+ * waiting for a pass when the switch is on. */
+static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_t index)
+{
+    return SolidSyslog_HasRecordSlot(self) && SolidSyslogPendingEvents_IsPending(index) &&
+           self->IsEventReportingOn(self->EventReportingContext);
+}
+
+/* The fallback SolidSyslog_Create returns carries no slot, so it takes no
+ * event and leaves each one for a logger that can report it. */
+static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self)
+{
+    return self->RecordStorage != NULL;
+}
+
+static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event)
+{
+    /* The MSG of every report; its MSGID and the library's SD element say
+     * which event it was. */
+    static const char reportMsg[] = "SolidSyslog event";
+    struct SolidSyslogMessage message =
+        {SOLIDSYSLOG_FACILITY_SYSLOG, event->Severity, SolidSyslogErrorCategory_Name(event->Category), reportMsg};
+    struct SolidSyslogEventSd eventSd;
+    struct SolidSyslogStructuredData* sd = SolidSyslogEventSd_Initialise(&eventSd, event);
+    struct SolidSyslogFormatter* formatter = SolidSyslogFormatter_Create(self->RecordStorage, self->RecordCapacity);
+
+    SolidSyslogMessageFormatter_Format(formatter, &message, &self->Format, &sd, 1U);
+    /* Trims a truncated multi-byte tail in place; Record already points here. */
+    (void) SolidSyslogFormatter_AsFormattedBuffer(formatter);
+    self->RecordLength = SolidSyslogFormatter_Length(formatter);
 }
 
 /* Sends one record the store hands out. The slot is the staging buffer; the

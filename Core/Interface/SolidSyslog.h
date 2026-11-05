@@ -48,16 +48,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         size_t sdCount
     );
 
-    /** Run one servicing pass (drain the buffer into the store, or straight to
-     *  the sender when the store keeps nothing, then attempt one send from the
-     *  store) and return an advisory hint for driving an event-driven loop. The
-     *  hint is never load-bearing: each call works from the live buffer and
-     *  store and from the record it holds, so a missed or spurious wake only
-     *  delays, and a fixed-delay poll loop may ignore the return. A NULL handle
-     *  is reported and returns IDLE.
+    /** Run one servicing pass and return an advisory hint for driving an
+     *  event-driven loop. A pass reports a waiting event of the library's own
+     *  (see SolidSyslogConfig.IsEventReportingOn), drains the buffer into the
+     *  store, or straight to the sender when the store keeps nothing, then
+     *  attempts one send from the store. The hint is never load-bearing: each
+     *  call works from the live buffer and store and from the record it holds,
+     *  so a missed or spurious wake only delays, and a fixed-delay poll loop
+     *  may ignore the return. A NULL handle is reported and returns IDLE.
      *
      *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing left anywhere - no record held, buffered
-     *                                      or stored; wait for the next Log.
+     *                                      or stored, and no report waiting to be made
+     *                                      while reporting is on; wait for the next Log.
      *  @retval SOLIDSYSLOG_SERVICE_READY   There is more to do: the buffer was read this
      *                                      pass, or the store still has unsent after a
      *                                      send; loop again.

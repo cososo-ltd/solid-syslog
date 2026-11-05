@@ -31,9 +31,10 @@
  *  happened, not which policy was in force. Raised as a WARNING, once per run: a run of refusals ends with the
  *  next record the buffer keeps, a run of evictions with the next write that
  *  evicts nothing. The logger raises it too, under its own source, when it
- *  drops the record it holds for the sender because the buffer filled behind
- *  it under Oldest. A full buffer clears as Service drains it, so a run
- *  usually means Service is falling behind the logging rate. */
+ *  drops the record from the buffer it holds for the sender because the
+ *  buffer filled behind it under Oldest. A full buffer clears as Service
+ *  drains it, so a run usually means Service is falling behind the logging
+ *  rate. */
 #define SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_BUFFER_BASE + 2U))
 
 #endif /* SOLIDSYSLOGBUFFERCATEGORIES_H */

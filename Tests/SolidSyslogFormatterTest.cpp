@@ -56,6 +56,7 @@ class TEST_SolidSyslogFormatter_BoundedStringTruncatesAtMaxLength_Test;
 class TEST_SolidSyslogFormatter_BoundedStringValidCodepointHiddenFromAsFormattedBufferWhenOutputTooSmall_Test;
 class TEST_SolidSyslogFormatter_BoundedStringWritesNothingWhenFull_Test;
 class TEST_SolidSyslogFormatter_BoundedStringWritesStringIntoBuffer_Test;
+class TEST_SolidSyslogFormatter_BytesAreWhereTheFormattedBufferIs_Test;
 class TEST_SolidSyslogFormatter_EscapedStringBreaksWhenReplacementDoesNotFitDecodedBudget_Test;
 class TEST_SolidSyslogFormatter_EscapedStringEscapesAllThreeSpecialsInOneValue_Test;
 class TEST_SolidSyslogFormatter_EscapedStringEscapesBackslash_Test;
@@ -101,6 +102,7 @@ class TEST_SolidSyslogFormatter_Uint32FormatsMultipleDigits_Test;
 class TEST_SolidSyslogFormatter_Uint32FormatsSingleDigit_Test;
 class TEST_SolidSyslogFormatter_Uint32FormatsZero_Test;
 class TEST_SolidSyslogFormatter_Uint32TruncatedWhenBufferTooSmall_Test;
+class TEST_SolidSyslogFormatter_WritingThroughBytesMovesNothing_Test;
 class TEST_SolidSyslogFormatter_ZeroSizeAsciiCharacterIsNoOp_Test;
 class TEST_SolidSyslogFormatter_ZeroSizeBoundedStringIsNoOp_Test;
 class TEST_SolidSyslogFormatter_ZeroSizeUint32IsNoOp_Test;
@@ -1049,4 +1051,18 @@ TEST(SolidSyslogFormatter, NilValueWritesHyphen)
     SolidSyslogFormatter_NilValue(formatter);
 
     CHECK_FORMATTED("-");
+}
+
+TEST(SolidSyslogFormatter, BytesAreWhereTheFormattedBufferIs)
+{
+    formatAsciiCharacter('A');
+
+    POINTERS_EQUAL(SolidSyslogFormatter_AsFormattedBuffer(formatter), SolidSyslogFormatter_Bytes(formatter));
+}
+
+TEST(SolidSyslogFormatter, WritingThroughBytesMovesNothing)
+{
+    SolidSyslogFormatter_Bytes(formatter)[0] = 'Z';
+
+    CHECK_LENGTH(0);
 }

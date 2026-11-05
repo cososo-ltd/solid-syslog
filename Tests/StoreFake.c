@@ -28,6 +28,7 @@ struct StoreFake
     bool failNextWrite;
     bool loseNextWrite;
     bool failNextRead;
+    bool transient;
 };
 
 static struct StoreFake instance;
@@ -53,6 +54,11 @@ void StoreFake_FailNextWrite(void)
     instance.failNextWrite = true;
 }
 
+void StoreFake_SetTransient(bool transient)
+{
+    instance.transient = transient;
+}
+
 void StoreFake_LoseNextWrite(void)
 {
     instance.loseNextWrite = true;
@@ -71,6 +77,11 @@ int StoreFake_WriteCallCount(struct SolidSyslogStore* store)
 static enum SolidSyslogStoreWriteResult Write(struct SolidSyslogStore* self, const void* data, size_t size)
 {
     struct StoreFake* fake = (struct StoreFake*) self;
+
+    if (fake->transient)
+    {
+        return SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
+    }
 
     if (fake->failNextWrite)
     {
@@ -146,10 +157,9 @@ static bool HasUnsent(struct SolidSyslogStore* self)
 }
 
 /* StoreFake models a real store - a Write rejection is a policy decision,
- * not a "please try elsewhere" signal. Service must not bypass to the
- * sender on rejection. */
+ * not a "please try elsewhere" signal, and Service must not bypass to the
+ * sender on rejection - unless a test has made it transient. */
 static bool IsTransient(struct SolidSyslogStore* self)
 {
-    (void) self;
-    return false;
+    return ((struct StoreFake*) self)->transient;
 }

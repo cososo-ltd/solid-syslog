@@ -17,10 +17,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** A structured-data source. Implementors embed this as the first member of
      *  their struct so Format can downcast @c base back to the instance.
      *
-     *  Format runs inside SolidSyslog_Log, on the application's thread, so an
-     *  implementation that blocks stalls the caller's logging. Writing nothing
-     *  is a valid answer - a message where no source writes emits NILVALUE - so
-     *  a source with nothing to report need not invent a value. */
+     *  Format runs on the task that formats the message: inside
+     *  SolidSyslog_Log on any task that logs and, for the SDs given at Create,
+     *  inside SolidSyslog_Service when the logger reports one of its own
+     *  events. Those calls can overlap, so a source reached from more than one
+     *  task must be safe to call concurrently, and one that blocks stalls the
+     *  task that called it. Writing nothing is a valid answer - a message where
+     *  no source writes emits NILVALUE - so a source with nothing to report
+     *  need not invent a value. */
     struct SolidSyslogStructuredData
     {
         /** Write this source's SD-ELEMENT(s) into @p element. @p base is this

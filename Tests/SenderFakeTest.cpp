@@ -124,6 +124,22 @@ TEST(SenderFake, FailNextSendOnlyAffectsOneSend)
     CHECK_TRUE(SolidSyslogSender_Send(sender, "b", 1));
 }
 
+TEST(SenderFake, FailSendAfterAcceptsThatManySendsFirst)
+{
+    SenderFake_FailSendAfter(sender, 2);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, "a", 1));
+    CHECK_TRUE(SolidSyslogSender_Send(sender, "b", 1));
+    CHECK_FALSE(SolidSyslogSender_Send(sender, "c", 1));
+}
+
+TEST(SenderFake, FailSendAfterOnlyAffectsOneSend)
+{
+    SenderFake_FailSendAfter(sender, 1);
+    SolidSyslogSender_Send(sender, "a", 1);
+    SolidSyslogSender_Send(sender, "b", 1);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, "c", 1));
+}
+
 // clang-format off
 TEST_GROUP(SenderFakeInstances)
 {
