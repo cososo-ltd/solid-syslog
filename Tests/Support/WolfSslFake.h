@@ -105,7 +105,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     size_t WolfSslFake_LastRngGenerateBlockLen(void);
     void WolfSslFake_SetRngGenerateBlockFails(bool fails);
 
-    /* wc_HashGetDigestSize / wc_Hash - the stream's certificate digest. The
+    /* wc_HashGetDigestSize / wc_Hash_ex - the stream's certificate digest. The
      * digest of anything is fixed by the algorithm, so a test can write the
        pin that matches it: SHA-256 is 32 bytes of 0x5A, SHA-1 20 bytes of
        0x1A. Any other type is unavailable, as either of these is once marked
@@ -114,6 +114,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     enum SolidSyslogTlsHashAlgorithm WolfSslFake_LastHashAlgorithm(void);
     const void* WolfSslFake_LastHashData(void);
     size_t WolfSslFake_LastHashDataLen(void);
+    void* WolfSslFake_LastHashHeap(void);
     void WolfSslFake_SetHashUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm);
 
     /* wc_InitDecodedCert / wc_ParseCert / wc_FreeDecodedCert - the stream's

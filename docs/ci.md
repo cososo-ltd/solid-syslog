@@ -43,6 +43,8 @@ without renaming what's already there.
 | `bdd-freertos-qemu-lwip` | - | The same scenarios against the lwIP target ELF |
 | `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
 | `bdd-cmsis-qemu-lwip` | - | The same scenarios again, against that target's ELF |
+| `build-cmsis-target-lwip-wolfssl` | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack in place of Mbed TLS, with wolfSSL compiled from source under the target's `user_settings.h`; asserts from the ELF's symbols which TLS pack was linked |
+| `bdd-cmsis-qemu-lwip-wolfssl` | - | The QEMU scenarios against that ELF, less the one cell the wolfSSL platform page lists as a shortfall |
 | `consumer-smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `consumer-smoke-freertos-cross` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `verify-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
@@ -77,7 +79,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 |---|---|
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
 | Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
-| wolfSSL (security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl`, the Linux target without OpenSSL, running every scenario that needs no TLS |
+| wolfSSL (`SolidSyslogWolfSslStream`, security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl`, the Linux target without OpenSSL; `build-cmsis-target-lwip-wolfssl` and `bdd-cmsis-qemu-lwip-wolfssl`, a wolfSSL built from source under QEMU |
 | FreeRTOS-Plus-TCP | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-plustcp` end to end under QEMU |
 | lwIP (Raw API) | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
 | lwIP (Sockets API) | `build-freertos-host-tdd-plustcp` against fakes; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |

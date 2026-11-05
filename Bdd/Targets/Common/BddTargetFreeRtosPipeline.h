@@ -81,9 +81,13 @@ void BddTargetFreeRtosPipeline_Exit(int status);
 
 /* Stack sizes in bytes, the unit BddTargetOsPrimitives_Spawn takes. Each
  * main.c spawns the threads itself so that it controls the timing - the
- * PlusTcp target from its network-up hook, the lwIP targets from main(). */
+ * PlusTcp target from its network-up hook, the lwIP targets from main(). The
+ * service thread carries the TLS handshake, so a build whose TLS library needs
+ * more says so on its command line. */
 #define BDD_TARGET_INTERACTIVE_STACK_BYTES 24576U
+#ifndef BDD_TARGET_SERVICE_STACK_BYTES
 #define BDD_TARGET_SERVICE_STACK_BYTES 8192U
+#endif
 
 /* Entry points for the two shared threads. The Service thread self-registers
  * its handle, so neither needs the caller to plumb anything. */

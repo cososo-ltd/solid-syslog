@@ -231,10 +231,24 @@ What a connection costs is wolfSSL's: a `WOLFSSL_CTX` and a `WOLFSSL` built at
 Open from the allocator your build uses, on the `Heap` hint if it reads one,
 and freed at Close. Nothing of one connection survives into the next.
 
+On a `WOLFSSL_STATIC_MEMORY` build the hint is the `WOLFSSL_HEAP_HINT` that
+`wc_LoadStaticMemory` gives you for your region, loaded for general use. The
+stream makes every request of its own against it: the context, the session,
+the pin digest and the certificate it re-reads for a pinned peer. Size the
+region from a run of your own: what a handshake asks for depends on the key
+sizes and suites your collector negotiates.
+
 The policies allocate nothing themselves. Each seal and open builds one
 wolfCrypt context on the stack and frees it before returning, so the cost is
 what wolfCrypt's `Hmac` or `Aes` needs under your build. The key copy lives on
 the stack for the one call and is wiped with `wc_ForceZero`.
+
+The policies pass wolfCrypt no heap hint. A build in which those calls
+allocate - `WOLFSSL_SMALL_STACK_CACHE` is one - takes the memory from wherever
+wolfSSL resolves a request with no hint: the global hint if you have set one
+with `wolfSSL_SetGlobalHeapHint`, the default allocator otherwise. The `WC_RNG`
+you initialise for the AES-GCM policy is yours, so `wc_InitRng_ex` puts it
+where you choose.
 
 ## Teardown
 

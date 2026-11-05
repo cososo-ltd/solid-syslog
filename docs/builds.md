@@ -197,6 +197,16 @@ The ELF lands at
 `build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
 See `Bdd/Targets/CmsisLwip/README.md` for run / GDB-attach instructions.
 
+`cmsis-cross-lwip-wolfssl` builds the same target with `SOLIDSYSLOG_PLATFORMS`
+naming `WolfSsl` and not `MbedTls`. wolfSSL is compiled from the source tree at
+`WOLFSSL_SOURCE_DIR`, which the cross image exports, under the target's own
+`user_settings.h`. It drives the `bdd-cmsis-qemu-lwip-wolfssl` CI lane.
+
+```bash
+cmake --preset cmsis-cross-lwip-wolfssl
+cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
+```
+
 ## Tunable overrides - `tunable-override-debug` / `msvc-tunable-override`
 
 Both build against `Tests/Fixtures/TunableOverrides.h`, proving

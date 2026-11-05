@@ -295,7 +295,8 @@ adjust those by hand.
   merge, and the budget is short on purpose
 - Windows MSVC + BDD + integration: depend on tools you may not have
 - `bdd-linux-syslog-ng`, `bdd-windows-otel`, `bdd-freertos-qemu-plustcp`,
-  `bdd-freertos-qemu-lwip`, `bdd-cmsis-qemu-lwip`: heavy multi-container stacks
+  `bdd-freertos-qemu-lwip`, `bdd-cmsis-qemu-lwip`, `bdd-cmsis-qemu-lwip-wolfssl`:
+  heavy multi-container stacks
 
 If CI surfaces a finding you missed locally, fix in another commit on the
 same branch, cheaper than running every CI lane on every push.
