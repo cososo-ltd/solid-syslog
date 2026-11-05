@@ -144,7 +144,7 @@ mutable SD object across threads that log concurrently: if one thread repoints
 each call site its own SD instance, or keep the object immutable. A stateless SD (like the
 first example) is never affected. An SD in `Config.Sd[]` is formatted for every record,
 including the logger's reports of its own events from `SolidSyslog_Service`, so it is
-always shared; the [Format contract](../api/SolidSyslogStructuredDataDefinition_8h.md)
+always shared; the [Format contract](api/structSolidSyslogStructuredData.md)
 states what that requires.
 
 ## Values and escaping
