@@ -80,6 +80,24 @@ if(SOLIDSYSLOG_MBEDTLS)
 endif()
 
 if(SOLIDSYSLOG_WOLFSSL)
+    # The wolfSSL suites run every anchored-pin body against this install: the
+    # stream suites take the in-callback body from its flags, and the
+    # after-handshake executables preset theirs. The pack is content with
+    # either flag; the suites need both. Each result is checked afresh, so a
+    # corrected path is seen on the next configure.
+    set(CMAKE_REQUIRED_INCLUDES "${SOLIDSYSLOG_WOLFSSL_DIR}/include")
+    foreach(flag WOLFSSL_ALWAYS_VERIFY_CB KEEP_PEER_CERT)
+        unset(SOLIDSYSLOG_WOLFSSL_DEFINES_${flag} CACHE)
+        check_symbol_exists(${flag} "wolfssl/options.h;wolfssl/wolfcrypt/settings.h"
+            SOLIDSYSLOG_WOLFSSL_DEFINES_${flag})
+        if(NOT SOLIDSYSLOG_WOLFSSL_DEFINES_${flag})
+            message(FATAL_ERROR
+                "Tests: the wolfSSL suites need the install at SOLIDSYSLOG_WOLFSSL_DIR "
+                "('${SOLIDSYSLOG_WOLFSSL_DIR}') built with ${flag}, because they run every "
+                "anchored-pin body against it.")
+        endif()
+    endforeach()
+    unset(CMAKE_REQUIRED_INCLUDES)
     add_subdirectory(WolfSsl)
     add_subdirectory(WolfSslIntegration)
 endif()

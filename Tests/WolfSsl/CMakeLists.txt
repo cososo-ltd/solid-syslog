@@ -81,3 +81,228 @@ set_target_properties(SolidSyslogWolfSslAesGcmPolicyTest PROPERTIES
 )
 
 solidsyslog_add_test(SolidSyslogWolfSslAesGcmPolicyTest)
+
+# SolidSyslogWolfSslNullCredentials - the credentials Null object. Its Install
+# takes a WOLFSSL_CTX* it never dereferences, so this exe needs neither the
+# fakes nor the upstream include path.
+add_executable(SolidSyslogWolfSslNullCredentialsTest
+    SolidSyslogWolfSslNullCredentialsTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
+)
+
+target_link_libraries(SolidSyslogWolfSslNullCredentialsTest PRIVATE
+    ${PROJECT_NAME}
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslNullCredentialsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslNullCredentialsTest)
+
+# SolidSyslogWolfSslStream pool: Create / Destroy over the static pool, the
+# config validation and the config-lock slot walk.
+add_executable(SolidSyslogWolfSslStreamPoolTest
+    SolidSyslogWolfSslStreamPoolTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamPoolTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamPoolTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamPoolTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamPoolTest)
+
+# SolidSyslogWolfSslStream: vtable behaviour driven against WolfSslTlsFake,
+# the link-time double for the wolfSSL TLS API.
+add_executable(SolidSyslogWolfSslStreamTest
+    SolidSyslogWolfSslStreamTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamTest PRIVATE
+    ${PROJECT_NAME}
+    AddressFake
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamTest)
+
+# SolidSyslogWolfSslStream with the after-handshake body selected - the build
+# with KEEP_PEER_CERT and without WOLFSSL_ALWAYS_VERIFY_CB, which no wolfSSL in
+# the image is, so the selector is preset. The fakes' build has both flags, so
+# the preset is one the flags can honour.
+add_executable(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest
+    SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_compile_definitions(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PRIVATE
+    SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK=SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PRIVATE
+    ${PROJECT_NAME}
+    AddressFake
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamAnchoredPinsAfterHandshakeTest)
+
+# SolidSyslogWolfSslStream with the refused body selected - the build with
+# neither flag. The baseline wolfSSL in the image is one, but the fakes are
+# built against the other, so the selector is preset here too.
+add_executable(SolidSyslogWolfSslStreamAnchoredPinsRefusedTest
+    SolidSyslogWolfSslStreamAnchoredPinsRefusedTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Tests/WolfSslCredentialsFake.c
+)
+
+target_compile_definitions(SolidSyslogWolfSslStreamAnchoredPinsRefusedTest PRIVATE
+    SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK=SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED
+)
+
+target_link_libraries(SolidSyslogWolfSslStreamAnchoredPinsRefusedTest PRIVATE
+    ${PROJECT_NAME}
+    AddressFake
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    StreamFake
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslStreamAnchoredPinsRefusedTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslStreamAnchoredPinsRefusedTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslStreamAnchoredPinsRefusedTest)
+
+# SolidSyslogWolfSslPemBufferCredentials - the credentials backend that loads
+# PEM from caller-owned buffers onto the context. Driven against WolfSslTlsFake,
+# which captures what reached wolfSSL_CTX_load_verify_buffer and the client
+# credential pair.
+add_executable(SolidSyslogWolfSslPemBufferCredentialsTest
+    SolidSyslogWolfSslPemBufferCredentialsTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentialsStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
+)
+
+target_link_libraries(SolidSyslogWolfSslPemBufferCredentialsTest PRIVATE
+    ${PROJECT_NAME}
+    ConfigLockFake
+    ErrorHandlerFake
+    WolfSslFakes
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(SolidSyslogWolfSslPemBufferCredentialsTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Interface
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source
+    ${CMAKE_SOURCE_DIR}/Core/Interface
+    ${CMAKE_SOURCE_DIR}/Core/Source
+    ${CMAKE_SOURCE_DIR}/Tests
+)
+
+set_target_properties(SolidSyslogWolfSslPemBufferCredentialsTest PROPERTIES
+    C_CPPCHECK ""
+    CXX_CPPCHECK ""
+)
+
+solidsyslog_add_test(SolidSyslogWolfSslPemBufferCredentialsTest)

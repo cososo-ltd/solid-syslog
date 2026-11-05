@@ -18,6 +18,9 @@ static const char* const BDD_TARGET_MTLS_CA_BUNDLE_PATH = "Bdd/syslog-ng/tls/ca.
 static const char* const BDD_TARGET_MTLS_CLIENT_CERT_CHAIN_PATH = "Bdd/syslog-ng/tls/client.pem";
 static const char* const BDD_TARGET_MTLS_CLIENT_KEY_PATH = "Bdd/syslog-ng/tls/client.key";
 
+/* As the TLS transport's default: the collector's fully qualified name. */
+static const char* const BDD_TARGET_MTLS_DEFAULT_SERVER_NAME = "syslog-ng.bdd.test";
+
 static const char* mtlsHost = "syslog-ng";
 static const char* mtlsServerName = NULL;
 
@@ -54,7 +57,7 @@ const char* BddTargetMtlsConfig_GetCaBundlePath(void)
 
 const char* BddTargetMtlsConfig_GetServerName(void)
 {
-    return (mtlsServerName != NULL) ? mtlsServerName : BddTargetMtlsConfig_GetHost();
+    return (mtlsServerName != NULL) ? mtlsServerName : BDD_TARGET_MTLS_DEFAULT_SERVER_NAME;
 }
 
 const char* BddTargetMtlsConfig_GetClientCertChainPath(void)

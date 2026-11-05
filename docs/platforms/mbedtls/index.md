@@ -114,7 +114,10 @@ From the TLS-stream codes it does not raise `CONTEXT_INIT_FAILED`. There is no
 separate context to build here - the configuration is brought up from a library
 preset, and a failure at that point is `DEFAULTS_NOT_APPLIED`. Nor
 `CIPHER_POLICY_REJECTED`: setting the ciphersuite list cannot fail, so a policy
-naming only ciphersuites the build lacks surfaces as a refused handshake.
+naming only ciphersuites the build lacks surfaces as a refused handshake. Nor
+`PINS_WITH_ANCHORS_UNSUPPORTED`: Mbed TLS calls the verify callback for every
+certificate in the chain on every build, so a pin beside a CA chain is always
+checked.
 
 From the credentials codes it does not raise `TRUST_ANCHORS_NOT_LOADED`. Neither
 shipped source loads anchors from anywhere: one is handed material the integrator

@@ -50,10 +50,10 @@ add_executable(MbedTlsIntegrationTests
     SocketStreamTest.cpp
     SolidSyslogMbedTlsPemBufferCredentialsTest.cpp
     SolidSyslogMbedTlsAesGcmPolicyIntegrationTest.cpp
-    SocketStream.c
     MbedTlsTestCert.c
     MbedTlsTestServer.c
     ${CMAKE_SOURCE_DIR}/Tests/Support/SafeStringStandard.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/SocketStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsStreamStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c

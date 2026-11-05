@@ -15,4 +15,35 @@
 #endif
 #include <wolfssl/wolfcrypt/settings.h>
 
+/* How a pin is checked where trust anchors are installed too. wolfSSL calls
+ * the verify callback on a leaf that verifies only under
+ * WOLFSSL_ALWAYS_VERIFY_CB, so without it a chain that verifies never reaches
+ * the pin; KEEP_PEER_CERT keeps the leaf for a check once the handshake is
+ * done; with neither, the combination is refused. Each choice is one body,
+ * in its own translation unit. A build may choose a later one than its flags
+ * allow by defining SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK itself, and is
+ * stopped here if it asks for one its flags cannot honour. */
+#define SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_IN_CALLBACK 1
+#define SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE 2
+#define SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED 3
+
+#ifndef SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK
+#if defined(WOLFSSL_ALWAYS_VERIFY_CB)
+#define SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_IN_CALLBACK
+#elif defined(KEEP_PEER_CERT)
+#define SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
+#else
+#define SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_REFUSED
+#endif
+#endif
+
+#if (SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_IN_CALLBACK) && \
+    !defined(WOLFSSL_ALWAYS_VERIFY_CB)
+#error "SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK asks for the in-callback check, which needs WOLFSSL_ALWAYS_VERIFY_CB."
+#endif
+#if (SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK == SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE) && \
+    !defined(KEEP_PEER_CERT)
+#error "SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK asks for the after-handshake check, which needs KEEP_PEER_CERT."
+#endif
+
 #endif /* SOLIDSYSLOGWOLFSSLSETTINGS_H */

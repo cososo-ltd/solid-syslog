@@ -9,18 +9,24 @@ unless a scenario says otherwise, so anything **CA B** signs is a peer the
 target cannot chain. Each server certificate carries exactly one fault, so a
 scenario that refuses a connection has only one thing it can be refusing for.
 
+Each collector is named twice: by the bare service name the compose network
+resolves, and by a fully qualified name under the reserved `.test` domain,
+which is what a target declares as the identity it expects. A TLS library may
+validate a declared name as a hostname and refuse one with a single label, so
+the qualified form is the one the scenarios use.
+
 | File | Issuer | Name it claims | Used for |
 |---|---|---|---|
 | `ca.pem` / `ca.key` | self | CA A | the trust anchor a target is given, and the issuer syslog-ng checks a client against |
 | `ca-b.pem` / `ca-b.key` | self | CA B | never handed over as an anchor, so its leaves do not chain; also what a target rotates *to* |
 | `intermediate.pem` / `.key` | CA A | intermediate | issues a leaf that has to be presented with its issuer |
-| `server.pem` / `.key` | CA A | `syslog-ng` | the collector on the happy path |
-| `server-untrusted.pem` / `.key` | CA B | `syslog-ng` | right name, unchainable issuer |
+| `server.pem` / `.key` | CA A | `syslog-ng.bdd.test`, `syslog-ng` | the collector on the happy path |
+| `server-untrusted.pem` / `.key` | CA B | `syslog-ng.bdd.test`, `syslog-ng` | right name, unchainable issuer |
 | `server-wrongname.pem` / `.key` | CA A | `other-collector` | right issuer, wrong identity |
-| `server-selfsigned.pem` / `.key` | self | `syslog-ng` | no chain at all, authorised by fingerprint alone |
-| `server-chained.pem` / `.key` | intermediate | `syslog-ng` | a chain checked above depth zero |
+| `server-selfsigned.pem` / `.key` | self | `syslog-ng.bdd.test`, `syslog-ng` | no chain at all, authorised by fingerprint alone |
+| `server-chained.pem` / `.key` | intermediate | `syslog-ng.bdd.test`, `syslog-ng` | a chain checked above depth zero |
 | `server-chained-fullchain.pem` | - | - | the leaf and its issuer, which is what the listener presents |
-| `server-b.pem` / `.key` | CA B | `collector-b` | the second collector a target is redirected to |
+| `server-b.pem` / `.key` | CA B | `collector-b.bdd.test`, `collector-b` | the second collector a target is redirected to |
 | `client.pem` / `.key` | CA A | `solidsyslog-bdd-client` | the mutual-TLS identity SolidSyslog presents |
 
 Validity is 10 years from generation. Nothing here is expired or not yet valid

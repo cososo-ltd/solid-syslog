@@ -14,13 +14,41 @@ set(WOLFSSL_INTEGRATION_SOURCES
     main.cpp
     SolidSyslogWolfSslHmacSha256PolicyIntegrationTest.cpp
     SolidSyslogWolfSslAesGcmPolicyIntegrationTest.cpp
+    SolidSyslogWolfSslStreamIntegrationTest.cpp
     WolfSslTestRng.c
+    WolfSslTestServer.c
+    WolfSslTestLibrary.c
+    WolfSslTestMaterial.c
+    ${CMAKE_SOURCE_DIR}/Tests/Support/SocketStream.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256Policy.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslHmacSha256PolicyStatic.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyGcm.c
     ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicyStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsAfterHandshake.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsInCallback.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamAnchoredPinsRefused.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslStreamStatic.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslNullCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentials.c
+    ${CMAKE_SOURCE_DIR}/Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentialsStatic.c
 )
+
+# The certificates the stream tests present. Neither wolfSSL build can issue
+# one, so the OpenSSL command-line tool makes them at build time, into the
+# build tree, when the test executables are built: a validity window that has
+# closed or not yet opened needs a generator that can back-date, and committing
+# keys is avoided. The suite reads them by path from WOLFSSL_TEST_MATERIAL_DIR.
+set(WOLFSSL_TEST_MATERIAL_DIR "${CMAKE_CURRENT_BINARY_DIR}/material")
+add_custom_command(
+    OUTPUT "${WOLFSSL_TEST_MATERIAL_DIR}/generated.stamp"
+    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/material/generate.sh" "${WOLFSSL_TEST_MATERIAL_DIR}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/material/generate.sh"
+    COMMENT "Generating the wolfSSL integration test certificates"
+    VERBATIM
+)
+add_custom_target(WolfSslTestMaterial DEPENDS "${WOLFSSL_TEST_MATERIAL_DIR}/generated.stamp")
 
 # One executable per wolfSSL install. `prefix` holds include/ and lib/.
 function(solidsyslog_add_wolfssl_integration target prefix)
@@ -30,8 +58,13 @@ function(solidsyslog_add_wolfssl_integration target prefix)
             "(include/wolfssl/options.h and lib/libwolfssl.a).")
     endif()
     add_executable(${target} ${WOLFSSL_INTEGRATION_SOURCES})
+    add_dependencies(${target} WolfSslTestMaterial)
+    target_compile_definitions(${target} PRIVATE
+        WOLFSSL_TEST_MATERIAL_DIR="${WOLFSSL_TEST_MATERIAL_DIR}"
+    )
     target_link_libraries(${target} PRIVATE
         ${PROJECT_NAME}
+        AddressFake
         CppUTest
         CppUTestExt
         ${prefix}/lib/libwolfssl.a
@@ -59,6 +92,14 @@ function(solidsyslog_add_wolfssl_integration target prefix)
 endfunction()
 
 solidsyslog_add_wolfssl_integration(WolfSslIntegrationTests "${SOLIDSYSLOG_WOLFSSL_DIR}")
+
+# The after-handshake body has no wolfSSL in the image to select it - that needs
+# KEEP_PEER_CERT without WOLFSSL_ALWAYS_VERIFY_CB - so the build with both flags
+# runs it by preset, which the pack allows because the flags can honour it.
+solidsyslog_add_wolfssl_integration(WolfSslAfterHandshakeIntegrationTests "${SOLIDSYSLOG_WOLFSSL_DIR}")
+target_compile_definitions(WolfSslAfterHandshakeIntegrationTests PRIVATE
+    SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK=SOLIDSYSLOG_WOLFSSL_ANCHORED_PIN_CHECK_AFTER_HANDSHAKE
+)
 if(SOLIDSYSLOG_WOLFSSL_BASELINE_DIR)
     solidsyslog_add_wolfssl_integration(WolfSslBaselineIntegrationTests "${SOLIDSYSLOG_WOLFSSL_BASELINE_DIR}")
 endif()

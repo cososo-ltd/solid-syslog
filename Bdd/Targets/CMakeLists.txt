@@ -43,11 +43,10 @@ if(SOLIDSYSLOG_POSIX)
             Common/BddTargetMtlsConfig.c
         )
     elseif(SOLIDSYSLOG_WOLFSSL)
-        # The TLS and mTLS `set` holders are pack-neutral; the sender over the
-        # wolfSSL stream arrives with S34.02, until when TLS is unavailable.
         list(APPEND LINUX_SOURCES
             Common/BddTargetSecurityPolicy_WolfSsl.c
-            Common/BddTargetTlsSender_Unavailable.c
+            Common/BddTargetTlsSender_WolfSsl_PosixTcp.c
+            Common/BddTargetWolfSslCredentials.c
             Common/BddTargetTlsConfig.c
             Common/BddTargetMtlsConfig.c
         )

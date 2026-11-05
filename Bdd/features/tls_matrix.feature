@@ -17,6 +17,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives a message with priority "134"
     And the target reports no TLS fault
 
+  @pins
   Scenario: A pinned certificate is authorised with no chain at all
     Given the syslog oracle is running
     And the collector presents "self-signed"
@@ -26,6 +27,7 @@ Feature: TLS equivalence matrix
     Then the syslog oracle receives 1 message over tls
     And the target reports no TLS fault
 
+  @pins
   Scenario: A peer presented with its issuer satisfies both the anchor and the pin
     Given the syslog oracle is running
     And the collector presents "chained"
@@ -34,6 +36,7 @@ Feature: TLS equivalence matrix
     Then the syslog oracle receives 1 message over tls
     And the target reports no TLS fault
 
+  @pins
   Scenario: A pin set holding a certificate the collector no longer presents keeps delivering
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -51,6 +54,7 @@ Feature: TLS equivalence matrix
     Then the syslog oracle receives 1 message over tls
     And the target reports no TLS fault
 
+  @mtls
   Scenario: A device that authenticates itself as well delivers over mutual TLS
     Given the syslog oracle is running
     When the BDD target sends a syslog message with transport mtls
@@ -73,6 +77,7 @@ Feature: TLS equivalence matrix
     When the BDD target sends a syslog message with transport tls
     Then the syslog oracle receives 1 message over tls
 
+  @pins
   Scenario: A pin RFC 5425 makes mandatory but no longer trusts is honoured, and objected to
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -99,6 +104,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
+  @pins
   Scenario: A pin matching nothing the collector presents is refused
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -119,6 +125,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
+  @cipher
   Scenario: A cipher policy naming a suite the collector offers connects at the version it offers
     Given the syslog oracle is running
     And the collector presents "tls-1-2"
@@ -139,6 +146,7 @@ Feature: TLS equivalence matrix
     Then the syslog oracle receives 1 message over tls
     And the target reports no TLS fault
 
+  @cipher
   Scenario: A cipher policy the collector cannot satisfy is refused rather than quietly widened
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -167,6 +175,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
+  @pins
   Scenario: A pin does not extend the validity period of the certificate it names
     Given the syslog oracle is running
     And the collector presents "expired"
@@ -186,6 +195,7 @@ Feature: TLS equivalence matrix
     And the syslog oracle receives no message over tls
     And the BDD target is still running
 
+  @name_before_dates
   Scenario: A name that does not match is named ahead of the dates the certificate carries
     Given the syslog oracle is running
     And the collector presents "wrong-name-and-expired"
@@ -213,6 +223,7 @@ Feature: TLS equivalence matrix
     Then the target reports that delivery failed
     And the BDD target is still running
 
+  @rotation
   Scenario: Rotating the trust anchors lets a refused device deliver without a restart
     # The record the collector refused is not lost: with no store, Service holds
     # it and delivers it once the anchors are right, ahead of the next one.
@@ -227,6 +238,7 @@ Feature: TLS equivalence matrix
     And the client sends a message
     Then the syslog oracle receives 2 messages over tls
 
+  @pins @rotation
   Scenario: Rotating the pin set stops a delivering device at its next connection
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -240,6 +252,7 @@ Feature: TLS equivalence matrix
     Then the target reports TLS detail "PEER_FINGERPRINT_MISMATCHED"
     And the syslog oracle receives 1 message over tls
 
+  @rotation
   Scenario: Rotating the expected peer name stops a delivering device
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -247,11 +260,12 @@ Feature: TLS equivalence matrix
     And the BDD target is running with default transport tls
     When the client sends a message
     Then the syslog oracle receives 1 message over tls
-    When the client expects the peer name "not-the-collector"
+    When the client expects the peer name "not-the-collector.bdd.test"
     And the client sends a message
     Then the target reports TLS detail "PEER_NAME_MISMATCHED"
     And the syslog oracle receives 1 message over tls
 
+  @rotation
   Scenario: A redirected device carries the identity it expects with it
     Given the syslog oracle is running
     And the collector presents "anchor-signed"
@@ -261,11 +275,12 @@ Feature: TLS equivalence matrix
     Then the syslog oracle receives 1 message over tls
     When the client is redirected to "collector-b"
     And the client is given trust anchors "ca-b"
-    And the client expects the peer name "collector-b"
+    And the client expects the peer name "collector-b.bdd.test"
     And the client sends a message
     Then the syslog oracle receives 1 message over tls_b
     And the target reports no TLS fault
 
+  @mtls @rotation
   Scenario: Rotating in the client credential lets a refused device deliver
     # Mutual TLS is decided after the client's flight under TLS 1.3, so the first
     # record is either refused at the handshake - then Service holds it with no

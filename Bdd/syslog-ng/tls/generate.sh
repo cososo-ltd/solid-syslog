@@ -9,7 +9,11 @@
 #
 # Two certificate authorities are produced. CA A is the one a BDD target trusts
 # by default; CA B exists so a listener can present a certificate that does not
-# chain to what the target was given. No validity window here ever needs
+# chain to what the target was given. Each collector is named both as the bare
+# service name the compose network resolves and as a fully qualified name under
+# the reserved .test domain, which is what a target declares as the identity it
+# expects: a TLS library may validate a declared name as a hostname and refuse
+# one with a single label. No validity window here ever needs
 # revisiting: the sound certificates are issued for 10 years, and the ones that
 # prove what a device does outside a window carry fixed dates decades away.
 #
@@ -21,9 +25,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 DAYS=3650
-SAN_COLLECTOR="subjectAltName = DNS:syslog-ng, DNS:localhost, IP:127.0.0.1"
+SAN_COLLECTOR="subjectAltName = DNS:syslog-ng.bdd.test, DNS:syslog-ng, DNS:localhost, IP:127.0.0.1"
 SAN_OTHER="subjectAltName = DNS:other-collector"
-SAN_B="subjectAltName = DNS:collector-b, DNS:localhost, IP:127.0.0.1"
+SAN_B="subjectAltName = DNS:collector-b.bdd.test, DNS:collector-b, DNS:localhost, IP:127.0.0.1"
 
 # Fixed windows for the certificates that are meant to be outside one. Absolute
 # rather than relative to now, so regenerating never moves them.
