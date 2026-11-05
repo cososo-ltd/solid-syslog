@@ -37,6 +37,19 @@ struct SolidSyslogSender;
 struct SolidSyslogStore;
 struct SolidSyslogStream;
 
+class TEST_SolidSyslogServiceEventReport_TheLibrarysElementFollowsTheLoggersOwnSd_Test;
+class TEST_SolidSyslogServiceEventReport_TheElementNamesTheEventsSource_Test;
+class TEST_SolidSyslogServiceEventReport_TheElementNamesTheEventsCategoryAfterItsSource_Test;
+class TEST_SolidSyslogServiceEventReport_TheElementNamesTheDetailAfterTheCategory_Test;
+class TEST_SolidSyslogServiceEventReport_AnUnnamedDetailIsWrittenAsItsNumber_Test;
+class TEST_SolidSyslogServiceEventReport_ANegativeUnnamedDetailKeepsItsSign_Test;
+class TEST_SolidSyslogServiceEventReport_TheElementCarriesTheNativeCodeAfterTheDetail_Test;
+class TEST_SolidSyslogServiceEventReport_AnEventWithNoNativeCodeHasNoNativeParam_Test;
+class TEST_SolidSyslogServiceEventReport_ANativeCodeOfZeroIsStillWritten_Test;
+class TEST_SolidSyslogServiceEventReport_TheMostNegativeNativeCodeIsWrittenWhole_Test;
+class TEST_SolidSyslogServiceEventReport_AnEventWithNoSourceHasNoSourceParam_Test;
+class TEST_SolidSyslogServiceEventReport_ASourceWithNoNameHasNoSourceParam_Test;
+
 static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource", nullptr};
 static const int32_t TEST_DETAIL = 7;
 
@@ -117,6 +130,10 @@ TEST_GROUP_BASE(SolidSyslogServiceEventReport, PassthroughReportBase)
 
 // clang-format on
 
+/* The SDATA of the last record the sender took, which a report's checks read. */
+#define CHECK_SDATA_CONTAINS(expected) STRCMP_CONTAINS(expected, LastField(SYSLOG_FIELD_SDATA).c_str())
+#define CHECK_SDATA_EQUAL(expected) STRCMP_EQUAL(expected, LastField(SYSLOG_FIELD_SDATA).c_str())
+
 TEST(SolidSyslogServiceEventReport, APendingBufferLossIsSentByTheNextService)
 {
     RaiseBufferLoss();
@@ -173,7 +190,7 @@ TEST(SolidSyslogServiceEventReport, TheLibrarysElementFollowsTheLoggersOwnSd)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS("[spy][solidsyslog@67478", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS("[spy][solidsyslog@67478");
 }
 
 TEST(SolidSyslogServiceEventReport, TheElementNamesTheEventsSource)
@@ -182,7 +199,7 @@ TEST(SolidSyslogServiceEventReport, TheElementNamesTheEventsSource)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"([solidsyslog@67478 source="TestSource")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"([solidsyslog@67478 source="TestSource")");
 }
 
 TEST(SolidSyslogServiceEventReport, TheElementNamesTheEventsCategoryAfterItsSource)
@@ -191,7 +208,7 @@ TEST(SolidSyslogServiceEventReport, TheElementNamesTheEventsCategoryAfterItsSour
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(source="TestSource" category="BUFFER_RECORDS_LOST")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(source="TestSource" category="BUFFER_RECORDS_LOST")");
 }
 
 static const char* SevenIsNamed(int32_t detail)
@@ -206,7 +223,7 @@ TEST(SolidSyslogServiceEventReport, TheElementNamesTheDetailAfterTheCategory)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(category="BUFFER_RECORDS_LOST" detail="SEVEN")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(category="BUFFER_RECORDS_LOST" detail="SEVEN")");
 }
 
 TEST(SolidSyslogServiceEventReport, AnUnnamedDetailIsWrittenAsItsNumber)
@@ -215,7 +232,7 @@ TEST(SolidSyslogServiceEventReport, AnUnnamedDetailIsWrittenAsItsNumber)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(detail="7")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(detail="7")");
 }
 
 TEST(SolidSyslogServiceEventReport, ANegativeUnnamedDetailKeepsItsSign)
@@ -224,7 +241,7 @@ TEST(SolidSyslogServiceEventReport, ANegativeUnnamedDetailKeepsItsSign)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(detail="-3")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(detail="-3")");
 }
 
 TEST(SolidSyslogServiceEventReport, TheElementCarriesTheNativeCodeAfterTheDetail)
@@ -239,7 +256,7 @@ TEST(SolidSyslogServiceEventReport, TheElementCarriesTheNativeCodeAfterTheDetail
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(detail="7" native="-5")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(detail="7" native="-5")");
 }
 
 TEST(SolidSyslogServiceEventReport, AnEventWithNoNativeCodeHasNoNativeParam)
@@ -248,10 +265,7 @@ TEST(SolidSyslogServiceEventReport, AnEventWithNoNativeCodeHasNoNativeParam)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_EQUAL(
-        R"([spy][solidsyslog@67478 source="TestSource" category="BUFFER_RECORDS_LOST" detail="7"])",
-        LastField(SYSLOG_FIELD_SDATA).c_str()
-    );
+    CHECK_SDATA_EQUAL(R"([spy][solidsyslog@67478 source="TestSource" category="BUFFER_RECORDS_LOST" detail="7"])");
 }
 
 TEST(SolidSyslogServiceEventReport, ANativeCodeOfZeroIsStillWritten)
@@ -266,7 +280,7 @@ TEST(SolidSyslogServiceEventReport, ANativeCodeOfZeroIsStillWritten)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(native="0")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(native="0")");
 }
 
 TEST(SolidSyslogServiceEventReport, TheMostNegativeNativeCodeIsWrittenWhole)
@@ -281,7 +295,7 @@ TEST(SolidSyslogServiceEventReport, TheMostNegativeNativeCodeIsWrittenWhole)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_CONTAINS(R"(native="-2147483648")", LastField(SYSLOG_FIELD_SDATA).c_str());
+    CHECK_SDATA_CONTAINS(R"(native="-2147483648")");
 }
 
 TEST(SolidSyslogServiceEventReport, AnEventWithNoSourceHasNoSourceParam)
@@ -290,10 +304,7 @@ TEST(SolidSyslogServiceEventReport, AnEventWithNoSourceHasNoSourceParam)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_EQUAL(
-        R"([spy][solidsyslog@67478 category="BUFFER_RECORDS_LOST" detail="7"])",
-        LastField(SYSLOG_FIELD_SDATA).c_str()
-    );
+    CHECK_SDATA_EQUAL(R"([spy][solidsyslog@67478 category="BUFFER_RECORDS_LOST" detail="7"])");
 }
 
 TEST(SolidSyslogServiceEventReport, ASourceWithNoNameHasNoSourceParam)
@@ -303,10 +314,7 @@ TEST(SolidSyslogServiceEventReport, ASourceWithNoNameHasNoSourceParam)
 
     SolidSyslog_Service(solidSyslog);
 
-    STRCMP_EQUAL(
-        R"([spy][solidsyslog@67478 category="BUFFER_RECORDS_LOST" detail="7"])",
-        LastField(SYSLOG_FIELD_SDATA).c_str()
-    );
+    CHECK_SDATA_EQUAL(R"([spy][solidsyslog@67478 category="BUFFER_RECORDS_LOST" detail="7"])");
 }
 
 TEST(SolidSyslogServiceEventReport, NothingIsSentWhenNothingIsPending)
