@@ -177,6 +177,18 @@ def read_new_oracle_records(path, oracle_format, skip):
     return records[skip:]
 
 
+def client_records(records, oracle_format):
+    """The records the client logged: the logger's reports of its own events,
+    which arrive beside them, are left out, so a count states what the client
+    sent."""
+    return [record for record in records if not _is_library_report(parse_oracle_line(record, oracle_format))]
+
+
+def client_record_count(path, oracle_format, skip=0):
+    """How many of the records after the first 'skip' the client logged."""
+    return len(client_records(read_new_oracle_records(path, oracle_format, skip), oracle_format))
+
+
 def read_last_line(path):
     """Return the last non-empty line from a file."""
     with open(path, encoding="utf-8") as f:
@@ -444,25 +456,29 @@ def send_command(process, command):
 
 
 def wait_for_messages(context, expected_messages):
-    """Wait for the oracle to flush the expected number of new records.
-    Counts logical records (not raw file lines) so OTel's batch-per-line
-    write behaviour doesn't undercount."""
+    """Wait for the oracle to flush the expected number of the client's new
+    records. Counts logical records (not raw file lines) so OTel's
+    batch-per-line write behaviour doesn't undercount. The logger's reports
+    are kept in all_lines, since they number from the same count as the
+    client's records, but are neither counted nor read as the last message."""
     received_log = context.received_log
     oracle_format = context.oracle_format
-    expected_total = context.lines_before + expected_messages
     deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
-    while oracle_record_count(received_log, oracle_format) < expected_total:
+    records = read_new_oracle_records(received_log, oracle_format, context.lines_before)
+    while len(client_records(records, oracle_format)) < expected_messages:
         if time.monotonic() > deadline:
-            actual = oracle_record_count(received_log, oracle_format) - context.lines_before
+            actual = len(client_records(records, oracle_format))
             raise AssertionError(
                 f"oracle received {actual} of {expected_messages} "
                 f"messages within {CONDITION_TIMEOUT_SECONDS} seconds"
             )
         time.sleep(0.1)
+        records = read_new_oracle_records(received_log, oracle_format, context.lines_before)
 
-    context.all_lines = read_new_oracle_records(received_log, oracle_format, context.lines_before)
-    context.fields = parse_oracle_line(context.all_lines[-1], oracle_format)
-    context.message_count = len(context.all_lines)
+    clients = client_records(records, oracle_format)
+    context.all_lines = records
+    context.fields = parse_oracle_line(clients[-1], oracle_format) if clients else {}
+    context.message_count = len(clients)
 
 
 def settle_prompts(process, count):
@@ -1194,9 +1210,9 @@ def step_check_message_count(context, count):
 
 @then("the syslog oracle receives no more messages")
 def step_check_no_more_messages(context):
-    before = oracle_record_count(context.received_log, context.oracle_format)
+    before = client_record_count(context.received_log, context.oracle_format)
     time.sleep(5)
-    after = oracle_record_count(context.received_log, context.oracle_format)
+    after = client_record_count(context.received_log, context.oracle_format)
     assert after == before, (
         f"Expected no more messages, but received {after - before} additional"
     )
@@ -1549,7 +1565,12 @@ def step_client_is_killed(context):
 
 @then("the messages have contiguous sequenceIds")
 def step_check_contiguous_sequence_ids(context):
+    """The client's records arrive in order and none is missing. The logger's
+    reports take their numbers from the same count when Service makes them,
+    so they are judged with the client's records: every number from the first
+    to the last must have arrived, once."""
     ids = []
+    client_ids = []
     for line in context.all_lines:
         fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
@@ -1558,10 +1579,15 @@ def step_check_contiguous_sequence_ids(context):
             f"No sequenceId in structured data: {sd}"
         )
         ids.append(int(match.group(1)))
-    for i in range(1, len(ids)):
-        assert ids[i] == ids[i - 1] + 1, (
-            f"Non-contiguous sequenceIds: {ids[i - 1]} followed by {ids[i]}"
-        )
+        if not _is_library_report(fields):
+            client_ids.append(int(match.group(1)))
+    assert client_ids == sorted(client_ids), (
+        f"The client's records arrived out of order: {client_ids}"
+    )
+    expected = list(range(min(ids), max(ids) + 1)) if ids else []
+    assert sorted(ids) == expected, (
+        f"Non-contiguous sequenceIds: expected {expected}, got {sorted(ids)}"
+    )
 
 
 @then("the last {count:d} messages have contiguous sequenceIds starting from {start:d}")
@@ -1588,13 +1614,14 @@ def step_check_last_n_contiguous_ids(context, count, start):
 @then("the replayed messages have sequenceIds {id_list}")
 def step_check_replayed_sequence_ids(context, id_list):
     expected = [int(x.strip()) for x in id_list.split(",")]
-    assert len(context.all_lines) >= len(expected), (
+    clients = client_records(context.all_lines, context.oracle_format)
+    assert len(clients) >= len(expected), (
         f"Expected at least {len(expected)} messages, "
-        f"got {len(context.all_lines)}"
+        f"got {len(clients)}"
     )
-    # Replayed messages are the most recent batch excluding the first message
-    # from the previous session (already verified)
-    replayed = context.all_lines[-len(expected):]
+    # Replayed messages are the most recent batch of the client's records,
+    # excluding the first message from the previous session (already verified)
+    replayed = clients[-len(expected):]
     for i, line in enumerate(replayed):
         fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
@@ -1710,8 +1737,9 @@ def step_oracle_received_buffer_loss_report(context):
 
 @then("the last message has sequenceId {value:d}")
 def step_check_last_sequence_id(context, value):
-    assert context.all_lines, "No messages received to check last sequenceId"
-    fields = parse_oracle_line(context.all_lines[-1], context.oracle_format)
+    clients = client_records(context.all_lines, context.oracle_format)
+    assert clients, "No messages received to check last sequenceId"
+    fields = parse_oracle_line(clients[-1], context.oracle_format)
     sd = fields.get("STRUCTURED_DATA", "")
     match = re.search(r'sequenceId="(\d+)"', sd)
     assert match, (
@@ -1783,13 +1811,13 @@ def step_client_switches_transport(context, transport):
 
 
 def wait_for_per_transport_messages(context, transport, expected):
-    """Wait for `expected` new logical records in the per-transport oracle."""
+    """Wait for `expected` new records of the client's in the per-transport oracle."""
     path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
     deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
-    while oracle_record_count(path, context.oracle_format) - baseline < expected:
+    while client_record_count(path, context.oracle_format, baseline) < expected:
         if time.monotonic() > deadline:
-            actual = oracle_record_count(path, context.oracle_format) - baseline
+            actual = client_record_count(path, context.oracle_format, baseline)
             raise AssertionError(
                 f"{path} received {actual} of {expected} messages "
                 f"within {CONDITION_TIMEOUT_SECONDS} seconds"
@@ -1826,12 +1854,12 @@ def step_check_nothing_received(context, transport):
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         decided = bool(reported_details(context.interactive_process))
-        delivered = oracle_record_count(path, context.oracle_format) - baseline
+        delivered = client_record_count(path, context.oracle_format, baseline)
         if decided or delivered:
             break
         time.sleep(0.1)
 
-    actual = oracle_record_count(path, context.oracle_format) - baseline
+    actual = client_record_count(path, context.oracle_format, baseline)
     assert actual == 0, (
         f"Expected no {transport} message, got {actual} in {path}"
     )
@@ -1843,7 +1871,7 @@ def step_check_per_transport_count(context, count, transport):
     wait_for_per_transport_messages(context, transport, count)
     path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
-    actual = oracle_record_count(path, context.oracle_format) - baseline
+    actual = client_record_count(path, context.oracle_format, baseline)
     assert actual == count, (
         f"Expected {count} {transport} message(s), got {actual} in {path}"
     )
@@ -1861,7 +1889,7 @@ def step_check_per_transport_at_least(context, count, transport):
     wait_for_per_transport_messages(context, transport, count)
     path = per_transport_log(context, transport)
     baseline = context.lines_before_per_transport.get(transport, 0)
-    actual = oracle_record_count(path, context.oracle_format) - baseline
+    actual = client_record_count(path, context.oracle_format, baseline)
     assert actual >= count, (
         f"Expected at least {count} {transport} message(s), got {actual} in {path}"
     )
