@@ -1148,14 +1148,24 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAnUntrustedChainAheadOfTheNameOnItWhic
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogWolfSslStream, OpenReportsANameMismatchAheadOfTheDatesWhicheverWasRaisedLast)
+TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfANameMismatchWhicheverWasRaisedLast)
 {
-    int errors[] = {FAKE_DOMAIN_NAME_MISMATCH, FAKE_ASN_AFTER_DATE_E};
+    int errors[] = {FAKE_ASN_AFTER_DATE_E, FAKE_DOMAIN_NAME_MISMATCH};
     ArrangeCertificateVerificationFailure(errors, 2);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
 
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED, ErrorHandlerFake_LastDetail());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsACertificateNotYetValidAheadOfANameMismatchWhicheverWasRaisedLast)
+{
+    int errors[] = {FAKE_ASN_BEFORE_DATE_E, FAKE_DOMAIN_NAME_MISMATCH};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfOneNotYetValid)

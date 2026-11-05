@@ -50,7 +50,7 @@ What the target supplies around it:
   enforced with no RTC.
 - **Credentials.** The same baked PEMs, handed to wolfSSL as buffers.
 
-The lane's tag filter is the other QEMU lanes' less `@name_before_dates`.
+The lane runs the other QEMU lanes' tag filter.
 
 ```bash
 cmake --preset cmsis-cross-lwip-wolfssl

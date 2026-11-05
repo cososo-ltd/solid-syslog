@@ -649,6 +649,30 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsAnUntrustedChainAheadOfTheDatesOnIt)
 /* A verification failure with no name of its own - here a key too weak for the
  * profile - still tells the integrator the certificate is the fault rather than
  * the network, which is the whole point of naming the check. */
+TEST(SolidSyslogMbedTlsStream, OpenNamesAnExpiredCertificateAheadOfANameThatDoesNotMatch)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_CN_MISMATCH | MBEDTLS_X509_BADCERT_EXPIRED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenNamesACertificateNotYetValidAheadOfANameThatDoesNotMatch)
+{
+    ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_CN_MISMATCH | MBEDTLS_X509_BADCERT_FUTURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID
+    );
+}
+
 TEST(SolidSyslogMbedTlsStream, OpenReportsAVerificationFailureItCannotNameAsUntrusted)
 {
     ArrangeCertificateVerificationFailure(MBEDTLS_X509_BADCERT_BAD_KEY);

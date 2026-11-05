@@ -80,6 +80,12 @@ static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
 static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
 static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
 static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_NoNameObjectionIsOutstanding(struct SolidSyslogOpenSslStream* self);
+static inline int OpenSslStream_ResolveNameObjection(
+    struct SolidSyslogOpenSslStream* self,
+    int verdict,
+    X509_STORE_CTX* storeCtx
+);
 static inline bool OpenSslStream_CarryObjectionToTheLeaf(
     struct SolidSyslogOpenSslStream* self,
     const X509_STORE_CTX* storeCtx
@@ -259,6 +265,23 @@ static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpe
     return ok;
 }
 
+/* A carried name mismatch refuses the leaf on OpenSSL's last call for it. A
+ * handshake that completed with one still carried never made that call, and is
+ * refused here rather than trusted to have. */
+static inline bool OpenSslStream_NoNameObjectionIsOutstanding(struct SolidSyslogOpenSslStream* self)
+{
+    bool ok = self->NameObjection == X509_V_OK;
+    if (!ok)
+    {
+        OpenSslStream_ReportHandshakeFailure(
+            self,
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+        );
+    }
+    return ok;
+}
+
 static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStream* self)
 {
     if (self->Ctx != NULL)
@@ -305,11 +328,13 @@ static inline bool OpenSslStream_Establish(struct SolidSyslogStream* base, const
     OpenSslStream_PullProfile(self);
     self->ChainObjection = X509_V_OK;
     self->ValidityObjection = X509_V_OK;
+    self->NameObjection = X509_V_OK;
     self->PinVerdict = SOLIDSYSLOG_TLS_AUTHORISATION_NO_MATCH;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && OpenSslStream_InitSslContext(self) &&
               OpenSslStream_InstallCredentials(self) && OpenSslStream_InitSslSession(self) &&
               OpenSslStream_AttachTransportBio(self) && OpenSslStream_ConfigureExpectedHostname(self) &&
-              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self);
+              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self) &&
+              OpenSslStream_NoNameObjectionIsOutstanding(self);
     if (!ok)
     {
         OpenSslStream_Close(base);
@@ -517,6 +542,7 @@ static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
         {
             verdict = OpenSslStream_VerifyPinnedLeaf(self, preverifyOk, storeCtx);
         }
+        verdict = OpenSslStream_ResolveNameObjection(self, verdict, storeCtx);
     }
     else if (OpenSslStream_CarryObjectionToTheLeaf(self, storeCtx))
     {
@@ -528,6 +554,36 @@ static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx)
     }
 
     return verdict;
+}
+
+/* OpenSSL checks the name once the chain is built and before any certificate's
+ * dates, and abandons verification on the first refusal, so refusing the name
+ * where it is raised would name it ahead of the dates. It is carried instead,
+ * and refuses the leaf on the last call OpenSSL makes for it, once every other
+ * check has passed. */
+static inline int OpenSslStream_ResolveNameObjection(
+    struct SolidSyslogOpenSslStream* self,
+    int verdict,
+    X509_STORE_CTX* storeCtx
+)
+{
+    int resolved = verdict;
+    int error = X509_STORE_CTX_get_error(storeCtx);
+    if ((verdict == 0) && OpenSslStream_IsPeerNameMismatch((long) error))
+    {
+        self->NameObjection = error;
+        resolved = 1;
+    }
+    else if ((verdict == 1) && (self->NameObjection != X509_V_OK))
+    {
+        X509_STORE_CTX_set_error(storeCtx, self->NameObjection);
+        resolved = 0;
+    }
+    else
+    {
+        /* Refused for something else, or nothing was carried. */
+    }
+    return resolved;
 }
 
 /* Wherever pins are configured, an objection above the leaf is recorded and

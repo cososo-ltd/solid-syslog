@@ -690,7 +690,7 @@ TEST(OpenSslStreamIntegration, AnUntrustedChainIsNamedBeforeANameThatDoesNotMatc
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
 }
 
-TEST(OpenSslStreamIntegration, ANameThatDoesNotMatchIsNamedBeforeACertificateThatHasExpired)
+TEST(OpenSslStreamIntegration, ACertificateThatHasExpiredIsNamedBeforeANameThatDoesNotMatch)
 {
     struct TlsTestCertConfig certConfig = {};
     certConfig.commonName = "someone-else.example";
@@ -700,7 +700,7 @@ TEST(OpenSslStreamIntegration, ANameThatDoesNotMatchIsNamedBeforeACertificateTha
     buildScenario(certConfig);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
-    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
 }
 
 TEST(OpenSslStreamIntegration, APinThatMatchesDoesNotWaiveANameThatDoesNot)
@@ -717,7 +717,8 @@ TEST(OpenSslStreamIntegration, APinThatMatchesDoesNotWaiveANameThatDoesNot)
 }
 
 /* The order does not change with the depth the fault sits at: an issuer whose
-   own dates have lapsed still loses to a leaf whose name does not match. */
+   own dates have lapsed is still named ahead of a leaf whose name does not
+   match. */
 TEST(OpenSslStreamIntegration, AnExpiredIssuerIsNamedWhenTheLeafItSignedIsOtherwiseSound)
 {
     givenAnIssuedServerCertificateExpiringInThePast();
@@ -728,7 +729,7 @@ TEST(OpenSslStreamIntegration, AnExpiredIssuerIsNamedWhenTheLeafItSignedIsOtherw
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
 }
 
-TEST(OpenSslStreamIntegration, ALeafNameThatDoesNotMatchIsNamedBeforeAnExpiredIssuer)
+TEST(OpenSslStreamIntegration, AnExpiredIssuerIsNamedBeforeALeafNameThatDoesNotMatch)
 {
     givenAnIssuedServerCertificateExpiringInThePast();
     struct TlsTestCertConfig certConfig = issuedCertConfig();
@@ -738,7 +739,7 @@ TEST(OpenSslStreamIntegration, ALeafNameThatDoesNotMatchIsNamedBeforeAnExpiredIs
     TlsTestCert_WritePemToFile(&clientCa, caPath);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
-    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
 }
 
 /* OpenSSL checks validity from the top of the chain down and abandons

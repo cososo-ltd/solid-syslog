@@ -939,7 +939,7 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
 /* The checks accumulate, so a compound verdict resolves by precedence: an
  * untrusted chain is reported ahead of anything the certificate says about
  * itself, because a certificate no anchor vouches for is not made acceptable by
- * the name or the dates it carries; and the name ahead of the dates, as the
+ * the name or the dates it carries; and the dates ahead of the name, as the
  * contract orders them. With no check recorded the handshake was rejected by
  * the peer or the protocol, and no check of ours names it. */
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
@@ -957,10 +957,6 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const 
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
     }
-    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NAME))
-    {
-        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
-    }
     else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NOT_AFTER))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
@@ -968,6 +964,10 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const 
     else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NOT_BEFORE))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NAME))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
     }
     else
     {
