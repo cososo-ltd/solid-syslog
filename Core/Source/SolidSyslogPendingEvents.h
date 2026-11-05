@@ -12,32 +12,34 @@
  * a rejected peer. A category outside the set is not recorded. The library
  * picks the set; there is no integrator selection.
  *
- * A slot holds the most recent event of its kind: Severity, Source, Detail,
- * NativeCode with its HasNativeCode flag, and a Pending flag. The category is
- * the slot's index, so it is not stored. On a 32-bit target a slot is 20 bytes
- * and the table of SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 280 bytes of
- * static RAM; the kind table beside it is 28 bytes of constant data. A 64-bit
- * host pads a slot to 24 bytes.
+ * A slot holds the most recent event of its kind: its severity as a one-byte
+ * code, Source, Detail, NativeCode with its HasNativeCode flag, and a Pending
+ * flag. The category is the slot's index, so it is not stored. On a 32-bit
+ * target a slot is 16 bytes and the table of
+ * SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 224 bytes of static RAM; the
+ * kind table beside it, which also holds each kind's own severity, is 112
+ * bytes of constant data, and the severities the codes index are 32 more. A
+ * 64-bit host pads a slot to 24 bytes.
  *
- * The tap is the whole of what runs on a failing path after the handler, so
- * it must be safe from any task and any context, including inside a Send
- * that is failing and inside a DetailName callback. It therefore calls
- * nothing: no role, no clock, no lock, no name function. Recording is six
- * word-sized stores with Pending last, and Take clears Pending before it
- * copies the fields. The slots are volatile, so the compiler keeps the
- * stores in that order, which is as much as C99 offers: there are no atomics
- * in the baseline, and no lock is taken because the tap runs inside a
- * failing role on whatever task met the fault. A multi-core CPU may still
- * retire the stores out of order; nothing here prevents that. Two writers
- * racing on one slot, or a Take copying while a writer lands, leave a slot
- * or a copy mixing fields of two events of the same kind, with the flag
- * set. The writers are logging tasks sharing one buffer, since every other
- * kind is raised on the Service task, so the two events come from one
- * source: both said the kind happened, the mix is a valid event of it, and
- * an event landing during a copy is reported again on the next Take rather
+ * The tap is the whole of what runs on a failing path after the handler, so it
+ * must be safe from any task and any context, including inside a Send that is
+ * failing and inside a DetailName callback. It therefore calls nothing: no
+ * role, no clock, no lock, no name function. Recording is six stores with
+ * Pending last, and Take clears Pending before it copies the fields. The slots
+ * are volatile, so the compiler keeps the stores in that order, which is as
+ * much as C99 offers: there are no atomics in the baseline, and no lock is
+ * taken because the tap runs inside a failing role on whatever task met the
+ * fault. A multi-core CPU may still retire the stores out of order; nothing
+ * here prevents that. Two writers racing on one slot, or a Take copying while a
+ * writer lands, leave a slot or a copy mixing fields of two events of the same
+ * kind, with the flag set. The writers are logging tasks sharing one buffer,
+ * since every other kind is raised on the Service task, so the two events come
+ * from one source: both said the kind happened, the mix is a valid event of it,
+ * and an event landing during a copy is reported again on the next Take rather
  * than lost. The first write of a kind is the other case: on a core that
  * reorders the stores, a Take that overtakes it can see a slot still at its
- * zero initial values, a NULL Source at SOLIDSYSLOG_SEVERITY_EMERGENCY. */
+ * initial values: a NULL Source at the kind's own severity, the least severe
+ * the kind is raised at. */
 #ifndef SOLIDSYSLOGPENDINGEVENTS_H
 #define SOLIDSYSLOGPENDINGEVENTS_H
 
@@ -74,9 +76,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * returns false. */
     bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event);
 
-    /* Clear every slot's Pending flag, leaving nothing pending. Called by
-     * SolidSyslog_Destroy, so a logger created afterwards reports only what
-     * happens after it. */
+    /* Clear every slot, leaving nothing pending and each slot at its kind's
+     * own severity, as at start. Called by SolidSyslog_Destroy, so a logger
+     * created afterwards reports only what happens after it. */
     void SolidSyslogPendingEvents_Clear(void);
 
 SOLIDSYSLOG_EXTERN_C_END

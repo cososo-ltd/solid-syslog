@@ -204,6 +204,52 @@ TEST(SolidSyslogPendingEvents, AnIndexPastTheTableIsNotPending)
     CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT));
 }
 
+/* The least severe severity each kind is raised at, in table order. */
+static const enum SolidSyslogSeverity KIND_SEVERITIES[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
+    SOLIDSYSLOG_SEVERITY_WARNING,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_WARNING,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_WARNING,
+    SOLIDSYSLOG_SEVERITY_NOTICE,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_WARNING,
+};
+
+TEST(SolidSyslogPendingEvents, AClearedSlotStandsAtItsKindsOwnSeverity)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    for (uint16_t category : REPORTED_KINDS)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_EMERGENCY, &source, category, 0);
+    }
+
+    SolidSyslogPendingEvents_Clear();
+
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        SolidSyslogPendingEvents_Take(index, &taken);
+        enum SolidSyslogSeverity expected =
+            KIND_SEVERITIES[index]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+        LONGS_EQUAL(expected, taken.Severity);
+    }
+}
+
+TEST(SolidSyslogPendingEvents, AnEmergencyIsTakenAsAnEmergency)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_EMERGENCY, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_EMERGENCY, taken.Severity);
+}
+
 TEST(SolidSyslogPendingEvents, ClearLeavesNothingPending)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
