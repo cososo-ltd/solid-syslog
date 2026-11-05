@@ -71,7 +71,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Clear the slot's Pending flag, then copy its fields into @p event with
      * the slot's category. Returns whether the slot was pending; the copy is
      * made either way, so @p event is only meaningful on true. Slot order is
-     * the table's own: a reader walks every index and reads the category
+     * the table's own, causes first: a reader walks every index in order,
+     * so it takes a cause ahead of what it caused, and reads the category
      * from the event. An index past the table leaves @p event untouched and
      * returns false. */
     bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event);

@@ -49,6 +49,17 @@ TEST(ScenarioBench, ADownSenderHoldsTheRecordAndIsReportedOnce)
     LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, bench.Events()[0].Category);
 }
 
+TEST(ScenarioBench, AnEventCarriesTheRecordsTheStoreHadKeptWhenItWasRaised)
+{
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    bench.Log();
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.Events().size());
+    LONGS_EQUAL(2, bench.Events()[0].RecordsKept);
+}
+
 TEST(ScenarioBench, ARecoveredSenderDeliversTheHeldRecordAndIsReportedRestored)
 {
     ScenarioBench bench(options);

@@ -9,6 +9,7 @@
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogStoreDefinition.h"
 
 struct SolidSyslog;
 struct SolidSyslogAtomicCounter;
@@ -63,6 +64,7 @@ struct ScenarioEvent
     uint16_t Category;
     int32_t Detail;
     size_t Pass; /* the Service pass it was raised in: 0 before any pass, or the last pass when raised from a Log */
+    size_t RecordsKept; /* the records the store had kept when it was raised */
 };
 
 class ScenarioBench
@@ -137,6 +139,16 @@ class ScenarioBench
         HandlerInstallation& operator=(const HandlerInstallation&) = delete;
     };
 
+    /* The store the logger is given: the bench's own, counting the records it
+     * keeps, since a record kept is what ends some of the store's runs of
+     * loss. */
+    struct CountingStore
+    {
+        struct SolidSyslogStore Base;
+        struct SolidSyslogStore* Store;
+        size_t Kept;
+    };
+
     HandlerInstallation handler;
     ScenarioBenchOptions options;
     std::vector<uint8_t> ring;
@@ -147,6 +159,7 @@ class ScenarioBench
     struct SolidSyslogStructuredData* sds[1];
     struct SolidSyslogBuffer* buffer;
     struct SolidSyslogStore* store;
+    CountingStore countingStore;
     struct SolidSyslogSender* sender;
     struct SolidSyslog* logger;
 
@@ -175,6 +188,14 @@ class ScenarioBench
     static void OnHalt(void* context);
     bool OnReportingAsked();
     static bool IsReportingOn(void* context);
+    static CountingStore* CountingStoreFrom(struct SolidSyslogStore* base);
+    static enum SolidSyslogStoreWriteResult CountingWrite(struct SolidSyslogStore* base, const void* data, size_t size);
+    static bool CountingReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);
+    static void CountingMarkSent(struct SolidSyslogStore* base);
+    static bool CountingHasUnsent(struct SolidSyslogStore* base);
+    static size_t CountingGetTotalBytes(struct SolidSyslogStore* base);
+    static size_t CountingGetUsedBytes(struct SolidSyslogStore* base);
+    static bool CountingIsTransient(struct SolidSyslogStore* base);
 };
 
 #endif /* SCENARIOBENCH_H */

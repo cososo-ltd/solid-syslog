@@ -54,9 +54,10 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
-static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self);
-static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_t index);
+static inline bool SolidSyslog_ReportPendingEvents(struct SolidSyslog* self);
 static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
+static inline bool SolidSyslog_ReportIfPending(struct SolidSyslog* self, size_t index);
+static inline void SolidSyslog_HoldPendingReport(struct SolidSyslog* self, size_t index);
 static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event);
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog* self);
@@ -460,9 +461,9 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(self);
     bool dealtWith = !self->Halted && SolidSyslog_DealWithHeldRecord(self);
 
-    if (dealtWith && !self->Halted && SolidSyslog_HoldPendingReport(self))
+    if (dealtWith && !self->Halted)
     {
-        dealtWith = SolidSyslog_DealWithHeldRecord(self);
+        dealtWith = SolidSyslog_ReportPendingEvents(self);
     }
 
     while (dealtWith && !self->Halted && SolidSyslog_HoldNextRecord(self))
@@ -597,32 +598,22 @@ static inline void SolidSyslog_Halt(struct SolidSyslog* self)
     self->OnHalt(self->HaltContext);
 }
 
-/* Takes the pending event into the free slot as a report, formatted as a
- * record of the logger's own. Says whether there was one to take. */
-static inline bool SolidSyslog_HoldPendingReport(struct SolidSyslog* self)
+/* Walks the table once, in its order, so a cause is reported ahead of what it
+ * caused. Each report is made in the free slot and dealt with before the next
+ * is made, and a kind raised meanwhile at a slot already walked waits for the
+ * next pass. The walk ends at a report the store and sender did not take, at a
+ * halt, or at the switch's first off, leaving every kind not yet reported
+ * waiting. Says whether the slot is free. */
+static inline bool SolidSyslog_ReportPendingEvents(struct SolidSyslog* self)
 {
-    /* A buffer loss is the one kind reported so far; the other kinds wait in
-     * the table. */
-    size_t index = SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
-    struct SolidSyslogErrorEvent event;
-    self->HoldsRecord = SolidSyslog_IsReportDue(self, index) && SolidSyslogPendingEvents_Take(index, &event);
-    self->HeldRecordIsReport = self->HoldsRecord;
+    bool walking = SolidSyslog_HasRecordSlot(self);
 
-    if (self->HoldsRecord)
+    for (size_t index = 0U; (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && walking; index++)
     {
-        SolidSyslog_FormatReport(self, &event);
+        walking = SolidSyslog_ReportIfPending(self, index);
     }
 
-    return self->HoldsRecord;
-}
-
-/* Due when there is a slot to make the report in and an event waiting; only
- * then is the integrator's switch asked, and an event it turns down stays
- * waiting for a pass when the switch is on. */
-static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_t index)
-{
-    return SolidSyslog_HasRecordSlot(self) && SolidSyslogPendingEvents_IsPending(index) &&
-           self->IsEventReportingOn(self->EventReportingContext);
+    return !self->HoldsRecord;
 }
 
 /* The fallback SolidSyslog_Create returns carries no slot, so it takes no
@@ -630,6 +621,40 @@ static inline bool SolidSyslog_IsReportDue(const struct SolidSyslog* self, size_
 static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self)
 {
     return self->RecordStorage != NULL;
+}
+
+/* Only a kind with an event waiting asks the integrator's switch, and an event
+ * it turns down stays waiting for a pass when the switch is on. Says whether
+ * the walk goes on. */
+static inline bool SolidSyslog_ReportIfPending(struct SolidSyslog* self, size_t index)
+{
+    bool goesOn = true;
+
+    if (SolidSyslogPendingEvents_IsPending(index))
+    {
+        goesOn = self->IsEventReportingOn(self->EventReportingContext);
+
+        if (goesOn)
+        {
+            SolidSyslog_HoldPendingReport(self, index);
+            goesOn = SolidSyslog_DealWithHeldRecord(self) && !self->Halted;
+        }
+    }
+
+    return goesOn;
+}
+
+/* Takes the kind's event into the free slot as a report, formatted as a record
+ * of the logger's own. The switch is integrator code, asked after the kind was
+ * seen pending: should another logger's pass take the event meanwhile, this
+ * take finds nothing and the slot stays free, and what was formatted into it
+ * is never sent. */
+static inline void SolidSyslog_HoldPendingReport(struct SolidSyslog* self, size_t index)
+{
+    struct SolidSyslogErrorEvent event;
+    self->HoldsRecord = SolidSyslogPendingEvents_Take(index, &event);
+    self->HeldRecordIsReport = self->HoldsRecord;
+    SolidSyslog_FormatReport(self, &event);
 }
 
 static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event)

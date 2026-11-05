@@ -162,6 +162,10 @@ TEST_GROUP_BASE(SolidSyslogServiceHeldRecordFrozenStore, ServiceHeldRecordBase)
         FileFake_FailNextOpen(file);
         store = SolidSyslogBlockStore_Create(&config);
         CreateOver(store);
+        /* The first pass reports the freeze; making it here leaves each test
+         * with nothing waiting but what it logs. */
+        SolidSyslog_Service(solidSyslog);
+        SenderFake_Reset(fakeSender);
     }
 
     void teardown() override

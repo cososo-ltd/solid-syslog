@@ -13,15 +13,22 @@
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPassthroughBuffer.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSdElement.h"
+#include "SolidSyslogSender.h"
+#include "SolidSyslogSenderCategories.h"
+#include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStreamSender.h"
 #include "SolidSyslogStructuredDataDefinition.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "StoreFake.h"
 #include "StreamFake.h"
 #include "StringFake.h"
@@ -53,11 +60,17 @@ class TEST_SolidSyslogServiceEventReport_ASourceWithNoNameHasNoSourceParam_Test;
 static const struct SolidSyslogErrorSource TEST_SOURCE = {"TestSource", nullptr};
 static const int32_t TEST_DETAIL = 7;
 
-/* The plain buffer loss most tests report: the test source and detail, with
+/* An event of the kind given, from the test source with the test detail and
  * no native code. */
+static void Raise(uint16_t category)
+{
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &TEST_SOURCE, category, TEST_DETAIL);
+}
+
+/* The plain buffer loss most tests report. */
 static void RaiseBufferLoss()
 {
-    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, &TEST_SOURCE, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, TEST_DETAIL);
+    Raise(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
 }
 
 static void SdSpyFormat(struct SolidSyslogStructuredData* /* self */, struct SolidSyslogSdElement* element)
@@ -357,6 +370,36 @@ TEST(SolidSyslogServiceEventReport, AnEventRaisedBeforeTheLoggerIsCreatedIsRepor
     STRCMP_EQUAL("BUFFER_RECORDS_LOST", LastField(SYSLOG_FIELD_MSGID).c_str());
 }
 
+TEST(SolidSyslogServiceEventReport, TwoKindsPendingAreBothReportedInOnePass)
+{
+    RaiseBufferLoss();
+    Raise(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
+}
+
+TEST(SolidSyslogServiceEventReport, ARefusedReportEndsThePassesReports)
+{
+    RaiseBufferLoss();
+    Raise(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+    SenderFake_FailNextSend(fakeSender);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceEventReport, AKindOutsideTheReportedSetIsNotReported)
+{
+    Raise(SOLIDSYSLOG_CAT_BAD_CONFIG);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
 TEST(SolidSyslogServiceEventReport, ARefusedReportBlocksThePass)
 {
     RaiseBufferLoss();
@@ -451,6 +494,17 @@ TEST(SolidSyslogServiceEventReportSwitch, TheSwitchIsNotAskedWhenNothingIsPendin
     SolidSyslog_Service(solidSyslog);
 
     LONGS_EQUAL(0, reportingSwitch.Asked);
+}
+
+TEST(SolidSyslogServiceEventReportSwitch, SwitchedOffItIsAskedOnceAPass)
+{
+    reportingSwitch.On = false;
+    RaiseBufferLoss();
+    Raise(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, reportingSwitch.Asked);
 }
 
 TEST(SolidSyslogServiceEventReportSwitch, TheSwitchIsNotAskedWhileARecordIsHeld)
@@ -558,10 +612,111 @@ TEST(SolidSyslogServiceEventReportOrder, AReportGoesAfterTheHeldRecordAndBeforeT
 
     SolidSyslog_Service(solidSyslog);
 
-    LONGS_EQUAL(3, StreamFake_FrameCount(stream));
+    /* The outage that held "first" is reported too, after the loss in table
+     * order. */
+    LONGS_EQUAL(5, StreamFake_FrameCount(stream));
     STRCMP_EQUAL("first", StreamFake_Frame(stream, 0));
     STRCMP_EQUAL("BUFFER_RECORDS_LOST", FrameMsgId(1).c_str());
-    STRCMP_EQUAL("second", StreamFake_Frame(stream, 2));
+    STRCMP_EQUAL("SENDER_DELIVERY_FAILED", FrameMsgId(2).c_str());
+    STRCMP_EQUAL("SENDER_DELIVERY_RESTORED", FrameMsgId(3).c_str());
+    STRCMP_EQUAL("second", StreamFake_Frame(stream, 4));
+}
+
+TEST(SolidSyslogServiceEventReportOrder, AFileFaultIsReportedBeforeTheFreezeItCaused)
+{
+    Raise(SOLIDSYSLOG_CAT_STORE_FROZEN);
+    Raise(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(2, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("FILE_IO_FAILED", FrameMsgId(0).c_str());
+    STRCMP_EQUAL("STORE_FROZEN", FrameMsgId(1).c_str());
+}
+
+TEST(SolidSyslogServiceEventReportOrder, ARefusedHandshakeIsReportedBeforeTheDeliveryFailureItCaused)
+{
+    Raise(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED);
+    Raise(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED);
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(2, StreamFake_FrameCount(stream));
+    STRCMP_EQUAL("TLS_STREAM_HANDSHAKE_FAILED", FrameMsgId(0).c_str());
+    STRCMP_EQUAL("SENDER_DELIVERY_FAILED", FrameMsgId(1).c_str());
+}
+
+/* The sender the next group's logger sends through: it hands every record to
+ * the sender fake and, when armed, raises an event as it does, as a sender
+ * that meets a fault mid-send would. */
+static struct SolidSyslogSender* wrappedSender = nullptr;
+static bool raisesOnNextSend = false;
+static uint16_t categoryToRaise = 0U;
+
+static bool RaisingSender_Send(struct SolidSyslogSender* /* base */, const void* buffer, size_t size)
+{
+    if (raisesOnNextSend)
+    {
+        raisesOnNextSend = false;
+        Raise(categoryToRaise);
+    }
+    return SolidSyslogSender_Send(wrappedSender, buffer, size);
+}
+
+static void RaisingSender_Disconnect(struct SolidSyslogSender* /* base */)
+{
+}
+
+static struct SolidSyslogSender raisingSender = {RaisingSender_Send, RaisingSender_Disconnect};
+
+// clang-format off
+TEST_GROUP(SolidSyslogServiceEventReportRaisedMidPass)
+{
+    struct SolidSyslogSender* fakeSender = nullptr;
+    struct SolidSyslog* solidSyslog = nullptr;
+
+    void setup() override
+    {
+        fakeSender = SenderFake_Create();
+        wrappedSender = fakeSender;
+        raisesOnNextSend = false;
+        struct SolidSyslogConfig config = {};
+        config.Buffer = SolidSyslogNullBuffer_Get();
+        config.Sender = &raisingSender;
+        config.Store = SolidSyslogNullStore_Get();
+        solidSyslog = SolidSyslog_Create(&config);
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_Destroy(solidSyslog);
+        SenderFake_Destroy(fakeSender);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogServiceEventReportRaisedMidPass, AKindRaisedAtASlotThePassHasWalkedIsNotReportedThatPass)
+{
+    RaiseBufferLoss();
+    raisesOnNextSend = true;
+    categoryToRaise = SOLIDSYSLOG_CAT_FILE_IO_FAILED;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceEventReportRaisedMidPass, AKindRaisedAtASlotThePassHasWalkedIsReportedTheNextPass)
+{
+    RaiseBufferLoss();
+    raisesOnNextSend = true;
+    categoryToRaise = SOLIDSYSLOG_CAT_FILE_IO_FAILED;
+    SolidSyslog_Service(solidSyslog);
+
+    SolidSyslog_Service(solidSyslog);
+
+    STRCMP_EQUAL("FILE_IO_FAILED", SyslogField(SenderFake_LastBufferAsString(fakeSender), SYSLOG_FIELD_MSGID).c_str());
 }
 
 /* A 16-byte ring that "second" (8 bytes framed) and "third" (7) fill, so
@@ -688,6 +843,18 @@ TEST(SolidSyslogServiceEventReportWithAStore, AHaltMetDealingWithTheHeldRecordMa
     RaiseBufferLoss();
 
     SolidSyslog_Service(solidSyslog); /* the store refuses the held report, which halts the logger */
+
+    LONGS_EQUAL(0, StoreFake_WriteCallCount(store));
+}
+
+TEST(SolidSyslogServiceEventReportWithAStore, AHaltEndsThePassesReports)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    RaiseBufferLoss();
+    Raise(SOLIDSYSLOG_CAT_FILE_IO_FAILED);
+    StoreFake_FailNextWrite();
+
+    SolidSyslog_Service(solidSyslog);
 
     LONGS_EQUAL(0, StoreFake_WriteCallCount(store));
 }

@@ -6,6 +6,7 @@
 #include <tuple>
 #include <vector>
 
+#include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
@@ -15,12 +16,13 @@
 namespace
 {
 /* A pass moves at most what the ring held, the record held from the last
- * pass, a report and one from the store, with two sends and a few device
- * operations per record. Tripwires, not budgets: a call that spins passes
- * them at once. */
-const size_t RECORDS_BEYOND_THE_RING = 3U;
+ * pass, a report of each of the fourteen kinds Service reports and one record
+ * from the store, with two sends and a few device operations per record.
+ * Tripwires, not budgets: a call that spins passes them at once. */
+const size_t REPORTS_PER_PASS = 14U;
+const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 
-/* The kinds Service reports so far; a story that reports another adds it. */
+/* The kinds whose last event the end invariant requires reported. */
 const uint16_t REPORTED_KINDS[] = {SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST};
 const size_t SENDS_PER_RECORD = 2U;
 const size_t DEVICE_OPERATIONS_PER_RECORD = 4U;
@@ -263,27 +265,51 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
     return reason;
 }
 
+bool IsEndedByARecordKept(const ScenarioEvent& event)
+{
+    return (event.Source == &SolidSyslogBlockStoreErrorSource) &&
+           ((event.Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED) ||
+            (event.Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED));
+}
+
+/* The raises of one report in the pass since its run last ended, and how many
+ * records the store had kept at the last of them. */
+struct RaisesInRun
+{
+    size_t Raised;
+    size_t KeptAtLast;
+};
+
 /* A latched report stands for a run, so the same report twice in one pass
- * is a latch that did not hold - unless it is the buffer's and the policy
- * changed between them. In the buffer a record kept ends a run of refusals
- * and a refusal ends a run of evictions, so each change can start one run
- * more before the next pass. */
+ * is a latch that did not hold - unless the run ended between them. In the
+ * buffer a record kept ends a run of refusals and a refusal ends a run of
+ * evictions, so each policy change can start one run more before the next
+ * pass. In the store a record kept ends a run of refusals or of seal
+ * failures, and a pass can keep one between two refusals: a report is a size
+ * of its own, so a store with no room for one may still take a logged
+ * record. */
 std::string ALossIsReportedOncePerRun(const ScenarioState& state)
 {
-    std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> seen;
+    std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, RaisesInRun> seen;
     std::string reason;
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
     for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
     {
-        size_t raised =
-            IsLoss(events[i]) ? ++seen[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] : 0U;
-        size_t runsAllowed =
-            1U + ((events[i].Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ? state.PolicyChangesSinceLastPass : 0U);
-        if (raised > runsAllowed)
+        if (IsLoss(events[i]))
         {
-            reason = Count("category", events[i].Category) + " " +
-                     Count("detail", static_cast<size_t>(events[i].Detail)) + " " + Count("raised", raised) +
-                     " in one pass " + Count("policy changes", state.PolicyChangesSinceLastPass);
+            RaisesInRun& run = seen[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)];
+            bool runEnded = IsEndedByARecordKept(events[i]) && (events[i].RecordsKept != run.KeptAtLast);
+            run.Raised = runEnded ? 1U : (run.Raised + 1U);
+            run.KeptAtLast = events[i].RecordsKept;
+            size_t runsAllowed =
+                1U +
+                ((events[i].Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ? state.PolicyChangesSinceLastPass : 0U);
+            if (run.Raised > runsAllowed)
+            {
+                reason = Count("category", events[i].Category) + " " +
+                         Count("detail", static_cast<size_t>(events[i].Detail)) + " " + Count("raised", run.Raised) +
+                         " in one pass " + Count("policy changes", state.PolicyChangesSinceLastPass);
+            }
         }
     }
     return reason;

@@ -94,9 +94,10 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
-      sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false),
-      framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U),
-      maxSendsInOnePass(0U), reporting(true), reportsMade(0U), eventsWhenLastReportMade(0U)
+      countingStore(), sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U),
+      deviceFailed(false), framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U),
+      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U),
+      eventsWhenLastReportMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
@@ -109,6 +110,14 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     storeConfig.GetDiscardPolicy = GetDiscardPolicy;
     storeConfig.DiscardPolicyContext = this;
     store = options.HasStore ? SolidSyslogBlockStore_Create(&storeConfig) : SolidSyslogNullStore_Get();
+    countingStore.Base.Write = CountingWrite;
+    countingStore.Base.ReadNextUnsent = CountingReadNextUnsent;
+    countingStore.Base.MarkSent = CountingMarkSent;
+    countingStore.Base.HasUnsent = CountingHasUnsent;
+    countingStore.Base.GetTotalBytes = CountingGetTotalBytes;
+    countingStore.Base.GetUsedBytes = CountingGetUsedBytes;
+    countingStore.Base.IsTransient = CountingIsTransient;
+    countingStore.Store = store;
 
     struct SolidSyslogStreamSenderConfig senderConfig = {};
     senderConfig.Resolver = ResolverFake_Get();
@@ -119,7 +128,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     struct SolidSyslogConfig config = {};
     config.Buffer = buffer;
     config.Sender = sender;
-    config.Store = store;
+    config.Store = &countingStore.Base;
     config.Sd = sds;
     config.SdCount = 1U;
     config.GetDiscardPolicy = GetDiscardPolicy;
@@ -318,7 +327,8 @@ void ScenarioBench::HandleError(void* context, const struct SolidSyslogErrorEven
 
 void ScenarioBench::OnError(const struct SolidSyslogErrorEvent* event)
 {
-    ScenarioEvent recorded = {event->Severity, event->Source, event->Category, event->Detail, passes};
+    ScenarioEvent recorded =
+        {event->Severity, event->Source, event->Category, event->Detail, passes, countingStore.Kept};
     events.push_back(recorded);
 }
 
@@ -345,4 +355,55 @@ bool ScenarioBench::OnReportingAsked()
         eventsWhenLastReportMade = events.size();
     }
     return reporting;
+}
+
+/* Base is the first member, so the logger's store is the counting store. */
+ScenarioBench::CountingStore* ScenarioBench::CountingStoreFrom(struct SolidSyslogStore* base)
+{
+    return reinterpret_cast<CountingStore*>(base);
+}
+
+enum SolidSyslogStoreWriteResult ScenarioBench::CountingWrite(
+    struct SolidSyslogStore* base,
+    const void* data,
+    size_t size
+)
+{
+    CountingStore* self = CountingStoreFrom(base);
+    enum SolidSyslogStoreWriteResult result = SolidSyslogStore_Write(self->Store, data, size);
+    if (result == SOLIDSYSLOG_STORE_WRITE_KEPT)
+    {
+        self->Kept++;
+    }
+    return result;
+}
+
+bool ScenarioBench::CountingReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead)
+{
+    return SolidSyslogStore_ReadNextUnsent(CountingStoreFrom(base)->Store, data, maxSize, bytesRead);
+}
+
+void ScenarioBench::CountingMarkSent(struct SolidSyslogStore* base)
+{
+    SolidSyslogStore_MarkSent(CountingStoreFrom(base)->Store);
+}
+
+bool ScenarioBench::CountingHasUnsent(struct SolidSyslogStore* base)
+{
+    return SolidSyslogStore_HasUnsent(CountingStoreFrom(base)->Store);
+}
+
+size_t ScenarioBench::CountingGetTotalBytes(struct SolidSyslogStore* base)
+{
+    return SolidSyslogStore_GetTotalBytes(CountingStoreFrom(base)->Store);
+}
+
+size_t ScenarioBench::CountingGetUsedBytes(struct SolidSyslogStore* base)
+{
+    return SolidSyslogStore_GetUsedBytes(CountingStoreFrom(base)->Store);
+}
+
+bool ScenarioBench::CountingIsTransient(struct SolidSyslogStore* base)
+{
+    return SolidSyslogStore_IsTransient(CountingStoreFrom(base)->Store);
 }
