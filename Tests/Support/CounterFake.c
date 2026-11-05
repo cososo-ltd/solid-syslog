@@ -29,3 +29,8 @@ void CounterFake_Destroy(struct SolidSyslogAtomicCounter* counter)
 {
     free(counter);
 }
+
+uint32_t CounterFake_LastHandedOut(struct SolidSyslogAtomicCounter* counter)
+{
+    return ((struct CounterFake*) counter)->Value;
+}

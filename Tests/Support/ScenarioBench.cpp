@@ -66,17 +66,50 @@ bool ParseFrame(const char* frame, unsigned* ordinal, unsigned* sequenceId)
            ParseSequenceId(SyslogField(frame, SYSLOG_FIELD_SDATA), sequenceId);
 }
 
+/* The library's element from a frame's SDATA, or empty when it has none. */
+std::string LibraryElement(const std::string& sdata)
+{
+    size_t start = sdata.find("[solidsyslog@67478 ");
+    size_t end = (start != std::string::npos) ? sdata.find(']', start) : std::string::npos;
+    return (end != std::string::npos) ? sdata.substr(start, (end - start) + 1U) : std::string();
+}
+
 /* A report the logger made of its own event: the library's element is there,
  * its category param names the category the MSGID does, and the meta SD
  * numbers it as it does a record. */
-bool ParseReport(const char* frame, std::string* category, unsigned* sequenceId)
+bool ParseReport(const char* frame, ScenarioReport* report)
 {
     std::string sdata = SyslogField(frame, SYSLOG_FIELD_SDATA);
+    std::string element = LibraryElement(sdata);
     std::string named;
-    bool parsed = (sdata.find("[solidsyslog@67478 ") != std::string::npos) &&
-                  ParseQuoted(sdata, R"(category=")", &named) && ParseSequenceId(sdata, sequenceId);
-    *category = SyslogField(frame, SYSLOG_FIELD_MSGID);
-    return parsed && (named == *category);
+    bool parsed = !element.empty() && ParseQuoted(element, R"(category=")", &named) &&
+                  ParseSequenceId(sdata, &report->SequenceId);
+    report->Category = SyslogField(frame, SYSLOG_FIELD_MSGID);
+    (void) ParseQuoted(element, R"(source=")", &report->SourceParam);
+    (void) ParseQuoted(element, R"(detail=")", &report->DetailParam);
+    (void) ParseQuoted(element, R"(native=")", &report->NativeParam);
+    return parsed && (named == report->Category);
+}
+
+/* The params a report of the event carries, worked out as the library's
+ * element writes them: no source without a name, a detail by name where its
+ * source names it and by number otherwise, and a native code only where the
+ * event has one. */
+std::string SourceParamOf(const struct SolidSyslogErrorEvent* event)
+{
+    bool named = (event->Source != nullptr) && (event->Source->Name != nullptr);
+    return named ? std::string(event->Source->Name) : std::string();
+}
+
+std::string DetailParamOf(const struct SolidSyslogErrorEvent* event)
+{
+    const char* name = SolidSyslogErrorEvent_DetailName(event);
+    return (name != nullptr) ? std::string(name) : std::to_string(event->Detail);
+}
+
+std::string NativeParamOf(const struct SolidSyslogErrorEvent* event)
+{
+    return event->HasNativeCode ? std::to_string(event->NativeCode) : std::string();
 }
 } // namespace
 
@@ -96,8 +129,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
       countingStore(), sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U),
       deviceFailed(false), framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U),
-      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U),
-      eventsWhenLastReportMade(0U)
+      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
@@ -197,13 +229,13 @@ void ScenarioBench::TakeNewFrames()
     {
         const char* frame = StreamFake_Frame(stream, framesSeen);
         ScenarioDelivery delivery = {0U, 0U, passes};
-        ScenarioReport report = {std::string(), 0U, passes};
+        ScenarioReport report = {std::string(), 0U, passes, std::string(), std::string(), std::string()};
 
         if (ParseFrame(frame, &delivery.Ordinal, &delivery.SequenceId))
         {
             delivered.push_back(delivery);
         }
-        else if (ParseReport(frame, &report.Category, &report.SequenceId))
+        else if (ParseReport(frame, &report))
         {
             reports.push_back(report);
         }
@@ -285,11 +317,6 @@ size_t ScenarioBench::ReportsMade() const
     return reportsMade;
 }
 
-size_t ScenarioBench::EventsWhenLastReportMade() const
-{
-    return eventsWhenLastReportMade;
-}
-
 size_t ScenarioBench::DeviceOperationsInLastPass() const
 {
     return deviceOperationsInLastPass;
@@ -327,8 +354,18 @@ void ScenarioBench::HandleError(void* context, const struct SolidSyslogErrorEven
 
 void ScenarioBench::OnError(const struct SolidSyslogErrorEvent* event)
 {
-    ScenarioEvent recorded =
-        {event->Severity, event->Source, event->Category, event->Detail, passes, countingStore.Kept};
+    ScenarioEvent recorded = {
+        event->Severity,
+        event->Source,
+        event->Category,
+        event->Detail,
+        passes,
+        countingStore.Kept,
+        CounterFake_LastHandedOut(counter),
+        SourceParamOf(event),
+        DetailParamOf(event),
+        NativeParamOf(event)
+    };
     events.push_back(recorded);
 }
 
@@ -352,7 +389,6 @@ bool ScenarioBench::OnReportingAsked()
     if (reporting)
     {
         reportsMade++;
-        eventsWhenLastReportMade = events.size();
     }
     return reporting;
 }

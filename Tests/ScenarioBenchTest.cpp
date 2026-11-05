@@ -2,6 +2,9 @@
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogDiscardPolicy.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogFileCategories.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogServiceStatus.h"
@@ -58,6 +61,43 @@ TEST(ScenarioBench, AnEventCarriesTheRecordsTheStoreHadKeptWhenItWasRaised)
     bench.Service();
     LONGS_EQUAL(1, bench.Events().size());
     LONGS_EQUAL(2, bench.Events()[0].RecordsKept);
+}
+
+TEST(ScenarioBench, AnEventCarriesTheLastSequenceIdHandedOutWhenItWasRaised)
+{
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    bench.Log();
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.Events().size());
+    LONGS_EQUAL(2, bench.Events()[0].LastSequenceId);
+}
+
+TEST(ScenarioBench, AnEventCarriesTheSourceAndDetailParamsAReportOfItWouldCarry)
+{
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    bench.Log();
+    bench.Service();
+    STRCMP_EQUAL("StreamSender", bench.Events()[0].SourceParam.c_str());
+    STRCMP_EQUAL("DELIVERY_FAILED", bench.Events()[0].DetailParam.c_str());
+    STRCMP_EQUAL("", bench.Events()[0].NativeParam.c_str());
+}
+
+TEST(ScenarioBench, AnEventCarriesAnUnnamedDetailAsItsNumber)
+{
+    ScenarioBench bench(options);
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, nullptr, SOLIDSYSLOG_CAT_FILE_IO_FAILED, 7);
+    STRCMP_EQUAL("", bench.Events()[0].SourceParam.c_str());
+    STRCMP_EQUAL("7", bench.Events()[0].DetailParam.c_str());
+}
+
+TEST(ScenarioBench, AnEventCarriesItsNativeCode)
+{
+    ScenarioBench bench(options);
+    SolidSyslog_ErrorWithNativeCode(SOLIDSYSLOG_SEVERITY_ERROR, nullptr, SOLIDSYSLOG_CAT_FILE_IO_FAILED, 7, -5);
+    STRCMP_EQUAL("-5", bench.Events()[0].NativeParam.c_str());
 }
 
 TEST(ScenarioBench, ARecoveredSenderDeliversTheHeldRecordAndIsReportedRestored)
@@ -118,6 +158,25 @@ TEST(ScenarioBench, ALossTheLoggerReportsIsAReportFrameNotGarbage)
     LONGS_EQUAL(1, bench.Reports()[0].Pass);
 }
 
+TEST(ScenarioBench, AReportCarriesTheParamsItWasWrittenWith)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    ScenarioBench bench(options);
+    FillTheRing(bench);
+    bench.Service();
+    STRCMP_EQUAL("CircularBuffer", bench.Reports()[0].SourceParam.c_str());
+    STRCMP_EQUAL("RECORD_REFUSED", bench.Reports()[0].DetailParam.c_str());
+    STRCMP_EQUAL("", bench.Reports()[0].NativeParam.c_str());
+}
+
+TEST(ScenarioBench, AReportCarriesItsEventsNativeCode)
+{
+    ScenarioBench bench(options);
+    SolidSyslog_ErrorWithNativeCode(SOLIDSYSLOG_SEVERITY_ERROR, nullptr, SOLIDSYSLOG_CAT_FILE_IO_FAILED, 7, -5);
+    bench.Service();
+    STRCMP_EQUAL("-5", bench.Reports()[0].NativeParam.c_str());
+}
+
 TEST(ScenarioBench, AReportTakesTheSequenceIdAfterTheRecordsLogged)
 {
     options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
@@ -137,14 +196,13 @@ TEST(ScenarioBench, WithReportingOffTheLoggerMakesNoReport)
     LONGS_EQUAL(0, bench.Reports().size());
 }
 
-TEST(ScenarioBench, AReportMadeIsCountedWithTheEventsRaisedBeforeIt)
+TEST(ScenarioBench, AReportMadeIsCounted)
 {
     options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
     ScenarioBench bench(options);
     FillTheRing(bench);
     bench.Service();
     LONGS_EQUAL(1, bench.ReportsMade());
-    LONGS_EQUAL(1, bench.EventsWhenLastReportMade());
 }
 
 TEST(ScenarioBench, AReportTurnedDownIsNotCountedAsMade)

@@ -22,8 +22,15 @@ namespace
 const size_t REPORTS_PER_PASS = 14U;
 const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 
-/* The kinds whose last event the end invariant requires reported. */
-const uint16_t REPORTED_KINDS[] = {SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST};
+/* The kinds whose last event the end invariant requires reported: those the
+ * bench can provoke. */
+const uint16_t REPORTED_KINDS[] = {
+    SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_FROZEN,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
+};
 const size_t SENDS_PER_RECORD = 2U;
 const size_t DEVICE_OPERATIONS_PER_RECORD = 4U;
 
@@ -49,21 +56,17 @@ bool IsLoss(const ScenarioEvent& event)
            (event.Category == SOLIDSYSLOG_CAT_STORE_WRITE_FAILED) || (event.Category == SOLIDSYSLOG_CAT_STORE_FROZEN);
 }
 
-/* A report never passes through the buffer, so only the store and the sender
- * can lose one. */
-bool IsDownstreamLoss(const ScenarioEvent& event)
+/* A report never passes through the buffer, and one the store will not take -
+ * refused, or lost to its security policy - goes to the sender instead, which
+ * on the bench loses nothing it takes. So only the store losing what it held
+ * can lose a report: a rotation that evicted unsent records, a record
+ * discarded on reading, or the freeze. */
+bool CanLoseAReport(const ScenarioEvent& event)
 {
-    return IsLoss(event) && (event.Category != SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
-}
-
-bool IsReportedKind(uint16_t category)
-{
-    bool reported = false;
-    for (uint16_t kind : REPORTED_KINDS)
-    {
-        reported = reported || (kind == category);
-    }
-    return reported;
+    bool evicted = (event.Source == &SolidSyslogBlockStoreErrorSource) &&
+                   (event.Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED);
+    return evicted || (event.Category == SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED) ||
+           (event.Category == SOLIDSYSLOG_CAT_STORE_FROZEN);
 }
 
 std::string NameOf(uint16_t category)
@@ -153,6 +156,46 @@ std::string EveryReportStandsForARaisedEvent(const ScenarioState& state)
         {
             reason = report.Category + " " + Count("reported", reported[report.Category]) + " " +
                      Count("raised", raised[report.Category]);
+        }
+    }
+    return reason;
+}
+
+/* The event a report was made of: the last of its kind raised before Service
+ * made the report, while the meta SD had handed out fewer sequenceIds than the
+ * report took. A slot holds the most recent event of its kind, so an earlier
+ * one is not what the report says. */
+const ScenarioEvent* EventReportedBy(const ScenarioState& state, const ScenarioReport& report)
+{
+    const ScenarioEvent* reported = nullptr;
+    for (const ScenarioEvent& event : state.Bench.Events())
+    {
+        bool before = (NameOf(event.Category) == report.Category) && (event.LastSequenceId < report.SequenceId);
+        reported = before ? &event : reported;
+    }
+    return reported;
+}
+
+std::string Params(const std::string& source, const std::string& detail, const std::string& native)
+{
+    return "source=" + source + " detail=" + detail + " native=" + native;
+}
+
+std::string EveryReportSaysWhatItsEventSaid(const ScenarioState& state)
+{
+    std::string reason;
+    for (const ScenarioReport& report : state.Bench.Reports())
+    {
+        const ScenarioEvent* event = EventReportedBy(state, report);
+        bool said = (event != nullptr) && (event->SourceParam == report.SourceParam) &&
+                    (event->DetailParam == report.DetailParam) && (event->NativeParam == report.NativeParam);
+        if (reason.empty() && !said)
+        {
+            reason = report.Category + " " + Count("sequenceId", report.SequenceId) + " says " +
+                     Params(report.SourceParam, report.DetailParam, report.NativeParam) +
+                     ((event != nullptr)
+                          ? (", its event said " + Params(event->SourceParam, event->DetailParam, event->NativeParam))
+                          : ", with no event before it");
         }
     }
     return reason;
@@ -405,6 +448,7 @@ const Invariant AFTER_EVERY_PASS[] = {
     {"every delivery is a logged record, once", EveryDeliveryIsALoggedRecordOnce},
     {"every report was made with reporting on", EveryReportWasMadeWithReportingOn},
     {"every report stands for a raised event", EveryReportStandsForARaisedEvent},
+    {"every report says what its event said", EveryReportSaysWhatItsEventSaid},
     {"every frame is a record", EveryFrameIsARecord},
     {"no universal error", NoUniversalError},
     {"sender edges alternate", SenderEdgesAlternate},
@@ -439,18 +483,18 @@ std::string EveryRecordIsDeliveredOrItsLossReported(const ScenarioState& state)
                : std::string();
 }
 
-/* A report the store or the sender lost raised a loss of its own; any other
- * report made has reached the sender by the end of the drain. Which report a
- * loss stands for cannot be judged: the store and the sender report a loss
- * once per run, so a report refused inside a run that began before it was
- * made raises nothing of its own. Only whether any downstream loss occurred
- * can be, which the rigs with no store make strict. */
+/* A report the store lost raised a loss of its own; any other report made has
+ * reached the sender by the end of the drain. Which report a loss stands for
+ * cannot be judged: the store reports a loss once per run, so a report lost
+ * inside a run that began before it was made raises nothing of its own. Only
+ * whether the store lost anything it held can be, which the rigs with no
+ * store make strict. */
 std::string EveryReportMadeIsDeliveredOrItsLossReported(const ScenarioState& state)
 {
     bool lossReported = false;
     for (const ScenarioEvent& event : state.Bench.Events())
     {
-        lossReported = lossReported || IsDownstreamLoss(event);
+        lossReported = lossReported || CanLoseAReport(event);
     }
     bool shortfall = state.Bench.Reports().size() != state.Bench.ReportsMade();
     return (shortfall && !lossReported)
@@ -458,30 +502,53 @@ std::string EveryReportMadeIsDeliveredOrItsLossReported(const ScenarioState& sta
                : std::string();
 }
 
-/* The drain runs with reporting on, so once the logger is idle the last
- * event of a reported kind has been taken into a report: an event left
- * waiting at IDLE would sit there until something else woke the loop. */
-std::string TheLastEventOfAReportedKindIsReported(const ScenarioState& state)
+/* A report of the kind arrived that Service made after the meta SD had handed
+ * out @p lastSequenceId, so after the event raised then. */
+bool IsReportedAfter(const ScenarioState& state, uint16_t kind, unsigned lastSequenceId)
+{
+    bool reported = false;
+    for (const ScenarioReport& report : state.Bench.Reports())
+    {
+        reported = reported || ((report.Category == NameOf(kind)) && (report.SequenceId > lastSequenceId));
+    }
+    return reported;
+}
+
+/* The drain runs with reporting on and ends idle, so the last event of each
+ * reported kind has been taken into a report, which has reached the sender
+ * unless the store lost what it held. Which report a loss stands for cannot
+ * be judged - the store reports a loss once per run - so any such loss
+ * excuses. */
+std::string TheLastEventOfEachReportedKindIsReported(const ScenarioState& state)
 {
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
-    bool waiting = false;
-    std::string reason;
-    for (size_t i = 0U; i < events.size(); i++)
+    bool downstreamLoss = false;
+    for (const ScenarioEvent& event : events)
     {
-        if (IsReportedKind(events[i].Category))
+        downstreamLoss = downstreamLoss || CanLoseAReport(event);
+    }
+    std::string reason;
+    for (uint16_t kind : REPORTED_KINDS)
+    {
+        const ScenarioEvent* last = nullptr;
+        for (const ScenarioEvent& event : events)
         {
-            waiting = i >= state.Bench.EventsWhenLastReportMade();
-            reason = NameOf(events[i].Category) + " " + Count("event", i) + " never reported";
+            last = (event.Category == kind) ? &event : last;
+        }
+        bool unreported = (last != nullptr) && !IsReportedAfter(state, kind, last->LastSequenceId);
+        if (reason.empty() && unreported && !downstreamLoss)
+        {
+            reason = NameOf(kind) + " raised after " + Count("sequenceId", last->LastSequenceId) + " never reported";
         }
     }
-    return waiting ? reason : std::string();
+    return reason;
 }
 
 const Invariant AT_END[] = {
     {"the drain ends idle", TheDrainEndsIdle},
     {"every record is delivered or its loss reported", EveryRecordIsDeliveredOrItsLossReported},
     {"every report made is delivered or its loss reported", EveryReportMadeIsDeliveredOrItsLossReported},
-    {"the last event of a reported kind is reported", TheLastEventOfAReportedKindIsReported},
+    {"the last event of each reported kind is reported", TheLastEventOfEachReportedKindIsReported},
 };
 
 template <size_t N> ScenarioVerdict Judge(const Invariant (&table)[N], const ScenarioState& state)

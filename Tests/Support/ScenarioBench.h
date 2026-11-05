@@ -54,6 +54,10 @@ struct ScenarioReport
     std::string Category;
     unsigned SequenceId; /* the meta SD's sequenceId, which a report takes from the same count as a record */
     size_t Pass; /* the Service pass that delivered it */
+    /* The library element's params; empty for one it leaves out. */
+    std::string SourceParam;
+    std::string DetailParam;
+    std::string NativeParam;
 };
 
 /* One event the error handler was told. */
@@ -65,6 +69,12 @@ struct ScenarioEvent
     int32_t Detail;
     size_t Pass; /* the Service pass it was raised in: 0 before any pass, or the last pass when raised from a Log */
     size_t RecordsKept; /* the records the store had kept when it was raised */
+    unsigned LastSequenceId; /* the last sequenceId the meta SD had handed out when it was raised */
+    /* The params a report of it carries, as the report writes them; empty for
+     * one the report leaves out. */
+    std::string SourceParam;
+    std::string DetailParam;
+    std::string NativeParam;
 };
 
 class ScenarioBench
@@ -104,10 +114,8 @@ class ScenarioBench
     size_t Halts() const;
 
     /* Times the switch let a report be made: Service asks it only when it is
-     * about to make one. And how many events had been raised when the last
-     * was made. */
+     * about to make one. */
     size_t ReportsMade() const;
-    size_t EventsWhenLastReportMade() const;
 
     /* Work the last pass did, and the most any pass did. */
     size_t DeviceOperationsInLastPass() const;
@@ -178,7 +186,6 @@ class ScenarioBench
     size_t maxSendsInOnePass;
     bool reporting;
     size_t reportsMade;
-    size_t eventsWhenLastReportMade;
 
     void TakeNewFrames();
     static struct SolidSyslogBuffer* CreateBuffer(std::vector<uint8_t>& ring, void* policyContext);
