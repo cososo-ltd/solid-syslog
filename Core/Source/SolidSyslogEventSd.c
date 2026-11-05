@@ -14,11 +14,6 @@
 #include "SolidSyslogSdValue.h"
 #include "SolidSyslogStructuredDataDefinition.h"
 
-/* The element's SD-ID is solidsyslog@67478: a private name under the IANA
- * private enterprise number assigned to Cozens Software Solutions Limited. */
-static const char EventSd_Name[] = "solidsyslog";
-static const uint32_t EventSd_EnterpriseNumber = 67478U;
-
 static void EventSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
 static inline const struct SolidSyslogEventSd* EventSd_SelfFromBase(struct SolidSyslogStructuredData* base);
 static inline bool EventSd_HasSourceName(const struct SolidSyslogErrorEvent* event);
@@ -37,9 +32,13 @@ struct SolidSyslogStructuredData* SolidSyslogEventSd_Initialise(
 
 static void EventSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
+    /* The element's SD-ID is solidsyslog@67478: a private name under the IANA
+     * private enterprise number assigned to Cozens Software Solutions Limited. */
+    static const char name[] = "solidsyslog";
+    const uint32_t enterpriseNumber = 67478U;
     const struct SolidSyslogErrorEvent* event = EventSd_SelfFromBase(base)->Event;
 
-    SolidSyslogSdElement_Begin(element, EventSd_Name, EventSd_EnterpriseNumber);
+    SolidSyslogSdElement_Begin(element, name, enterpriseNumber);
     if (EventSd_HasSourceName(event))
     {
         SolidSyslogSdValue_String(SolidSyslogSdElement_Param(element, "source"), event->Source->Name);

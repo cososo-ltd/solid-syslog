@@ -68,9 +68,6 @@ static const enum SolidSyslogSeverity PendingEvents_Severities[] = {
     SOLIDSYSLOG_SEVERITY_DEBUG,
 };
 
-static const size_t PendingEvents_SeverityCount =
-    sizeof(PendingEvents_Severities) / sizeof(PendingEvents_Severities[0]);
-
 static volatile struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
 
 static inline uint8_t PendingEvents_SeverityCode(enum SolidSyslogSeverity severity);
@@ -95,8 +92,9 @@ void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
 /* A severity the table does not hold keeps code zero, the kind's own. */
 static inline uint8_t PendingEvents_SeverityCode(enum SolidSyslogSeverity severity)
 {
+    const size_t severityCount = sizeof(PendingEvents_Severities) / sizeof(PendingEvents_Severities[0]);
     uint8_t code = 0U;
-    for (size_t position = 0U; position < PendingEvents_SeverityCount; position++)
+    for (size_t position = 0U; position < severityCount; position++)
     {
         if (PendingEvents_Severities[position] == severity)
         {

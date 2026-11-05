@@ -31,6 +31,7 @@ misra-c2012-11.2:Platform/Windows/Source/SolidSyslogWinsockAddressPrivate.h:34
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.h:38
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:87
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:187
+misra-c2012-11.3:Core/Source/SolidSyslogEventSd.c:60
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:113
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:64
@@ -123,7 +124,7 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:881
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:716
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1019
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1026
-misra-c2012-11.5:Core/Source/SolidSyslog.c:764
+misra-c2012-11.5:Core/Source/SolidSyslog.c:759
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -135,6 +136,10 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
+misra-c2012-11.8:Core/Source/SolidSyslog.c:134
+misra-c2012-11.8:Core/Source/SolidSyslog.c:135
+misra-c2012-11.8:Core/Source/SolidSyslog.c:136
+misra-c2012-11.8:Core/Source/SolidSyslog.c:137
 misra-c2012-11.8:Core/Source/SolidSyslog.c:138
 misra-c2012-11.8:Core/Source/SolidSyslog.c:139
 misra-c2012-11.8:Core/Source/SolidSyslog.c:140
@@ -143,9 +148,6 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:142
 misra-c2012-11.8:Core/Source/SolidSyslog.c:143
 misra-c2012-11.8:Core/Source/SolidSyslog.c:144
 misra-c2012-11.8:Core/Source/SolidSyslog.c:145
-misra-c2012-11.8:Core/Source/SolidSyslog.c:146
-misra-c2012-11.8:Core/Source/SolidSyslog.c:147
-misra-c2012-11.8:Core/Source/SolidSyslog.c:148
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85

@@ -34,10 +34,6 @@
 
 const struct SolidSyslogErrorSource SolidSyslogErrorSource = {"SolidSyslog", SolidSyslogErrors_Name};
 
-/* The MSG of every report Service makes of a pending event; the record's
- * MSGID and the library's SD element say which event it was. */
-static const char SolidSyslog_ReportMsg[] = "SolidSyslog event";
-
 struct SolidSyslogBuffer;
 struct SolidSyslogHeaderField;
 struct SolidSyslogScratch;
@@ -638,12 +634,11 @@ static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self)
 
 static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const struct SolidSyslogErrorEvent* event)
 {
-    struct SolidSyslogMessage message = {
-        SOLIDSYSLOG_FACILITY_SYSLOG,
-        event->Severity,
-        SolidSyslogErrorCategory_Name(event->Category),
-        SolidSyslog_ReportMsg
-    };
+    /* The MSG of every report; its MSGID and the library's SD element say
+     * which event it was. */
+    static const char reportMsg[] = "SolidSyslog event";
+    struct SolidSyslogMessage message =
+        {SOLIDSYSLOG_FACILITY_SYSLOG, event->Severity, SolidSyslogErrorCategory_Name(event->Category), reportMsg};
     struct SolidSyslogEventSd eventSd;
     struct SolidSyslogStructuredData* sd = SolidSyslogEventSd_Initialise(&eventSd, event);
     struct SolidSyslogFormatter* formatter = SolidSyslogFormatter_Create(self->RecordStorage, self->RecordCapacity);
