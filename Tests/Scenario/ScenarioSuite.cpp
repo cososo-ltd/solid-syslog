@@ -108,6 +108,11 @@ class Driver
                 bench.FailDevice();
                 state.DeviceFailed = true;
                 break;
+            case 'C':
+                /* Scripts only: the ring never gets past a corrupt record, so
+                 * a walk would strand everything logged after it. */
+                bench.CorruptTheRing();
+                break;
             case 'O':
                 SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
                 break;

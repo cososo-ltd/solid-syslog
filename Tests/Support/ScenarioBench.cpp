@@ -257,6 +257,11 @@ void ScenarioBench::FailDevice()
     BlockDeviceFake_FailEveryOperation();
 }
 
+void ScenarioBench::CorruptTheRing()
+{
+    std::fill(ring.begin(), ring.end(), static_cast<uint8_t>(0xFFU));
+}
+
 bool ScenarioBench::DeviceHasFailed() const
 {
     return deviceFailed;

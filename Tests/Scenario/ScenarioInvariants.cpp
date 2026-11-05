@@ -25,6 +25,7 @@ const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 /* The kinds whose last event the end invariant requires reported: those the
  * bench can provoke. */
 const uint16_t REPORTED_KINDS[] = {
+    SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_FROZEN,
@@ -47,9 +48,13 @@ std::string Count(const char* what, size_t count)
     return std::string(what) + "=" + std::to_string(count);
 }
 
+/* The categories that account for a record not delivered. A buffer whose
+ * backend failed refused a write, losing the record, or met a head record too
+ * large to read, which strands it and those behind it. */
 bool IsLoss(const ScenarioEvent& event)
 {
     return (event.Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ||
+           (event.Category == SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED) ||
            (event.Category == SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST) ||
            (event.Category == SOLIDSYSLOG_CAT_STORE_RECORDS_LOST) ||
            (event.Category == SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED) ||

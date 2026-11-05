@@ -96,6 +96,11 @@ class ScenarioBench
     void FailDevice();
     void SetDiscardPolicy(enum SolidSyslogDiscardPolicy policy);
 
+    /* Overwrites every byte of the ring, which is the bench's own storage, so
+     * the length of the record at its head reads larger than any record it
+     * holds. */
+    void CorruptTheRing();
+
     /* The logger's switch for reporting its own events, on until changed. */
     void SetReporting(bool on);
 

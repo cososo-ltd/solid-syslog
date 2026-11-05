@@ -124,6 +124,11 @@ TEST(ScenarioSuite, APolicyChangedMidOutageIsHonouredFromTheNextRecord)
     CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", fill) + "N" + Repeat("LS", fill) + "H" + Repeat("LS", fill) + "U");
 }
 
+TEST(ScenarioSuite, ACorruptRingIsReportedOnceAsItsBackendFailing)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, "LC" + Repeat("S", 5U));
+}
+
 TEST(ScenarioSuite, ABufferLossIsReportedOnceThroughTheStore)
 {
     CHECK_SCENARIO(OLDEST, Repeat("L", RingFill(OLDEST)) + Repeat("S", 10U));

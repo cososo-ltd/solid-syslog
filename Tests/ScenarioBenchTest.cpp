@@ -136,6 +136,16 @@ TEST(ScenarioBench, AFailedDeviceFreezesTheStoreAtTheNextWrite)
     LONGS_EQUAL(1, bench.Delivered().size());
 }
 
+TEST(ScenarioBench, ACorruptRingIsReportedAsItsBackendFailing)
+{
+    ScenarioBench bench(options);
+    bench.Log();
+    bench.CorruptTheRing();
+    bench.Service();
+    LONGS_EQUAL(1, bench.Events().size());
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, bench.Events()[0].Category);
+}
+
 TEST(ScenarioBench, AFullBufferUnderNewestRefusesAndIsReportedOnceFromTheLog)
 {
     options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
