@@ -136,6 +136,41 @@ TEST(ScenarioBench, AFailedDeviceFreezesTheStoreAtTheNextWrite)
     LONGS_EQUAL(1, bench.Delivered().size());
 }
 
+TEST(ScenarioBench, AMisroutedSenderDropsTheRecordAndReportsTheLoss)
+{
+    ScenarioBench bench(options);
+    bench.SetMisrouted(true);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(0, bench.Delivered().size());
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, bench.Events()[0].Category);
+}
+
+TEST(ScenarioBench, AReportTheMisroutedSenderDroppedIsRecorded)
+{
+    ScenarioBench bench(options);
+    bench.SetMisrouted(true);
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_ERROR, nullptr, SOLIDSYSLOG_CAT_FILE_IO_FAILED, 7);
+    bench.Service();
+    LONGS_EQUAL(0, bench.Reports().size());
+    LONGS_EQUAL(1, bench.DroppedReports().size());
+    STRCMP_EQUAL("FILE_IO_FAILED", bench.DroppedReports()[0].Category.c_str());
+}
+
+TEST(ScenarioBench, ASenderRoutedBackDeliversAgain)
+{
+    ScenarioBench bench(options);
+    bench.SetMisrouted(true);
+    bench.Log();
+    bench.Service();
+    bench.SetMisrouted(false);
+    bench.Log();
+    bench.Service(); /* sends the report of the loss, stored ahead of the record */
+    bench.Service();
+    LONGS_EQUAL(1, bench.Delivered().size());
+    LONGS_EQUAL(2, bench.Delivered()[0].Ordinal);
+}
+
 TEST(ScenarioBench, ACorruptRingIsReportedAsItsBackendFailing)
 {
     ScenarioBench bench(options);

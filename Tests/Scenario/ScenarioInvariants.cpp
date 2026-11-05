@@ -29,6 +29,7 @@ const uint16_t REPORTED_KINDS[] = {
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_FROZEN,
+    SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
 };
@@ -90,6 +91,15 @@ size_t CountCategory(const std::vector<ScenarioEvent>& events, uint16_t category
     return count;
 }
 
+/* Every report Service made that the bench saw: those the stream received,
+ * and those the misrouted sender dropped. */
+std::vector<ScenarioReport> MadeReports(const ScenarioState& state)
+{
+    std::vector<ScenarioReport> made = state.Bench.Reports();
+    made.insert(made.end(), state.Bench.DroppedReports().begin(), state.Bench.DroppedReports().end());
+    return made;
+}
+
 /* A report takes its sequenceId from the meta SD's count, as a record does,
  * so records and reports together use each one once. */
 std::string SequenceIdsAreUsedOnce(const ScenarioState& state)
@@ -99,7 +109,7 @@ std::string SequenceIdsAreUsedOnce(const ScenarioState& state)
     {
         used.push_back(delivery.SequenceId);
     }
-    for (const ScenarioReport& report : state.Bench.Reports())
+    for (const ScenarioReport& report : MadeReports(state))
     {
         used.push_back(report.SequenceId);
     }
@@ -137,7 +147,7 @@ std::string EveryDeliveryIsALoggedRecordOnce(const ScenarioState& state)
  * report beyond the times it answered on was made without asking. */
 std::string EveryReportWasMadeWithReportingOn(const ScenarioState& state)
 {
-    size_t reports = state.Bench.Reports().size();
+    size_t reports = state.Bench.Reports().size() + state.Bench.DroppedReports().size();
     return (reports <= state.Bench.ReportsMade())
                ? std::string()
                : (Count("reports", reports) + " " + Count("made with reporting on", state.Bench.ReportsMade()));
@@ -154,7 +164,7 @@ std::string EveryReportStandsForARaisedEvent(const ScenarioState& state)
     }
     std::map<std::string, size_t> reported;
     std::string reason;
-    for (const ScenarioReport& report : state.Bench.Reports())
+    for (const ScenarioReport& report : MadeReports(state))
     {
         reported[report.Category]++;
         if (reason.empty() && (reported[report.Category] > raised[report.Category]))
@@ -189,7 +199,7 @@ std::string Params(const std::string& source, const std::string& detail, const s
 std::string EveryReportSaysWhatItsEventSaid(const ScenarioState& state)
 {
     std::string reason;
-    for (const ScenarioReport& report : state.Bench.Reports())
+    for (const ScenarioReport& report : MadeReports(state))
     {
         const ScenarioEvent* event = EventReportedBy(state, report);
         bool said = (event != nullptr) && (event->SourceParam == report.SourceParam) &&
@@ -529,8 +539,9 @@ std::string EveryRecordIsDeliveredOrItsLossReported(const ScenarioState& state)
                : std::string();
 }
 
-/* A report the store lost raised a loss of its own; any other report made has
- * reached the sender by the end of the drain. Which report a loss stands for
+/* A report the misrouted sender dropped is one the bench saw dropped; one the
+ * store lost raised a loss of its own; any other report made has reached the
+ * sender by the end of the drain. Which report a store loss stands for
  * cannot be judged: the store reports a loss once per run, so a report lost
  * inside a run that began before it was made raises nothing of its own. Only
  * whether the store lost anything it held can be, which the rigs with no
@@ -542,18 +553,20 @@ std::string EveryReportMadeIsDeliveredOrItsLossReported(const ScenarioState& sta
     {
         lossReported = lossReported || CanLoseAReport(event);
     }
-    bool shortfall = state.Bench.Reports().size() != state.Bench.ReportsMade();
+    bool shortfall = MadeReports(state).size() != state.Bench.ReportsMade();
     return (shortfall && !lossReported)
-               ? (Count("made", state.Bench.ReportsMade()) + " " + Count("delivered", state.Bench.Reports().size()))
+               ? (Count("made", state.Bench.ReportsMade()) + " " + Count("delivered", state.Bench.Reports().size()) +
+                  " " + Count("dropped", state.Bench.DroppedReports().size()))
                : std::string();
 }
 
-/* A report of the kind arrived that Service made after the meta SD had handed
- * out @p lastSequenceId, so after the event raised then. */
+/* Service made a report of the kind after the meta SD had handed out
+ * @p lastSequenceId, so after the event raised then; it arrived, or the
+ * misrouted sender dropped it. */
 bool IsReportedAfter(const ScenarioState& state, uint16_t kind, unsigned lastSequenceId)
 {
     bool reported = false;
-    for (const ScenarioReport& report : state.Bench.Reports())
+    for (const ScenarioReport& report : MadeReports(state))
     {
         reported = reported || ((report.Category == NameOf(kind)) && (report.SequenceId > lastSequenceId));
     }

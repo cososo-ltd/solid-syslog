@@ -8,6 +8,7 @@
 
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSenderDefinition.h"
 #include "SolidSyslogServiceStatus.h"
 #include "SolidSyslogStoreDefinition.h"
 
@@ -101,6 +102,12 @@ class ScenarioBench
      * holds. */
     void CorruptTheRing();
 
+    /* The switching sender in front of the stream asks a selector, which while
+     * misrouted answers an index out of range: the switching sender then drops
+     * whatever it is handed, records and reports alike, and reports the
+     * loss. */
+    void SetMisrouted(bool misrouted);
+
     /* The logger's switch for reporting its own events, on until changed. */
     void SetReporting(bool on);
 
@@ -110,6 +117,10 @@ class ScenarioBench
     const std::vector<ScenarioDelivery>& Delivered() const;
     const std::vector<ScenarioReport>& Reports() const;
     const std::vector<ScenarioEvent>& Events() const;
+
+    /* Reports the switching sender dropped while misrouted, which the stream
+     * never saw; Pass is the pass that made them. */
+    const std::vector<ScenarioReport>& DroppedReports() const;
 
     /* Frames the stream received that parsed neither as a record of this
      * bench nor as a report. */
@@ -162,6 +173,14 @@ class ScenarioBench
         size_t Kept;
     };
 
+    /* The sender the logger is given: the switching sender, watched, so a
+     * report it drops while misrouted is on the record. */
+    struct WatchedSender
+    {
+        struct SolidSyslogSender Base;
+        ScenarioBench* Bench;
+    };
+
     HandlerInstallation handler;
     ScenarioBenchOptions options;
     std::vector<uint8_t> ring;
@@ -174,6 +193,11 @@ class ScenarioBench
     struct SolidSyslogStore* store;
     CountingStore countingStore;
     struct SolidSyslogSender* sender;
+    struct SolidSyslogSender* senders[1];
+    struct SolidSyslogSender* switchingSender;
+    WatchedSender watchedSender;
+    bool misrouted;
+    std::vector<ScenarioReport> droppedReports;
     struct SolidSyslog* logger;
 
     unsigned logged;
@@ -200,6 +224,9 @@ class ScenarioBench
     static void OnHalt(void* context);
     bool OnReportingAsked();
     static bool IsReportingOn(void* context);
+    static uint8_t Select(void* context);
+    static bool WatchedSend(struct SolidSyslogSender* base, const void* buffer, size_t size);
+    static void WatchedDisconnect(struct SolidSyslogSender* base);
     static CountingStore* CountingStoreFrom(struct SolidSyslogStore* base);
     static enum SolidSyslogStoreWriteResult CountingWrite(struct SolidSyslogStore* base, const void* data, size_t size);
     static bool CountingReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);

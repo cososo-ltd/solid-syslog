@@ -16,7 +16,9 @@
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogSender.h"
 #include "SolidSyslogStreamSender.h"
+#include "SolidSyslogSwitchingSender.h"
 #include "StreamFake.h"
 #include "SyslogFieldParser.h"
 
@@ -127,9 +129,10 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
       counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
-      countingStore(), sender(nullptr), logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U),
-      deviceFailed(false), framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U),
-      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
+      countingStore(), sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false),
+      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false), framesSeen(0U),
+      deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U),
+      reporting(true), reportsMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
@@ -156,10 +159,21 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     senderConfig.Stream = stream;
     senderConfig.Address = AddressFake_Get();
     sender = SolidSyslogStreamSender_Create(&senderConfig);
+    senders[0] = sender;
+
+    struct SolidSyslogSwitchingSenderConfig switchingConfig = {};
+    switchingConfig.Senders = senders;
+    switchingConfig.SenderCount = 1U;
+    switchingConfig.Selector = Select;
+    switchingConfig.SelectorContext = this;
+    switchingSender = SolidSyslogSwitchingSender_Create(&switchingConfig);
+    watchedSender.Base.Send = WatchedSend;
+    watchedSender.Base.Disconnect = WatchedDisconnect;
+    watchedSender.Bench = this;
 
     struct SolidSyslogConfig config = {};
     config.Buffer = buffer;
-    config.Sender = sender;
+    config.Sender = &watchedSender.Base;
     config.Store = &countingStore.Base;
     config.Sd = sds;
     config.SdCount = 1U;
@@ -188,6 +202,7 @@ ScenarioBench::~ScenarioBench()
     /* The logger goes first. Destroying it also forgets whatever the walk
      * left pending, so the next bench's logger reports none of it. */
     SolidSyslog_Destroy(logger);
+    SolidSyslogSwitchingSender_Destroy(switchingSender);
     SolidSyslogStreamSender_Destroy(sender);
     if (options.HasStore)
     {
@@ -255,6 +270,41 @@ void ScenarioBench::FailDevice()
 {
     deviceFailed = true;
     BlockDeviceFake_FailEveryOperation();
+}
+
+void ScenarioBench::SetMisrouted(bool isMisrouted)
+{
+    misrouted = isMisrouted;
+}
+
+const std::vector<ScenarioReport>& ScenarioBench::DroppedReports() const
+{
+    return droppedReports;
+}
+
+/* The one sender is index 0, so 1 is out of range. */
+uint8_t ScenarioBench::Select(void* context)
+{
+    return static_cast<ScenarioBench*>(context)->misrouted ? 1U : 0U;
+}
+
+/* The switching sender asks the selector on every send, so a report handed to
+ * it while misrouted is one it drops. */
+bool ScenarioBench::WatchedSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
+{
+    ScenarioBench* bench = reinterpret_cast<WatchedSender*>(base)->Bench;
+    ScenarioReport report = {std::string(), 0U, bench->passes, std::string(), std::string(), std::string()};
+    std::string frame(static_cast<const char*>(buffer), size);
+    if (bench->misrouted && ParseReport(frame.c_str(), &report))
+    {
+        bench->droppedReports.push_back(report);
+    }
+    return SolidSyslogSender_Send(bench->switchingSender, buffer, size);
+}
+
+void ScenarioBench::WatchedDisconnect(struct SolidSyslogSender* base)
+{
+    SolidSyslogSender_Disconnect(reinterpret_cast<WatchedSender*>(base)->Bench->switchingSender);
 }
 
 void ScenarioBench::CorruptTheRing()

@@ -124,6 +124,11 @@ TEST(ScenarioSuite, APolicyChangedMidOutageIsHonouredFromTheNextRecord)
     CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", fill) + "N" + Repeat("LS", fill) + "H" + Repeat("LS", fill) + "U");
 }
 
+TEST(ScenarioSuite, AMisroutedSenderIsReportedOnceForTheRun)
+{
+    CHECK_SCENARIO(OLDEST, "MLLL" + Repeat("S", 5U) + "B" + Repeat("S", 5U));
+}
+
 TEST(ScenarioSuite, ACorruptRingIsReportedOnceAsItsBackendFailing)
 {
     CHECK_SCENARIO(OLDEST_NO_STORE, "LC" + Repeat("S", 5U));

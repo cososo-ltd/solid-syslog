@@ -29,7 +29,8 @@ const std::array<ScenarioRig, 6> RIGS = {
 
 /* A step's letter and its weight in a thousand draws. Logging outruns
  * Service, outages are short and recover, a device failure is rare enough
- * that most walks never see one, and reporting is mostly on. */
+ * that most walks never see one, a misrouted sender is rare and soon routed
+ * back, and reporting is mostly on. */
 struct Step
 {
     char Letter;
@@ -37,7 +38,9 @@ struct Step
 };
 
 const Step STEPS[] = {
-    {'L', 440U},
+    {'L', 420U},
+    {'M', 8U},
+    {'B', 12U},
     {'S', 335U},
     {'D', 40U},
     {'U', 60U},
@@ -113,6 +116,12 @@ class Driver
                  * a walk would strand everything logged after it. */
                 bench.CorruptTheRing();
                 break;
+            case 'M':
+                bench.SetMisrouted(true);
+                break;
+            case 'B':
+                bench.SetMisrouted(false);
+                break;
             case 'O':
                 SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
                 break;
@@ -170,6 +179,7 @@ class Driver
         SetSender(false);
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
         bench.SetReporting(true);
+        bench.SetMisrouted(false);
         state.QuietSinceLastPass = false;
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
         size_t allowance = bench.Logged() + DRAIN_SLACK;
