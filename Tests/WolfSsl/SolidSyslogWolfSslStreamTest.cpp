@@ -705,6 +705,21 @@ TEST(SolidSyslogWolfSslStream, OpenReportsADiffieHellmanFloorTheLibraryWouldNotA
     );
 }
 
+TEST(SolidSyslogWolfSslStream, OpenReportsACipherPolicyTheLibraryRejects)
+{
+    FakeProfile_Value.CipherList = "NOT-A-SUITE-THIS-BUILD-KNOWS";
+    WolfSslTlsFake_SetSetCipherListReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(0, WolfSslTlsFake_ConnectCallCount());
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
+    );
+}
+
 TEST(SolidSyslogWolfSslStream, OpenReportsAPeerNameTheLibraryWouldNotTake)
 {
     WolfSslTlsFake_SetCheckDomainNameReturn(FAKE_WOLFSSL_FAILURE);
