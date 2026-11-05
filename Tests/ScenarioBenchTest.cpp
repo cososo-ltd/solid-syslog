@@ -12,10 +12,20 @@
 TEST_GROUP(ScenarioBench)
 {
     /* A block that holds a worst-case record whatever the tunables say. */
-    ScenarioBenchOptions options = {4U, static_cast<size_t>(2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE), 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST};
+    ScenarioBenchOptions options = {4U, static_cast<size_t>(2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE), 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true};
 };
 
 // clang-format on
+
+/* The records are far smaller than the worst case the ring is sized for, so
+ * it takes many more than BufferMessages to fill it. */
+static void FillTheRing(ScenarioBench& bench)
+{
+    for (unsigned i = 0U; i < (SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4U) / 32U) + 20U; i++)
+    {
+        bench.Log();
+    }
+}
 
 TEST(ScenarioBench, ALoggedRecordIsDeliveredByTheNextPass)
 {
@@ -53,6 +63,16 @@ TEST(ScenarioBench, ARecoveredSenderDeliversTheHeldRecordAndIsReportedRestored)
     LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, bench.Events()[1].Category);
 }
 
+TEST(ScenarioBench, WithoutAStoreARecordGoesStraightToTheSender)
+{
+    options.HasStore = false;
+    ScenarioBench bench(options);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.Delivered().size());
+    LONGS_EQUAL(0, bench.DeviceOperationsInLastPass());
+}
+
 TEST(ScenarioBench, AFailedDeviceFreezesTheStoreAtTheNextWrite)
 {
     ScenarioBench bench(options);
@@ -69,12 +89,7 @@ TEST(ScenarioBench, AFullBufferUnderNewestRefusesAndIsReportedOnceFromTheLog)
 {
     options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
     ScenarioBench bench(options);
-    /* The records are far smaller than the worst case the ring is sized
-     * for, so it takes many more than BufferMessages to fill it. */
-    for (unsigned i = 0U; i < (SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4U) / 32U) + 20U; i++)
-    {
-        bench.Log();
-    }
+    FillTheRing(bench);
     LONGS_EQUAL(1, bench.Events().size());
     LONGS_EQUAL(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, bench.Events()[0].Category);
     LONGS_EQUAL(0, bench.Events()[0].Pass);
@@ -84,15 +99,51 @@ TEST(ScenarioBench, ALossTheLoggerReportsIsAReportFrameNotGarbage)
 {
     options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
     ScenarioBench bench(options);
-    for (unsigned i = 0U; i < (SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4U) / 32U) + 20U; i++)
-    {
-        bench.Log();
-    }
+    FillTheRing(bench);
     bench.Service();
     LONGS_EQUAL(0, bench.Garbage());
     LONGS_EQUAL(1, bench.Reports().size());
     STRCMP_EQUAL("BUFFER_RECORDS_LOST", bench.Reports()[0].Category.c_str());
     LONGS_EQUAL(1, bench.Reports()[0].Pass);
+}
+
+TEST(ScenarioBench, AReportTakesTheSequenceIdAfterTheRecordsLogged)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    ScenarioBench bench(options);
+    FillTheRing(bench);
+    bench.Service();
+    LONGS_EQUAL(bench.Logged() + 1U, bench.Reports()[0].SequenceId);
+}
+
+TEST(ScenarioBench, WithReportingOffTheLoggerMakesNoReport)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    ScenarioBench bench(options);
+    bench.SetReporting(false);
+    FillTheRing(bench);
+    bench.Service();
+    LONGS_EQUAL(0, bench.Reports().size());
+}
+
+TEST(ScenarioBench, AReportMadeIsCountedWithTheEventsRaisedBeforeIt)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    ScenarioBench bench(options);
+    FillTheRing(bench);
+    bench.Service();
+    LONGS_EQUAL(1, bench.ReportsMade());
+    LONGS_EQUAL(1, bench.EventsWhenLastReportMade());
+}
+
+TEST(ScenarioBench, AReportTurnedDownIsNotCountedAsMade)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    ScenarioBench bench(options);
+    bench.SetReporting(false);
+    FillTheRing(bench);
+    bench.Service();
+    LONGS_EQUAL(0, bench.ReportsMade());
 }
 
 TEST(ScenarioBench, AServicePassRecordsItsDeviceWorkAndSends)

@@ -26,16 +26,32 @@ const size_t SCENARIO_SMALLEST_RECORD_BYTES = 32U;
 const size_t SCENARIO_BLOCK_BYTES = 2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE;
 
 /* The rigs: the policy the logger, buffer and store start under, over a
- * ring and a store small enough that a walk fills them. */
+ * ring and a store small enough that a walk fills them, or over the ring
+ * alone, where Service holds for the sender what it cannot send. */
 inline const ScenarioRig SCENARIO_RIG_OLDEST = {
     "oldest",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true}
 };
 inline const ScenarioRig SCENARIO_RIG_NEWEST = {
     "newest",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true}
 };
-inline const ScenarioRig SCENARIO_RIG_HALT = {"halt", {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT}};
+inline const ScenarioRig SCENARIO_RIG_HALT = {
+    "halt",
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true}
+};
+inline const ScenarioRig SCENARIO_RIG_OLDEST_NO_STORE = {
+    "oldest-no-store",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, false}
+};
+inline const ScenarioRig SCENARIO_RIG_NEWEST_NO_STORE = {
+    "newest-no-store",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, false}
+};
+inline const ScenarioRig SCENARIO_RIG_HALT_NO_STORE = {
+    "halt-no-store",
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, false}
+};
 
 /* What a run found: a pass, or the first invariant to fail, where and why. */
 struct ScenarioVerdict
@@ -47,8 +63,9 @@ struct ScenarioVerdict
 };
 
 /* A script is one letter per step: L logs a record, S makes a Service pass,
- * D and U take the sender down and up, F fails the block device, and O, N
- * and H set the discard policy to Oldest, Newest or Halt. The invariants are
+ * D and U take the sender down and up, F fails the block device, O, N and H
+ * set the discard policy to Oldest, Newest or Halt, and Q and R turn the
+ * logger's reporting of its own events off and on. The invariants are
  * checked after every pass, and once more after the run drains what the
  * script left queued. */
 ScenarioVerdict ScenarioSuite_Run(const ScenarioRig& rig, const std::string& script);

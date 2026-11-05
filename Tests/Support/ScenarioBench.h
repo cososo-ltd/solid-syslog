@@ -22,8 +22,8 @@ struct SolidSyslogStream;
 struct SolidSyslogStructuredData;
 
 /* The real Core wired end to end over fakes: a logger over a circular
- * buffer, a block store on the block device fake, and a stream sender on the
- * stream fake, with the meta SD numbering every record. The bench drives Log
+ * buffer, a block store on the block device fake (or no store), and a stream
+ * sender on the stream fake, with the meta SD numbering every record. The bench drives Log
  * and Service, injects faults into the fakes, and records what the stream
  * received and what the error handler was told; it never asserts, so the
  * scenario suite's invariants and the named tests each judge the record
@@ -34,6 +34,7 @@ struct ScenarioBenchOptions
     size_t BlockSize;
     size_t MaxBlocks;
     enum SolidSyslogDiscardPolicy DiscardPolicy; /* the one policy the logger, buffer and store share */
+    bool HasStore; /* false wires the Null store, so Service holds for the sender what it cannot send */
 };
 
 /* One record the stream received whole and the bench recognised as its own. */
@@ -50,6 +51,7 @@ struct ScenarioDelivery
 struct ScenarioReport
 {
     std::string Category;
+    unsigned SequenceId; /* the meta SD's sequenceId, which a report takes from the same count as a record */
     size_t Pass; /* the Service pass that delivered it */
 };
 
@@ -82,6 +84,9 @@ class ScenarioBench
     void FailDevice();
     void SetDiscardPolicy(enum SolidSyslogDiscardPolicy policy);
 
+    /* The logger's switch for reporting its own events, on until changed. */
+    void SetReporting(bool on);
+
     /* What happened. */
     unsigned Logged() const;
     size_t Passes() const;
@@ -95,6 +100,12 @@ class ScenarioBench
 
     /* Calls of the logger's halt callback. */
     size_t Halts() const;
+
+    /* Times the switch let a report be made: Service asks it only when it is
+     * about to make one. And how many events had been raised when the last
+     * was made. */
+    size_t ReportsMade() const;
+    size_t EventsWhenLastReportMade() const;
 
     /* Work the last pass did, and the most any pass did. */
     size_t DeviceOperationsInLastPass() const;
@@ -152,6 +163,9 @@ class ScenarioBench
     size_t sendsInLastPass;
     size_t maxDeviceOperationsInOnePass;
     size_t maxSendsInOnePass;
+    bool reporting;
+    size_t reportsMade;
+    size_t eventsWhenLastReportMade;
 
     void TakeNewFrames();
     static struct SolidSyslogBuffer* CreateBuffer(std::vector<uint8_t>& ring, void* policyContext);
@@ -159,6 +173,8 @@ class ScenarioBench
     static void HandleError(void* context, const struct SolidSyslogErrorEvent* event);
     static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
     static void OnHalt(void* context);
+    bool OnReportingAsked();
+    static bool IsReportingOn(void* context);
 };
 
 #endif /* SCENARIOBENCH_H */

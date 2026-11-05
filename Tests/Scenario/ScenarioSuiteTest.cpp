@@ -10,6 +10,9 @@ namespace
 const ScenarioRig& OLDEST = SCENARIO_RIG_OLDEST;
 const ScenarioRig& NEWEST = SCENARIO_RIG_NEWEST;
 const ScenarioRig& HALT = SCENARIO_RIG_HALT;
+const ScenarioRig& OLDEST_NO_STORE = SCENARIO_RIG_OLDEST_NO_STORE;
+const ScenarioRig& NEWEST_NO_STORE = SCENARIO_RIG_NEWEST_NO_STORE;
+const ScenarioRig& HALT_NO_STORE = SCENARIO_RIG_HALT_NO_STORE;
 
 /* Enough records to fill the rig's store with room to spare. */
 size_t StoreFill(const ScenarioRig& rig)
@@ -119,6 +122,41 @@ TEST(ScenarioSuite, APolicyChangedMidOutageIsHonouredFromTheNextRecord)
 {
     size_t fill = StoreFill(OLDEST);
     CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", fill) + "N" + Repeat("LS", fill) + "H" + Repeat("LS", fill) + "U");
+}
+
+TEST(ScenarioSuite, ABufferLossIsReportedOnceThroughTheStore)
+{
+    CHECK_SCENARIO(OLDEST, Repeat("L", RingFill(OLDEST)) + Repeat("S", 10U));
+}
+
+TEST(ScenarioSuite, ABufferLossIsReportedOnceWithNoStore)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, Repeat("L", RingFill(OLDEST_NO_STORE)) + Repeat("S", 10U));
+}
+
+TEST(ScenarioSuite, ALossRaisedWhileReportingIsOffIsReportedOnceItIsOn)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, "Q" + Repeat("L", RingFill(OLDEST_NO_STORE)) + Repeat("S", 10U) + "RSS");
+}
+
+TEST(ScenarioSuite, AReportTheSenderRefusesIsHeldAndLandsOnRecovery)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, Repeat("L", RingFill(OLDEST_NO_STORE)) + "D" + Repeat("S", 5U) + "USS");
+}
+
+TEST(ScenarioSuite, AHeldReportIsNotLostWhileTheRingRefillsBehindIt)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, "D" + Repeat(Repeat("L", RingFill(OLDEST_NO_STORE)) + "S", 3U) + "U");
+}
+
+TEST(ScenarioSuite, AHeldReportUnderNewestWaitsForTheSender)
+{
+    CHECK_SCENARIO(NEWEST_NO_STORE, "D" + Repeat(Repeat("L", RingFill(NEWEST_NO_STORE)) + "S", 3U) + "U");
+}
+
+TEST(ScenarioSuite, AHeldReportUnderHaltWaitsOutTheHalt)
+{
+    CHECK_SCENARIO(HALT_NO_STORE, "D" + Repeat("L", RingFill(HALT_NO_STORE)) + "SSOSU");
 }
 
 TEST(ScenarioSuite, ARandomWalkHoldsEveryInvariant)

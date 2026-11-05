@@ -17,7 +17,7 @@ struct ScenarioState
     bool DeviceFailed;
     enum SolidSyslogDiscardPolicy Policy;
     size_t HaltPeriods; /* times the policy has been Halt, counting an initial Halt */
-    bool PolicyChangedSinceLastPass;
+    size_t PolicyChangesSinceLastPass;
     enum SolidSyslogServiceStatus StatusBeforePass;
     enum SolidSyslogServiceStatus Status;
     size_t DeliveredBeforePass;
