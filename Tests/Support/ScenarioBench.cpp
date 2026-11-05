@@ -128,11 +128,11 @@ ScenarioBench::HandlerInstallation::~HandlerInstallation()
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
-      counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)), store(nullptr),
-      countingStore(), sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false),
-      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false), framesSeen(0U),
-      deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U),
-      reporting(true), reportsMade(0U)
+      counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)),
+      securityPolicy(SecurityPolicyFake_Create()), store(nullptr), countingStore(), sender(nullptr), senders(),
+      switchingSender(nullptr), watchedSender(), misrouted(false), logger(nullptr), logged(0U), passes(0U), garbage(0U),
+      halts(0U), deviceFailed(false), framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U),
+      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
@@ -142,6 +142,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     struct SolidSyslogBlockStoreConfig storeConfig = {};
     storeConfig.BlockDevice = device;
     storeConfig.MaxBlocks = options.MaxBlocks;
+    storeConfig.SecurityPolicy = securityPolicy;
     storeConfig.GetDiscardPolicy = GetDiscardPolicy;
     storeConfig.DiscardPolicyContext = this;
     store = options.HasStore ? SolidSyslogBlockStore_Create(&storeConfig) : SolidSyslogNullStore_Get();
@@ -208,6 +209,7 @@ ScenarioBench::~ScenarioBench()
     {
         SolidSyslogBlockStore_Destroy(store);
     }
+    SecurityPolicyFake_Destroy(securityPolicy);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogMetaSd_Destroy(metaSd);
     CounterFake_Destroy(counter);
@@ -270,6 +272,11 @@ void ScenarioBench::FailDevice()
 {
     deviceFailed = true;
     BlockDeviceFake_FailEveryOperation();
+}
+
+void ScenarioBench::SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault)
+{
+    SecurityPolicyFake_SetFault(securityPolicy, fault);
 }
 
 void ScenarioBench::SetMisrouted(bool isMisrouted)

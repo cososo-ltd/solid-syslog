@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "SecurityPolicyFake.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSenderDefinition.h"
@@ -102,6 +103,10 @@ class ScenarioBench
      * holds. */
     void CorruptTheRing();
 
+    /* What the store's security policy does with the next seal or open, which
+     * a rig with no store never asks. */
+    void SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault);
+
     /* The switching sender in front of the stream asks a selector, which while
      * misrouted answers an index out of range: the switching sender then drops
      * whatever it is handed, records and reports alike, and reports the
@@ -190,6 +195,7 @@ class ScenarioBench
     struct SolidSyslogStructuredData* metaSd;
     struct SolidSyslogStructuredData* sds[1];
     struct SolidSyslogBuffer* buffer;
+    struct SolidSyslogSecurityPolicy* securityPolicy;
     struct SolidSyslogStore* store;
     CountingStore countingStore;
     struct SolidSyslogSender* sender;

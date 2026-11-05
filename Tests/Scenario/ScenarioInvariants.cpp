@@ -10,6 +10,7 @@
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
 
@@ -25,9 +26,14 @@ const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 /* The kinds whose last event the end invariant requires reported: those the
  * bench can provoke. */
 const uint16_t REPORTED_KINDS[] = {
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+    SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
     SOLIDSYSLOG_CAT_STORE_FROZEN,
     SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
@@ -292,8 +298,7 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
 /* STORE_FROZEN is raised only by a failed device, in a pass that touched
  * it, once the store has touched it, and at most once. The device fails for
  * good, so a freeze reported at any time since is the one for this run.
- * STORE_WRITE_FAILED is the security policy refusing to seal a record, which
- * the bench cannot provoke, so it has no invariant. */
+ * STORE_WRITE_FAILED follows the security policy instead, judged beside it. */
 std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
 {
     std::string reason;
@@ -319,6 +324,44 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
     if (reason.empty() && (reported > 1U))
     {
         reason = "STORE_FROZEN more than once";
+    }
+    return reason;
+}
+
+/* The security policy raises only while it fails, and the store's losses to it
+ * follow it: a record it would not seal is lost only while the key is withheld
+ * or the backend fails, and one is discarded as rejected only while the policy
+ * rejects. */
+std::string PolicyFaultsFollowThePolicy(const ScenarioState& state)
+{
+    enum SecurityPolicyFakeFault fault = state.SecurityPolicyFault;
+    bool sealing = (fault == SECURITY_POLICY_FAKE_WORKING) || (fault == SECURITY_POLICY_FAKE_REJECTING);
+    std::string reason;
+    const std::vector<ScenarioEvent>& events = state.Bench.Events();
+    for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
+    {
+        uint16_t category = events[i].Category;
+        bool backend = (category == SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED) ||
+                       (category == SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED);
+        bool rejected = (events[i].Source == &SolidSyslogBlockStoreErrorSource) &&
+                        (events[i].Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED);
+        if ((category == SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE) &&
+            (fault != SECURITY_POLICY_FAKE_KEY_WITHHELD))
+        {
+            reason = "KEY_UNAVAILABLE with the key available";
+        }
+        if (backend && (fault != SECURITY_POLICY_FAKE_BACKEND_FAILING))
+        {
+            reason = NameOf(category) + " with the backend working";
+        }
+        if ((category == SOLIDSYSLOG_CAT_STORE_WRITE_FAILED) && sealing)
+        {
+            reason = "STORE_WRITE_FAILED with the policy sealing";
+        }
+        if (rejected && (fault != SECURITY_POLICY_FAKE_REJECTING))
+        {
+            reason = "a record rejected by a policy that verifies it";
+        }
     }
     return reason;
 }
@@ -509,6 +552,7 @@ const Invariant AFTER_EVERY_PASS[] = {
     {"sender edges alternate", SenderEdgesAlternate},
     {"sender edges follow the fault", SenderEdgesFollowTheFault},
     {"store faults follow the device", StoreFaultsFollowTheDevice},
+    {"policy faults follow the policy", PolicyFaultsFollowThePolicy},
     {"a loss is reported once per run", ALossIsReportedOncePerRun},
     {"quiet passes go quiet", QuietPassesGoQuiet},
     {"a run of held drops is reported once", ARunOfHeldDropsIsReportedOnce},

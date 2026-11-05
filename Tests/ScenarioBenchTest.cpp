@@ -1,4 +1,6 @@
 #include "ScenarioBench.h"
+#include "SecurityPolicyFake.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogDiscardPolicy.h"
@@ -169,6 +171,27 @@ TEST(ScenarioBench, ASenderRoutedBackDeliversAgain)
     bench.Service();
     LONGS_EQUAL(1, bench.Delivered().size());
     LONGS_EQUAL(2, bench.Delivered()[0].Ordinal);
+}
+
+TEST(ScenarioBench, AWithheldKeyLosesTheRecordTheStoreCannotSeal)
+{
+    ScenarioBench bench(options);
+    bench.SetSecurityPolicyFault(SECURITY_POLICY_FAKE_KEY_WITHHELD);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(2, bench.Events().size());
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE, bench.Events()[0].Category);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, bench.Events()[1].Category);
+}
+
+TEST(ScenarioBench, ARecordThatFailsVerificationIsDiscarded)
+{
+    ScenarioBench bench(options);
+    bench.SetSecurityPolicyFault(SECURITY_POLICY_FAKE_REJECTING);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.Events().size());
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, bench.Events()[0].Category);
 }
 
 TEST(ScenarioBench, ACorruptRingIsReportedAsItsBackendFailing)

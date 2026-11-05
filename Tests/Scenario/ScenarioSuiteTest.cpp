@@ -124,6 +124,21 @@ TEST(ScenarioSuite, APolicyChangedMidOutageIsHonouredFromTheNextRecord)
     CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", fill) + "N" + Repeat("LS", fill) + "H" + Repeat("LS", fill) + "U");
 }
 
+TEST(ScenarioSuite, AWithheldKeyIsReportedOnceAndTheStoreWaitsForIt)
+{
+    CHECK_SCENARIO(OLDEST, "LSDLLLSKU" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, AFailingPolicyBackendIsReportedOnceForTheRun)
+{
+    CHECK_SCENARIO(OLDEST, "LLLP" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, ARecordThatFailsVerificationIsDiscardedAndReportedOnce)
+{
+    CHECK_SCENARIO(OLDEST, "DLLLSUT" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
 TEST(ScenarioSuite, AMisroutedSenderIsReportedOnceForTheRun)
 {
     CHECK_SCENARIO(OLDEST, "MLLL" + Repeat("S", 5U) + "B" + Repeat("S", 5U));

@@ -29,8 +29,8 @@ const std::array<ScenarioRig, 6> RIGS = {
 
 /* A step's letter and its weight in a thousand draws. Logging outruns
  * Service, outages are short and recover, a device failure is rare enough
- * that most walks never see one, a misrouted sender is rare and soon routed
- * back, and reporting is mostly on. */
+ * that most walks never see one, a misrouted sender and a failing security
+ * policy are rare and soon put right, and reporting is mostly on. */
 struct Step
 {
     char Letter;
@@ -38,9 +38,13 @@ struct Step
 };
 
 const Step STEPS[] = {
-    {'L', 420U},
+    {'L', 396U},
     {'M', 8U},
     {'B', 12U},
+    {'K', 8U},
+    {'P', 4U},
+    {'T', 2U},
+    {'W', 10U},
     {'S', 335U},
     {'D', 40U},
     {'U', 60U},
@@ -70,7 +74,8 @@ class Driver
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   0U,
                                   0U,
-                                  false
+                                  false,
+                                  SECURITY_POLICY_FAKE_WORKING
                               }
     {
     }
@@ -122,6 +127,18 @@ class Driver
             case 'B':
                 bench.SetMisrouted(false);
                 break;
+            case 'K':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_KEY_WITHHELD);
+                break;
+            case 'P':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_BACKEND_FAILING);
+                break;
+            case 'T':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_REJECTING);
+                break;
+            case 'W':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_WORKING);
+                break;
             case 'O':
                 SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
                 break;
@@ -152,6 +169,12 @@ class Driver
         state.SenderDown = down;
     }
 
+    void SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault)
+    {
+        bench.SetSecurityPolicyFault(fault);
+        state.SecurityPolicyFault = fault;
+    }
+
     void SetPolicy(enum SolidSyslogDiscardPolicy policy)
     {
         bench.SetDiscardPolicy(policy);
@@ -180,6 +203,7 @@ class Driver
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
         bench.SetReporting(true);
         bench.SetMisrouted(false);
+        SetSecurityPolicyFault(SECURITY_POLICY_FAKE_WORKING);
         state.QuietSinceLastPass = false;
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
         size_t allowance = bench.Logged() + DRAIN_SLACK;
