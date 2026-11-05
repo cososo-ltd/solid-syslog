@@ -385,8 +385,7 @@ the contract rather than an accident of whichever backend is linked:
 
 A fault saying *this certificate is not one to accept at all* is reported ahead
 of one saying *it is not the certificate for this name*. A name is only worth
-matching on a certificate that is otherwise valid, and it is the order every
-supported library can report in.
+matching on a certificate that is otherwise valid.
 
 Two consequences. A **matching pin waives nothing**: a peer whose fingerprint is
 pinned is still refused for a name that does not match or a certificate outside
