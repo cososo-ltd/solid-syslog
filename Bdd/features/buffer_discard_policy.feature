@@ -4,7 +4,8 @@ Feature: Buffer discard policy
   the record whose send failed and reads nothing more until it has gone, so the
   records logged during an outage fill the buffer behind it. The discard policy
   the logger was given decides what becomes of the records that do not fit, and
-  of the record Service holds once the buffer has filled behind it.
+  of the record Service holds once the buffer has filled behind it. Unless it
+  halts, the logger reports the loss to the collector as a record of its own.
 
   Each scenario logs one record into the outage first, so Service is holding it
   before the burst arrives and the burst meets a buffer nothing is read from.
@@ -28,6 +29,7 @@ Feature: Buffer discard policy
     And the syslog oracle received sequenceId 2
     And the syslog oracle did not receive sequenceId 102
     And the outage messages have contiguous sequenceIds
+    And the syslog oracle received a report that the buffer lost records
     And the target reports once that the buffer lost records
 
   Scenario: Discard-oldest keeps the latest records
@@ -42,6 +44,7 @@ Feature: Buffer discard policy
     Then the syslog oracle finishes draining
     And the syslog oracle received sequenceId 102
     And the syslog oracle did not receive sequenceId 2
+    And the syslog oracle received a report that the buffer lost records
     And the target reports that the buffer lost records
 
   Scenario: Halt stops the application when the buffer overflows
