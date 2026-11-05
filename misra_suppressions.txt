@@ -118,12 +118,12 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:195
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:255
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:187
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:195
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:492
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:870
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:882
-misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:740
-misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1051
-misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1058
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:495
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:883
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:895
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:749
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1067
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1074
 misra-c2012-11.5:Core/Source/SolidSyslog.c:759
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
@@ -265,8 +265,8 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:27
 
 # D.013 — Rule 11.5: void* <-> a byte pointer at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:910
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:949
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:923
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:962
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:157
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:611
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:649
