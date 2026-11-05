@@ -67,6 +67,7 @@ void SolidSyslogMbedTlsPemBufferCredentials_Initialise(
     self->Base.Release = MbedTlsPemBufferCredentials_Release;
     self->Config = *config;
     self->OutstandingInstalls = 0U;
+    self->InstallHealth = (struct SolidSyslogStreamOpenHealth) {0};
     mbedtls_x509_crt_init(&self->CaChain);
     mbedtls_x509_crt_init(&self->ClientCertChain);
     mbedtls_pk_init(&self->ClientKey);
@@ -101,7 +102,8 @@ static bool MbedTlsPemBufferCredentials_Install(
     bool ok = !MbedTlsPemBufferCredentials_IsAlreadyInUse(self);
     if (!ok)
     {
-        MbedTlsPemBufferCredentials_Report(
+        MbedTlsPemBufferCredentials_ReportInstallFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_ALREADY_IN_USE
@@ -118,6 +120,7 @@ static bool MbedTlsPemBufferCredentials_Install(
     }
     if (ok)
     {
+        SolidSyslogStreamOpenHealth_Opened(&self->InstallHealth);
         MbedTlsPemBufferCredentials_ConfigureClientIdentity(self, conf);
     }
     return ok;
@@ -271,7 +274,8 @@ static inline bool MbedTlsPemBufferCredentials_ParseTrustAnchors(
     bool parsed = false;
     if (MbedTlsPemBufferCredentials_IsTerminated(&self->Config.CaPem) == false)
     {
-        MbedTlsPemBufferCredentials_Report(
+        MbedTlsPemBufferCredentials_ReportInstallFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_PEM_NOT_TERMINATED
@@ -279,7 +283,8 @@ static inline bool MbedTlsPemBufferCredentials_ParseTrustAnchors(
     }
     else if (mbedtls_x509_crt_parse(&self->CaChain, self->Config.CaPem.Bytes, self->Config.CaPem.Length) != 0)
     {
-        MbedTlsPemBufferCredentials_Report(
+        MbedTlsPemBufferCredentials_ReportInstallFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_TRUST_ANCHORS_NOT_PARSED

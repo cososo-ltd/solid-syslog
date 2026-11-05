@@ -242,6 +242,53 @@ TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsTrustAnchorsThatWillNot
     );
 }
 
+/* The stream asks on every Open and the sender retries every service pass;
+ * one run of the same refusal is one report. */
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsRepeatedTrustAnchorsThatWillNotLoadOnce)
+{
+    OpenSslFake_SetLoadVerifyLocationsFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    credentials->Install(credentials, ctx, &installed);
+    credentials->Release(credentials);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, InstallReportsTrustAnchorsThatWillNotLoadAgainAfterAnInstallInBetween)
+{
+    OpenSslFake_SetLoadVerifyLocationsFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    credentials->Install(credentials, ctx, &installed);
+    credentials->Release(credentials);
+    OpenSslFake_SetLoadVerifyLocationsFails(false);
+    CHECK_TRUE(credentials->Install(credentials, ctx, &installed));
+    credentials->Release(credentials);
+    OpenSslFake_SetLoadVerifyLocationsFails(true);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogOpenSslPemFileCredentials, ASourceCreatedInAReusedSlotReportsItsFirstRefusal)
+{
+    OpenSslFake_SetLoadVerifyLocationsFails(true);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    ErrorHandlerFake_Install(nullptr);
+    credentials->Install(credentials, ctx, &installed);
+    credentials->Release(credentials);
+    SolidSyslogOpenSslPemFileCredentials_Destroy(credentials);
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+
+    credentials->Install(credentials, ctx, &installed);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogOpenSslPemFileCredentials, InstallPresentsTheConfiguredClientCredential)
 {
     GiveAClientCredential();

@@ -12,11 +12,16 @@
 #include "SolidSyslogOpenSslPemFileCredentials.h"
 #include "SolidSyslogOpenSslPemFileCredentialsErrors.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStreamOpenHealth.h"
 
 struct SolidSyslogOpenSslPemFileCredentials
 {
     struct SolidSyslogOpenSslCredentials Base;
     struct SolidSyslogOpenSslPemFileCredentialsConfig Config;
+    /* A refusal that fails Install is reported once per run of the same
+     * detail, as a stream's failed Open is: the stream asks on every attempt.
+     * An Install that succeeds re-arms it. */
+    struct SolidSyslogStreamOpenHealth InstallHealth;
 };
 
 void SolidSyslogOpenSslPemFileCredentials_Initialise(
@@ -31,6 +36,22 @@ static inline void OpenSslPemFileCredentials_Report(
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogOpenSslPemFileCredentialsErrorSource, category, (int32_t) code);
+}
+
+static inline void OpenSslPemFileCredentials_ReportInstallFailure(
+    struct SolidSyslogOpenSslPemFileCredentials* self,
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogTlsCredentialsErrors code
+)
+{
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->InstallHealth,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
+        severity,
+        category,
+        (int32_t) code
+    );
 }
 
 #endif /* SOLIDSYSLOGOPENSSLPEMFILECREDENTIALSPRIVATE_H */
