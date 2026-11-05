@@ -815,7 +815,8 @@ static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict)
 /* The flags accumulate, so a compound verdict resolves by precedence: an
  * untrusted chain is reported ahead of anything the certificate says about
  * itself, because a certificate no anchor vouches for is not made acceptable by
- * the dates it carries. */
+ * the dates it carries; and the dates ahead of the name, as the contract orders
+ * them. */
 static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict)
 {
     enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
@@ -827,18 +828,18 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_DetailForVerifyFailu
     {
         /* Untrusted, which the detail already holds. */
     }
-    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_CN_MISMATCH) != 0U)
-    {
-        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
-    }
     else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_EXPIRED) != 0U)
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
     }
+    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_FUTURE) != 0U)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
     else
     {
         /* A named flag is set and the others are not, so this is it. */
-        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
     }
     return detail;
 }
