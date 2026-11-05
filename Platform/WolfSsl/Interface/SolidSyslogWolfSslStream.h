@@ -76,7 +76,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  each in wolfSSL's own spelling (`ECDHE-RSA-AES128-GCM-SHA256`,
          *  `TLS13-AES128-GCM-SHA256`) or the IANA one. One list covers both TLS
          *  versions, so a policy for a collector that may negotiate either names
-         *  a suite for each. NULL leaves every ciphersuite the build enables.
+         *  a suite for each - a build with OPENSSL_EXTRA keeps the suites of a
+         *  version the list leaves unnamed. NULL leaves every ciphersuite the
+         *  build enables.
          *  wolfSSL keeps a name it knows and drops one it does not without
          *  saying so; a list in which it knows no name is rejected, and that
          *  rejection fails the connection at Open as CIPHER_POLICY_REJECTED.

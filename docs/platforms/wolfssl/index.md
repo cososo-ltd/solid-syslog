@@ -190,7 +190,11 @@ implemented, and a build with `WOLFSSL_TLS13` negotiates it.
 The cipher policy is one list for both TLS versions, in the form wolfSSL takes:
 names separated by colons, each in wolfSSL's own spelling, such as
 `ECDHE-RSA-AES128-GCM-SHA256` and `TLS13-AES128-GCM-SHA256`, or in the IANA
-one. A list that names no suite for a version offers none at that version.
+one. A list that names a suite for each version is the whole of what is
+offered, on any build. A list that names one version only offers nothing at the
+other, except on a wolfSSL built with `OPENSSL_EXTRA`, which treats it as
+OpenSSL treats its two lists and keeps the other version's suites as they were.
+Name a suite for each version to bind both.
 Leave the policy unset and every suite the build enables is offered; an empty
 list and the keywords `ALL`, `DEFAULT` and `HIGH` ask for the same. wolfSSL
 keeps the names it knows and drops the rest without reporting them, so it
