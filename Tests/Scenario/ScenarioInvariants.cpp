@@ -264,19 +264,21 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
 }
 
 /* A latched report stands for a run, so the same report twice in one pass
- * is a latch that did not hold - unless the policy changed between them. A
- * record kept ends a run of refusals and a refusal ends a run of evictions,
- * so each change can start one run more before the next pass. */
+ * is a latch that did not hold - unless it is the buffer's and the policy
+ * changed between them. In the buffer a record kept ends a run of refusals
+ * and a refusal ends a run of evictions, so each change can start one run
+ * more before the next pass. */
 std::string ALossIsReportedOncePerRun(const ScenarioState& state)
 {
     std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> seen;
-    size_t runsAllowed = 1U + state.PolicyChangesSinceLastPass;
     std::string reason;
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
     for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
     {
         size_t raised =
             IsLoss(events[i]) ? ++seen[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] : 0U;
+        size_t runsAllowed =
+            1U + ((events[i].Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ? state.PolicyChangesSinceLastPass : 0U);
         if (raised > runsAllowed)
         {
             reason = Count("category", events[i].Category) + " " +
@@ -412,7 +414,11 @@ std::string EveryRecordIsDeliveredOrItsLossReported(const ScenarioState& state)
 }
 
 /* A report the store or the sender lost raised a loss of its own; any other
- * report made has reached the sender by the end of the drain. */
+ * report made has reached the sender by the end of the drain. Which report a
+ * loss stands for cannot be judged: the store and the sender report a loss
+ * once per run, so a report refused inside a run that began before it was
+ * made raises nothing of its own. Only whether any downstream loss occurred
+ * can be, which the rigs with no store make strict. */
 std::string EveryReportMadeIsDeliveredOrItsLossReported(const ScenarioState& state)
 {
     bool lossReported = false;
