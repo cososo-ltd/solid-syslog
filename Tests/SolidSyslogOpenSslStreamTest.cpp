@@ -349,6 +349,20 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         return verify(leafPreverifyOk, OpenSslFake_StoreCtx());
     }
 
+    /* Open, then drive the callback for the leaf with `nameError` as OpenSSL's
+       objection to it, which is where OpenSSL raises a name: after the chain is
+       built and before any certificate's dates are checked. Returns the
+       callback so the rest of the verification can be driven on the same
+       connection. */
+    [[nodiscard]] int (*OpenThenCarryANameMismatch(int nameError) const)(int, X509_STORE_CTX*)
+    {
+        OpenSslFake_SetStoreCtxError(nameError);
+        SolidSyslogStream_Open(stream, addr);
+        auto* verify = OpenSslFake_LastVerifyCallback();
+        LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+        return verify;
+    }
+
     void SendShortMessage() const
     {
         const char msg[] = "hi";
@@ -1962,6 +1976,33 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnUnpinnedPeerToOpenSsl)
     POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
 }
 
+TEST(SolidSyslogOpenSslStream, VerifyCallbackCarriesANameMismatchPastTheLeaf)
+{
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_HOSTNAME_MISMATCH);
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(0));
+}
+
+/* Carried, not forgiven: a leaf that passes every later check is refused for
+   the name once OpenSSL has finished with it. */
+TEST(SolidSyslogOpenSslStream, ACarriedNameMismatchRefusesALeafThatPassesEveryLaterCheck)
+{
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_HOSTNAME_MISMATCH, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, ACarriedNameMismatchDoesNotOutliveItsConnection)
+{
+    (void) OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    SolidSyslogStream_Close(stream);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(1));
+}
+
 TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesChainTrustForAPinnedPeerWithoutTrustAnchors)
 {
     ArrangePinnedPeerWithoutTrustAnchors();
@@ -2113,17 +2154,22 @@ TEST(SolidSyslogOpenSslStream, AMatchingPinDoesNotForgiveAnIssuerOutsideItsDates
     LONGS_EQUAL(X509_V_ERR_CERT_NOT_YET_VALID, OpenSslFake_StoreCtxError());
 }
 
-/* The leaf's own objection comes first: a name that does not match is named
-   ahead of a validity period, so OpenSSL's verdict on the leaf stands where it
-   has one, and the carried objection only refuses a leaf that would otherwise
-   have passed. */
-TEST(SolidSyslogOpenSslStream, AnObjectionToTheLeafItselfIsNamedAheadOfAnIssuerOutsideItsDates)
+/* The dates are named ahead of the name: OpenSSL raises the name first, the
+   mismatch is carried, and the issuer's dates refuse the leaf once it is
+   reached. */
+TEST(SolidSyslogOpenSslStream, AnIssuerOutsideItsDatesIsNamedAheadOfANameThatDoesNotMatch)
 {
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
     OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetStoreCtxDepth(1);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
+    LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+    OpenSslFake_SetStoreCtxDepth(0);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
 
-    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_HAS_EXPIRED, 0, X509_V_ERR_HOSTNAME_MISMATCH));
-    LONGS_EQUAL(X509_V_ERR_HOSTNAME_MISMATCH, OpenSslFake_StoreCtxError());
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
 }
 
 /* A chain that reaches no anchor is named ahead of a validity period, so where

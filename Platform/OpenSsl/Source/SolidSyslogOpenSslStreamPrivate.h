@@ -50,6 +50,10 @@ struct SolidSyslogOpenSslStream
      * the top of the chain down, so an issuer outside its period would be
      * refused before the leaf's pin was compared. */
     int ValidityObjection;
+    /* A name or address mismatch carried past the call that raised it, and
+     * X509_V_OK where there was none. OpenSSL checks the name before the
+     * dates, and the dates are named first. */
+    int NameObjection;
     /* What the pin walk decided at the leaf, recorded there. A pin naming a hash
      * this build cannot compute is the integrator's fault, not the peer's, and
      * nothing in the library's verdict distinguishes the two. */
