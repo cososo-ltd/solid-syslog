@@ -1994,6 +1994,50 @@ TEST(SolidSyslogOpenSslStream, ACarriedNameMismatchRefusesALeafThatPassesEveryLa
     LONGS_EQUAL(X509_V_ERR_HOSTNAME_MISMATCH, OpenSslFake_StoreCtxError());
 }
 
+TEST(SolidSyslogOpenSslStream, ACarriedAddressMismatchRefusesALeafThatPassesEveryLaterCheck)
+{
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_IP_ADDRESS_MISMATCH);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_IP_ADDRESS_MISMATCH, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, TheLeafsOwnDatesAreNamedAheadOfACarriedNameMismatch)
+{
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
+
+    LONGS_EQUAL(0, verify(0, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfANameThatDoesNotMatch)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_HOSTNAME_MISMATCH);
+
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
+}
+
+/* The carried name refuses on OpenSSL's last call for the leaf. Should that
+   call never come, a handshake that completed is refused all the same. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAConnectionWhoseCarriedNameMismatchWasNeverRaised)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
 TEST(SolidSyslogOpenSslStream, ACarriedNameMismatchDoesNotOutliveItsConnection)
 {
     (void) OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);

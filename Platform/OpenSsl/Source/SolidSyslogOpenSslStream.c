@@ -80,6 +80,7 @@ static inline void OpenSslStream_RefusePassphrasePrompts(SSL_CTX* ctx);
 static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void* userdata);
 static inline void OpenSslStream_ApplySessionPolicy(SSL* ssl);
 static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpenSslStream* self);
+static inline bool OpenSslStream_NoNameObjectionIsOutstanding(struct SolidSyslogOpenSslStream* self);
 static inline int OpenSslStream_ResolveNameObjection(
     struct SolidSyslogOpenSslStream* self,
     int verdict,
@@ -264,6 +265,23 @@ static inline bool OpenSslStream_PeerPresentedACertificate(struct SolidSyslogOpe
     return ok;
 }
 
+/* A carried name mismatch refuses the leaf on OpenSSL's last call for it. A
+ * handshake that completed with one still carried never made that call, and is
+ * refused here rather than trusted to have. */
+static inline bool OpenSslStream_NoNameObjectionIsOutstanding(struct SolidSyslogOpenSslStream* self)
+{
+    bool ok = self->NameObjection == X509_V_OK;
+    if (!ok)
+    {
+        OpenSslStream_ReportHandshakeFailure(
+            self,
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+        );
+    }
+    return ok;
+}
+
 static inline void OpenSslStream_ReleaseSslContext(struct SolidSyslogOpenSslStream* self)
 {
     if (self->Ctx != NULL)
@@ -315,7 +333,8 @@ static inline bool OpenSslStream_Establish(struct SolidSyslogStream* base, const
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && OpenSslStream_InitSslContext(self) &&
               OpenSslStream_InstallCredentials(self) && OpenSslStream_InitSslSession(self) &&
               OpenSslStream_AttachTransportBio(self) && OpenSslStream_ConfigureExpectedHostname(self) &&
-              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self);
+              OpenSslStream_PerformHandshake(self) && OpenSslStream_PeerPresentedACertificate(self) &&
+              OpenSslStream_NoNameObjectionIsOutstanding(self);
     if (!ok)
     {
         OpenSslStream_Close(base);
