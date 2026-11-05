@@ -84,7 +84,7 @@ misra-c2012-11.3:Platform/WolfSsl/Source/SolidSyslogWolfSslAesGcmPolicy.c:73
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslAesGcmPolicy.c:98
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslHmacSha256Policy.c:93
 misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslPemFileCredentials.c:61
-misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:172
+misra-c2012-11.3:Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:178
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddress.c:21
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:27
 misra-c2012-11.3:Platform/Posix/Source/SolidSyslogPosixAddressPrivate.h:32
@@ -119,8 +119,8 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawDnsResolver.c:255
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:187
 misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:195
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:492
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:869
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:881
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:870
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:882
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:740
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1051
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1058
@@ -265,8 +265,8 @@ misra-c2012-8.9:Core/Source/SolidSyslogFileBlockDevice.c:27
 
 # D.013 — Rule 11.5: void* <-> a byte pointer at third-party byte-buffer API boundaries
 # See docs/misra-deviations.md#d013
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:909
-misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:948
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:910
+misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:949
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockDatagram.c:157
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:611
 misra-c2012-11.5:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:649
