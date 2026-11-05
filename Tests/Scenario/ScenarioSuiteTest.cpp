@@ -10,6 +10,7 @@ namespace
 const ScenarioRig& OLDEST = SCENARIO_RIG_OLDEST;
 const ScenarioRig& NEWEST = SCENARIO_RIG_NEWEST;
 const ScenarioRig& HALT = SCENARIO_RIG_HALT;
+const ScenarioRig& OLDEST_FILE = SCENARIO_RIG_OLDEST_FILE;
 const ScenarioRig& OLDEST_NO_STORE = SCENARIO_RIG_OLDEST_NO_STORE;
 const ScenarioRig& NEWEST_NO_STORE = SCENARIO_RIG_NEWEST_NO_STORE;
 const ScenarioRig& HALT_NO_STORE = SCENARIO_RIG_HALT_NO_STORE;
@@ -81,6 +82,11 @@ TEST(ScenarioSuite, ASenderRefusingWhatWasQueuedIsReportedOnce)
 TEST(ScenarioSuite, ADeviceFailingAtAPassFreezesTheStoreOnce)
 {
     CHECK_SCENARIO(OLDEST, "LSLSFLSLSLS");
+}
+
+TEST(ScenarioSuite, AFileSystemFailingAtAPassIsReportedAndFreezesTheStoreOnce)
+{
+    CHECK_SCENARIO(OLDEST_FILE, "LSLSFLSLSLS");
 }
 
 TEST(ScenarioSuite, ADeviceFailingWithNothingQueuedIsNotYetAStoreFault)

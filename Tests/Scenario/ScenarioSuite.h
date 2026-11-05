@@ -30,27 +30,41 @@ const size_t SCENARIO_BLOCK_BYTES = 2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE;
  * alone, where Service holds for the sender what it cannot send. */
 inline const ScenarioRig SCENARIO_RIG_OLDEST = {
     "oldest",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true, false}
 };
 inline const ScenarioRig SCENARIO_RIG_NEWEST = {
     "newest",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true, false}
 };
 inline const ScenarioRig SCENARIO_RIG_HALT = {
     "halt",
-    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true}
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true, false}
+};
+/* The same three over a store whose blocks are files, so a failing device is
+ * a file system the store meets through a FileBlockDevice. */
+inline const ScenarioRig SCENARIO_RIG_OLDEST_FILE = {
+    "oldest-file",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true, true}
+};
+inline const ScenarioRig SCENARIO_RIG_NEWEST_FILE = {
+    "newest-file",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true, true}
+};
+inline const ScenarioRig SCENARIO_RIG_HALT_FILE = {
+    "halt-file",
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true, true}
 };
 inline const ScenarioRig SCENARIO_RIG_OLDEST_NO_STORE = {
     "oldest-no-store",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, false}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, false, false}
 };
 inline const ScenarioRig SCENARIO_RIG_NEWEST_NO_STORE = {
     "newest-no-store",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, false}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, false, false}
 };
 inline const ScenarioRig SCENARIO_RIG_HALT_NO_STORE = {
     "halt-no-store",
-    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, false}
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, false, false}
 };
 
 /* What a run found: a pass, or the first invariant to fail, where and why. */

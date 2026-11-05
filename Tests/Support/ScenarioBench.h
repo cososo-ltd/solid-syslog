@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "SecurityPolicyFake.h"
+#include "SolidSyslogBlockDeviceDefinition.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogSenderDefinition.h"
@@ -19,6 +20,7 @@ struct SolidSyslogBlockDevice;
 struct SolidSyslogBuffer;
 struct SolidSyslogErrorEvent;
 struct SolidSyslogErrorSource;
+struct SolidSyslogFile;
 struct SolidSyslogSender;
 struct SolidSyslogStore;
 struct SolidSyslogStream;
@@ -38,6 +40,7 @@ struct ScenarioBenchOptions
     size_t MaxBlocks;
     enum SolidSyslogDiscardPolicy DiscardPolicy; /* the one policy the logger, buffer and store share */
     bool HasStore; /* false wires the Null store, so Service holds for the sender what it cannot send */
+    bool FileBacked; /* the store's blocks are files, on a FileBlockDevice over a file held in memory */
 };
 
 /* One record the stream received whole and the bench recognised as its own. */
@@ -178,6 +181,16 @@ class ScenarioBench
         size_t Kept;
     };
 
+    /* The device the store is given: the bench's own, counting the operations
+     * asked of it, whatever stands behind it. GetBlockSize is a property, not
+     * an operation, and is not counted. */
+    struct CountingBlockDevice
+    {
+        struct SolidSyslogBlockDevice Base;
+        struct SolidSyslogBlockDevice* Device;
+        size_t Operations;
+    };
+
     /* The sender the logger is given: the switching sender, watched, so a
      * report it drops while misrouted is on the record. */
     struct WatchedSender
@@ -190,6 +203,9 @@ class ScenarioBench
     ScenarioBenchOptions options;
     std::vector<uint8_t> ring;
     struct SolidSyslogBlockDevice* device;
+    struct SolidSyslogFile* file;
+    struct SolidSyslogBlockDevice* fileDevice;
+    CountingBlockDevice countingDevice;
     struct SolidSyslogStream* stream;
     struct SolidSyslogAtomicCounter* counter;
     struct SolidSyslogStructuredData* metaSd;
@@ -233,6 +249,27 @@ class ScenarioBench
     static uint8_t Select(void* context);
     static bool WatchedSend(struct SolidSyslogSender* base, const void* buffer, size_t size);
     static void WatchedDisconnect(struct SolidSyslogSender* base);
+    static CountingBlockDevice* CountingDeviceFrom(struct SolidSyslogBlockDevice* base);
+    static bool CountingAcquire(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+    static bool CountingDispose(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+    static bool CountingExists(struct SolidSyslogBlockDevice* base, size_t blockIndex);
+    static bool CountingRead(
+        struct SolidSyslogBlockDevice* base,
+        size_t blockIndex,
+        size_t offset,
+        void* buf,
+        size_t count
+    );
+    static bool CountingAppend(struct SolidSyslogBlockDevice* base, size_t blockIndex, const void* buf, size_t count);
+    static bool CountingWriteAt(
+        struct SolidSyslogBlockDevice* base,
+        size_t blockIndex,
+        size_t offset,
+        const void* buf,
+        size_t count
+    );
+    static bool CountingSize(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size);
+    static size_t CountingGetBlockSize(struct SolidSyslogBlockDevice* base);
     static CountingStore* CountingStoreFrom(struct SolidSyslogStore* base);
     static enum SolidSyslogStoreWriteResult CountingWrite(struct SolidSyslogStore* base, const void* data, size_t size);
     static bool CountingReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);

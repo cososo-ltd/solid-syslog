@@ -10,6 +10,7 @@
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogFileCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
@@ -26,6 +27,7 @@ const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 /* The kinds whose last event the end invariant requires reported: those the
  * bench can provoke. */
 const uint16_t REPORTED_KINDS[] = {
+    SOLIDSYSLOG_CAT_FILE_IO_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
@@ -297,7 +299,9 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
 
 /* STORE_FROZEN is raised only by a failed device, in a pass that touched
  * it, once the store has touched it, and at most once. The device fails for
- * good, so a freeze reported at any time since is the one for this run.
+ * good, so a freeze reported at any time since is the one for this run. A
+ * device of files fails through its file system, which raises FILE_IO_FAILED,
+ * so that too follows the failed device.
  * STORE_WRITE_FAILED follows the security policy instead, judged beside it. */
 std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
 {
@@ -310,6 +314,10 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
         if (frozen && !state.DeviceFailed)
         {
             reason = "STORE_FROZEN with the device working";
+        }
+        if ((events[i].Category == SOLIDSYSLOG_CAT_FILE_IO_FAILED) && !state.DeviceFailed)
+        {
+            reason = "FILE_IO_FAILED with the device working";
         }
         if (frozen && !used)
         {
@@ -617,19 +625,32 @@ bool IsReportedAfter(const ScenarioState& state, uint16_t kind, unsigned lastSeq
     return reported;
 }
 
+/* Whether the store could have lost the report of an event raised after the
+ * meta SD had handed out @p lastSequenceId. An eviction or a discard reports a
+ * run once, so one at any time could have taken it. The freeze loses only what
+ * the store held when it froze, so it could only if a sequenceId was handed out
+ * between the two: with none, the report took its number after the freeze and
+ * went to the sender. */
+bool CouldHaveLostTheReport(const std::vector<ScenarioEvent>& events, unsigned lastSequenceId)
+{
+    bool lost = false;
+    for (const ScenarioEvent& event : events)
+    {
+        bool frozen = event.Category == SOLIDSYSLOG_CAT_STORE_FROZEN;
+        bool frozenAfterwards = frozen && (event.LastSequenceId > lastSequenceId);
+        lost = lost || frozenAfterwards || (CanLoseAReport(event) && !frozen);
+    }
+    return lost;
+}
+
 /* The drain runs with reporting on and ends idle, so the last event of each
  * reported kind has been taken into a report, which has reached the sender
  * unless the store lost what it held. Which report a loss stands for cannot
- * be judged - the store reports a loss once per run - so any such loss
- * excuses. */
+ * be judged - the store reports a loss once per run - so any loss that could
+ * have taken it excuses. */
 std::string TheLastEventOfEachReportedKindIsReported(const ScenarioState& state)
 {
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
-    bool downstreamLoss = false;
-    for (const ScenarioEvent& event : events)
-    {
-        downstreamLoss = downstreamLoss || CanLoseAReport(event);
-    }
     std::string reason;
     for (uint16_t kind : REPORTED_KINDS)
     {
@@ -638,8 +659,9 @@ std::string TheLastEventOfEachReportedKindIsReported(const ScenarioState& state)
         {
             last = (event.Category == kind) ? &event : last;
         }
-        bool unreported = (last != nullptr) && !IsReportedAfter(state, kind, last->LastSequenceId);
-        if (reason.empty() && unreported && !downstreamLoss)
+        bool unreported = (last != nullptr) && !IsReportedAfter(state, kind, last->LastSequenceId) &&
+                          !CouldHaveLostTheReport(events, last->LastSequenceId);
+        if (reason.empty() && unreported)
         {
             reason = NameOf(kind) + " raised after " + Count("sequenceId", last->LastSequenceId) + " never reported";
         }

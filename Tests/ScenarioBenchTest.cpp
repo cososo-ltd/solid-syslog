@@ -1,12 +1,12 @@
 #include "ScenarioBench.h"
 #include "SecurityPolicyFake.h"
-#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileCategories.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogServiceStatus.h"
@@ -17,7 +17,7 @@
 TEST_GROUP(ScenarioBench)
 {
     /* A block that holds a worst-case record whatever the tunables say. */
-    ScenarioBenchOptions options = {4U, static_cast<size_t>(2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE), 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true};
+    ScenarioBenchOptions options = {4U, static_cast<size_t>(2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE), 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true, false};
 };
 
 // clang-format on
@@ -171,6 +171,36 @@ TEST(ScenarioBench, ASenderRoutedBackDeliversAgain)
     bench.Service();
     LONGS_EQUAL(1, bench.Delivered().size());
     LONGS_EQUAL(2, bench.Delivered()[0].Ordinal);
+}
+
+TEST(ScenarioBench, AFileBackedStoreKeepsWhatTheSenderRefusedAndDeliversIt)
+{
+    options.FileBacked = true;
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    bench.Log();
+    bench.Log();
+    bench.Service();
+    bench.SetSenderDown(false);
+    for (int pass = 0; pass < 4; pass++)
+    {
+        bench.Service();
+    }
+    LONGS_EQUAL(2, bench.Delivered().size());
+}
+
+TEST(ScenarioBench, AFailedFileIsReportedWithItsErrnoBeforeTheStoreFreezes)
+{
+    options.FileBacked = true;
+    ScenarioBench bench(options);
+    bench.Log();
+    bench.Service();
+    bench.FailDevice();
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_FILE_IO_FAILED, bench.Events().front().Category);
+    STRCMP_EQUAL("5", bench.Events().front().NativeParam.c_str());
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_FROZEN, bench.Events().back().Category);
 }
 
 TEST(ScenarioBench, AWithheldKeyLosesTheRecordTheStoreCannotSeal)

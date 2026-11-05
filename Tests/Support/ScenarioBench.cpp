@@ -1,13 +1,17 @@
 #include "ScenarioBench.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <string>
 
 #include "AddressFake.h"
 #include "BlockDeviceFake.h"
 #include "CounterFake.h"
+#include "RamFileFake.h"
 #include "ResolverFake.h"
 #include "SolidSyslog.h"
+#include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
@@ -127,20 +131,35 @@ ScenarioBench::HandlerInstallation::~HandlerInstallation()
 
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
-      device(BlockDeviceFake_Create(benchOptions.BlockSize)), stream(StreamFake_Create()),
-      counter(CounterFake_Create()), metaSd(nullptr), sds(), buffer(CreateBuffer(ring, this)),
-      securityPolicy(SecurityPolicyFake_Create()), store(nullptr), countingStore(), sender(nullptr), senders(),
-      switchingSender(nullptr), watchedSender(), misrouted(false), logger(nullptr), logged(0U), passes(0U), garbage(0U),
-      halts(0U), deviceFailed(false), framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U),
-      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
+      device(BlockDeviceFake_Create(benchOptions.BlockSize)), file(RamFileFake_Create()), fileDevice(nullptr),
+      countingDevice(), stream(StreamFake_Create()), counter(CounterFake_Create()), metaSd(nullptr), sds(),
+      buffer(CreateBuffer(ring, this)), securityPolicy(SecurityPolicyFake_Create()), store(nullptr), countingStore(),
+      sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false), logger(nullptr),
+      logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false), framesSeen(0U),
+      deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U),
+      reporting(true), reportsMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
     metaSd = SolidSyslogMetaSd_Create(&metaConfig);
     sds[0] = metaSd;
 
+    countingDevice.Base.Acquire = CountingAcquire;
+    countingDevice.Base.Dispose = CountingDispose;
+    countingDevice.Base.Exists = CountingExists;
+    countingDevice.Base.Read = CountingRead;
+    countingDevice.Base.Append = CountingAppend;
+    countingDevice.Base.WriteAt = CountingWriteAt;
+    countingDevice.Base.Size = CountingSize;
+    countingDevice.Base.GetBlockSize = CountingGetBlockSize;
+    if (options.FileBacked)
+    {
+        fileDevice = SolidSyslogFileBlockDevice_Create(file, "scenario", options.BlockSize);
+    }
+    countingDevice.Device = options.FileBacked ? fileDevice : device;
+
     struct SolidSyslogBlockStoreConfig storeConfig = {};
-    storeConfig.BlockDevice = device;
+    storeConfig.BlockDevice = &countingDevice.Base;
     storeConfig.MaxBlocks = options.MaxBlocks;
     storeConfig.SecurityPolicy = securityPolicy;
     storeConfig.GetDiscardPolicy = GetDiscardPolicy;
@@ -210,6 +229,11 @@ ScenarioBench::~ScenarioBench()
         SolidSyslogBlockStore_Destroy(store);
     }
     SecurityPolicyFake_Destroy(securityPolicy);
+    if (options.FileBacked)
+    {
+        SolidSyslogFileBlockDevice_Destroy(fileDevice);
+    }
+    RamFileFake_Destroy(file);
     SolidSyslogCircularBuffer_Destroy(buffer);
     SolidSyslogMetaSd_Destroy(metaSd);
     CounterFake_Destroy(counter);
@@ -228,11 +252,11 @@ unsigned ScenarioBench::Log()
 
 enum SolidSyslogServiceStatus ScenarioBench::Service()
 {
-    size_t operationsBefore = BlockDeviceFake_OperationCount();
+    size_t operationsBefore = countingDevice.Operations;
     int sendsBefore = StreamFake_SendCallCount(stream);
     passes++;
     enum SolidSyslogServiceStatus status = SolidSyslog_Service(logger);
-    deviceOperationsInLastPass = BlockDeviceFake_OperationCount() - operationsBefore;
+    deviceOperationsInLastPass = countingDevice.Operations - operationsBefore;
     sendsInLastPass = static_cast<size_t>(StreamFake_SendCallCount(stream) - sendsBefore);
     maxDeviceOperationsInOnePass = std::max(maxDeviceOperationsInOnePass, deviceOperationsInLastPass);
     maxSendsInOnePass = std::max(maxSendsInOnePass, sendsInLastPass);
@@ -268,10 +292,19 @@ void ScenarioBench::SetSenderDown(bool down)
     StreamFake_SetSendFails(stream, down);
 }
 
+/* A file-backed store's device fails through its file system, as a broken
+ * disk's does, which gives EIO. */
 void ScenarioBench::FailDevice()
 {
     deviceFailed = true;
-    BlockDeviceFake_FailEveryOperation();
+    if (options.FileBacked)
+    {
+        RamFileFake_FailEveryOperation(file, EIO);
+    }
+    else
+    {
+        BlockDeviceFake_FailEveryOperation();
+    }
 }
 
 void ScenarioBench::SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault)
@@ -453,6 +486,83 @@ bool ScenarioBench::OnReportingAsked()
         reportsMade++;
     }
     return reporting;
+}
+
+/* Base is the first member, so the store's device is the counting device. */
+ScenarioBench::CountingBlockDevice* ScenarioBench::CountingDeviceFrom(struct SolidSyslogBlockDevice* base)
+{
+    return reinterpret_cast<CountingBlockDevice*>(base);
+}
+
+bool ScenarioBench::CountingAcquire(struct SolidSyslogBlockDevice* base, size_t blockIndex)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_Acquire(self->Device, blockIndex);
+}
+
+bool ScenarioBench::CountingDispose(struct SolidSyslogBlockDevice* base, size_t blockIndex)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_Dispose(self->Device, blockIndex);
+}
+
+bool ScenarioBench::CountingExists(struct SolidSyslogBlockDevice* base, size_t blockIndex)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_Exists(self->Device, blockIndex);
+}
+
+bool ScenarioBench::CountingRead(
+    struct SolidSyslogBlockDevice* base,
+    size_t blockIndex,
+    size_t offset,
+    void* buf,
+    size_t count
+)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_Read(self->Device, blockIndex, offset, buf, count);
+}
+
+bool ScenarioBench::CountingAppend(
+    struct SolidSyslogBlockDevice* base,
+    size_t blockIndex,
+    const void* buf,
+    size_t count
+)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_Append(self->Device, blockIndex, buf, count);
+}
+
+bool ScenarioBench::CountingWriteAt(
+    struct SolidSyslogBlockDevice* base,
+    size_t blockIndex,
+    size_t offset,
+    const void* buf,
+    size_t count
+)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_WriteAt(self->Device, blockIndex, offset, buf, count);
+}
+
+bool ScenarioBench::CountingSize(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size)
+{
+    CountingBlockDevice* self = CountingDeviceFrom(base);
+    self->Operations++;
+    return SolidSyslogBlockDevice_Size(self->Device, blockIndex, size);
+}
+
+size_t ScenarioBench::CountingGetBlockSize(struct SolidSyslogBlockDevice* base)
+{
+    return SolidSyslogBlockDevice_GetBlockSize(CountingDeviceFrom(base)->Device);
 }
 
 /* Base is the first member, so the logger's store is the counting store. */

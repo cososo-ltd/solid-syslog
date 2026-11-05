@@ -18,10 +18,13 @@ const size_t WALK_STEPS = 300U;
 /* Passes the drain allows beyond one per record before it is a spin. */
 const size_t DRAIN_SLACK = 50U;
 
-const std::array<ScenarioRig, 6> RIGS = {
+const std::array<ScenarioRig, 9> RIGS = {
     {SCENARIO_RIG_OLDEST,
      SCENARIO_RIG_NEWEST,
      SCENARIO_RIG_HALT,
+     SCENARIO_RIG_OLDEST_FILE,
+     SCENARIO_RIG_NEWEST_FILE,
+     SCENARIO_RIG_HALT_FILE,
      SCENARIO_RIG_OLDEST_NO_STORE,
      SCENARIO_RIG_NEWEST_NO_STORE,
      SCENARIO_RIG_HALT_NO_STORE}
