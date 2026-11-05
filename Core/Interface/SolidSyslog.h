@@ -89,6 +89,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  gone, so nothing overtakes it; records logged meanwhile wait in the
      *  buffer under its own policy.
      *
+     *  A report of the library's own is never dropped. One a retaining store
+     *  loses, or refuses under its discard policy, goes to the sender instead,
+     *  ahead of the records the store holds. Service holds it while the sender
+     *  refuses it, or while that refusal has the logger halted, and offers it
+     *  to the store again first on the next pass.
+     *
      *  Call this from one task. SolidSyslog_Log is the only entry point designed
      *  to be called concurrently; everything reached from Service - the sender,
      *  the store, the stream and its credentials - runs single-threaded, and so

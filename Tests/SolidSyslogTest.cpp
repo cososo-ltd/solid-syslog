@@ -1383,6 +1383,16 @@ TEST(SolidSyslogServiceHalt, ARecordTheStoreLostForAnotherReasonDoesNotHalt)
     LONGS_EQUAL(0, haltCount);
 }
 
+TEST(SolidSyslogServiceHalt, ARecordTheStoreLostIsNotSent)
+{
+    SolidSyslogBuffer_Write(fakeBuffer, "unsealed", 8);
+    StoreFake_LoseNextWrite();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
 TEST(SolidSyslogServiceHalt, AHaltedServiceMovesNothing)
 {
     LogOneTheStoreRefuses();

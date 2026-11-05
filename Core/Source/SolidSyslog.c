@@ -557,30 +557,36 @@ static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog*
 }
 
 /* Offers the held record to the store, and to the sender only when the store
- * has not dealt with it. */
+ * has not dealt with it - unless the store's refusal halted the logger, which
+ * sends nothing after it. */
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self)
 {
     return SolidSyslog_StoreDealsWithHeldRecord(self) ||
-           SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength);
+           (!self->Halted && SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength));
 }
 
 /* Offers the held record to the store. A store that retains records has dealt
- * with it either way: it kept it, it lost it and reported why, or its discard
- * policy refused it and reported the loss - letting a refused record escape to
- * the sender would put it ahead of older stored ones once the sender
- * recovered. A store that keeps nothing never had it, so the record is still
- * to be sent. */
+ * with a record from the buffer either way: it kept it, it lost it and reported
+ * why, or its discard policy refused it and reported the loss - letting a
+ * refused record escape to the sender would put it ahead of older stored ones
+ * once the sender recovered. A report is the account of a loss, and losing it
+ * would lose the account, so the store has dealt with one only by keeping it:
+ * one it lost or refused goes to the sender, ahead of the stored records, and
+ * is held while the sender refuses it, or while the refusal has the logger
+ * halted. A store that keeps nothing never had either, so it is still to be
+ * sent. */
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self)
 {
     enum SolidSyslogStoreWriteResult result = SolidSyslogStore_Write(self->Store, self->Record, self->RecordLength);
     bool refused = (result == SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED) && !SolidSyslogStore_IsTransient(self->Store);
+    bool notKept = refused || (result == SOLIDSYSLOG_STORE_WRITE_LOST);
 
     if (refused)
     {
         SolidSyslog_HaltIfPolicyHalts(self);
     }
 
-    return refused || (result != SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED);
+    return (result == SOLIDSYSLOG_STORE_WRITE_KEPT) || (notKept && !self->HeldRecordIsReport);
 }
 
 /* A refusal is the discard policy at work; under Halt it is also where the

@@ -942,6 +942,72 @@ TEST(SolidSyslogServiceEventReportWithAStore, TheStoreKeepsTheReport)
     LONGS_EQUAL(1, StoreFake_WriteCallCount(store));
 }
 
+TEST(SolidSyslogServiceEventReportWithAStore, AReportTheStoreLosesGoesToTheSender)
+{
+    RaiseBufferLoss();
+    StoreFake_LoseNextWrite();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceEventReportWithAStore, AReportTheStoreLosesIsHeldWhileTheSenderRefusesIt)
+{
+    RaiseBufferLoss();
+    StoreFake_LoseNextWrite();
+    SenderFake_FailNextSend(fakeSender);
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, SolidSyslog_Service(solidSyslog));
+}
+
+TEST(SolidSyslogServiceEventReportWithAStore, AHeldReportIsOfferedToTheStoreFirstOnTheNextPass)
+{
+    RaiseBufferLoss();
+    StoreFake_LoseNextWrite();
+    SenderFake_FailNextSend(fakeSender);
+    SolidSyslog_Service(solidSyslog);
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, StoreFake_WriteCallCount(store));
+}
+
+TEST(SolidSyslogServiceEventReportWithAStore, AReportTheStoreRefusesUnderNewestGoesToTheSender)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    RaiseBufferLoss();
+    StoreFake_FailNextWrite();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceEventReportWithAStore, AReportTheStoreRefusesUnderHaltIsNotSent)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    RaiseBufferLoss();
+    StoreFake_FailNextWrite();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
+TEST(SolidSyslogServiceEventReportWithAStore, AReportTheStoreRefusesUnderHaltIsKeptOnceTheHaltLifts)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    RaiseBufferLoss();
+    StoreFake_FailNextWrite();
+    SolidSyslog_Service(solidSyslog);
+    policy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, StoreFake_WriteCallCount(store));
+}
+
 TEST(SolidSyslogServiceEventReportWithAStore, AHaltedLoggerMakesNoReport)
 {
     HaltOnARefusedReport();
@@ -986,5 +1052,6 @@ TEST(SolidSyslogServiceEventReportWithAStore, ThePendingReportIsMadeOnceTheHaltL
 
     SolidSyslog_Service(solidSyslog);
 
-    LONGS_EQUAL(1, StoreFake_WriteCallCount(store));
+    /* The report the halt refused, held through it, then the one waiting. */
+    LONGS_EQUAL(2, StoreFake_WriteCallCount(store));
 }
