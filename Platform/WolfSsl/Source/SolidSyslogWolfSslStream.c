@@ -491,9 +491,7 @@ static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream*
     return ok;
 }
 
-/* The integrator's cipher policy, applied after the library's own floors so a
- * build that trimmed its ciphersuites is not silently widened. wolfSSL rejects
- * a list in which it knows no name, and that is reported here as the
+/* wolfSSL rejects a list in which it knows no name, which is reported as the
  * configuration fault it is, before any handshake. */
 static inline bool WolfSslStream_ApplyCipherPolicy(struct SolidSyslogWolfSslStream* self)
 {

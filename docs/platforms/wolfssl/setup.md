@@ -272,8 +272,8 @@ detail, or a connection in between, reports again.
 | anchors and a pin together, on a build that cannot check both | `ERROR` | `BAD_CONFIG` | `PINS_WITH_ANCHORS_UNSUPPORTED` | the attempt fails before any handshake |
 | the profile named no peer and no pin names it | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | connects, chain-authenticated only |
 | wolfSSL would not take the name or the indication | `ERROR` | `BAD_CONFIG` | `SERVER_NAME_NOT_APPLIED` | the attempt fails |
-| wolfSSL knows none of the suites the cipher policy names | `ERROR` | `BAD_CONFIG` | `CIPHER_POLICY_REJECTED` | the attempt fails before any handshake |
 | wolfSSL ran out of memory at any of those | `ERROR` | that step's category | `LIBRARY_OUT_OF_MEMORY` | the attempt fails |
+| wolfSSL knows none of the suites the cipher policy names | `ERROR` | `BAD_CONFIG` | `CIPHER_POLICY_REJECTED` | the attempt fails before any handshake |
 | the peer's certificate matches no pin | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_FINGERPRINT_MISMATCHED` | refused; the sender retries |
 | no pin names a hash the build can compute, or no certificate was kept to digest | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | as above |
 | the peer's chain reaches no anchor, or fails a check the stream does not name | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_CERTIFICATE_UNTRUSTED` | as above |
