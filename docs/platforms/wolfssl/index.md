@@ -24,8 +24,9 @@ adapter reads that file through wolfSSL's own `settings.h` instead. Either way
 the features your build enables are the features it gets, and the adapter asks
 for no configure flag.
 
-wolfSSL 5.x. The pack is tested against 5.9.4 on both routes in CI. As a
-`./configure` build it runs twice: once against a build with the options it
+wolfSSL 5.7.0 or later: the stream's pin digest calls `wc_Hash_ex`, which
+earlier releases do not have. The pack is tested against 5.9.4 on both routes
+in CI. As a `./configure` build it runs twice: once against a build with the options it
 asks for, and once against a bare `./configure`, so it is known to compile,
 link and work on the build an integrator has rather than only on the one it
 prefers. As a `user_settings.h` build it runs on an embedded target, with
