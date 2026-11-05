@@ -24,7 +24,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED,
+        /** mq_send failed other than on a full queue; raised under
+         *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, once per run of failed sends;
+         *  the next record the queue takes ends the run. */
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_SEND_FAILED,
+        /** mq_receive failed other than on an empty queue; raised under
+         *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, once per run of failed
+         *  receives; the next record received ends the run. */
         SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED,
         /** The queue was full (EAGAIN) and the discard policy refused the
          *  record; raised under SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per

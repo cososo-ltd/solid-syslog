@@ -38,6 +38,9 @@ struct SolidSyslogPosixMessageQueueBuffer
     bool RefusalReported;
     bool FailureReported;
     bool EvictionReported;
+    /* One report stands for a run of failed receives; the next record
+     * received ends it. */
+    bool ReceiveFailureReported;
     /* The last send found the queue full - it evicted, or was refused - and
      * nothing has been received since: Log has outrun Service. Shared between
      * the two sides, so kept under the mutex. */

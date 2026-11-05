@@ -50,6 +50,7 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
 static void PosixMessageQueueBuffer_Write(struct SolidSyslogBuffer* base, const void* data, size_t size);
 static bool PosixMessageQueueBuffer_IsFull(struct SolidSyslogBuffer* base);
 static inline void PosixMessageQueueBuffer_NoteRecordTaken(struct SolidSyslogPosixMessageQueueBuffer* self);
+static inline void PosixMessageQueueBuffer_NoteReceiveFailed(struct SolidSyslogPosixMessageQueueBuffer* self);
 static enum SolidSyslogPosixMessageQueueBufferRunStarted PosixMessageQueueBuffer_SendNotingRuns(
     struct SolidSyslogPosixMessageQueueBuffer* self,
     enum SolidSyslogDiscardPolicy policy,
@@ -118,6 +119,7 @@ int SolidSyslogPosixMessageQueueBuffer_Initialise(
     self->RefusalReported = false;
     self->FailureReported = false;
     self->EvictionReported = false;
+    self->ReceiveFailureReported = false;
     self->Full = false;
 
     /* A slot whose open failed keeps the functions it had, so a handle left
@@ -176,15 +178,12 @@ static bool PosixMessageQueueBuffer_Read(struct SolidSyslogBuffer* base, void* d
         int receiveErrno = success ? 0 : errno;
         if (success)
         {
+            self->ReceiveFailureReported = false;
             PosixMessageQueueBuffer_NoteRecordTaken(self);
         }
         else if (receiveErrno != EAGAIN)
         {
-            PosixMessageQueueBuffer_Report(
-                SOLIDSYSLOG_SEVERITY_ERROR,
-                SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-                SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED
-            );
+            PosixMessageQueueBuffer_NoteReceiveFailed(self);
         }
         else
         {
@@ -202,6 +201,22 @@ static inline void PosixMessageQueueBuffer_NoteRecordTaken(struct SolidSyslogPos
     SolidSyslogMutex_Lock(self->Mutex);
     self->Full = false;
     SolidSyslogMutex_Unlock(self->Mutex);
+}
+
+/* Only the Service side receives, so the run needs no lock. It is marked
+ * before it is reported, as the send runs are. */
+static inline void PosixMessageQueueBuffer_NoteReceiveFailed(struct SolidSyslogPosixMessageQueueBuffer* self)
+{
+    bool runStarted = !self->ReceiveFailureReported;
+    self->ReceiveFailureReported = true;
+    if (runStarted)
+    {
+        PosixMessageQueueBuffer_Report(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+            SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_RECEIVE_FAILED
+        );
+    }
 }
 
 static bool PosixMessageQueueBuffer_IsFull(struct SolidSyslogBuffer* base)
