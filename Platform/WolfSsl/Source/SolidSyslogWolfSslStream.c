@@ -74,11 +74,13 @@ enum
 
 struct SolidSyslogAddress;
 
-/* What a pin is the digest of: the leaf as the peer presented it. */
+/* What a pin is the digest of: the leaf as the peer presented it, and the
+ * heap hint the digest is made against. */
 struct WolfSslStreamPeerCertificate
 {
     const unsigned char* Der;
     word32 Length;
+    void* Heap;
 };
 
 static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context);
@@ -716,7 +718,7 @@ bool SolidSyslogWolfSslStream_AuthoriseLeaf(
     word32 length
 )
 {
-    struct WolfSslStreamPeerCertificate leaf = {der, length};
+    struct WolfSslStreamPeerCertificate leaf = {der, length, self->Config.Heap};
     enum SolidSyslogTlsAuthorisation verdict = SolidSyslogTlsFingerprint_Authorise(
         self->Installed.Fingerprints,
         self->Installed.FingerprintCount,
@@ -739,7 +741,15 @@ static bool WolfSslStream_DigestCertificate(
     enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
     int size = wc_HashGetDigestSize(type);
     bool ok = (certificate->Der != NULL) && (size > 0) &&
-              (wc_Hash(type, certificate->Der, certificate->Length, digest, (word32) size) == 0);
+              (wc_Hash_ex(
+                   type,
+                   certificate->Der,
+                   certificate->Length,
+                   digest,
+                   (word32) size,
+                   certificate->Heap,
+                   INVALID_DEVID
+               ) == 0);
     if (ok)
     {
         *length = (size_t) size;

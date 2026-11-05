@@ -51,7 +51,7 @@ enum
     FAKE_WOLFSSL_CBIO_ERR_WANT_READ = -2
 };
 
-/* The pins the fake digest matches: wc_Hash answers 32 bytes of 0x5A under
+/* The pins the fake digest matches: wc_Hash_ex answers 32 bytes of 0x5A under
    SHA-256 and 20 of 0x1A under SHA-1, whatever it is given. */
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
                                            "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
