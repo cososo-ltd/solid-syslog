@@ -99,6 +99,7 @@ static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogT
 static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
+static inline bool WolfSslStream_ApplyCipherPolicy(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ConfigureExpectedPeerName(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSslStream* self, const char* serverName);
 static inline int WolfSslStream_DeclareExpectedPeer(struct SolidSyslogWolfSslStream* self, const char* serverName);
@@ -325,7 +326,8 @@ static inline bool WolfSslStream_Establish(struct SolidSyslogStream* base, const
     self->PeerPinned = false;
     bool ok = SolidSyslogStream_Open(self->Config.Transport, addr) && WolfSslStream_BuildContext(self) &&
               WolfSslStream_InstallCredentials(self) && WolfSslStream_CreateSession(self) &&
-              WolfSslStream_ApplyTlsPolicy(self) && WolfSslStream_ConfigureExpectedPeerName(self);
+              WolfSslStream_ApplyTlsPolicy(self) && WolfSslStream_ApplyCipherPolicy(self) &&
+              WolfSslStream_ConfigureExpectedPeerName(self);
     if (ok)
     {
         WolfSslStream_InstallTransportCallbacks(self);
@@ -485,6 +487,26 @@ static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream*
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
         );
+    }
+    return ok;
+}
+
+/* wolfSSL rejects a list in which it knows no name, which is reported as the
+ * configuration fault it is, before any handshake. */
+static inline bool WolfSslStream_ApplyCipherPolicy(struct SolidSyslogWolfSslStream* self)
+{
+    bool ok = true;
+    if (self->Profile.CipherList != NULL)
+    {
+        ok = wolfSSL_set_cipher_list(self->Session, self->Profile.CipherList) == WOLFSSL_SUCCESS;
+        if (!ok)
+        {
+            WolfSslStream_Report(
+                SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_BAD_CONFIG,
+                SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
+            );
+        }
     }
     return ok;
 }

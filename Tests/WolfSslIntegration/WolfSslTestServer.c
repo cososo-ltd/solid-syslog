@@ -44,7 +44,19 @@ struct WolfSslTestServer* WolfSslTestServer_Create(const struct WolfSslTestServe
     self->Context = wolfSSL_CTX_new(wolfTLSv1_2_server_method());
     (void) wolfSSL_CTX_use_certificate_chain_file(self->Context, config->CertificatePath);
     (void) wolfSSL_CTX_use_PrivateKey_file(self->Context, config->KeyPath, WOLFSSL_FILETYPE_PEM);
-    wolfSSL_CTX_set_verify(self->Context, WOLFSSL_VERIFY_NONE, NULL);
+    if (config->CipherList != NULL)
+    {
+        (void) wolfSSL_CTX_set_cipher_list(self->Context, config->CipherList);
+    }
+    if (config->ClientCaPath != NULL)
+    {
+        (void) wolfSSL_CTX_load_verify_locations(self->Context, config->ClientCaPath, NULL);
+        wolfSSL_CTX_set_verify(self->Context, WOLFSSL_VERIFY_PEER | WOLFSSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+    }
+    else
+    {
+        wolfSSL_CTX_set_verify(self->Context, WOLFSSL_VERIFY_NONE, NULL);
+    }
     self->Session = wolfSSL_new(self->Context);
     (void) wolfSSL_set_fd(self->Session, self->Fd);
     pthread_create(&self->Thread, NULL, RunServer, self);
@@ -103,6 +115,13 @@ static void* RunServer(void* arg)
         {
             self->Received[n] = '\0';
         }
+    }
+    else
+    {
+        /* A collector that refuses a handshake closes the connection. wolfSSL
+         * sends no alert where no suite is shared, so without this the client
+         * would wait out its receive timeout for an answer that never comes. */
+        shutdown(self->Fd, SHUT_RDWR);
     }
     return NULL;
 }

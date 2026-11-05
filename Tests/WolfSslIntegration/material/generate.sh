@@ -168,6 +168,10 @@ self_sign server-selfsigned-wrongname "$SAN_OTHER"
 make_csr server-selfsigned-weak "/CN=$NAME" 1024
 self_sign server-selfsigned-weak "$SAN_NAME"
 
+# The device's own credential, for a collector that asks for one.
+make_csr client "/CN=device.example.com" 2048
+sign_leaf client ca "basicConstraints = CA:FALSE"
+
 # The happy-path collector presenting its issuer behind it.
 cat server.pem ca.pem > server-chain.pem
 cp server.key server-chain.key

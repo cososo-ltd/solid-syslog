@@ -69,7 +69,7 @@ services:
     environment:
       - BDD_TARGET=linux
       - EXAMPLE_BINARY=build/tunable-override-wolfssl/Bdd/Targets/SolidSyslogBddTarget
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @mtls and not @cipher and not @rotation and not @name_before_dates' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @name_before_dates' Bdd/features/
 
   # Each BDD target pairs with its own syslog-ng instance on its own
   # bridge network so the `syslog-ng` DNS alias is scoped per-pair —

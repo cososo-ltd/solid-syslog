@@ -31,7 +31,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         const unsigned char* Bytes;
         /** How many bytes of @p Bytes are the PEM. wolfSSL reads exactly this
          *  extent, so no terminator is required; one may follow, and is not
-         *  counted. A supplied buffer with a length of zero holds nothing to
+         *  counted. NULs after the PEM are not read as part of it, so a buffer
+         *  kept larger than its PEM, to be rotated in place, gives its whole
+         *  size. A supplied buffer with a length of zero holds nothing to
          *  parse, and is reported as such rather than read as not supplied. */
         size_t Length;
     };

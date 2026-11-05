@@ -15,6 +15,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         int ServerFd; /* one end of a socketpair; ownership transferred to the server */
         const char* CertificatePath; /* PEM leaf, or leaf then issuers */
         const char* KeyPath; /* PEM key matching the leaf */
+        const char* CipherList; /* the only suites offered; NULL offers the build's own */
+        const char* ClientCaPath; /* a client certificate chaining here is required; NULL asks for none */
     };
 
     /* Spawns a worker thread that drives the server-side handshake and then

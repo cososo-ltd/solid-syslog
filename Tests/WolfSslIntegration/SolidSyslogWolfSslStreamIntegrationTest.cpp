@@ -16,6 +16,7 @@ extern "C"
 #include "SolidSyslogStream.h"
 #include "SolidSyslogWolfSslCredentialsDefinition.h"
 #include "SolidSyslogWolfSslPemBufferCredentials.h"
+#include "SolidSyslogWolfSslPemBufferCredentialsErrors.h"
 #include "SolidSyslogWolfSslSettings.h"
 #include "SolidSyslogWolfSslStream.h"
 #include "SolidSyslogWolfSslStreamErrors.h"
@@ -25,8 +26,10 @@ extern "C"
 }
 
 #include <array>
+#include <cstring>
 
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogTlsCredentialsErrors.h"
 #include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTlsStreamErrors.h"
 
@@ -71,6 +74,16 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
         LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                                         \
     }
 
+/* A connection stopped at Open by its own configuration, before any handshake. */
+#define CHECK_CONFIGURATION_FAULT_REPORTED(expectedCode)                                \
+    {                                                                                   \
+        LONGS_EQUAL(1, CapturedErrorCount);                                             \
+        LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);            \
+        POINTERS_EQUAL(&SolidSyslogWolfSslStreamErrorSource, LastCapturedError.Source); \
+        UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);   \
+        LONGS_EQUAL((expectedCode), LastCapturedError.Detail);                          \
+    }
+
 /* A connection the stream made without anything to say about it. */
 #define CHECK_OPENS_WITHOUT_A_REPORT(stream, address)            \
     {                                                            \
@@ -84,12 +97,14 @@ static void CaptureError(void* context, const struct SolidSyslogErrorEvent* even
 struct IntegrationProfileValues
 {
     const char* ServerName;
+    const char* CipherList;
 };
 
 static void IntegrationProfile(struct SolidSyslogWolfSslProfile* profile, void* context)
 {
     const auto* values  = static_cast<const struct IntegrationProfileValues*>(context);
     profile->ServerName = values->ServerName;
+    profile->CipherList = values->CipherList;
 }
 
 TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
@@ -99,6 +114,12 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
     struct WolfSslTestMaterial            trustedCa        = {};
     struct WolfSslTestMaterial            serverCert       = {};
     struct WolfSslTestMaterial            serverKey        = {};
+    struct WolfSslTestMaterial            clientCert       = {};
+    struct WolfSslTestMaterial            clientKey        = {};
+    std::array<std::array<unsigned char, 8192>, 3> roomyBuffers = {};
+    size_t                     roomyBufferCount = 0U;
+    const char*                serverCipherList = nullptr;
+    bool                       serverRequiresClientCredential = false;
     struct WolfSslTestServer*  server           = nullptr;
     struct SolidSyslogStream*  clientTransport  = nullptr;
     struct SolidSyslogStream*  tlsStream        = nullptr;
@@ -161,6 +182,8 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
         serverConfig.ServerFd = fds[1];
         serverConfig.CertificatePath = serverCert.Path;
         serverConfig.KeyPath = serverKey.Path;
+        serverConfig.CipherList = serverCipherList;
+        serverConfig.ClientCaPath = serverRequiresClientCredential ? trustedCa.Path : nullptr;
         server = WolfSslTestServer_Create(&serverConfig);
         clientTransport = SocketStream_Create(fds[0]);
         return clientTransport;
@@ -217,6 +240,35 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
         pinCount++;
         credsConfig.PeerFingerprints = pins.data();
         credsConfig.PeerFingerprintCount = pinCount;
+    }
+
+    /* The device's own certificate, and its key where the scenario holds both. */
+    void HoldClientCertificate()
+    {
+        LoadMaterial("client.pem", &clientCert);
+        credsConfig.ClientCertPem.Bytes = clientCert.Bytes;
+        credsConfig.ClientCertPem.Length = clientCert.Length;
+    }
+
+    void HoldClientCredential()
+    {
+        HoldClientCertificate();
+        LoadMaterial("client.key", &clientKey);
+        credsConfig.ClientKeyPem.Bytes = clientKey.Bytes;
+        credsConfig.ClientKeyPem.Length = clientKey.Length;
+    }
+
+    /* Moves a PEM into a buffer larger than it, the rest left as NULs, and
+       gives the whole buffer as its extent - how an integrator holds material
+       they will rotate in place to a PEM of another length. */
+    void HoldInARoomyBuffer(struct SolidSyslogWolfSslPemBuffer* pem)
+    {
+        std::array<unsigned char, 8192>& roomy = roomyBuffers.at(roomyBufferCount);
+        roomyBufferCount++;
+        CHECK_TRUE(pem->Length < roomy.size());
+        memcpy(roomy.data(), pem->Bytes, pem->Length);
+        pem->Bytes = roomy.data();
+        pem->Length = roomy.size();
     }
 
     void TrustNoAuthority()
@@ -596,3 +648,107 @@ TEST(SolidSyslogWolfSslStreamIntegration, AnchorsAndPinsTogetherAreRefusedByABui
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PINS_WITH_ANCHORS_UNSUPPORTED, LastCapturedError.Detail);
 }
 #endif
+
+TEST(SolidSyslogWolfSslStreamIntegration, AClientCredentialIsPresentedToACollectorThatRequiresOne)
+{
+    serverRequiresClientCredential = true;
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    HoldClientCredential();
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+    SolidSyslogStream_Close(tlsStream);
+    CHECK_TRUE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+}
+
+/* The collector is the enforcement point for the device's credential: the
+ * stream has nothing to say about one it was never given, and the refusal is
+ * the collector's. */
+TEST(SolidSyslogWolfSslStreamIntegration, ACollectorThatRequiresAClientCredentialRefusesADeviceWithNone)
+{
+    serverRequiresClientCredential = true;
+
+    CHECK_FALSE(OpenAgainst("server.pem", TEST_SERVER_HOSTNAME));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED);
+    CHECK_FALSE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, HalfAClientCredentialIsReportedAndTheConnectionProceedsWithoutIt)
+{
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    HoldClientCertificate();
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_TRUE(SolidSyslogStream_Open(tlsStream, addr));
+
+    LONGS_EQUAL(1, CapturedErrorCount);
+    LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_WARNING, LastCapturedError.Severity);
+    POINTERS_EQUAL(&SolidSyslogWolfSslPemBufferCredentialsErrorSource, LastCapturedError.Source);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_INCOMPLETE, LastCapturedError.Detail);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, ACipherPolicyNamingASuiteTheCollectorOffersConnects)
+{
+    serverCipherList = "ECDHE-RSA-AES128-GCM-SHA256";
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    profileValues.CipherList = "ECDHE-RSA-AES128-GCM-SHA256";
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, ACipherPolicyTheCollectorCannotSatisfyIsRefusedRatherThanWidened)
+{
+    serverCipherList = "ECDHE-RSA-AES256-GCM-SHA384";
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    profileValues.CipherList = "ECDHE-RSA-AES128-GCM-SHA256";
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_REJECTED);
+}
+
+TEST(SolidSyslogWolfSslStreamIntegration, ACipherPolicyNamingNothingTheBuildKnowsIsRejectedBeforeAnyHandshake)
+{
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    profileValues.CipherList = "NOT-A-SUITE-THIS-BUILD-KNOWS";
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
+
+    CHECK_CONFIGURATION_FAULT_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED);
+    CHECK_FALSE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+}
+
+/* wolfSSL keeps what it knows of a list and says nothing of the rest, so the
+ * stream has no rejection to report. Pinned here because only the real library
+ * can prove it, and the platform page states it. */
+TEST(SolidSyslogWolfSslStreamIntegration, ANameTheBuildDoesNotKnowIsDroppedFromAListItCanOtherwiseHonour)
+{
+    serverCipherList = "ECDHE-RSA-AES128-GCM-SHA256";
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    profileValues.CipherList = "NOT-A-SUITE-THIS-BUILD-KNOWS:ECDHE-RSA-AES128-GCM-SHA256";
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+}
+
+/* Rotation in place needs each buffer sized for the largest PEM it will hold,
+ * so a shorter PEM leaves a tail. Only the real library can say it reads the
+ * PEM and stops, for the anchors, the certificate and the key alike. */
+TEST(SolidSyslogWolfSslStreamIntegration, ABufferLargerThanItsPemIsReadAsThePemAlone)
+{
+    serverRequiresClientCredential = true;
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    HoldClientCredential();
+    HoldInARoomyBuffer(&credsConfig.CaPem);
+    HoldInARoomyBuffer(&credsConfig.ClientCertPem);
+    HoldInARoomyBuffer(&credsConfig.ClientKeyPem);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+    SolidSyslogStream_Close(tlsStream);
+    CHECK_TRUE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
+}
