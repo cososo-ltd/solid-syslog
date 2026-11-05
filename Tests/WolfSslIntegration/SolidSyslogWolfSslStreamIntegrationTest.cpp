@@ -26,6 +26,7 @@ extern "C"
 }
 
 #include <array>
+#include <cstring>
 
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogTlsCredentialsErrors.h"
@@ -115,6 +116,8 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
     struct WolfSslTestMaterial            serverKey        = {};
     struct WolfSslTestMaterial            clientCert       = {};
     struct WolfSslTestMaterial            clientKey        = {};
+    std::array<std::array<unsigned char, 8192>, 3> roomyBuffers = {};
+    size_t                     roomyBufferCount = 0U;
     const char*                serverCipherList = nullptr;
     bool                       serverRequiresClientCredential = false;
     struct WolfSslTestServer*  server           = nullptr;
@@ -253,6 +256,19 @@ TEST_GROUP(SolidSyslogWolfSslStreamIntegration)
         LoadMaterial("client.key", &clientKey);
         credsConfig.ClientKeyPem.Bytes = clientKey.Bytes;
         credsConfig.ClientKeyPem.Length = clientKey.Length;
+    }
+
+    /* Moves a PEM into a buffer larger than it, the rest left as NULs, and
+       gives the whole buffer as its extent - how an integrator holds material
+       they will rotate in place to a PEM of another length. */
+    void HoldInARoomyBuffer(struct SolidSyslogWolfSslPemBuffer* pem)
+    {
+        std::array<unsigned char, 8192>& roomy = roomyBuffers.at(roomyBufferCount);
+        roomyBufferCount++;
+        CHECK_TRUE(pem->Length < roomy.size());
+        memcpy(roomy.data(), pem->Bytes, pem->Length);
+        pem->Bytes = roomy.data();
+        pem->Length = roomy.size();
     }
 
     void TrustNoAuthority()
@@ -717,4 +733,22 @@ TEST(SolidSyslogWolfSslStreamIntegration, ANameTheBuildDoesNotKnowIsDroppedFromA
     tlsStream = CreateTlsStream(&config);
 
     CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+}
+
+/* Rotation in place needs each buffer sized for the largest PEM it will hold,
+ * so a shorter PEM leaves a tail. Only the real library can say it reads the
+ * PEM and stops, for the anchors, the certificate and the key alike. */
+TEST(SolidSyslogWolfSslStreamIntegration, ABufferLargerThanItsPemIsReadAsThePemAlone)
+{
+    serverRequiresClientCredential = true;
+    struct SolidSyslogWolfSslStreamConfig config = BuildConfigAgainst("server.pem", TEST_SERVER_HOSTNAME);
+    HoldClientCredential();
+    HoldInARoomyBuffer(&credsConfig.CaPem);
+    HoldInARoomyBuffer(&credsConfig.ClientCertPem);
+    HoldInARoomyBuffer(&credsConfig.ClientKeyPem);
+    tlsStream = CreateTlsStream(&config);
+
+    CHECK_OPENS_WITHOUT_A_REPORT(tlsStream, addr);
+    SolidSyslogStream_Close(tlsStream);
+    CHECK_TRUE(WolfSslTestServer_JoinAndHandshakeSucceeded(server));
 }

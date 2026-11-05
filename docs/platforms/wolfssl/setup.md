@@ -100,6 +100,14 @@ and `ClientKeyPem` together for mutual TLS, or neither. The buffers are read at
 every connection, so they must outlive the stream; rotating them in place and
 moving the stream's version, below, is how material changes without a restart.
 
+Create copies each buffer's address and length, so material you will rotate
+lives in writable memory and its length cannot change afterwards. Size each
+buffer for the largest PEM it will hold, give that whole size as its length,
+and fill what the PEM does not use with NULs. To rotate, write the new PEM over
+the buffer, clear the bytes after it to NUL, and move the version. The
+[wolfSSL](index.md#credentials-come-from-a-credentials-source) page says which
+task makes the change.
+
 **Pinning the collector's certificate**, instead of or as well as a CA:
 
 ```c
@@ -145,6 +153,11 @@ name is one wolfSSL will not take, and the connection is refused at Open as
 Leaving `ServerName` NULL connects on the chain alone and warns on every
 connection, unless a pin names the collector; `""` does the same without the
 warning, for a private CA that issues to no name.
+
+`CipherList` is the ciphersuite policy, one colon-separated list for both TLS
+versions; leave it NULL to offer what the build enables. The
+[wolfSSL](index.md#what-a-connection-is-made-with) page gives the form and
+what wolfSSL does with a name it does not know.
 
 ## 6. The stream and the sender
 
@@ -259,6 +272,7 @@ detail, or a connection in between, reports again.
 | anchors and a pin together, on a build that cannot check both | `ERROR` | `BAD_CONFIG` | `PINS_WITH_ANCHORS_UNSUPPORTED` | the attempt fails before any handshake |
 | the profile named no peer and no pin names it | `WARNING` | `BAD_CONFIG` | `SERVER_NAME_NOT_SET` | connects, chain-authenticated only |
 | wolfSSL would not take the name or the indication | `ERROR` | `BAD_CONFIG` | `SERVER_NAME_NOT_APPLIED` | the attempt fails |
+| wolfSSL knows none of the suites the cipher policy names | `ERROR` | `BAD_CONFIG` | `CIPHER_POLICY_REJECTED` | the attempt fails before any handshake |
 | wolfSSL ran out of memory at any of those | `ERROR` | that step's category | `LIBRARY_OUT_OF_MEMORY` | the attempt fails |
 | the peer's certificate matches no pin | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `PEER_FINGERPRINT_MISMATCHED` | refused; the sender retries |
 | no pin names a hash the build can compute, or no certificate was kept to digest | `ERROR` | `TLS_STREAM_HANDSHAKE_FAILED` | `FINGERPRINT_DIGEST_UNAVAILABLE` | as above |

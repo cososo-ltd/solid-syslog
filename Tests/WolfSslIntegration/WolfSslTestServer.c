@@ -51,11 +51,7 @@ struct WolfSslTestServer* WolfSslTestServer_Create(const struct WolfSslTestServe
     if (config->ClientCaPath != NULL)
     {
         (void) wolfSSL_CTX_load_verify_locations(self->Context, config->ClientCaPath, NULL);
-        wolfSSL_CTX_set_verify(
-            self->Context,
-            WOLFSSL_VERIFY_PEER | WOLFSSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-            NULL
-        );
+        wolfSSL_CTX_set_verify(self->Context, WOLFSSL_VERIFY_PEER | WOLFSSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
     }
     else
     {

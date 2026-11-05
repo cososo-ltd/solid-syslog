@@ -14,7 +14,8 @@
  *    this connection, asks the credentials source to install the material onto
  *    it, creates the session, applies the library-owned TLS policy (TLS 1.2
  *    floor, the BCP 195 section 4.5 key-size floors, a required peer
- *    certificate), installs the peer identity, then drives the handshake to
+ *    certificate) and the profile's cipher policy, installs the peer identity,
+ *    then drives the handshake to
  *    completion. The non-blocking transport means each wolfSSL_connect may want
  *    more I/O; the injected Sleep bridges those polls until the handshake
  *    completes, hits a hard error (HANDSHAKE_REJECTED, or the check the peer
