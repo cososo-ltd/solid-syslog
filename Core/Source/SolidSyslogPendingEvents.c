@@ -147,8 +147,8 @@ bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* e
     return wasPending;
 }
 
-/* Only PendingEvents_SeverityCode writes a code, so one past zero is always
- * a position in the table. */
+/* A nonzero code comes only from PendingEvents_SeverityCode, so it is always
+ * a position in the table plus one. */
 static inline enum SolidSyslogSeverity PendingEvents_SeverityOf(const struct PendingEventKind* kind, uint8_t code)
 {
     enum SolidSyslogSeverity severity = kind->Severity;

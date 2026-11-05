@@ -23,14 +23,14 @@
  *
  * The tap is the whole of what runs on a failing path after the handler, so it
  * must be safe from any task and any context, including inside a Send that is
- * failing and inside a DetailName callback. It therefore calls nothing: no
- * role, no clock, no lock, no name function. Recording is six stores with
- * Pending last, and Take clears Pending before it copies the fields. The slots
- * are volatile, so the compiler keeps the stores in that order, which is as
- * much as C99 offers: there are no atomics in the baseline, and no lock is
- * taken because the tap runs inside a failing role on whatever task met the
- * fault. A multi-core CPU may still retire the stores out of order; nothing
- * here prevents that. Two writers racing on one slot, or a Take copying while a
+ * failing and inside a DetailName callback. It therefore calls no role, no
+ * clock, no lock and no name function. Recording is six stores with Pending
+ * last, and Take clears Pending before it copies the fields. The slots are
+ * volatile, so the compiler keeps the stores in that order, which is as much as
+ * C99 offers: there are no atomics in the baseline, and no lock is taken
+ * because the tap runs inside a failing role on whatever task met the fault. A
+ * multi-core CPU may still retire the stores out of order; nothing here
+ * prevents that. Two writers racing on one slot, or a Take copying while a
  * writer lands, leave a slot or a copy mixing fields of two events of the same
  * kind, with the flag set. The writers are logging tasks sharing one buffer,
  * since every other kind is raised on the Service task, so the two events come
