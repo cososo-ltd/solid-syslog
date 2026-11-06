@@ -148,7 +148,7 @@ static size_t IndexOfKind(uint16_t category)
     size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
     for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
     {
-        found = (REPORTED_KINDS[index] == category) ? index : found;
+        found = (REPORTED_KINDS[index] == category) ? index : found; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
     }
     return found;
 }
