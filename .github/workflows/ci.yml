@@ -480,6 +480,9 @@ jobs:
 
   sanitize-linux-gcc:
     runs-on: ubuntu-latest
+    # A test binary that faults as it starts can leave AddressSanitizer
+    # reporting the signal without end; the lane otherwise takes minutes.
+    timeout-minutes: 15
     permissions:
       contents: read
       checks: write
