@@ -488,7 +488,9 @@ jobs:
       checks: write
     container:
       image: ghcr.io/cososo-ltd/cpputest@sha256:7c9e2e66cf1eb382fceed63280df4c27cb49b35d6ecebe8fa2b97217e7d75dfd # sha-d5d2af8
-      options: --user root
+      # Docker's default seccomp profile refuses the personality call
+      # setarch -R makes below.
+      options: --user root --security-opt seccomp=unconfined
     env:
       GIT_CONFIG_COUNT: 1
       GIT_CONFIG_KEY_0: safe.directory
@@ -505,11 +507,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Report the runner's address-space randomisation
+        run: echo "vm.mmap_rnd_bits=$(cat /proc/sys/vm/mmap_rnd_bits) kernel=$(uname -r)"
+
       - name: Configure
         run: cmake --preset sanitize
 
+      # This image's AddressSanitizer faults as a test starts, about one start
+      # in four, where the runner's vm.mmap_rnd_bits is 32. The tests run
+      # with address-space randomisation off, so the lane does not depend on
+      # what the runner sets.
       - name: Build and test
-        run: cmake --build --preset sanitize --target junit
+        run: setarch "$(uname -m)" -R cmake --build --preset sanitize --target junit
 
       - name: Test Report
         uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0

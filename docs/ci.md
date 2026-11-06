@@ -14,7 +14,7 @@ without renaming what's already there.
 | `build-linux-gcc` | `debug` | Test results annotated on PR |
 | `build-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
 | `build-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
-| `sanitize-linux-gcc` | `sanitize` | ASan + UBSan, with UBSan halting on its first finding rather than recovering - test results annotated on PR |
+| `sanitize-linux-gcc` | `sanitize` | ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
 | `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report uploaded as a downloadable run artifact |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
