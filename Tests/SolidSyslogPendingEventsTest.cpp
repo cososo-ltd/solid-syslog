@@ -142,6 +142,17 @@ static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
 };
 
+/* The slot a reported kind lands in: its place in the table above. */
+static size_t IndexOfKind(uint16_t category)
+{
+    size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        found = (REPORTED_KINDS[index] == category) ? index : found;
+    }
+    return found;
+}
+
 TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
 {
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
@@ -181,13 +192,12 @@ TEST(SolidSyslogPendingEvents, ARaisedKindIsPending)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
 
-    CHECK(SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
+    CHECK(SolidSyslogPendingEvents_IsPending(IndexOfKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
 }
 
 TEST(SolidSyslogPendingEvents, AKindNeverRaisedIsNotPending)
 {
-    CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)
-    ));
+    CHECK_FALSE(SolidSyslogPendingEvents_IsPending(IndexOfKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
 }
 
 TEST(SolidSyslogPendingEvents, AskingWhetherAKindIsPendingLeavesItPending)
@@ -195,7 +205,7 @@ TEST(SolidSyslogPendingEvents, AskingWhetherAKindIsPendingLeavesItPending)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
 
-    (void) SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+    (void) SolidSyslogPendingEvents_IsPending(IndexOfKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 
     CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 }

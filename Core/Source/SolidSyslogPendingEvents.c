@@ -73,12 +73,13 @@ static const enum SolidSyslogSeverity PendingEvents_Severities[] = {
 
 static volatile struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
 
+static inline size_t PendingEvents_IndexOf(uint16_t category);
 static inline uint8_t PendingEvents_SeverityCode(enum SolidSyslogSeverity severity);
 static inline enum SolidSyslogSeverity PendingEvents_SeverityOf(const struct PendingEventKind* kind, uint8_t code);
 
 void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
 {
-    size_t index = SolidSyslogPendingEvents_IndexOf(event->Category);
+    size_t index = PendingEvents_IndexOf(event->Category);
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
         volatile struct PendingEventSlot* slot = &PendingEvents_Slots[index];
@@ -90,6 +91,23 @@ void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
         slot->HasNativeCode = event->HasNativeCode;
         slot->Pending = true;
     }
+}
+
+/* The slot index of a reported kind, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT for
+ * a category that is not one. */
+static inline size_t PendingEvents_IndexOf(uint16_t category)
+{
+    size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
+    for (size_t index = 0U;
+         (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && (found == SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT);
+         index++)
+    {
+        if (PendingEvents_Kinds[index].Category == category)
+        {
+            found = index;
+        }
+    }
+    return found;
 }
 
 /* A severity the table does not hold keeps code zero, the kind's own. */
@@ -105,21 +123,6 @@ static inline uint8_t PendingEvents_SeverityCode(enum SolidSyslogSeverity severi
         }
     }
     return code;
-}
-
-size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
-{
-    size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
-    for (size_t index = 0U;
-         (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && (found == SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT);
-         index++)
-    {
-        if (PendingEvents_Kinds[index].Category == category)
-        {
-            found = index;
-        }
-    }
-    return found;
 }
 
 bool SolidSyslogPendingEvents_IsPending(size_t index)
