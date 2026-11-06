@@ -53,10 +53,12 @@
 #define SOLIDSYSLOG_CAT_STORE_RECORDS_LOST ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 5U))
 
 /** The store's used bytes rose from below its capacity threshold to the
- *  threshold or past it: it is filling, and is still keeping records. Raised as
- *  a WARNING, once per crossing: used bytes falling back below the threshold
- *  re-arms it. A store resumed at or above its threshold raises it when it is
- *  created. */
+ *  threshold or past it. Raised as a WARNING, once per crossing: used bytes
+ *  falling back below the threshold re-arms it, which a block sent out or
+ *  evicted can do, so a store evicting under the Oldest policy whose threshold
+ *  lies in its last block crosses again as each block refills. A threshold at
+ *  the store's whole capacity is crossed when the full store refuses a record.
+ *  A store resumed at or above its threshold raises it when it is created. */
 #define SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 6U))
 
 #endif /* SOLIDSYSLOGSTORECATEGORIES_H */
