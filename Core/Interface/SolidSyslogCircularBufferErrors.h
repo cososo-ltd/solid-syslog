@@ -23,12 +23,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY,
         /** The record at the head of the ring is larger than the buffer Read
-         *  was handed, so it is not delivered and stays at the head: every
-         *  later Read meets it again. Service reads into a buffer of
-         *  SOLIDSYSLOG_MAX_MESSAGE_SIZE, which holds any record Write accepts,
-         *  so only a caller reading the buffer directly with a smaller one
-         *  raises this. Raised under SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-         *  once per run of such reads; the next record read ends the run. */
+         *  was handed; SolidSyslogCircularBuffer.h says what Read does with
+         *  it. Service reads into a buffer of SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+         *  which holds any record Write accepts, so only a caller reading the
+         *  buffer directly with a smaller one raises this. Raised under
+         *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, once per run of such reads;
+         *  the next record read ends the run. */
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE,
         /** The ring had no room for the record and the discard policy refused
          *  it; raised under SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per run of
