@@ -294,6 +294,7 @@ int main(int argc, char* argv[])
         .SdCount = sdCount,
         .GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy,
         .OnHalt = OnHalt,
+        .IsEventReportingOn = BddTargetStoreSettings_IsEventReportingOn,
         .Scratch = scratch,
     };
     solidSyslog = SolidSyslog_Create(&config);

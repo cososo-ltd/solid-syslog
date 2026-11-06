@@ -31,7 +31,8 @@ QEMU's BKPT 0xAB traps route FatFs's block I/O to a host-resident
 from `SolidSyslogNullStore` to a `SolidSyslogBlockStore` over the
 FatFs file backend; `set max-blocks` / `set max-block-size` /
 `set discard-policy` / `set halt-exit` parameterise the BlockStore
-config before that rebuild. `set shutdown 1` performs a graceful
+config before that rebuild, and `set no-reporting 1` turns the logger's
+reports of its own events off. `set shutdown 1` performs a graceful
 teardown — destroys our objects (which close the FatFs files),
 `f_unmount`s, then `SemihostingExit`s — and is what the BDD
 `the client is killed` step uses on FreeRTOS so the next session's

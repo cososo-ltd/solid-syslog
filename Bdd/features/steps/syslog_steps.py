@@ -649,6 +649,8 @@ def build_buffered_extra_args(context, transport, no_sd=False):
         args.append("--no-sd")
     if getattr(context, "halt_exit", False):
         args.append("--halt-exit")
+    if getattr(context, "no_reporting", False):
+        args.append("--no-reporting")
     if getattr(context, "errors_fatal", None):
         args.extend(["--errors-fatal", context.errors_fatal])
     return args
@@ -765,6 +767,15 @@ def step_message_body_length(context, length):
 @given("the halt callback exits the process")
 def step_halt_callback_exits(context):
     context.halt_exit = True
+
+
+@given("the logger does not report its own events")
+def step_logger_does_not_report(context):
+    """Turns the logger's reporting of its own events off, so a scenario that
+    measures what the store or the buffer did with the client's records sees
+    only those records: a report is a record of the logger's own and takes
+    room where it is made."""
+    context.no_reporting = True
 
 
 @given("the capacity threshold callback is enabled at {threshold:d} bytes")

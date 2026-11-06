@@ -80,5 +80,9 @@ void BddTargetWindowsCommandLine_Parse(int argc, char* argv[], struct BddTargetW
         {
             (void) BddTargetStoreSettings_SetByName("no-sd", "1");
         }
+        else if (strcmp(argv[i], "--no-reporting") == 0)
+        {
+            (void) BddTargetStoreSettings_SetByName("no-reporting", "1");
+        }
     }
 }

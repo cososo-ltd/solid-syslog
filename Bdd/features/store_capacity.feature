@@ -4,6 +4,9 @@ Feature: Store capacity limit and discard policy
   When the store is full, the discard policy determines whether
   the oldest or newest messages are dropped.
 
+  Background:
+    Given the logger does not report its own events
+
   Scenario: Discard-oldest drops oldest messages when store overflows
     Given the syslog oracle is running
     And the block store is enabled with max-blocks 2 and max-block-size 520 and discard-policy oldest

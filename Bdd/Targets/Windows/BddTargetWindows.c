@@ -411,6 +411,7 @@ int BddTargetWindows_Run(int argc, char* argv[])
         .SdCount = sdCount,
         .GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy,
         .OnHalt = OnHalt,
+        .IsEventReportingOn = BddTargetStoreSettings_IsEventReportingOn,
     };
     solidSyslog = SolidSyslog_Create(&config);
 

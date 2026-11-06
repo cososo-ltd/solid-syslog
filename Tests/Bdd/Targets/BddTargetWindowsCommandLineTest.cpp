@@ -256,6 +256,15 @@ TEST(BddTargetWindowsCommandLine, NoSdFlagSetsNoSd)
     CHECK_TRUE(BddTargetStoreSettings_NoSd());
 }
 
+TEST(BddTargetWindowsCommandLine, NoReportingFlagTurnsEventReportingOff)
+{
+    char arg0[] = "test";
+    char arg1[] = "--no-reporting";
+    char* argv[] = {arg0, arg1, nullptr};
+    Parse(2, argv);
+    CHECK_FALSE(BddTargetStoreSettings_IsEventReportingOn(nullptr));
+}
+
 TEST(BddTargetWindowsCommandLine, DefaultErrorsFatalIsOn)
 {
     char arg0[] = "test";
