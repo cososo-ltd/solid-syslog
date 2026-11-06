@@ -3078,11 +3078,11 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacityThreshold, BlockDeviceTestBase)
         teardownBlockDeviceFakes();
     }
 
-    void CreateWithThreshold(size_t threshold)
+    void CreateWithThreshold(size_t threshold, SolidSyslogStoreThresholdCallback onCrossed = CountThresholdCrossings)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         config.GetCapacityThreshold              = ReturnsConfiguredThreshold;
-        config.OnThresholdCrossed                = CountThresholdCrossings;
+        config.OnThresholdCrossed                = onCrossed;
         thresholdReturnValue                     = threshold;
         store                                    = SolidSyslogBlockStore_Create(&config);
     }
@@ -3321,11 +3321,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, TheEventIsRaisedBeforeTheCallbackFi
 {
     ErrorHandlerFake_Install(nullptr);
     eventsRaisedWhenCallbackFired = -1;
-    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
-    config.OnThresholdCrossed = NoteEventsRaised;
-    thresholdReturnValue = TEST_DATA_LEN;
-    store = SolidSyslogBlockStore_Create(&config);
+    CreateWithThreshold(TEST_DATA_LEN, NoteEventsRaised);
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 
@@ -3335,10 +3331,7 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, TheEventIsRaisedBeforeTheCallbackFi
 TEST(SolidSyslogBlockStoreCapacityThreshold, ACrossingIsRaisedWithoutACallbackToFire)
 {
     ErrorHandlerFake_Install(nullptr);
-    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
-    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
-    thresholdReturnValue = TEST_DATA_LEN;
-    store = SolidSyslogBlockStore_Create(&config);
+    CreateWithThreshold(TEST_DATA_LEN, nullptr);
 
     SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
 

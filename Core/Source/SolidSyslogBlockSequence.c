@@ -7,7 +7,7 @@
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
-#include "SolidSyslogError.h"
+#include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogStoreCategories.h"
 
@@ -333,9 +333,8 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct SolidSyslogBlockS
         else if (!blockSequence->ThresholdCrossed)
         {
             blockSequence->ThresholdCrossed = true;
-            SolidSyslog_Error(
+            BlockStore_Report(
                 SOLIDSYSLOG_SEVERITY_WARNING,
-                &SolidSyslogBlockStoreErrorSource,
                 SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
                 SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED
             );

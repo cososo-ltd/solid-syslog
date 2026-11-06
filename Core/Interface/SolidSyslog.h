@@ -81,8 +81,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      pass that saw it raised SOLIDSYSLOG_CAT_LOGGER_HALTED
      *                                      and called OnHalt. Nothing moves until the policy
      *                                      answers otherwise, or the device restarts; alarm /
-     *                                      slow heartbeat. The pass that leaves the halt reports
-     *                                      it, ahead of whatever is in the buffer.
+     *                                      slow heartbeat. The halt waits to be reported, as
+     *                                      any event of the library's own does, until it lifts.
      *
      *  With a store that retains records, buffer drain out-ranks a send failure:
      *  a down sender never demotes the loop out of "keep draining" while the
