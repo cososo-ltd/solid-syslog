@@ -39,6 +39,16 @@ class HeaderProofTest(unittest.TestCase):
         )
         self.assertEqual(0, self.run_main())
 
+    def test_fails_naming_a_core_header_the_proof_omits(self):
+        self.given_file("Core/Interface/SolidSyslog.h")
+        self.given_file("Core/Interface/SolidSyslogStore.h")
+        self.given_file(
+            "Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c",
+            '#include "vxWorks.h"\n\n#include "SolidSyslog.h"\n',
+        )
+        self.assertEqual(1, self.run_main())
+        self.assertIn("Core/Interface/SolidSyslogStore.h", self.output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
