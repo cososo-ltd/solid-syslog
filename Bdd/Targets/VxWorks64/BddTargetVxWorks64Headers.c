@@ -49,6 +49,7 @@
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogHmacSha256PolicyErrors.h"
 #include "SolidSyslogKeyFunction.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMetaSdErrors.h"
 #include "SolidSyslogMutex.h"

@@ -3078,11 +3078,11 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreCapacityThreshold, BlockDeviceTestBase)
         teardownBlockDeviceFakes();
     }
 
-    void CreateWithThreshold(size_t threshold)
+    void CreateWithThreshold(size_t threshold, SolidSyslogStoreThresholdCallback onCrossed = CountThresholdCrossings)
     {
         struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
         config.GetCapacityThreshold              = ReturnsConfiguredThreshold;
-        config.OnThresholdCrossed                = CountThresholdCrossings;
+        config.OnThresholdCrossed                = onCrossed;
         thresholdReturnValue                     = threshold;
         store                                    = SolidSyslogBlockStore_Create(&config);
     }
@@ -3292,6 +3292,55 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, FiresOnCreateWhenResumedUsageAboveT
     CreateWithThreshold(TEST_DATA_LEN);
 
     CALLED_FUNCTION(CountThresholdCrossings, ONCE);
+}
+
+TEST(SolidSyslogBlockStoreCapacityThreshold, ACrossingIsRaisedAsAnEvent)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateWithThreshold(TEST_DATA_LEN);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED
+    );
+}
+
+static int eventsRaisedWhenCallbackFired;
+
+static void NoteEventsRaised(void* context)
+{
+    (void) context;
+    eventsRaisedWhenCallbackFired = ErrorHandlerFake_HandleCallCount();
+}
+
+TEST(SolidSyslogBlockStoreCapacityThreshold, TheEventIsRaisedBeforeTheCallbackFires)
+{
+    ErrorHandlerFake_Install(nullptr);
+    eventsRaisedWhenCallbackFired = -1;
+    CreateWithThreshold(TEST_DATA_LEN, NoteEventsRaised);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    LONGS_EQUAL(1, eventsRaisedWhenCallbackFired);
+}
+
+TEST(SolidSyslogBlockStoreCapacityThreshold, ACrossingIsRaisedWithoutACallbackToFire)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateWithThreshold(TEST_DATA_LEN, nullptr);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED
+    );
 }
 
 /* ------------------------------------------------------------------

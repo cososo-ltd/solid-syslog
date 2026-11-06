@@ -37,7 +37,8 @@
  * here only once a role family carries a role-specific category; roles that
  * emit only the universal categories above need none. The specific categories
  * in each range live in SolidSyslog<Role>Categories.h beside that role's
- * *Definition.h.
+ * *Definition.h. The logger is not a role and has no Definition header; its
+ * range is in SolidSyslogLoggerCategories.h.
  */
 #define SOLIDSYSLOG_CAT_SENDER_BASE ((uint16_t) 0x0100U)
 #define SOLIDSYSLOG_CAT_RESOLVER_BASE ((uint16_t) 0x0200U)
@@ -48,6 +49,7 @@
 #define SOLIDSYSLOG_CAT_FILE_BASE ((uint16_t) 0x0700U)
 #define SOLIDSYSLOG_CAT_STORE_BASE ((uint16_t) 0x0800U)
 #define SOLIDSYSLOG_CAT_DATAGRAM_BASE ((uint16_t) 0x0900U)
+#define SOLIDSYSLOG_CAT_LOGGER_BASE ((uint16_t) 0x0A00U)
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 

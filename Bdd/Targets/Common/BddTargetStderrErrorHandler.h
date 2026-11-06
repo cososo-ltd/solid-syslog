@@ -7,6 +7,7 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
+    struct SolidSyslogErrorEvent;
     struct SolidSyslogErrorSource;
 
     void BddTargetStderrErrorHandler_Install(void);
@@ -23,6 +24,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
        happened next. Returns false for any other name, so a caller can offer
        the value to the next handler. */
     bool BddTargetStderrErrorHandler_SetByName(const char* name, const char* value);
+
+    /* Whether the handler ends the process on this event: an ERROR or worse
+       while errors-fatal is on, other than the logger's halt. The halt
+       callback is the target's reaction to a halt and is called after the
+       halt is raised, so ending the process here would stop it being reached. */
+    bool BddTargetStderrErrorHandler_IsFatal(const struct SolidSyslogErrorEvent* event);
 
 SOLIDSYSLOG_EXTERN_C_END
 

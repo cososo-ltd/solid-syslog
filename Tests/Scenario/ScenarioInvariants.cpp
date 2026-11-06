@@ -11,6 +11,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogFileCategories.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
@@ -19,10 +20,10 @@
 namespace
 {
 /* A pass moves at most what the ring held, the record held from the last
- * pass, a report of each of the fourteen kinds Service reports and one record
+ * pass, a report of each of the sixteen kinds Service reports and one record
  * from the store, with two sends and a few device operations per record.
  * Tripwires, not budgets: a call that spins passes them at once. */
-const size_t REPORTS_PER_PASS = 14U;
+const size_t REPORTS_PER_PASS = 16U;
 const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 
 /* The kinds whose last event the end invariant requires reported: those the
@@ -35,11 +36,13 @@ const uint16_t REPORTED_KINDS[] = {
     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
     SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
     SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
     SOLIDSYSLOG_CAT_STORE_FROZEN,
     SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_LOGGER_HALTED,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
 };
@@ -463,7 +466,11 @@ std::string ALossIsReportedOncePerRun(const ScenarioState& state)
  * raised in both is one raised again for the same fault - a raise that does
  * not latch, or a report feeding the fault it reports. The one run such a pass
  * can start afresh is the store's refusals or seal failures, which a record
- * kept since the last raise ends. */
+ * kept since the last raise ends. A threshold crossing is an edge rather than
+ * a run: a block disposed of drops the store below its threshold, and the
+ * report of the crossing, written next pass, can take it back over. Each is a
+ * crossing and is raised as one, so a threshold raised again is excused when a
+ * block has gone since the last raise, and only then. */
 std::string QuietPassesGoQuiet(const ScenarioState& state)
 {
     std::string reason;
@@ -473,6 +480,7 @@ std::string QuietPassesGoQuiet(const ScenarioState& state)
         size_t pass = state.Bench.Passes();
         std::set<uint16_t> raisedLastPass;
         std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> keptAtLastRaise;
+        size_t disposedAtLastThresholdRaise = 0U;
         for (size_t i = 0U; i < state.EventsJudged; i++)
         {
             if (events[i].Pass == (pass - 1U))
@@ -480,6 +488,9 @@ std::string QuietPassesGoQuiet(const ScenarioState& state)
                 raisedLastPass.insert(events[i].Category);
                 keptAtLastRaise[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] =
                     events[i].RecordsKept;
+                disposedAtLastThresholdRaise = (events[i].Category == SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED)
+                                                   ? events[i].BlocksDisposed
+                                                   : disposedAtLastThresholdRaise;
             }
         }
         for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
@@ -488,7 +499,9 @@ std::string QuietPassesGoQuiet(const ScenarioState& state)
                 keptAtLastRaise.find(std::make_tuple(events[i].Source, events[i].Category, events[i].Detail));
             bool runEnded = IsEndedByARecordKept(events[i]) && (lastRaise != keptAtLastRaise.end()) &&
                             (events[i].RecordsKept != lastRaise->second);
-            if ((raisedLastPass.count(events[i].Category) != 0U) && !runEnded)
+            bool reCrossed = (events[i].Category == SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED) &&
+                             (events[i].BlocksDisposed != disposedAtLastThresholdRaise);
+            if ((raisedLastPass.count(events[i].Category) != 0U) && !runEnded && !reCrossed)
             {
                 reason = NameOf(events[i].Category) + " " + Count("detail", static_cast<size_t>(events[i].Detail)) +
                          " raised again in a quiet " + Count("pass", pass);
@@ -577,6 +590,34 @@ std::string NothingMovesWhileHalted(const ScenarioState& state)
     return reason;
 }
 
+/* The event is raised beside the callback, so the two keep count together. */
+std::string EveryHaltIsRaisedAsAnEvent(const ScenarioState& state)
+{
+    size_t raised = CountCategory(state.Bench.Events(), SOLIDSYSLOG_CAT_LOGGER_HALTED);
+    return (raised == state.Bench.Halts()) ? std::string()
+                                           : (Count("halt events", raised) + " " + Count("halts", state.Bench.Halts()));
+}
+
+std::string EveryThresholdCrossingIsRaisedAsAnEvent(const ScenarioState& state)
+{
+    size_t raised = CountCategory(state.Bench.Events(), SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED);
+    return (raised == state.Bench.ThresholdCrossings())
+               ? std::string()
+               : (Count("threshold events", raised) + " " + Count("crossings", state.Bench.ThresholdCrossings()));
+}
+
+/* The halt waits in the table while the logger is halted. The pass that
+ * leaves the halt walks the table unless it stops first - at a record or a
+ * report it is left holding, which blocks it, or at another halt - so one that
+ * ends ready or idle with reporting on has made a report. */
+std::string ALiftedHaltIsReportedThatPass(const ScenarioState& state)
+{
+    bool lifted = (state.StatusBeforePass == SOLIDSYSLOG_SERVICE_HALTED) &&
+                  ((state.Status == SOLIDSYSLOG_SERVICE_READY) || (state.Status == SOLIDSYSLOG_SERVICE_IDLE));
+    bool unreported = lifted && state.Bench.IsReporting() && (state.Bench.ReportsMade() == state.ReportsMadeBeforePass);
+    return unreported ? std::string("left HALTED and made no report") : std::string();
+}
+
 std::string WorkPerPassIsBounded(const ScenarioState& state)
 {
     size_t records = (state.Bench.RingBytes() / SCENARIO_SMALLEST_RECORD_BYTES) + RECORDS_BEYOND_THE_RING;
@@ -610,6 +651,9 @@ const Invariant AFTER_EVERY_PASS[] = {
     {"a run of held drops is reported once", ARunOfHeldDropsIsReportedOnce},
     {"halted only under halt", HaltedOnlyUnderHalt},
     {"nothing moves while halted", NothingMovesWhileHalted},
+    {"every halt is raised as an event", EveryHaltIsRaisedAsAnEvent},
+    {"every threshold crossing is raised as an event", EveryThresholdCrossingIsRaisedAsAnEvent},
+    {"a lifted halt is reported that pass", ALiftedHaltIsReportedThatPass},
     {"work per pass is bounded", WorkPerPassIsBounded},
 };
 

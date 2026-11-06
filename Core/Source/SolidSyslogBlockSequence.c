@@ -7,6 +7,9 @@
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogBlockStoreErrors.h"
+#include "SolidSyslogBlockStorePrivate.h"
+#include "SolidSyslogPrival.h"
+#include "SolidSyslogStoreCategories.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -52,6 +55,8 @@ static inline size_t BlockSequence_ClampToRange(size_t value, size_t min, size_t
     return result;
 }
 
+static void BlockSequence_NullThresholdCrossed(void* context);
+
 void SolidSyslogBlockSequence_Initialise(
     struct SolidSyslogBlockSequence* blockSequence,
     const struct SolidSyslogBlockSequenceConfig* config
@@ -64,7 +69,8 @@ void SolidSyslogBlockSequence_Initialise(
         (config->GetDiscardPolicy != NULL) ? config->GetDiscardPolicy : SolidSyslogDiscardPolicy_Default;
     blockSequence->DiscardPolicyContext = config->DiscardPolicyContext;
     blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
-    blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
+    blockSequence->OnThresholdCrossed =
+        (config->OnThresholdCrossed != NULL) ? config->OnThresholdCrossed : BlockSequence_NullThresholdCrossed;
     blockSequence->ThresholdContext = config->ThresholdContext;
     blockSequence->AtCapacity = false;
     blockSequence->ThresholdCrossed = false;
@@ -84,6 +90,12 @@ void SolidSyslogBlockSequence_Initialise(
     {
         blockSequence->BlockPresent[seq] = false;
     }
+}
+
+/* A threshold with no callback is still raised as an event. */
+static void BlockSequence_NullThresholdCrossed(void* context)
+{
+    (void) context;
 }
 
 void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequence)
@@ -321,6 +333,11 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct SolidSyslogBlockS
         else if (!blockSequence->ThresholdCrossed)
         {
             blockSequence->ThresholdCrossed = true;
+            BlockStore_Report(
+                SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
+                SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED
+            );
             blockSequence->OnThresholdCrossed(blockSequence->ThresholdContext);
         }
         else
@@ -332,7 +349,7 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct SolidSyslogBlockS
 
 static inline bool BlockSequence_ThresholdEnabled(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    return (blockSequence->OnThresholdCrossed != NULL) && (blockSequence->GetCapacityThreshold != NULL);
+    return blockSequence->GetCapacityThreshold != NULL;
 }
 
 static inline bool BlockSequence_IsAboveThreshold(
@@ -366,7 +383,7 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
          * threshold at 100% fires on the refusal even with slack in the blocks.
          * Cleared once a block drains or a record is accepted. */
         blockSequence->AtCapacity = true;
-        BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
+        BlockSequence_NotifyThresholdCrossed(blockSequence); /* ahead of the refusal the store reports next */
         spaceAvailable = false;
     }
     else if (blockFull)

@@ -78,9 +78,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      and call again later. A Log also wakes it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The logger has stopped: a queue refused a record
      *                                      while the discard policy answered HALT, and the
-     *                                      pass that saw it called OnHalt. Nothing moves until
-     *                                      the policy answers otherwise, or the device restarts;
-     *                                      alarm / slow heartbeat.
+     *                                      pass that saw it raised SOLIDSYSLOG_CAT_LOGGER_HALTED
+     *                                      and called OnHalt. Nothing moves until the policy
+     *                                      answers otherwise, or the device restarts; alarm /
+     *                                      slow heartbeat. The halt waits to be reported, as
+     *                                      any event of the library's own does, until it lifts.
      *
      *  With a store that retains records, buffer drain out-ranks a send failure:
      *  a down sender never demotes the loop out of "keep draining" while the

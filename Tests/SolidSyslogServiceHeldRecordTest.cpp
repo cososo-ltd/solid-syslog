@@ -13,6 +13,7 @@
 #include "SenderFake.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogCircularBuffer.h"
@@ -21,10 +22,12 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogFileBlockDevice.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogServiceStatus.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogTunables.h"
 #include "StoreFake.h"
 #include "TestUtils.h"
@@ -521,6 +524,22 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltServiceHaltsWithoutSending
     LONGS_EQUAL(1, bufferFullHaltCount);
 }
 
+TEST(SolidSyslogServiceHeldRecordBufferFull, AHaltOnAFullBufferIsRaisedAsAnEvent)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogErrorSource,
+        SOLIDSYSLOG_CAT_LOGGER_HALTED,
+        SOLIDSYSLOG_ERROR_HALTED_BUFFER_FULL
+    );
+}
+
 TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnceThePolicyChanges)
 {
     policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
@@ -530,22 +549,65 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnce
     policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
     SolidSyslog_Service(solidSyslog);
 
-    /* The failed attempt, then "first", the report that the ring refused
-     * "forth", then "second" and "third". */
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
+    /* The failed attempt, then "first", the reports that the ring refused
+     * "forth" and that the logger halted, then "second" and "third". */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 6);
     STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
+}
+
+/* The sender takes "first" and then refuses, so the last thing offered to it is
+ * the first report made once the halt lifts: the loss that caused the halt. */
+TEST(SolidSyslogServiceHeldRecordBufferFull, OnceTheHaltLiftsTheLossThatCausedItIsReportedFirst)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    SolidSyslog_Service(solidSyslog);
+
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    SenderFake_FailSendAfter(fakeSender, 1);
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(strstr(SenderFake_LastBufferAsString(fakeSender), "category=\"BUFFER_RECORDS_LOST\"") != nullptr);
+}
+
+/* One send later, the last thing offered is the second report: the halt. */
+TEST(SolidSyslogServiceHeldRecordBufferFull, OnceTheHaltLiftsTheHaltIsReportedAfterTheLossThatCausedIt)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    SolidSyslog_Service(solidSyslog);
+
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    SenderFake_FailSendAfter(fakeSender, 2);
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(strstr(SenderFake_LastBufferAsString(fakeSender), "category=\"LOGGER_HALTED\"") != nullptr);
 }
 
 static int haltOrder;
 static int thresholdOrder;
-static int reportsBeforeHalt;
+static bool refusalReportedBeforeHalt;
+static bool haltRaisedBeforeHalt;
 static int nextOrder;
+
+static bool WasRaised(uint16_t category, int32_t detail)
+{
+    bool raised = false;
+    for (int index = 0; index < ErrorHandlerFake_HandleCallCount(); index++)
+    {
+        raised = raised ||
+                 ((ErrorHandlerFake_CategoryAt(index) == category) && (ErrorHandlerFake_DetailAt(index) == detail));
+    }
+    return raised;
+}
 
 static void NoteHalt(void* context)
 {
     (void) context;
     haltOrder = ++nextOrder;
-    reportsBeforeHalt = ErrorHandlerFake_HandleCallCount();
+    refusalReportedBeforeHalt =
+        WasRaised(SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED);
+    haltRaisedBeforeHalt = WasRaised(SOLIDSYSLOG_CAT_LOGGER_HALTED, SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED);
 }
 
 static void NoteThresholdCrossed(void* context)
@@ -603,7 +665,8 @@ TEST_GROUP_BASE(SolidSyslogServiceHaltOrdering, ServiceHeldRecordBase)
         nextOrder         = 0;
         haltOrder         = 0;
         thresholdOrder    = 0;
-        reportsBeforeHalt = -1;
+        refusalReportedBeforeHalt = false;
+        haltRaisedBeforeHalt      = false;
         ErrorHandlerFake_Install(nullptr);
     }
 
@@ -634,7 +697,32 @@ TEST(SolidSyslogServiceHaltOrdering, TheRefusalIsReportedBeforeOnHaltIsCalled)
 
     SolidSyslog_Service(solidSyslog);
 
-    LONGS_EQUAL(1, reportsBeforeHalt);
+    CHECK(refusalReportedBeforeHalt);
+}
+
+/* The same holds for the halt itself: an OnHalt that never returns must not
+ * cost the error handler the event. */
+TEST(SolidSyslogServiceHaltOrdering, TheHaltIsRaisedBeforeOnHaltIsCalled)
+{
+    LogThreeTheStoreCannotAllHold();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(haltRaisedBeforeHalt);
+}
+
+TEST(SolidSyslogServiceHaltOrdering, AHaltOnTheStoresRefusalIsRaisedAsAnEvent)
+{
+    LogThreeTheStoreCannotAllHold();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogErrorSource,
+        SOLIDSYSLOG_CAT_LOGGER_HALTED,
+        SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED
+    );
 }
 
 TEST(SolidSyslogServiceHaltOrdering, TheThresholdCallbackFiresBeforeOnHalt)

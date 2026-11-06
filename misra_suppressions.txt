@@ -124,7 +124,7 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:895
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:749
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1067
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1074
-misra-c2012-11.5:Core/Source/SolidSyslog.c:804
+misra-c2012-11.5:Core/Source/SolidSyslog.c:808
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -136,7 +136,6 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/SolidSyslog.c:136
 misra-c2012-11.8:Core/Source/SolidSyslog.c:137
 misra-c2012-11.8:Core/Source/SolidSyslog.c:138
 misra-c2012-11.8:Core/Source/SolidSyslog.c:139
@@ -148,6 +147,7 @@ misra-c2012-11.8:Core/Source/SolidSyslog.c:144
 misra-c2012-11.8:Core/Source/SolidSyslog.c:145
 misra-c2012-11.8:Core/Source/SolidSyslog.c:146
 misra-c2012-11.8:Core/Source/SolidSyslog.c:147
+misra-c2012-11.8:Core/Source/SolidSyslog.c:148
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
@@ -180,7 +180,7 @@ misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:13
 # See docs/misra-deviations.md#d009
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:12
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:22
-misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:18
+misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:21
 misra-c2012-2.4:Core/Source/SolidSyslogFormatter.h:18
 misra-c2012-2.4:Core/Source/SolidSyslogMessageFormatter.c:25
 misra-c2012-2.4:Core/Source/SolidSyslogRecordStore.c:18
@@ -194,7 +194,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:19
 misra-c2012-5.7:Core/Interface/SolidSyslogTlsFingerprint.h:32
 misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:15
 misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:27
-misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:18
+misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:21
 misra-c2012-5.7:Core/Source/SolidSyslogBlockSequencePrivate.h:18
 misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:29
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:16

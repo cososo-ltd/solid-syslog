@@ -8,17 +8,17 @@
  * the kinds waiting into reports.
  *
  * One static slot per reported kind, keyed by the portable category. The
- * kinds are the categories a collector needs to hear about and that today's
- * code already raises: the losses and their causes, the delivery state, and
- * a rejected peer. A category outside the set is not recorded. The library
+ * kinds are the categories a collector needs to hear about: the losses and
+ * their causes, a store nearly full and a logger halted, the delivery state,
+ * and a rejected peer. A category outside the set is not recorded. The library
  * picks the set; there is no integrator selection.
  *
  * A slot holds the most recent event of its kind: its severity as a one-byte
  * code, Source, Detail, NativeCode with its HasNativeCode flag, and a Pending
  * flag. The category is the slot's index, so it is not stored. On a 32-bit
  * target a slot is 16 bytes and the table of
- * SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 224 bytes of static RAM; the
- * kind table beside it, which also holds each kind's own severity, is 112
+ * SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 256 bytes of static RAM; the
+ * kind table beside it, which also holds each kind's own severity, is 128
  * bytes of constant data, and the severities the codes index are 32 more. A
  * 64-bit host pads a slot to 24 bytes.
  *
@@ -52,7 +52,7 @@
 #include "SolidSyslogExternC.h"
 
 /* The number of reported kinds, and so of slots. */
-#define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 14U
+#define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 16U
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 

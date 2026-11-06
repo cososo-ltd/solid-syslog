@@ -66,6 +66,21 @@ TEST(ScenarioBench, AnEventCarriesTheRecordsTheStoreHadKeptWhenItWasRaised)
     LONGS_EQUAL(2, bench.Events()[0].RecordsKept);
 }
 
+TEST(ScenarioBench, AnEventCarriesTheBlocksTheStoreHadDisposedOfWhenItWasRaised)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    unsigned fill = static_cast<unsigned>((options.MaxBlocks * options.BlockSize) / 32U) + 20U;
+    for (unsigned i = 0U; i < fill; i++)
+    {
+        bench.Log();
+        bench.Service();
+    }
+    LONGS_EQUAL(0, bench.Events().front().BlocksDisposed);
+    CHECK_TRUE(bench.Events().back().BlocksDisposed > 0U);
+}
+
 TEST(ScenarioBench, AnEventCarriesTheLastSequenceIdHandedOutWhenItWasRaised)
 {
     ScenarioBench bench(options);
@@ -408,6 +423,21 @@ TEST(ScenarioBench, AFullStoreUnderHaltStopsTheLoggerUntilThePolicyChanges)
     LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, bench.Service());
     bench.SetDiscardPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
     CHECK_TRUE(bench.Service() != SOLIDSYSLOG_SERVICE_HALTED);
+}
+
+TEST(ScenarioBench, AStoreFillingUnderHaltCrossesItsThresholdOnce)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
+    unsigned fill = static_cast<unsigned>((options.MaxBlocks * options.BlockSize) / 32U) + 20U;
+    for (unsigned i = 0U; (i < fill) && (status != SOLIDSYSLOG_SERVICE_HALTED); i++)
+    {
+        bench.Log();
+        status = bench.Service();
+    }
+    LONGS_EQUAL(1, bench.ThresholdCrossings());
 }
 
 TEST(ScenarioBench, TheRingIsSizedForTheWorstCaseRecords)

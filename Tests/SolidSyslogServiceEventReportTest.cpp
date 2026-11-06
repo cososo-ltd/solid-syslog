@@ -1005,7 +1005,8 @@ TEST(SolidSyslogServiceEventReportWithAStore, AReportTheStoreRefusesUnderHaltIsK
 
     SolidSyslog_Service(solidSyslog);
 
-    LONGS_EQUAL(1, StoreFake_WriteCallCount(store));
+    /* The report the halt refused, then the report of the halt. */
+    LONGS_EQUAL(2, StoreFake_WriteCallCount(store));
 }
 
 TEST(SolidSyslogServiceEventReportWithAStore, AHaltedLoggerMakesNoReport)
@@ -1052,6 +1053,7 @@ TEST(SolidSyslogServiceEventReportWithAStore, ThePendingReportIsMadeOnceTheHaltL
 
     SolidSyslog_Service(solidSyslog);
 
-    /* The report the halt refused, held through it, then the one waiting. */
-    LONGS_EQUAL(2, StoreFake_WriteCallCount(store));
+    /* The report the halt refused, held through it, then the one waiting and
+     * the report of the halt. */
+    LONGS_EQUAL(3, StoreFake_WriteCallCount(store));
 }

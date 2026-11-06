@@ -19,11 +19,12 @@
  *  once every block is full - Oldest evicts the oldest block to keep accepting
  *  writes, Newest and Halt refuse the incoming record, and under Halt the
  *  logger stops at that refusal. An optional capacity-threshold function
- *  (queried each Write) drives an edge-triggered OnThresholdCrossed callback for
- *  early back-pressure signalling. The callback runs on whichever task calls
- *  into the store - normally the one that calls SolidSyslog_Service - and
- *  inside SolidSyslogBlockStore_Create, on the creating task, when the resumed
- *  store is already at or above the threshold.
+ *  (queried each Write) gives early warning that the store is filling: each
+ *  crossing raises SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED and then calls the
+ *  edge-triggered OnThresholdCrossed callback, where one is set. Both happen on
+ *  whichever task calls into the store - normally the one that calls
+ *  SolidSyslog_Service - and inside SolidSyslogBlockStore_Create, on the
+ *  creating task, when the resumed store is already at or above the threshold.
  *
  *  The first block device operation that fails freezes the store, as
  *  SOLIDSYSLOG_CAT_STORE_FROZEN describes - opening the device at Create
@@ -53,14 +54,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     typedef size_t (*SolidSyslogStoreThresholdFunction)(void* context);
 
     /** Edge-triggered: fires once when used-bytes rises from below the threshold to
-     *  at-or-above (re-armed when it drops back below). Runs on whichever
+     *  at-or-above (re-armed when it drops back below), after the crossing is
+     *  raised as SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED. Runs on whichever
      *  task calls into the store - normally the one that calls
      *  SolidSyslog_Service - and inside SolidSyslogBlockStore_Create when the
      *  resumed store is already at or above the threshold. */
     typedef void (*SolidSyslogStoreThresholdCallback)(void* context);
 
-    /** Wiring for SolidSyslogBlockStore_Create. The threshold function and callback
-     *  are only active when both are set; each callback's context is passed back
+    /** Wiring for SolidSyslogBlockStore_Create. The threshold is active when
+     *  GetCapacityThreshold is set, and a crossing is raised as an event whether or
+     *  not OnThresholdCrossed is; each callback's context is passed back
      *  unchanged. Every injected object is caller-owned and must outlive the store;
      *  Destroy releases only the store's own slot. */
     struct SolidSyslogBlockStoreConfig
@@ -79,8 +82,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
         void* DiscardPolicyContext;
         struct SolidSyslogSecurityPolicy* SecurityPolicy; /**< @optional no per-record integrity trailer when NULL. */
-        SolidSyslogStoreThresholdFunction GetCapacityThreshold;
-        SolidSyslogStoreThresholdCallback OnThresholdCrossed;
+        SolidSyslogStoreThresholdFunction GetCapacityThreshold; /**< @optional no threshold when NULL. */
+        SolidSyslogStoreThresholdCallback OnThresholdCrossed; /**< @optional nothing is called when NULL. */
         void* ThresholdContext; /**< Shared by GetCapacityThreshold and OnThresholdCrossed. */
     };
 

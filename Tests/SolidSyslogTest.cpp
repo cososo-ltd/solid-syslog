@@ -1348,8 +1348,23 @@ TEST(SolidSyslogServiceHalt, ServiceReturnsHaltedWhenTheStoreRefusesARecordUnder
 }
 
 /* The function is asked each pass, so a device whose policy changes resumes
- * from where it stopped. */
+ * from where it stopped. The store hands out one record a pass: the report of
+ * the halt, then the record logged after it. */
 TEST(SolidSyslogServiceHalt, ServiceResumesOnceThePolicyNoLongerAnswersHalt)
+{
+    LogOneTheStoreRefuses();
+    SolidSyslog_Service(solidSyslog);
+    SolidSyslogBuffer_Write(fakeBuffer, "after", 5);
+
+    policy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    SolidSyslog_Service(solidSyslog);
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
+    STRCMP_EQUAL("after", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogServiceHalt, TheHaltIsReportedAheadOfTheBufferOnceThePolicyChanges)
 {
     LogOneTheStoreRefuses();
     SolidSyslog_Service(solidSyslog);
@@ -1359,7 +1374,12 @@ TEST(SolidSyslogServiceHalt, ServiceResumesOnceThePolicyNoLongerAnswersHalt)
     SolidSyslog_Service(solidSyslog);
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
-    STRCMP_EQUAL("after", SenderFake_LastBufferAsString(fakeSender));
+    CHECK(
+        strstr(
+            SenderFake_LastBufferAsString(fakeSender),
+            "category=\"LOGGER_HALTED\" detail=\"HALTED_STORE_REFUSED\""
+        ) != nullptr
+    );
 }
 
 TEST(SolidSyslogServiceHalt, ServiceCallsOnHaltWhenItHalts)

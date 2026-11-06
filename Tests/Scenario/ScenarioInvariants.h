@@ -26,6 +26,7 @@ struct ScenarioState
     size_t EventsJudged; /* events earlier checks have already seen */
     bool QuietSinceLastPass; /* nothing logged and nothing changed since the last pass, and there was one */
     enum SecurityPolicyFakeFault SecurityPolicyFault;
+    size_t ReportsMadeBeforePass;
 };
 
 /* Every invariant that holds after each pass; the first to fail is the verdict. */
