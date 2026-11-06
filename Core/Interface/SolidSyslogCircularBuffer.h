@@ -54,7 +54,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES) and a @p mutex making the enqueue
      *  and drain sides mutually safe when they run on different tasks; inject
      *  SolidSyslogNullMutex_Get() for single-task use. Both must outlive the
-     *  buffer. A NULL @p mutex or a NULL @p ring is reported as
+     *  buffer, and the ring is the buffer's alone until Destroy: nothing else
+     *  may write to it, and its contents are not checked when read back.
+     *  A NULL @p mutex or a NULL @p ring is reported as
      *  SOLIDSYSLOG_CAT_BAD_CONFIG and Create returns the shared NullBuffer.
      *  Records are length-prefixed and never split across the wrap point (a
      *  record that would straddle the end wraps whole to the front).
