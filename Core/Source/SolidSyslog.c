@@ -65,7 +65,7 @@ static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog*
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
-static inline void SolidSyslog_Halt(struct SolidSyslog* self);
+static inline void SolidSyslog_Halt(struct SolidSyslog* self, enum SolidSyslogErrors haltedAt);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_IsBlocked(struct SolidSyslog* self, bool storeBlocked, bool drained);
@@ -499,7 +499,7 @@ static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidS
         }
         else if (policy == SOLIDSYSLOG_DISCARD_POLICY_HALT)
         {
-            SolidSyslog_Halt(self);
+            SolidSyslog_Halt(self, SOLIDSYSLOG_ERROR_HALTED_BUFFER_FULL);
         }
         else
         {
@@ -598,18 +598,16 @@ static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self)
 {
     if (SolidSyslog_PolicyHalts(self))
     {
-        SolidSyslog_Halt(self);
+        SolidSyslog_Halt(self, SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED);
     }
 }
 
-static inline void SolidSyslog_Halt(struct SolidSyslog* self)
+/* The halt is raised before the callback hears of it, since an OnHalt that
+ * stops the device never returns. */
+static inline void SolidSyslog_Halt(struct SolidSyslog* self, enum SolidSyslogErrors haltedAt)
 {
     self->Halted = true;
-    SolidSyslog_Report(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        SOLIDSYSLOG_CAT_LOGGER_HALTED,
-        SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED
-    );
+    SolidSyslog_Report(SOLIDSYSLOG_SEVERITY_ERROR, SOLIDSYSLOG_CAT_LOGGER_HALTED, haltedAt);
     self->OnHalt(self->HaltContext);
 }
 

@@ -524,6 +524,22 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltServiceHaltsWithoutSending
     LONGS_EQUAL(1, bufferFullHaltCount);
 }
 
+TEST(SolidSyslogServiceHeldRecordBufferFull, AHaltOnAFullBufferIsRaisedAsAnEvent)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogErrorSource,
+        SOLIDSYSLOG_CAT_LOGGER_HALTED,
+        SOLIDSYSLOG_ERROR_HALTED_BUFFER_FULL
+    );
+}
+
 TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnceThePolicyChanges)
 {
     policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;

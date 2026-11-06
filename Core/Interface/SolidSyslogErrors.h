@@ -42,6 +42,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
            logger halted at. */
         /** The store refused a record under its discard policy. */
         SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED,
+        /** The buffer filled behind the record Service was holding for the
+         *  sender, so the buffer had refused a record. */
+        SOLIDSYSLOG_ERROR_HALTED_BUFFER_FULL,
         SOLIDSYSLOG_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
