@@ -89,6 +89,9 @@ const char* SolidSyslogErrorCategory_Name(uint16_t category)
         case SOLIDSYSLOG_CAT_STORE_RECORDS_LOST:
             name = "STORE_RECORDS_LOST";
             break;
+        case SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED:
+            name = "STORE_THRESHOLD_CROSSED";
+            break;
         case SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED:
             name = "DATAGRAM_NEXT_HOP_UNRESOLVED";
             break;

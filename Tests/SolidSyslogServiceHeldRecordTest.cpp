@@ -13,6 +13,7 @@
 #include "SenderFake.h"
 #include "SolidSyslog.h"
 #include "SolidSyslogBlockStore.h"
+#include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogCircularBuffer.h"
@@ -25,6 +26,7 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogServiceStatus.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogTunables.h"
 #include "StoreFake.h"
 #include "TestUtils.h"
@@ -538,14 +540,25 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnce
 
 static int haltOrder;
 static int thresholdOrder;
-static int reportsBeforeHalt;
+static bool refusalReportedBeforeHalt;
 static int nextOrder;
+
+static bool RefusalWasReported()
+{
+    bool reported = false;
+    for (int index = 0; index < ErrorHandlerFake_HandleCallCount(); index++)
+    {
+        reported = reported || ((ErrorHandlerFake_CategoryAt(index) == SOLIDSYSLOG_CAT_STORE_RECORDS_LOST) &&
+                                (ErrorHandlerFake_DetailAt(index) == SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED));
+    }
+    return reported;
+}
 
 static void NoteHalt(void* context)
 {
     (void) context;
     haltOrder = ++nextOrder;
-    reportsBeforeHalt = ErrorHandlerFake_HandleCallCount();
+    refusalReportedBeforeHalt = RefusalWasReported();
 }
 
 static void NoteThresholdCrossed(void* context)
@@ -603,7 +616,7 @@ TEST_GROUP_BASE(SolidSyslogServiceHaltOrdering, ServiceHeldRecordBase)
         nextOrder         = 0;
         haltOrder         = 0;
         thresholdOrder    = 0;
-        reportsBeforeHalt = -1;
+        refusalReportedBeforeHalt = false;
         ErrorHandlerFake_Install(nullptr);
     }
 
@@ -634,7 +647,7 @@ TEST(SolidSyslogServiceHaltOrdering, TheRefusalIsReportedBeforeOnHaltIsCalled)
 
     SolidSyslog_Service(solidSyslog);
 
-    LONGS_EQUAL(1, reportsBeforeHalt);
+    CHECK(refusalReportedBeforeHalt);
 }
 
 TEST(SolidSyslogServiceHaltOrdering, TheThresholdCallbackFiresBeforeOnHalt)

@@ -3294,6 +3294,21 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, FiresOnCreateWhenResumedUsageAboveT
     CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
+TEST(SolidSyslogBlockStoreCapacityThreshold, ACrossingIsRaisedAsAnEvent)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateWithThreshold(TEST_DATA_LEN);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED
+    );
+}
+
 /* ------------------------------------------------------------------
  * Pool - prove SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE caps live instances
  * and overflow resolves to the shared SolidSyslogNullStore. Generic

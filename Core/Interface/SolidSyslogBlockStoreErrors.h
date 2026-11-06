@@ -64,6 +64,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
            given. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE,
+        /** Raised under SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED: used bytes
+         *  rose to the capacity threshold or past it. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 
