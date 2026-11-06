@@ -56,6 +56,8 @@ Feature: Store and forward during sender outage
     When the key is restored
     Then the syslog oracle receives 4 messages
     And the messages have contiguous sequenceIds
+    And the syslog oracle received a report that the key is unavailable
+    And the syslog oracle received a report that a record could not be sealed
 
   @aesgcm
   Scenario: Stored messages wait for an AES-256-GCM key that is briefly unavailable
@@ -74,6 +76,8 @@ Feature: Store and forward during sender outage
     When the key is restored
     Then the syslog oracle receives 4 messages
     And the messages have contiguous sequenceIds
+    And the syslog oracle received a report that the key is unavailable
+    And the syslog oracle received a report that a record could not be sealed
 
   @host_store
   Scenario: Messages delivered after the store freezes
@@ -82,4 +86,6 @@ Feature: Store and forward during sender outage
     And the BDD target is running with transport tcp
     When the client sends 3 messages
     Then the syslog oracle receives 3 messages
+    And the syslog oracle received a report that a file operation failed
+    And the syslog oracle received a report that the store froze
     And the target reports that the store froze

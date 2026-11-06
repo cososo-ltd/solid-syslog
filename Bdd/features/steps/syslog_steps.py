@@ -1749,10 +1749,12 @@ def _collector_reports(context, category):
         time.sleep(0.1)
 
 
-def _check_collector_received_report(context, category, details, severity):
+def _check_collector_received_report(context, category, details, severity, with_native_code=False):
     """Asserts the collector holds a report of the category, and that every one
     it holds names a detail the scenario can provoke, at the event's severity,
-    under the facility and MSGID the library gives its reports."""
+    under the facility and MSGID the library gives its reports. A report of a
+    platform fault carries the platform's own code as well; which code is the
+    platform's business, so only that it is there is checked."""
     reports = _collector_reports(context, category)
     assert reports, f"Expected the logger's {category} report at the collector; none arrived"
     for report in reports:
@@ -1760,6 +1762,8 @@ def _check_collector_received_report(context, category, details, severity):
         assert report["severity"] == severity_value(severity), f"Expected the {category} report at {severity}, got {report}"
         assert report["facility"] == REPORT_FACILITY, f"Expected the report under facility {REPORT_FACILITY}, got {report}"
         assert report["msgid"] == category, f"Expected MSGID {category}, got {report}"
+        if with_native_code:
+            assert re.fullmatch(r"-?\d+", report.get("native", "")), f"Expected a native code in the {category} report, got {report}"
 
 
 @then("the syslog oracle received a report that the buffer lost records")
@@ -1784,6 +1788,35 @@ def step_oracle_received_delivery_restored_report(context):
 @then("the syslog oracle received a report that a stored record was discarded")
 def step_oracle_received_record_discarded_report(context):
     _check_collector_received_report(context, "STORE_RECORD_DISCARDED", ("RECORD_REJECTED",), "ERROR")
+
+
+@then("the syslog oracle received a report that the key is unavailable")
+def step_oracle_received_key_unavailable_report(context):
+    _check_collector_received_report(context, "SECURITY_POLICY_KEY_UNAVAILABLE", ("KEY_UNAVAILABLE",), "ERROR")
+
+
+@then("the syslog oracle received a report that a record could not be sealed")
+def step_oracle_received_seal_failed_report(context):
+    # With the key withheld the store cannot seal the logger's own reports
+    # either, so they go to the sender ahead of the stored records.
+    _check_collector_received_report(context, "STORE_WRITE_FAILED", ("SEAL_FAILED",), "ERROR")
+
+
+@then("the syslog oracle received a report that a file operation failed")
+def step_oracle_received_file_fault_report(context):
+    _check_collector_received_report(context, "FILE_IO_FAILED", ("OPEN_FAILED",), "ERROR", with_native_code=True)
+
+
+@then("the syslog oracle received a report that the store froze")
+def step_oracle_received_store_frozen_report(context):
+    _check_collector_received_report(context, "STORE_FROZEN", ("SIZE_FAILED",), "ERROR")
+
+
+@then("the syslog oracle received a report that the collector's certificate was refused")
+def step_oracle_received_handshake_refused_report(context):
+    _check_collector_received_report(
+        context, "TLS_STREAM_HANDSHAKE_FAILED", ("PEER_CERTIFICATE_UNTRUSTED",), "ERROR"
+    )
 
 
 @then("the last message has sequenceId {value:d}")
