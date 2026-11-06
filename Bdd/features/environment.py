@@ -282,8 +282,10 @@ def _record_stack_marks(context, scenario, process):
 
 
 def after_all(context):
+    # behave captures a hook's stdout and shows it only on a failure, so the
+    # record goes to the stream behind the capture to reach the run's log.
     for line in context.stack_marks.write():
-        print(line, flush=True)
+        print(line, file=sys.__stdout__, flush=True)
 
 
 def after_scenario(context, scenario):
