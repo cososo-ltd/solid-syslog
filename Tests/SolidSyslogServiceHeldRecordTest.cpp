@@ -549,9 +549,9 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnce
     policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
     SolidSyslog_Service(solidSyslog);
 
-    /* The failed attempt, then "first", the report that the ring refused
-     * "forth", then "second" and "third". */
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 5);
+    /* The failed attempt, then "first", the reports that the ring refused
+     * "forth" and that the logger halted, then "second" and "third". */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, 6);
     STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
 }
 

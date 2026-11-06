@@ -11,6 +11,7 @@
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileCategories.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
@@ -39,9 +40,11 @@ struct PendingEventKind
 
 /* The reported kinds, in slot order. Index is identity: Take reports the
  * category from this table, so a slot never has to store it. The causes come
- * first, then the losses they lead to, then the delivery state, so a reader
- * walking the slots in order reports a cause ahead of what it caused: a file
- * fault ahead of the freeze, a refused handshake ahead of the failed delivery. */
+ * first, then the losses they lead to, then the halt a loss can end in, then
+ * the delivery state, so a reader walking the slots in order reports a cause
+ * ahead of what it caused: a file fault ahead of the freeze, a threshold
+ * crossed ahead of the full store's refusal, that refusal ahead of the halt, a
+ * refused handshake ahead of the failed delivery. */
 static const struct PendingEventKind PendingEvents_Kinds[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     {SOLIDSYSLOG_CAT_FILE_IO_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE, SOLIDSYSLOG_SEVERITY_ERROR},
@@ -56,6 +59,7 @@ static const struct PendingEventKind PendingEvents_Kinds[SOLIDSYSLOG_PENDING_EVE
     {SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_STORE_FROZEN, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_ERROR},
+    {SOLIDSYSLOG_CAT_LOGGER_HALTED, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, SOLIDSYSLOG_SEVERITY_WARNING},
     {SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, SOLIDSYSLOG_SEVERITY_NOTICE},
 };

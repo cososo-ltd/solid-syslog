@@ -11,6 +11,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileCategories.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
@@ -124,7 +125,8 @@ TEST(SolidSyslogPendingEvents, ACategoryOutsideTheSetChangesNothing)
     CHECK_FALSE(SomethingIsPending());
 }
 
-/* The causes, then the losses they lead to, then the delivery state. */
+/* The causes, then the losses they lead to and the halt a loss can end in,
+ * then the delivery state. */
 static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_CAT_FILE_IO_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
@@ -139,6 +141,7 @@ static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
     SOLIDSYSLOG_CAT_STORE_FROZEN,
     SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_LOGGER_HALTED,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
     SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
 };
@@ -255,6 +258,7 @@ static const enum SolidSyslogSeverity KIND_SEVERITIES[SOLIDSYSLOG_PENDING_EVENT_
     SOLIDSYSLOG_SEVERITY_WARNING,
     SOLIDSYSLOG_SEVERITY_WARNING,
     SOLIDSYSLOG_SEVERITY_WARNING,
+    SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
