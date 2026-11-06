@@ -22,12 +22,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_POOL_EXHAUSTED,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY,
-        /** The record at the head of the ring is larger than the read buffer
-         *  Service handed to Read, so it cannot be delivered and is left
-         *  un-dequeued - the drain stalls at this record. This cannot occur
-         *  under correct configuration (the drain scratch is sized to hold any
-         *  record Write accepts), so an emitted code indicates the ring's
-         *  length prefix has been corrupted. Raised under
+        /** The record at the head of the ring is larger than the buffer Read
+         *  was handed; SolidSyslogCircularBuffer.h says what Read does with
+         *  it. Service reads into a buffer of SOLIDSYSLOG_MAX_MESSAGE_SIZE,
+         *  which holds any record Write accepts, so only a caller reading the
+         *  buffer directly with a smaller one raises this. Raised under
          *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, once per run of such reads;
          *  the next record read ends the run. */
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE,
