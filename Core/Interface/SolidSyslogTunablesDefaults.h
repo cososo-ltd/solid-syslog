@@ -61,6 +61,10 @@
  * A legal all-NILVALUE message is 16 bytes; this allows enough headroom
  * for a real PRI, hostname, MSGID, and short payload.
  * Sub-floor values rejected at compile time.
+ *
+ * Ceiling: the record store carries a record's content length - the message
+ * plus 4 framing bytes (2 magic + 2 length) - in 16 bits, and a larger message
+ * would wrap it. Rejected at compile time.
  */
 #ifndef SOLIDSYSLOG_MAX_MESSAGE_SIZE
 #define SOLIDSYSLOG_MAX_MESSAGE_SIZE 480U
@@ -68,6 +72,11 @@
 
 #if SOLIDSYSLOG_MAX_MESSAGE_SIZE < 64
 #error "SOLIDSYSLOG_MAX_MESSAGE_SIZE must be >= 64"
+#endif
+
+#if SOLIDSYSLOG_MAX_MESSAGE_SIZE > 65531
+#error \
+    "SOLIDSYSLOG_MAX_MESSAGE_SIZE must be <= 65531: the record store's 16-bit content length holds the message plus 4 framing bytes"
 #endif
 
 /**
