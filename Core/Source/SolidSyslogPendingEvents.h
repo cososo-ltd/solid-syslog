@@ -52,7 +52,7 @@
 #include "SolidSyslogExternC.h"
 
 /* The number of reported kinds, and so of slots. */
-#define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 14U
+#define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 15U
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
