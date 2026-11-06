@@ -49,6 +49,18 @@ class HeaderProofTest(unittest.TestCase):
         self.assertEqual(1, self.run_main())
         self.assertIn("Core/Interface/SolidSyslogStore.h", self.output.getvalue())
 
+    def test_fails_naming_a_pack_header_the_proof_omits(self):
+        self.given_file("Platform/VxWorks64/Interface/SolidSyslogVxWorks64File.h")
+        self.given_file(
+            "Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c",
+            '#include "vxWorks.h"\n',
+        )
+        self.assertEqual(1, self.run_main())
+        self.assertIn(
+            "Platform/VxWorks64/Interface/SolidSyslogVxWorks64File.h",
+            self.output.getvalue(),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
