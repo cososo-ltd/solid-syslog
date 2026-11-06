@@ -22,6 +22,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogFileBlockDevice.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogServiceStatus.h"
@@ -648,6 +649,20 @@ TEST(SolidSyslogServiceHaltOrdering, TheRefusalIsReportedBeforeOnHaltIsCalled)
     SolidSyslog_Service(solidSyslog);
 
     CHECK(refusalReportedBeforeHalt);
+}
+
+TEST(SolidSyslogServiceHaltOrdering, AHaltOnTheStoresRefusalIsRaisedAsAnEvent)
+{
+    LogThreeTheStoreCannotAllHold();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK_ERROR_EVENT(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogErrorSource,
+        SOLIDSYSLOG_CAT_LOGGER_HALTED,
+        SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED
+    );
 }
 
 TEST(SolidSyslogServiceHaltOrdering, TheThresholdCallbackFiresBeforeOnHalt)

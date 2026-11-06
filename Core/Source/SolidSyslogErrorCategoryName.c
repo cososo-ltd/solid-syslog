@@ -10,6 +10,7 @@
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogFileCategories.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
@@ -94,6 +95,9 @@ const char* SolidSyslogErrorCategory_Name(uint16_t category)
             break;
         case SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED:
             name = "DATAGRAM_NEXT_HOP_UNRESOLVED";
+            break;
+        case SOLIDSYSLOG_CAT_LOGGER_HALTED:
+            name = "LOGGER_HALTED";
             break;
         default:
             /* Unassigned, or in the integrator range. */

@@ -13,6 +13,7 @@
 #include "SolidSyslogDatagramErrors.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileCategories.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
@@ -227,6 +228,7 @@ TEST(SolidSyslogErrorNames, EveryCategoryHasAName)
         SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
         SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
+        SOLIDSYSLOG_CAT_LOGGER_HALTED,
     };
     for (uint16_t category : categories)
     {

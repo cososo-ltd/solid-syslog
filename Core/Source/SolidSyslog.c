@@ -17,6 +17,7 @@
 #include "SolidSyslogErrors.h"
 #include "SolidSyslogEventSd.h"
 #include "SolidSyslogFormatter.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogMessageFormatter.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullSender.h"
@@ -604,6 +605,11 @@ static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self)
 static inline void SolidSyslog_Halt(struct SolidSyslog* self)
 {
     self->Halted = true;
+    SolidSyslog_Report(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SOLIDSYSLOG_CAT_LOGGER_HALTED,
+        SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED
+    );
     self->OnHalt(self->HaltContext);
 }
 
