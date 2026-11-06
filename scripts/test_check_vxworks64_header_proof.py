@@ -61,6 +61,15 @@ class HeaderProofTest(unittest.TestCase):
             self.output.getvalue(),
         )
 
+    def test_fails_naming_an_include_that_is_not_a_public_header(self):
+        self.given_file("Core/Interface/SolidSyslog.h")
+        self.given_file(
+            "Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c",
+            '#include "vxWorks.h"\n\n#include "SolidSyslog.h"\n#include "SolidSyslogRemoved.h"\n',
+        )
+        self.assertEqual(1, self.run_main())
+        self.assertIn("SolidSyslogRemoved.h", self.output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
