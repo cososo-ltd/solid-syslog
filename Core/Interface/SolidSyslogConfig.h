@@ -31,7 +31,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  SolidSyslog_Service, after the refusal has been reported and the halt
      *  raised as SOLIDSYSLOG_CAT_LOGGER_HALTED, so a callback that stops the
      *  device and never returns loses nothing the error handler would have
-     *  seen. */
+     *  seen. That category says what an error handler that stops the device
+     *  itself means for this callback. */
     typedef void (*SolidSyslogHaltCallback)(void* context);
 
     /** Answers whether the logger is to report one of the library's own events

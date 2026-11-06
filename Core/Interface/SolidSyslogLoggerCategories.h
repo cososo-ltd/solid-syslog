@@ -15,7 +15,8 @@
 /** The logger halted: a queue refused a record while the discard policy
  *  answers Halt, and nothing moves until the policy answers otherwise.
  *  event->Detail says which queue. Raised as an ERROR, once per halt, just
- *  before OnHalt is called. */
+ *  before OnHalt is called: an error handler that stops the device on an
+ *  ERROR stops it here, and OnHalt is then never called. */
 #define SOLIDSYSLOG_CAT_LOGGER_HALTED ((uint16_t) (SOLIDSYSLOG_CAT_LOGGER_BASE + 1U))
 
 #endif /* SOLIDSYSLOGLOGGERCATEGORIES_H */
