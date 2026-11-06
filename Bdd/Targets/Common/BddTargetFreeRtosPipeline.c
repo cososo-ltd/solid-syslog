@@ -345,7 +345,6 @@ static bool RebuildWithFileStore(void)
     solidSyslogConfig.Store = currentStore;
     solidSyslogConfig.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
     solidSyslogConfig.OnHalt = OnHalt;
-    solidSyslogConfig.IsEventReportingOn = BddTargetStoreSettings_IsEventReportingOn;
     /* Re-honour `set no-sd 1` if it arrived before this rebuild - target_driver.py
      * sorts `set no-sd` before `set store file`, so the value is final here. */
     solidSyslogConfig.SdCount = BddTargetStoreSettings_NoSd() ? 1U : (sizeof(sdList) / sizeof(sdList[0]));
@@ -545,6 +544,9 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .Store = currentStore,
         .Sd = sdList,
         .SdCount = BddTargetStoreSettings_NoSd() ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
+        /* Asked on every pass, so `set no-reporting` reaches a logger over the
+         * initial NullStore as well as one rebuilt over a file store. */
+        .IsEventReportingOn = BddTargetStoreSettings_IsEventReportingOn,
     };
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
