@@ -38,22 +38,25 @@ struct PendingEventKind
 };
 
 /* The reported kinds, in slot order. Index is identity: Take reports the
- * category from this table, so a slot never has to store it. */
+ * category from this table, so a slot never has to store it. The causes come
+ * first, then the losses they lead to, then the delivery state, so a reader
+ * walking the slots in order reports a cause ahead of what it caused: a file
+ * fault ahead of the freeze, a refused handshake ahead of the failed delivery. */
 static const struct PendingEventKind PendingEvents_Kinds[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
-    {SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_WARNING},
-    {SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
-    {SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_WARNING},
-    {SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, SOLIDSYSLOG_SEVERITY_ERROR},
-    {SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
-    {SOLIDSYSLOG_CAT_STORE_FROZEN, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_FILE_IO_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
-    {SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_ERROR},
-    {SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, SOLIDSYSLOG_SEVERITY_WARNING},
-    {SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, SOLIDSYSLOG_SEVERITY_NOTICE},
     {SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
     {SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, SOLIDSYSLOG_SEVERITY_WARNING},
+    {SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
+    {SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_WARNING},
+    {SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_WARNING},
+    {SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, SOLIDSYSLOG_SEVERITY_ERROR},
+    {SOLIDSYSLOG_CAT_STORE_WRITE_FAILED, SOLIDSYSLOG_SEVERITY_ERROR},
+    {SOLIDSYSLOG_CAT_STORE_FROZEN, SOLIDSYSLOG_SEVERITY_ERROR},
+    {SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST, SOLIDSYSLOG_SEVERITY_ERROR},
+    {SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, SOLIDSYSLOG_SEVERITY_WARNING},
+    {SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED, SOLIDSYSLOG_SEVERITY_NOTICE},
 };
 
 /* The severities in RFC 5424 order, which a slot's code indexes. */
@@ -70,12 +73,13 @@ static const enum SolidSyslogSeverity PendingEvents_Severities[] = {
 
 static volatile struct PendingEventSlot PendingEvents_Slots[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT];
 
+static inline size_t PendingEvents_IndexOf(uint16_t category);
 static inline uint8_t PendingEvents_SeverityCode(enum SolidSyslogSeverity severity);
 static inline enum SolidSyslogSeverity PendingEvents_SeverityOf(const struct PendingEventKind* kind, uint8_t code);
 
 void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
 {
-    size_t index = SolidSyslogPendingEvents_IndexOf(event->Category);
+    size_t index = PendingEvents_IndexOf(event->Category);
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
     {
         volatile struct PendingEventSlot* slot = &PendingEvents_Slots[index];
@@ -87,6 +91,23 @@ void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event)
         slot->HasNativeCode = event->HasNativeCode;
         slot->Pending = true;
     }
+}
+
+/* The slot index of a reported kind, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT for
+ * a category that is not one. */
+static inline size_t PendingEvents_IndexOf(uint16_t category)
+{
+    size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
+    for (size_t index = 0U;
+         (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && (found == SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT);
+         index++)
+    {
+        if (PendingEvents_Kinds[index].Category == category)
+        {
+            found = index;
+        }
+    }
+    return found;
 }
 
 /* A severity the table does not hold keeps code zero, the kind's own. */
@@ -104,25 +125,20 @@ static inline uint8_t PendingEvents_SeverityCode(enum SolidSyslogSeverity severi
     return code;
 }
 
-size_t SolidSyslogPendingEvents_IndexOf(uint16_t category)
-{
-    size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
-    for (size_t index = 0U;
-         (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && (found == SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT);
-         index++)
-    {
-        if (PendingEvents_Kinds[index].Category == category)
-        {
-            found = index;
-        }
-    }
-    return found;
-}
-
 bool SolidSyslogPendingEvents_IsPending(size_t index)
 {
     bool pending = false;
     if (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT)
+    {
+        pending = PendingEvents_Slots[index].Pending;
+    }
+    return pending;
+}
+
+bool SolidSyslogPendingEvents_AnyPending(void)
+{
+    bool pending = false;
+    for (size_t index = 0U; (index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT) && !pending; index++)
     {
         pending = PendingEvents_Slots[index].Pending;
     }

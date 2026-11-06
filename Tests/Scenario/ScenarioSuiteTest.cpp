@@ -10,6 +10,7 @@ namespace
 const ScenarioRig& OLDEST = SCENARIO_RIG_OLDEST;
 const ScenarioRig& NEWEST = SCENARIO_RIG_NEWEST;
 const ScenarioRig& HALT = SCENARIO_RIG_HALT;
+const ScenarioRig& OLDEST_FILE = SCENARIO_RIG_OLDEST_FILE;
 const ScenarioRig& OLDEST_NO_STORE = SCENARIO_RIG_OLDEST_NO_STORE;
 const ScenarioRig& NEWEST_NO_STORE = SCENARIO_RIG_NEWEST_NO_STORE;
 const ScenarioRig& HALT_NO_STORE = SCENARIO_RIG_HALT_NO_STORE;
@@ -83,6 +84,11 @@ TEST(ScenarioSuite, ADeviceFailingAtAPassFreezesTheStoreOnce)
     CHECK_SCENARIO(OLDEST, "LSLSFLSLSLS");
 }
 
+TEST(ScenarioSuite, AFileSystemFailingAtAPassIsReportedAndFreezesTheStoreOnce)
+{
+    CHECK_SCENARIO(OLDEST_FILE, "LSLSFLSLSLS");
+}
+
 TEST(ScenarioSuite, ADeviceFailingWithNothingQueuedIsNotYetAStoreFault)
 {
     CHECK_SCENARIO(OLDEST, "LSFSSLS");
@@ -122,6 +128,58 @@ TEST(ScenarioSuite, APolicyChangedMidOutageIsHonouredFromTheNextRecord)
 {
     size_t fill = StoreFill(OLDEST);
     CHECK_SCENARIO(OLDEST, "D" + Repeat("LS", fill) + "N" + Repeat("LS", fill) + "H" + Repeat("LS", fill) + "U");
+}
+
+TEST(ScenarioSuite, AWithheldKeyIsReportedOnceAndTheStoreWaitsForIt)
+{
+    CHECK_SCENARIO(OLDEST, "LSDLLLSKU" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, AFailingPolicyBackendIsReportedOnceForTheRun)
+{
+    CHECK_SCENARIO(OLDEST, "LLLP" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
+/* A pass sends one record from the store, so the records kept while the
+ * backend worked are opened on every pass after it fails, and wait in the
+ * store until it works. */
+TEST(ScenarioSuite, AFailingPolicyBackendOnReadIsReportedOnceAndTheStoreWaitsForIt)
+{
+    CHECK_SCENARIO(OLDEST, "LLLSP" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, ARecordThatFailsVerificationIsDiscardedAndReportedOnce)
+{
+    CHECK_SCENARIO(OLDEST, "DLLLSUT" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, ARefusedHandshakeIsReportedOnceAheadOfTheOutage)
+{
+    CHECK_SCENARIO(OLDEST, "LSJLLL" + Repeat("S", 5U) + "A" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, ARefusedHandshakeWithNoStoreIsReportedOnceTheSenderTakesIt)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, "LSJLLL" + Repeat("S", 5U) + "A" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, AMisroutedSenderIsReportedOnceForTheRun)
+{
+    CHECK_SCENARIO(OLDEST, "MLLL" + Repeat("S", 5U) + "B" + Repeat("S", 5U));
+}
+
+/* With reporting off, what the sender refuses is a record from the buffer,
+ * which Oldest drops when the ring fills behind it. */
+TEST(ScenarioSuite, AMisroutedSenderDroppingAHeldRecordEndsTheRunOfHeldDrops)
+{
+    std::string fill = Repeat("L", RingFill(OLDEST_NO_STORE));
+    std::string heldDrop = fill + "S" + fill + "S";
+    CHECK_SCENARIO(OLDEST_NO_STORE, "QD" + heldDrop + "MSB" + heldDrop + "USS");
+}
+
+TEST(ScenarioSuite, ACorruptRingIsReportedOnceAsItsBackendFailing)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, "LC" + Repeat("S", 5U));
 }
 
 TEST(ScenarioSuite, ABufferLossIsReportedOnceThroughTheStore)

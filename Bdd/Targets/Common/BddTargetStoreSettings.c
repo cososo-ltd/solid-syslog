@@ -19,6 +19,7 @@ static enum SolidSyslogDiscardPolicy discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_
 static enum BddTargetSecurityPolicy securityPolicy = BDD_TARGET_SECURITY_POLICY_CRC16;
 static bool haltExit = false;
 static bool noSd = false;
+static bool noReporting = false;
 
 /* The names the harness sends for an enumerated setting, beside the value
    each stands for. */
@@ -59,6 +60,7 @@ void BddTargetStoreSettings_Reset(void)
     securityPolicy = BDD_TARGET_SECURITY_POLICY_CRC16;
     haltExit = false;
     noSd = false;
+    noReporting = false;
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -112,6 +114,10 @@ bool BddTargetStoreSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "no-sd") == 0)
     {
         taken = StoreSettings_SetFlag(value, &noSd);
+    }
+    else if (strcmp(name, "no-reporting") == 0)
+    {
+        taken = StoreSettings_SetFlag(value, &noReporting);
     }
     return taken;
 }
@@ -187,6 +193,12 @@ bool BddTargetStoreSettings_HaltExit(void)
 bool BddTargetStoreSettings_NoSd(void)
 {
     return noSd;
+}
+
+bool BddTargetStoreSettings_IsEventReportingOn(void* context)
+{
+    (void) context;
+    return !noReporting;
 }
 
 size_t BddTargetStoreSettings_GetCapacityThreshold(void* context)

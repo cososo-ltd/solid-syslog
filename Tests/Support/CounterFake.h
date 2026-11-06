@@ -1,6 +1,8 @@
 #ifndef COUNTERFAKE_H
 #define COUNTERFAKE_H
 
+#include <stdint.h>
+
 #include "SolidSyslogExternC.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -12,6 +14,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * atomicity. */
     struct SolidSyslogAtomicCounter* CounterFake_Create(void);
     void CounterFake_Destroy(struct SolidSyslogAtomicCounter * counter);
+    /* The number the last Increment handed out; zero before the first. */
+    uint32_t CounterFake_LastHandedOut(struct SolidSyslogAtomicCounter * counter);
 
 SOLIDSYSLOG_EXTERN_C_END
 

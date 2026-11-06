@@ -4,7 +4,8 @@
 
 /* The pending-event table: the library's record of its own reportable
  * faults, written by a tap in SolidSyslog_Error after the handler returns and
- * read by whatever turns a pending kind into a syslog record.
+ * read by Service, which walks the slots once a pass in their order and takes
+ * the kinds waiting into reports.
  *
  * One static slot per reported kind, keyed by the portable category. The
  * kinds are the categories a collector needs to hear about and that today's
@@ -60,18 +61,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * SolidSyslog_Error after the handler. */
     void SolidSyslogPendingEvents_Record(const struct SolidSyslogErrorEvent* event);
 
-    /* The slot index of a reported kind, or SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT
-     * for a category that is not one, which Take answers false for. */
-    size_t SolidSyslogPendingEvents_IndexOf(uint16_t category);
-
     /* Whether the slot is pending, leaving it as it is; Take is what clears
      * it. An index past the table is not pending. */
     bool SolidSyslogPendingEvents_IsPending(size_t index);
 
+    /* Whether any slot is pending, leaving every slot as it is. */
+    bool SolidSyslogPendingEvents_AnyPending(void);
+
     /* Clear the slot's Pending flag, then copy its fields into @p event with
      * the slot's category. Returns whether the slot was pending; the copy is
      * made either way, so @p event is only meaningful on true. Slot order is
-     * the table's own: a reader walks every index and reads the category
+     * the table's own, causes first: a reader walks every index in order,
+     * so it takes a cause ahead of what it caused, and reads the category
      * from the event. An index past the table leaves @p event untouched and
      * returns false. */
     bool SolidSyslogPendingEvents_Take(size_t index, struct SolidSyslogErrorEvent* event);

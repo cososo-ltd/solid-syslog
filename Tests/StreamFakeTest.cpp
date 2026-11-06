@@ -1,5 +1,10 @@
 #include "AddressFake.h"
+#include "ErrorHandlerFake.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStream.h"
+#include "SolidSyslogTlsStreamCategories.h"
+#include "SolidSyslogTlsStreamErrors.h"
 #include "StreamFake.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
@@ -156,4 +161,107 @@ TEST(StreamFake, APrefixThatIsNotALengthIsDroppedAndTheNextFrameKept)
     SolidSyslogStream_Send(stream, "2 ok", 4);
     LONGS_EQUAL(1, StreamFake_FrameCount(stream));
     STRCMP_EQUAL("ok", StreamFake_Frame(stream, 0));
+}
+
+// clang-format off
+TEST_GROUP(StreamFakeHandshake)
+{
+    struct SolidSyslogStream* stream = nullptr;
+
+    void setup() override
+    {
+        stream = StreamFake_Create();
+        ErrorHandlerFake_Install(nullptr);
+    }
+
+    void teardown() override
+    {
+        SolidSyslog_SetErrorHandler(nullptr, nullptr);
+        StreamFake_Destroy(stream);
+    }
+
+    [[nodiscard]] bool Open() const
+    {
+        return SolidSyslogStream_Open(stream, AddressFake_Get());
+    }
+};
+
+// clang-format on
+
+TEST(StreamFakeHandshake, AnOpenFailingWithoutAHandshakeReportsNothing)
+{
+    StreamFake_SetOpenFails(stream, true);
+    (void) Open();
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(StreamFakeHandshake, ARefusedHandshakeFailsTheOpen)
+{
+    StreamFake_RefuseHandshake(stream, true);
+    CHECK_FALSE(Open());
+}
+
+TEST(StreamFakeHandshake, ARefusedHandshakeIsReportedAsATlsStreamReportsIt)
+{
+    StreamFake_RefuseHandshake(stream, true);
+
+    (void) Open();
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &StreamFakeErrorSource,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
+TEST(StreamFakeHandshake, ARunOfRefusalsIsReportedOnce)
+{
+    StreamFake_RefuseHandshake(stream, true);
+
+    (void) Open();
+    (void) Open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(StreamFakeHandshake, AnAcceptedHandshakeOpens)
+{
+    StreamFake_RefuseHandshake(stream, true);
+    StreamFake_RefuseHandshake(stream, false);
+    CHECK_TRUE(Open());
+}
+
+TEST(StreamFakeHandshake, AnOpenThatSucceedsEndsTheRun)
+{
+    StreamFake_RefuseHandshake(stream, true);
+    (void) Open();
+    StreamFake_RefuseHandshake(stream, false);
+    (void) Open();
+    StreamFake_RefuseHandshake(stream, true);
+
+    (void) Open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(StreamFakeHandshake, AcceptingWithoutAnOpenLeavesTheRunGoing)
+{
+    StreamFake_RefuseHandshake(stream, true);
+    (void) Open();
+    StreamFake_RefuseHandshake(stream, false);
+    StreamFake_RefuseHandshake(stream, true);
+
+    (void) Open();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(StreamFakeHandshake, TheSourceNamesTheSharedTlsDetails)
+{
+    STRCMP_EQUAL("StreamFake", StreamFakeErrorSource.Name);
+    STRCMP_EQUAL(
+        "PEER_CERTIFICATE_UNTRUSTED",
+        StreamFakeErrorSource.DetailName(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED)
+    );
 }

@@ -14,6 +14,8 @@ struct ScenarioState
 {
     ScenarioBench& Bench;
     bool SenderDown;
+    bool HandshakeRefused;
+    size_t HandshakeRefusals; /* times the handshake has been refused */
     bool DeviceFailed;
     enum SolidSyslogDiscardPolicy Policy;
     size_t HaltPeriods; /* times the policy has been Halt, counting an initial Halt */
@@ -22,6 +24,8 @@ struct ScenarioState
     enum SolidSyslogServiceStatus Status;
     size_t DeliveredBeforePass;
     size_t EventsJudged; /* events earlier checks have already seen */
+    bool QuietSinceLastPass; /* nothing logged and nothing changed since the last pass, and there was one */
+    enum SecurityPolicyFakeFault SecurityPolicyFault;
 };
 
 /* Every invariant that holds after each pass; the first to fail is the verdict. */

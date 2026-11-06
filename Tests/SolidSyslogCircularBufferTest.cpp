@@ -111,6 +111,14 @@ TEST_GROUP_BASE(SolidSyslogCircularBuffer, CircularBufferFixture)
     {
         SolidSyslogCircularBuffer_Destroy(buffer);
     }
+
+    // A read whose buffer cannot hold the head record, which stays queued.
+    void ReadIntoATooSmallBuffer() const
+    {
+        char small[4] = {};
+        size_t got = 0U;
+        (void) SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
+    }
 };
 
 // clang-format on
@@ -484,12 +492,34 @@ TEST(SolidSyslogCircularBuffer, ReadWithBufferTooSmallLeavesRecordQueued)
 {
     Write("hello");
 
-    char small[4] = {};
-    size_t got = 0U;
-    (void) SolidSyslogBuffer_Read(buffer, small, sizeof(small), &got);
+    ReadIntoATooSmallBuffer();
 
     CHECK_TRUE(Read()); // fixture Read() uses a MAX-sized buffer
     CHECK_LAST_READ_RECORD("hello", 5);
+}
+
+TEST(SolidSyslogCircularBuffer, ARunOfReadsTooSmallForTheHeadRecordIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    Write("hello");
+
+    ReadIntoATooSmallBuffer();
+    ReadIntoATooSmallBuffer();
+
+    LONGS_EQUAL(1, ErrorHandlerFake_HandleCallCount());
+}
+
+TEST(SolidSyslogCircularBuffer, ARecordReadEndsARunOfReadsTooSmallForTheHeadRecord)
+{
+    ErrorHandlerFake_Install(nullptr);
+    Write("hello");
+
+    ReadIntoATooSmallBuffer();
+    CHECK_TRUE(Read());
+    Write("hello");
+    ReadIntoATooSmallBuffer();
+
+    LONGS_EQUAL(2, ErrorHandlerFake_HandleCallCount());
 }
 
 // clang-format off

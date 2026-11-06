@@ -27,7 +27,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  un-dequeued - the drain stalls at this record. This cannot occur
          *  under correct configuration (the drain scratch is sized to hold any
          *  record Write accepts), so an emitted code indicates the ring's
-         *  length prefix has been corrupted. */
+         *  length prefix has been corrupted. Raised under
+         *  SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED, once per run of such reads;
+         *  the next record read ends the run. */
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_RECORD_TOO_LARGE,
         /** The ring had no room for the record and the discard policy refused
          *  it; raised under SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, once per run of

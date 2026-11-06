@@ -25,7 +25,7 @@ target_link_libraries(StreamFake PUBLIC ${PROJECT_NAME})
 # C++ with no CppUTest dependency, so both executables link it.
 add_library(ScenarioBench STATIC ScenarioBench.cpp SyslogFieldParser.cpp)
 target_include_directories(ScenarioBench PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ScenarioBench PUBLIC ${PROJECT_NAME} AddressFake BlockDeviceFake CounterFake ResolverFake StreamFake)
+target_link_libraries(ScenarioBench PUBLIC ${PROJECT_NAME} AddressFake BlockDeviceFake CounterFake RamFileFake ResolverFake SecurityPolicyFake StreamFake)
 
 # An opaque address token for tests whose stream never reads a sockaddr.
 add_library(AddressFake STATIC AddressFake.c)
@@ -41,6 +41,21 @@ target_link_libraries(ResolverFake PUBLIC ${PROJECT_NAME})
 add_library(CounterFake STATIC CounterFake.c)
 target_include_directories(CounterFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(CounterFake PUBLIC ${PROJECT_NAME})
+
+# A security policy that seals and opens as the Null policy does until told to
+# fail as a keyed policy does, reporting each fault as one would: what the
+# scenario bench's store needs to meet a withheld key, a failing backend or a
+# record that fails verification.
+add_library(SecurityPolicyFake STATIC SecurityPolicyFake.c)
+target_include_directories(SecurityPolicyFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(SecurityPolicyFake PUBLIC ${PROJECT_NAME})
+
+# A File held in memory, one buffer per path, that fails every call once told
+# to, reporting each as a file pack does: what the scenario bench needs to run a
+# FileBlockDevice whose file system breaks.
+add_library(RamFileFake STATIC RamFileFake.c)
+target_include_directories(RamFileFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(RamFileFake PUBLIC ${PROJECT_NAME})
 
 add_library(ConfigLockFake STATIC ConfigLockFake.c)
 target_include_directories(ConfigLockFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

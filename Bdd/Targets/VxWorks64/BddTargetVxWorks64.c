@@ -305,6 +305,7 @@ static void BddTargetVxWorks64_BuildPipeline(void)
     config.Store = store;
     config.GetDiscardPolicy = BddTargetStoreSettings_GetDiscardPolicy;
     config.OnHalt = BddTargetVxWorks64_OnHalt;
+    config.IsEventReportingOn = BddTargetStoreSettings_IsEventReportingOn;
     config.GetAppName = BddTargetMessageSettings_GetAppName;
     config.Clock = SolidSyslogVxWorks64_GetTimestamp;
     config.GetHostname = SolidSyslogVxWorks64_GetHostname;

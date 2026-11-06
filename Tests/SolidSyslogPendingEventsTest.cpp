@@ -124,22 +124,35 @@ TEST(SolidSyslogPendingEvents, ACategoryOutsideTheSetChangesNothing)
     CHECK_FALSE(SomethingIsPending());
 }
 
+/* The causes, then the losses they lead to, then the delivery state. */
 static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
-    SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
-    SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
-    SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
-    SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
-    SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
-    SOLIDSYSLOG_CAT_STORE_FROZEN,
     SOLIDSYSLOG_CAT_FILE_IO_FAILED,
-    SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
-    SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
-    SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
     SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+    SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+    SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+    SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+    SOLIDSYSLOG_CAT_STORE_FROZEN,
+    SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
 };
+
+/* The slot a reported kind lands in: its place in the table above. */
+static size_t IndexOfKind(uint16_t category)
+{
+    size_t found = SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT;
+    for (size_t index = 0U; index < SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT; index++)
+    {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+        found = (REPORTED_KINDS[index] == category) ? index : found;
+    }
+    return found;
+}
 
 TEST(SolidSyslogPendingEvents, EveryReportedKindLandsInItsOwnSlot)
 {
@@ -180,13 +193,12 @@ TEST(SolidSyslogPendingEvents, ARaisedKindIsPending)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
 
-    CHECK(SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
+    CHECK(SolidSyslogPendingEvents_IsPending(IndexOfKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
 }
 
 TEST(SolidSyslogPendingEvents, AKindNeverRaisedIsNotPending)
 {
-    CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)
-    ));
+    CHECK_FALSE(SolidSyslogPendingEvents_IsPending(IndexOfKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST)));
 }
 
 TEST(SolidSyslogPendingEvents, AskingWhetherAKindIsPendingLeavesItPending)
@@ -194,7 +206,7 @@ TEST(SolidSyslogPendingEvents, AskingWhetherAKindIsPendingLeavesItPending)
     static const struct SolidSyslogErrorSource source = {"test", nullptr};
     SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
 
-    (void) SolidSyslogPendingEvents_IsPending(SolidSyslogPendingEvents_IndexOf(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+    (void) SolidSyslogPendingEvents_IsPending(IndexOfKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 
     CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
 }
@@ -204,22 +216,49 @@ TEST(SolidSyslogPendingEvents, AnIndexPastTheTableIsNotPending)
     CHECK_FALSE(SolidSyslogPendingEvents_IsPending(SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT));
 }
 
+TEST(SolidSyslogPendingEvents, NoKindIsPendingInATableNoEventHasReached)
+{
+    CHECK_FALSE(SolidSyslogPendingEvents_AnyPending());
+}
+
+TEST(SolidSyslogPendingEvents, AnEventOfEachReportedKindIsFoundPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    for (uint16_t category : REPORTED_KINDS)
+    {
+        SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, category, 7);
+
+        CHECK(SolidSyslogPendingEvents_AnyPending());
+        CHECK(TakeKind(category));
+    }
+}
+
+TEST(SolidSyslogPendingEvents, AskingWhetherAnyKindIsPendingLeavesItPending)
+{
+    static const struct SolidSyslogErrorSource source = {"test", nullptr};
+    SolidSyslog_Error(SOLIDSYSLOG_SEVERITY_WARNING, &source, SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST, 7);
+
+    (void) SolidSyslogPendingEvents_AnyPending();
+
+    CHECK(TakeKind(SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST));
+}
+
 /* The least severe severity each kind is raised at, in table order. */
 static const enum SolidSyslogSeverity KIND_SEVERITIES[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
-    SOLIDSYSLOG_SEVERITY_WARNING,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_WARNING,
     SOLIDSYSLOG_SEVERITY_ERROR,
+    SOLIDSYSLOG_SEVERITY_WARNING,
+    SOLIDSYSLOG_SEVERITY_WARNING,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_WARNING,
     SOLIDSYSLOG_SEVERITY_NOTICE,
-    SOLIDSYSLOG_SEVERITY_ERROR,
-    SOLIDSYSLOG_SEVERITY_ERROR,
-    SOLIDSYSLOG_SEVERITY_ERROR,
-    SOLIDSYSLOG_SEVERITY_WARNING,
 };
 
 TEST(SolidSyslogPendingEvents, AClearedSlotStandsAtItsKindsOwnSeverity)

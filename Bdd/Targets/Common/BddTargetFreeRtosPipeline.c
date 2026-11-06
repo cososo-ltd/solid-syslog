@@ -544,6 +544,9 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         .Store = currentStore,
         .Sd = sdList,
         .SdCount = BddTargetStoreSettings_NoSd() ? 1U : (sizeof(sdList) / sizeof(sdList[0])),
+        /* Asked on every pass, so `set no-reporting` reaches a logger over the
+         * initial NullStore as well as one rebuilt over a file store. */
+        .IsEventReportingOn = BddTargetStoreSettings_IsEventReportingOn,
     };
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;

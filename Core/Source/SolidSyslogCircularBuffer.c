@@ -109,6 +109,7 @@ void SolidSyslogCircularBuffer_Initialise(
     CircularBuffer_InstallDiscardPolicy(self, getDiscardPolicy, discardPolicyContext);
     self->LossReported = false;
     self->EvictionReported = false;
+    self->TooLargeReported = false;
     self->Full = false;
     CircularBuffer_ResetToStart(self);
 }
@@ -139,7 +140,7 @@ void SolidSyslogCircularBuffer_Cleanup(struct SolidSyslogBuffer* base)
 static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size_t maxSize, size_t* bytesRead)
 {
     struct SolidSyslogCircularBuffer* self = CircularBuffer_SelfFromBase(base);
-    bool recordTooLarge = false;
+    bool tooLargeRunStarted = false;
     SolidSyslogMutex_Lock(self->Mutex);
     *bytesRead = 0;
     bool delivered = !CircularBuffer_IsEmpty(self);
@@ -153,10 +154,12 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size
         {
             CircularBuffer_LoadRecord(self, data, bytesRead);
             self->Full = false;
+            self->TooLargeReported = false;
         }
         else
         {
-            recordTooLarge = true;
+            tooLargeRunStarted = !self->TooLargeReported;
+            self->TooLargeReported = true;
             delivered = false;
         }
     }
@@ -164,9 +167,9 @@ static bool CircularBuffer_Read(struct SolidSyslogBuffer* base, void* data, size
 
     /* Reported after the unlock: the handler is integrator code and may log,
      * which re-enters Write and would deadlock on this same non-recursive mutex.
-     * The oversized branch mutates no state, so deferring the report costs
-     * nothing. */
-    if (recordTooLarge)
+     * The oversized branch changes only its latch, set under the mutex, so
+     * deferring the report costs nothing. */
+    if (tooLargeRunStarted)
     {
         CircularBuffer_ReportRecordTooLarge();
     }

@@ -13,6 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogStream;
 
     struct SolidSyslogAddress;
+    struct SolidSyslogErrorSource;
 
     struct SolidSyslogStream* StreamFake_Create(void);
     void StreamFake_Destroy(struct SolidSyslogStream * stream);
@@ -29,6 +30,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void StreamFake_SetSendFails(struct SolidSyslogStream * stream, bool fails);
     int StreamFake_CloseCallCount(struct SolidSyslogStream * stream);
     void StreamFake_SetVersion(struct SolidSyslogStream * stream, uint32_t value);
+
+    /* While refused, Open fails as a TLS stream's does when the peer's
+     * certificate reaches no anchor, and reports it as one does, once per run:
+     * TLS_STREAM_HANDSHAKE_FAILED with PEER_CERTIFICATE_UNTRUSTED, then
+     * nothing until an Open succeeds. SetOpenFails stays the silent failure. */
+    void StreamFake_RefuseHandshake(struct SolidSyslogStream * stream, bool refused);
+
+    extern const struct SolidSyslogErrorSource StreamFakeErrorSource;
 
     /* The RFC 6587 octet-counted frames the stream has accepted whole: a
      * decimal length, a space, then that many bytes, however the sender split

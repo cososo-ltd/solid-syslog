@@ -496,6 +496,47 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ReadWhenMqReceiveFailsReportsError)
     );
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, ARunOfFailedReceivesIsReportedOnce)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextReceive(EBADF);
+    Read();
+    MqFake_FailNextReceive(EBADF);
+
+    Read();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, ARecordReceivedEndsTheRunSoTheNextFailedReceiveIsReportedAgain)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextReceive(EBADF);
+    Read();
+    Write();
+    Read(); /* received */
+    MqFake_FailNextReceive(EBADF);
+
+    Read();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+/* An empty queue is the poll's quiet answer, not a record received, as a full
+ * queue leaves a run of failed sends standing. */
+TEST(SolidSyslogPosixMessageQueueBuffer, AnEmptyQueueDoesNotEndARunOfFailedReceives)
+{
+    ErrorHandlerFake_Install(nullptr);
+    MqFake_FailNextReceive(EBADF);
+    Read();
+    Read(); /* empty */
+    MqFake_FailNextReceive(EBADF);
+
+    Read();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
 /* Regression guard: empty queue (EAGAIN) is part of the happy poll loop
  * and must NOT emit. The error handler must remain untouched. */
 TEST(SolidSyslogPosixMessageQueueBuffer, ReadFromEmptyQueueDoesNotEmitError)

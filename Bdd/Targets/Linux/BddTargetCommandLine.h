@@ -19,7 +19,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     };
 
     /* The store options (--max-blocks, --max-block-size, --discard-policy,
-       --security-policy, --capacity-threshold, --halt-exit, --no-sd) go to
+       --security-policy, --capacity-threshold, --halt-exit, --no-sd,
+       --no-reporting) go to
        BddTargetStoreSettings, which the parse resets first. Returns 0, or 1
        when an option's argument is not one it accepts. */
     int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* options);

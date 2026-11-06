@@ -183,6 +183,27 @@ TEST(BddTargetStoreSettings, HaltExitThatIsNotANumberIsRefused)
     CHECK_FALSE(BddTargetStoreSettings_HaltExit());
 }
 
+TEST(BddTargetStoreSettings, EventReportingIsOnUntilSet)
+{
+    CHECK_TRUE(BddTargetStoreSettings_IsEventReportingOn(nullptr));
+}
+
+TEST(BddTargetStoreSettings, SetNoReportingToANonZeroNumberTurnsEventReportingOff)
+{
+    CHECK_TRUE(BddTargetStoreSettings_SetByName("no-reporting", "1"));
+
+    CHECK_FALSE(BddTargetStoreSettings_IsEventReportingOn(nullptr));
+}
+
+TEST(BddTargetStoreSettings, ResetTurnsEventReportingBackOn)
+{
+    BddTargetStoreSettings_SetByName("no-reporting", "1");
+
+    BddTargetStoreSettings_Reset();
+
+    CHECK_TRUE(BddTargetStoreSettings_IsEventReportingOn(nullptr));
+}
+
 TEST(BddTargetStoreSettings, NoSdIsOffUntilSet)
 {
     CHECK_FALSE(BddTargetStoreSettings_NoSd());

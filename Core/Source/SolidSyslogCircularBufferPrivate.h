@@ -34,6 +34,10 @@ struct SolidSyslogCircularBuffer
      * that logs into the full ring finds the run already reported. */
     bool LossReported;
     bool EvictionReported;
+    /* One report stands for a run of reads that found the head record larger
+     * than the reader's buffer. Read never takes such a record, so the run
+     * would otherwise be reported again on every read. */
+    bool TooLargeReported;
     /* The last write found no room - it evicted, or was refused - and nothing
      * has been taken out since: Log has outrun Service. Kept under the mutex. */
     bool Full;

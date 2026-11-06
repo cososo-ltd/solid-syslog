@@ -30,27 +30,41 @@ const size_t SCENARIO_BLOCK_BYTES = 2U * SOLIDSYSLOG_MAX_MESSAGE_SIZE;
  * alone, where Service holds for the sender what it cannot send. */
 inline const ScenarioRig SCENARIO_RIG_OLDEST = {
     "oldest",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true, false}
 };
 inline const ScenarioRig SCENARIO_RIG_NEWEST = {
     "newest",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true, false}
 };
 inline const ScenarioRig SCENARIO_RIG_HALT = {
     "halt",
-    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true}
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true, false}
+};
+/* The same three over a store whose blocks are files, so a failing device is
+ * a file system the store meets through a FileBlockDevice. */
+inline const ScenarioRig SCENARIO_RIG_OLDEST_FILE = {
+    "oldest-file",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, true, true}
+};
+inline const ScenarioRig SCENARIO_RIG_NEWEST_FILE = {
+    "newest-file",
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, true, true}
+};
+inline const ScenarioRig SCENARIO_RIG_HALT_FILE = {
+    "halt-file",
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, true, true}
 };
 inline const ScenarioRig SCENARIO_RIG_OLDEST_NO_STORE = {
     "oldest-no-store",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, false}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, false, false}
 };
 inline const ScenarioRig SCENARIO_RIG_NEWEST_NO_STORE = {
     "newest-no-store",
-    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, false}
+    {4U, SCENARIO_BLOCK_BYTES, 3U, SOLIDSYSLOG_DISCARD_POLICY_NEWEST, false, false}
 };
 inline const ScenarioRig SCENARIO_RIG_HALT_NO_STORE = {
     "halt-no-store",
-    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, false}
+    {8U, SCENARIO_BLOCK_BYTES, 4U, SOLIDSYSLOG_DISCARD_POLICY_HALT, false, false}
 };
 
 /* What a run found: a pass, or the first invariant to fail, where and why. */
@@ -63,11 +77,14 @@ struct ScenarioVerdict
 };
 
 /* A script is one letter per step: L logs a record, S makes a Service pass,
- * D and U take the sender down and up, F fails the block device, O, N and H
- * set the discard policy to Oldest, Newest or Halt, and Q and R turn the
- * logger's reporting of its own events off and on. The invariants are
- * checked after every pass, and once more after the run drains what the
- * script left queued. */
+ * D and U take the sender down and up, J and A have the stream refuse and
+ * accept the handshake, M and B misroute the switching sender and route it
+ * back, F fails the block device, C corrupts the ring, K, P and T have the
+ * store's security policy withhold its key, fail in its backend or reject
+ * what it opens and W puts it right, O, N and H set the discard policy to
+ * Oldest, Newest or Halt, and Q and R turn the logger's reporting of its own
+ * events off and on. The invariants are checked after every pass, and once
+ * more after the run drains what the script left queued. */
 ScenarioVerdict ScenarioSuite_Run(const ScenarioRig& rig, const std::string& script);
 
 /* The rig and script a seed stands for: a random walk of the steps above. */

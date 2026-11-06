@@ -6,22 +6,43 @@
 #include <tuple>
 #include <vector>
 
+#include "SolidSyslogBlockStoreErrors.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogErrors.h"
+#include "SolidSyslogFileCategories.h"
+#include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
+#include "SolidSyslogTlsStreamCategories.h"
 
 namespace
 {
 /* A pass moves at most what the ring held, the record held from the last
- * pass, a report and one from the store, with two sends and a few device
- * operations per record. Tripwires, not budgets: a call that spins passes
- * them at once. */
-const size_t RECORDS_BEYOND_THE_RING = 3U;
+ * pass, a report of each of the fourteen kinds Service reports and one record
+ * from the store, with two sends and a few device operations per record.
+ * Tripwires, not budgets: a call that spins passes them at once. */
+const size_t REPORTS_PER_PASS = 14U;
+const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 
-/* The kinds Service reports so far; a story that reports another adds it. */
-const uint16_t REPORTED_KINDS[] = {SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST};
+/* The kinds whose last event the end invariant requires reported: those the
+ * bench can provoke. */
+const uint16_t REPORTED_KINDS[] = {
+    SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
+    SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
+    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+    SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
+    SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED,
+    SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+    SOLIDSYSLOG_CAT_STORE_FROZEN,
+    SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED,
+    SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED,
+};
 const size_t SENDS_PER_RECORD = 2U;
 const size_t DEVICE_OPERATIONS_PER_RECORD = 4U;
 
@@ -38,30 +59,30 @@ std::string Count(const char* what, size_t count)
     return std::string(what) + "=" + std::to_string(count);
 }
 
+/* The categories that account for a record not delivered. A buffer whose
+ * backend failed refused a write, losing the record, or met a head record too
+ * large to read, which strands it and those behind it. */
 bool IsLoss(const ScenarioEvent& event)
 {
     return (event.Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ||
+           (event.Category == SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED) ||
            (event.Category == SOLIDSYSLOG_CAT_SENDER_RECORDS_LOST) ||
            (event.Category == SOLIDSYSLOG_CAT_STORE_RECORDS_LOST) ||
            (event.Category == SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED) ||
            (event.Category == SOLIDSYSLOG_CAT_STORE_WRITE_FAILED) || (event.Category == SOLIDSYSLOG_CAT_STORE_FROZEN);
 }
 
-/* A report never passes through the buffer, so only the store and the sender
- * can lose one. */
-bool IsDownstreamLoss(const ScenarioEvent& event)
+/* A report never passes through the buffer, and one the store will not take -
+ * refused, or lost to its security policy - goes to the sender instead, which
+ * on the bench loses nothing it takes. So only the store losing what it held
+ * can lose a report: a rotation that evicted unsent records, a record
+ * discarded on reading, or the freeze. */
+bool CanLoseAReport(const ScenarioEvent& event)
 {
-    return IsLoss(event) && (event.Category != SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST);
-}
-
-bool IsReportedKind(uint16_t category)
-{
-    bool reported = false;
-    for (uint16_t kind : REPORTED_KINDS)
-    {
-        reported = reported || (kind == category);
-    }
-    return reported;
+    bool evicted = (event.Source == &SolidSyslogBlockStoreErrorSource) &&
+                   (event.Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED);
+    return evicted || (event.Category == SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED) ||
+           (event.Category == SOLIDSYSLOG_CAT_STORE_FROZEN);
 }
 
 std::string NameOf(uint16_t category)
@@ -80,6 +101,15 @@ size_t CountCategory(const std::vector<ScenarioEvent>& events, uint16_t category
     return count;
 }
 
+/* Every report Service made that the bench saw: those the stream received,
+ * and those the misrouted sender dropped. */
+std::vector<ScenarioReport> MadeReports(const ScenarioState& state)
+{
+    std::vector<ScenarioReport> made = state.Bench.Reports();
+    made.insert(made.end(), state.Bench.DroppedReports().begin(), state.Bench.DroppedReports().end());
+    return made;
+}
+
 /* A report takes its sequenceId from the meta SD's count, as a record does,
  * so records and reports together use each one once. */
 std::string SequenceIdsAreUsedOnce(const ScenarioState& state)
@@ -89,7 +119,7 @@ std::string SequenceIdsAreUsedOnce(const ScenarioState& state)
     {
         used.push_back(delivery.SequenceId);
     }
-    for (const ScenarioReport& report : state.Bench.Reports())
+    for (const ScenarioReport& report : MadeReports(state))
     {
         used.push_back(report.SequenceId);
     }
@@ -127,7 +157,7 @@ std::string EveryDeliveryIsALoggedRecordOnce(const ScenarioState& state)
  * report beyond the times it answered on was made without asking. */
 std::string EveryReportWasMadeWithReportingOn(const ScenarioState& state)
 {
-    size_t reports = state.Bench.Reports().size();
+    size_t reports = state.Bench.Reports().size() + state.Bench.DroppedReports().size();
     return (reports <= state.Bench.ReportsMade())
                ? std::string()
                : (Count("reports", reports) + " " + Count("made with reporting on", state.Bench.ReportsMade()));
@@ -144,13 +174,53 @@ std::string EveryReportStandsForARaisedEvent(const ScenarioState& state)
     }
     std::map<std::string, size_t> reported;
     std::string reason;
-    for (const ScenarioReport& report : state.Bench.Reports())
+    for (const ScenarioReport& report : MadeReports(state))
     {
         reported[report.Category]++;
         if (reason.empty() && (reported[report.Category] > raised[report.Category]))
         {
             reason = report.Category + " " + Count("reported", reported[report.Category]) + " " +
                      Count("raised", raised[report.Category]);
+        }
+    }
+    return reason;
+}
+
+/* The event a report was made of: the last of its kind raised before Service
+ * made the report, while the meta SD had handed out fewer sequenceIds than the
+ * report took. A slot holds the most recent event of its kind, so an earlier
+ * one is not what the report says. */
+const ScenarioEvent* EventReportedBy(const ScenarioState& state, const ScenarioReport& report)
+{
+    const ScenarioEvent* reported = nullptr;
+    for (const ScenarioEvent& event : state.Bench.Events())
+    {
+        bool before = (NameOf(event.Category) == report.Category) && (event.LastSequenceId < report.SequenceId);
+        reported = before ? &event : reported;
+    }
+    return reported;
+}
+
+std::string Params(const std::string& source, const std::string& detail, const std::string& native)
+{
+    return "source=" + source + " detail=" + detail + " native=" + native;
+}
+
+std::string EveryReportSaysWhatItsEventSaid(const ScenarioState& state)
+{
+    std::string reason;
+    for (const ScenarioReport& report : MadeReports(state))
+    {
+        const ScenarioEvent* event = EventReportedBy(state, report);
+        bool said = (event != nullptr) && (event->SourceParam == report.SourceParam) &&
+                    (event->DetailParam == report.DetailParam) && (event->NativeParam == report.NativeParam);
+        if (reason.empty() && !said)
+        {
+            reason = report.Category + " " + Count("sequenceId", report.SequenceId) + " says " +
+                     Params(report.SourceParam, report.DetailParam, report.NativeParam) +
+                     ((event != nullptr)
+                          ? (", its event said " + Params(event->SourceParam, event->DetailParam, event->NativeParam))
+                          : ", with no event before it");
         }
     }
     return reason;
@@ -177,10 +247,18 @@ std::string NoUniversalError(const ScenarioState& state)
     return reason;
 }
 
+/* The sender refuses while its stream refuses every send, or while the
+ * handshake is refused and so every open. */
+bool SenderRefuses(const ScenarioState& state)
+{
+    return state.SenderDown || state.HandshakeRefused;
+}
+
 /* One DELIVERY_FAILED opens an outage and one RESTORED closes it; a pass
- * that put a send to a refusing sender is inside an open outage, and one
- * that put a send through an accepting sender is outside any. The edges, not
- * the script, say which run the sender is in: a sender taken up and down
+ * that tried a refusing sender is inside an open outage, and one that put a
+ * send through an accepting sender is outside any. A sender meeting a refused
+ * handshake tries only the open, so an open counts as trying it. The edges,
+ * not the script, say which run the sender is in: a sender taken up and down
  * again with nothing sent between is still the one outage. */
 std::string SenderEdgesAlternate(const ScenarioState& state)
 {
@@ -199,14 +277,14 @@ std::string SenderEdgesAlternate(const ScenarioState& state)
             failed = false;
         }
     }
-    bool sent = state.Bench.SendsInLastPass() > 0U;
-    if (reason.empty() && sent && state.SenderDown && !failed)
+    bool tried = (state.Bench.SendsInLastPass() + state.Bench.OpensInLastPass()) > 0U;
+    if (reason.empty() && tried && SenderRefuses(state) && !failed)
     {
-        reason = "a send was refused without DELIVERY_FAILED";
+        reason = "a delivery was refused without DELIVERY_FAILED";
     }
-    if (reason.empty() && sent && !state.SenderDown && failed)
+    if (reason.empty() && tried && !SenderRefuses(state) && failed)
     {
-        reason = "a send was accepted without RESTORED";
+        reason = "a delivery was accepted without RESTORED";
     }
     return reason;
 }
@@ -217,11 +295,11 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
     for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
     {
-        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED) && !state.SenderDown)
+        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED) && !SenderRefuses(state))
         {
             reason = "DELIVERY_FAILED with the sender up";
         }
-        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED) && state.SenderDown)
+        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED) && SenderRefuses(state))
         {
             reason = "RESTORED with the sender down";
         }
@@ -229,11 +307,36 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
     return reason;
 }
 
+/* The stream raises TLS_STREAM_HANDSHAKE_FAILED only while the handshake is
+ * refused, and once for a run of refusals, which only an open that succeeds
+ * ends. An open cannot succeed while the handshake is refused, so each refusal
+ * is at most one. */
+std::string HandshakeFaultsFollowTheStream(const ScenarioState& state)
+{
+    std::string reason;
+    const std::vector<ScenarioEvent>& events = state.Bench.Events();
+    for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
+    {
+        if ((events[i].Category == SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED) && !state.HandshakeRefused)
+        {
+            reason = "TLS_STREAM_HANDSHAKE_FAILED with the handshake accepted";
+        }
+    }
+    size_t raised = CountCategory(events, SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED);
+    if (reason.empty() && (raised > state.HandshakeRefusals))
+    {
+        reason =
+            "TLS_STREAM_HANDSHAKE_FAILED " + Count("raised", raised) + " " + Count("refusals", state.HandshakeRefusals);
+    }
+    return reason;
+}
+
 /* STORE_FROZEN is raised only by a failed device, in a pass that touched
  * it, once the store has touched it, and at most once. The device fails for
- * good, so a freeze reported at any time since is the one for this run.
- * STORE_WRITE_FAILED is the security policy refusing to seal a record, which
- * the bench cannot provoke, so it has no invariant. */
+ * good, so a freeze reported at any time since is the one for this run. A
+ * device of files fails through its file system, which raises FILE_IO_FAILED,
+ * so that too follows the failed device.
+ * STORE_WRITE_FAILED follows the security policy instead, judged beside it. */
 std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
 {
     std::string reason;
@@ -245,6 +348,10 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
         if (frozen && !state.DeviceFailed)
         {
             reason = "STORE_FROZEN with the device working";
+        }
+        if ((events[i].Category == SOLIDSYSLOG_CAT_FILE_IO_FAILED) && !state.DeviceFailed)
+        {
+            reason = "FILE_IO_FAILED with the device working";
         }
         if (frozen && !used)
         {
@@ -263,27 +370,129 @@ std::string StoreFaultsFollowTheDevice(const ScenarioState& state)
     return reason;
 }
 
-/* A latched report stands for a run, so the same report twice in one pass
- * is a latch that did not hold - unless it is the buffer's and the policy
- * changed between them. In the buffer a record kept ends a run of refusals
- * and a refusal ends a run of evictions, so each change can start one run
- * more before the next pass. */
-std::string ALossIsReportedOncePerRun(const ScenarioState& state)
+/* The security policy raises only while it fails, and the store's losses to it
+ * follow it: a record it would not seal is lost only while the key is withheld
+ * or the backend fails, and one is discarded as rejected only while the policy
+ * rejects. */
+std::string PolicyFaultsFollowThePolicy(const ScenarioState& state)
 {
-    std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> seen;
+    enum SecurityPolicyFakeFault fault = state.SecurityPolicyFault;
+    bool sealing = (fault == SECURITY_POLICY_FAKE_WORKING) || (fault == SECURITY_POLICY_FAKE_REJECTING);
     std::string reason;
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
     for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
     {
-        size_t raised =
-            IsLoss(events[i]) ? ++seen[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] : 0U;
-        size_t runsAllowed =
-            1U + ((events[i].Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ? state.PolicyChangesSinceLastPass : 0U);
-        if (raised > runsAllowed)
+        uint16_t category = events[i].Category;
+        bool backend = (category == SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED) ||
+                       (category == SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED);
+        bool rejected = (events[i].Source == &SolidSyslogBlockStoreErrorSource) &&
+                        (events[i].Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REJECTED);
+        if ((category == SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE) &&
+            (fault != SECURITY_POLICY_FAKE_KEY_WITHHELD))
         {
-            reason = Count("category", events[i].Category) + " " +
-                     Count("detail", static_cast<size_t>(events[i].Detail)) + " " + Count("raised", raised) +
-                     " in one pass " + Count("policy changes", state.PolicyChangesSinceLastPass);
+            reason = "KEY_UNAVAILABLE with the key available";
+        }
+        if (backend && (fault != SECURITY_POLICY_FAKE_BACKEND_FAILING))
+        {
+            reason = NameOf(category) + " with the backend working";
+        }
+        if ((category == SOLIDSYSLOG_CAT_STORE_WRITE_FAILED) && sealing)
+        {
+            reason = "STORE_WRITE_FAILED with the policy sealing";
+        }
+        if (rejected && (fault != SECURITY_POLICY_FAKE_REJECTING))
+        {
+            reason = "a record rejected by a policy that verifies it";
+        }
+    }
+    return reason;
+}
+
+bool IsEndedByARecordKept(const ScenarioEvent& event)
+{
+    return (event.Source == &SolidSyslogBlockStoreErrorSource) &&
+           ((event.Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED) ||
+            (event.Detail == SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED));
+}
+
+/* The raises of one report in the pass since its run last ended, and how many
+ * records the store had kept at the last of them. */
+struct RaisesInRun
+{
+    size_t Raised;
+    size_t KeptAtLast;
+};
+
+/* A latched report stands for a run, so the same report twice in one pass
+ * is a latch that did not hold - unless the run ended between them. In the
+ * buffer a record kept ends a run of refusals and a refusal ends a run of
+ * evictions, so each policy change can start one run more before the next
+ * pass. In the store a record kept ends a run of refusals or of seal
+ * failures, and a pass can keep one between two refusals: a report is a size
+ * of its own, so a store with no room for one may still take a logged
+ * record. */
+std::string ALossIsReportedOncePerRun(const ScenarioState& state)
+{
+    std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, RaisesInRun> seen;
+    std::string reason;
+    const std::vector<ScenarioEvent>& events = state.Bench.Events();
+    for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
+    {
+        if (IsLoss(events[i]))
+        {
+            RaisesInRun& run = seen[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)];
+            bool runEnded = IsEndedByARecordKept(events[i]) && (events[i].RecordsKept != run.KeptAtLast);
+            run.Raised = runEnded ? 1U : (run.Raised + 1U);
+            run.KeptAtLast = events[i].RecordsKept;
+            size_t runsAllowed =
+                1U +
+                ((events[i].Category == SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST) ? state.PolicyChangesSinceLastPass : 0U);
+            if (run.Raised > runsAllowed)
+            {
+                reason = Count("category", events[i].Category) + " " +
+                         Count("detail", static_cast<size_t>(events[i].Detail)) + " " + Count("raised", run.Raised) +
+                         " in one pass " + Count("policy changes", state.PolicyChangesSinceLastPass);
+            }
+        }
+    }
+    return reason;
+}
+
+/* A raise stands for a fault until it clears, so a pass after one in which
+ * nothing was logged and nothing changed has no new fault to raise: a category
+ * raised in both is one raised again for the same fault - a raise that does
+ * not latch, or a report feeding the fault it reports. The one run such a pass
+ * can start afresh is the store's refusals or seal failures, which a record
+ * kept since the last raise ends. */
+std::string QuietPassesGoQuiet(const ScenarioState& state)
+{
+    std::string reason;
+    if (state.QuietSinceLastPass)
+    {
+        const std::vector<ScenarioEvent>& events = state.Bench.Events();
+        size_t pass = state.Bench.Passes();
+        std::set<uint16_t> raisedLastPass;
+        std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> keptAtLastRaise;
+        for (size_t i = 0U; i < state.EventsJudged; i++)
+        {
+            if (events[i].Pass == (pass - 1U))
+            {
+                raisedLastPass.insert(events[i].Category);
+                keptAtLastRaise[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] =
+                    events[i].RecordsKept;
+            }
+        }
+        for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
+        {
+            auto lastRaise =
+                keptAtLastRaise.find(std::make_tuple(events[i].Source, events[i].Category, events[i].Detail));
+            bool runEnded = IsEndedByARecordKept(events[i]) && (lastRaise != keptAtLastRaise.end()) &&
+                            (events[i].RecordsKept != lastRaise->second);
+            if ((raisedLastPass.count(events[i].Category) != 0U) && !runEnded)
+            {
+                reason = NameOf(events[i].Category) + " " + Count("detail", static_cast<size_t>(events[i].Detail)) +
+                         " raised again in a quiet " + Count("pass", pass);
+            }
         }
     }
     return reason;
@@ -294,11 +503,28 @@ bool IsHeldRecordDrop(const ScenarioEvent& event)
     return (event.Source == &SolidSyslogErrorSource) && (event.Detail == SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED);
 }
 
+/* Whether a record reached the sender from pass @p from up to, but not
+ * including, pass @p to: delivered, or dropped by the misrouted sender, which
+ * deals with it as surely. */
+bool IsARecordSentBetween(const ScenarioState& state, size_t from, size_t to)
+{
+    bool sent = false;
+    for (const ScenarioDelivery& delivery : state.Bench.Delivered())
+    {
+        sent = sent || ((delivery.Pass >= from) && (delivery.Pass < to));
+    }
+    for (const ScenarioDelivery& dropped : state.Bench.DroppedRecords())
+    {
+        sent = sent || ((dropped.Pass >= from) && (dropped.Pass < to));
+    }
+    return sent;
+}
+
 /* Service drops a held record at the start of a pass, and only a record from
  * the buffer that it then deals with ends the run; a report it deals with
- * does not. With no store to take it, a record dealt with is a record
- * delivered, so a drop reported again needs one delivered since the pass of
- * the report before. */
+ * does not. With no store to take it, a record dealt with is a record the
+ * sender took, so a drop reported again needs one sent since the pass of the
+ * report before. */
 std::string ARunOfHeldDropsIsReportedOnce(const ScenarioState& state)
 {
     bool reportedBefore = false;
@@ -308,19 +534,11 @@ std::string ARunOfHeldDropsIsReportedOnce(const ScenarioState& state)
     {
         if (IsHeldRecordDrop(event))
         {
-            bool runEnded = true;
-            if (reportedBefore)
-            {
-                runEnded = false;
-                for (const ScenarioDelivery& delivery : state.Bench.Delivered())
-                {
-                    runEnded = runEnded || ((delivery.Pass >= reportPass) && (delivery.Pass < event.Pass));
-                }
-            }
+            bool runEnded = !reportedBefore || IsARecordSentBetween(state, reportPass, event.Pass);
             if (reason.empty() && !runEnded)
             {
-                reason = Count("held record drop reported again at pass", event.Pass) +
-                         " with nothing delivered since " + Count("pass", reportPass);
+                reason = Count("held record drop reported again at pass", event.Pass) + " with nothing sent since " +
+                         Count("pass", reportPass);
             }
             reportedBefore = true;
             reportPass = event.Pass;
@@ -379,12 +597,16 @@ const Invariant AFTER_EVERY_PASS[] = {
     {"every delivery is a logged record, once", EveryDeliveryIsALoggedRecordOnce},
     {"every report was made with reporting on", EveryReportWasMadeWithReportingOn},
     {"every report stands for a raised event", EveryReportStandsForARaisedEvent},
+    {"every report says what its event said", EveryReportSaysWhatItsEventSaid},
     {"every frame is a record", EveryFrameIsARecord},
     {"no universal error", NoUniversalError},
     {"sender edges alternate", SenderEdgesAlternate},
     {"sender edges follow the fault", SenderEdgesFollowTheFault},
+    {"handshake faults follow the stream", HandshakeFaultsFollowTheStream},
     {"store faults follow the device", StoreFaultsFollowTheDevice},
+    {"policy faults follow the policy", PolicyFaultsFollowThePolicy},
     {"a loss is reported once per run", ALossIsReportedOncePerRun},
+    {"quiet passes go quiet", QuietPassesGoQuiet},
     {"a run of held drops is reported once", ARunOfHeldDropsIsReportedOnce},
     {"halted only under halt", HaltedOnlyUnderHalt},
     {"nothing moves while halted", NothingMovesWhileHalted},
@@ -413,49 +635,89 @@ std::string EveryRecordIsDeliveredOrItsLossReported(const ScenarioState& state)
                : std::string();
 }
 
-/* A report the store or the sender lost raised a loss of its own; any other
- * report made has reached the sender by the end of the drain. Which report a
- * loss stands for cannot be judged: the store and the sender report a loss
- * once per run, so a report refused inside a run that began before it was
- * made raises nothing of its own. Only whether any downstream loss occurred
- * can be, which the rigs with no store make strict. */
+/* A report the misrouted sender dropped is one the bench saw dropped; one the
+ * store lost raised a loss of its own; any other report made has reached the
+ * sender by the end of the drain. Which report a store loss stands for
+ * cannot be judged: the store reports a loss once per run, so a report lost
+ * inside a run that began before it was made raises nothing of its own. Only
+ * whether the store lost anything it held can be, which the rigs with no
+ * store make strict. */
 std::string EveryReportMadeIsDeliveredOrItsLossReported(const ScenarioState& state)
 {
     bool lossReported = false;
     for (const ScenarioEvent& event : state.Bench.Events())
     {
-        lossReported = lossReported || IsDownstreamLoss(event);
+        lossReported = lossReported || CanLoseAReport(event);
     }
-    bool shortfall = state.Bench.Reports().size() != state.Bench.ReportsMade();
+    bool shortfall = MadeReports(state).size() != state.Bench.ReportsMade();
     return (shortfall && !lossReported)
-               ? (Count("made", state.Bench.ReportsMade()) + " " + Count("delivered", state.Bench.Reports().size()))
+               ? (Count("made", state.Bench.ReportsMade()) + " " + Count("delivered", state.Bench.Reports().size()) +
+                  " " + Count("dropped", state.Bench.DroppedReports().size()))
                : std::string();
 }
 
-/* The drain runs with reporting on, so once the logger is idle the last
- * event of a reported kind has been taken into a report: an event left
- * waiting at IDLE would sit there until something else woke the loop. */
-std::string TheLastEventOfAReportedKindIsReported(const ScenarioState& state)
+/* Service made a report of the kind after the meta SD had handed out
+ * @p lastSequenceId, so after the event raised then; it arrived, or the
+ * misrouted sender dropped it. */
+bool IsReportedAfter(const ScenarioState& state, uint16_t kind, unsigned lastSequenceId)
+{
+    bool reported = false;
+    for (const ScenarioReport& report : MadeReports(state))
+    {
+        reported = reported || ((report.Category == NameOf(kind)) && (report.SequenceId > lastSequenceId));
+    }
+    return reported;
+}
+
+/* Whether the store could have lost the report of an event raised after the
+ * meta SD had handed out @p lastSequenceId. An eviction or a discard reports a
+ * run once, so one at any time could have taken it. The freeze loses only what
+ * the store held when it froze, so it could only if a sequenceId was handed out
+ * between the two: with none, the report took its number after the freeze and
+ * went to the sender. */
+bool CouldHaveLostTheReport(const std::vector<ScenarioEvent>& events, unsigned lastSequenceId)
+{
+    bool lost = false;
+    for (const ScenarioEvent& event : events)
+    {
+        bool frozen = event.Category == SOLIDSYSLOG_CAT_STORE_FROZEN;
+        bool frozenAfterwards = frozen && (event.LastSequenceId > lastSequenceId);
+        lost = lost || frozenAfterwards || (CanLoseAReport(event) && !frozen);
+    }
+    return lost;
+}
+
+/* The drain runs with reporting on and ends idle, so the last event of each
+ * reported kind has been taken into a report, which has reached the sender
+ * unless the store lost what it held. Which report a loss stands for cannot
+ * be judged - the store reports a loss once per run - so any loss that could
+ * have taken it excuses. */
+std::string TheLastEventOfEachReportedKindIsReported(const ScenarioState& state)
 {
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
-    bool waiting = false;
     std::string reason;
-    for (size_t i = 0U; i < events.size(); i++)
+    for (uint16_t kind : REPORTED_KINDS)
     {
-        if (IsReportedKind(events[i].Category))
+        const ScenarioEvent* last = nullptr;
+        for (const ScenarioEvent& event : events)
         {
-            waiting = i >= state.Bench.EventsWhenLastReportMade();
-            reason = NameOf(events[i].Category) + " " + Count("event", i) + " never reported";
+            last = (event.Category == kind) ? &event : last;
+        }
+        bool unreported = (last != nullptr) && !IsReportedAfter(state, kind, last->LastSequenceId) &&
+                          !CouldHaveLostTheReport(events, last->LastSequenceId);
+        if (reason.empty() && unreported)
+        {
+            reason = NameOf(kind) + " raised after " + Count("sequenceId", last->LastSequenceId) + " never reported";
         }
     }
-    return waiting ? reason : std::string();
+    return reason;
 }
 
 const Invariant AT_END[] = {
     {"the drain ends idle", TheDrainEndsIdle},
     {"every record is delivered or its loss reported", EveryRecordIsDeliveredOrItsLossReported},
     {"every report made is delivered or its loss reported", EveryReportMadeIsDeliveredOrItsLossReported},
-    {"the last event of a reported kind is reported", TheLastEventOfAReportedKindIsReported},
+    {"the last event of each reported kind is reported", TheLastEventOfEachReportedKindIsReported},
 };
 
 template <size_t N> ScenarioVerdict Judge(const Invariant (&table)[N], const ScenarioState& state)

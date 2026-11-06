@@ -18,7 +18,8 @@ enum
     OPT_CAPACITY_THRESHOLD = 261,
     OPT_APP_NAME = 262,
     OPT_SECURITY_POLICY = 263,
-    OPT_ERRORS_FATAL = 264
+    OPT_ERRORS_FATAL = 264,
+    OPT_NO_REPORTING = 265
 };
 
 static bool IsValidErrorsFatal(const char* value)
@@ -97,6 +98,7 @@ static int ApplyOption(int opt, const char* name, const char* value, struct BddT
             break;
         case OPT_NO_SD:
         case OPT_HALT_EXIT:
+        case OPT_NO_REPORTING:
             /* Bare flags; the shared settings take every value as a number. */
             result = SetStoreSetting(name, "1");
             break;
@@ -139,6 +141,7 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
         {"capacity-threshold", required_argument, NULL, OPT_CAPACITY_THRESHOLD},
         {"no-sd", no_argument, NULL, OPT_NO_SD},
         {"halt-exit", no_argument, NULL, OPT_HALT_EXIT},
+        {"no-reporting", no_argument, NULL, OPT_NO_REPORTING},
         {"app-name", required_argument, NULL, OPT_APP_NAME},
         {"errors-fatal", required_argument, NULL, OPT_ERRORS_FATAL},
         {NULL, 0, NULL, 0},

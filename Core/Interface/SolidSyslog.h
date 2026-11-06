@@ -49,8 +49,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** Run one servicing pass and return an advisory hint for driving an
-     *  event-driven loop. A pass reports a waiting event of the library's own
-     *  (see SolidSyslogConfig.IsEventReportingOn), drains the buffer into the
+     *  event-driven loop. A pass reports the library's own events that are
+     *  waiting (see SolidSyslogConfig.IsEventReportingOn), drains the buffer into the
      *  store, or straight to the sender when the store keeps nothing, then
      *  attempts one send from the store. The hint is never load-bearing: each
      *  call works from the live buffer and store and from the record it holds,
@@ -58,11 +58,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  may ignore the return. A NULL handle is reported and returns IDLE.
      *
      *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing left anywhere - no record held, buffered
-     *                                      or stored, and no report waiting to be made
-     *                                      while reporting is on; wait for the next Log.
+     *                                      or stored, and no event of the library's own
+     *                                      waiting - or the reporting switch turned a
+     *                                      report down this pass, which leaves every
+     *                                      event waiting, those raised later in the pass
+     *                                      too; wait for the next Log. Turning
+     *                                      reporting back on does not wake a loop waiting
+     *                                      here: the next Log, or a poll, makes the report.
      *  @retval SOLIDSYSLOG_SERVICE_READY   There is more to do: the buffer was read this
-     *                                      pass, or the store still has unsent after a
-     *                                      send; loop again.
+     *                                      pass, the store still has unsent after a send,
+     *                                      or an event of the library's own is waiting to
+     *                                      be reported; loop again.
      *  @retval SOLIDSYSLOG_SERVICE_BLOCKED A record is waiting on the sender. With a store
      *                                      that keeps nothing, a direct send failed and
      *                                      Service holds the record. Otherwise the buffer
@@ -84,6 +90,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  record, and reads neither the buffer nor the store again until it has
      *  gone, so nothing overtakes it; records logged meanwhile wait in the
      *  buffer under its own policy.
+     *
+     *  Service never drops a report of the library's own; a sender that takes
+     *  one decides its fate as it does a record's. One a retaining store
+     *  loses, or refuses under its discard policy, goes to the sender instead,
+     *  ahead of the records the store holds. Service holds it while the sender
+     *  refuses it, or while that refusal has the logger halted, and offers it
+     *  to the store again first on the next pass.
      *
      *  Call this from one task. SolidSyslog_Log is the only entry point designed
      *  to be called concurrently; everything reached from Service - the sender,

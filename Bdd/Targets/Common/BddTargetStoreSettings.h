@@ -34,6 +34,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool BddTargetStoreSettings_HaltExit(void);
     /* Whether the logger carries the meta SD alone, without timeQuality and origin. */
     bool BddTargetStoreSettings_NoSd(void);
+    /* The IsEventReportingOn callback a target installs on its SolidSyslogConfig,
+       so `set no-reporting 1` turns the logger's reports of its own events off,
+       on a running target too; the context is unused. */
+    bool BddTargetStoreSettings_IsEventReportingOn(void* context);
     /* The BlockStore's GetCapacityThreshold callback; the context is unused. */
     size_t BddTargetStoreSettings_GetCapacityThreshold(void* context);
 

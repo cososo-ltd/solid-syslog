@@ -243,6 +243,15 @@ TEST(BddTargetCommandLine, NoSdFlag)
     CHECK_TRUE(BddTargetStoreSettings_NoSd());
 }
 
+TEST(BddTargetCommandLine, NoReportingFlag)
+{
+    char arg0[] = "test";
+    char arg1[] = "--no-reporting";
+    char* argv[] = {arg0, arg1, nullptr};
+    LONGS_EQUAL(0, Parse(2, argv));
+    CHECK_FALSE(BddTargetStoreSettings_IsEventReportingOn(nullptr));
+}
+
 TEST(BddTargetCommandLine, DefaultHaltExitIsOff)
 {
     char arg0[] = "test";

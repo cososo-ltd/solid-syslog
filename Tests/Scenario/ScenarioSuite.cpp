@@ -18,10 +18,13 @@ const size_t WALK_STEPS = 300U;
 /* Passes the drain allows beyond one per record before it is a spin. */
 const size_t DRAIN_SLACK = 50U;
 
-const std::array<ScenarioRig, 6> RIGS = {
+const std::array<ScenarioRig, 9> RIGS = {
     {SCENARIO_RIG_OLDEST,
      SCENARIO_RIG_NEWEST,
      SCENARIO_RIG_HALT,
+     SCENARIO_RIG_OLDEST_FILE,
+     SCENARIO_RIG_NEWEST_FILE,
+     SCENARIO_RIG_HALT_FILE,
      SCENARIO_RIG_OLDEST_NO_STORE,
      SCENARIO_RIG_NEWEST_NO_STORE,
      SCENARIO_RIG_HALT_NO_STORE}
@@ -29,7 +32,9 @@ const std::array<ScenarioRig, 6> RIGS = {
 
 /* A step's letter and its weight in a thousand draws. Logging outruns
  * Service, outages are short and recover, a device failure is rare enough
- * that most walks never see one, and reporting is mostly on. */
+ * that most walks never see one, a misrouted sender, a refused handshake and a
+ * failing security policy are rare and soon put right, and reporting is mostly
+ * on. */
 struct Step
 {
     char Letter;
@@ -37,7 +42,15 @@ struct Step
 };
 
 const Step STEPS[] = {
-    {'L', 440U},
+    {'L', 380U},
+    {'J', 6U},
+    {'A', 10U},
+    {'M', 8U},
+    {'B', 12U},
+    {'K', 8U},
+    {'P', 4U},
+    {'T', 2U},
+    {'W', 10U},
     {'S', 335U},
     {'D', 40U},
     {'U', 60U},
@@ -60,13 +73,17 @@ class Driver
                                   bench,
                                   false,
                                   false,
+                                  0U,
+                                  false,
                                   rig.Options.DiscardPolicy,
                                   (rig.Options.DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT) ? 1U : 0U,
                                   0U,
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   SOLIDSYSLOG_SERVICE_IDLE,
                                   0U,
-                                  0U
+                                  0U,
+                                  false,
+                                  SECURITY_POLICY_FAKE_WORKING
                               }
     {
     }
@@ -88,6 +105,7 @@ class Driver
     ScenarioVerdict Apply(char step)
     {
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
+        state.QuietSinceLastPass = state.QuietSinceLastPass && (step == 'S');
         switch (step)
         {
             case 'L':
@@ -105,6 +123,35 @@ class Driver
             case 'F':
                 bench.FailDevice();
                 state.DeviceFailed = true;
+                break;
+            case 'C':
+                /* Scripts only: the ring never gets past a corrupt record, so
+                 * a walk would strand everything logged after it. */
+                bench.CorruptTheRing();
+                break;
+            case 'J':
+                SetHandshakeRefused(true);
+                break;
+            case 'A':
+                SetHandshakeRefused(false);
+                break;
+            case 'M':
+                bench.SetMisrouted(true);
+                break;
+            case 'B':
+                bench.SetMisrouted(false);
+                break;
+            case 'K':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_KEY_WITHHELD);
+                break;
+            case 'P':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_BACKEND_FAILING);
+                break;
+            case 'T':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_REJECTING);
+                break;
+            case 'W':
+                SetSecurityPolicyFault(SECURITY_POLICY_FAKE_WORKING);
                 break;
             case 'O':
                 SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
@@ -136,6 +183,19 @@ class Driver
         state.SenderDown = down;
     }
 
+    void SetHandshakeRefused(bool refused)
+    {
+        bench.SetHandshakeRefused(refused);
+        state.HandshakeRefusals += (refused && !state.HandshakeRefused) ? 1U : 0U;
+        state.HandshakeRefused = refused;
+    }
+
+    void SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault)
+    {
+        bench.SetSecurityPolicyFault(fault);
+        state.SecurityPolicyFault = fault;
+    }
+
     void SetPolicy(enum SolidSyslogDiscardPolicy policy)
     {
         bench.SetDiscardPolicy(policy);
@@ -152,6 +212,7 @@ class Driver
         ScenarioVerdict verdict = ScenarioInvariants_CheckAfterPass(state);
         state.EventsJudged = bench.Events().size();
         state.PolicyChangesSinceLastPass = 0U;
+        state.QuietSinceLastPass = true;
         return verdict;
     }
 
@@ -160,8 +221,12 @@ class Driver
     ScenarioVerdict Drain()
     {
         SetSender(false);
+        SetHandshakeRefused(false);
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
         bench.SetReporting(true);
+        bench.SetMisrouted(false);
+        SetSecurityPolicyFault(SECURITY_POLICY_FAKE_WORKING);
+        state.QuietSinceLastPass = false;
         ScenarioVerdict verdict = {true, "", "", bench.Passes()};
         size_t allowance = bench.Logged() + DRAIN_SLACK;
         bool idle = false; /* the script's last status says nothing about what it logged since */

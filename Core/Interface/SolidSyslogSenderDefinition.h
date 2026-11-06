@@ -26,7 +26,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  keep the record in the Store for a later retry, which is what a slow or
          *  down destination reports. May connect lazily, which can block on the
          *  transport; @p buffer is read during the call and need not outlive it. Called
-         *  on the servicing thread, so it need not be reentrant. */
+         *  on the servicing thread, so it need not be reentrant. Report a run of
+         *  failed sends once, when it starts, re-armed by the next send that
+         *  succeeds: the library's reports of its own events pass through Send
+         *  too, so a sender that reported every failure would raise one for
+         *  each report of the one before. */
         bool (*Send)(struct SolidSyslogSender* base, const void* buffer, size_t size);
         /** Drop the underlying connection, leaving the sender reusable: the next
          *  Send reconnects. Must be idempotent (safe when already disconnected).
