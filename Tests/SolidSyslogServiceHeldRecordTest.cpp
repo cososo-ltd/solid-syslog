@@ -555,6 +555,35 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnce
     STRCMP_EQUAL("third", SenderFake_LastBufferAsString(fakeSender));
 }
 
+/* The sender takes "first" and then refuses, so the last thing offered to it is
+ * the first report made once the halt lifts: the loss that caused the halt. */
+TEST(SolidSyslogServiceHeldRecordBufferFull, OnceTheHaltLiftsTheLossThatCausedItIsReportedFirst)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    SolidSyslog_Service(solidSyslog);
+
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    SenderFake_FailSendAfter(fakeSender, 1);
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(strstr(SenderFake_LastBufferAsString(fakeSender), "category=\"BUFFER_RECORDS_LOST\"") != nullptr);
+}
+
+/* One send later, the last thing offered is the second report: the halt. */
+TEST(SolidSyslogServiceHeldRecordBufferFull, OnceTheHaltLiftsTheHaltIsReportedAfterTheLossThatCausedIt)
+{
+    policy = SOLIDSYSLOG_DISCARD_POLICY_HALT;
+    HoldFirstWithTheRingFullBehindIt();
+    SolidSyslog_Service(solidSyslog);
+
+    policy = SOLIDSYSLOG_DISCARD_POLICY_NEWEST;
+    SenderFake_FailSendAfter(fakeSender, 2);
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(strstr(SenderFake_LastBufferAsString(fakeSender), "category=\"LOGGER_HALTED\"") != nullptr);
+}
+
 static int haltOrder;
 static int thresholdOrder;
 static bool refusalReportedBeforeHalt;
