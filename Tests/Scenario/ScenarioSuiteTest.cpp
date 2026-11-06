@@ -140,6 +140,14 @@ TEST(ScenarioSuite, AFailingPolicyBackendIsReportedOnceForTheRun)
     CHECK_SCENARIO(OLDEST, "LLLP" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
 }
 
+/* A pass sends one record from the store, so the records kept while the
+ * backend worked are opened on every pass after it fails, and wait in the
+ * store until it works. */
+TEST(ScenarioSuite, AFailingPolicyBackendOnReadIsReportedOnceAndTheStoreWaitsForIt)
+{
+    CHECK_SCENARIO(OLDEST, "LLLSP" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
+}
+
 TEST(ScenarioSuite, ARecordThatFailsVerificationIsDiscardedAndReportedOnce)
 {
     CHECK_SCENARIO(OLDEST, "DLLLSUT" + Repeat("S", 5U) + "W" + Repeat("S", 5U));

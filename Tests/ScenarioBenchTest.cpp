@@ -276,6 +276,21 @@ TEST(ScenarioBench, ARecordThatFailsVerificationIsDiscarded)
     LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_RECORD_DISCARDED, bench.Events()[0].Category);
 }
 
+/* A pass sends one record from the store, so three logged leave two kept
+ * while the policy worked; a backend that fails after that fails the open of
+ * the next one read. */
+TEST(ScenarioBench, AFailingBackendOnReadIsReportedAsAnOpenFailure)
+{
+    ScenarioBench bench(options);
+    bench.Log();
+    bench.Log();
+    bench.Log();
+    bench.Service();
+    bench.SetSecurityPolicyFault(SECURITY_POLICY_FAKE_BACKEND_FAILING);
+    bench.Service();
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED, bench.Events().back().Category);
+}
+
 TEST(ScenarioBench, ACorruptRingIsReportedAsItsBackendFailing)
 {
     ScenarioBench bench(options);
