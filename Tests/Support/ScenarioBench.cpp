@@ -135,9 +135,9 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
       countingDevice(), stream(StreamFake_Create()), streamVersion(0U), counter(CounterFake_Create()), metaSd(nullptr),
       sds(), buffer(CreateBuffer(ring, this)), securityPolicy(SecurityPolicyFake_Create()), store(nullptr),
       countingStore(), sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false),
-      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), thresholdCrossings(0U), deviceFailed(false), framesSeen(0U),
-      deviceOperationsInLastPass(0U), sendsInLastPass(0U), opensInLastPass(0U), maxDeviceOperationsInOnePass(0U),
-      maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
+      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), thresholdCrossings(0U), deviceFailed(false),
+      framesSeen(0U), deviceOperationsInLastPass(0U), sendsInLastPass(0U), opensInLastPass(0U),
+      maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;

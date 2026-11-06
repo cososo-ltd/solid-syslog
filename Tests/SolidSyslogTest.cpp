@@ -1375,8 +1375,10 @@ TEST(SolidSyslogServiceHalt, TheHaltIsReportedAheadOfTheBufferOnceThePolicyChang
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     CHECK(
-        strstr(SenderFake_LastBufferAsString(fakeSender), "category=\"LOGGER_HALTED\" detail=\"HALTED_STORE_REFUSED\"") !=
-        nullptr
+        strstr(
+            SenderFake_LastBufferAsString(fakeSender),
+            "category=\"LOGGER_HALTED\" detail=\"HALTED_STORE_REFUSED\""
+        ) != nullptr
     );
 }
 

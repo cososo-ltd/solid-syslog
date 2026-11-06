@@ -609,8 +609,7 @@ std::string ALiftedHaltIsReportedThatPass(const ScenarioState& state)
 {
     bool lifted = (state.StatusBeforePass == SOLIDSYSLOG_SERVICE_HALTED) &&
                   ((state.Status == SOLIDSYSLOG_SERVICE_READY) || (state.Status == SOLIDSYSLOG_SERVICE_IDLE));
-    bool unreported =
-        lifted && state.Bench.IsReporting() && (state.Bench.ReportsMade() == state.ReportsMadeBeforePass);
+    bool unreported = lifted && state.Bench.IsReporting() && (state.Bench.ReportsMade() == state.ReportsMadeBeforePass);
     return unreported ? std::string("left HALTED and made no report") : std::string();
 }
 
