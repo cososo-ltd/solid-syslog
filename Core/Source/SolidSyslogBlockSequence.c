@@ -383,7 +383,7 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
          * threshold at 100% fires on the refusal even with slack in the blocks.
          * Cleared once a block drains or a record is accepted. */
         blockSequence->AtCapacity = true;
-        BlockSequence_NotifyThresholdCrossed(blockSequence); /* threshold first per S05.09 ordering */
+        BlockSequence_NotifyThresholdCrossed(blockSequence); /* ahead of the refusal the store reports next */
         spaceAvailable = false;
     }
     else if (blockFull)

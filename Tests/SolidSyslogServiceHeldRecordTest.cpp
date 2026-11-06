@@ -558,24 +558,27 @@ TEST(SolidSyslogServiceHeldRecordBufferFull, UnderHaltTheHeldRecordIsRetriedOnce
 static int haltOrder;
 static int thresholdOrder;
 static bool refusalReportedBeforeHalt;
+static bool haltRaisedBeforeHalt;
 static int nextOrder;
 
-static bool RefusalWasReported()
+static bool WasRaised(uint16_t category, int32_t detail)
 {
-    bool reported = false;
+    bool raised = false;
     for (int index = 0; index < ErrorHandlerFake_HandleCallCount(); index++)
     {
-        reported = reported || ((ErrorHandlerFake_CategoryAt(index) == SOLIDSYSLOG_CAT_STORE_RECORDS_LOST) &&
-                                (ErrorHandlerFake_DetailAt(index) == SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED));
+        raised = raised ||
+                 ((ErrorHandlerFake_CategoryAt(index) == category) && (ErrorHandlerFake_DetailAt(index) == detail));
     }
-    return reported;
+    return raised;
 }
 
 static void NoteHalt(void* context)
 {
     (void) context;
     haltOrder = ++nextOrder;
-    refusalReportedBeforeHalt = RefusalWasReported();
+    refusalReportedBeforeHalt =
+        WasRaised(SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, SOLIDSYSLOG_BLOCK_STORE_ERROR_RECORD_REFUSED);
+    haltRaisedBeforeHalt = WasRaised(SOLIDSYSLOG_CAT_LOGGER_HALTED, SOLIDSYSLOG_ERROR_HALTED_STORE_REFUSED);
 }
 
 static void NoteThresholdCrossed(void* context)
@@ -634,6 +637,7 @@ TEST_GROUP_BASE(SolidSyslogServiceHaltOrdering, ServiceHeldRecordBase)
         haltOrder         = 0;
         thresholdOrder    = 0;
         refusalReportedBeforeHalt = false;
+        haltRaisedBeforeHalt      = false;
         ErrorHandlerFake_Install(nullptr);
     }
 
@@ -665,6 +669,17 @@ TEST(SolidSyslogServiceHaltOrdering, TheRefusalIsReportedBeforeOnHaltIsCalled)
     SolidSyslog_Service(solidSyslog);
 
     CHECK(refusalReportedBeforeHalt);
+}
+
+/* The same holds for the halt itself: an OnHalt that never returns must not
+ * cost the error handler the event. */
+TEST(SolidSyslogServiceHaltOrdering, TheHaltIsRaisedBeforeOnHaltIsCalled)
+{
+    LogThreeTheStoreCannotAllHold();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CHECK(haltRaisedBeforeHalt);
 }
 
 TEST(SolidSyslogServiceHaltOrdering, AHaltOnTheStoresRefusalIsRaisedAsAnEvent)

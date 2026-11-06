@@ -57,8 +57,9 @@
  *  falling back below the threshold re-arms it, which a block sent out or
  *  evicted can do, so a store evicting under the Oldest policy whose threshold
  *  lies in its last block crosses again as each block refills. A threshold at
- *  the store's whole capacity is crossed when the full store refuses a record.
- *  A store resumed at or above its threshold raises it when it is created. */
+ *  the store's whole capacity is crossed when the full store refuses a record,
+ *  and re-armed by the next record the store keeps. A store resumed at or
+ *  above its threshold raises it when it is created. */
 #define SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED ((uint16_t) (SOLIDSYSLOG_CAT_STORE_BASE + 6U))
 
 #endif /* SOLIDSYSLOGSTORECATEGORIES_H */
