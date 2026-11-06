@@ -146,6 +146,7 @@ def otel_start_oracle():
 
 def before_all(context):
     context.stack_marks = StackMarks()
+    StackMarks.discard_record()
     # Configurable via env so the same step code drives Linux (syslog-ng),
     # Windows (OTel Collector), and FreeRTOS-on-QEMU runners with
     # different binary paths and oracle output formats. BDD_TARGET picks
@@ -262,11 +263,12 @@ def _dump_target_log(process, attr, channel, prefix):
 
 
 def _record_stack_marks(context, scenario, process):
-    """Keep the stack high-water marks an RTOS target prints on `quit`. The
-    line is the last thing the target writes, so the reader thread may still
-    be catching up with it when the process has gone; a target that prints
-    none - a hosted one, or one that had to be killed - costs the wait once
-    its output has stopped growing."""
+    """Keep the stack high-water marks an RTOS target prints on `quit`,
+    whether this hook sent it or a step already stopped the target. The line
+    is the last thing the target writes, so the reader thread may still be
+    catching up with it when the process has gone; a target that printed
+    none - one shut down or killed by a step, to stand in for a power cut -
+    costs the wait once its output has stopped growing."""
     if context.target != "freertos":
         return
     log = getattr(process, "_solidsyslog_stdout_log", None)
@@ -283,9 +285,12 @@ def _record_stack_marks(context, scenario, process):
 
 def after_all(context):
     # behave captures a hook's stdout and shows it only on a failure, so the
-    # record goes to the stream behind the capture to reach the run's log.
-    for line in context.stack_marks.write():
+    # record goes to the stream behind the capture to reach the run's log,
+    # and goes there before the file is written, so a path that cannot be
+    # written loses the file alone.
+    for line in context.stack_marks.lines():
         print(line, file=sys.__stdout__, flush=True)
+    context.stack_marks.write()
 
 
 def after_scenario(context, scenario):
@@ -302,7 +307,7 @@ def after_scenario(context, scenario):
             except Exception:
                 process.kill()
                 process.wait()
-            _record_stack_marks(context, scenario, process)
+        _record_stack_marks(context, scenario, process)
         del context.interactive_process
 
     # Restore syslog-ng config if it was changed during the scenario.

@@ -1650,8 +1650,6 @@ def step_check_replayed_sequence_ids(context, id_list):
         )
 
 
-
-
 def _outage_seq_ids(context):
     """Collected sequenceIds in oracle log, excluding the pre-outage seqId 1
     and the logger's reports, which take their number when Service makes
@@ -1750,20 +1748,32 @@ def _collector_reports(context, category):
 
 
 def _check_collector_received_report(context, category, details, severity, with_native_code=False):
-    """Asserts the collector holds a report of the category, and that every one
-    it holds names a detail the scenario can provoke, at the event's severity,
-    under the facility and MSGID the library gives its reports. A report of a
-    platform fault carries the platform's own code as well; which code is the
-    platform's business, so only that it is there is checked."""
+    """Asserts the collector holds a report of the category naming a detail the
+    scenario can provoke, at the event's severity, under the facility and MSGID
+    the library gives its reports. One such report is enough: the library keeps
+    the latest event of a kind, so a fault that followed the one the scenario
+    provoked can arrive instead of it, and that is a failure the message names.
+    A report of a platform fault carries the platform's own code as well; which
+    code is the platform's business, so only that it is there is checked."""
     reports = _collector_reports(context, category)
     assert reports, f"Expected the logger's {category} report at the collector; none arrived"
-    for report in reports:
-        assert report.get("detail") in details, f"Expected a {category} report naming one of {details}, got {report}"
-        assert report["severity"] == severity_value(severity), f"Expected the {category} report at {severity}, got {report}"
-        assert report["facility"] == REPORT_FACILITY, f"Expected the report under facility {REPORT_FACILITY}, got {report}"
-        assert report["msgid"] == category, f"Expected MSGID {category}, got {report}"
-        if with_native_code:
-            assert re.fullmatch(r"-?\d+", report.get("native", "")), f"Expected a native code in the {category} report, got {report}"
+    expected = {
+        "category": category,
+        "severity": severity_value(severity),
+        "facility": REPORT_FACILITY,
+        "msgid": category,
+    }
+    matching = [
+        report
+        for report in reports
+        if (report.get("detail") in details)
+        and all(report.get(key) == value for key, value in expected.items())
+        and ((not with_native_code) or re.fullmatch(r"-?\d+", report.get("native", "")))
+    ]
+    wanted = f"a {category} report naming one of {details} at {severity} under facility {REPORT_FACILITY}"
+    if with_native_code:
+        wanted += " with a native code"
+    assert matching, f"Expected {wanted}; the collector received {reports}"
 
 
 @then("the syslog oracle received a report that the buffer lost records")

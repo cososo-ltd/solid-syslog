@@ -1,15 +1,19 @@
 """Recording the stack high-water marks an RTOS target prints as it quits.
 
-The QEMU targets end a scenario with one line giving the least stack each task
+The QEMU targets answer `quit` with one line giving the least stack each task
 ever had left, in bytes:
 
     [stack-hwm] interactive=1234 bytes service=5678 bytes
 
 The interactive task is the one that logs; the service task runs Service. A
-target boots once per scenario, so each scenario gives one pair, and the run's
-figure for a task is the least any scenario left it. This is the one figure
-only a target can give, so the run keeps it: every pair goes to a file beside
-the JUnit results and the least of each is printed when the run ends.
+target boots once per scenario, so a scenario that ends through `quit` gives
+one pair, and the run's figure for a task is the least any of them left it. A
+scenario that shuts the target down or kills it instead, to stand in for a
+power cut, prints none; nor does a boot a scenario replaces by restarting the
+target. This is the one figure only a target can give, so the run keeps it:
+every pair goes to a file beside the JUnit results and the least of each is
+printed when the run ends. Zero is a reading like any other: a task that used
+its whole stack reports it, and so does one that never ran.
 """
 
 import os
@@ -35,6 +39,14 @@ class StackMarks:
     def __init__(self):
         self._marks = []
 
+    @staticmethod
+    def discard_record(path=STACK_MARKS_PATH):
+        """Removes an earlier run's record, so the file never describes a run other than the last."""
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
     def record(self, scenario, marks):
         self._marks.append((scenario, marks[0], marks[1]))
 
@@ -46,22 +58,17 @@ class StackMarks:
         ]
         if self._marks:
             least_interactive = min(self._marks, key=lambda mark: mark[1])
-            # A scenario whose Service task never started reports zero for it,
-            # which is no measurement.
-            started = [mark for mark in self._marks if mark[2] > 0]
+            least_service = min(self._marks, key=lambda mark: mark[2])
             lines.append(
                 f"[stack-hwm] least interactive={least_interactive[1]} bytes in: {least_interactive[0]}"
             )
-            if started:
-                least_service = min(started, key=lambda mark: mark[2])
-                lines.append(f"[stack-hwm] least service={least_service[2]} bytes in: {least_service[0]}")
+            lines.append(f"[stack-hwm] least service={least_service[2]} bytes in: {least_service[0]}")
         return lines
 
     def write(self, path=STACK_MARKS_PATH):
-        """Writes the record where the run's results go and returns its lines; nothing for a run with no marks."""
+        """Writes the record where the run's results go; nothing for a run with no marks."""
         lines = self.lines()
         if lines:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "w", encoding="utf-8") as record:
                 record.write("\n".join(lines) + "\n")
-        return lines

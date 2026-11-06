@@ -28,6 +28,8 @@ import subprocess
 import sys
 import time
 
+from stack_marks import stack_marks_in
+
 # Targets that run where Behave runs, from a binary built here. A remote target
 # is built and run on another machine, through the VxWorks 6.4 runner.
 _LOCAL_TARGETS = ("linux", "windows", "freertos")
@@ -355,11 +357,23 @@ def stop_example_process(process, target, timeout=10):
     return code. FreeRTOS: `quit` only deletes the interactive task —
     the QEMU VM keeps idling (the FreeRTOS scheduler stays alive so a
     GDB attach works), so the only way to terminate is to kill QEMU
-    directly. The BDD scenario has already verified the oracle
+    directly, once `quit` has had its say. The BDD scenario has already verified the oracle
     received the frame, so the QEMU exit code carries no useful
     signal — return None for that path so callers don't assert on it.
     """
     if target in _SET_LINE_TARGETS:
+        # `quit` still ends the interactive task, which prints the stack
+        # high-water marks as it goes; give that line time to arrive before
+        # the kill so the run can record it.
+        try:
+            process.stdin.write("quit\n")
+            process.stdin.flush()
+        except (BrokenPipeError, OSError):
+            pass
+        log = getattr(process, "_solidsyslog_stdout_log", None)
+        deadline = time.monotonic() + 2
+        while (log is not None) and (stack_marks_in(log) is None) and (time.monotonic() < deadline):
+            time.sleep(0.05)
         process.kill()
         process.wait(timeout=timeout)
         return None
