@@ -144,6 +144,13 @@ class ScenarioBench
     /* Calls of the logger's halt callback. */
     size_t Halts() const;
 
+    /* Calls of the store's threshold callback: its threshold is half of what
+     * it can hold. */
+    size_t ThresholdCrossings() const;
+
+    /* What the logger's switch answers now. */
+    bool IsReporting() const;
+
     /* Times the switch let a report be made: Service asks it only when it is
      * about to make one. */
     size_t ReportsMade() const;
@@ -239,6 +246,7 @@ class ScenarioBench
     std::vector<ScenarioEvent> events;
     size_t garbage;
     size_t halts;
+    size_t thresholdCrossings;
     bool deviceFailed;
     size_t framesSeen;
     size_t deviceOperationsInLastPass;
@@ -255,6 +263,8 @@ class ScenarioBench
     static void HandleError(void* context, const struct SolidSyslogErrorEvent* event);
     static enum SolidSyslogDiscardPolicy GetDiscardPolicy(void* context);
     static void OnHalt(void* context);
+    static size_t GetCapacityThreshold(void* context);
+    static void OnThresholdCrossed(void* context);
     bool OnReportingAsked();
     static bool IsReportingOn(void* context);
     static uint8_t Select(void* context);

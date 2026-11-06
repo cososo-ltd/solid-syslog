@@ -83,7 +83,8 @@ class Driver
                                   0U,
                                   0U,
                                   false,
-                                  SECURITY_POLICY_FAKE_WORKING
+                                  SECURITY_POLICY_FAKE_WORKING,
+                                  0U
                               }
     {
     }
@@ -208,6 +209,7 @@ class Driver
     {
         state.StatusBeforePass = state.Status;
         state.DeliveredBeforePass = bench.Delivered().size();
+        state.ReportsMadeBeforePass = bench.ReportsMade();
         state.Status = bench.Service();
         ScenarioVerdict verdict = ScenarioInvariants_CheckAfterPass(state);
         state.EventsJudged = bench.Events().size();

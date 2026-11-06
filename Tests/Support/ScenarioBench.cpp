@@ -135,7 +135,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
       countingDevice(), stream(StreamFake_Create()), streamVersion(0U), counter(CounterFake_Create()), metaSd(nullptr),
       sds(), buffer(CreateBuffer(ring, this)), securityPolicy(SecurityPolicyFake_Create()), store(nullptr),
       countingStore(), sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false),
-      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false), framesSeen(0U),
+      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), thresholdCrossings(0U), deviceFailed(false), framesSeen(0U),
       deviceOperationsInLastPass(0U), sendsInLastPass(0U), opensInLastPass(0U), maxDeviceOperationsInOnePass(0U),
       maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
 {
@@ -164,6 +164,9 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     storeConfig.SecurityPolicy = securityPolicy;
     storeConfig.GetDiscardPolicy = GetDiscardPolicy;
     storeConfig.DiscardPolicyContext = this;
+    storeConfig.GetCapacityThreshold = GetCapacityThreshold;
+    storeConfig.OnThresholdCrossed = OnThresholdCrossed;
+    storeConfig.ThresholdContext = this;
     store = options.HasStore ? SolidSyslogBlockStore_Create(&storeConfig) : SolidSyslogNullStore_Get();
     countingStore.Base.Write = CountingWrite;
     countingStore.Base.ReadNextUnsent = CountingReadNextUnsent;
@@ -427,6 +430,16 @@ size_t ScenarioBench::Halts() const
     return halts;
 }
 
+size_t ScenarioBench::ThresholdCrossings() const
+{
+    return thresholdCrossings;
+}
+
+bool ScenarioBench::IsReporting() const
+{
+    return reporting;
+}
+
 size_t ScenarioBench::ReportsMade() const
 {
     return reportsMade;
@@ -497,6 +510,17 @@ enum SolidSyslogDiscardPolicy ScenarioBench::GetDiscardPolicy(void* context)
 void ScenarioBench::OnHalt(void* context)
 {
     static_cast<ScenarioBench*>(context)->halts++;
+}
+
+size_t ScenarioBench::GetCapacityThreshold(void* context)
+{
+    const ScenarioBench* bench = static_cast<ScenarioBench*>(context);
+    return (bench->options.BlockSize * bench->options.MaxBlocks) / 2U;
+}
+
+void ScenarioBench::OnThresholdCrossed(void* context)
+{
+    static_cast<ScenarioBench*>(context)->thresholdCrossings++;
 }
 
 bool ScenarioBench::IsReportingOn(void* context)
