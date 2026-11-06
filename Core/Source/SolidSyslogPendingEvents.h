@@ -4,7 +4,8 @@
 
 /* The pending-event table: the library's record of its own reportable
  * faults, written by a tap in SolidSyslog_Error after the handler returns and
- * read by whatever turns a pending kind into a syslog record.
+ * read by Service, which walks the slots once a pass in their order and takes
+ * the kinds waiting into reports.
  *
  * One static slot per reported kind, keyed by the portable category. The
  * kinds are the categories a collector needs to hear about and that today's

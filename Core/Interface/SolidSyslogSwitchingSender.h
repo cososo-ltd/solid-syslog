@@ -29,7 +29,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  through. Called on every Send, so it must be cheap; an index at or beyond
      *  SenderCount routes to the shared NullSender, which drops the message so a
      *  misconfigured selector never retains records in the Store, and reports
-     *  the loss. @p context is SelectorContext, passed through unchanged. */
+     *  the loss. The logger's own report of that loss takes the same route, so
+     *  it reaches a collector only if the index is back in range by the time
+     *  Service sends it; the error handler hears of the loss either way.
+     *  @p context is SelectorContext, passed through unchanged. */
     typedef uint8_t (*SolidSyslogSwitchingSenderSelector)(void* context);
 
     /** Wiring for SolidSyslogSwitchingSender_Create, a sender that fronts several
