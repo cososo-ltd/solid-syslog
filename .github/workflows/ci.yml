@@ -478,6 +478,12 @@ jobs:
       - name: Compile every public header as C89
         run: python3 scripts/check_headers_c89.py --cc gcc
 
+      # The VxWorks 6.4 VIP compiles one file at C89, after vxWorks.h, to prove
+      # the same of an application there. No lane can build it, so this holds
+      # its hand-kept include list to the public headers instead.
+      - name: Check the VxWorks 6.4 C89 proof includes every public header
+        run: python3 scripts/check_vxworks64_header_proof.py
+
   sanitize-linux-gcc:
     runs-on: ubuntu-latest
     # A test binary that faults as it starts can leave AddressSanitizer

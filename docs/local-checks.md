@@ -10,7 +10,7 @@ wait before a push stays short and CI catches the rest.
 | Tier | When | What | Wall-clock |
 |---|---|---|---|
 | **A** - fast feedback | Every commit on the branch | `cmake --build --preset debug --target junit` for whatever preset matches the diff (gcc / clang / freertos-host) | ~30-60 s |
-| **B** - pre-push | First push to the branch, and any push that changes production source or Markdown | A, plus `markdownlint-cli2` over the changed `.md` files. When production source changed: format reflowed includes + `misra_renumber.py`, `check_spdx_headers.py` when a file was added, and the manifests when the Core or a pack's source set changed | ~3-4 min |
+| **B** - pre-push | First push to the branch, and any push that changes production source or Markdown | A, plus `markdownlint-cli2` over the changed `.md` files. When production source changed: format reflowed includes + `misra_renumber.py`, `check_spdx_headers.py` when a file was added, `check_vxworks64_header_proof.py` when a public header was added, renamed or removed, and the manifests when the Core or a pack's source set changed | ~3-4 min |
 | **CI** - everything else | After push | `tidy` (except when adding a new pack), `sanitize`, `coverage`, Windows, BDD, integration, FreeRTOS host/cross, advisory IWYU, MISRA on cpputest | runs in parallel |
 
 IWYU is advisory. The lanes still run on every PR and
@@ -34,6 +34,11 @@ Tier B is mostly MISRA-line-drift cleanup, so scope it to what changed:
 - Added any file under `Core/` or `Platform/`: run
   `python3 scripts/check_spdx_headers.py`. It is a sub-second file scan, so it
   costs nothing to run on every push if you would rather not think about it.
+- Added, renamed or removed a header under `Core/Interface/` or
+  `Platform/VxWorks64/Interface/`: make the same change to the include list in
+  `Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c`, then run
+  `python3 scripts/check_vxworks64_header_proof.py`. No lane compiles that file,
+  so the check is all that keeps its list complete.
 - Added a whole new pack under `Platform/`: run clang-tidy over it, below. This
   is the one case where the tidy lanes are worth pre-empting rather than leaving
   to CI.

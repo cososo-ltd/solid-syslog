@@ -32,6 +32,7 @@ full tiered pre-PR check budget. One-line summary:
 - Per-commit: `debug` build + tests for the matching preset (~30–60 s)
 - Pre-push (only when production source or a public header changed): `clang-format` reflow, then `scripts/misra_renumber.py --apply` — in that order because the reflow moves the lines the renumbering annotates. The script works from the diff, so it takes seconds. A suppression it cannot move leaves its finding unsuppressed at the new line, and CI's MISRA lane fails on it there
 - Pre-push (only when a file was added under `Core/` or `Platform/`): `scripts/check_spdx_headers.py` (~1 s)
+- Pre-push (only when a header was added, renamed or removed under `Core/Interface/` or `Platform/VxWorks64/Interface/`): make the same change in `Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c`, then `scripts/check_vxworks64_header_proof.py` (~1 s)
 - Pre-push (only when a `.c` was added or removed under `Core/Source/` or `Platform/*/Source/`, or a pack's `target_sources` changed): regenerate `docs/generated/` and assert it — `verify-manifest` both diffs it and checks it against the tree (~1 min)
 - Pre-push (only when Markdown changed): markdownlint over the changed `.md` files (~5 s)
 - Pre-push (only when a whole new pack was added under `Platform/`): clang-tidy over it — the one case where pre-empting the tidy lanes pays (~2 min)
