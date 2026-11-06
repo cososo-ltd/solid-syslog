@@ -5,7 +5,15 @@ import re
 import sys
 
 PROOF = "Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c"
+PUBLIC_HEADER_GLOBS = ("Core/Interface/*.h", "Platform/VxWorks64/Interface/*.h")
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.MULTILINE)
+
+
+def public_headers(root):
+    found = []
+    for glob in PUBLIC_HEADER_GLOBS:
+        found.extend(sorted(root.glob(glob)))
+    return found
 
 
 def main(argv=None):
@@ -17,7 +25,7 @@ def main(argv=None):
     included = set(INCLUDE.findall((root / PROOF).read_text(encoding="utf-8")))
     omitted = [
         header.relative_to(root)
-        for header in sorted(root.glob("Core/Interface/*.h"))
+        for header in public_headers(root)
         if header.name not in included
     ]
     for header in omitted:
