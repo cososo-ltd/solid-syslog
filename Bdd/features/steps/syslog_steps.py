@@ -1592,10 +1592,12 @@ def step_check_contiguous_sequence_ids(context):
 
 @then("the last {count:d} messages have contiguous sequenceIds starting from {start:d}")
 def step_check_last_n_contiguous_ids(context, count, start):
-    assert len(context.all_lines) >= count, (
-        f"Expected at least {count} messages, got {len(context.all_lines)}"
+    """The client's last records; the logger's reports beside them are left out."""
+    clients = client_records(context.all_lines, context.oracle_format)
+    assert len(clients) >= count, (
+        f"Expected at least {count} messages, got {len(clients)}"
     )
-    last_n = context.all_lines[-count:]
+    last_n = clients[-count:]
     for i, line in enumerate(last_n):
         fields = parse_oracle_line(line, context.oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
