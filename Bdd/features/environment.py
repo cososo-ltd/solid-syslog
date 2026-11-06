@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "steps"))
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE  # noqa: E402
 from wait_budgets import CONDITION_TIMEOUT_SECONDS  # noqa: E402
 from target_driver import prepare_vxworks64_target, reset_vxworks64_store  # noqa: E402
+from stack_marks import StackMarks, stack_marks_in  # noqa: E402
 
 logger = logging.getLogger("behave.environment")
 
@@ -144,6 +145,7 @@ def otel_start_oracle():
 
 
 def before_all(context):
+    context.stack_marks = StackMarks()
     # Configurable via env so the same step code drives Linux (syslog-ng),
     # Windows (OTel Collector), and FreeRTOS-on-QEMU runners with
     # different binary paths and oracle output formats. BDD_TARGET picks
@@ -259,6 +261,31 @@ def _dump_target_log(process, attr, channel, prefix):
     print("--- end ---", file=sys.stderr, flush=True)
 
 
+def _record_stack_marks(context, scenario, process):
+    """Keep the stack high-water marks an RTOS target prints on `quit`. The
+    line is the last thing the target writes, so the reader thread may still
+    be catching up with it when the process has gone; a target that prints
+    none - a hosted one, or one that had to be killed - costs the wait once
+    its output has stopped growing."""
+    if context.target != "freertos":
+        return
+    log = getattr(process, "_solidsyslog_stdout_log", None)
+    if log is None:
+        return
+    deadline = time.monotonic() + 2
+    marks = stack_marks_in(log)
+    while (marks is None) and (time.monotonic() < deadline):
+        time.sleep(0.05)
+        marks = stack_marks_in(log)
+    if marks is not None:
+        context.stack_marks.record(f"{scenario.feature.name}: {scenario.name}", marks)
+
+
+def after_all(context):
+    for line in context.stack_marks.write():
+        print(line, flush=True)
+
+
 def after_scenario(context, scenario):
     if hasattr(context, "interactive_process"):
         process = context.interactive_process
@@ -273,6 +300,7 @@ def after_scenario(context, scenario):
             except Exception:
                 process.kill()
                 process.wait()
+            _record_stack_marks(context, scenario, process)
         del context.interactive_process
 
     # Restore syslog-ng config if it was changed during the scenario.
