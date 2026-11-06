@@ -7,6 +7,7 @@
 
 #include "BddTargetErrorText.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogLoggerCategories.h"
 #include "SolidSyslogPrival.h"
 
 static bool fatalOnError = true;
@@ -33,6 +34,12 @@ bool BddTargetStderrErrorHandler_SetByName(const char* name, const char* value)
     return applied;
 }
 
+bool BddTargetStderrErrorHandler_IsFatal(const struct SolidSyslogErrorEvent* event)
+{
+    return fatalOnError && (event->Severity <= SOLIDSYSLOG_SEVERITY_ERROR) &&
+           (event->Category != SOLIDSYSLOG_CAT_LOGGER_HALTED);
+}
+
 static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event)
 {
     (void) context;
@@ -47,7 +54,7 @@ static void StderrErrorHandlerEx(void* context, const struct SolidSyslogErrorEve
        is known. Marking the TLS-stream role lets a step assert a portable detail
        without matching the backend's name. */
     const char* role = ((tlsStreamSource != NULL) && (source == tlsStreamSource)) ? "role=tls " : "";
-    if (fatalOnError && (event->Severity <= SOLIDSYSLOG_SEVERITY_ERROR))
+    if (BddTargetStderrErrorHandler_IsFatal(event))
     {
         (void) fprintf(
             stderr,

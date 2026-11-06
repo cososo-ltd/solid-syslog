@@ -748,7 +748,6 @@ def step_block_store_enabled_with_config(context, max_blocks, max_block_size, po
     # budget tracks the message size; sizing the body off it yields several
     # records per block on the runners we ship.
     context.message_body = "X" * (SOLIDSYSLOG_MAX_MESSAGE_SIZE // 5 - 50)
-    expect_the_halt_error(context, policy)
     clean_store_files()
 
 
@@ -758,15 +757,6 @@ def step_discard_policy(context, policy):
     # logger, the buffer and any store, so this reaches the buffer with no
     # store wired.
     context.store_discard_policy = policy
-    expect_the_halt_error(context, policy)
-
-
-def expect_the_halt_error(context, policy):
-    # A logger that halts raises it at ERROR before its halt callback is
-    # called. An ERROR ends a hosted target by default, so a scenario under
-    # the halt policy says it expects one.
-    if policy == "halt":
-        context.errors_fatal = "0"
 
 
 @given("the client's message body is {length:d} characters long")
