@@ -59,8 +59,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      *  @retval SOLIDSYSLOG_SERVICE_IDLE    Nothing left anywhere - no record held, buffered
      *                                      or stored, and no event of the library's own
-     *                                      waiting, or one the reporting switch turned down
-     *                                      this pass; wait for the next Log. Turning
+     *                                      waiting - or the reporting switch turned a
+     *                                      report down this pass, which leaves every
+     *                                      event waiting, those raised later in the pass
+     *                                      too; wait for the next Log. Turning
      *                                      reporting back on does not wake a loop waiting
      *                                      here: the next Log, or a poll, makes the report.
      *  @retval SOLIDSYSLOG_SERVICE_READY   There is more to do: the buffer was read this

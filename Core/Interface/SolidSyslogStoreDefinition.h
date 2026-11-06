@@ -37,7 +37,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         /** Take a copy of @p data (@p size bytes) as an unsent record, and say
          *  what became of it. A record of no bytes is never retained, since
-         *  ReadNextUnsent could not tell it from nothing unsent. */
+         *  ReadNextUnsent could not tell it from nothing unsent. Report a run
+         *  of lost or refused records once, when it starts, re-armed by the
+         *  next record kept: the library's reports of its own events pass
+         *  through Write too, so a store that reported every failure would
+         *  raise one for each report of the one before. */
         enum SolidSyslogStoreWriteResult (*Write)(struct SolidSyslogStore* base, const void* data, size_t size);
         /** Copy the oldest unsent record into @p data (up to @p maxSize, over-long
          *  records truncated), set @p bytesRead, and position the cursor on it for a
