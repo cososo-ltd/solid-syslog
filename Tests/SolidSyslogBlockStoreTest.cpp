@@ -3309,6 +3309,47 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ACrossingIsRaisedAsAnEvent)
     );
 }
 
+static int eventsRaisedWhenCallbackFired;
+
+static void NoteEventsRaised(void* context)
+{
+    (void) context;
+    eventsRaisedWhenCallbackFired = ErrorHandlerFake_HandleCallCount();
+}
+
+TEST(SolidSyslogBlockStoreCapacityThreshold, TheEventIsRaisedBeforeTheCallbackFires)
+{
+    ErrorHandlerFake_Install(nullptr);
+    eventsRaisedWhenCallbackFired             = -1;
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.GetCapacityThreshold               = ReturnsConfiguredThreshold;
+    config.OnThresholdCrossed                 = NoteEventsRaised;
+    thresholdReturnValue                      = TEST_DATA_LEN;
+    store                                     = SolidSyslogBlockStore_Create(&config);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    LONGS_EQUAL(1, eventsRaisedWhenCallbackFired);
+}
+
+TEST(SolidSyslogBlockStoreCapacityThreshold, ACrossingIsRaisedWithoutACallbackToFire)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.GetCapacityThreshold               = ReturnsConfiguredThreshold;
+    thresholdReturnValue                      = TEST_DATA_LEN;
+    store                                     = SolidSyslogBlockStore_Create(&config);
+
+    SolidSyslogStore_Write(store, TEST_DATA, TEST_DATA_LEN);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED
+    );
+}
+
 /* ------------------------------------------------------------------
  * Pool - prove SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE caps live instances
  * and overflow resolves to the shared SolidSyslogNullStore. Generic

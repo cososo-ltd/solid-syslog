@@ -55,6 +55,8 @@ static inline size_t BlockSequence_ClampToRange(size_t value, size_t min, size_t
     return result;
 }
 
+static void BlockSequence_NullThresholdCrossed(void* context);
+
 void SolidSyslogBlockSequence_Initialise(
     struct SolidSyslogBlockSequence* blockSequence,
     const struct SolidSyslogBlockSequenceConfig* config
@@ -67,7 +69,8 @@ void SolidSyslogBlockSequence_Initialise(
         (config->GetDiscardPolicy != NULL) ? config->GetDiscardPolicy : SolidSyslogDiscardPolicy_Default;
     blockSequence->DiscardPolicyContext = config->DiscardPolicyContext;
     blockSequence->GetCapacityThreshold = config->GetCapacityThreshold;
-    blockSequence->OnThresholdCrossed = config->OnThresholdCrossed;
+    blockSequence->OnThresholdCrossed =
+        (config->OnThresholdCrossed != NULL) ? config->OnThresholdCrossed : BlockSequence_NullThresholdCrossed;
     blockSequence->ThresholdContext = config->ThresholdContext;
     blockSequence->AtCapacity = false;
     blockSequence->ThresholdCrossed = false;
@@ -87,6 +90,12 @@ void SolidSyslogBlockSequence_Initialise(
     {
         blockSequence->BlockPresent[seq] = false;
     }
+}
+
+/* A threshold with no callback is still raised as an event. */
+static void BlockSequence_NullThresholdCrossed(void* context)
+{
+    (void) context;
 }
 
 void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequence)
@@ -341,7 +350,7 @@ static inline void BlockSequence_NotifyThresholdCrossed(struct SolidSyslogBlockS
 
 static inline bool BlockSequence_ThresholdEnabled(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    return (blockSequence->OnThresholdCrossed != NULL) && (blockSequence->GetCapacityThreshold != NULL);
+    return blockSequence->GetCapacityThreshold != NULL;
 }
 
 static inline bool BlockSequence_IsAboveThreshold(
