@@ -1,5 +1,9 @@
 #include "StreamFake.h"
+#include "SolidSyslogError.h"
+#include "SolidSyslogPrival.h"
 #include "SolidSyslogStreamDefinition.h"
+#include "SolidSyslogTlsStreamCategories.h"
+#include "SolidSyslogTlsStreamErrors.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +14,8 @@ struct StreamFake
     int OpenCallCount;
     const struct SolidSyslogAddress* LastOpenAddr;
     bool OpenFails;
+    bool HandshakeRefused;
+    bool RefusalReported; /* the run's report is made; an Open that succeeds ends the run */
     int SendCallCount;
     const void* LastSendBuf;
     size_t LastSendSize;
@@ -44,13 +50,36 @@ static void CompleteFrameIfBodyIsWhole(struct StreamFake* fake);
 static void KeepFrame(struct StreamFake* fake);
 static void DropPartialFrame(struct StreamFake* fake);
 static void Grow(void** storage, size_t* capacity, size_t needed, size_t elementSize);
+static void ReportRefusalOncePerRun(struct StreamFake* fake);
+
+const struct SolidSyslogErrorSource StreamFakeErrorSource = {"StreamFake", SolidSyslogTlsStreamErrors_Name};
 
 static bool Open(struct SolidSyslogStream* self, const struct SolidSyslogAddress* addr)
 {
     struct StreamFake* fake = (struct StreamFake*) self;
     fake->OpenCallCount++;
     fake->LastOpenAddr = addr;
-    return !fake->OpenFails;
+    bool opened = !fake->OpenFails && !fake->HandshakeRefused;
+    if (fake->HandshakeRefused)
+    {
+        ReportRefusalOncePerRun(fake);
+    }
+    fake->RefusalReported = fake->RefusalReported && !opened;
+    return opened;
+}
+
+static void ReportRefusalOncePerRun(struct StreamFake* fake)
+{
+    if (!fake->RefusalReported)
+    {
+        SolidSyslog_Error(
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            &StreamFakeErrorSource,
+            SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+            (int32_t) SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+        );
+        fake->RefusalReported = true;
+    }
 }
 
 static bool Send(struct SolidSyslogStream* self, const void* buffer, size_t size)
@@ -273,6 +302,11 @@ int StreamFake_CloseCallCount(struct SolidSyslogStream* stream)
 void StreamFake_SetVersion(struct SolidSyslogStream* stream, uint32_t value)
 {
     ((struct StreamFake*) stream)->Version = value;
+}
+
+void StreamFake_RefuseHandshake(struct SolidSyslogStream* stream, bool refused)
+{
+    ((struct StreamFake*) stream)->HandshakeRefused = refused;
 }
 
 size_t StreamFake_FrameCount(struct SolidSyslogStream* stream)

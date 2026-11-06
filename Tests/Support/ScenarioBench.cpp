@@ -132,12 +132,12 @@ ScenarioBench::HandlerInstallation::~HandlerInstallation()
 ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     : handler(this), options(benchOptions), ring(SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(benchOptions.BufferMessages)),
       device(BlockDeviceFake_Create(benchOptions.BlockSize)), file(RamFileFake_Create()), fileDevice(nullptr),
-      countingDevice(), stream(StreamFake_Create()), counter(CounterFake_Create()), metaSd(nullptr), sds(),
-      buffer(CreateBuffer(ring, this)), securityPolicy(SecurityPolicyFake_Create()), store(nullptr), countingStore(),
-      sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false), logger(nullptr),
-      logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false), framesSeen(0U),
-      deviceOperationsInLastPass(0U), sendsInLastPass(0U), maxDeviceOperationsInOnePass(0U), maxSendsInOnePass(0U),
-      reporting(true), reportsMade(0U)
+      countingDevice(), stream(StreamFake_Create()), streamVersion(0U), counter(CounterFake_Create()), metaSd(nullptr),
+      sds(), buffer(CreateBuffer(ring, this)), securityPolicy(SecurityPolicyFake_Create()), store(nullptr),
+      countingStore(), sender(nullptr), senders(), switchingSender(nullptr), watchedSender(), misrouted(false),
+      logger(nullptr), logged(0U), passes(0U), garbage(0U), halts(0U), deviceFailed(false), framesSeen(0U),
+      deviceOperationsInLastPass(0U), sendsInLastPass(0U), opensInLastPass(0U), maxDeviceOperationsInOnePass(0U),
+      maxSendsInOnePass(0U), reporting(true), reportsMade(0U)
 {
     struct SolidSyslogMetaSdConfig metaConfig = {};
     metaConfig.Counter = counter;
@@ -254,10 +254,12 @@ enum SolidSyslogServiceStatus ScenarioBench::Service()
 {
     size_t operationsBefore = countingDevice.Operations;
     int sendsBefore = StreamFake_SendCallCount(stream);
+    int opensBefore = StreamFake_OpenCallCount(stream);
     passes++;
     enum SolidSyslogServiceStatus status = SolidSyslog_Service(logger);
     deviceOperationsInLastPass = countingDevice.Operations - operationsBefore;
     sendsInLastPass = static_cast<size_t>(StreamFake_SendCallCount(stream) - sendsBefore);
+    opensInLastPass = static_cast<size_t>(StreamFake_OpenCallCount(stream) - opensBefore);
     maxDeviceOperationsInOnePass = std::max(maxDeviceOperationsInOnePass, deviceOperationsInLastPass);
     maxSendsInOnePass = std::max(maxSendsInOnePass, sendsInLastPass);
     TakeNewFrames();
@@ -312,6 +314,14 @@ void ScenarioBench::SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault)
     SecurityPolicyFake_SetFault(securityPolicy, fault);
 }
 
+/* The change is made before the version moves, as the stream contract asks. */
+void ScenarioBench::SetHandshakeRefused(bool refused)
+{
+    StreamFake_RefuseHandshake(stream, refused);
+    streamVersion++;
+    StreamFake_SetVersion(stream, streamVersion);
+}
+
 void ScenarioBench::SetMisrouted(bool isMisrouted)
 {
     misrouted = isMisrouted;
@@ -322,22 +332,32 @@ const std::vector<ScenarioReport>& ScenarioBench::DroppedReports() const
     return droppedReports;
 }
 
+const std::vector<ScenarioDelivery>& ScenarioBench::DroppedRecords() const
+{
+    return droppedRecords;
+}
+
 /* The one sender is index 0, so 1 is out of range. */
 uint8_t ScenarioBench::Select(void* context)
 {
     return static_cast<ScenarioBench*>(context)->misrouted ? 1U : 0U;
 }
 
-/* The switching sender asks the selector on every send, so a report handed to
- * it while misrouted is one it drops. */
+/* The switching sender asks the selector on every send, so a report or a
+ * record handed to it while misrouted is one it drops. */
 bool ScenarioBench::WatchedSend(struct SolidSyslogSender* base, const void* buffer, size_t size)
 {
     ScenarioBench* bench = reinterpret_cast<WatchedSender*>(base)->Bench;
     ScenarioReport report = {std::string(), 0U, bench->passes, std::string(), std::string(), std::string()};
+    ScenarioDelivery record = {0U, 0U, bench->passes};
     std::string frame(static_cast<const char*>(buffer), size);
     if (bench->misrouted && ParseReport(frame.c_str(), &report))
     {
         bench->droppedReports.push_back(report);
+    }
+    else if (bench->misrouted && ParseFrame(frame.c_str(), &record.Ordinal, &record.SequenceId))
+    {
+        bench->droppedRecords.push_back(record);
     }
     return SolidSyslogSender_Send(bench->switchingSender, buffer, size);
 }
@@ -420,6 +440,11 @@ size_t ScenarioBench::DeviceOperationsInLastPass() const
 size_t ScenarioBench::SendsInLastPass() const
 {
     return sendsInLastPass;
+}
+
+size_t ScenarioBench::OpensInLastPass() const
+{
+    return opensInLastPass;
 }
 
 size_t ScenarioBench::MaxDeviceOperationsInOnePass() const

@@ -10,6 +10,7 @@
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogServiceStatus.h"
+#include "SolidSyslogTlsStreamCategories.h"
 #include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
 
@@ -159,6 +160,17 @@ TEST(ScenarioBench, AReportTheMisroutedSenderDroppedIsRecorded)
     STRCMP_EQUAL("FILE_IO_FAILED", bench.DroppedReports()[0].Category.c_str());
 }
 
+TEST(ScenarioBench, ARecordTheMisroutedSenderDroppedIsRecorded)
+{
+    ScenarioBench bench(options);
+    bench.SetMisrouted(true);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.DroppedRecords().size());
+    LONGS_EQUAL(1, bench.DroppedRecords()[0].Ordinal);
+    LONGS_EQUAL(1, bench.DroppedRecords()[0].Pass);
+}
+
 TEST(ScenarioBench, ASenderRoutedBackDeliversAgain)
 {
     ScenarioBench bench(options);
@@ -171,6 +183,46 @@ TEST(ScenarioBench, ASenderRoutedBackDeliversAgain)
     bench.Service();
     LONGS_EQUAL(1, bench.Delivered().size());
     LONGS_EQUAL(2, bench.Delivered()[0].Ordinal);
+}
+
+TEST(ScenarioBench, ARefusedHandshakeIsRaisedAheadOfTheFailedDelivery)
+{
+    ScenarioBench bench(options);
+    bench.Log();
+    bench.Service();
+    bench.SetHandshakeRefused(true);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.Delivered().size());
+    LONGS_EQUAL(2, bench.Events().size());
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, bench.Events()[0].Category);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, bench.Events()[1].Category);
+}
+
+TEST(ScenarioBench, AnAcceptedHandshakeDeliversTheRefusalReportedAheadOfTheOutage)
+{
+    ScenarioBench bench(options);
+    bench.SetHandshakeRefused(true);
+    bench.Log();
+    bench.Service();
+    bench.SetHandshakeRefused(false);
+    for (int i = 0; i < 5; i++)
+    {
+        bench.Service();
+    }
+    LONGS_EQUAL(1, bench.Delivered().size());
+    STRCMP_EQUAL("TLS_STREAM_HANDSHAKE_FAILED", bench.Reports()[0].Category.c_str());
+    STRCMP_EQUAL("SENDER_DELIVERY_FAILED", bench.Reports()[1].Category.c_str());
+}
+
+TEST(ScenarioBench, APassRecordsTheOpensItTried)
+{
+    ScenarioBench bench(options);
+    bench.SetHandshakeRefused(true);
+    bench.Log();
+    bench.Service();
+    LONGS_EQUAL(1, bench.OpensInLastPass());
+    LONGS_EQUAL(0, bench.SendsInLastPass());
 }
 
 TEST(ScenarioBench, AFileBackedStoreKeepsWhatTheSenderRefusedAndDeliversIt)

@@ -32,8 +32,9 @@ const std::array<ScenarioRig, 9> RIGS = {
 
 /* A step's letter and its weight in a thousand draws. Logging outruns
  * Service, outages are short and recover, a device failure is rare enough
- * that most walks never see one, a misrouted sender and a failing security
- * policy are rare and soon put right, and reporting is mostly on. */
+ * that most walks never see one, a misrouted sender, a refused handshake and a
+ * failing security policy are rare and soon put right, and reporting is mostly
+ * on. */
 struct Step
 {
     char Letter;
@@ -41,7 +42,9 @@ struct Step
 };
 
 const Step STEPS[] = {
-    {'L', 396U},
+    {'L', 380U},
+    {'J', 6U},
+    {'A', 10U},
     {'M', 8U},
     {'B', 12U},
     {'K', 8U},
@@ -69,6 +72,8 @@ class Driver
         : bench(rig.Options), state{
                                   bench,
                                   false,
+                                  false,
+                                  0U,
                                   false,
                                   rig.Options.DiscardPolicy,
                                   (rig.Options.DiscardPolicy == SOLIDSYSLOG_DISCARD_POLICY_HALT) ? 1U : 0U,
@@ -124,6 +129,12 @@ class Driver
                  * a walk would strand everything logged after it. */
                 bench.CorruptTheRing();
                 break;
+            case 'J':
+                SetHandshakeRefused(true);
+                break;
+            case 'A':
+                SetHandshakeRefused(false);
+                break;
             case 'M':
                 bench.SetMisrouted(true);
                 break;
@@ -172,6 +183,13 @@ class Driver
         state.SenderDown = down;
     }
 
+    void SetHandshakeRefused(bool refused)
+    {
+        bench.SetHandshakeRefused(refused);
+        state.HandshakeRefusals += (refused && !state.HandshakeRefused) ? 1U : 0U;
+        state.HandshakeRefused = refused;
+    }
+
     void SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault)
     {
         bench.SetSecurityPolicyFault(fault);
@@ -203,6 +221,7 @@ class Driver
     ScenarioVerdict Drain()
     {
         SetSender(false);
+        SetHandshakeRefused(false);
         SetPolicy(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
         bench.SetReporting(true);
         bench.SetMisrouted(false);

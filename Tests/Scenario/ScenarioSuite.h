@@ -77,11 +77,14 @@ struct ScenarioVerdict
 };
 
 /* A script is one letter per step: L logs a record, S makes a Service pass,
- * D and U take the sender down and up, F fails the block device, O, N and H
- * set the discard policy to Oldest, Newest or Halt, and Q and R turn the
- * logger's reporting of its own events off and on. The invariants are
- * checked after every pass, and once more after the run drains what the
- * script left queued. */
+ * D and U take the sender down and up, J and A have the stream refuse and
+ * accept the handshake, M and B misroute the switching sender and route it
+ * back, F fails the block device, C corrupts the ring, K, P and T have the
+ * store's security policy withhold its key, fail in its backend or reject
+ * what it opens and W puts it right, O, N and H set the discard policy to
+ * Oldest, Newest or Halt, and Q and R turn the logger's reporting of its own
+ * events off and on. The invariants are checked after every pass, and once
+ * more after the run drains what the script left queued. */
 ScenarioVerdict ScenarioSuite_Run(const ScenarioRig& rig, const std::string& script);
 
 /* The rig and script a seed stands for: a random walk of the steps above. */

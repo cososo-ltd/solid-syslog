@@ -14,6 +14,8 @@ struct ScenarioState
 {
     ScenarioBench& Bench;
     bool SenderDown;
+    bool HandshakeRefused;
+    size_t HandshakeRefusals; /* times the handshake has been refused */
     bool DeviceFailed;
     enum SolidSyslogDiscardPolicy Policy;
     size_t HaltPeriods; /* times the policy has been Halt, counting an initial Halt */

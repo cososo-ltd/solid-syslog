@@ -110,6 +110,12 @@ class ScenarioBench
      * a rig with no store never asks. */
     void SetSecurityPolicyFault(enum SecurityPolicyFakeFault fault);
 
+    /* The stream's credentials change so that the collector's certificate is
+     * refused, or accepted again. The stream's version moves with them, as the
+     * stream contract asks, so the sender reconnects at its next send and meets
+     * the change there. */
+    void SetHandshakeRefused(bool refused);
+
     /* The switching sender in front of the stream asks a selector, which while
      * misrouted answers an index out of range: the switching sender then drops
      * whatever it is handed, records and reports alike, and reports the
@@ -126,9 +132,10 @@ class ScenarioBench
     const std::vector<ScenarioReport>& Reports() const;
     const std::vector<ScenarioEvent>& Events() const;
 
-    /* Reports the switching sender dropped while misrouted, which the stream
-     * never saw; Pass is the pass that made them. */
+    /* Reports and records the switching sender dropped while misrouted, which
+     * the stream never saw; Pass is the pass that dropped them. */
     const std::vector<ScenarioReport>& DroppedReports() const;
+    const std::vector<ScenarioDelivery>& DroppedRecords() const;
 
     /* Frames the stream received that parsed neither as a record of this
      * bench nor as a report. */
@@ -144,6 +151,7 @@ class ScenarioBench
     /* Work the last pass did, and the most any pass did. */
     size_t DeviceOperationsInLastPass() const;
     size_t SendsInLastPass() const;
+    size_t OpensInLastPass() const;
     size_t MaxDeviceOperationsInOnePass() const;
     size_t MaxSendsInOnePass() const;
 
@@ -207,6 +215,7 @@ class ScenarioBench
     struct SolidSyslogBlockDevice* fileDevice;
     CountingBlockDevice countingDevice;
     struct SolidSyslogStream* stream;
+    uint32_t streamVersion;
     struct SolidSyslogAtomicCounter* counter;
     struct SolidSyslogStructuredData* metaSd;
     struct SolidSyslogStructuredData* sds[1];
@@ -220,6 +229,7 @@ class ScenarioBench
     WatchedSender watchedSender;
     bool misrouted;
     std::vector<ScenarioReport> droppedReports;
+    std::vector<ScenarioDelivery> droppedRecords;
     struct SolidSyslog* logger;
 
     unsigned logged;
@@ -233,6 +243,7 @@ class ScenarioBench
     size_t framesSeen;
     size_t deviceOperationsInLastPass;
     size_t sendsInLastPass;
+    size_t opensInLastPass;
     size_t maxDeviceOperationsInOnePass;
     size_t maxSendsInOnePass;
     bool reporting;

@@ -14,6 +14,7 @@
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
 #include "SolidSyslogStoreCategories.h"
+#include "SolidSyslogTlsStreamCategories.h"
 
 namespace
 {
@@ -31,6 +32,7 @@ const uint16_t REPORTED_KINDS[] = {
     SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
+    SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_BACKEND_FAILED,
     SOLIDSYSLOG_CAT_BUFFER_RECORDS_LOST,
     SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
@@ -245,10 +247,18 @@ std::string NoUniversalError(const ScenarioState& state)
     return reason;
 }
 
+/* The sender refuses while its stream refuses every send, or while the
+ * handshake is refused and so every open. */
+bool SenderRefuses(const ScenarioState& state)
+{
+    return state.SenderDown || state.HandshakeRefused;
+}
+
 /* One DELIVERY_FAILED opens an outage and one RESTORED closes it; a pass
- * that put a send to a refusing sender is inside an open outage, and one
- * that put a send through an accepting sender is outside any. The edges, not
- * the script, say which run the sender is in: a sender taken up and down
+ * that tried a refusing sender is inside an open outage, and one that put a
+ * send through an accepting sender is outside any. A sender meeting a refused
+ * handshake tries only the open, so an open counts as trying it. The edges,
+ * not the script, say which run the sender is in: a sender taken up and down
  * again with nothing sent between is still the one outage. */
 std::string SenderEdgesAlternate(const ScenarioState& state)
 {
@@ -267,14 +277,14 @@ std::string SenderEdgesAlternate(const ScenarioState& state)
             failed = false;
         }
     }
-    bool sent = state.Bench.SendsInLastPass() > 0U;
-    if (reason.empty() && sent && state.SenderDown && !failed)
+    bool tried = (state.Bench.SendsInLastPass() + state.Bench.OpensInLastPass()) > 0U;
+    if (reason.empty() && tried && SenderRefuses(state) && !failed)
     {
-        reason = "a send was refused without DELIVERY_FAILED";
+        reason = "a delivery was refused without DELIVERY_FAILED";
     }
-    if (reason.empty() && sent && !state.SenderDown && failed)
+    if (reason.empty() && tried && !SenderRefuses(state) && failed)
     {
-        reason = "a send was accepted without RESTORED";
+        reason = "a delivery was accepted without RESTORED";
     }
     return reason;
 }
@@ -285,14 +295,38 @@ std::string SenderEdgesFollowTheFault(const ScenarioState& state)
     const std::vector<ScenarioEvent>& events = state.Bench.Events();
     for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
     {
-        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED) && !state.SenderDown)
+        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED) && !SenderRefuses(state))
         {
             reason = "DELIVERY_FAILED with the sender up";
         }
-        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED) && state.SenderDown)
+        if ((events[i].Category == SOLIDSYSLOG_CAT_SENDER_DELIVERY_RESTORED) && SenderRefuses(state))
         {
             reason = "RESTORED with the sender down";
         }
+    }
+    return reason;
+}
+
+/* The stream raises TLS_STREAM_HANDSHAKE_FAILED only while the handshake is
+ * refused, and once for a run of refusals, which only an open that succeeds
+ * ends. An open cannot succeed while the handshake is refused, so each refusal
+ * is at most one. */
+std::string HandshakeFaultsFollowTheStream(const ScenarioState& state)
+{
+    std::string reason;
+    const std::vector<ScenarioEvent>& events = state.Bench.Events();
+    for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
+    {
+        if ((events[i].Category == SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED) && !state.HandshakeRefused)
+        {
+            reason = "TLS_STREAM_HANDSHAKE_FAILED with the handshake accepted";
+        }
+    }
+    size_t raised = CountCategory(events, SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED);
+    if (reason.empty() && (raised > state.HandshakeRefusals))
+    {
+        reason =
+            "TLS_STREAM_HANDSHAKE_FAILED " + Count("raised", raised) + " " + Count("refusals", state.HandshakeRefusals);
     }
     return reason;
 }
@@ -469,11 +503,28 @@ bool IsHeldRecordDrop(const ScenarioEvent& event)
     return (event.Source == &SolidSyslogErrorSource) && (event.Detail == SOLIDSYSLOG_ERROR_HELD_RECORD_DROPPED);
 }
 
+/* Whether a record reached the sender from pass @p from up to, but not
+ * including, pass @p to: delivered, or dropped by the misrouted sender, which
+ * deals with it as surely. */
+bool IsARecordSentBetween(const ScenarioState& state, size_t from, size_t to)
+{
+    bool sent = false;
+    for (const ScenarioDelivery& delivery : state.Bench.Delivered())
+    {
+        sent = sent || ((delivery.Pass >= from) && (delivery.Pass < to));
+    }
+    for (const ScenarioDelivery& dropped : state.Bench.DroppedRecords())
+    {
+        sent = sent || ((dropped.Pass >= from) && (dropped.Pass < to));
+    }
+    return sent;
+}
+
 /* Service drops a held record at the start of a pass, and only a record from
  * the buffer that it then deals with ends the run; a report it deals with
- * does not. With no store to take it, a record dealt with is a record
- * delivered, so a drop reported again needs one delivered since the pass of
- * the report before. */
+ * does not. With no store to take it, a record dealt with is a record the
+ * sender took, so a drop reported again needs one sent since the pass of the
+ * report before. */
 std::string ARunOfHeldDropsIsReportedOnce(const ScenarioState& state)
 {
     bool reportedBefore = false;
@@ -483,19 +534,11 @@ std::string ARunOfHeldDropsIsReportedOnce(const ScenarioState& state)
     {
         if (IsHeldRecordDrop(event))
         {
-            bool runEnded = true;
-            if (reportedBefore)
-            {
-                runEnded = false;
-                for (const ScenarioDelivery& delivery : state.Bench.Delivered())
-                {
-                    runEnded = runEnded || ((delivery.Pass >= reportPass) && (delivery.Pass < event.Pass));
-                }
-            }
+            bool runEnded = !reportedBefore || IsARecordSentBetween(state, reportPass, event.Pass);
             if (reason.empty() && !runEnded)
             {
-                reason = Count("held record drop reported again at pass", event.Pass) +
-                         " with nothing delivered since " + Count("pass", reportPass);
+                reason = Count("held record drop reported again at pass", event.Pass) + " with nothing sent since " +
+                         Count("pass", reportPass);
             }
             reportedBefore = true;
             reportPass = event.Pass;
@@ -559,6 +602,7 @@ const Invariant AFTER_EVERY_PASS[] = {
     {"no universal error", NoUniversalError},
     {"sender edges alternate", SenderEdgesAlternate},
     {"sender edges follow the fault", SenderEdgesFollowTheFault},
+    {"handshake faults follow the stream", HandshakeFaultsFollowTheStream},
     {"store faults follow the device", StoreFaultsFollowTheDevice},
     {"policy faults follow the policy", PolicyFaultsFollowThePolicy},
     {"a loss is reported once per run", ALossIsReportedOncePerRun},

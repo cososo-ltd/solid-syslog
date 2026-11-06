@@ -145,9 +145,28 @@ TEST(ScenarioSuite, ARecordThatFailsVerificationIsDiscardedAndReportedOnce)
     CHECK_SCENARIO(OLDEST, "DLLLSUT" + Repeat("S", 5U) + "W" + Repeat("S", 5U));
 }
 
+TEST(ScenarioSuite, ARefusedHandshakeIsReportedOnceAheadOfTheOutage)
+{
+    CHECK_SCENARIO(OLDEST, "LSJLLL" + Repeat("S", 5U) + "A" + Repeat("S", 5U));
+}
+
+TEST(ScenarioSuite, ARefusedHandshakeWithNoStoreIsReportedOnceTheSenderTakesIt)
+{
+    CHECK_SCENARIO(OLDEST_NO_STORE, "LSJLLL" + Repeat("S", 5U) + "A" + Repeat("S", 5U));
+}
+
 TEST(ScenarioSuite, AMisroutedSenderIsReportedOnceForTheRun)
 {
     CHECK_SCENARIO(OLDEST, "MLLL" + Repeat("S", 5U) + "B" + Repeat("S", 5U));
+}
+
+/* With reporting off, what the sender refuses is a record from the buffer,
+ * which Oldest drops when the ring fills behind it. */
+TEST(ScenarioSuite, AMisroutedSenderDroppingAHeldRecordEndsTheRunOfHeldDrops)
+{
+    std::string fill = Repeat("L", RingFill(OLDEST_NO_STORE));
+    std::string heldDrop = fill + "S" + fill + "S";
+    CHECK_SCENARIO(OLDEST_NO_STORE, "QD" + heldDrop + "MSB" + heldDrop + "USS");
 }
 
 TEST(ScenarioSuite, ACorruptRingIsReportedOnceAsItsBackendFailing)
