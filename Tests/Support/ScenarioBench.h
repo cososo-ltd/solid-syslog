@@ -80,6 +80,7 @@ struct ScenarioEvent
     std::string SourceParam;
     std::string DetailParam;
     std::string NativeParam;
+    size_t BlocksDisposed; /* the blocks the store had disposed of when it was raised */
 };
 
 class ScenarioBench
@@ -204,6 +205,7 @@ class ScenarioBench
         struct SolidSyslogBlockDevice Base;
         struct SolidSyslogBlockDevice* Device;
         size_t Operations;
+        size_t Disposals;
     };
 
     /* The sender the logger is given: the switching sender, watched, so a

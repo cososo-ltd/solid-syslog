@@ -497,7 +497,8 @@ void ScenarioBench::OnError(const struct SolidSyslogErrorEvent* event)
         CounterFake_LastHandedOut(counter),
         SourceParamOf(event),
         DetailParamOf(event),
-        NativeParamOf(event)
+        NativeParamOf(event),
+        countingDevice.Disposals
     };
     events.push_back(recorded);
 }
@@ -554,6 +555,7 @@ bool ScenarioBench::CountingDispose(struct SolidSyslogBlockDevice* base, size_t 
 {
     CountingBlockDevice* self = CountingDeviceFrom(base);
     self->Operations++;
+    self->Disposals++;
     return SolidSyslogBlockDevice_Dispose(self->Device, blockIndex);
 }
 

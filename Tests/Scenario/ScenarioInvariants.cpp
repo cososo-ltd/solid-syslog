@@ -467,10 +467,10 @@ std::string ALossIsReportedOncePerRun(const ScenarioState& state)
  * not latch, or a report feeding the fault it reports. The one run such a pass
  * can start afresh is the store's refusals or seal failures, which a record
  * kept since the last raise ends. A threshold crossing is an edge rather than
- * a run: a block sent out drops the store below its threshold, and the report
- * of the crossing, written next pass, can take it back over. Each is a
- * crossing and is raised as one; the echo ends as the store drains, which the
- * drain ending idle shows. */
+ * a run: a block disposed of drops the store below its threshold, and the
+ * report of the crossing, written next pass, can take it back over. Each is a
+ * crossing and is raised as one, so a threshold raised again is excused when a
+ * block has gone since the last raise, and only then. */
 std::string QuietPassesGoQuiet(const ScenarioState& state)
 {
     std::string reason;
@@ -480,6 +480,7 @@ std::string QuietPassesGoQuiet(const ScenarioState& state)
         size_t pass = state.Bench.Passes();
         std::set<uint16_t> raisedLastPass;
         std::map<std::tuple<const struct SolidSyslogErrorSource*, uint16_t, int32_t>, size_t> keptAtLastRaise;
+        size_t disposedAtLastThresholdRaise = 0U;
         for (size_t i = 0U; i < state.EventsJudged; i++)
         {
             if (events[i].Pass == (pass - 1U))
@@ -487,6 +488,9 @@ std::string QuietPassesGoQuiet(const ScenarioState& state)
                 raisedLastPass.insert(events[i].Category);
                 keptAtLastRaise[std::make_tuple(events[i].Source, events[i].Category, events[i].Detail)] =
                     events[i].RecordsKept;
+                disposedAtLastThresholdRaise = (events[i].Category == SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED)
+                                                   ? events[i].BlocksDisposed
+                                                   : disposedAtLastThresholdRaise;
             }
         }
         for (size_t i = state.EventsJudged; reason.empty() && (i < events.size()); i++)
@@ -495,8 +499,9 @@ std::string QuietPassesGoQuiet(const ScenarioState& state)
                 keptAtLastRaise.find(std::make_tuple(events[i].Source, events[i].Category, events[i].Detail));
             bool runEnded = IsEndedByARecordKept(events[i]) && (lastRaise != keptAtLastRaise.end()) &&
                             (events[i].RecordsKept != lastRaise->second);
-            bool isEdge = events[i].Category == SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED;
-            if ((raisedLastPass.count(events[i].Category) != 0U) && !runEnded && !isEdge)
+            bool reCrossed = (events[i].Category == SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED) &&
+                             (events[i].BlocksDisposed != disposedAtLastThresholdRaise);
+            if ((raisedLastPass.count(events[i].Category) != 0U) && !runEnded && !reCrossed)
             {
                 reason = NameOf(events[i].Category) + " " + Count("detail", static_cast<size_t>(events[i].Detail)) +
                          " raised again in a quiet " + Count("pass", pass);

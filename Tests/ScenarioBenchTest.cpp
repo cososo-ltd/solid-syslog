@@ -66,6 +66,21 @@ TEST(ScenarioBench, AnEventCarriesTheRecordsTheStoreHadKeptWhenItWasRaised)
     LONGS_EQUAL(2, bench.Events()[0].RecordsKept);
 }
 
+TEST(ScenarioBench, AnEventCarriesTheBlocksTheStoreHadDisposedOfWhenItWasRaised)
+{
+    options.DiscardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+    ScenarioBench bench(options);
+    bench.SetSenderDown(true);
+    unsigned fill = static_cast<unsigned>((options.MaxBlocks * options.BlockSize) / 32U) + 20U;
+    for (unsigned i = 0U; i < fill; i++)
+    {
+        bench.Log();
+        bench.Service();
+    }
+    LONGS_EQUAL(0, bench.Events().front().BlocksDisposed);
+    CHECK_TRUE(bench.Events().back().BlocksDisposed > 0U);
+}
+
 TEST(ScenarioBench, AnEventCarriesTheLastSequenceIdHandedOutWhenItWasRaised)
 {
     ScenarioBench bench(options);
