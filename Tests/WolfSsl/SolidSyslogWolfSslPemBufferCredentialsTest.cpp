@@ -225,6 +225,47 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsTrustAnchorsItCannotP
     );
 }
 
+/* The stream asks on every Open and the sender retries every service pass;
+ * one run of the same refusal is one report. */
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsRepeatedTrustAnchorsItCannotParseOnce)
+{
+    WolfSslTlsFake_SetLoadVerifyBufferReturn(FAKE_ASN_NO_PEM_HEADER);
+    Install();
+    credentials->Release(credentials);
+
+    Install();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+}
+
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsTrustAnchorsItCannotParseAgainAfterAnInstallInBetween)
+{
+    WolfSslTlsFake_SetLoadVerifyBufferReturn(FAKE_ASN_NO_PEM_HEADER);
+    Install();
+    credentials->Release(credentials);
+    WolfSslTlsFake_SetLoadVerifyBufferReturn(FAKE_WOLFSSL_SUCCESS);
+    CHECK_TRUE(Install());
+    credentials->Release(credentials);
+    WolfSslTlsFake_SetLoadVerifyBufferReturn(FAKE_ASN_NO_PEM_HEADER);
+
+    Install();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
+TEST(SolidSyslogWolfSslPemBufferCredentials, ASourceCreatedInAReusedSlotReportsItsFirstRefusal)
+{
+    WolfSslTlsFake_SetLoadVerifyBufferReturn(FAKE_ASN_NO_PEM_HEADER);
+    Install();
+    credentials->Release(credentials);
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+    credentials = SolidSyslogWolfSslPemBufferCredentials_Create(&config);
+
+    Install();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogWolfSslPemBufferCredentials, InstallWithoutTrustAnchorsLoadsNothingAndStillSucceeds)
 {
     config.CaPem.Bytes = nullptr;

@@ -9,6 +9,7 @@
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStreamOpenHealth.h"
 #include "SolidSyslogWolfSslCredentialsDefinition.h"
 #include "SolidSyslogWolfSslPemBufferCredentials.h"
 #include "SolidSyslogWolfSslPemBufferCredentialsErrors.h"
@@ -17,6 +18,10 @@ struct SolidSyslogWolfSslPemBufferCredentials
 {
     struct SolidSyslogWolfSslCredentials Base;
     struct SolidSyslogWolfSslPemBufferCredentialsConfig Config;
+    /* A refusal that fails Install is reported once per run of the same
+     * detail, as a stream's failed Open is: the stream asks on every attempt.
+     * An Install that succeeds re-arms it. */
+    struct SolidSyslogStreamOpenHealth InstallHealth;
 };
 
 void SolidSyslogWolfSslPemBufferCredentials_Initialise(
@@ -32,6 +37,22 @@ static inline void WolfSslPemBufferCredentials_Report(
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogWolfSslPemBufferCredentialsErrorSource, category, (int32_t) code);
+}
+
+static inline void WolfSslPemBufferCredentials_ReportInstallFailure(
+    struct SolidSyslogWolfSslPemBufferCredentials* self,
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogTlsCredentialsErrors code
+)
+{
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->InstallHealth,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        severity,
+        category,
+        (int32_t) code
+    );
 }
 
 #endif /* SOLIDSYSLOGWOLFSSLPEMBUFFERCREDENTIALSPRIVATE_H */

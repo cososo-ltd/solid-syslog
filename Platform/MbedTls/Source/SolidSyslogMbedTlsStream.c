@@ -75,7 +75,7 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
 static inline void MbedTlsStream_ApplyTlsPolicy(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStream* self);
 static inline bool MbedTlsStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
-static inline bool MbedTlsStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool MbedTlsStream_FingerprintsAreUsable(struct SolidSyslogMbedTlsStream* self);
 static inline void MbedTlsStream_ApplyPeerVerificationPolicy(struct SolidSyslogMbedTlsStream* self);
 static int MbedTlsStream_VerifyPeer(void* context, mbedtls_x509_crt* crt, int depth, uint32_t* flags);
 static inline int MbedTlsStream_EnforceWhereTheLibraryWillNot(
@@ -326,7 +326,8 @@ static inline bool MbedTlsStream_ApplySslConfigDefaults(struct SolidSyslogMbedTl
     bool ok = rc == 0;
     if (!ok)
     {
-        MbedTlsStream_Report(
+        MbedTlsStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             MbedTlsStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED)
@@ -416,7 +417,8 @@ static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStr
     bool ok = self->Config.Credentials->Install(self->Config.Credentials, &self->SslConfig, &self->Installed);
     if (ok && !MbedTlsStream_PeerIsAuthorisable(&self->Installed))
     {
-        MbedTlsStream_Report(
+        MbedTlsStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
@@ -425,7 +427,7 @@ static inline bool MbedTlsStream_InstallCredentials(struct SolidSyslogMbedTlsStr
     }
     if (ok)
     {
-        ok = MbedTlsStream_FingerprintsAreUsable(&self->Installed);
+        ok = MbedTlsStream_FingerprintsAreUsable(self);
     }
     if (ok)
     {
@@ -444,14 +446,15 @@ static inline bool MbedTlsStream_PeerIsAuthorisable(const struct SolidSyslogTlsC
 } /* Inspected before the handshake, so a pin that cannot match is reported as
  * bad configuration rather than as a refused peer. */
 
-static inline bool MbedTlsStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+static inline bool MbedTlsStream_FingerprintsAreUsable(struct SolidSyslogMbedTlsStream* self)
 {
     bool ok = true;
     enum SolidSyslogTlsFingerprintListState state =
-        SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount);
+        SolidSyslogTlsFingerprint_InspectList(self->Installed.Fingerprints, self->Installed.FingerprintCount);
     if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED)
     {
-        MbedTlsStream_Report(
+        MbedTlsStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
@@ -612,7 +615,8 @@ static inline bool MbedTlsStream_BindContextToConfig(struct SolidSyslogMbedTlsSt
     bool ok = rc == 0;
     if (!ok)
     {
-        MbedTlsStream_Report(
+        MbedTlsStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             MbedTlsStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED)
@@ -647,7 +651,8 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
         /* Not an identity. Mbed TLS would never match it, leaving a refused peer
          * with no reason named; refusing here names the fault, and keeps this
          * adapter in step with a library that reads it as a sub-domain pattern. */
-        MbedTlsStream_Report(
+        MbedTlsStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
@@ -661,7 +666,8 @@ static inline bool MbedTlsStream_ConfigureExpectedHostname(struct SolidSyslogMbe
         ok = rc == 0;
         if (!ok)
         {
-            MbedTlsStream_Report(
+            MbedTlsStream_ReportOpenFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 MbedTlsStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED)
@@ -722,18 +728,20 @@ static inline bool MbedTlsStream_PerformHandshake(struct SolidSyslogMbedTlsStrea
         }
         else if (!MbedTlsStream_IsRetryableHandshakeRc(rc))
         {
-            MbedTlsStream_ReportHandshakeFailure(
+            MbedTlsStream_ReportOpenFailure(
                 self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                 MbedTlsStream_InitDetail(rc, MbedTlsStream_RefusalDetail(self))
             );
             done = true;
         }
         else if (MbedTlsStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
         {
-            MbedTlsStream_ReportHandshakeFailure(
+            MbedTlsStream_ReportOpenFailure(
                 self,
                 SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                 SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
             );
             done = true;
@@ -772,7 +780,12 @@ static inline bool MbedTlsStream_PeerPassedVerification(struct SolidSyslogMbedTl
     bool ok = !MbedTlsStream_IsVerifyFailure(mbedtls_ssl_get_verify_result(&self->SslContext));
     if (!ok)
     {
-        MbedTlsStream_ReportHandshakeFailure(self, SOLIDSYSLOG_SEVERITY_ERROR, MbedTlsStream_RefusalDetail(self));
+        MbedTlsStream_ReportOpenFailure(
+            self,
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+            MbedTlsStream_RefusalDetail(self)
+        );
     }
     return ok;
 }
@@ -815,7 +828,8 @@ static inline bool MbedTlsStream_IsVerifyFailure(uint32_t verdict)
 /* The flags accumulate, so a compound verdict resolves by precedence: an
  * untrusted chain is reported ahead of anything the certificate says about
  * itself, because a certificate no anchor vouches for is not made acceptable by
- * the dates it carries. */
+ * the dates it carries; and the dates ahead of the name, as the contract orders
+ * them. */
 static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_DetailForVerifyFailure(uint32_t verdict)
 {
     enum SolidSyslogTlsStreamErrors detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
@@ -827,18 +841,18 @@ static inline enum SolidSyslogTlsStreamErrors MbedTlsStream_DetailForVerifyFailu
     {
         /* Untrusted, which the detail already holds. */
     }
-    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_CN_MISMATCH) != 0U)
-    {
-        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
-    }
     else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_EXPIRED) != 0U)
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
     }
+    else if ((verdict & (uint32_t) MBEDTLS_X509_BADCERT_FUTURE) != 0U)
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
     else
     {
         /* A named flag is set and the others are not, so this is it. */
-        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
     }
     return detail;
 }

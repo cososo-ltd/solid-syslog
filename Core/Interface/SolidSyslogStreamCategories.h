@@ -20,10 +20,11 @@
  */
 
 /** The stream could not establish its connection to the destination. Raised
- *  once per attempt, so a destination that stays down produces one event per
- *  Service pass; the edge-triggered summary of an outage is the Sender's
- *  SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED, not this. event->Detail names which
- *  step failed. */
+ *  once per run of the same detail, so a destination that stays down produces
+ *  one event, not one per Service pass; a different detail in the same run is
+ *  raised too, and an Open that connects re-arms it. event->Detail names which
+ *  step failed, which the Sender's SOLIDSYSLOG_CAT_SENDER_DELIVERY_FAILED does
+ *  not. */
 #define SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_STREAM_BASE + 1U))
 
 /** The connection stands, but the stack declined a socket option the stream

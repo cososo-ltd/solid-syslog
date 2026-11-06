@@ -462,15 +462,7 @@ TEST(SolidSyslogWolfSslStreamIntegration, AnUntrustedChainIsNamedBeforeTheDatesO
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
 }
 
-/* The contract names the name ahead of the dates. wolfSSL cannot: a date
- * failure on the leaf is fatal before its name is checked, so the name is
- * never raised and the stream has nothing to put first. The platform page
- * records the shortfall; this pins it, so a wolfSSL that starts checking the
- * name regardless is noticed. */
-TEST(
-    SolidSyslogWolfSslStreamIntegration,
-    ACertificateThatHasExpiredIsNamedForItsDatesEvenWhereItsNameDoesNotMatchEither
-)
+TEST(SolidSyslogWolfSslStreamIntegration, ACertificateThatHasExpiredIsNamedBeforeANameThatDoesNotMatch)
 {
     CHECK_FALSE(OpenAgainst("server-wrongname-expired.pem", TEST_SERVER_HOSTNAME));
 

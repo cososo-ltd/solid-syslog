@@ -11,7 +11,7 @@
  * lwIP network backend behind the pipeline seam: the tcpip thread, the
  * hand-written LAN9118 netif (netif/EthernetIf.c), the static-IP bring-up +
  * gateway ARP warm-up, the LwipSocket sender wiring (UDP + octet-framed TCP +
- * TLS/mTLS via mbedTLS over a second LwipSocket TCP), and the RFC 5424 HOSTNAME
+ * TLS/mTLS via the linked TLS pack over a second LwipSocket TCP), and the RFC 5424 HOSTNAME
  * read from the netif.
  *
  * There is no marshal seam here. The Sockets API is thread-safe, so every
@@ -205,8 +205,8 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 }
 
 /* Bring up the netif on the tcpip thread, warm the gateway ARP, then build the
- * LwipSocket SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (mbedTLS
- * over a second LwipSocket TCP stream). Default transport UDP. Runs on the
+ * LwipSocket SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (the
+ * linked TLS pack over a second LwipSocket TCP stream). Default transport UDP. Runs on the
  * interactive task - the adapters open sockets against a started lwIP core,
  * which is now up. */
 static struct SolidSyslogSender* BuildSender(void)
@@ -266,7 +266,7 @@ static struct SolidSyslogSender* BuildSender(void)
 }
 
 /* Reverse-order teardown of the LwipSocket sender stack. BddTargetTlsSender owns
- * the inner MbedTlsStream + LwipSocketTcpStream + StreamSender pool slots, so it
+ * the inner TLS stream + LwipSocketTcpStream + StreamSender pool slots, so it
  * is released before the plain-TCP tcpSender / tcpStream. */
 static void TeardownNetwork(void)
 {

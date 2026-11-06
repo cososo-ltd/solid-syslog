@@ -50,6 +50,10 @@ struct SolidSyslogOpenSslStream
      * the top of the chain down, so an issuer outside its period would be
      * refused before the leaf's pin was compared. */
     int ValidityObjection;
+    /* A name or address mismatch carried past the call that raised it, and
+     * X509_V_OK where there was none. OpenSSL checks the name before the
+     * dates, and the dates are named first. */
+    int NameObjection;
     /* What the pin walk decided at the leaf, recorded there. A pin naming a hash
      * this build cannot compute is the integrator's fault, not the peer's, and
      * nothing in the library's verdict distinguishes the two. */
@@ -71,11 +75,12 @@ static inline void OpenSslStream_Report(
     SolidSyslog_Error(severity, &SolidSyslogOpenSslStreamErrorSource, category, (int32_t) code);
 }
 
-/* A failed handshake, reported once per run of the same detail as the Open
- * contract requires: the sender retries every service pass. */
-static inline void OpenSslStream_ReportHandshakeFailure(
+/* A failure that ends an Open, reported once per run of the same detail as
+ * the Open contract requires: the sender retries every service pass. */
+static inline void OpenSslStream_ReportOpenFailure(
     struct SolidSyslogOpenSslStream* self,
     enum SolidSyslogSeverity severity,
+    uint16_t category,
     enum SolidSyslogTlsStreamErrors code
 )
 {
@@ -83,7 +88,7 @@ static inline void OpenSslStream_ReportHandshakeFailure(
         &self->OpenHealth,
         &SolidSyslogOpenSslStreamErrorSource,
         severity,
-        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        category,
         (int32_t) code
     );
 }

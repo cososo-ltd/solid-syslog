@@ -33,13 +33,6 @@ if(NOT LWIP_DIR)
         "which sets this to /opt/lwip.")
 endif()
 
-set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
-if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_MBEDTLS_DIR is empty or invalid (falls back to $MBEDTLS_DIR). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/mbedtls.")
-endif()
-
 set(LITTLEFS_PATH "${SOLIDSYSLOG_LITTLEFS_PATH}")
 if(NOT LITTLEFS_PATH)
     message(FATAL_ERROR
@@ -121,40 +114,155 @@ target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${LITTLEFS_PATH}                                  # lfs.h, lfs_util.h
 )
 
-# --- mbedTLS upstream as a subproject ----------------------------------------
+# --- The TLS pack ----------------------------------------------------------
 #
-# Same pattern as Bdd/Targets/FreeRtos/CMakeLists.txt: bring mbedTLS in via
-# add_subdirectory(EXCLUDE_FROM_ALL), force-disable its programs/tests, and
-# strip our strict warning surface from the upstream targets so a future
-# mbedTLS bump doesn't break our build for diagnostic reasons. clang-tidy /
-# cppcheck are also disabled per-target — they would otherwise apply our
-# .clang-tidy ruleset to upstream code.
-set(ENABLE_PROGRAMS OFF CACHE BOOL "Disable mbedTLS demo programs in our build" FORCE)
-set(ENABLE_TESTING OFF CACHE BOOL "Disable mbedTLS upstream tests in our build" FORCE)
-set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "Upstream mbedTLS warnings are not errors in our build" FORCE)
-add_subdirectory(${MBEDTLS_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/_mbedtls EXCLUDE_FROM_ALL)
-
-# MBEDTLS_USER_CONFIG_FILE is consumed by mbedTLS's headers via `#include`,
-# so the macro value must be a quoted C string literal. CMake-quote with
-# `\"` to survive the shell -> compiler hop.
-set(MBEDTLS_USER_CONFIG_HEADER
-    "\"${CMAKE_CURRENT_SOURCE_DIR}/mbedtls_user_config.h\""
-)
-
-foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
-    if(TARGET ${_mbedtls_upstream_target})
-        target_compile_options(${_mbedtls_upstream_target} PRIVATE -w)
-        target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
-            MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
-        )
-        set_target_properties(${_mbedtls_upstream_target} PROPERTIES
-            C_CLANG_TIDY ""
-            CXX_CLANG_TIDY ""
-            C_CPPCHECK ""
-            CXX_CPPCHECK ""
-        )
+# One target, two builds: Mbed TLS by default, wolfSSL where the configure
+# names the WolfSsl pack (the cmsis-cross-lwip-wolfssl preset). Each branch
+# says which upstream it compiles, which of our sources fill the TLS and
+# at-rest seams, and what the executable links and defines.
+if(SOLIDSYSLOG_WOLFSSL)
+    set(WOLFSSL_SOURCE_DIR "${SOLIDSYSLOG_WOLFSSL_SOURCE_DIR}")
+    if(NOT EXISTS "${WOLFSSL_SOURCE_DIR}/wolfssl/ssl.h")
+        message(FATAL_ERROR
+            "SOLIDSYSLOG_WOLFSSL_SOURCE_DIR is empty or invalid (falls back to $WOLFSSL_SOURCE_DIR). Use the "
+            "cpputest-freertos-cross container, which sets this to /opt/wolfssl-src.")
     endif()
-endforeach()
+
+    # wolfSSL from source, the way an embedded integrator builds it: the file
+    # list, compiled under this target's user_settings.h. Its own CMake is not
+    # used - it probes for a hosted system this target is not. Every file
+    # gates itself on the settings, so one the build has no use for compiles
+    # to nothing.
+    set(WOLFSSL_USER_SETTINGS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/wolfssl")
+    add_library(solid_syslog_cmsis_wolfssl_upstream OBJECT
+        ${WOLFSSL_SOURCE_DIR}/src/internal.c
+        ${WOLFSSL_SOURCE_DIR}/src/keys.c
+        ${WOLFSSL_SOURCE_DIR}/src/ssl.c
+        ${WOLFSSL_SOURCE_DIR}/src/tls.c
+        ${WOLFSSL_SOURCE_DIR}/src/tls13.c
+        ${WOLFSSL_SOURCE_DIR}/src/wolfio.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/aes.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/asn.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/coding.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/dh.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/ecc.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/error.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/hash.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/hmac.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/kdf.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/logging.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/memory.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/random.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/rsa.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/sha.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/sha256.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/sha512.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/signature.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/sp_int.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/wc_encrypt.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/wc_port.c
+        ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/wolfmath.c
+    )
+    target_compile_options(solid_syslog_cmsis_wolfssl_upstream PRIVATE
+        -mcpu=cortex-m3
+        -mthumb
+        -ffunction-sections
+        -fdata-sections
+        -fno-common
+        -w
+    )
+    target_compile_definitions(solid_syslog_cmsis_wolfssl_upstream PRIVATE WOLFSSL_USER_SETTINGS)
+    target_include_directories(solid_syslog_cmsis_wolfssl_upstream PRIVATE
+        ${WOLFSSL_USER_SETTINGS_DIR}                  # user_settings.h
+        ${WOLFSSL_SOURCE_DIR}
+        ${BDD_KERNEL_UPSTREAM_INCLUDES}               # cmsis_os2.h, for wolfSSL's CMSIS-RTOS2 port
+    )
+    set_target_properties(solid_syslog_cmsis_wolfssl_upstream PROPERTIES
+        C_CLANG_TIDY ""
+        C_CPPCHECK ""
+    )
+
+    set(BDD_TLS_SOURCES
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSecurityPolicy_WolfSsl.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_WolfSsl_InnerStream.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetWolfSslBakedCredentials.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetWolfSslPort.c
+        $<TARGET_OBJECTS:solid_syslog_cmsis_wolfssl_upstream>
+    )
+    set(BDD_TLS_LIBRARIES
+        SolidSyslog::WolfSsl                          # TLS Stream + HMAC/AES-GCM policy adapters (sources)
+    )
+    # The pack's sources, and ours that include wolfSSL headers, must see the
+    # settings the library was compiled under. The handshake runs on the service
+    # thread and peaks near 22 KiB of stack under these settings, read from the
+    # [stack-hwm] line the target prints on `quit`, so this build gives that
+    # thread more than the pipeline's default.
+    set(BDD_TLS_DEFINITIONS WOLFSSL_USER_SETTINGS BDD_TARGET_SERVICE_STACK_BYTES=32768U)
+    set(BDD_TLS_INCLUDES ${WOLFSSL_USER_SETTINGS_DIR})
+    # wolfSSL's headers are not clean under this project's warning set, which
+    # upstream does not build with. SYSTEM silences them without relaxing
+    # anything we compile.
+    set(BDD_TLS_SYSTEM_INCLUDES ${WOLFSSL_SOURCE_DIR})
+else()
+    set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
+    if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR
+            "SOLIDSYSLOG_MBEDTLS_DIR is empty or invalid (falls back to $MBEDTLS_DIR). Use the cpputest-freertos-cross "
+            "container, which sets this to /opt/mbedtls.")
+    endif()
+
+    # --- mbedTLS upstream as a subproject ----------------------------------------
+    #
+    # Same pattern as Bdd/Targets/FreeRtos/CMakeLists.txt: bring mbedTLS in via
+    # add_subdirectory(EXCLUDE_FROM_ALL), force-disable its programs/tests, and
+    # strip our strict warning surface from the upstream targets so a future
+    # mbedTLS bump doesn't break our build for diagnostic reasons. clang-tidy /
+    # cppcheck are also disabled per-target — they would otherwise apply our
+    # .clang-tidy ruleset to upstream code.
+    set(ENABLE_PROGRAMS OFF CACHE BOOL "Disable mbedTLS demo programs in our build" FORCE)
+    set(ENABLE_TESTING OFF CACHE BOOL "Disable mbedTLS upstream tests in our build" FORCE)
+    set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "Upstream mbedTLS warnings are not errors in our build" FORCE)
+    add_subdirectory(${MBEDTLS_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/_mbedtls EXCLUDE_FROM_ALL)
+
+    # MBEDTLS_USER_CONFIG_FILE is consumed by mbedTLS's headers via `#include`,
+    # so the macro value must be a quoted C string literal. CMake-quote with
+    # `\"` to survive the shell -> compiler hop.
+    set(MBEDTLS_USER_CONFIG_HEADER
+        "\"${CMAKE_CURRENT_SOURCE_DIR}/mbedtls_user_config.h\""
+    )
+
+    foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
+        if(TARGET ${_mbedtls_upstream_target})
+            target_compile_options(${_mbedtls_upstream_target} PRIVATE -w)
+            target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
+                MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
+            )
+            set_target_properties(${_mbedtls_upstream_target} PROPERTIES
+                C_CLANG_TIDY ""
+                CXX_CLANG_TIDY ""
+                C_CPPCHECK ""
+                CXX_CPPCHECK ""
+            )
+        endif()
+    endforeach()
+
+    set(BDD_TLS_SOURCES
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSecurityPolicy_MbedTls.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
+    )
+    set(BDD_TLS_LIBRARIES
+        SolidSyslog::MbedTls                          # TLS Stream + HMAC/AES-GCM policy adapters (sources)
+        mbedtls mbedx509 mbedcrypto                   # mbedTLS upstream (subproject, cross-compiled)
+    )
+    # Platform/MbedTls/Source/*.c include <mbedtls/ssl.h>; they MUST see the
+    # same user config as the mbedTLS library itself, otherwise struct sizes
+    # and the enabled-feature bitset diverge between the consumer and the
+    # library.
+    set(BDD_TLS_DEFINITIONS MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER})
+    set(BDD_TLS_INCLUDES "")
+    set(BDD_TLS_SYSTEM_INCLUDES "")
+endif()
 
 # --- Bake demo PEMs into the ELF -------------------------------------------
 #
@@ -222,8 +330,8 @@ add_executable(SolidSyslogBddTargetCmsis
     ${LWIP_SHARED_DIR}/netif/EthernetIf.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipSocket (Address/Datagram/TcpStream/
-    # Resolver), CmsisRtos (Mutex + SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM
-    # policies), LittleFs (file adapter). LfsSemihostingDisk.c is this target's
+    # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
+    # HMAC/AES-GCM policies), LittleFs (file adapter). LfsSemihostingDisk.c is this target's
     # block device over the shared 8 MiB semihosting image.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/LfsSemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
@@ -243,10 +351,9 @@ add_executable(SolidSyslogBddTargetCmsis
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSwitchConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetBlockFiles.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMbedTlsCredentials.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_LwipSocketTcp.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
+    ${BDD_TLS_SOURCES}
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_cmsis_lwip_upstream>
 )
@@ -270,9 +377,10 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
-    # Platform/{LwipSocket,CmsisRtos,MbedTls,LittleFs}/{Interface,Source} include dirs
+    # Platform/{LwipSocket,CmsisRtos,LittleFs}/{Interface,Source} and the TLS pack's include dirs
     # now arrive transitively from the SolidSyslog::* pack umbrellas linked below.
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
+    ${BDD_TLS_INCLUDES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h (via lwip/sys.h)
@@ -284,28 +392,25 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
 # docs/platforms/littlefs/setup.md tells an integrator on this bar to apply.
 target_include_directories(SolidSyslogBddTargetCmsis SYSTEM PRIVATE
     ${LITTLEFS_PATH}
+    ${BDD_TLS_SYSTEM_INCLUDES}
 )
 
 target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
     ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
     SolidSyslog::LwipSocket                           # lwIP Sockets adapters (need LWIP_SOCKET/LWIP_NETCONN/LWIP_DNS=1)
     SolidSyslog::CmsisRtos                            # Mutex + SysUpTime adapters (sources)
-    SolidSyslog::MbedTls                              # TLS Stream + HMAC/AES-GCM policy adapters (sources)
     SolidSyslog::LittleFs                             # LittleFS file adapter (sources)
-    mbedtls mbedx509 mbedcrypto                       # mbedTLS upstream (subproject, cross-compiled)
+    ${BDD_TLS_LIBRARIES}
 )
 
-# Platform/MbedTls/Source/*.c include <mbedtls/ssl.h>; they MUST see the same
-# user config as the mbedTLS library itself, otherwise struct sizes and the
-# enabled-feature bitset diverge between the consumer and the library.
-# The wall clock this target hands mbedTLS is seeded at configure time: the
+# The wall clock this target hands its TLS library is seeded at configure time: the
 # board has no RTC and no libc time() behind a syscall, and certificate
 # validity only asks which side of a window the device is on. It drifts forward
 # from the configure instant, which the ten-year test material absorbs.
 string(TIMESTAMP SOLIDSYSLOG_BDD_BUILD_EPOCH "%s" UTC)
 
 target_compile_definitions(SolidSyslogBddTargetCmsis PRIVATE
-    MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
+    ${BDD_TLS_DEFINITIONS}
     BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )
 

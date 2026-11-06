@@ -116,8 +116,10 @@ What it needs, and what it does, is in
 | `bdd-freertos-qemu-plustcp` | `syslog-ng-freertos` + `behave-freertos` (cross image w/ QEMU + Behave) |
 | `bdd-freertos-qemu-lwip` | `syslog-ng-freertos-lwip` + `behave-freertos-lwip` |
 | `bdd-cmsis-qemu-lwip` | `syslog-ng-cmsis-lwip` + `behave-cmsis-lwip` |
+| `bdd-cmsis-qemu-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl` + `behave-cmsis-lwip-wolfssl` |
 | `bdd-windows-otel` | runner-direct (no compose); spawns `otelcol-contrib.exe` directly |
 
 Each QEMU job depends on its cross-build job (`build-freertos-target-plustcp`,
-`build-freertos-target-lwip`, `build-cmsis-target-lwip`) to upload the BDD target
+`build-freertos-target-lwip`, `build-cmsis-target-lwip`,
+`build-cmsis-target-lwip-wolfssl`) to upload the BDD target
 ELF as an artifact, and downloads it before `docker compose up`.

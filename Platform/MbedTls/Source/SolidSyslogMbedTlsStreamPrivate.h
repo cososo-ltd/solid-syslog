@@ -64,11 +64,12 @@ static inline void MbedTlsStream_Report(
     SolidSyslog_Error(severity, &SolidSyslogMbedTlsStreamErrorSource, category, (int32_t) code);
 }
 
-/* A failed handshake, reported once per run of the same detail as the Open
- * contract requires: the sender retries every service pass. */
-static inline void MbedTlsStream_ReportHandshakeFailure(
+/* A failure that ends an Open, reported once per run of the same detail as
+ * the Open contract requires: the sender retries every service pass. */
+static inline void MbedTlsStream_ReportOpenFailure(
     struct SolidSyslogMbedTlsStream* self,
     enum SolidSyslogSeverity severity,
+    uint16_t category,
     enum SolidSyslogTlsStreamErrors code
 )
 {
@@ -76,7 +77,7 @@ static inline void MbedTlsStream_ReportHandshakeFailure(
         &self->OpenHealth,
         &SolidSyslogMbedTlsStreamErrorSource,
         severity,
-        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        category,
         (int32_t) code
     );
 }

@@ -17,6 +17,7 @@
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsConfig.h"
 #include "BddTargetMessageSettings.h"
+#include "BddTargetSecurityPolicy.h"
 #include "BddTargetStoreSettings.h"
 #include "BddTargetTlsSender.h"
 #include "CmsdkUart.h"
@@ -26,18 +27,14 @@
 #include "SolidSyslogBlockStore.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
-#include "SolidSyslogCrc16Policy.h"
 #include "SolidSyslogEndpoint.h"
 #include "SolidSyslogEndpointHost.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogHeaderField.h"
-#include "SolidSyslogMbedTlsAesGcmPolicy.h"
-#include "SolidSyslogMbedTlsHmacSha256Policy.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMutex.h"
 #include "SolidSyslogNullFile.h"
-#include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -93,12 +90,9 @@ static bool currentStoreIsFile = false;
 
 /* The store settings the harness sends before `set store file` live in
  * BddTargetStoreSettings. currentPolicy holds the at-rest policy
- * RebuildWithFileStore created so DestroyCurrentStore can release it.
- * DestroySecurityPolicy must dispatch on installedSecurityPolicy, the kind
- * captured when currentPolicy was built, NOT the setting, which a later `set
- * security-policy` can change out from under the installed policy. */
+ * RebuildWithFileStore created so DestroyCurrentStore can release it. Which
+ * crypto pack builds it is BddTargetSecurityPolicy's business, not this file's. */
 static struct SolidSyslogSecurityPolicy* currentPolicy = NULL;
-static enum BddTargetSecurityPolicy installedSecurityPolicy = BDD_TARGET_SECURITY_POLICY_CRC16;
 
 /* Holds the final SolidSyslog config so the rebuild path can rewrite .Store and
  * pass the same struct back into SolidSyslog_Create. */
@@ -127,8 +121,6 @@ enum
 };
 
 static bool OnSet(const char* name, const char* value);
-static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void);
-static void DestroySecurityPolicy(void);
 static bool RebuildWithFileStore(void);
 static void DestroyCurrentStore(void);
 static void OnHalt(void* context);
@@ -308,37 +300,6 @@ static bool OnSet(const char* name, const char* value)
     return BddTargetTlsConfig_SetByName(name, value);
 }
 
-static struct SolidSyslogSecurityPolicy* CreateSecurityPolicy(void)
-{
-    /* Latch the kind now so teardown destroys against what we actually built,
-     * not whatever `set security-policy` may set afterwards. */
-    installedSecurityPolicy = BddTargetStoreSettings_SecurityPolicy();
-    struct SolidSyslogSecurityPolicy* policy = NULL;
-    if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
-    {
-        static const struct SolidSyslogMbedTlsHmacSha256PolicyConfig hmacConfig = {BddTargetKey_Get, NULL};
-        policy = SolidSyslogMbedTlsHmacSha256Policy_Create(&hmacConfig);
-    }
-    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
-    {
-        /* Reuse the TLS module's already-seeded CTR-DRBG as the AEAD nonce
-         * source - see BddTargetTlsSender_GetRng. Not static const: Rng is a
-         * runtime handle. */
-        const struct SolidSyslogMbedTlsAesGcmPolicyConfig aesConfig =
-            {BddTargetKey_Get, NULL, BddTargetTlsSender_GetRng()};
-        policy = SolidSyslogMbedTlsAesGcmPolicy_Create(&aesConfig);
-    }
-    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_NULL)
-    {
-        policy = SolidSyslogNullSecurityPolicy_Get();
-    }
-    else
-    {
-        policy = SolidSyslogCrc16Policy_Create();
-    }
-    return policy;
-}
-
 /* `set store file` trigger: swap the default NullStore for a file-backed
  * BlockStore over the platform FS-mount seam. One-way for the lifetime of this
  * QEMU instance. The lifecycle mutex blocks the Service task across the
@@ -367,7 +328,7 @@ static bool RebuildWithFileStore(void)
     storeBlockDevice =
         SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
 
-    struct SolidSyslogSecurityPolicy* policy = CreateSecurityPolicy();
+    struct SolidSyslogSecurityPolicy* policy = BddTargetSecurityPolicy_Create();
     currentPolicy = policy;
     struct SolidSyslogBlockStoreConfig storeConfig = {
         .BlockDevice = storeBlockDevice,
@@ -393,24 +354,6 @@ static bool RebuildWithFileStore(void)
     return true;
 }
 
-static void DestroySecurityPolicy(void)
-{
-    if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_HMAC_SHA256)
-    {
-        SolidSyslogMbedTlsHmacSha256Policy_Destroy(currentPolicy);
-    }
-    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_AES_256_GCM)
-    {
-        SolidSyslogMbedTlsAesGcmPolicy_Destroy(currentPolicy);
-    }
-    else if (installedSecurityPolicy == BDD_TARGET_SECURITY_POLICY_CRC16)
-    {
-        SolidSyslogCrc16Policy_Destroy();
-    }
-    /* else "null": the shared NullSecurityPolicy is immutable - nothing to free. */
-    currentPolicy = NULL;
-}
-
 /* Tears down whichever store is currently installed (file-backed or null).
  * The platform DestroyStoreFile hook's Close flushes any buffered dir entry /
  * file data through to the media. */
@@ -420,7 +363,8 @@ static void DestroyCurrentStore(void)
     {
         SolidSyslogBlockStore_Destroy(currentStore);
         SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
-        DestroySecurityPolicy();
+        BddTargetSecurityPolicy_Destroy(currentPolicy);
+        currentPolicy = NULL;
         g_config->DestroyStoreFile(storeFile);
     }
     /* else: NullStore is shared and immutable - nothing to destroy. */

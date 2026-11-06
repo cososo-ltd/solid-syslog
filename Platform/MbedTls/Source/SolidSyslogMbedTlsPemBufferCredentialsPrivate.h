@@ -14,6 +14,7 @@
 #include "SolidSyslogMbedTlsPemBufferCredentials.h"
 #include "SolidSyslogMbedTlsPemBufferCredentialsErrors.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStreamOpenHealth.h"
 
 struct SolidSyslogMbedTlsPemBufferCredentials
 {
@@ -31,6 +32,10 @@ struct SolidSyslogMbedTlsPemBufferCredentials
      * every Install with a Release whatever it returned, so counting is what
      * keeps a refused one from freeing the live connection's material. */
     size_t OutstandingInstalls;
+    /* A refusal that fails Install is reported once per run of the same
+     * detail, as a stream's failed Open is: the stream asks on every attempt.
+     * An Install that succeeds re-arms it. */
+    struct SolidSyslogStreamOpenHealth InstallHealth;
 };
 
 void SolidSyslogMbedTlsPemBufferCredentials_Initialise(
@@ -46,6 +51,22 @@ static inline void MbedTlsPemBufferCredentials_Report(
 )
 {
     SolidSyslog_Error(severity, &SolidSyslogMbedTlsPemBufferCredentialsErrorSource, category, (int32_t) code);
+}
+
+static inline void MbedTlsPemBufferCredentials_ReportInstallFailure(
+    struct SolidSyslogMbedTlsPemBufferCredentials* self,
+    enum SolidSyslogSeverity severity,
+    uint16_t category,
+    enum SolidSyslogTlsCredentialsErrors code
+)
+{
+    SolidSyslogStreamOpenHealth_ReportFailure(
+        &self->InstallHealth,
+        &SolidSyslogMbedTlsPemBufferCredentialsErrorSource,
+        severity,
+        category,
+        (int32_t) code
+    );
 }
 
 #endif /* SOLIDSYSLOGMBEDTLSPEMBUFFERCREDENTIALSPRIVATE_H */

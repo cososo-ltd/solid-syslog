@@ -37,27 +37,27 @@ static inline struct SolidSyslogMbedTlsHmacSha256Policy* MbedTlsHmacSha256Policy
     struct SolidSyslogSecurityPolicy* base
 );
 static bool MbedTlsHmacSha256Policy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsHmacSha256Policy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
 static bool MbedTlsHmacSha256Policy_ComputeTag(
-    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    struct SolidSyslogMbedTlsHmacSha256Policy* self,
     const uint8_t* data,
     uint16_t length,
     uint8_t* tagOut,
     uint16_t failureCategory
 );
 static bool MbedTlsHmacSha256Policy_FetchKey(
-    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    struct SolidSyslogMbedTlsHmacSha256Policy* self,
     uint8_t* keyOut,
     size_t* keyLengthOut
 );
 static void MbedTlsHmacSha256Policy_ReportFault(
-    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    struct SolidSyslogMbedTlsHmacSha256Policy* self,
     uint16_t category,
     enum SolidSyslogHmacSha256PolicyErrors code
 );
@@ -95,7 +95,7 @@ static inline struct SolidSyslogMbedTlsHmacSha256Policy* MbedTlsHmacSha256Policy
 /* HMAC authenticates the whole content as one buffer - the header/body split
  * only matters to AEAD policies, so HeaderLength is ignored here. */
 static bool MbedTlsHmacSha256Policy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
@@ -103,7 +103,7 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
      * destination - same shape the AES-GCM sibling uses for its nonce/tag. */
     uint8_t* tag = record->Trailer;
     return MbedTlsHmacSha256Policy_ComputeTag(
-        MbedTlsHmacSha256Policy_SelfFromBase(self),
+        MbedTlsHmacSha256Policy_SelfFromBase(base),
         record->Content,
         record->ContentLength,
         tag,
@@ -118,7 +118,7 @@ static bool MbedTlsHmacSha256Policy_SealRecord(
  * open could not run. Shared by seal (writes the record tag) and verify
  * (recomputes for comparison). */
 static bool MbedTlsHmacSha256Policy_ComputeTag(
-    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    struct SolidSyslogMbedTlsHmacSha256Policy* self,
     const uint8_t* data,
     uint16_t length,
     uint8_t* tagOut,
@@ -128,19 +128,19 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
     uint8_t key[SOLIDSYSLOG_MAX_HMAC_KEY_SIZE];
     size_t keyLength = 0U;
     bool computed = false;
-    if (MbedTlsHmacSha256Policy_FetchKey(policy, key, &keyLength))
+    if (MbedTlsHmacSha256Policy_FetchKey(self, key, &keyLength))
     {
         const mbedtls_md_info_t* sha256 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
         if (mbedtls_md_hmac(sha256, key, keyLength, data, length, tagOut) == 0)
         {
             /* A tag to seal with or verify against: the run of faults is over. */
             computed = true;
-            policy->FaultReported = false;
+            self->FaultReported = false;
         }
         else
         {
             MbedTlsHmacSha256Policy_ReportFault(
-                policy,
+                self,
                 failureCategory,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_HMAC_FAILED
             );
@@ -156,14 +156,14 @@ static bool MbedTlsHmacSha256Policy_ComputeTag(
  * reports) if the key is unavailable, or if its length falls outside
  * [HMAC_SHA256_MIN_KEY_SIZE, sizeof buffer]. */
 static bool MbedTlsHmacSha256Policy_FetchKey(
-    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    struct SolidSyslogMbedTlsHmacSha256Policy* self,
     uint8_t* keyOut,
     size_t* keyLengthOut
 )
 {
     size_t keyLength = 0U;
     bool fetched = false;
-    if (policy->Config.GetKey(policy->Config.KeyContext, keyOut, SOLIDSYSLOG_MAX_HMAC_KEY_SIZE, &keyLength))
+    if (self->Config.GetKey(self->Config.KeyContext, keyOut, SOLIDSYSLOG_MAX_HMAC_KEY_SIZE, &keyLength))
     {
         if (MbedTlsHmacSha256Policy_KeyLengthIsValid(keyLength))
         {
@@ -173,7 +173,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
         else
         {
             MbedTlsHmacSha256Policy_ReportFault(
-                policy,
+                self,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
                 SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_TOO_SHORT
             );
@@ -182,7 +182,7 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
     else
     {
         MbedTlsHmacSha256Policy_ReportFault(
-            policy,
+            self,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_HMAC_SHA256_POLICY_ERROR_KEY_UNAVAILABLE
         );
@@ -192,15 +192,15 @@ static bool MbedTlsHmacSha256Policy_FetchKey(
 
 /* The first fault in a run is the one reported. */
 static void MbedTlsHmacSha256Policy_ReportFault(
-    struct SolidSyslogMbedTlsHmacSha256Policy* policy,
+    struct SolidSyslogMbedTlsHmacSha256Policy* self,
     uint16_t category,
     enum SolidSyslogHmacSha256PolicyErrors code
 )
 {
-    if (!policy->FaultReported)
+    if (!self->FaultReported)
     {
         MbedTlsHmacSha256Policy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
-        policy->FaultReported = true;
+        self->FaultReported = true;
     }
 }
 
@@ -210,14 +210,14 @@ static inline bool MbedTlsHmacSha256Policy_KeyLengthIsValid(size_t keyLength)
 }
 
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsHmacSha256Policy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
     uint8_t expected[HMAC_SHA256_TAG_SIZE];
     enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     if (MbedTlsHmacSha256Policy_ComputeTag(
-            MbedTlsHmacSha256Policy_SelfFromBase(self),
+            MbedTlsHmacSha256Policy_SelfFromBase(base),
             record->Content,
             record->ContentLength,
             expected,

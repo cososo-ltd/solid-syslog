@@ -27,7 +27,7 @@ static bool WolfSslPemBufferCredentials_Install(
     struct SolidSyslogTlsCredentialsInstalled* installed
 );
 static inline bool WolfSslPemBufferCredentials_LoadTrustAnchors(
-    const struct SolidSyslogWolfSslPemBufferCredentials* self,
+    struct SolidSyslogWolfSslPemBufferCredentials* self,
     WOLFSSL_CTX* ctx
 );
 static inline void WolfSslPemBufferCredentials_ConfigureClientIdentity(
@@ -63,6 +63,7 @@ void SolidSyslogWolfSslPemBufferCredentials_Initialise(
     self->Base.Install = WolfSslPemBufferCredentials_Install;
     self->Base.Release = WolfSslPemBufferCredentials_Release;
     self->Config = *config;
+    self->InstallHealth = (struct SolidSyslogStreamOpenHealth) {0};
 }
 
 static inline struct SolidSyslogWolfSslPemBufferCredentials* WolfSslPemBufferCredentials_SelfFromBase(
@@ -102,6 +103,7 @@ static bool WolfSslPemBufferCredentials_Install(
     }
     if (ok)
     {
+        SolidSyslogStreamOpenHealth_Opened(&self->InstallHealth);
         WolfSslPemBufferCredentials_ConfigureClientIdentity(self, ctx);
     }
     return ok;
@@ -111,7 +113,7 @@ static bool WolfSslPemBufferCredentials_Install(
  * named as what it is rather than handed to a parser that would say "no PEM
  * header" about an empty buffer. */
 static inline bool WolfSslPemBufferCredentials_LoadTrustAnchors(
-    const struct SolidSyslogWolfSslPemBufferCredentials* self,
+    struct SolidSyslogWolfSslPemBufferCredentials* self,
     WOLFSSL_CTX* ctx
 )
 {
@@ -123,7 +125,8 @@ static inline bool WolfSslPemBufferCredentials_LoadTrustAnchors(
                                                                                  ) == WOLFSSL_SUCCESS);
     if (!loaded)
     {
-        WolfSslPemBufferCredentials_Report(
+        WolfSslPemBufferCredentials_ReportInstallFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_TRUST_ANCHORS_NOT_PARSED

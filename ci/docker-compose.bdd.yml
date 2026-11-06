@@ -69,7 +69,7 @@ services:
     environment:
       - BDD_TARGET=linux
       - EXAMPLE_BINARY=build/tunable-override-wolfssl/Bdd/Targets/SolidSyslogBddTarget
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @name_before_dates' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc' Bdd/features/
 
   # Each BDD target pairs with its own syslog-ng instance on its own
   # bridge network so the `syslog-ng` DNS alias is scoped per-pair —
@@ -112,7 +112,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:adaae31fd748e6fcad044675793124c892a2829df22ff07366ccc0e345fa3526 # sha-deeb766
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -189,7 +189,7 @@ services:
 
   behave-freertos-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:adaae31fd748e6fcad044675793124c892a2829df22ff07366ccc0e345fa3526 # sha-deeb766
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -249,7 +249,7 @@ services:
 
   behave-cmsis-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:c130cc0686701e7747fd0a7fce8b4fe882b4a197e6a6f2b4fe5f46dfd2863e56 # sha-1739f5b
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:adaae31fd748e6fcad044675793124c892a2829df22ff07366ccc0e345fa3526 # sha-deeb766
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -267,18 +267,76 @@ services:
       - EXAMPLE_BINARY=build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
     command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
+
+  # The CmsisLwip pair over the wolfSSL pack, with wolfSSL built from source
+  # under the target's user_settings.h. The same target, built by the
+  # cmsis-cross-lwip-wolfssl preset, so the pair differs from the one above
+  # only in EXAMPLE_BINARY.
+  syslog-ng-cmsis-lwip-wolfssl:
+    image: balabit/syslog-ng@sha256:728cc5b63b9044ad5f18062bac73fd5c30bb7ad256c2aa12799d924d4f6f1e72 # 4.8.2
+    volumes:
+      - ../Bdd/syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - ../Bdd/syslog-ng/tls:/etc/syslog-ng/tls:ro
+      - bdd-output-cmsis-lwip-wolfssl:/var/log/syslog-ng
+      - syslog-ng-ctl-cmsis-lwip-wolfssl:/var/lib/syslog-ng
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        syslog-ng -F &
+        pid=$$!
+        deadline=$$((SECONDS + 30))
+        while [ ! -S /var/lib/syslog-ng/syslog-ng.ctl ]; do
+          kill -0 "$$pid" 2>/dev/null || { echo "syslog-ng exited unexpectedly"; exit 1; }
+          [ "$$SECONDS" -ge "$$deadline" ] && { echo "Timed out waiting for syslog-ng control socket"; kill "$$pid" 2>/dev/null; exit 1; }
+          sleep 0.1
+        done
+        chmod 0777 /var/lib/syslog-ng/syslog-ng.ctl
+        wait
+    networks:
+      cmsis-lwip-wolfssl:
+        aliases:
+          - syslog-ng
+    healthcheck:
+      test: ["CMD-SHELL", "test -S /var/lib/syslog-ng/syslog-ng.ctl"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  behave-cmsis-lwip-wolfssl:
+    # Cross image carries qemu-system-arm + python3 + behave.
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:adaae31fd748e6fcad044675793124c892a2829df22ff07366ccc0e345fa3526 # sha-deeb766
+    user: "0"
+    volumes:
+      - ..:/workspaces/SolidSyslog
+      - bdd-output-cmsis-lwip-wolfssl:/workspaces/SolidSyslog/Bdd/output
+      - syslog-ng-ctl-cmsis-lwip-wolfssl:/var/lib/syslog-ng
+    working_dir: /workspaces/SolidSyslog
+    network_mode: service:syslog-ng-cmsis-lwip-wolfssl
+    depends_on:
+      syslog-ng-cmsis-lwip-wolfssl:
+        condition: service_healthy
+    environment:
+      # The QEMU launch + UART `set` protocol are target-agnostic, so this ELF
+      # rides the existing freertos driver too - only the binary path differs.
+      - BDD_TARGET=freertos
+      - EXAMPLE_BINARY=build/cmsis-cross-lwip-wolfssl/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+
 volumes:
   bdd-output-linux:
   bdd-output-freertos:
   bdd-output-freertos-lwip:
   bdd-output-cmsis-lwip:
+  bdd-output-cmsis-lwip-wolfssl:
   syslog-ng-ctl-linux:
   syslog-ng-ctl-freertos:
   syslog-ng-ctl-freertos-lwip:
   syslog-ng-ctl-cmsis-lwip:
+  syslog-ng-ctl-cmsis-lwip-wolfssl:
 
 networks:
   linux:
   freertos:
   freertos-lwip:
   cmsis-lwip:
+  cmsis-lwip-wolfssl:

@@ -380,12 +380,12 @@ the contract rather than an accident of whichever backend is linked:
    than the handshake one, because no handshake was attempted.
 2. A fingerprint that matched nothing, or that could not be computed.
 3. A chain that reaches no trust anchor.
-4. A name that does not match.
-5. A validity period that has closed or not yet opened.
+4. A validity period that has closed or not yet opened.
+5. A name that does not match.
 
-A fault saying *this is not the peer you expected* is reported ahead of one
-saying *the expected peer's certificate is in a poor state*. The first may be
-an attack; the second is an operational lapse.
+A fault saying *this certificate is not one to accept at all* is reported ahead
+of one saying *it is not the certificate for this name*. A name is only worth
+matching on a certificate that is otherwise valid.
 
 Two consequences. A **matching pin waives nothing**: a peer whose fingerprint is
 pinned is still refused for a name that does not match or a certificate outside

@@ -51,7 +51,7 @@ enum
     FAKE_WOLFSSL_CBIO_ERR_WANT_READ = -2
 };
 
-/* The pins the fake digest matches: wc_Hash answers 32 bytes of 0x5A under
+/* The pins the fake digest matches: wc_Hash_ex answers 32 bytes of 0x5A under
    SHA-256 and 20 of 0x1A under SHA-1, whatever it is given. */
 static const char* const TEST_SHA256_PIN = "sha-256:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:"
                                            "5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A:5A";
@@ -76,6 +76,16 @@ static const char* const TEST_UNMATCHED_SHA256_PIN = "sha-256:00:00:00:00:00:00:
 
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
+
+/* The sender retries a refused Open every service pass; one run of the same
+ * refusal is one report. */
+#define CHECK_REPEATED_OPEN_REPORTS_ONCE(expectedCode)              \
+    {                                                               \
+        CHECK_FALSE(SolidSyslogStream_Open(handle, addr));          \
+        CHECK_FALSE(SolidSyslogStream_Open(handle, addr));          \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                 \
+        LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail()); \
+    }
 
 static int NoOpSleepCallCount;
 static uint32_t g_lastSleepMs;
@@ -1038,6 +1048,104 @@ TEST(SolidSyslogWolfSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASe
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedContextFailureOnce)
+{
+    WolfSslTlsFake_SetCtxNewExReturnsNull(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedLackOfPeerAuthorisationOnce)
+{
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedMalformedPinOnce)
+{
+    const char* const pins[] = {"sha-256:not-a-digest"};
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedSessionFailureOnce)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedFloorTheLibraryWouldNotApplyOnce)
+{
+    WolfSslTlsFake_SetSetMinVersionReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedCipherPolicyRejectionOnce)
+{
+    FakeProfile_Value.CipherList = "NOT-A-SUITE-THIS-BUILD-KNOWS";
+    WolfSslTlsFake_SetSetCipherListReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedPeerNameTheLibraryWouldNotTakeOnce)
+{
+    WolfSslTlsFake_SetCheckDomainNameReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsARepeatedServerNameIndicationTheLibraryWouldNotTakeOnce)
+{
+    WolfSslTlsFake_SetUseSniReturn(FAKE_WOLFSSL_FAILURE);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsADifferentRefusalInTheSameRun)
+{
+    WolfSslTlsFake_SetCtxNewExReturnsNull(true);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetCtxNewExReturnsNull(false);
+    WolfSslTlsFake_SetNewReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsAHandshakeRejectionAfterARefusalInTheSameRun)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetNewReturnsNull(false);
+    ArrangePersistentHandshakeError(FAKE_FATAL_ERROR);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, ErrorHandlerFake_LastCategory());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsTheSameRefusalAgainAfterASessionInBetween)
+{
+    WolfSslTlsFake_SetNewReturnsNull(true);
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    WolfSslTlsFake_SetNewReturnsNull(false);
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    SolidSyslogStream_Close(handle);
+    WolfSslTlsFake_SetNewReturnsNull(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 /* -------------------------------------------------------------------------
  * The refusal names the check the peer failed. wolfSSL tells the verify
  * callback one error per call and may call more than once; the stream records
@@ -1148,14 +1256,24 @@ TEST(SolidSyslogWolfSslStream, OpenReportsAnUntrustedChainAheadOfTheNameOnItWhic
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED, ErrorHandlerFake_LastDetail());
 }
 
-TEST(SolidSyslogWolfSslStream, OpenReportsANameMismatchAheadOfTheDatesWhicheverWasRaisedLast)
+TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfANameMismatchWhicheverWasRaisedLast)
 {
-    int errors[] = {FAKE_DOMAIN_NAME_MISMATCH, FAKE_ASN_AFTER_DATE_E};
+    int errors[] = {FAKE_ASN_AFTER_DATE_E, FAKE_DOMAIN_NAME_MISMATCH};
     ArrangeCertificateVerificationFailure(errors, 2);
 
     CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
 
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED, ErrorHandlerFake_LastDetail());
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogWolfSslStream, OpenReportsACertificateNotYetValidAheadOfANameMismatchWhicheverWasRaisedLast)
+{
+    int errors[] = {FAKE_ASN_BEFORE_DATE_E, FAKE_DOMAIN_NAME_MISMATCH};
+    ArrangeCertificateVerificationFailure(errors, 2);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID, ErrorHandlerFake_LastDetail());
 }
 
 TEST(SolidSyslogWolfSslStream, OpenReportsAnExpiredCertificateAheadOfOneNotYetValid)
@@ -1352,6 +1470,17 @@ TEST(SolidSyslogWolfSslStream, VerifyCallbackAuthorisesByTheLeafWhicheverCertifi
 
     POINTERS_EQUAL(WolfSslTlsFake_LeafDer(), WolfSslFake_LastHashData());
     UNSIGNED_LONGS_EQUAL(WolfSslTlsFake_LeafDerLength(), WolfSslFake_LastHashDataLen());
+}
+
+TEST(SolidSyslogWolfSslStream, VerifyCallbackDigestsTheLeafOnTheConfiguredHeap)
+{
+    const char* const pins[] = {TEST_SHA256_PIN};
+    WolfSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    WolfSslCredentialsFake_SetFingerprints(pins, 1U);
+
+    (void) OpenThenVerifyAt(0, FAKE_ASN_NO_SIGNER_E, 1);
+
+    POINTERS_EQUAL(&heap, WolfSslFake_LastHashHeap());
 }
 
 TEST(SolidSyslogWolfSslStream, VerifyCallbackChecksTheCertificateItIsCalledForAsATrustAnchorOnTheConfiguredHeap)

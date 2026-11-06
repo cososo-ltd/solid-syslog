@@ -40,6 +40,16 @@ using namespace CososoTesting;
 #define CHECK_OPEN_UNWOUND_WITH_ERROR(transport, expectedCategory, expectedCode) \
     CHECK_OPEN_UNWOUND_WITH_SEVERITY(transport, SOLIDSYSLOG_SEVERITY_ERROR, expectedCategory, expectedCode)
 
+/* The sender retries a refused Open every service pass; one run of the same
+ * refusal is one report. */
+#define CHECK_REPEATED_OPEN_REPORTS_ONCE(expectedCode)              \
+    {                                                               \
+        CHECK_FALSE(SolidSyslogStream_Open(stream, addr));          \
+        CHECK_FALSE(SolidSyslogStream_Open(stream, addr));          \
+        CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);                 \
+        LONGS_EQUAL((expectedCode), ErrorHandlerFake_LastDetail()); \
+    }
+
 /* The callback is installed, and refuses rather than prompts when asked. */
 #define CHECK_PASSPHRASE_CALLBACK_REFUSES(cb)                    \
     {                                                            \
@@ -347,6 +357,20 @@ TEST_GROUP(SolidSyslogOpenSslStream)
         OpenSslFake_SetStoreCtxDepth(0);
         OpenSslFake_SetStoreCtxError(leafError);
         return verify(leafPreverifyOk, OpenSslFake_StoreCtx());
+    }
+
+    /* Open, then drive the callback for the leaf with `nameError` as OpenSSL's
+       objection to it, which is where OpenSSL raises a name: after the chain is
+       built and before any certificate's dates are checked. Returns the
+       callback so the rest of the verification can be driven on the same
+       connection. */
+    [[nodiscard]] int (*OpenThenCarryANameMismatch(int nameError) const)(int, X509_STORE_CTX*)
+    {
+        OpenSslFake_SetStoreCtxError(nameError);
+        SolidSyslogStream_Open(stream, addr);
+        auto* verify = OpenSslFake_LastVerifyCallback();
+        LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+        return verify;
     }
 
     void SendShortMessage() const
@@ -1164,6 +1188,122 @@ TEST(SolidSyslogOpenSslStream, OpenReportsTheSameHandshakeRejectionAgainAfterASe
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
 }
 
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedContextFailureOnce)
+{
+    OpenSslFake_SetCtxNewFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedCipherPolicyRejectionOnce)
+{
+    FakeProfile_Value.CipherList = "not-a-real-cipher";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetCipherListFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedLackOfPeerAuthorisationOnce)
+{
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedMalformedPinOnce)
+{
+    static const char* const pins[] = {"sha-256:AA"};
+    OpenSslCredentialsFake_SetFingerprints(pins, 1);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedSessionFailureOnce)
+{
+    OpenSslFake_SetSslNewFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedTransportBioFailureOnce)
+{
+    OpenSslFake_SetBioNewFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedServerNameBeginningWithADotOnce)
+{
+    FakeProfile_Value.ServerName = ".logs.example";
+    ReCreateStreamWithUpdatedConfig();
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedServerNameTheLibraryWouldNotTakeOnce)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetSet1HostFails(true);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsARepeatedPeerThatPresentedNoCertificateOnce)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetPeerCertificatePresent(false);
+
+    CHECK_REPEATED_OPEN_REPORTS_ONCE(SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION);
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsADifferentRefusalInTheSameRun)
+{
+    OpenSslFake_SetCtxNewFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetCtxNewFails(false);
+    OpenSslFake_SetSslNewFails(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED, ErrorHandlerFake_LastDetail());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsAHandshakeRejectionAfterARefusalInTheSameRun)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetSslNewFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetSslNewFails(false);
+    OpenSslFake_SetConnectFails(true);
+    OpenSslFake_SetGetErrorReturn(SSL_ERROR_SSL);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED, ErrorHandlerFake_LastCategory());
+}
+
+TEST(SolidSyslogOpenSslStream, OpenReportsTheSameRefusalAgainAfterASessionInBetween)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetSslNewFails(true);
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    OpenSslFake_SetSslNewFails(false);
+    CHECK_TRUE(SolidSyslogStream_Open(stream, addr));
+    SolidSyslogStream_Close(stream);
+    OpenSslFake_SetSslNewFails(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+}
+
 TEST(SolidSyslogOpenSslStream, OpenReportsThatThePeerCertificateHasExpired)
 {
     ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_HAS_EXPIRED);
@@ -1962,6 +2102,77 @@ TEST(SolidSyslogOpenSslStream, VerifyCallbackLeavesAnUnpinnedPeerToOpenSsl)
     POINTERS_EQUAL(nullptr, OpenSslFake_LastDigestMd());
 }
 
+TEST(SolidSyslogOpenSslStream, VerifyCallbackCarriesANameMismatchPastTheLeaf)
+{
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_HOSTNAME_MISMATCH);
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(0));
+}
+
+/* Carried, not forgiven: a leaf that passes every later check is refused for
+   the name once OpenSSL has finished with it. */
+TEST(SolidSyslogOpenSslStream, ACarriedNameMismatchRefusesALeafThatPassesEveryLaterCheck)
+{
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_HOSTNAME_MISMATCH, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, ACarriedAddressMismatchRefusesALeafThatPassesEveryLaterCheck)
+{
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_IP_ADDRESS_MISMATCH);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_IP_ADDRESS_MISMATCH, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, TheLeafsOwnDatesAreNamedAheadOfACarriedNameMismatch)
+{
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
+
+    LONGS_EQUAL(0, verify(0, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
+}
+
+TEST(SolidSyslogOpenSslStream, AFingerprintMismatchIsNamedAheadOfANameThatDoesNotMatch)
+{
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_HOSTNAME_MISMATCH);
+
+    LONGS_EQUAL(0, OpenThenVerifyLeaf(0));
+    LONGS_EQUAL(X509_V_ERR_APPLICATION_VERIFICATION, OpenSslFake_StoreCtxError());
+}
+
+/* The carried name refuses on OpenSSL's last call for the leaf. Should that
+   call never come, a handshake that completed is refused all the same. */
+TEST(SolidSyslogOpenSslStream, OpenRefusesAConnectionWhoseCarriedNameMismatchWasNeverRaised)
+{
+    FakeProfile_Value.ServerName = "logs.example";
+    ReCreateStreamWithUpdatedConfig();
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetConnectRunsVerifyCallback(true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED
+    );
+}
+
+TEST(SolidSyslogOpenSslStream, ACarriedNameMismatchDoesNotOutliveItsConnection)
+{
+    (void) OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    SolidSyslogStream_Close(stream);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
+
+    LONGS_EQUAL(1, OpenThenVerifyLeaf(1));
+}
+
 TEST(SolidSyslogOpenSslStream, VerifyCallbackWaivesChainTrustForAPinnedPeerWithoutTrustAnchors)
 {
     ArrangePinnedPeerWithoutTrustAnchors();
@@ -2113,17 +2324,22 @@ TEST(SolidSyslogOpenSslStream, AMatchingPinDoesNotForgiveAnIssuerOutsideItsDates
     LONGS_EQUAL(X509_V_ERR_CERT_NOT_YET_VALID, OpenSslFake_StoreCtxError());
 }
 
-/* The leaf's own objection comes first: a name that does not match is named
-   ahead of a validity period, so OpenSSL's verdict on the leaf stands where it
-   has one, and the carried objection only refuses a leaf that would otherwise
-   have passed. */
-TEST(SolidSyslogOpenSslStream, AnObjectionToTheLeafItselfIsNamedAheadOfAnIssuerOutsideItsDates)
+/* The dates are named ahead of the name: OpenSSL raises the name first, the
+   mismatch is carried, and the issuer's dates refuse the leaf once it is
+   reached. */
+TEST(SolidSyslogOpenSslStream, AnIssuerOutsideItsDatesIsNamedAheadOfANameThatDoesNotMatch)
 {
     OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
     OpenSslFake_SetCertDigest(TEST_SHA256_DIGEST, sizeof(TEST_SHA256_DIGEST));
+    auto* verify = OpenThenCarryANameMismatch(X509_V_ERR_HOSTNAME_MISMATCH);
+    OpenSslFake_SetStoreCtxDepth(1);
+    OpenSslFake_SetStoreCtxError(X509_V_ERR_CERT_HAS_EXPIRED);
+    LONGS_EQUAL(1, verify(0, OpenSslFake_StoreCtx()));
+    OpenSslFake_SetStoreCtxDepth(0);
+    OpenSslFake_SetStoreCtxError(X509_V_OK);
 
-    LONGS_EQUAL(0, OpenThenVerifyIssuerThenLeaf(X509_V_ERR_CERT_HAS_EXPIRED, 0, X509_V_ERR_HOSTNAME_MISMATCH));
-    LONGS_EQUAL(X509_V_ERR_HOSTNAME_MISMATCH, OpenSslFake_StoreCtxError());
+    LONGS_EQUAL(0, verify(1, OpenSslFake_StoreCtx()));
+    LONGS_EQUAL(X509_V_ERR_CERT_HAS_EXPIRED, OpenSslFake_StoreCtxError());
 }
 
 /* A chain that reaches no anchor is named ahead of a validity period, so where

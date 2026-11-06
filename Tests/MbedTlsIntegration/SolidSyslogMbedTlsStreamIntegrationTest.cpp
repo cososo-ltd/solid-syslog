@@ -821,7 +821,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, AnUntrustedChainIsNamedBeforeANameThat
     MbedTlsTestCert_Destroy(&strangerCa);
 }
 
-TEST(SolidSyslogMbedTlsStreamIntegration, ANameThatDoesNotMatchIsNamedBeforeACertificateThatHasExpired)
+TEST(SolidSyslogMbedTlsStreamIntegration, ACertificateThatHasExpiredIsNamedBeforeANameThatDoesNotMatch)
 {
     struct MbedTlsTestCert leaf = {};
     struct MbedTlsTestCertConfig leafConfig = {};
@@ -837,7 +837,7 @@ TEST(SolidSyslogMbedTlsStreamIntegration, ANameThatDoesNotMatchIsNamedBeforeACer
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
-    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
 
     MbedTlsTestCert_Destroy(&leaf);
 }
@@ -863,7 +863,8 @@ TEST(SolidSyslogMbedTlsStreamIntegration, APinThatMatchesDoesNotWaiveANameThatDo
 }
 
 /* The order does not change with the depth the fault sits at: an issuer whose
-   own dates have lapsed still loses to a leaf whose name does not match. */
+   own dates have lapsed is still named ahead of a leaf whose name does not
+   match. */
 TEST(SolidSyslogMbedTlsStreamIntegration, AnExpiredIssuerIsNamedWhenTheLeafItSignedIsOtherwiseSound)
 {
     StartServerBehindAnExpiredIssuer(TEST_SERVER_SUBJECT, TEST_SERVER_HOSTNAME);
@@ -874,12 +875,12 @@ TEST(SolidSyslogMbedTlsStreamIntegration, AnExpiredIssuerIsNamedWhenTheLeafItSig
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
 }
 
-TEST(SolidSyslogMbedTlsStreamIntegration, ALeafNameThatDoesNotMatchIsNamedBeforeAnExpiredIssuer)
+TEST(SolidSyslogMbedTlsStreamIntegration, AnExpiredIssuerIsNamedBeforeALeafNameThatDoesNotMatch)
 {
     StartServerBehindAnExpiredIssuer(STRANGER_SUBJECT, STRANGER_HOSTNAME);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(clientTransport);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
-    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
+    CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
 }

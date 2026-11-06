@@ -39,16 +39,16 @@ static inline struct SolidSyslogMbedTlsAesGcmPolicy* MbedTlsAesGcmPolicy_SelfFro
     struct SolidSyslogSecurityPolicy* base
 );
 static bool MbedTlsAesGcmPolicy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 );
-static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* policy, uint8_t* keyOut);
+static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* self, uint8_t* keyOut);
 static void MbedTlsAesGcmPolicy_ReportFault(
-    struct SolidSyslogMbedTlsAesGcmPolicy* policy,
+    struct SolidSyslogMbedTlsAesGcmPolicy* self,
     uint16_t category,
     enum SolidSyslogAesGcmPolicyErrors code
 );
@@ -92,29 +92,29 @@ static inline struct SolidSyslogMbedTlsAesGcmPolicy* MbedTlsAesGcmPolicy_SelfFro
  * the remaining trailer bytes, authenticating the header (Content[0..HeaderLength))
  * as associated data. Fetches the key on demand and wipes it before returning. */
 static bool MbedTlsAesGcmPolicy_SealRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
-    struct SolidSyslogMbedTlsAesGcmPolicy* policy = MbedTlsAesGcmPolicy_SelfFromBase(self);
+    struct SolidSyslogMbedTlsAesGcmPolicy* self = MbedTlsAesGcmPolicy_SelfFromBase(base);
 
     bool sealed = false;
     uint8_t key[AES_256_KEY_SIZE];
-    if (MbedTlsAesGcmPolicy_FetchKey(policy, key))
+    if (MbedTlsAesGcmPolicy_FetchKey(self, key))
     {
         /* Draw the per-record nonce straight into the trailer; GcmEncrypt reads
          * it back from there and writes the tag immediately after it. */
-        if (mbedtls_ctr_drbg_random(policy->Config.Rng, record->Trailer, GCM_NONCE_SIZE) == 0)
+        if (mbedtls_ctr_drbg_random(self->Config.Rng, record->Trailer, GCM_NONCE_SIZE) == 0)
         {
             if (MbedTlsAesGcmPolicy_GcmEncrypt(record, key))
             {
                 sealed = true;
-                policy->FaultReported = false;
+                self->FaultReported = false;
             }
             else
             {
                 MbedTlsAesGcmPolicy_ReportFault(
-                    policy,
+                    self,
                     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                     SOLIDSYSLOG_AES_GCM_POLICY_ERROR_ENCRYPT_FAILED
                 );
@@ -123,7 +123,7 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
         else
         {
             MbedTlsAesGcmPolicy_ReportFault(
-                policy,
+                self,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
                 SOLIDSYSLOG_AES_GCM_POLICY_ERROR_NONCE_FAILED
             );
@@ -135,15 +135,15 @@ static bool MbedTlsAesGcmPolicy_SealRecord(
 
 /* Fetches the AES-256 key on demand. Fails closed (and reports) if the key is
  * unavailable or not exactly 32 bytes - AES-256 admits no other key length. */
-static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* policy, uint8_t* keyOut)
+static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* self, uint8_t* keyOut)
 {
     size_t keyLength = 0U;
-    bool fetched = policy->Config.GetKey(policy->Config.KeyContext, keyOut, AES_256_KEY_SIZE, &keyLength) &&
+    bool fetched = self->Config.GetKey(self->Config.KeyContext, keyOut, AES_256_KEY_SIZE, &keyLength) &&
                    (keyLength == (size_t) AES_256_KEY_SIZE);
     if (!fetched)
     {
         MbedTlsAesGcmPolicy_ReportFault(
-            policy,
+            self,
             SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
             SOLIDSYSLOG_AES_GCM_POLICY_ERROR_KEY_UNAVAILABLE
         );
@@ -153,15 +153,15 @@ static bool MbedTlsAesGcmPolicy_FetchKey(struct SolidSyslogMbedTlsAesGcmPolicy* 
 
 /* The first fault in a run is the one reported. */
 static void MbedTlsAesGcmPolicy_ReportFault(
-    struct SolidSyslogMbedTlsAesGcmPolicy* policy,
+    struct SolidSyslogMbedTlsAesGcmPolicy* self,
     uint16_t category,
     enum SolidSyslogAesGcmPolicyErrors code
 )
 {
-    if (!policy->FaultReported)
+    if (!self->FaultReported)
     {
         MbedTlsAesGcmPolicy_Report(SOLIDSYSLOG_SEVERITY_ERROR, category, code);
-        policy->FaultReported = true;
+        self->FaultReported = true;
     }
 }
 
@@ -206,21 +206,21 @@ static bool MbedTlsAesGcmPolicy_GcmEncrypt(const struct SolidSyslogSecurityRecor
  * silently; a missing key or a genuine mbedTLS error could not run, and is
  * reported. */
 static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
-    struct SolidSyslogSecurityPolicy* self,
+    struct SolidSyslogSecurityPolicy* base,
     const struct SolidSyslogSecurityRecord* record
 )
 {
-    struct SolidSyslogMbedTlsAesGcmPolicy* policy = MbedTlsAesGcmPolicy_SelfFromBase(self);
+    struct SolidSyslogMbedTlsAesGcmPolicy* self = MbedTlsAesGcmPolicy_SelfFromBase(base);
 
     enum SolidSyslogSecurityPolicyOpenResult result = SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN;
     uint8_t key[AES_256_KEY_SIZE];
-    if (MbedTlsAesGcmPolicy_FetchKey(policy, key))
+    if (MbedTlsAesGcmPolicy_FetchKey(self, key))
     {
         result = MbedTlsAesGcmPolicy_GcmDecrypt(record, key);
         if (result == SOLIDSYSLOG_SECURITY_POLICY_OPEN_COULD_NOT_RUN)
         {
             MbedTlsAesGcmPolicy_ReportFault(
-                policy,
+                self,
                 SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
                 SOLIDSYSLOG_AES_GCM_POLICY_ERROR_DECRYPT_FAILED
             );
@@ -228,7 +228,7 @@ static enum SolidSyslogSecurityPolicyOpenResult MbedTlsAesGcmPolicy_OpenRecord(
         else
         {
             /* A verdict: the run of faults is over. */
-            policy->FaultReported = false;
+            self->FaultReported = false;
         }
     }
     mbedtls_platform_zeroize(key, sizeof key);

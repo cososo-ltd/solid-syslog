@@ -74,11 +74,13 @@ enum
 
 struct SolidSyslogAddress;
 
-/* What a pin is the digest of: the leaf as the peer presented it. */
+/* What a pin is the digest of: the leaf as the peer presented it, and the
+ * heap hint the digest is made against. */
 struct WolfSslStreamPeerCertificate
 {
     const unsigned char* Der;
     word32 Length;
+    void* Heap;
 };
 
 static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context);
@@ -95,7 +97,7 @@ static inline void WolfSslStream_PullProfile(struct SolidSyslogWolfSslStream* se
 static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
-static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed);
+static inline bool WolfSslStream_FingerprintsAreUsable(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_BuildCanEnforceBoth(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* self);
 static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream* self);
@@ -358,7 +360,8 @@ static inline bool WolfSslStream_BuildContext(struct SolidSyslogWolfSslStream* s
     bool ok = self->Context != NULL;
     if (!ok)
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_CONTEXT_INIT_FAILED
@@ -381,7 +384,8 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
     bool ok = self->Config.Credentials->Install(self->Config.Credentials, self->Context, &self->Installed);
     if (ok && !WolfSslStream_PeerIsAuthorisable(&self->Installed))
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_NO_PEER_AUTHORISATION
@@ -390,11 +394,12 @@ static inline bool WolfSslStream_InstallCredentials(struct SolidSyslogWolfSslStr
     }
     if (ok)
     {
-        ok = WolfSslStream_FingerprintsAreUsable(&self->Installed);
+        ok = WolfSslStream_FingerprintsAreUsable(self);
     }
     if (ok && !WolfSslStream_BuildCanEnforceBoth(&self->Installed))
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_PINS_WITH_ANCHORS_UNSUPPORTED
@@ -415,14 +420,15 @@ static inline bool WolfSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsC
 
 /* Inspected before the handshake, so a pin that cannot match is reported as
  * bad configuration rather than as a refused peer. */
-static inline bool WolfSslStream_FingerprintsAreUsable(const struct SolidSyslogTlsCredentialsInstalled* installed)
+static inline bool WolfSslStream_FingerprintsAreUsable(struct SolidSyslogWolfSslStream* self)
 {
     bool ok = true;
     enum SolidSyslogTlsFingerprintListState state =
-        SolidSyslogTlsFingerprint_InspectList(installed->Fingerprints, installed->FingerprintCount);
+        SolidSyslogTlsFingerprint_InspectList(self->Installed.Fingerprints, self->Installed.FingerprintCount);
     if (state == SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED)
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED
@@ -459,7 +465,8 @@ static inline bool WolfSslStream_CreateSession(struct SolidSyslogWolfSslStream* 
     bool ok = self->Session != NULL;
     if (!ok)
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_SESSION_INIT_FAILED
@@ -482,7 +489,8 @@ static inline bool WolfSslStream_ApplyTlsPolicy(struct SolidSyslogWolfSslStream*
               (wolfSSL_SetMinDhKey_Sz(self->Session, (word16) WOLFSSL_STREAM_MIN_DH_KEY_BITS) == WOLFSSL_SUCCESS);
     if (!ok)
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
             SOLIDSYSLOG_TLS_STREAM_ERROR_DEFAULTS_NOT_APPLIED
@@ -501,7 +509,8 @@ static inline bool WolfSslStream_ApplyCipherPolicy(struct SolidSyslogWolfSslStre
         ok = wolfSSL_set_cipher_list(self->Session, self->Profile.CipherList) == WOLFSSL_SUCCESS;
         if (!ok)
         {
-            WolfSslStream_Report(
+            WolfSslStream_ReportOpenFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 SOLIDSYSLOG_TLS_STREAM_ERROR_CIPHER_POLICY_REJECTED
@@ -554,7 +563,8 @@ static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSsl
     bool ok = false;
     if (WolfSslStream_DeclareExpectedPeer(self, serverName) != WOLFSSL_SUCCESS)
     {
-        WolfSslStream_Report(
+        WolfSslStream_ReportOpenFailure(
+            self,
             SOLIDSYSLOG_SEVERITY_ERROR,
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED
@@ -566,7 +576,8 @@ static inline bool WolfSslStream_ApplyExpectedPeerName(struct SolidSyslogWolfSsl
         ok = rc == WOLFSSL_SUCCESS;
         if (!ok)
         {
-            WolfSslStream_Report(
+            WolfSslStream_ReportOpenFailure(
+                self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
                 SOLIDSYSLOG_CAT_BAD_CONFIG,
                 WolfSslStream_InitDetail(rc, SOLIDSYSLOG_TLS_STREAM_ERROR_SERVER_NAME_NOT_APPLIED)
@@ -716,7 +727,7 @@ bool SolidSyslogWolfSslStream_AuthoriseLeaf(
     word32 length
 )
 {
-    struct WolfSslStreamPeerCertificate leaf = {der, length};
+    struct WolfSslStreamPeerCertificate leaf = {der, length, self->Config.Heap};
     enum SolidSyslogTlsAuthorisation verdict = SolidSyslogTlsFingerprint_Authorise(
         self->Installed.Fingerprints,
         self->Installed.FingerprintCount,
@@ -739,7 +750,15 @@ static bool WolfSslStream_DigestCertificate(
     enum wc_HashType type = WolfSslStream_HashTypeFor(algorithm);
     int size = wc_HashGetDigestSize(type);
     bool ok = (certificate->Der != NULL) && (size > 0) &&
-              (wc_Hash(type, certificate->Der, certificate->Length, digest, (word32) size) == 0);
+              (wc_Hash_ex(
+                   type,
+                   certificate->Der,
+                   certificate->Length,
+                   digest,
+                   (word32) size,
+                   certificate->Heap,
+                   INVALID_DEVID
+               ) == 0);
     if (ok)
     {
         *length = (size_t) size;
@@ -858,18 +877,20 @@ static inline bool WolfSslStream_PerformHandshake(struct SolidSyslogWolfSslStrea
         }
         else if (!WolfSslStream_IsRetryableHandshakeError(error))
         {
-            WolfSslStream_ReportHandshakeFailure(
+            WolfSslStream_ReportOpenFailure(
                 self,
                 SOLIDSYSLOG_SEVERITY_ERROR,
+                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                 WolfSslStream_InitDetail(error, WolfSslStream_RefusalDetail(self))
             );
             done = true;
         }
         else if (WolfSslStream_IsHandshakeBudgetExhausted(totalSleptMs, budgetMs))
         {
-            WolfSslStream_ReportHandshakeFailure(
+            WolfSslStream_ReportOpenFailure(
                 self,
                 SOLIDSYSLOG_SEVERITY_WARNING,
+                SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
                 SOLIDSYSLOG_TLS_STREAM_ERROR_HANDSHAKE_TIMEOUT
             );
             done = true;
@@ -896,7 +917,12 @@ static inline bool WolfSslStream_PinIsConfirmed(struct SolidSyslogWolfSslStream*
     if (!ok)
     {
         self->RefusedChecks |= WOLFSSL_STREAM_CHECK_FINGERPRINT;
-        WolfSslStream_ReportHandshakeFailure(self, SOLIDSYSLOG_SEVERITY_ERROR, WolfSslStream_RefusalDetail(self));
+        WolfSslStream_ReportOpenFailure(
+            self,
+            SOLIDSYSLOG_SEVERITY_ERROR,
+            SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+            WolfSslStream_RefusalDetail(self)
+        );
     }
     return ok;
 }
@@ -929,7 +955,7 @@ static inline uint32_t WolfSslStream_HandshakePollMs(uint32_t totalSleptMs, uint
 /* The checks accumulate, so a compound verdict resolves by precedence: an
  * untrusted chain is reported ahead of anything the certificate says about
  * itself, because a certificate no anchor vouches for is not made acceptable by
- * the name or the dates it carries; and the name ahead of the dates, as the
+ * the name or the dates it carries; and the dates ahead of the name, as the
  * contract orders them. With no check recorded the handshake was rejected by
  * the peer or the protocol, and no check of ours names it. */
 static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const struct SolidSyslogWolfSslStream* self)
@@ -947,10 +973,6 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const 
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED;
     }
-    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NAME))
-    {
-        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
-    }
     else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NOT_AFTER))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED;
@@ -958,6 +980,10 @@ static inline enum SolidSyslogTlsStreamErrors WolfSslStream_RefusalDetail(const 
     else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NOT_BEFORE))
     {
         detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID;
+    }
+    else if (WolfSslStream_Failed(self, WOLFSSL_STREAM_CHECK_NAME))
+    {
+        detail = SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED;
     }
     else
     {

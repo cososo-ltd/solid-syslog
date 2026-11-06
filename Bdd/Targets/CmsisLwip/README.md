@@ -28,6 +28,38 @@ rather than the Raw one, so there is no marshal seam in `main.c`.
 Each swap changed one variable against a lane that was already green, so a
 failure belonged to the pack that had just changed.
 
+## The wolfSSL build
+
+The `cmsis-cross-lwip-wolfssl` preset builds this same target over `WolfSsl` in
+place of `MbedTls`, and the `bdd-cmsis-qemu-lwip-wolfssl` lane runs it. wolfSSL
+is not a prebuilt library here: its sources are compiled into the image from
+the tree at `WOLFSSL_SOURCE_DIR`, under [`wolfssl/user_settings.h`](wolfssl/user_settings.h),
+which is how an embedded integrator builds it. That file says what each setting
+is for.
+
+What the target supplies around it:
+
+- **Memory.** One static region of 128 KiB, in
+  `BddTargetTlsSender_WolfSsl_InnerStream.c`, over wolfSSL's default buckets.
+  Its heap hint is the stream's `Heap` and wolfSSL's global hint. The mutexes
+  wolfSSL's CMSIS-RTOS2 port creates still come from the kernel heap.
+- **Stack.** The handshake runs on the service thread and peaks near 22 KiB,
+  so this build gives that thread 32 KiB where the Mbed TLS build has 8 KiB.
+- **Seed.** Demo-only, as the Mbed TLS build's is, and announced at boot.
+- **Clock.** The build instant advanced by uptime, so certificate validity is
+  enforced with no RTC.
+- **Credentials.** The same baked PEMs, handed to wolfSSL as buffers.
+
+The lane runs the other QEMU lanes' tag filter.
+
+```bash
+cmake --preset cmsis-cross-lwip-wolfssl
+cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
+docker compose -f ci/docker-compose.bdd.yml \
+  up --abort-on-container-exit --exit-code-from behave-cmsis-lwip-wolfssl \
+  behave-cmsis-lwip-wolfssl syslog-ng-cmsis-lwip-wolfssl
+```
+
 ## Where the kernel lives
 
 Everything tied to the particular kernel underneath - its sources, its
