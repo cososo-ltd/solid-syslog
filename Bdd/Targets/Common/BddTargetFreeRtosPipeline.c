@@ -557,7 +557,8 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
         stdin,
         BddTargetSwitchConfig_SetByName,
         OnSet,
-        OnBlocks
+        OnBlocks,
+        NULL
     );
 
     /* Peak stack headroom report on `quit`. A Service task that never started

@@ -63,19 +63,38 @@ static int ParseCount(const char* args)
     return (count > 0) ? count : 1;
 }
 
-static void HandleSend(struct SolidSyslog* handle, const char* args, const struct SolidSyslogMessage* message)
+static void Logged(struct SolidSyslog* handle, BddTargetInteractiveLoggedHandler onLogged)
+{
+    if (onLogged != NULL)
+    {
+        onLogged(handle);
+    }
+}
+
+static void HandleSend(
+    struct SolidSyslog* handle,
+    const char* args,
+    const struct SolidSyslogMessage* message,
+    BddTargetInteractiveLoggedHandler onLogged
+)
 {
     int count = ParseCount(args);
 
     for (int i = 0; i < count; i++)
     {
         SolidSyslog_Log(handle, message);
+        Logged(handle, onLogged);
     }
 
     printf("Sent %d message%s\n", count, (count == 1) ? "" : "s");
 }
 
-static void HandleSendCustom(struct SolidSyslog* handle, const char* args, const struct SolidSyslogMessage* message)
+static void HandleSendCustom(
+    struct SolidSyslog* handle,
+    const char* args,
+    const struct SolidSyslogMessage* message,
+    BddTargetInteractiveLoggedHandler onLogged
+)
 {
     int count = ParseCount(args);
     struct SolidSyslogStructuredData* sd[] = {BddTargetCustomSd_Get()};
@@ -83,6 +102,7 @@ static void HandleSendCustom(struct SolidSyslog* handle, const char* args, const
     for (int i = 0; i < count; i++)
     {
         SolidSyslog_LogWithSd(handle, message, sd, 1);
+        Logged(handle, onLogged);
     }
 
     printf("Sent %d custom message%s\n", count, (count == 1) ? "" : "s");
@@ -114,7 +134,8 @@ void BddTargetInteractive_Run(
     FILE* input,
     BddTargetInteractiveSwitchHandler onSwitch,
     BddTargetInteractiveSetHandler onSet,
-    BddTargetInteractiveBlocksHandler onBlocks
+    BddTargetInteractiveBlocksHandler onBlocks,
+    BddTargetInteractiveLoggedHandler onLogged
 )
 {
     char line[MAX_LINE_LENGTH];
@@ -133,11 +154,11 @@ void BddTargetInteractive_Run(
         const char* args = NULL;
         if (MatchCommand(line, "send-custom", &args))
         {
-            HandleSendCustom(handle, args, message);
+            HandleSendCustom(handle, args, message, onLogged);
         }
         else if (MatchCommand(line, "send", &args))
         {
-            HandleSend(handle, args, message);
+            HandleSend(handle, args, message, onLogged);
         }
         else if (onSwitch != NULL && MatchCommand(line, "switch", &args))
         {

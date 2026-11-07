@@ -15,6 +15,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         const char* AppName; /* --app-name (NULL: derive from argv[0]) */
         const char* Transport;
         const char* Store;
+        const char* Buffer; /* "queue" (default) | "passthrough" - the latter takes no service thread and no store */
         const char* ErrorsFatal; /* "1" (default) | "0" - whether an ERROR ends the target */
     };
 

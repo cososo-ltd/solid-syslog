@@ -27,7 +27,8 @@ Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick rec
 | Tag | Meaning |
 |---|---|
 | `@udp` / `@tcp` / `@tls` / `@mtls` | Transport-specific scenario; CI jobs filter by these. |
-| `@buffered` | Needs a buffered wiring (CircularBuffer / PosixMessageQueueBuffer / service thread) beyond single-task PassthroughBuffer. Carried by all three targets. |
+| `@buffered` | Needs a buffered wiring (CircularBuffer / PosixMessageQueueBuffer / service thread) beyond single-task PassthroughBuffer. Excluded only by `behave-linux-passthrough`. |
+| `@passthrough` | Asserts what only the passthrough wiring does. Run by `behave-linux-passthrough` alone. |
 | `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Run on every target. |
 | `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. The authoritative entry names the runners that supply it. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
@@ -45,7 +46,8 @@ From inside the `gcc` devcontainer:
 
 ```bash
 behave Bdd/features/syslog.feature              # one feature
-behave --tags='not @wip and not @no_rtc' Bdd/features/   # full Linux suite
+behave --tags='not @wip and not @no_rtc and not @passthrough' Bdd/features/   # full Linux suite
+BDD_BUFFER=passthrough behave --tags='not @wip and not @no_rtc and not @buffered' Bdd/features/   # the passthrough lane
 ```
 
 The target binary and oracle path default to the values
@@ -61,7 +63,7 @@ once and run Behave from inside the container:
 ```bash
 cmake --preset freertos-cross
 cmake --build --preset freertos-cross --target SolidSyslogBddTarget
-behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @passthrough and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 ```
 
 `BDD_TARGET=freertos` and `EXAMPLE_BINARY=build/freertos-cross/...` are
@@ -113,6 +115,7 @@ What it needs, and what it does, is in
 | Job | Compose pair |
 |---|---|
 | `bdd-linux-syslog-ng` | `syslog-ng-linux` + `behave-linux` |
+| `bdd-linux-passthrough` | `syslog-ng-linux` + `behave-linux-passthrough` (the same binary under `--buffer passthrough`) |
 | `bdd-freertos-qemu-plustcp` | `syslog-ng-freertos` + `behave-freertos` (cross image w/ QEMU + Behave) |
 | `bdd-freertos-qemu-lwip` | `syslog-ng-freertos-lwip` + `behave-freertos-lwip` |
 | `bdd-cmsis-qemu-lwip` | `syslog-ng-cmsis-lwip` + `behave-cmsis-lwip` |

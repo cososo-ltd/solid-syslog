@@ -204,7 +204,13 @@ struct SolidSyslog* logger = SolidSyslog_Create(&config);
 ```
 
 The logging itself is done as shown below. In this configuration SolidSyslog is not
-reentrant, so call it from one task only.
+reentrant, so call it from one task only - and call
+[`SolidSyslog_Service`](api/SolidSyslog_8h.md#function-solidsyslog_service) from that
+same task, after each `SolidSyslog_Log` at the least. There is nothing to drain, but
+Service is where the [records the logger writes about itself](self-reporting.md) go
+out: a send that failed is reported there, and the report is held while sends still
+fail and delivered once one succeeds. A call from the main loop as well lands that
+report when the path is back rather than at the device's next record.
 
 ```c
 struct SolidSyslogMessage message = {
@@ -215,6 +221,12 @@ struct SolidSyslogMessage message = {
 };
 SolidSyslog_Log(logger, &message);
 ```
+
+The store stays the Null object while the buffer is a passthrough: the buffer hands each
+record to the sender as it is logged, so a store behind it would hold the logger's reports
+and nothing the application logged. Stage 10 adds the store behind the ring from stage 7;
+a device that stays on one task but wants retention wires that ring one record deep over
+[`SolidSyslogNullMutex`](api/SolidSyslogNullMutex_8h.md) and services it the same way.
 
 What arrives is a valid RFC 5424 record any collector will parse:
 

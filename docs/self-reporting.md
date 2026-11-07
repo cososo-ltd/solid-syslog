@@ -148,8 +148,9 @@ Reporting off does not change what the error handler receives.
   null instance holds no record slot and makes no report. The events wait for a logger
   that can.
 - **From a passthrough integration that never calls `SolidSyslog_Service`.** Reports
-  are made only in Service. How a passthrough integration gets its reports out is
-  [open](https://github.com/cososo-ltd/solid-syslog/issues/1135).
+  are made only in Service, so the task that logs calls it too, as
+  [stage 4 of the hardening path](hardening-path.md#stage-4-a-first-record-on-the-wire)
+  shows; a refused report is held and retried by each call until the collector takes it.
 
 ### Sizing the store for reports
 

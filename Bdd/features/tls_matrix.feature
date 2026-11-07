@@ -222,7 +222,7 @@ Feature: TLS equivalence matrix
     Then the target reports that delivery failed
     And the BDD target is still running
 
-  @rotation
+  @rotation @buffered
   Scenario: Rotating the trust anchors lets a refused device deliver without a restart
     # The record the collector refused is not lost: with no store, Service holds
     # it and delivers it once the anchors are right, ahead of the next one.
@@ -236,6 +236,23 @@ Feature: TLS equivalence matrix
     When the client is given trust anchors "ca"
     And the client sends a message
     Then the syslog oracle receives 2 messages over tls
+    And the syslog oracle received a report that the collector's certificate was refused
+
+  @rotation @passthrough
+  Scenario: Rotating the trust anchors lets a refused device deliver, and the record it refused is lost
+    # A passthrough buffer hands each record to the sender as it is logged, so
+    # the record the collector refused is gone. The report of the refusal is
+    # held, and lands behind the first record the collector takes.
+    Given the syslog oracle is running
+    And the collector presents "anchor-signed"
+    And the BDD target trusts certificate authority "ca-b"
+    And the BDD target tolerates a refused handshake
+    When the BDD target attempts to send a syslog message over tls
+    Then the target reports TLS detail "PEER_CERTIFICATE_UNTRUSTED"
+    And the syslog oracle receives no message over tls
+    When the client is given trust anchors "ca"
+    And the client sends a message
+    Then the syslog oracle receives 1 message over tls
     And the syslog oracle received a report that the collector's certificate was refused
 
   @pins @rotation

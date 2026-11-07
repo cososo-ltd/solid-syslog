@@ -19,8 +19,11 @@ enum
     OPT_APP_NAME = 262,
     OPT_SECURITY_POLICY = 263,
     OPT_ERRORS_FATAL = 264,
-    OPT_NO_REPORTING = 265
+    OPT_NO_REPORTING = 265,
+    OPT_BUFFER = 266
 };
+
+static bool IsAStoreBehindAPassthroughBuffer(const struct BddTargetOptions* options);
 
 static bool IsValidErrorsFatal(const char* value)
 {
@@ -89,6 +92,16 @@ static int ApplyOption(int opt, const char* name, const char* value, struct BddT
                 options->Store = value;
             }
             break;
+        case OPT_BUFFER:
+            if ((strcmp(value, "queue") != 0) && (strcmp(value, "passthrough") != 0))
+            {
+                result = 1;
+            }
+            else
+            {
+                options->Buffer = value;
+            }
+            break;
         case OPT_MAX_BLOCKS:
         case OPT_MAX_BLOCK_SIZE:
         case OPT_DISCARD_POLICY:
@@ -124,6 +137,7 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
     options->AppName = NULL;
     options->Transport = "udp";
     options->Store = "null";
+    options->Buffer = "queue";
     options->ErrorsFatal = "1";
     BddTargetStoreSettings_Reset();
 
@@ -134,6 +148,7 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
         {"message", required_argument, NULL, 'm'},
         {"transport", required_argument, NULL, 't'},
         {"store", required_argument, NULL, 'o'},
+        {"buffer", required_argument, NULL, OPT_BUFFER},
         {"max-blocks", required_argument, NULL, OPT_MAX_BLOCKS},
         {"max-block-size", required_argument, NULL, OPT_MAX_BLOCK_SIZE},
         {"discard-policy", required_argument, NULL, OPT_DISCARD_POLICY},
@@ -158,5 +173,18 @@ int BddTargetCommandLine_Parse(int argc, char* argv[], struct BddTargetOptions* 
         longIndex = -1;
     }
 
+    if ((result == 0) && IsAStoreBehindAPassthroughBuffer(options))
+    {
+        result = 1;
+    }
+
     return result;
+}
+
+/* A passthrough buffer hands every record straight to the sender, so a store
+ * behind it would hold only the logger's reports while the application's
+ * records still skipped it - a wiring that looks retained and is not. */
+static bool IsAStoreBehindAPassthroughBuffer(const struct BddTargetOptions* options)
+{
+    return (strcmp(options->Buffer, "passthrough") == 0) && (strcmp(options->Store, "file") == 0);
 }

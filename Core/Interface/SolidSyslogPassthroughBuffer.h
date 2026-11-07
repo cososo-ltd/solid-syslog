@@ -8,7 +8,18 @@
  *  completes; Read always reports empty because nothing is ever queued, so
  *  Service has nothing to drain. This is the simplest wiring for a single-task
  *  setup with no store-and-forward - no ring, no mutex, no background drain. The
- *  cost is that a slow or blocking sender stalls the logging thread. */
+ *  cost is that a slow or blocking sender stalls the logging thread.
+ *
+ *  Service still makes the logger's own reports, and nothing else does, so the
+ *  task that logs calls SolidSyslog_Service as well - after each Log at the
+ *  least. A report the sender refuses is held and retried on every pass, and
+ *  each retry is a send, so a call from the task's main loop lands it when the
+ *  collector returns rather than at the device's next record. A store behind
+ *  this buffer would hold only those reports: Write never reaches it, so the
+ *  records the application logs are still lost in an outage. Wire the Null
+ *  store; a device that stays on one task but wants a store puts a one-record
+ *  SolidSyslogCircularBuffer over SolidSyslogNullMutex in front of it instead
+ *  of this buffer, serviced the same way. */
 #ifndef SOLIDSYSLOGPASSTHROUGHBUFFER_H
 #define SOLIDSYSLOGPASSTHROUGHBUFFER_H
 

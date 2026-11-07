@@ -19,6 +19,12 @@ struct SetHandlerSpy
 
 SetHandlerSpy spy;
 int blocksCallCount = 0;
+int loggedCallCount = 0;
+
+void RecordLogged(struct SolidSyslog* /* handle */)
+{
+    loggedCallCount++;
+}
 
 void RecordBlocks()
 {
@@ -74,7 +80,8 @@ std::string EndStdoutCapture()
 void RunWithInput(
     const char* input,
     BddTargetInteractiveSetHandler onSet,
-    BddTargetInteractiveBlocksHandler onBlocks = nullptr
+    BddTargetInteractiveBlocksHandler onBlocks = nullptr,
+    BddTargetInteractiveLoggedHandler onLogged = nullptr
 )
 {
     /* fmemopen takes a non-const void*; with mode "r" it never writes to
@@ -82,9 +89,10 @@ void RunWithInput(
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) -- see comment above; fmemopen mode "r" never writes
     FILE* in = fmemopen(const_cast<char*>(input), strlen(input), "r");
     struct SolidSyslogMessage message = {};
-    /* These tests only exercise the set/switch/quit input paths, never `send`,
-       so the SolidSyslog handle is never dereferenced - nullptr is safe. */
-    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet, onBlocks);
+    /* The handle is nullptr: a `send` here reaches SolidSyslog_Log with it,
+       which reports BAD_ARGUMENT to the default handler and logs nothing, so
+       the loop's dispatch and counting are tested without a logger. */
+    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet, onBlocks, onLogged);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is POSIX C; no owning memory concern
     fclose(in);
 }
@@ -105,6 +113,7 @@ TEST_GROUP(BddTargetInteractive)
         spy             = SetHandlerSpy{};
         spy.returnValue = true;
         blocksCallCount = 0;
+        loggedCallCount = 0;
     }
 };
 // clang-format on
@@ -226,3 +235,13 @@ TEST(BddTargetInteractive, NullBlocksHandlerSilentlyIgnoresBlocksLine)
  *  O  [x] BlocksCommandCallsTheBlocksHandlerOnce
  *  E  [x] NullBlocksHandlerSilentlyIgnoresBlocksLine
  */
+
+/* A single-task wiring services the logger on the task that logs, after
+ * each record: the hook runs once per Log the send made. */
+TEST(BddTargetInteractive, TheLoggedHandlerRunsOncePerRecordASendLogs)
+{
+    StartStdoutCapture();
+    RunWithInput("send 3\nquit\n", RecordSet, nullptr, RecordLogged);
+    (void) EndStdoutCapture();
+    LONGS_EQUAL(3, loggedCallCount);
+}

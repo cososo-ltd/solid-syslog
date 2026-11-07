@@ -323,3 +323,44 @@ TEST(BddTargetCommandLine, InvalidErrorsFatalReturnsOne)
     char* argv[] = {arg0, arg1, arg2, nullptr};
     LONGS_EQUAL(1, Parse(3, argv));
 }
+
+TEST(BddTargetCommandLine, DefaultBufferIsQueue)
+{
+    char arg0[] = "test";
+    char* argv[] = {arg0, nullptr};
+    LONGS_EQUAL(0, Parse(1, argv));
+    STRCMP_EQUAL("queue", options.Buffer);
+}
+
+TEST(BddTargetCommandLine, BufferPassthroughAccepted)
+{
+    char arg0[] = "test";
+    char argFlag[] = "--buffer";
+    char argVal[] = "passthrough";
+    char* argv[] = {arg0, argFlag, argVal, nullptr};
+    LONGS_EQUAL(0, Parse(3, argv));
+    STRCMP_EQUAL("passthrough", options.Buffer);
+}
+
+TEST(BddTargetCommandLine, InvalidBufferReturnsOne)
+{
+    char arg0[] = "test";
+    char argFlag[] = "--buffer";
+    char argVal[] = "ring";
+    char* argv[] = {arg0, argFlag, argVal, nullptr};
+    LONGS_EQUAL(1, Parse(3, argv));
+}
+
+/* A store behind a passthrough buffer would hold only the logger's reports,
+ * with the application's records still skipping it; the target refuses to
+ * build that wiring rather than let a scenario pass over it. */
+TEST(BddTargetCommandLine, PassthroughBufferWithAFileStoreReturnsOne)
+{
+    char arg0[] = "test";
+    char argBuffer[] = "--buffer";
+    char argPassthrough[] = "passthrough";
+    char argStore[] = "--store";
+    char argFile[] = "file";
+    char* argv[] = {arg0, argBuffer, argPassthrough, argStore, argFile, nullptr};
+    LONGS_EQUAL(1, Parse(5, argv));
+}

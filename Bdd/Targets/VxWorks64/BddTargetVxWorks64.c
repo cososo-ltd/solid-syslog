@@ -404,7 +404,8 @@ void BddTargetVxWorks64_RunConsole(FILE* input)
         input,
         BddTargetSwitchConfig_SetByName,
         BddTargetVxWorks64_SetByName,
-        BddTargetVxWorks64_OnBlocks
+        BddTargetVxWorks64_OnBlocks,
+        NULL
     );
     consoleEnded = true;
 }
