@@ -54,10 +54,13 @@ SIEM can consume, correlate across devices, and retain.
 | Security-related *information*, not raw lines | Structured data elements - `MetaSd`, `TimeQualitySd`, `OriginSd` - attaching sequence, clock quality, uptime and device identity, plus your own private elements |
 | Monitoring | Delivery to any RFC 5424 collector over UDP, TCP or TLS, with `sequenceId` letting the collector detect records that never arrived |
 | Activity that must survive the device | Store-and-forward across outages and reboots, with at-rest protection |
+| The logging function's own internal activity, with an opt-out | The library records its own security-relevant events - a loss, a failed delivery, a refused collector certificate, a stopped logger - as [records in the trail](self-reporting.md). The library's own element carries enumerator names and a platform code only, never record content or key material. `SolidSyslogConfig.IsEventReportingOn` is the opt-out, asked on the running device |
 
-**What stays yours.** Deciding which internal activity is relevant. Providing the user's
-opt-out mechanism, which is a product-level control the library has no view of.
-Retention, access control and disposal at the collector.
+**What stays yours.** Deciding which of your application's internal activity is
+relevant. The user-facing opt-out control, which is a product-level control the library
+has no view of: your application's records answer to it directly, and the library's own
+through the function it provides. Retention, access control and disposal at the
+collector.
 
 ## Part I - requirements an audit trail contributes to
 
@@ -71,7 +74,7 @@ today.
 |---|---|---|
 | **(2)(d)** | protection from unauthorised access, and *report on possible unauthorised access* | The reporting half only, and only the carriage of it: your application detects the access and decides it is reportable, the library delivers the record. Mutual TLS authenticates the TLS peer to the receiver, which is the device itself only where it connects directly |
 | **(2)(e)** | confidentiality of stored, transmitted or otherwise processed data, including by encryption at rest or in transit | TLS in transit; authenticated encryption at rest for the spooled store. Records routinely carry data you would not publish |
-| **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed, and TLS protects them in transit. Every loss is detected: the sequence number `SolidSyslogMetaSd` carries leaves a gap at the collector for any record that does not arrive, and a stored record that fails verification is also reported, as [when a record is lost](error-severity.md#when-a-record-is-lost) describes |
+| **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed, and TLS protects them in transit. Every loss is detected: the sequence number `SolidSyslogMetaSd` carries leaves a gap at the collector for any record that does not arrive, and a stored record that fails verification is reported: to your error handler, and as a [record in the trail](self-reporting.md) naming the corruption, as [when a record is lost](error-severity.md#when-a-record-is-lost) describes |
 | **(2)(h)** | availability of essential and basic functions, also after an incident | Buffering keeps logging off the critical path, and store-and-forward keeps records through an outage so the trail survives the incident it recorded |
 
 ## Part II - supporting your vulnerability handling
