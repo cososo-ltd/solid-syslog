@@ -41,6 +41,11 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # A Dependabot PR is a version bump with its own changelog link; leaving
+    # it to CodeRabbit spends a review on a skip comment and a summary, and
+    # every rebase spends another.
+    ignore_usernames:
+      - "dependabot[bot]"
     base_branches:
       - main
 
