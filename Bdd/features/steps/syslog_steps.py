@@ -150,25 +150,21 @@ def oracle_record_count(path, oracle_format):
         return 0
     if oracle_format != "otel-jsonl":
         return line_count(path)
-    count = 0
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            count += sum(1 for _ in _split_otel_line_into_records(line))
-    return count
+    return len(read_new_oracle_records(path, oracle_format, 0))
 
 
 def read_new_oracle_records(path, oracle_format, skip):
     """Return all logical oracle records after the first 'skip', each as a
     string ready for parse_oracle_line. The collector may still be writing
-    the last line, so one that does not parse is left for the next read; a
-    line before it that does not parse is malformed and raises."""
+    the last line: one with no newline yet that does not parse is left for
+    the next read. Any newline-terminated line that does not parse is
+    malformed and raises."""
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip()]
+        text = f.read()
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    unterminated_tail = bool(lines) and not text.endswith("\n")
     records = []
     for index, line in enumerate(lines):
         if oracle_format != "otel-jsonl":
@@ -177,7 +173,7 @@ def read_new_oracle_records(path, oracle_format, skip):
             try:
                 records.extend(_split_otel_line_into_records(line))
             except json.JSONDecodeError:
-                if index < (len(lines) - 1):
+                if not (unterminated_tail and (index == (len(lines) - 1))):
                     raise
     return records[skip:]
 
