@@ -44,7 +44,30 @@ services:
         condition: service_healthy
     environment:
       - BDD_TARGET=linux
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @passthrough' Bdd/features/
+
+  # The same binary over its passthrough wiring: no service thread, the logger
+  # serviced on the thread that logs. It runs every scenario that does not
+  # need a buffered wiring, which is what @buffered marks, and the
+  # @passthrough scenarios no other lane can run.
+  # Never run together with behave-linux: both share one oracle.
+  behave-linux-passthrough:
+    image: ghcr.io/cososo-ltd/behave@sha256:4c693232c26fa6bbdb2a8451f9f4879f4271a554cbcba356fc7fc38ff5bac65d # sha-be8da62
+    user: "0"
+    volumes:
+      - ..:/workspaces/SolidSyslog
+      - bdd-output-linux:/workspaces/SolidSyslog/Bdd/output
+      - syslog-ng-ctl-linux:/var/lib/syslog-ng
+    working_dir: /workspaces/SolidSyslog
+    networks:
+      - linux
+    depends_on:
+      syslog-ng-linux:
+        condition: service_healthy
+    environment:
+      - BDD_TARGET=linux
+      - BDD_BUFFER=passthrough
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @buffered' Bdd/features/
 
   # The same Linux pair driving the wolfSSL build of the target. Only the
   # binary differs, so EXAMPLE_BINARY names it. The tag filter also leaves out
@@ -69,7 +92,7 @@ services:
     environment:
       - BDD_TARGET=linux
       - EXAMPLE_BINARY=build/tunable-override-wolfssl/Bdd/Targets/SolidSyslogBddTarget
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @no_rtc and not @passthrough' Bdd/features/
 
   # Each BDD target pairs with its own syslog-ng instance on its own
   # bridge network so the `syslog-ng` DNS alias is scoped per-pair —
@@ -146,7 +169,7 @@ services:
     # here — Bdd/features/environment.py skips them at runtime based on the
     # build's SOLIDSYSLOG_MAX_MESSAGE_SIZE so the exclusion auto-tracks
     # solidsyslog_user_tunables.h changes.
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and not @passthrough and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
   # FreeRTOS + lwIP pair (S28.09 UDP, S28.10 TCP, S28.11 TLS/mTLS). Same shape as
   # the freertos (+TCP) pair — its own syslog-ng on its own bridge network, behave
@@ -205,7 +228,7 @@ services:
       # ELF rides the existing freertos driver — only the binary path differs.
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and not @passthrough and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
   # The CmsisLwip pair (S40.01). Same shape as the freertos-lwip pair above -
   # its own syslog-ng on its own bridge network, behave sharing the netns so
@@ -265,7 +288,7 @@ services:
       # rides the existing freertos driver too - only the binary path differs.
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and not @passthrough and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
 
   # The CmsisLwip pair over the wolfSSL pack, with wolfSSL built from source
@@ -320,7 +343,7 @@ services:
       # rides the existing freertos driver too - only the binary path differs.
       - BDD_TARGET=freertos
       - EXAMPLE_BINARY=build/cmsis-cross-lwip-wolfssl/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
-    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+    command: behave --junit --junit-directory Bdd/junit --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @host_store and not @host_buffer and not @passthrough and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 
 volumes:
   bdd-output-linux:

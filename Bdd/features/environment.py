@@ -176,6 +176,11 @@ def before_all(context):
         "RECEIVED_LOG", "Bdd/output/received.log"
     )
     context.oracle_format = os.environ.get("ORACLE_FORMAT", "syslog-ng")
+    # BDD_BUFFER=passthrough drives the hosted target's single-task wiring: a
+    # passthrough buffer, no service thread, the logger serviced on the thread
+    # that logs. Every spawn passes it on, and a step that must know which
+    # wiring it is running over reads it from here.
+    context.buffer_wiring = os.environ.get("BDD_BUFFER", "queue").lower()
     if context.target == "vxworks64":
         prepare_vxworks64_target()
 

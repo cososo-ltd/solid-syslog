@@ -249,6 +249,8 @@ def spawn_example_process(context, extra_args=None, binary=None):
         cmd = [os.path.abspath(binary)]
         if extra_args:
             cmd.extend(extra_args)
+        if getattr(context, "buffer_wiring", "queue") == "passthrough":
+            cmd.extend(["--buffer", "passthrough"])
 
     # Stdout goes through PIPE because the prompt protocol reads it
     # byte-by-byte; _start_stdout_reader tees a copy into a sliding 16 KB
