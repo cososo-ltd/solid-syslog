@@ -16,7 +16,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7c9e2e66cf1eb382fceed63280df4c27cb49b35d6ecebe8fa2b97217e7d75dfd # sha-d5d2af8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:a52a1a4aa9cac75c643c5e7371258aa8e1fa0468fdc31f014764a42f862d5c5b # sha-0fc5267
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -32,14 +32,28 @@ jobs:
         with:
           persist-credentials: false
 
+      # cpputest-freertos carries every upstream a Linux host can build against,
+      # so this one lane configures all fourteen packs; the `SolidSyslog
+      # platforms:` line in the configure log is the record of which.
+      # The Linux BDD target is built here too: every other host lane builds
+      # it under a tunable-override preset, so this is the one build of it
+      # against the default tunables.
       - name: Configure
         run: cmake --preset debug
 
       - name: Build and test
-        run: cmake --build --preset debug --target junit BddTargetTests
+        run: cmake --build --preset debug --target junit BddTargetTests SolidSyslogBddTarget
 
       - name: Run BDD target tests
         run: cd build/debug && ./Tests/Bdd/Targets/BddTargetTests -ojunit -k BddTargetTests
+
+      # The one FreeRTOS shape no other lane builds: the kernel pack selected
+      # with Plus-TCP deselected, which is what an lwIP-only integrator has.
+      # A build rather than a configure, because what can fail is the link.
+      - name: Build with Plus-TCP deselected
+        run: |
+          cmake --preset debug -B build/no-plustcp -DSOLIDSYSLOG_PLUSTCP=OFF
+          cmake --build build/no-plustcp
 
       - name: Test Report
         uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
@@ -488,12 +502,12 @@ jobs:
     runs-on: ubuntu-latest
     # A test binary that faults as it starts can leave AddressSanitizer
     # reporting the signal without end; the lane otherwise takes minutes.
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7c9e2e66cf1eb382fceed63280df4c27cb49b35d6ecebe8fa2b97217e7d75dfd # sha-d5d2af8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:a52a1a4aa9cac75c643c5e7371258aa8e1fa0468fdc31f014764a42f862d5c5b # sha-0fc5267
       # Docker's default seccomp profile refuses the personality call
       # setarch -R makes below.
       options: --user root --security-opt seccomp=unconfined
@@ -550,7 +564,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7c9e2e66cf1eb382fceed63280df4c27cb49b35d6ecebe8fa2b97217e7d75dfd # sha-d5d2af8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:a52a1a4aa9cac75c643c5e7371258aa8e1fa0468fdc31f014764a42f862d5c5b # sha-0fc5267
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -1718,63 +1732,6 @@ jobs:
         if: failure()
         run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
 
-  unit-linux-gcc-embedded:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
-    container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:a52a1a4aa9cac75c643c5e7371258aa8e1fa0468fdc31f014764a42f862d5c5b # sha-0fc5267
-      options: --user root
-    env:
-      GIT_CONFIG_COUNT: 1
-      GIT_CONFIG_KEY_0: safe.directory
-      GIT_CONFIG_VALUE_0: '*'
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      # The regular host preset under the cpputest-freertos image, whose
-      # upstream trees select the embedded packs (FreeRtos, PlusTcp, PlusFat,
-      # LwipRaw, LwipSocket, MbedTls, FatFs, LittleFs) that the cpputest base
-      # image cannot. Their unit tests run here against the fakes.
-      - name: Configure
-        run: cmake --preset debug
-
-      - name: Build and test
-        run: cmake --build --preset debug --target junit BddTargetTests SolidSyslogBddTarget
-
-      - name: Run BDD target tests
-        run: cd build/debug && ./Tests/Bdd/Targets/BddTargetTests -ojunit -k BddTargetTests
-
-      # The one FreeRTOS shape no other lane builds: the kernel pack selected
-      # with Plus-TCP deselected, which is what an lwIP-only integrator has.
-      # A build rather than a configure, because what can fail is the link.
-      - name: Build with Plus-TCP deselected
-        run: |
-          cmake --preset debug -B build/no-plustcp -DSOLIDSYSLOG_PLUSTCP=OFF
-          cmake --build build/no-plustcp
-
-      - name: Test Report
-        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
-        if: success() || failure()
-        with:
-          name: Test Results (unit-linux-gcc-embedded)
-          path: build/debug/cpputest_*.xml,build/debug/vxworks64/cpputest_*.xml
-          reporter: java-junit
-
-      - name: Upload JUnit XML
-        if: success() || failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: junit-unit-linux-gcc-embedded
-          path: |
-            build/debug/cpputest_*.xml
-            build/debug/vxworks64/cpputest_*.xml
-          retention-days: 1
-
   build-freertos-plustcp-mbedtls-plusfat:
     runs-on: ubuntu-latest
     permissions:
@@ -2425,7 +2382,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-embedded, tools-vxworks64-runner, bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, unit-linux-gcc-embedded, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-embedded, tools-vxworks64-runner, bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -2479,11 +2436,6 @@ jobs:
                     "id": "junit",
                     "name": "unit-linux-gcc",
                     "pattern": "**/junit-unit-linux-gcc/cpputest_*.xml"
-                  },
-                  {
-                    "id": "junit",
-                    "name": "unit-linux-gcc-embedded",
-                    "pattern": "**/junit-unit-linux-gcc-embedded/cpputest_*.xml"
                   },
                   {
                     "id": "junit",
