@@ -404,29 +404,50 @@ endif()
 # Code coverage report using lcov/genhtml.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
 # lcov and genhtml must be installed (available in both container images).
+#
+# The report measures what `junit` runs - every registered test executable -
+# so a pack whose tests live in their own executable counts the same as one
+# tested from SolidSyslogTests. The counters are zeroed before the suite runs,
+# so a second `--target coverage` in the same tree measures that run alone.
 if(COVERAGE)
     find_program(LCOV_EXECUTABLE lcov)
     find_program(GENHTML_EXECUTABLE genhtml)
 
     if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-        add_custom_target(coverage
+        # The branch-coverage switch was renamed between lcov 1.x
+        # (lcov_branch_coverage) and 2.x (branch_coverage). Either version
+        # ignores the other's key without a word, and a capture made that
+        # way holds no branch data at all, so the key is chosen by version.
+        execute_process(
+            COMMAND ${LCOV_EXECUTABLE} --version
+            OUTPUT_VARIABLE lcov_version_text
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        if(lcov_version_text MATCHES "version 1\\.")
+            set(lcov_branch_rc --rc lcov_branch_coverage=1)
+        else()
+            set(lcov_branch_rc --rc branch_coverage=1)
+        endif()
+
+        add_custom_target(coverage-zero
             COMMAND ${LCOV_EXECUTABLE} --zerocounters --directory ${CMAKE_BINARY_DIR}
-            COMMAND ${CMAKE_COMMAND}
-                -DEXECUTABLE=$<TARGET_FILE:${PROJECT_NAME}Tests>
-                -DDIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
+            COMMENT "Zeroing coverage counters"
+        )
+        add_dependencies(junit coverage-zero)
+
+        add_custom_target(coverage
             COMMAND ${LCOV_EXECUTABLE} --capture --directory ${CMAKE_BINARY_DIR}
                 --output-file ${CMAKE_BINARY_DIR}/coverage.info
-                --rc branch_coverage=1
+                ${lcov_branch_rc}
             COMMAND ${LCOV_EXECUTABLE} --extract ${CMAKE_BINARY_DIR}/coverage.info
                 "${CMAKE_SOURCE_DIR}/Core/Source/*"
                 "${CMAKE_SOURCE_DIR}/Platform/*/Source/*"
                 --output-file ${CMAKE_BINARY_DIR}/coverage.filtered.info
-                --rc branch_coverage=1
+                ${lcov_branch_rc}
             COMMAND ${GENHTML_EXECUTABLE} ${CMAKE_BINARY_DIR}/coverage.filtered.info
                 --output-directory ${CMAKE_BINARY_DIR}/coverage_report
                 --branch-coverage
-            DEPENDS ${PROJECT_NAME}Tests
+            DEPENDS junit
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Generating coverage report in build/coverage/coverage_report/"
         )

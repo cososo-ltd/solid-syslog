@@ -81,8 +81,18 @@ cmake --preset coverage
 cmake --build --preset coverage --target coverage
 ```
 
-Open `build/coverage/coverage_report/index.html` to view results.
-The CI gate is 90% line and branch. The target is 100%.
+Open `build/coverage/coverage_report/index.html` to view results. The report
+covers every registered test executable, not only `SolidSyslogTests`, so a pack
+tested from its own executable counts. `scripts/coverage_summary.py` prints the
+same tracefile as a table per pack and applies the gate:
+
+```bash
+scripts/coverage_summary.py build/coverage/coverage.filtered.info --threshold 90
+```
+
+The CI gate is 90% on lines and 90% on branches, over all packs together. A
+tracefile with no branch data fails the gate rather than skipping it. The
+target is 100%.
 
 ## Static analysis - `tidy`
 
