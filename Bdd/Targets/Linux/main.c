@@ -107,13 +107,20 @@ static bool IsPassthrough(const struct BddTargetOptions* options)
    service thread drains. */
 static struct SolidSyslogBuffer* CreateBuffer(const struct BddTargetOptions* options, struct SolidSyslogSender* sender)
 {
+    struct SolidSyslogBuffer* buffer = NULL;
+
     if (IsPassthrough(options))
     {
-        return SolidSyslogPassthroughBuffer_Create(sender);
+        buffer = SolidSyslogPassthroughBuffer_Create(sender);
+    }
+    else
+    {
+        bufferMutex = SolidSyslogPosixMutex_Create();
+        buffer =
+            SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, 10, BddTargetStoreSettings_GetDiscardPolicy, NULL);
     }
 
-    bufferMutex = SolidSyslogPosixMutex_Create();
-    return SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, 10, BddTargetStoreSettings_GetDiscardPolicy, NULL);
+    return buffer;
 }
 
 static void DestroyBuffer(struct SolidSyslogBuffer* buffer, const struct BddTargetOptions* options)
@@ -196,6 +203,7 @@ static void OnThresholdCrossed(void* context)
 static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* options)
 {
     bool useFile = (strcmp(options->Store, "file") == 0);
+    struct SolidSyslogStore* store = SolidSyslogNullStore_Get();
 
     if (useFile)
     {
@@ -214,10 +222,10 @@ static struct SolidSyslogStore* CreateStore(const struct BddTargetOptions* optio
         storeConfig.OnThresholdCrossed = OnThresholdCrossed;
         storeConfig.ThresholdContext = NULL;
 
-        return SolidSyslogBlockStore_Create(&storeConfig);
+        store = SolidSyslogBlockStore_Create(&storeConfig);
     }
 
-    return SolidSyslogNullStore_Get();
+    return store;
 }
 
 static void DestroySender(void)
