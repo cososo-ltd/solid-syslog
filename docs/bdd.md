@@ -47,6 +47,7 @@ fault-finding tips.
 | Target | Behave runner | Oracle |
 |---|---|---|
 | Linux | `behave-linux` | `syslog-ng-linux` |
+| Linux, passthrough wiring | `behave-linux-passthrough` - the same binary with `--buffer passthrough`, which the `BDD_BUFFER` env var selects | `syslog-ng-linux` |
 | FreeRTOS (Plus-TCP) | `behave-freertos` (cross image carries QEMU + Behave) | `syslog-ng-freertos` (shared netns; QEMU slirp `10.0.2.2` reaches it on loopback) |
 | FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
@@ -69,7 +70,7 @@ through the QEMU UART (`-serial stdio`).
 | `Bdd/output/` | Shared directory - syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
 | `Bdd/junit/stack-hwm.txt` | Written by a FreeRTOS QEMU run: the least stack the logging task and the Service task had left, in bytes, in each scenario that ends by quitting the target, then the least of each over the run. A scenario that shuts the target down or kills it to stand in for a power cut gives no figure. The run prints the same lines as it ends |
-| `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender. Accepts `--facility`, `--severity`, `--transport`, `--app-name`, store-config flags |
+| `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender, or under `--buffer passthrough` a PassthroughBuffer with no service thread, the logger serviced on the thread that logs after each record. Accepts `--facility`, `--severity`, `--transport`, `--buffer`, `--app-name`, store-config flags; refuses a file store under passthrough, since nothing the application logs would reach it |
 | `Bdd/Targets/CMakeLists.txt` | Builds the BDD target binary, linked against the SolidSyslog library |
 
 ## syslog-ng configuration
@@ -136,7 +137,8 @@ etc.) without rewriting feature tags.
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
 | `@tls` | Needs TLS transport (RFC 5425, server-auth). Excluded on VxWorks 6.4, which carries no TLS. |
 | `@mtls` | Needs mutual TLS (client cert + key) |
-| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - e.g. file-backed block store, switching sender between transports, syslog-ng reload via the UNIX control socket. Every target binary carries a buffered wiring, so `@buffered` is not excluded by any runner. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
+| `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - a file-backed block store, a switching sender, a buffer to fill, or a record Service holds through an outage. Every target binary carries a buffered wiring; the one runner that excludes it is `behave-linux-passthrough`, which runs everything else over the passthrough wiring. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
+| `@passthrough` | Asserts what only the passthrough wiring does: a record the sender could not take is lost, and the logger's report of it lands once the sender recovers. Run on `behave-linux-passthrough` alone; every other runner excludes it. |
 | `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), and VxWorks 6.4 over `SolidSyslogVxWorks64File`. |
 | `@host_store` | Needs the target's store on the host's filesystem, where a step can spoil the store's path before the target starts, or corrupt a stored record between runs. Run on Linux and Windows; excluded on the QEMU targets and VxWorks 6.4, whose store media the harness cannot reach. |
 | `@host_buffer` | Needs a buffer a step can fill from the prompt in one burst while the sender is down, so the discard policy on the buffer, and on the record Service holds, shows at the collector. Run on Linux (message queue, ten records) and Windows (ring); excluded on the QEMU targets and VxWorks 6.4, whose buffers the harness does not fill. |
@@ -152,7 +154,7 @@ Rollout markers are also used (temporary; remove once the scenario passes):
 | Tag | Meaning |
 | --- | --- |
 | `@wip` | Skip everywhere - work in progress. Not currently in use on any scenario. |
-| `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on `tcp_singletask.feature` (whole feature) and one scenario in `udp_mtu.feature`. |
+| `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on one scenario in `udp_mtu.feature`. |
 | `@freertoswip` | Skip on the QEMU targets only - scenario currently fails or errors on them and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Not currently in use on any scenario. |
 | `@vxworks64wip` | Skip on the VxWorks 6.4 target only - the scenario needs a capability that target does not have yet, and loses the tag when the story that adds it lands. |
 
@@ -233,7 +235,11 @@ docker compose -f .devcontainer/docker-compose.yml exec gcc \
 
 # Run Behave
 docker compose -f .devcontainer/docker-compose.yml run --rm behave-linux \
-    behave Bdd/features/ --tags='not @wip and not @no_rtc'
+    behave Bdd/features/ --tags='not @wip and not @no_rtc and not @passthrough'
+
+# The same over the passthrough wiring
+docker compose -f .devcontainer/docker-compose.yml run --rm -e BDD_BUFFER=passthrough behave-linux \
+    behave Bdd/features/ --tags='not @wip and not @no_rtc and not @buffered'
 ```
 
 For the QEMU targets (cross-build the ELF, then run Behave via QEMU

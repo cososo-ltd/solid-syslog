@@ -35,6 +35,7 @@ without renaming what's already there.
 | `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
 | `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
 | `bdd-linux-syslog-ng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
+| `bdd-linux-passthrough` | - | The same Linux target under `--buffer passthrough` - no service thread, the logger serviced on the thread that logs, which is what the hardening path's first wiring does. Runs every scenario not tagged `@buffered`, and the `@passthrough` scenarios no other lane can |
 | `bdd-windows-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
 | `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs, lwIP (Raw API and Sockets API), LittleFS and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |
 | `build-freertos-target-plustcp` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
