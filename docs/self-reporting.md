@@ -39,8 +39,8 @@ Number registered to Cozens Software Solutions Limited:
 | `detail` | The name of the raising class's detail code, for example `OPEN_FAILED`, `PEER_CERTIFICATE_UNTRUSTED`, `HELD_RECORD_DROPPED`. A code the class does not name is written as its decimal value instead | Always |
 | `native` | The platform's own code for the fault - an errno, an `FRESULT`, a LittleFS error - as a signed decimal | Only when the platform gave one |
 
-Every value is an enumerator name or an integer. No record content, path, key or
-address can appear in a report.
+From the library's own sources every value is an enumerator name or an integer, so no
+record content, path, key or address can appear in the element.
 
 ### The kinds reported
 
@@ -76,15 +76,15 @@ reported as records.
 
 ### Reading the timestamp and the sequence number
 
-A report is made on the next pass of `SolidSyslog_Service` after the event, so its
-TIMESTAMP is when it was reported, not when the fault occurred. The difference is at
-most one Service period of the device.
+A report is made by `SolidSyslog_Service`, and its TIMESTAMP is read when the report is
+formatted, not when the fault occurred.
 
 A report enters the stream after the record Service already held and before the
 records still in the buffer, and its sequence number is assigned at that moment. Around
 a report, sequence numbers are therefore not monotonic in arrival order: the report
 carries a higher number than buffered records that arrive after it. Every number is
-still used once, so a gap in `sequenceId` still means a lost record. A collector that
+still used once, so a gap in `sequenceId` that no later arrival fills means a lost
+record. A collector that
 orders by `sequenceId` places the report after the records it overtook; one that reads
 arrival order places it earlier. Both orders are consistent.
 
@@ -154,9 +154,10 @@ Reporting off does not change what the error handler receives.
 ### Sizing the store for reports
 
 A report is a record, so it occupies store capacity and counts toward the capacity
-threshold. A store sized for the outage loses nothing to its reports: the reports of
-one outage add at most a block. A store already too small can lose the application's
-records to the reports of the outage it is describing.
+threshold. A store sized for the outage with a block to spare holds the reports of that
+outage in the ordinary case, one per kind per run of the fault; the next paragraph
+gives the case that produces more. A store already too small can lose the
+application's records to the reports of the outage it is describing.
 
 A threshold crossing can recur. A block sent or evicted re-arms it, so under the
 `OLDEST` policy with the threshold inside the store's last block, each block that refills
@@ -165,8 +166,8 @@ report of a crossing can itself cross again while the store sits at the threshol
 blocks to hold several records.
 
 A full store that refuses a report under its discard policy raises `STORE_RECORDS_LOST`
-for it, and Service then sends the report to the sender instead; the store's event is
-raised, but the report is not lost.
+for it, and Service sends the report to the sender instead, or holds it while that
+refusal has the logger halted; the store's event is raised, but the report is not lost.
 
 ### What it costs
 

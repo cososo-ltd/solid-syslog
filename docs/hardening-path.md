@@ -347,7 +347,7 @@ policy the device's own. The buffer reports once when a run of losses starts, an
 only after a write has lost nothing since; the sequence number from stage 6 says how
 many went. The store from stage 10 reports loss under the same rules, stated once under
 [when a record is lost](error-severity.md#when-a-record-is-lost). From this stage on,
-the service task also writes each such loss into the trail as a
+the service task also writes that report into the trail as a
 [record of the logger's own](self-reporting.md), on by default; that page states what
 it costs and how a device turns it off.
 
