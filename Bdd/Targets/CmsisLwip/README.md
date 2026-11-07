@@ -10,7 +10,7 @@ their own coverage; nothing is displaced.
 
 It is selected by `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP` (see the top-level
 `CMakeLists.txt`), built by the `cmsis-cross-lwip` preset, and run on QEMU by the
-`bdd-cmsis-qemu-lwip` CI lane against its own syslog-ng oracle.
+`bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` CI lane against its own syslog-ng oracle.
 
 ## What it links
 
@@ -31,7 +31,7 @@ failure belonged to the pack that had just changed.
 ## The wolfSSL build
 
 The `cmsis-cross-lwip-wolfssl` preset builds this same target over `WolfSsl` in
-place of `MbedTls`, and the `bdd-cmsis-qemu-lwip-wolfssl` lane runs it. wolfSSL
+place of `MbedTls`, and the `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` lane runs it. wolfSSL
 is not a prebuilt library here: its sources are compiled into the image from
 the tree at `WOLFSSL_SOURCE_DIR`, under [`wolfssl/user_settings.h`](wolfssl/user_settings.h),
 which is how an embedded integrator builds it. That file says what each setting

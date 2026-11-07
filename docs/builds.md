@@ -61,7 +61,7 @@ hide its POSIX declarations. Pinning that version rather than reaching for
 `_DEFAULT_SOURCE` asserts the POSIX pack needs nothing beyond POSIX.1-2008. The
 remaining packs are unchecked.
 
-CI runs both presets as the `build-linux-c99` lane on every pull request.
+CI runs both presets as the `build-c99` lane on every pull request.
 
 ## Sanitizers - `sanitize`
 
@@ -116,8 +116,8 @@ cmake --build --preset iwyu --target iwyu
 
 Note the `--target iwyu`: building the bare preset does not run the tool.
 
-IWYU is advisory, not a gate. The CI lanes (`analyze-iwyu`,
-`analyze-iwyu-freertos-plustcp`, `analyze-iwyu-freertos-lwip`) run on every PR but
+IWYU is advisory, not a gate. The CI lanes (`analyze-iwyu` and
+`analyze-iwyu-embedded`) run on every PR but
 do not block the build; their findings land in the `iwyu-report*` artifacts. Sweep
 those at release cleanup. See [local-checks.md](local-checks.md) for the FreeRTOS
 variants and the full pre-PR check budget.
@@ -171,7 +171,7 @@ it under Behave + the syslog-ng oracle.
 The lwIP-networking twin of `freertos-cross`: same ARM Cortex-M3 / mps2-an385
 cross-build, but with `SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP` (instead of the
 default FreeRTOS-Plus-TCP) and the `Bdd/Targets/FreeRtosLwip/` tunables. Drives the
-`bdd-freertos-qemu-lwip` CI lane.
+`bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` CI lane.
 
 ```bash
 cmake --preset freertos-cross-lwip
@@ -185,7 +185,7 @@ The ELF lands at
 
 The same ARM Cortex-M3 / mps2-an385 cross-build over a different pack set:
 `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP`, `CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`,
-and the `Bdd/Targets/CmsisLwip/` tunables. Drives the `bdd-cmsis-qemu-lwip` CI
+and the `Bdd/Targets/CmsisLwip/` tunables. Drives the `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` CI
 lane.
 
 ```bash
@@ -200,7 +200,7 @@ See `Bdd/Targets/CmsisLwip/README.md` for run / GDB-attach instructions.
 `cmsis-cross-lwip-wolfssl` builds the same target with `SOLIDSYSLOG_PLATFORMS`
 naming `WolfSsl` and not `MbedTls`. wolfSSL is compiled from the source tree at
 `WOLFSSL_SOURCE_DIR`, which the cross image exports, under the target's own
-`user_settings.h`. It drives the `bdd-cmsis-qemu-lwip-wolfssl` CI lane.
+`user_settings.h`. It drives the `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` CI lane.
 
 ```bash
 cmake --preset cmsis-cross-lwip-wolfssl

@@ -22,7 +22,7 @@ services:
       - syslog-ng-linux
 
   # Linux pair — syslog-ng oracle + behave runner, used by gcc/clang dev
-  # work and the bdd-linux-syslog-ng CI job. Each pair lives on its own
+  # work and the bdd-linux-openssl-syslogng CI job. Each pair lives on its own
   # bridge network so the `syslog-ng` DNS alias is scoped per-pair, even
   # if a future workflow runs both pairs simultaneously; see
   # ci/docker-compose.bdd.yml for the rationale.

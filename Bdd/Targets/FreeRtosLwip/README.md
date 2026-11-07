@@ -11,7 +11,7 @@ network backend swapped PlusTcp → LwipRaw.
 
 It is selected by `SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP` (see the top-level
 `CMakeLists.txt`), built by the `freertos-cross-lwip` preset, and run on QEMU by
-the advisory `bdd-freertos-qemu-lwip` CI lane against the shared syslog-ng
+the `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` CI lane against the shared syslog-ng
 oracle.
 
 ## What it does

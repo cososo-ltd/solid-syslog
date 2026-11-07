@@ -4,7 +4,7 @@
     "oracle received 0 of 1 messages" flake and capture the client-side cause.
 
 .DESCRIPTION
-    Mirrors the bdd-windows-otel CI job locally on a native Windows box:
+    Mirrors the bdd-windows-openssl-otel CI job locally on a native Windows box:
     starts otelcol-contrib with the BDD config, waits for the UDP 5514 /
     TCP 6514 / TCP 6515 listeners, then runs `behave` against the chosen tag
     in a loop. Each iteration's full output is kept; failing iterations are
