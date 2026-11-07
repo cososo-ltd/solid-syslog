@@ -26,11 +26,11 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 
 | Job | Preset | Notes |
 |---|---|---|
-| `unit-linux-gcc` | `debug` | Test results annotated on PR |
+| `unit-linux-gcc` | `debug` | All fourteen packs a Linux host can build, on `cpputest-freertos`; also builds the Linux BDD target against the default tunables (every other host build of it uses a tunables override), and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has. Test results annotated on PR |
 | `unit-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
 | `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
-| `unit-linux-gcc-sanitize` | `sanitize` | ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
-| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit`, lines and branches, gated at 90% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and the HTML report is a downloadable run artifact |
+| `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
+| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 90% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and the HTML report is a downloadable run artifact |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
@@ -50,7 +50,6 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `bdd-linux-openssl-syslogng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-linux-openssl-syslogng-passthrough` | - | The same Linux target under `--buffer passthrough` - no service thread, the logger serviced on the thread that logs, which is what the hardening path's first wiring does. Runs every scenario not tagged `@buffered`, and the `@passthrough` scenarios no other lane can |
 | `bdd-windows-openssl-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
-| `unit-linux-gcc-embedded` | `debug` | The unit suite on `cpputest-freertos`, which adds the eight embedded packs against their fakes; also builds the Plus-TCP BDD target, and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has |
 | `build-freertos-plustcp-mbedtls-plusfat` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
 | `build-freertos-lwipraw-mbedtls-fatfs` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
 | `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` | - | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
@@ -94,15 +93,15 @@ The lane names say the platform and toolchain but not the adapter, so:
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
 | Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
 | wolfSSL (`SolidSyslogWolfSslStream`, security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl-syslogng`, the Linux target without OpenSSL; `build-cmsisrtos-lwipsocket-wolfssl-littlefs` and `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`, a wolfSSL built from source under QEMU |
-| FreeRTOS-Plus-TCP | `unit-linux-gcc-embedded` against fakes; `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` end to end under QEMU |
-| lwIP (Raw API) | `unit-linux-gcc-embedded` against fakes; `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` end to end under QEMU; static analysis in the `*-embedded` lanes |
-| lwIP (Sockets API) | `unit-linux-gcc-embedded` against fakes; `build-cmsisrtos-lwipsocket-mbedtls-littlefs` cross build; `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` end to end under QEMU |
-| FreeRTOS kernel | `unit-linux-gcc-embedded` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
+| FreeRTOS-Plus-TCP | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` end to end under QEMU |
+| lwIP (Raw API) | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` end to end under QEMU; static analysis in the `analyze-*-embedded` lanes |
+| lwIP (Sockets API) | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `build-cmsisrtos-lwipsocket-mbedtls-littlefs` cross build; `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` end to end under QEMU |
+| FreeRTOS kernel | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
 | CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsisrtos-lwipsocket-mbedtls-littlefs` cross build; `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` end to end under QEMU |
 | VxWorks 6.4 | Unit tests at strict C99 against fakes in every host lane that builds `Tests/`. Target runs are outside CI: the toolchain and kernel are licensed, so the target checklist in `Bdd/Targets/VxWorks64/README.md` covers them |
-| ChaN FatFs | Unit tested and analysed in the `*-embedded` lanes; store-and-forward scenarios run in `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` |
-| FreeRTOS-Plus-FAT | Host-TDD against fakes in `unit-linux-gcc-embedded`, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` |
-| LittleFS | `unit-linux-gcc-embedded` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` |
+| ChaN FatFs | Unit tested in `unit-linux-gcc` and its sanitizer and coverage lanes, analysed in the `analyze-*-embedded` lanes; store-and-forward scenarios run in `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` |
+| FreeRTOS-Plus-FAT | Host-TDD against fakes in `unit-linux-gcc` and its sanitizer and coverage lanes, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` |
+| LittleFS | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` |
 | POSIX, Windows | The `build-linux-*` and `unit-windows-msvc` lanes, plus both host BDD lanes |
 | C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both lwIP cross presets |
 
