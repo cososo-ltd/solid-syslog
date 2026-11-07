@@ -21,6 +21,7 @@ import sys
 from typing import Dict, List, NamedTuple, TextIO
 
 PACK_PATTERN = re.compile(r"Platform/([A-Za-z0-9]+)/")
+COUNTER_FIELDS = {"LF": "lines_found", "LH": "lines_hit", "BRF": "branches_found", "BRH": "branches_hit"}
 
 
 class Counts(NamedTuple):
@@ -46,11 +47,10 @@ def aggregate(tracefile: TextIO) -> Dict[str, Counts]:
         if key == "SF":
             pack = pack_of(value)
             packs.setdefault(pack, Counts(0, 0, 0, 0))
-        elif key in ("LF", "LH", "BRF", "BRH"):
-            field = {"LF": 0, "LH": 1, "BRF": 2, "BRH": 3}[key]
-            delta = [0, 0, 0, 0]
-            delta[field] = int(value)
-            packs[pack] = packs[pack].add(Counts(*delta))
+        elif key in COUNTER_FIELDS:
+            field = COUNTER_FIELDS[key]
+            current = packs[pack]
+            packs[pack] = current._replace(**{field: getattr(current, field) + int(value)})
     return packs
 
 

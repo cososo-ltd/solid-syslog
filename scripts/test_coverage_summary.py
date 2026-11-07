@@ -1,6 +1,9 @@
 """Tests for coverage_summary.py: the per-pack table and the gate."""
 
+import contextlib
 import io
+import os
+import tempfile
 import textwrap
 import unittest
 
@@ -49,10 +52,15 @@ class Gate(unittest.TestCase):
     def test_passes_when_both_rates_meet_the_threshold(self):
         self.assertEqual(coverage_summary.failures(coverage_summary.Counts(100, 95, 100, 90), 90), [])
 
-    def test_names_the_rate_that_falls_short(self):
+    def test_names_the_branch_rate_that_falls_short(self):
         found = coverage_summary.failures(coverage_summary.Counts(100, 95, 100, 89), 90)
         self.assertEqual(len(found), 1)
         self.assertIn("branch", found[0])
+
+    def test_names_the_line_rate_that_falls_short(self):
+        found = coverage_summary.failures(coverage_summary.Counts(100, 89, 100, 95), 90)
+        self.assertEqual(len(found), 1)
+        self.assertIn("line", found[0])
 
     def test_no_branch_data_is_a_failure_not_a_skip(self):
         found = coverage_summary.failures(coverage_summary.Counts(100, 100, 0, 0), 90)
@@ -70,6 +78,35 @@ class Table(unittest.TestCase):
         rows = coverage_summary.markdown(packs).splitlines()
         self.assertIn("| Core | 19 / 20 | 95.0% | 5 / 6 | 83.3% |", rows)
         self.assertEqual(rows[-1], "| **Total** | 24 / 25 | 96.0% | 6 / 8 | 75.0% |")
+
+
+class Main(unittest.TestCase):
+    def run_main(self, tracefile, *options):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "coverage.info")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(tracefile)
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                status = coverage_summary.main([path, *options])
+        return status, out.getvalue(), err.getvalue()
+
+    def test_prints_the_table_and_exits_zero_when_the_gate_passes(self):
+        status, out, err = self.run_main(TRACEFILE, "--threshold", "75")
+        self.assertEqual(status, 0)
+        self.assertIn("| **Total** |", out)
+        self.assertEqual(err, "")
+
+    def test_reports_each_failure_on_stderr_and_exits_one(self):
+        without_branches = "".join(line for line in TRACEFILE.splitlines(keepends=True) if not line.startswith("BR"))
+        status, _, err = self.run_main(without_branches)
+        self.assertEqual(status, 1)
+        self.assertIn("FAIL: no branch data in the tracefile", err)
+
+    def test_default_threshold_is_ninety(self):
+        status, _, err = self.run_main(TRACEFILE)
+        self.assertEqual(status, 1)
+        self.assertIn("branch coverage 75.0% is below 90%", err)
 
 
 if __name__ == "__main__":

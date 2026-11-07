@@ -82,8 +82,8 @@ cmake --build --preset coverage --target coverage
 ```
 
 Open `build/coverage/coverage_report/index.html` to view results. The report
-covers every registered test executable, not only `SolidSyslogTests`, so a pack
-tested from its own executable counts. `scripts/coverage_summary.py` prints the
+covers every test executable registered with `junit`, not only the main one,
+so a pack tested from its own executable counts. `scripts/coverage_summary.py` prints the
 same tracefile as a table per pack and applies the gate:
 
 ```bash
