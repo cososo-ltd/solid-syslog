@@ -1,10 +1,12 @@
 @tcp
 Feature: TCP reconnection after server outage
   The TCP sender detects connection failure and reconnects when the
-  server recovers. With no store, Service holds the record whose send
-  failed and reads nothing more from the buffer until it has gone, so
-  the records logged during the outage wait in the buffer and arrive,
-  in order, once the server is back.
+  server recovers. With no store, what becomes of the records logged
+  during the outage is the buffer's to decide. A queue keeps them:
+  Service holds the record whose send failed and reads nothing more
+  from the buffer until it has gone, so they wait and arrive, in order,
+  once the server is back. A passthrough buffer has nowhere to keep
+  them, so they are lost, and the logger reports the loss.
 
   @buffered
   Scenario: Messages delivered after server recovery

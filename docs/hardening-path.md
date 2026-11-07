@@ -208,9 +208,9 @@ reentrant, so call it from one task only - and call
 [`SolidSyslog_Service`](api/SolidSyslog_8h.md#function-solidsyslog_service) from that
 same task, after each `SolidSyslog_Log` at the least. There is nothing to drain, but
 Service is where the [records the logger writes about itself](self-reporting.md) go
-out: a send the collector refused is reported there, held while the collector still
-refuses it, and delivered once it can take it again. A call from the main loop as well
-lands that report when the collector returns rather than at the device's next record.
+out: a send that failed is reported there, and the report is held while sends still
+fail and delivered once one succeeds. A call from the main loop as well lands that
+report when the path is back rather than at the device's next record.
 
 ```c
 struct SolidSyslogMessage message = {

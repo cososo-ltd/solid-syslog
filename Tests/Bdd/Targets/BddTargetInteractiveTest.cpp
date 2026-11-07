@@ -89,8 +89,9 @@ void RunWithInput(
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) -- see comment above; fmemopen mode "r" never writes
     FILE* in = fmemopen(const_cast<char*>(input), strlen(input), "r");
     struct SolidSyslogMessage message = {};
-    /* These tests only exercise the set/switch/quit input paths, never `send`,
-       so the SolidSyslog handle is never dereferenced - nullptr is safe. */
+    /* The handle is nullptr: a `send` here reaches SolidSyslog_Log with it,
+       which reports BAD_ARGUMENT to the default handler and logs nothing, so
+       the loop's dispatch and counting are tested without a logger. */
     BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet, onBlocks, onLogged);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is POSIX C; no owning memory concern
     fclose(in);
@@ -239,6 +240,8 @@ TEST(BddTargetInteractive, NullBlocksHandlerSilentlyIgnoresBlocksLine)
  * each record: the hook runs once per Log the send made. */
 TEST(BddTargetInteractive, TheLoggedHandlerRunsOncePerRecordASendLogs)
 {
+    StartStdoutCapture();
     RunWithInput("send 3\nquit\n", RecordSet, nullptr, RecordLogged);
+    (void) EndStdoutCapture();
     LONGS_EQUAL(3, loggedCallCount);
 }

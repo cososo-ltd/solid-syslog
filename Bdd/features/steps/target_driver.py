@@ -232,10 +232,10 @@ def spawn_example_process(context, extra_args=None, binary=None):
     the prompt is up.
 
     binary defaults to context.example_binary. Each supported runner
-    ships a single buffered example binary now — Linux's pthread
-    Threaded example (S24.04), Windows's Win32 buffered example
-    (S13.20), and the FreeRTOS CircularBuffer + Service-task .elf
-    (S08.04) — so callers don't override the default in normal use.
+    ships one binary, buffered by default - Linux's pthread target,
+    Windows's Win32 target, and the FreeRTOS CircularBuffer + Service-task
+    .elf - so callers don't override the default in normal use. The Linux
+    binary alone takes `--buffer passthrough`, which BDD_BUFFER selects.
     """
     target = getattr(context, "target", "linux")
     if target == "vxworks64":
@@ -249,7 +249,10 @@ def spawn_example_process(context, extra_args=None, binary=None):
         cmd = [os.path.abspath(binary)]
         if extra_args:
             cmd.extend(extra_args)
-        if getattr(context, "buffer_wiring", "queue") == "passthrough":
+        # Only the Linux target has the option; the lane that sets BDD_BUFFER
+        # runs that target alone, and a Windows binary given it would exit at
+        # the command line with nothing to say why.
+        if (target == "linux") and (getattr(context, "buffer_wiring", "queue") == "passthrough"):
             cmd.extend(["--buffer", "passthrough"])
 
     # Stdout goes through PIPE because the prompt protocol reads it

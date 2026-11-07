@@ -17,8 +17,9 @@
  *  collector returns rather than at the device's next record. A store behind
  *  this buffer would hold only those reports: Write never reaches it, so the
  *  records the application logs are still lost in an outage. Wire the Null
- *  store, or a one-record SolidSyslogCircularBuffer over SolidSyslogNullMutex
- *  where retention is wanted on one task. */
+ *  store; a device that stays on one task but wants a store puts a one-record
+ *  SolidSyslogCircularBuffer over SolidSyslogNullMutex in front of it instead
+ *  of this buffer, serviced the same way. */
 #ifndef SOLIDSYSLOGPASSTHROUGHBUFFER_H
 #define SOLIDSYSLOGPASSTHROUGHBUFFER_H
 

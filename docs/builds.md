@@ -237,7 +237,7 @@ End-to-end tests run against per-target oracle pairs. The Linux pair uses the
 rebuilding, or run from the gcc container:
 
 ```bash
-behave Bdd/features/ --tags='not @wip and not @no_rtc'
+behave Bdd/features/ --tags='not @wip and not @no_rtc and not @passthrough'
 ```
 
 In the behave-linux container, Ctrl+Shift+B runs `behave Bdd/features/` automatically.

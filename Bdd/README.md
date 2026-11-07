@@ -46,7 +46,8 @@ From inside the `gcc` devcontainer:
 
 ```bash
 behave Bdd/features/syslog.feature              # one feature
-behave --tags='not @wip and not @no_rtc' Bdd/features/   # full Linux suite
+behave --tags='not @wip and not @no_rtc and not @passthrough' Bdd/features/   # full Linux suite
+BDD_BUFFER=passthrough behave --tags='not @wip and not @no_rtc and not @buffered' Bdd/features/   # the passthrough lane
 ```
 
 The target binary and oracle path default to the values
@@ -62,7 +63,7 @@ once and run Behave from inside the container:
 ```bash
 cmake --preset freertos-cross
 cmake --build --preset freertos-cross --target SolidSyslogBddTarget
-behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and (@udp or @tcp or @tls or @mtls)' Bdd/features/
+behave --tags='not @wip and not @freertoswip and not @rtc and not @windows_wip and not @passthrough and (@udp or @tcp or @tls or @mtls)' Bdd/features/
 ```
 
 `BDD_TARGET=freertos` and `EXAMPLE_BINARY=build/freertos-cross/...` are
