@@ -346,7 +346,10 @@ applies Oldest, which drops the oldest records to make room, and stage 20 makes 
 policy the device's own. The buffer reports once when a run of losses starts, and again
 only after a write has lost nothing since; the sequence number from stage 6 says how
 many went. The store from stage 10 reports loss under the same rules, stated once under
-[when a record is lost](error-severity.md#when-a-record-is-lost).
+[when a record is lost](error-severity.md#when-a-record-is-lost). From this stage on,
+the service task also writes each such loss into the trail as a
+[record of the logger's own](self-reporting.md), on by default; that page states what
+it costs and how a device turns it off.
 
 **When you need it.** Once logging and sending are decoupled, the buffer has to absorb
 however many events can be logged before it is next serviced. It also makes logging from
@@ -440,9 +443,11 @@ struct SolidSyslogBlockStoreConfig storeConfig = {
 
 Three decisions come with it: how much you can store, which is capacity on the medium
 rather than RAM; what happens when it fills - discard oldest, discard newest, or halt;
-and whether you want warning before that point, via the capacity-threshold callback.
-Left unset, as the ring's was, the discard policy is Oldest; stage 20 makes it the
-device's choice.
+and whether you want warning before that point, via the capacity threshold, which
+raises an event at each crossing and calls a callback if you set one. Left unset, as
+the ring's was, the discard policy is Oldest; stage 20 makes it the device's choice.
+The store also holds the records the logger writes about itself, so
+[size it with those in mind](self-reporting.md#sizing-the-store-for-reports).
 
 What the store loses it reports as the buffer does: a run of records turned away or
 evicted unsent raises one warning when it starts. A medium that fails is different in
@@ -452,8 +457,10 @@ without storage, so route that event somewhere it will be acted on.
 The store opens its device when it is created, so create it once the volume is mounted,
 and the logger after it, since the logger's config carries the store. A store created
 before the mount stops using the device at once, and because records still reach the
-collector, only the handler shows it. The file layer reports the open that failed, with
-the filesystem's own code, and the store then reports that it has frozen:
+collector, the only signs are what the handler says and the two
+[records the logger writes about it](self-reporting.md) on its first service pass. The
+file layer reports the open that failed, with the filesystem's own code, and the store
+then reports that it has frozen:
 
 ```text
 [syslog] ERROR FatFsFile FILE_IO_FAILED OPEN_FAILED (4) native 12
@@ -910,9 +917,10 @@ Oldest drops the oldest records to make room, so the newest survive. Newest refu
 record being written. Halt refuses it too, and stops the logger at the first record a
 full store refuses, or when the ring has filled behind a record Service is still holding
 from its last pass. The logger calls its `OnHalt` once, on the service task, after the
-refusal has been reported, and moves nothing more until your function answers otherwise
-or the device restarts. Whichever policy applies, lost records are reported once when a
-run of losses starts, by the queue that lost them, as
+refusal has been reported and the halt raised as
+[`SOLIDSYSLOG_CAT_LOGGER_HALTED`](api/SolidSyslogLoggerCategories_8h.md), and moves
+nothing more until your function answers otherwise or the device restarts. Whichever
+policy applies, lost records are reported once when a run of losses starts, by the queue that lost them, as
 [when a record is lost](error-severity.md#when-a-record-is-lost) describes.
 
 The example stays on Oldest. Its `Syslog_SetDiscardPolicy` changes the answer from any

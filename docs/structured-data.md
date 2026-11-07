@@ -97,7 +97,8 @@ logger.
   IANA Private Enterprise Number (PEN); `32473` is the reserved example/documentation PEN.
 
 Register for a PEN through IANA before shipping a private `SD-ID`; until then `32473` is the
-correct placeholder. The element the library adds to reports of its own events,
+correct placeholder. The element the library adds to
+[the records it writes about itself](self-reporting.md#what-arrives-at-the-collector),
 `solidsyslog@67478`, uses the PEN registered to Cozens Software Solutions Limited. Register
 your own number rather than reuse it.
 
