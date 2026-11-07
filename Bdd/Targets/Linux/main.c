@@ -36,6 +36,7 @@
 #include "SolidSyslogPosixClock.h"
 #include "SolidSyslogPosixFile.h"
 #include "SolidSyslogPosixHostname.h"
+#include "SolidSyslogPassthroughBuffer.h"
 #include "SolidSyslogPosixMessageQueueBuffer.h"
 #include "SolidSyslogPosixMutex.h"
 #include "SolidSyslogPosixProcessId.h"
@@ -80,12 +81,52 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 
 static volatile bool shutdown_flag;
 static struct SolidSyslog* solidSyslog;
+static struct SolidSyslogMutex* bufferMutex;
 
 static void* ServiceThreadEntry(void* arg)
 {
     volatile bool* shutdown = (volatile bool*) arg;
     BddTargetServiceThread_Run(solidSyslog, shutdown, SolidSyslogPosix_Sleep);
     return NULL;
+}
+
+/* The passthrough wiring has no service thread: the task that logs services
+   the logger after each record, which is where its reports go out. */
+static void ServiceOnTheLoggingTask(struct SolidSyslog* handle)
+{
+    (void) SolidSyslog_Service(handle);
+}
+
+static bool IsPassthrough(const struct BddTargetOptions* options)
+{
+    return strcmp(options->Buffer, "passthrough") == 0;
+}
+
+/* Under passthrough the record goes straight from Log to the sender, with
+   nothing queued; otherwise the interactive thread logs into a queue the
+   service thread drains. */
+static struct SolidSyslogBuffer* CreateBuffer(const struct BddTargetOptions* options, struct SolidSyslogSender* sender)
+{
+    if (IsPassthrough(options))
+    {
+        return SolidSyslogPassthroughBuffer_Create(sender);
+    }
+
+    bufferMutex = SolidSyslogPosixMutex_Create();
+    return SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, 10, BddTargetStoreSettings_GetDiscardPolicy, NULL);
+}
+
+static void DestroyBuffer(struct SolidSyslogBuffer* buffer, const struct BddTargetOptions* options)
+{
+    if (IsPassthrough(options))
+    {
+        SolidSyslogPassthroughBuffer_Destroy(buffer);
+    }
+    else
+    {
+        SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
+        SolidSyslogPosixMutex_Destroy(bufferMutex);
+    }
 }
 
 static struct SolidSyslogSender* CreateSender(const struct BddTargetOptions* options)
@@ -251,10 +292,7 @@ int main(int argc, char* argv[])
     struct SolidSyslogSender* sender = CreateSender(&options);
     struct SolidSyslogStore* store = CreateStore(&options);
 
-    /* The interactive thread logs while the service thread drains. */
-    struct SolidSyslogMutex* bufferMutex = SolidSyslogPosixMutex_Create();
-    struct SolidSyslogBuffer* buffer =
-        SolidSyslogPosixMessageQueueBuffer_Create(bufferMutex, 10, BddTargetStoreSettings_GetDiscardPolicy, NULL);
+    struct SolidSyslogBuffer* buffer = CreateBuffer(&options, sender);
     struct SolidSyslogAtomicCounter* counter = SolidSyslogStdAtomicCounter_Create();
     struct SolidSyslogMetaSdConfig metaConfig = {
         .Counter = counter,
@@ -300,9 +338,13 @@ int main(int argc, char* argv[])
     solidSyslog = SolidSyslog_Create(&config);
 
     shutdown_flag = false;
+    bool passthrough = IsPassthrough(&options);
 
     pthread_t serviceThread = 0;
-    pthread_create(&serviceThread, NULL, ServiceThreadEntry, (void*) &shutdown_flag);
+    if (!passthrough)
+    {
+        pthread_create(&serviceThread, NULL, ServiceThreadEntry, (void*) &shutdown_flag);
+    }
 
     struct SolidSyslogMessage message = {
         .Facility = options.Facility,
@@ -311,10 +353,21 @@ int main(int argc, char* argv[])
         .Msg = options.Msg,
     };
 
-    BddTargetInteractive_Run(solidSyslog, &message, stdin, BddTargetSwitchConfig_SetByName, OnSet, NULL);
+    BddTargetInteractive_Run(
+        solidSyslog,
+        &message,
+        stdin,
+        BddTargetSwitchConfig_SetByName,
+        OnSet,
+        NULL,
+        passthrough ? ServiceOnTheLoggingTask : NULL
+    );
 
     shutdown_flag = true;
-    pthread_join(serviceThread, NULL);
+    if (!passthrough)
+    {
+        pthread_join(serviceThread, NULL);
+    }
 
     SolidSyslog_Destroy(solidSyslog);
     SolidSyslogSharedScratch_Destroy(scratch);
@@ -324,8 +377,7 @@ int main(int argc, char* argv[])
     SolidSyslogMetaSd_Destroy(metaSd);
     SolidSyslogStdAtomicCounter_Destroy(counter);
     DestroyStore(store, &options);
-    SolidSyslogPosixMessageQueueBuffer_Destroy(buffer);
-    SolidSyslogPosixMutex_Destroy(bufferMutex);
+    DestroyBuffer(buffer, &options);
     DestroySender();
 
     return 0;

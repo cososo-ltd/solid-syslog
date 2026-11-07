@@ -16,6 +16,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Answers the harness's `blocks` command, over whatever the target has to
        lock to read its store's block files safely. */
     typedef void (*BddTargetInteractiveBlocksHandler)(void);
+    /* Runs after each record a send logs, on the task that logged it: where a
+       single-task wiring services the logger, since it has no other task to. */
+    typedef void (*BddTargetInteractiveLoggedHandler)(struct SolidSyslog* handle);
 
     void BddTargetInteractive_Run(
         struct SolidSyslog * handle,
@@ -23,7 +26,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         FILE* input,
         BddTargetInteractiveSwitchHandler onSwitch,
         BddTargetInteractiveSetHandler onSet,
-        BddTargetInteractiveBlocksHandler onBlocks
+        BddTargetInteractiveBlocksHandler onBlocks,
+        BddTargetInteractiveLoggedHandler onLogged
     );
 
 SOLIDSYSLOG_EXTERN_C_END

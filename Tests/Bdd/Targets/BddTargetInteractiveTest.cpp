@@ -19,6 +19,12 @@ struct SetHandlerSpy
 
 SetHandlerSpy spy;
 int blocksCallCount = 0;
+int loggedCallCount = 0;
+
+void RecordLogged(struct SolidSyslog* /* handle */)
+{
+    loggedCallCount++;
+}
 
 void RecordBlocks()
 {
@@ -74,7 +80,8 @@ std::string EndStdoutCapture()
 void RunWithInput(
     const char* input,
     BddTargetInteractiveSetHandler onSet,
-    BddTargetInteractiveBlocksHandler onBlocks = nullptr
+    BddTargetInteractiveBlocksHandler onBlocks = nullptr,
+    BddTargetInteractiveLoggedHandler onLogged = nullptr
 )
 {
     /* fmemopen takes a non-const void*; with mode "r" it never writes to
@@ -84,7 +91,7 @@ void RunWithInput(
     struct SolidSyslogMessage message = {};
     /* These tests only exercise the set/switch/quit input paths, never `send`,
        so the SolidSyslog handle is never dereferenced - nullptr is safe. */
-    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet, onBlocks);
+    BddTargetInteractive_Run(nullptr, &message, in, nullptr, onSet, onBlocks, onLogged);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- fclose is POSIX C; no owning memory concern
     fclose(in);
 }
@@ -105,6 +112,7 @@ TEST_GROUP(BddTargetInteractive)
         spy             = SetHandlerSpy{};
         spy.returnValue = true;
         blocksCallCount = 0;
+        loggedCallCount = 0;
     }
 };
 // clang-format on
@@ -226,3 +234,11 @@ TEST(BddTargetInteractive, NullBlocksHandlerSilentlyIgnoresBlocksLine)
  *  O  [x] BlocksCommandCallsTheBlocksHandlerOnce
  *  E  [x] NullBlocksHandlerSilentlyIgnoresBlocksLine
  */
+
+/* A single-task wiring services the logger on the task that logs, after
+ * each record: the hook runs once per Log the send made. */
+TEST(BddTargetInteractive, TheLoggedHandlerRunsOncePerRecordASendLogs)
+{
+    RunWithInput("send 3\nquit\n", RecordSet, nullptr, RecordLogged);
+    LONGS_EQUAL(3, loggedCallCount);
+}
