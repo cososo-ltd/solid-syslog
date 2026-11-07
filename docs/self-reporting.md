@@ -165,9 +165,10 @@ crosses it again and writes one report. With blocks that hold a single record, t
 report of a crossing can itself cross again while the store sits at the threshold. Size
 blocks to hold several records.
 
-A full store that refuses a report under its discard policy raises `STORE_RECORDS_LOST`
-for it, and Service sends the report to the sender instead, or holds it while that
-refusal has the logger halted; the store's event is raised, but the report is not lost.
+A full store that refuses a report under its discard policy counts it as a refusal in
+its run of `STORE_RECORDS_LOST`, and Service sends the report to the sender instead, or
+holds it while that refusal has the logger halted. The report is not dropped at the
+store; the sender decides its fate as it does any record's.
 
 ### What it costs
 
