@@ -236,6 +236,7 @@ Feature: TLS equivalence matrix
     When the client is given trust anchors "ca"
     And the client sends a message
     Then the syslog oracle receives 2 messages over tls
+    And the syslog oracle received a report that the collector's certificate was refused
 
   @pins @rotation
   Scenario: Rotating the pin set stops a delivering device at its next connection

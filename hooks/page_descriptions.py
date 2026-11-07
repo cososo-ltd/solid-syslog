@@ -51,6 +51,10 @@ DESCRIPTIONS = {
         "Author your own RFC 5424 SD-ELEMENT with the safe-by-construction API: "
         "you write the content, the library owns the framing and the escaping."
     ),
+    "self-reporting.md": (
+        "The syslog record SolidSyslog writes when it loses, cannot deliver, stops or "
+        "refuses a peer: its fields and SD element, what it costs, and the opt-out."
+    ),
     "error-severity.md": (
         "Which severity a SolidSyslog error event carries — the urgency ladder "
         "each emit site picks from, and what each level asks of your handler."

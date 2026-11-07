@@ -193,6 +193,7 @@ nav:
       - Structured data: structured-data.md
       - TLS obligations: tls.md
       - Error handling: error-severity.md
+      - Records the logger writes about itself: self-reporting.md
   # Platforms answers "will this run on my target" — an integration question, not
   # a reference one, so it is a tab rather than a child of API reference. Porting
   # sits directly beneath the overview as the other half of it: nothing shipped

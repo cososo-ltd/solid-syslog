@@ -34,6 +34,7 @@ Everything you need to consume SolidSyslog in your product.
 - [Authoring custom structured data](structured-data.md): attaching RFC 5424 SD-ELEMENTs.
 - [TLS obligations](tls.md): what the library does for a TLS connection and what it leaves to you.
 - [Error handling](error-severity.md): what each severity and category tells a handler, and what is reported when a record is lost. Installing the handler, and printing an event by the names of its fields, is [stage 2 of the integration path](hardening-path.md#stage-2-make-failures-visible).
+- [Records the logger writes about itself](self-reporting.md): the record the library emits when it loses, cannot deliver, stops or refuses a peer - its fields and element, for the product's documentation - and what reporting costs the device and how it is turned off.
 - [Release notes](../CHANGELOG.md): what each release changed, and what to change in your code when you upgrade from the one before.
 - Tunables: the compile-time limits, all `#ifndef`-guarded. See [Adding it to your build → Tunables](build-integration.md#tunables) and [`Core/Interface/SolidSyslogTunablesDefaults.h`](api/SolidSyslogTunablesDefaults_8h.md).
 

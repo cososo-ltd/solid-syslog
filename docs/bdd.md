@@ -68,6 +68,7 @@ through the QEMU UART (`-serial stdio`).
 | `ghcr.io/cososo-ltd/behave` | GHCR image - Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
 | `Bdd/output/` | Shared directory - syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
+| `Bdd/junit/stack-hwm.txt` | Written by a FreeRTOS QEMU run: the least stack the logging task and the Service task had left, in bytes, in each scenario that ends by quitting the target, then the least of each over the run. A scenario that shuts the target down or kills it to stand in for a power cut gives no figure. The run prints the same lines as it ends |
 | `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender. Accepts `--facility`, `--severity`, `--transport`, `--app-name`, store-config flags |
 | `Bdd/Targets/CMakeLists.txt` | Builds the BDD target binary, linked against the SolidSyslog library |
 

@@ -15,6 +15,8 @@ Feature: Store and forward during sender outage
     And the syslog oracle resumes accepting TCP connections
     Then the syslog oracle receives 6 messages
     And the messages have contiguous sequenceIds
+    And the syslog oracle received a report that delivery failed
+    And the syslog oracle received a report that delivery was restored
 
   @host_store
   Scenario: Messages delivered after a stored record is corrupted
@@ -31,6 +33,7 @@ Feature: Store and forward during sender outage
     Given the BDD target is running with transport tcp
     Then the syslog oracle receives 3 messages
     And the replayed messages have sequenceIds 3, 4
+    And the syslog oracle received a report that a stored record was discarded
     And the target reports that a stored record was discarded
 
   # A record the policy cannot open for want of its key is not taken for
@@ -53,6 +56,8 @@ Feature: Store and forward during sender outage
     When the key is restored
     Then the syslog oracle receives 4 messages
     And the messages have contiguous sequenceIds
+    And the syslog oracle received a report that the key is unavailable
+    And the syslog oracle received a report that a record could not be sealed
 
   @aesgcm
   Scenario: Stored messages wait for an AES-256-GCM key that is briefly unavailable
@@ -71,6 +76,8 @@ Feature: Store and forward during sender outage
     When the key is restored
     Then the syslog oracle receives 4 messages
     And the messages have contiguous sequenceIds
+    And the syslog oracle received a report that the key is unavailable
+    And the syslog oracle received a report that a record could not be sealed
 
   @host_store
   Scenario: Messages delivered after the store freezes
@@ -79,4 +86,6 @@ Feature: Store and forward during sender outage
     And the BDD target is running with transport tcp
     When the client sends 3 messages
     Then the syslog oracle receives 3 messages
+    And the syslog oracle received a report that a file operation failed
+    And the syslog oracle received a report that the store froze
     And the target reports that the store froze
