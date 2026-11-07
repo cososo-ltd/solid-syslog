@@ -162,19 +162,23 @@ def oracle_record_count(path, oracle_format):
 
 def read_new_oracle_records(path, oracle_format, skip):
     """Return all logical oracle records after the first 'skip', each as a
-    string ready for parse_oracle_line."""
+    string ready for parse_oracle_line. The collector may still be writing
+    the last line, so one that does not parse is left for the next read; a
+    line before it that does not parse is malformed and raises."""
     if not os.path.exists(path):
         return []
-    records = []
     with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            if oracle_format != "otel-jsonl":
-                records.append(line)
-            else:
+        lines = [line.strip() for line in f if line.strip()]
+    records = []
+    for index, line in enumerate(lines):
+        if oracle_format != "otel-jsonl":
+            records.append(line)
+        else:
+            try:
                 records.extend(_split_otel_line_into_records(line))
+            except json.JSONDecodeError:
+                if index < (len(lines) - 1):
+                    raise
     return records[skip:]
 
 

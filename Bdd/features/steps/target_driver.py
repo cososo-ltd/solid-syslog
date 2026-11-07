@@ -38,6 +38,9 @@ _LOCAL_TARGETS = ("linux", "windows", "freertos")
 # argv.
 _SET_LINE_TARGETS = ("freertos", "vxworks64")
 
+# The targets whose interactive task prints its stack high-water marks as `quit` ends it.
+_STACK_MARK_TARGETS = ("freertos",)
+
 _VXWORKS64_RUNNER_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..", "Targets", "VxWorks64", "Runner"
 )
@@ -362,18 +365,19 @@ def stop_example_process(process, target, timeout=10):
     signal — return None for that path so callers don't assert on it.
     """
     if target in _SET_LINE_TARGETS:
-        # `quit` still ends the interactive task, which prints the stack
-        # high-water marks as it goes; give that line time to arrive before
-        # the kill so the run can record it.
+        # `quit` still ends the interactive task; where that prints the stack
+        # high-water marks, give the line time to arrive before the kill so
+        # the run can record it.
         try:
             process.stdin.write("quit\n")
             process.stdin.flush()
         except (BrokenPipeError, OSError):
             pass
-        log = getattr(process, "_solidsyslog_stdout_log", None)
-        deadline = time.monotonic() + 2
-        while (log is not None) and (stack_marks_in(log) is None) and (time.monotonic() < deadline):
-            time.sleep(0.05)
+        if target in _STACK_MARK_TARGETS:
+            log = getattr(process, "_solidsyslog_stdout_log", None)
+            deadline = time.monotonic() + 2
+            while (log is not None) and (stack_marks_in(log) is None) and (time.monotonic() < deadline):
+                time.sleep(0.05)
         process.kill()
         process.wait(timeout=timeout)
         return None
