@@ -80,7 +80,7 @@ Unless otherwise stated, all clause references are to ISO/IEC 9899:1999 (C99).
 C99 is the conformance baseline - the edition the source is written against and
 claims to be valid under. It is not the same thing as the build configuration:
 the default build selects C11 (`CMAKE_C_STANDARD` is 11 unless overridden), and
-the `build-linux-c99` lane verifies the baseline on every pull request. The claim
+the `build-c99` lane verifies the baseline on every pull request. The claim
 is about `Core/`: the lane builds Core alone at strict `-std=c99`, and the
 platform packs are a best-effort drift check rather than a guarantee - see
 [builds.md](builds.md#c99-portability---c99). Where a deviation concerns a code path
@@ -977,7 +977,7 @@ declarations in one translation unit are compatible, so no `__LINE__` pasting
 `__cplusplus` / `__STDC_VERSION__`, and all three are compiled: C++
 `static_assert` in the CppUTest harnesses, C11 `_Static_assert` in the default
 build (`CMAKE_C_STANDARD` is 11 unless overridden), and the C99
-negative-array-size fallback in the `build-linux-c99` lane, which compiles
+negative-array-size fallback in the `build-c99` lane, which compiles
 `Core/` at strict `-std=c99` on every pull request. The deviation is confined to the two
 string-literal forms; only they need the message stringified, and the C99
 fallback uses no preprocessor operator at all.

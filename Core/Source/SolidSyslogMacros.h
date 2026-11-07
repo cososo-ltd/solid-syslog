@@ -7,7 +7,7 @@
 
 /* Compile-time assertion. C++11 and C11 have native primitives that carry the
    message into the diagnostic; a strict C99 toolchain - the conformance
-   baseline, built on every pull request by the `build-linux-c99` lane (see
+   baseline, built on every pull request by the `build-c99` lane (see
    docs/builds.md) - has neither, so it falls back to declaring an array
    whose length goes negative (a constraint violation every C99 compiler
    rejects) when cond is false. The fallback uses a fixed name: repeated

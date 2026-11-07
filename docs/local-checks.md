@@ -44,7 +44,7 @@ Tier B is mostly MISRA-line-drift cleanup, so scope it to what changed:
   to CI.
 - Added or removed a `.c` under `Core/Source/` or `Platform/*/Source/`, or
   changed a pack's `target_sources`: regenerate the manifests, below.
-  `docs/generated/` is checked in and `verify-manifest` both diffs it and
+  `docs/generated/` is checked in and `analyze-manifest` both diffs it and
   compares it against the tree, so either kind of change makes that lane red on
   its own.
 
@@ -71,7 +71,7 @@ report; update the suppression from its output. See the script's docstring.
 ### Manifests - regenerate after changing the sources
 
 `docs/generated/<Platform>-manifest.txt` lists what each pack compiles, and is
-what a non-CMake integrator builds from. The `verify-manifest` lane checks it
+what a non-CMake integrator builds from. The `analyze-manifest` lane checks it
 two ways, and both have to pass:
 
 1. It regenerates every manifest and fails on any difference. A file added to
@@ -111,7 +111,7 @@ git diff --stat docs/generated/
 Three things the command is doing deliberately. The environment scrub makes a
 pack appear in a manifest because it was named rather than because the image
 happens to carry its upstream tree. `Windows` is skipped because it is
-probe-kind and cannot be selected on Linux - `build-windows-msvc` generates that
+probe-kind and cannot be selected on Linux - `unit-windows-msvc` generates that
 fragment and checks it against the tree, and nothing of it is committed. And the last command is not regeneration but assertion: it is step 2
 above, which a clean `git diff` does not imply.
 
@@ -120,7 +120,7 @@ a source added to any of those drifts it as well as its own. It is regenerated
 unconditionally above rather than left to judgement, because deciding it does
 not apply is how it goes stale.
 
-Read the commands from the `verify-manifest` job in `.github/workflows/ci.yml`
+Read the commands from the `analyze-manifest` job in `.github/workflows/ci.yml`
 rather than from here if the two ever disagree - the workflow is what runs.
 
 ### clang-tidy - only when adding a new pack
@@ -173,9 +173,8 @@ docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host \
     && cmake --build --preset iwyu --target iwyu'
 ```
 
-CI runs all three IWYU lanes advisory; findings appear in the `iwyu-report`,
-`iwyu-report-freertos-plustcp` and `iwyu-report-freertos-lwip` artifacts and
-don't block the build.
+CI runs both IWYU lanes advisory; findings appear in the `iwyu-report` and
+`iwyu-report-embedded` artifacts and do not block the build.
 
 ### Licence headers
 
@@ -201,7 +200,7 @@ allowlist.
 `SolidSyslogStoreSweep` applies every single media fault at every position
 and judges the store by the bench's verdicts. Under `junit` it takes a smoke
 budget of 50 cases per fault class, scenario, policy and discard policy; the
-`build-linux-gcc` and `sanitize-linux-gcc` lanes export
+`unit-linux-gcc` and `unit-linux-gcc-sanitize` lanes export
 `SOLIDSYSLOG_STORE_SWEEP_BUDGET=0` and run every case, which takes under a
 minute on a laptop and about a minute under the sanitizers, so the full run
 is a reasonable local check whenever the store or its record layout changes. A failure prints the case's tuple. Set
@@ -232,8 +231,8 @@ after every pass: every sequence id used once, one handler event per fault
 run and none without a fault, every report standing for an event and saying
 what it said, bounded work per pass, nothing moving while halted, and every
 record and report delivered unless a loss was reported. Under `junit`
-it takes a smoke count of 25 walks; the `build-linux-gcc` and
-`sanitize-linux-gcc` lanes export `SOLIDSYSLOG_SCENARIO_RUNS=2000`, which
+it takes a smoke count of 25 walks; the `unit-linux-gcc` and
+`unit-linux-gcc-sanitize` lanes export `SOLIDSYSLOG_SCENARIO_RUNS=2000`, which
 takes under ten seconds. A failure prints the walk's seed, rig, pass, the
 invariant and its reason, and the script. Set `SOLIDSYSLOG_SCENARIO_SEED` to
 the seed and the executable runs that one walk.
@@ -296,16 +295,16 @@ adjust those by hand.
 - `sanitize`, `coverage`: minutes each, both gated by CI
 - `tidy`: gated by CI too, with one exception - a PR adding a new
   `Platform/` pack, where it is worth running first (above)
-- `c99`: the `build-linux-c99` lane builds the library at the C99 language
+- `c99`: the `build-c99` lane builds the library at the C99 language
   standard on every PR. If it fails, either fix the construct or, if it
   genuinely belongs to a C11-only component, gate that component the way
   `Platform/StdAtomic` is gated. See [builds.md](builds.md#c99-portability---c99)
-- `actionlint`: the workflow files are linted by their own lane on every PR.
+- `analyze-actionlint`: the workflow files are linted by their own lane on every PR.
   Deliberately not in the pre-push budget - an invalid workflow is caught before
   merge, and the budget is short on purpose
 - Windows MSVC + BDD + integration: depend on tools you may not have
-- `bdd-linux-syslog-ng`, `bdd-windows-otel`, `bdd-freertos-qemu-plustcp`,
-  `bdd-freertos-qemu-lwip`, `bdd-cmsis-qemu-lwip`, `bdd-cmsis-qemu-lwip-wolfssl`:
+- `bdd-linux-openssl-syslogng`, `bdd-windows-openssl-otel`, `bdd-freertos-plustcp-mbedtls-plusfat-syslogng`,
+  `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng`, `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng`, `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`:
   heavy multi-container stacks
 
 If CI surfaces a finding you missed locally, fix in another commit on the

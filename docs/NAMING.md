@@ -187,7 +187,7 @@ name is deliberate: a maximum goes stale every time a constant is added, and
 this paragraph has carried a stale one before.
 
 The 31-character figure is C89's, and applies to a standard the library does not
-claim: the `build-linux-c89-headers` lane proves the public headers are
+claim: the `build-c89-headers` lane proves the public headers are
 *includable* from C89 code, not that the library is C89. Weigh all of this before
 coining a class name as long as `MbedTlsHmacSha256Policy`.
 

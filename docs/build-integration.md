@@ -424,7 +424,7 @@ manifest names the standard, not a `-std=` flag.
 
 That floor applies to compiling the library, not to your code. The public
 headers compile as ISO C89, so an application on an older toolchain can include
-them and link a library built at C99. The `build-linux-c89-headers` lane
+them and link a library built at C99. The `build-c89-headers` lane
 compiles every public header standalone at `-std=c89 -pedantic-errors` on each
 pull request, so this is checked rather than asserted; run it yourself with
 `scripts/check_headers_c89.py`. Compiling each header on its own also means
