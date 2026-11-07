@@ -220,7 +220,6 @@ struct SolidSyslogMessage message = {
     .Msg       = "device started",
 };
 SolidSyslog_Log(logger, &message);
-(void) SolidSyslog_Service(logger);
 ```
 
 The store stays the Null object while the buffer is a passthrough: the buffer hands each
