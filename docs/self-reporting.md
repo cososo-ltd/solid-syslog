@@ -166,9 +166,9 @@ report of a crossing can itself cross again while the store sits at the threshol
 blocks to hold several records.
 
 A full store that refuses a report under its discard policy counts it as a refusal in
-its run of `STORE_RECORDS_LOST`, and Service sends the report to the sender instead, or
-holds it while that refusal has the logger halted. The report is not dropped at the
-store; the sender decides its fate as it does any record's.
+its run of `STORE_RECORDS_LOST`. The report is not dropped at the store; what happens
+to it next is stated by
+[`SolidSyslog_Service`](api/SolidSyslog_8h.md#function-solidsyslog_service).
 
 ### What it costs
 

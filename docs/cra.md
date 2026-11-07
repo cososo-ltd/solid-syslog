@@ -54,7 +54,7 @@ SIEM can consume, correlate across devices, and retain.
 | Security-related *information*, not raw lines | Structured data elements - `MetaSd`, `TimeQualitySd`, `OriginSd` - attaching sequence, clock quality, uptime and device identity, plus your own private elements |
 | Monitoring | Delivery to any RFC 5424 collector over UDP, TCP or TLS, with `sequenceId` letting the collector detect records that never arrived |
 | Activity that must survive the device | Store-and-forward across outages and reboots, with at-rest protection |
-| The logging function's own internal activity, with an opt-out | The library records its own security-relevant events - a loss, a failed delivery, a refused collector certificate, a stopped logger - as [records in the trail](self-reporting.md). A record carries enumerator names and a platform code only, never record content or key material. `SolidSyslogConfig.IsEventReportingOn` is the opt-out, asked on the running device |
+| The logging function's own internal activity, with an opt-out | The library records its own security-relevant events - a loss, a failed delivery, a refused collector certificate, a stopped logger - as [records in the trail](self-reporting.md). The library's own element carries enumerator names and a platform code only, never record content or key material. `SolidSyslogConfig.IsEventReportingOn` is the opt-out, asked on the running device |
 
 **What stays yours.** Deciding which of your application's internal activity is
 relevant. The user-facing opt-out control, which is a product-level control the library
