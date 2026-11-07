@@ -32,6 +32,7 @@ from security_policy_reports import reported_keys_unavailable
 from stream_reports import reported_connect_failures, reported_delivery_restorations
 from tls_error_codes import sender_error_code, tcp_stream_error_code
 from buffer_reports import reported_buffer_losses
+from collector_reports import REPORT_FACILITY, is_library_report, library_report, reports_of
 from store_reports import reported_store_discards, reported_store_freezes, reported_store_losses
 from tls_reports import ReportRecorder, reported_details, target_output
 from wait_budgets import CONDITION_TIMEOUT_SECONDS
@@ -149,31 +150,31 @@ def oracle_record_count(path, oracle_format):
         return 0
     if oracle_format != "otel-jsonl":
         return line_count(path)
-    count = 0
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            count += sum(1 for _ in _split_otel_line_into_records(line))
-    return count
+    return len(read_new_oracle_records(path, oracle_format, 0))
 
 
 def read_new_oracle_records(path, oracle_format, skip):
     """Return all logical oracle records after the first 'skip', each as a
-    string ready for parse_oracle_line."""
+    string ready for parse_oracle_line. The collector may still be writing
+    the last line: one with no newline yet that does not parse is left for
+    the next read. Any newline-terminated line that does not parse is
+    malformed and raises."""
     if not os.path.exists(path):
         return []
-    records = []
     with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            if oracle_format != "otel-jsonl":
-                records.append(line)
-            else:
+        text = f.read()
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    unterminated_tail = bool(lines) and not text.endswith("\n")
+    records = []
+    for index, line in enumerate(lines):
+        if oracle_format != "otel-jsonl":
+            records.append(line)
+        else:
+            try:
                 records.extend(_split_otel_line_into_records(line))
+            except json.JSONDecodeError:
+                if not (unterminated_tail and (index == (len(lines) - 1))):
+                    raise
     return records[skip:]
 
 
@@ -181,7 +182,7 @@ def client_records(records, oracle_format):
     """The records the client logged: the logger's reports of its own events,
     which arrive beside them, are left out, so a count states what the client
     sent."""
-    return [record for record in records if not _is_library_report(parse_oracle_line(record, oracle_format))]
+    return [record for record in records if not is_library_report(parse_oracle_line(record, oracle_format))]
 
 
 def client_record_count(path, oracle_format, skip=0):
@@ -1590,7 +1591,7 @@ def step_check_contiguous_sequence_ids(context):
             f"No sequenceId in structured data: {sd}"
         )
         ids.append(int(match.group(1)))
-        if not _is_library_report(fields):
+        if not is_library_report(fields):
             client_ids.append(int(match.group(1)))
     assert client_ids == sorted(client_ids), (
         f"The client's records arrived out of order: {client_ids}"
@@ -1649,12 +1650,6 @@ def step_check_replayed_sequence_ids(context, id_list):
         )
 
 
-def _is_library_report(fields):
-    """A record the logger made of one of its own events: it carries the
-    library's own SD element."""
-    return "[solidsyslog@67478 " in fields.get("STRUCTURED_DATA", "")
-
-
 def _outage_seq_ids(context):
     """Collected sequenceIds in oracle log, excluding the pre-outage seqId 1
     and the logger's reports, which take their number when Service makes
@@ -1662,7 +1657,7 @@ def _outage_seq_ids(context):
     ids = []
     for line in context.all_lines:
         fields = parse_oracle_line(line, context.oracle_format)
-        if _is_library_report(fields):
+        if is_library_report(fields):
             continue
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
@@ -1738,14 +1733,100 @@ def step_outage_messages_contiguous(context):
     )
 
 
+def _collector_reports(context, category):
+    """The reports of one category the collector has received in this scenario,
+    waiting for the first: a report is made on the Service pass after its
+    event, so it can arrive behind the records a step has already counted."""
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
+    while True:
+        records = read_new_oracle_records(context.received_log, context.oracle_format, context.lines_before)
+        parsed = (library_report(parse_oracle_line(record, context.oracle_format)) for record in records)
+        reports = reports_of([report for report in parsed if report is not None], category)
+        if reports or (time.monotonic() > deadline):
+            return reports
+        time.sleep(0.1)
+
+
+def _check_collector_received_report(context, category, details, severity, with_native_code=False):
+    """Asserts the collector holds a report of the category naming a detail the
+    scenario can provoke, at the event's severity, under the facility and MSGID
+    the library gives its reports. One such report is enough: the library keeps
+    the latest event of a kind, so a fault that followed the one the scenario
+    provoked can arrive instead of it, and that is a failure the message names.
+    A report of a platform fault carries the platform's own code as well; which
+    code is the platform's business, so only that it is there is checked."""
+    reports = _collector_reports(context, category)
+    assert reports, f"Expected the logger's {category} report at the collector; none arrived"
+    expected = {
+        "category": category,
+        "severity": severity_value(severity),
+        "facility": REPORT_FACILITY,
+        "msgid": category,
+    }
+    matching = [
+        report
+        for report in reports
+        if (report.get("detail") in details)
+        and all(report.get(key) == value for key, value in expected.items())
+        and ((not with_native_code) or re.fullmatch(r"-?\d+", report.get("native", "")))
+    ]
+    wanted = f"a {category} report naming one of {details} at {severity} under facility {REPORT_FACILITY}"
+    if with_native_code:
+        wanted += " with a native code"
+    assert matching, f"Expected {wanted}; the collector received {reports}"
+
+
 @then("the syslog oracle received a report that the buffer lost records")
 def step_oracle_received_buffer_loss_report(context):
-    reports = [
-        fields
-        for fields in (parse_oracle_line(line, context.oracle_format) for line in context.all_lines)
-        if _is_library_report(fields) and fields.get("MSGID") == "BUFFER_RECORDS_LOST"
-    ]
-    assert reports, "Expected the logger's report that the buffer lost records; none arrived"
+    # Which detail arrives depends on the policy and on who lost the record:
+    # the buffer refusing or evicting, or Service dropping the record it held.
+    _check_collector_received_report(
+        context, "BUFFER_RECORDS_LOST", ("RECORD_REFUSED", "RECORDS_EVICTED", "HELD_RECORD_DROPPED"), "WARNING"
+    )
+
+
+@then("the syslog oracle received a report that delivery failed")
+def step_oracle_received_delivery_failed_report(context):
+    _check_collector_received_report(context, "SENDER_DELIVERY_FAILED", ("DELIVERY_FAILED",), "WARNING")
+
+
+@then("the syslog oracle received a report that delivery was restored")
+def step_oracle_received_delivery_restored_report(context):
+    _check_collector_received_report(context, "SENDER_DELIVERY_RESTORED", ("DELIVERY_RESTORED",), "NOTICE")
+
+
+@then("the syslog oracle received a report that a stored record was discarded")
+def step_oracle_received_record_discarded_report(context):
+    _check_collector_received_report(context, "STORE_RECORD_DISCARDED", ("RECORD_REJECTED",), "ERROR")
+
+
+@then("the syslog oracle received a report that the key is unavailable")
+def step_oracle_received_key_unavailable_report(context):
+    _check_collector_received_report(context, "SECURITY_POLICY_KEY_UNAVAILABLE", ("KEY_UNAVAILABLE",), "ERROR")
+
+
+@then("the syslog oracle received a report that a record could not be sealed")
+def step_oracle_received_seal_failed_report(context):
+    # With the key withheld the store cannot seal the logger's own reports
+    # either, so they go to the sender ahead of the stored records.
+    _check_collector_received_report(context, "STORE_WRITE_FAILED", ("SEAL_FAILED",), "ERROR")
+
+
+@then("the syslog oracle received a report that a file operation failed")
+def step_oracle_received_file_fault_report(context):
+    _check_collector_received_report(context, "FILE_IO_FAILED", ("OPEN_FAILED",), "ERROR", with_native_code=True)
+
+
+@then("the syslog oracle received a report that the store froze")
+def step_oracle_received_store_frozen_report(context):
+    _check_collector_received_report(context, "STORE_FROZEN", ("SIZE_FAILED",), "ERROR")
+
+
+@then("the syslog oracle received a report that the collector's certificate was refused")
+def step_oracle_received_handshake_refused_report(context):
+    _check_collector_received_report(
+        context, "TLS_STREAM_HANDSHAKE_FAILED", ("PEER_CERTIFICATE_UNTRUSTED",), "ERROR"
+    )
 
 
 @then("the last message has sequenceId {value:d}")

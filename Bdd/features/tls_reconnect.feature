@@ -20,3 +20,5 @@ Feature: TLS reconnection after server outage
     Then the syslog oracle receives 5 messages
     And the syslog oracle receives 5 messages over tls
     And the messages have contiguous sequenceIds
+    And the syslog oracle received a report that delivery failed
+    And the syslog oracle received a report that delivery was restored

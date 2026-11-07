@@ -2055,7 +2055,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-freertos-qemu-plustcp
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            Bdd/junit/stack-hwm.txt
           retention-days: 1
 
       - name: Compose logs on failure
@@ -2113,7 +2115,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-freertos-qemu-lwip
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            Bdd/junit/stack-hwm.txt
           retention-days: 1
 
       - name: Compose logs on failure
@@ -2175,7 +2179,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-cmsis-qemu-lwip
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            Bdd/junit/stack-hwm.txt
           retention-days: 1
 
       - name: Compose logs on failure
@@ -2229,7 +2235,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-cmsis-qemu-lwip-wolfssl
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            Bdd/junit/stack-hwm.txt
           retention-days: 1
 
       - name: Compose logs on failure
