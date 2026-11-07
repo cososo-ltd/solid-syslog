@@ -80,8 +80,8 @@ Which BDD ELF a *cross* build produces is separate, and maintainer-only -
 in `SOLIDSYSLOG_PLATFORMS` like everything else.
 
 CI runs each cross target in isolation, and all three of
-`build-freertos-target-plustcp`, `build-freertos-target-lwip` and
-`build-cmsis-target-lwip` are required checks.
+`build-freertos-plustcp-mbedtls-plusfat`, `build-freertos-lwipraw-mbedtls-fatfs` and
+`build-cmsisrtos-lwipsocket-mbedtls-littlefs` are required checks.
 
 ## Running the clang build locally
 

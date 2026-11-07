@@ -114,15 +114,15 @@ What it needs, and what it does, is in
 
 | Job | Compose pair |
 |---|---|
-| `bdd-linux-syslog-ng` | `syslog-ng-linux` + `behave-linux` |
-| `bdd-linux-passthrough` | `syslog-ng-linux` + `behave-linux-passthrough` (the same binary under `--buffer passthrough`) |
-| `bdd-freertos-qemu-plustcp` | `syslog-ng-freertos` + `behave-freertos` (cross image w/ QEMU + Behave) |
-| `bdd-freertos-qemu-lwip` | `syslog-ng-freertos-lwip` + `behave-freertos-lwip` |
-| `bdd-cmsis-qemu-lwip` | `syslog-ng-cmsis-lwip` + `behave-cmsis-lwip` |
-| `bdd-cmsis-qemu-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl` + `behave-cmsis-lwip-wolfssl` |
-| `bdd-windows-otel` | runner-direct (no compose); spawns `otelcol-contrib.exe` directly |
+| `bdd-linux-openssl-syslogng` | `syslog-ng-linux` + `behave-linux` |
+| `bdd-linux-openssl-syslogng-passthrough` | `syslog-ng-linux` + `behave-linux-passthrough` (the same binary under `--buffer passthrough`) |
+| `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` | `syslog-ng-freertos` + `behave-freertos` (cross image w/ QEMU + Behave) |
+| `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` | `syslog-ng-freertos-lwip` + `behave-freertos-lwip` |
+| `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` | `syslog-ng-cmsis-lwip` + `behave-cmsis-lwip` |
+| `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` | `syslog-ng-cmsis-lwip-wolfssl` + `behave-cmsis-lwip-wolfssl` |
+| `bdd-windows-openssl-otel` | runner-direct (no compose); spawns `otelcol-contrib.exe` directly |
 
-Each QEMU job depends on its cross-build job (`build-freertos-target-plustcp`,
-`build-freertos-target-lwip`, `build-cmsis-target-lwip`,
-`build-cmsis-target-lwip-wolfssl`) to upload the BDD target
+Each QEMU job depends on its cross-build job (`build-freertos-plustcp-mbedtls-plusfat`,
+`build-freertos-lwipraw-mbedtls-fatfs`, `build-cmsisrtos-lwipsocket-mbedtls-littlefs`,
+`build-cmsisrtos-lwipsocket-wolfssl-littlefs`) to upload the BDD target
 ELF as an artifact, and downloads it before `docker compose up`.

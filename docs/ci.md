@@ -5,61 +5,74 @@ except where a job `needs:` another and waits for it to finish.
 
 ## Jobs
 
-Job names follow the pattern `<category>-<platform>-<toolchain-or-feature>` so additional
-compilers and BDD targets (e.g. an ARM cross-compile or FreeRTOS QEMU oracle) slot in
-without renaming what's already there.
+A job name starts with the kind of testing it does, and each kind has a fixed order of
+fields after it. Pack names are the platform registry tokens in lower case, so they match
+`SOLIDSYSLOG_PLATFORMS` and `Platform/<Pack>/`. No field contains a hyphen, so a name
+always splits cleanly on `-`.
+
+| Kind | Means | Shape |
+|---|---|---|
+| `unit` | CppUTest over the fakes, the `junit` target | `unit-<host>-<compiler>[-<variant>]` |
+| `integration` | CppUTest against a real upstream, in process | `integration-<host>-<pack>` |
+| `bdd` | Behave end to end against a real collector | `bdd-<os>-<network>-<tls>-<file>-<collector>[-<variant>]`, leaving out what the OS pack provides itself |
+| `build` | Compiles and runs no tests of its own | the fields of the BDD lane it feeds, without the collector, or `build-<standard>` |
+| `smoke` | The FetchContent consumer build | `smoke-<os>[-<packs>]` |
+| `analyze` | Static checks | `analyze-<tool>[-<scope>]` |
+| `docs`, `tools` | The site, and tests of the repository's own tooling | |
+
+A lane that does two jobs is named for what only it proves: `unit-linux-gcc-tunables` also
+builds the Linux BDD target, and `build-linux-wolfssl` also runs the unit suite. Every
+non-hosted OS runs under QEMU in CI, so no name says so.
 
 | Job | Preset | Notes |
 |---|---|---|
-| `build-linux-gcc` | `debug` | Test results annotated on PR |
-| `build-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
-| `build-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
-| `sanitize-linux-gcc` | `sanitize` | ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
-| `coverage-linux-gcc` | `coverage` | Summary in Actions UI; HTML report uploaded as a downloadable run artifact |
+| `unit-linux-gcc` | `debug` | Test results annotated on PR |
+| `unit-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
+| `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
+| `unit-linux-gcc-sanitize` | `sanitize` | ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
+| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit`, lines and branches, gated at 90% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and the HTML report is a downloadable run artifact |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
 | `analyze-format` | - | clang-format dry-run; fails if any file needs reformatting |
 | `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives. Advisory - runs `continue-on-error` |
-| `analyze-tidy-freertos-plustcp` | `tidy` | clang-tidy over the FreeRTOS / FreeRTOS-Plus-TCP / Mbed TLS / Plus-FAT trees, which the base `analyze-tidy` lane cannot reach |
-| `analyze-tidy-freertos-lwip` | `tidy` | The same, over the lwIP and ChaN FatFs trees |
-| `analyze-iwyu-freertos-plustcp` | `iwyu` | IWYU over the same FreeRTOS-Plus-TCP set. Advisory |
-| `analyze-iwyu-freertos-lwip` | `iwyu` | IWYU over the same lwIP set. Advisory |
+| `analyze-tidy-embedded` | `tidy` | clang-tidy on `cpputest-freertos`, whose upstream trees select the eight embedded packs the base `analyze-tidy` lane cannot reach: FreeRtos, PlusTcp, PlusFat, LwipRaw, LwipSocket, MbedTls, FatFs and LittleFs |
+| `analyze-iwyu-embedded` | `iwyu` | IWYU over the same set. Advisory |
 | `analyze-markdown` | - | `markdownlint-cli2` over every tracked `.md` file |
 | `analyze-spdx` | - | `scripts/check_spdx_headers.py`: every file under `Core/` and `Platform/` carries the licence header `LICENSE.md` declares, and none claims anyone else's copyright |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
 | `integration-linux-littlefs` | `debug` | Drives `SolidSyslogLittleFsFile` against a real LittleFS volume rather than a fake, because durability is the pack's whole claim and nothing short of the filesystem proves `lfs_file_sync` committed. Runs in `cpputest-freertos`, which carries `/opt/littlefs` |
-| `build-linux-c89-headers` | - | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here. Then `scripts/check_vxworks64_header_proof.py` asserts that `Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c`, the C89 proof the VxWorks 6.4 project compiles and no lane can build, includes every public header of Core and that pack and nothing else of ours |
-| `build-linux-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
-| `build-linux-tunable-override` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
-| `bdd-linux-syslog-ng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
-| `bdd-linux-passthrough` | - | The same Linux target under `--buffer passthrough` - no service thread, the logger serviced on the thread that logs, which is what the hardening path's first wiring does. Runs every scenario not tagged `@buffered`, and the `@passthrough` scenarios no other lane can |
-| `bdd-windows-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
-| `build-freertos-host-tdd-plustcp` | `debug` | Host-TDD of the FreeRTOS, FreeRTOS-Plus-TCP, Plus-FAT, FatFs, lwIP (Raw API and Sockets API), LittleFS and Mbed TLS adapters against fakes; runs inside `cpputest-freertos` (upstream sources at fixed paths) |
-| `build-freertos-target-plustcp` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
-| `build-freertos-target-lwip` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
-| `bdd-freertos-qemu-plustcp` | - | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
-| `bdd-freertos-qemu-lwip` | - | The same scenarios against the lwIP target ELF |
-| `build-cmsis-target-lwip` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
-| `bdd-cmsis-qemu-lwip` | - | The same scenarios again, against that target's ELF |
-| `build-cmsis-target-lwip-wolfssl` | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack in place of Mbed TLS, with wolfSSL compiled from source under the target's `user_settings.h`; asserts from the ELF's symbols which TLS pack was linked |
-| `bdd-cmsis-qemu-lwip-wolfssl` | - | The QEMU scenarios against that ELF, less the one cell the wolfSSL platform page lists as a shortfall |
-| `consumer-smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
-| `consumer-smoke-freertos-cross` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
-| `verify-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
-| `test-vxworks64-runner` | - | Python `unittest` over the VxWorks 6.4 runner's job service: its queue, token, routes and TLS. The runner's Pester tests need Windows PowerShell 5.1 and run locally, recorded in the PR |
-| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`, runs the documentation consistency, reference and issue-link checks and the hook tests, and rehearses the offline bundle; on `main`, `deploy-docs-pages` publishes it to GitHub Pages |
-| `actionlint` | - | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
+| `build-c89-headers` | - | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here. Then `scripts/check_vxworks64_header_proof.py` asserts that `Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c`, the C89 proof the VxWorks 6.4 project compiles and no lane can build, includes every public header of Core and that pack and nothing else of ours |
+| `build-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |
+| `unit-linux-gcc-tunables` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
+| `bdd-linux-openssl-syslogng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
+| `bdd-linux-openssl-syslogng-passthrough` | - | The same Linux target under `--buffer passthrough` - no service thread, the logger serviced on the thread that logs, which is what the hardening path's first wiring does. Runs every scenario not tagged `@buffered`, and the `@passthrough` scenarios no other lane can |
+| `bdd-windows-openssl-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
+| `unit-linux-gcc-embedded` | `debug` | The unit suite on `cpputest-freertos`, which adds the eight embedded packs against their fakes; also builds the Plus-TCP BDD target, and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has |
+| `build-freertos-plustcp-mbedtls-plusfat` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
+| `build-freertos-lwipraw-mbedtls-fatfs` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
+| `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` | - | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
+| `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` | - | The same scenarios against the lwIP target ELF |
+| `build-cmsisrtos-lwipsocket-mbedtls-littlefs` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
+| `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` | - | The same scenarios again, against that target's ELF |
+| `build-cmsisrtos-lwipsocket-wolfssl-littlefs` | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack in place of Mbed TLS, with wolfSSL compiled from source under the target's `user_settings.h`; asserts from the ELF's symbols which TLS pack was linked |
+| `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` | - | The QEMU scenarios against that ELF, less the one cell the wolfSSL platform page lists as a shortfall |
+| `smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
+| `smoke-freertos-lwipraw` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
+| `analyze-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
+| `tools-vxworks64-runner` | - | Python `unittest` over the VxWorks 6.4 runner's job service: its queue, token, routes and TLS. The runner's Pester tests need Windows PowerShell 5.1 and run locally, recorded in the PR |
+| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`, runs the documentation consistency, reference and issue-link checks and the hook tests, and rehearses the offline bundle; on `main`, `docs-deploy` publishes it to GitHub Pages |
+| `analyze-actionlint` | - | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
 | `docs-links` | - | Checks the documentation's external links with lychee. Its own workflow (`docs-links.yml`); advisory on pull requests, failing on its weekly schedule |
 | `summary` | - | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
 
 ## Branch protection
 
-Every job in `ci.yml` is a required status check except `deploy-docs-pages`, which
+Every job in `ci.yml` is a required status check except `docs-deploy`, which
 only runs on `main`. Three more come from outside that file: `analyze-codeql` and
-`CodeQL`, which code scanning contributes, and `actionlint`, which validates the
+`CodeQL`, which code scanning contributes, and `analyze-actionlint`, which validates the
 workflow files from a workflow of its own. A pull request cannot be merged unless
 all of them pass. Direct pushes to `main` are blocked. Squash merge only.
 
@@ -80,17 +93,17 @@ The lane names say the platform and toolchain but not the adapter, so:
 |---|---|
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
 | Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
-| wolfSSL (`SolidSyslogWolfSslStream`, security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl`, the Linux target without OpenSSL; `build-cmsis-target-lwip-wolfssl` and `bdd-cmsis-qemu-lwip-wolfssl`, a wolfSSL built from source under QEMU |
-| FreeRTOS-Plus-TCP | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-plustcp` end to end under QEMU |
-| lwIP (Raw API) | `build-freertos-host-tdd-plustcp` against fakes; `bdd-freertos-qemu-lwip` end to end under QEMU; static analysis via the `*-freertos-lwip` lanes |
-| lwIP (Sockets API) | `build-freertos-host-tdd-plustcp` against fakes; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
-| FreeRTOS kernel | `build-freertos-host-tdd-plustcp` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
-| CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsis-target-lwip` cross build; `bdd-cmsis-qemu-lwip` end to end under QEMU |
+| wolfSSL (`SolidSyslogWolfSslStream`, security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl-syslogng`, the Linux target without OpenSSL; `build-cmsisrtos-lwipsocket-wolfssl-littlefs` and `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`, a wolfSSL built from source under QEMU |
+| FreeRTOS-Plus-TCP | `unit-linux-gcc-embedded` against fakes; `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` end to end under QEMU |
+| lwIP (Raw API) | `unit-linux-gcc-embedded` against fakes; `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` end to end under QEMU; static analysis in the `*-embedded` lanes |
+| lwIP (Sockets API) | `unit-linux-gcc-embedded` against fakes; `build-cmsisrtos-lwipsocket-mbedtls-littlefs` cross build; `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` end to end under QEMU |
+| FreeRTOS kernel | `unit-linux-gcc-embedded` against fakes; both FreeRTOS cross builds and both FreeRTOS QEMU BDD lanes |
+| CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsisrtos-lwipsocket-mbedtls-littlefs` cross build; `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` end to end under QEMU |
 | VxWorks 6.4 | Unit tests at strict C99 against fakes in every host lane that builds `Tests/`. Target runs are outside CI: the toolchain and kernel are licensed, so the target checklist in `Bdd/Targets/VxWorks64/README.md` covers them |
-| ChaN FatFs | Built and analysed in the lwIP lanes; store-and-forward scenarios run in `bdd-freertos-qemu-lwip` |
-| FreeRTOS-Plus-FAT | Host-TDD against fakes in `build-freertos-host-tdd-plustcp`, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-qemu-plustcp` |
-| LittleFS | `build-freertos-host-tdd-plustcp` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsis-qemu-lwip` |
-| POSIX, Windows | The `build-linux-*` and `build-windows-msvc` lanes, plus both host BDD lanes |
+| ChaN FatFs | Unit tested and analysed in the `*-embedded` lanes; store-and-forward scenarios run in `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` |
+| FreeRTOS-Plus-FAT | Host-TDD against fakes in `unit-linux-gcc-embedded`, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` |
+| LittleFS | `unit-linux-gcc-embedded` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` |
+| POSIX, Windows | The `build-linux-*` and `unit-windows-msvc` lanes, plus both host BDD lanes |
 | C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both lwIP cross presets |
 
 <!-- /platforms -->
@@ -159,7 +172,7 @@ Each job is granted only the permissions it needs. Every workflow declares
 there, so a job added later starts read-only rather than inheriting a write token by
 default. Write scopes are held by the jobs that need them: jobs publishing test
 results add `checks: write`, and only `summary` adds `pull-requests: write` to comment
-on the pull request; `deploy-docs-pages` adds
+on the pull request; `docs-deploy` adds
 `pages: write` and `id-token: write` to publish the documentation site to GitHub
 Pages; `analyze-codeql` adds `security-events: write` to upload its results to the
 Security tab; `sbom.yml`'s publish job adds `contents: write` and `id-token: write` to
