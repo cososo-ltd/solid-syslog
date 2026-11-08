@@ -1,0 +1,95 @@
+/*
+ * Overrides on genhtml's gcov.css so the coverage report reads as part of the
+ * documentation site: the site's violet (#3e2199, as docs/assets/stylesheets/
+ * brand.css sets it), a header bar carrying the cube mark, a quiet footer, and
+ * the same font stack the site falls back to. No web font is fetched: the
+ * report is opened from the offline bundle as well as served, and that bundle
+ * must not reach for the network.
+ */
+
+body {
+  margin: 0;
+  font-family: "Open Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1f1f1f;
+}
+
+body > table, body > center, body > br {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+a:link, a:visited {
+  color: #3e2199;
+  text-decoration: none;
+}
+
+a:hover, a:active {
+  color: #3e2199;
+  text-decoration: underline;
+}
+
+/* The header bar, in place of a page title the prolog leaves to the table. */
+.ss-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.ss-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.ss-header__mark {
+  display: block;
+}
+
+.ss-header__name {
+  font-family: "Montserrat", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: #1f1f1f;
+}
+
+.ss-header__section {
+  font-size: 15px;
+  color: #5f5f5f;
+}
+
+/* genhtml's own banner: plain rather than italic, in the heading face. */
+td.title {
+  font-family: "Montserrat", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-size: 16pt;
+  color: #1f1f1f;
+}
+
+td.headerValue {
+  color: #3e2199;
+}
+
+td.tableHead {
+  background-color: #3e2199;
+  color: #ffffff;
+}
+
+td.tableHead a:link, td.tableHead a:visited {
+  color: #ffffff;
+}
+
+td.versionInfo {
+  color: #7a7a7a;
+}
+
+.ss-footer {
+  margin: 8px 16px 24px;
+  font-size: 13px;
+  color: #7a7a7a;
+}
