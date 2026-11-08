@@ -115,6 +115,26 @@ class Rendered(unittest.TestCase):
         self.assertIn('<a href="lanes/unit-linux-clang.html#solidsyslogtests-formatter">1</a>', out)
         self.assertIn('<td class="tr-num tr-none">-</td>', out)
 
+    def test_a_unit_kind_page_leads_with_packs_by_lane_and_folds_each_packs_suites(self):
+        out = self.read("unit.html")
+        self.assertIn('<tr><td><a href="#pack-posix">Posix</a></td>', out)
+        self.assertIn('<details id="pack-posix"><summary><strong>Posix</strong>', out)
+        self.assertIn('<a href="packs/posix.html">pack page</a>', out)
+        self.assertLess(out.index('<a href="#pack-core">Core</a>'), out.index('<details id="pack-core">'))
+
+    def test_pages_of_folds_offer_expand_and_collapse_and_the_overview_does_not(self):
+        for name in ["unit.html", "lanes/unit-linux-gcc.html", "lanes/bdd-linux-openssl-syslogng.html"]:
+            out = self.read(name)
+            self.assertIn('data-tr-fold="open">Expand all</button>', out, name)
+            self.assertIn("<script>", out, name)
+        self.assertNotIn("Expand all", self.read("index.html"))
+        self.assertNotIn("<script>", self.read("index.html"))
+
+    def test_steps_read_from_their_keyword_with_no_numbering(self):
+        out = self.read("lanes/bdd-linux-openssl-syslogng.html")
+        self.assertIn('<ul class="tr-steps">', out)
+        self.assertNotIn("<ol", out)
+
     def test_the_bdd_kind_page_reads_as_living_documentation_across_targets(self):
         out = self.read("bdd.html")
         self.assertIn('<section class="tr-feature" id="tls">', out)

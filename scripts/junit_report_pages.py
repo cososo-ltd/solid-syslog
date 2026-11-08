@@ -172,11 +172,13 @@ class Report:
             + [("failures.html", "Failures"), ("skipped.html", "Skipped"), ("slowest.html", "Slowest")]
         )
 
-    def page(self, title: str, body: str, depth: int, active: Optional[str] = None, crumbs=(), jump=(), lead: str = "") -> str:
+    def page(self, title: str, body: str, depth: int, active: Optional[str] = None, crumbs=(), jump=(), lead: str = "", folds: bool = False) -> str:
         """One page. `crumbs` are (href, label) pairs leading here from the
         overview, rendered as a trail above the title; `jump` are (anchor,
         label) pairs for the sections on this page, rendered beneath it;
-        `lead` is a line of HTML under the title saying what the page holds."""
+        `lead` is a line of HTML under the title saying what the page holds;
+        `folds` adds the expand-all and collapse-all controls, the one place
+        the report uses a script, and a few lines of its own at that."""
         rel = "../" * depth
         nav = "".join(
             f'<a href="{rel}{href}"{" class=\"tr-nav--active\"" if href == active else ""}>{esc(label)}</a>' for href, label in self.nav()
@@ -192,6 +194,13 @@ class Report:
         if jump:
             on_page = '<p class="tr-jump">On this page: ' + " &middot; ".join(f'<a href="#{anchor}">{esc(label)}</a>' for anchor, label in jump) + "</p>"
         lead_html = f'<p class="tr-lead">{lead}</p>' if lead else ""
+        controls = (
+            '<p class="tr-controls"><button type="button" data-tr-fold="open">Expand all</button> '
+            '<button type="button" data-tr-fold="close">Collapse all</button></p>'
+            if folds
+            else ""
+        )
+        script = FOLD_SCRIPT if folds else ""
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,8 +221,10 @@ class Report:
     <p class="tr-prov">{esc(self.provenance)}</p>
     {lead_html}
     {on_page}
+    {controls}
 {body}
   </main>
+  {script}
   <!-- site-footer -->
   <footer class="ss-footer">Part of the SolidSyslog documentation. Reported from the run's JUnit results.</footer>
   <!-- /site-footer -->
@@ -312,7 +323,7 @@ class Report:
             noun = "Features"
         else:
             across, jump = self.suites_across(lanes)
-            across_title = "Suites across lanes"
+            across_title = "Packs and suites across lanes"
             noun = "Suites"
         body = (
             f'<h2 id="lanes">Lanes</h2>{self.lanes_table(lanes, noun=noun)}'
@@ -320,36 +331,59 @@ class Report:
         )
         crumbs = [("index.html", "Tests")]
         lead = f"{esc(KIND_BLURB.get(kind, ''))} {counts_phrase(counts)} across {len(lanes)} lanes."
-        return self.page(kind_name(kind), body, 0, kind_href(kind), crumbs=crumbs, jump=[("lanes", "Lanes"), ("across", across_title)] + jump, lead=lead)
+        return self.page(kind_name(kind), body, 0, kind_href(kind), crumbs=crumbs, jump=[("lanes", "Lanes"), ("across", across_title)] + jump, lead=lead, folds=True)
 
     def suites_across(self, lanes: List[model.Lane]) -> Tuple[str, List[Tuple[str, str]]]:
-        rows_by_key: Dict = defaultdict(dict)
+        """A pack-by-lane table answering where each pack is tested, each pack
+        folding open to its suites across the same lanes."""
+        per_pack: Dict[str, Dict[Tuple[str, str], Dict[str, Tuple[model.Counts, str]]]] = defaultdict(lambda: defaultdict(dict))
+        pack_lane_counts: Dict[str, Dict[str, model.Counts]] = defaultdict(dict)
         for lane in lanes:
             for (executable, suite), cases in by(lane.tests, lambda t: (t.executable, t.suite)).items():
-                rows_by_key[(executable, suite)][lane.name] = (model.count(cases), suite_id(cases[0]))
+                pack = self.pack(cases[0])
+                per_pack[pack][(executable, suite)][lane.name] = (model.count(cases), suite_id(cases[0]))
+                counts = pack_lane_counts[pack].setdefault(lane.name, model.Counts())
+                for t in cases:
+                    counts.add(t)
         head = "".join(f'<th class="tr-vert"><a href="{lane_href(lane.name)}"><span>{esc(lane.name)}</span></a></th>' for lane in lanes)
-        rows = []
-        current = None
-        for (executable, suite), per_lane in sorted(rows_by_key.items()):
-            if executable != current:
-                current = executable
-                rows.append(f'<tr class="tr-group" id="{slug(executable)}"><th colspan="{len(lanes) + 1}">{esc(executable)}</th></tr>')
-            cells = []
-            for lane in lanes:
-                found = per_lane.get(lane.name)
-                if not found:
-                    cells.append('<td class="tr-num tr-none">-</td>')
-                else:
-                    counts, anchor = found
-                    cls = " tr-bad" if counts.failed else ""
-                    cells.append(f'<td class="tr-num{cls}"><a href="{lane_href(lane.name)}#{anchor}">{counts.total}</a></td>')
-            rows.append(f"<tr><td>{esc(suite)}</td>{''.join(cells)}</tr>")
+
+        def cell(found) -> str:
+            if not found:
+                return '<td class="tr-num tr-none">-</td>'
+            counts, href = found
+            cls = " tr-bad" if counts.failed else ""
+            return f'<td class="tr-num{cls}"><a href="{href}">{counts.total}</a></td>'
+
+        pack_rows = []
+        folds = []
+        for pack in sorted(per_pack, key=str.lower):
+            cells = "".join(
+                cell((pack_lane_counts[pack][lane.name], lane_href(lane.name)) if lane.name in pack_lane_counts[pack] else None) for lane in lanes
+            )
+            pack_rows.append(f'<tr><td><a href="#pack-{slug(pack)}">{esc(pack)}</a></td>{cells}</tr>')
+            suite_rows = []
+            current = None
+            for (executable, suite), per_lane in sorted(per_pack[pack].items()):
+                if executable != current:
+                    current = executable
+                    suite_rows.append(f'<tr class="tr-group"><th colspan="{len(lanes) + 1}">{esc(executable)}</th></tr>')
+                suite_cells = "".join(
+                    cell((per_lane[lane.name][0], f"{lane_href(lane.name)}#{per_lane[lane.name][1]}") if lane.name in per_lane else None) for lane in lanes
+                )
+                suite_rows.append(f"<tr><td>{esc(suite)}</td>{suite_cells}</tr>")
+            total = sum(c.total for c in pack_lane_counts[pack].values())
+            folds.append(
+                f'<details id="pack-{slug(pack)}"><summary><strong>{esc(pack)}</strong> <span class="tr-muted">{len(per_pack[pack])} suites, '
+                f'{total} test results across {len(pack_lane_counts[pack])} lanes</span> &middot; <a href="{pack_href(pack)}">pack page</a></summary>'
+                f'<table class="tr-table tr-matrix"><thead><tr><th>Suite</th>{head}</tr></thead><tbody>{"".join(suite_rows)}</tbody></table></details>'
+            )
         table = (
-            "<p>Each cell is how many of the suite's tests that lane ran, linking to them; a failing suite is marked. "
-            "A dash means the lane does not build the suite.</p>"
-            f'<table class="tr-table tr-matrix"><thead><tr><th>Suite</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
+            "<p>Each cell is how many of the pack's tests that lane ran, linking to the lane; a dash means the lane does not "
+            "build the pack. Open a pack for its suites across the same lanes, each cell linking to the suite as it ran there.</p>"
+            f'<table class="tr-table tr-matrix"><thead><tr><th>Pack</th>{head}</tr></thead><tbody>{"".join(pack_rows)}</tbody></table>'
+            + "".join(folds)
         )
-        jump = [(slug(executable), executable) for executable in sorted({key[0] for key in rows_by_key})]
+        jump = [(f"pack-{slug(pack)}", pack) for pack in sorted(per_pack, key=str.lower)]
         return table, jump
 
     def features_across(self, lanes: List[model.Lane]) -> Tuple[str, List[Tuple[str, str]]]:
@@ -403,7 +437,7 @@ class Report:
             noun = "tests"
         crumbs = [("../index.html", "Tests"), (kind_href(kind, 1), kind_name(kind))]
         lead = f'<span class="tr-kind">{kind_name(kind)}</span> {counts_phrase(counts, noun)}.'
-        return self.page(lane.name, body, 1, crumbs=crumbs, jump=jump, lead=lead)
+        return self.page(lane.name, body, 1, crumbs=crumbs, jump=jump, lead=lead, folds=True)
 
     def unit_lane_body(self, lane: model.Lane) -> Tuple[str, List[Tuple[str, str]]]:
         sections = []
@@ -444,7 +478,7 @@ class Report:
                     f'<span class="tr-muted">{fmt_time(s.time)}</span></li>'
                     for s in t.steps
                 )
-                detail = f'<ol class="tr-steps">{steps}</ol>' if steps else '<p class="tr-muted">No steps were recorded for this scenario.</p>'
+                detail = f'<ul class="tr-steps">{steps}</ul>' if steps else '<p class="tr-muted">No steps were recorded for this scenario.</p>'
                 if t.message:
                     detail += f"<pre>{esc(t.message)}</pre>"
                 blocks.append(
@@ -621,6 +655,18 @@ class Report:
         return 1
 
 
+# The one script in the report: the expand-all and collapse-all buttons on a
+# page of folds. Inline, so the offline bundle fetches nothing, and the page
+# reads the same without it.
+FOLD_SCRIPT = """<script>
+document.querySelectorAll("[data-tr-fold]").forEach(function (button) {
+  button.addEventListener("click", function () {
+    var open = button.getAttribute("data-tr-fold") === "open";
+    document.querySelectorAll("main details").forEach(function (fold) { fold.open = open; });
+  });
+});
+</script>"""
+
 CSS = """\
 /* The test report's own styles. The documentation build adds the site's
    stylesheets before this one (hooks/report_chrome.py), so what follows also
@@ -649,6 +695,11 @@ body[data-md-color-scheme] .md-footer { margin-top: auto; }
 .tr-crumbs { margin: 10px 0 0; font-size: 0.92em; color: #5f5f5f; }
 .tr-crumbs__sep { margin: 0 6px; color: #aaa; }
 .tr-jump { margin: 0 0 16px; padding: 6px 10px; background: #f7f6fb; border-radius: 6px; font-size: 0.95em; }
+.tr-controls { margin: 0 0 12px; }
+.tr-controls button { font: inherit; font-size: 0.9em; padding: 2px 10px; border: 1px solid #c9c2e6; border-radius: 6px; background: #f7f6fb; color: #3e2199; cursor: pointer; }
+.tr-controls button:hover { background: #ece8f7; }
+.tr-matrix thead th { position: sticky; top: 0; z-index: 1; }
+.tr-matrix tbody tr:hover td { background: #f7f6fb; }
 .tr-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .tr-tile { min-width: 110px; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; display: flex; flex-direction: column; }
 .tr-tile__n { font-size: 1.6em; font-weight: 700; color: #3e2199; }
@@ -681,7 +732,7 @@ body[data-md-color-scheme] .md-footer { margin-top: auto; }
 .tr summary { cursor: pointer; padding: 4px 0; }
 .tr-feature { margin: 8px 0 24px; }
 .tr-prose { margin: 4px 0 10px; color: #333; }
-.tr-steps { margin: 6px 0 4px; padding-left: 1.4em; }
+.tr-steps { margin: 6px 0 4px; padding-left: 0.6em; list-style: none; }
 .tr-step { margin: 2px 0; }
 .tr-step__kw { font-weight: 700; color: #3e2199; }
 .tr-step--skipped { color: #946200; }
