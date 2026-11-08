@@ -360,7 +360,7 @@ TEST(SolidSyslogPlusTcpDatagram, AFailedResolutionReportsTheUnresolvedNextHopAnd
         &SolidSyslogPlusTcpDatagramErrorSource,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
         SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
-        eARPCacheMiss
+        eResolutionCacheMiss
     );
 }
 
@@ -418,7 +418,7 @@ TEST(SolidSyslogPlusTcpDatagram, AnEntryStillWaitingForItsReplyIsReportedAsPendi
         &SolidSyslogPlusTcpDatagramErrorSource,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
         SOLIDSYSLOG_DATAGRAM_ERROR_NEXT_HOP_UNRESOLVED,
-        eCantSendPacket
+        eResolutionFailed
     );
 }
 

@@ -97,11 +97,11 @@
 #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
 
 /* Alias FreeRTOS port handlers to the standard CMSIS names so the vector
- * table in Startup.c references SVC_Handler / PendSV_Handler / SysTick_Handler
- * (and the FreeRTOS port supplies the bodies). */
+ * table in Startup.c references SVC_Handler / PendSV_Handler, and the FreeRTOS
+ * port supplies the bodies. SysTick_Handler is not aliased: the CMSIS-RTOS2
+ * wrapper defines it and calls xPortSysTickHandler from it. */
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
-#define xPortSysTickHandler SysTick_Handler
 
 #define configASSERT(x) \
     do                  \

@@ -7,8 +7,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$Version = '0.150.1',
-    [string]$Sha256  = '53466D9A16B0D8BC6CB9A7A24EDA306751AFBD28BB115BEE1D2B11E9AF65A334',
+    [string]$Version = '0.165.0',
+    [string]$Sha256  = 'E728B24C23F54EC304845112A3E3C7A555C9A19D5EDC6417AFC9819D2AB892B0',
     [string]$BinDir
 )
 

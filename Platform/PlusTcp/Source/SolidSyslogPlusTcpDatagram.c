@@ -52,9 +52,9 @@ static void PlusTcpDatagram_Close(struct SolidSyslogDatagram* base);
 static inline struct SolidSyslogPlusTcpDatagram* PlusTcpDatagram_SelfFromBase(struct SolidSyslogDatagram* base);
 static inline bool PlusTcpDatagram_IsOpen(const struct SolidSyslogPlusTcpDatagram* self);
 static inline bool PlusTcpDatagram_NextHopResolves(struct SolidSyslogPlusTcpDatagram* self, uint32_t ip);
-static inline eARPLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop);
+static inline eResolutionLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop);
 static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void);
-static inline void PlusTcpDatagram_ReportUnresolved(eARPLookupResult_t lookup);
+static inline void PlusTcpDatagram_ReportUnresolved(eResolutionLookupResult_t lookup);
 
 void SolidSyslogPlusTcpDatagram_Initialise(
     struct SolidSyslogDatagram* base,
@@ -160,18 +160,18 @@ static enum SolidSyslogDatagramSendResult PlusTcpDatagram_SendTo(
 static inline bool PlusTcpDatagram_NextHopResolves(struct SolidSyslogPlusTcpDatagram* self, uint32_t ip)
 {
     uint32_t nextHop = 0U;
-    eARPLookupResult_t lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
-    if (lookup != eARPCacheHit)
+    eResolutionLookupResult_t lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
+    if (lookup != eResolutionCacheHit)
     {
         FreeRTOS_OutputARPRequest(nextHop);
     }
     TickType_t ticksToWait = self->ResolveFailing ? 0U : PlusTcpDatagram_ResolveWaitTicks();
-    for (TickType_t tick = 0U; (tick < ticksToWait) && (lookup != eARPCacheHit); tick++)
+    for (TickType_t tick = 0U; (tick < ticksToWait) && (lookup != eResolutionCacheHit); tick++)
     {
         vTaskDelay(1U);
         lookup = PlusTcpDatagram_LookUpNextHop(ip, &nextHop);
     }
-    bool resolved = (lookup == eARPCacheHit);
+    bool resolved = (lookup == eResolutionCacheHit);
     if (!resolved && !self->ResolveFailing)
     {
         PlusTcpDatagram_ReportUnresolved(lookup);
@@ -182,7 +182,7 @@ static inline bool PlusTcpDatagram_NextHopResolves(struct SolidSyslogPlusTcpData
 
 /* The stack names the next hop: the destination when it is on the subnet,
  * otherwise the gateway. */
-static inline eARPLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop)
+static inline eResolutionLookupResult_t PlusTcpDatagram_LookUpNextHop(uint32_t ip, uint32_t* nextHop)
 {
     MACAddress_t linkAddress;
     NetworkEndPoint_t* endPoint = NULL;
@@ -198,10 +198,10 @@ static inline TickType_t PlusTcpDatagram_ResolveWaitTicks(void)
                          PLUSTCP_DATAGRAM_MILLISECONDS_PER_SECOND);
 }
 
-/* The lookup's own answer is the native code: a miss, or eCantSendPacket for
+/* The lookup's own answer is the native code: a miss, or eResolutionFailed for
  * an entry whose reply is still pending, or a next hop the stack cannot send
  * to at all, such as an off-subnet destination with no gateway configured. */
-static inline void PlusTcpDatagram_ReportUnresolved(eARPLookupResult_t lookup)
+static inline void PlusTcpDatagram_ReportUnresolved(eResolutionLookupResult_t lookup)
 {
     SolidSyslog_ErrorWithNativeCode(
         SOLIDSYSLOG_DATAGRAM_NEXT_HOP_UNRESOLVED_SEVERITY,

@@ -82,7 +82,7 @@ uint32_t FreeRtosArpFake_LastGetCacheEntryArg(void)
     return lastGetCacheEntryArg;
 }
 
-eARPLookupResult_t eARPGetCacheEntry(
+eResolutionLookupResult_t eARPGetCacheEntry(
     uint32_t* pulIPAddress,
     MACAddress_t* const pxMACAddress,
     struct xNetworkEndPoint** ppxEndPoint
@@ -103,8 +103,8 @@ eARPLookupResult_t eARPGetCacheEntry(
         hit = false;
         cacheHit = (lookupsUntilHit == 0U);
     }
-    eARPLookupResult_t result = replyPending ? eCantSendPacket : eARPCacheMiss;
-    return hit ? eARPCacheHit : result;
+    eResolutionLookupResult_t result = replyPending ? eResolutionFailed : eResolutionCacheMiss;
+    return hit ? eResolutionCacheHit : result;
 }
 
 unsigned FreeRtosArpFake_OutputArpRequestCallCount(void)

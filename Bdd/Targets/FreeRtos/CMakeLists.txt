@@ -119,7 +119,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
     # MPS2_AN385 LAN9118 NetworkInterface + driver.
     ${PLUS_TCP_NIF_DIR}/NetworkInterface.c
     ${PLUS_TCP_NIF_DIR}/ether_lan9118/smsc9220_eth_drv.c
-    # FreeRTOS-Plus-FAT upstream core (SHA 8d38036). Like the FreeRTOS kernel
+    # FreeRTOS-Plus-FAT upstream core (SHA 9ca465c). Like the FreeRTOS kernel
     # and Plus-TCP sources, these trip the relaxed warnings (sign-conversion,
     # shadow, type narrowing), so they live in this OBJECT lib. The integrator
     # FreeRTOSFATConfig.h is found off the -I path (CMAKE_CURRENT_SOURCE_DIR
@@ -147,7 +147,7 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -ffunction-sections
     -fdata-sections
     -fno-common
-    # FreeRTOS-Kernel + Plus-TCP V11.1.0/V4.2.2 + Plus-FAT use non-prototype
+    # FreeRTOS-Kernel + Plus-TCP V11.3.3/V4.4.2 + Plus-FAT use non-prototype
     # function declarations, type-narrowing constructs, sign-conversion patterns,
     # and shadowed locals that trip our strict host warnings. Scoped to this
     # OBJECT library so the relaxations never reach project code.
