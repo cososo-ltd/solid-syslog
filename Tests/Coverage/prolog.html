@@ -6,6 +6,11 @@
   slash, which is what lets one prolog serve pages at every depth. gcov.css is
   genhtml's own stylesheet; solidsyslog.css overrides what it needs to, and
   Tests/CMakeLists.txt copies it and the cube mark into the report beside it.
+
+  The marker comments are for hooks/report_chrome.py. When the report is built
+  into the documentation site, that hook replaces what lies between them with
+  the site's own stylesheets, header and footer, rendered for that build. A
+  report opened straight from the build tree keeps the simple header below.
 -->
 <html lang="en">
 <head>
@@ -14,9 +19,11 @@
   <title>@pagetitle@</title>
   <link rel="icon" href="@basedir@solidsyslog-cube.svg">
   <link rel="stylesheet" type="text/css" href="@basedir@gcov.css">
+  <!-- site-styles -->
   <link rel="stylesheet" type="text/css" href="@basedir@solidsyslog.css">
 </head>
 <body>
+  <!-- site-header -->
   <header class="ss-header">
     <a class="ss-header__brand" href="@basedir@index.html">
       <img class="ss-header__mark" src="@basedir@solidsyslog-cube.svg" alt="" width="32" height="32">
@@ -24,3 +31,4 @@
     </a>
     <span class="ss-header__section">Coverage</span>
   </header>
+  <!-- /site-header -->

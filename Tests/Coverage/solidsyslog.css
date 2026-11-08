@@ -18,6 +18,43 @@ body > table, body > center, body > br {
   margin-right: 16px;
 }
 
+/*
+ * When hooks/report_chrome.py has dressed the page in the site's header and
+ * footer, Material's stylesheet is in play too. It scales the root font to
+ * 125% and sets a small body size for its own components to build on, which
+ * would shrink genhtml's tables; this puts the report text back to the size
+ * the site's prose uses. Material lays the body out as a flex column, so the
+ * footer is pushed to the bottom of a short page rather than floating.
+ */
+body[data-md-color-scheme] {
+  font-size: 0.8rem;
+}
+
+body[data-md-color-scheme] > table, body[data-md-color-scheme] > center {
+  width: calc(100% - 32px);
+}
+
+body[data-md-color-scheme] .md-footer {
+  margin-top: auto;
+}
+
+/*
+ * brand.css hides the header title on the site's pages, where the logo
+ * stands alone as it does on cososo.co.uk. A report page shows it, because
+ * the title is the one link back to the report's root.
+ */
+.md-header__title.md-header__title--active {
+  font-size: 0.9rem;
+}
+
+.md-header__topic a, .md-header__topic a:link, .md-header__topic a:visited {
+  color: inherit;
+}
+
+.md-header__topic a:hover {
+  text-decoration: underline;
+}
+
 a:link, a:visited {
   color: #3e2199;
   text-decoration: none;
