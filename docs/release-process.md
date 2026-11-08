@@ -133,6 +133,21 @@ The Conventional Commit type is therefore a statement about consumer impact, not
 only about which files were touched. A change that alters what an integrator
 should do belongs under a type that appears.
 
+A merged pull request's message can be replaced after the fact. A block in its
+body of the form
+
+```text
+BEGIN_COMMIT_OVERRIDE
+feat: what the consumer gained (#<number>)
+END_COMMIT_OVERRIDE
+```
+
+is what release-please reads in place of the squash message, on its next run,
+for any pull request merged since the last release. Use it to correct a type,
+and to give an epic's stories one entry that says what the consumer gained,
+retyping the other stories as `chore` so they drop out of the list. The
+commits on `main` are untouched; only the changelog reads differently.
+
 ## Cutting a release
 
 `CHANGELOG.md` is the authoritative record of what changed between releases. Its
@@ -143,8 +158,11 @@ listed above; the written sections are added by hand in the release pull request
    CHANGELOG section; the hidden types above produce no entry, and a commit marked
    as breaking is listed whatever its type.
 2. release-please maintains a release PR that bumps the version and
-   `CHANGELOG.md`. Write the written sections of the release notes into that PR
-   before merging it, per *Getting the written parts into both places* above.
+   `CHANGELOG.md`, and rewrites that branch on every push to `main`, discarding
+   anything written there. Write the written sections of the release notes into
+   that PR, per *Getting the written parts into both places* above, only after
+   the last merge before the release has landed and release-please has run on
+   it; then merge the release PR before anything else lands.
 3. Run each target that a target checklist accepts against the release pull
    request's head before merging it: those whose `Bdd/Targets/<Target>/README.md`
    has a *Target checklist* section. CI cannot reach them, and
@@ -270,7 +288,8 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       the four figures under *What it costs* in `README.md`, taken from the
       re-measured hardening path.
 - [ ] The release PR's notes carry the written sections, *Before you upgrade*
-      included.
+      included, written after release-please's run on the last merge before the
+      release.
 - [ ] Run each target that has a target checklist against the release PR's head,
       and record the run as a comment on the PR, per
       [Cutting a release](#cutting-a-release).
