@@ -37,6 +37,18 @@ OUTLINE_ROW = re.compile(r" -- @\d+\.\d+ .*$")
 TAG_LINE = re.compile(r"^\s*(@\S+(?:\s+@\S+)*)\s*$")
 SCENARIO_LINE = re.compile(r"^\s*Scenario(?: Outline| Template)?:\s*(.+?)\s*$")
 FEATURE_LINE = re.compile(r"^\s*Feature:\s*(.+?)\s*$")
+KEYWORD_LINE = re.compile(r"^\s*(Background|Rule|Scenario|Scenario Outline|Scenario Template|Examples):")
+# One step as behave's JUnit output records it, under the scenario heading in
+# the case's system-out: keyword, text, outcome and duration.
+STEP_LINE = re.compile(r"^\s*(Given|When|Then|And|But|\*)\s+(.*?)\s+\.\.\.\s+(passed|failed|skipped|undefined|untested|error)(?:\s+in\s+([0-9.]+)s)?\s*$")
+
+
+@dataclass(frozen=True)
+class Step:
+    keyword: str
+    text: str
+    status: str
+    time: float
 
 
 @dataclass(frozen=True)
@@ -51,6 +63,14 @@ class Test:
     line: Optional[int] = None
     message: Optional[str] = None
     tags: Tuple[str, ...] = ()
+    steps: Tuple[Step, ...] = ()
+
+    @property
+    def feature_stem(self) -> Optional[str]:
+        """The feature file's stem, for a scenario; None for anything else."""
+        if self.file and self.file.startswith(FEATURES_DIR + "/"):
+            return self.file[len(FEATURES_DIR) + 1 : -len(".feature")]
+        return None
 
     @property
     def scenario(self) -> str:
@@ -87,8 +107,24 @@ class Lane:
 
 
 @dataclass
+class Feature:
+    """What a feature file says about itself: its name, the prose under the
+    Feature line, and the tags of the feature and of each scenario."""
+
+    stem: str
+    name: str = ""
+    description: str = ""
+    feature_tags: Tuple[str, ...] = ()
+    tags: Dict[str, Tuple[str, ...]] = field(default_factory=dict)
+
+    def keys(self):
+        return [(self.stem, scenario) for scenario in self.tags]
+
+
+@dataclass
 class Run:
     lanes: Dict[str, Lane] = field(default_factory=dict)
+    features: Dict[str, Feature] = field(default_factory=dict)
 
     @property
     def tests(self) -> List[Test]:
@@ -108,8 +144,9 @@ def kind_of(lane: str) -> str:
 
 def read_run(artifacts_dir: str, features_dir: Optional[str] = FEATURES_DIR) -> Run:
     """Every ``junit-<lane>`` directory under `artifacts_dir`, as a Run."""
-    tags = feature_tags(features_dir) if features_dir and os.path.isdir(features_dir) else {}
-    run = Run()
+    features = read_features(features_dir) if features_dir and os.path.isdir(features_dir) else {}
+    tags = {key: feature.tags[key[1]] for key, feature in ((k, f) for f in features.values() for k in f.keys())}
+    run = Run(features=features)
     for entry in sorted(os.listdir(artifacts_dir)):
         if not entry.startswith(ARTIFACT_PREFIX):
             continue
@@ -166,6 +203,7 @@ def read_behave(path: str, lane: str, tags: Dict[Tuple[str, str], Tuple[str, ...
                 file=f"{FEATURES_DIR}/{stem}.feature",
                 message=message,
                 tags=tags.get((stem, OUTLINE_ROW.sub("", name)), tags.get((stem, ""), ())),
+                steps=steps_in(case.findtext("system-out") or ""),
             )
         )
     return tests
@@ -184,45 +222,72 @@ def outcome(case) -> Tuple[str, Optional[str]]:
     return "passed", None
 
 
+def steps_in(system_out: str) -> Tuple[Step, ...]:
+    """The scenario's steps as behave recorded them in the case's output."""
+    steps = []
+    for line in system_out.splitlines():
+        match = STEP_LINE.match(line)
+        if match:
+            keyword, text, status, time = match.groups()
+            steps.append(Step(keyword, text, status, float(time) if time else 0.0))
+    return tuple(steps)
+
+
 def repo_relative(path: Optional[str]) -> Optional[str]:
     if not path:
         return None
     return REPO_ROOT.sub("", path.replace("\\", "/"))
 
 
-def feature_tags(features_dir: str) -> Dict[Tuple[str, str], Tuple[str, ...]]:
-    """(feature file stem, scenario name) -> its tags, the feature's included.
-    (stem, "") carries the feature's own tags, for a scenario the file no longer
-    names."""
+def read_features(features_dir: str) -> Dict[str, Feature]:
+    """Every feature file in the directory, by stem."""
     found = {}
     for name in sorted(os.listdir(features_dir)):
         if not name.endswith(".feature"):
             continue
         stem = name[: -len(".feature")]
         with open(os.path.join(features_dir, name), encoding="utf-8") as handle:
-            found.update(tags_in(handle.read(), stem))
+            found[stem] = parse_feature(handle.read(), stem)
     return found
 
 
-def tags_in(text: str, stem: str) -> Dict[Tuple[str, str], Tuple[str, ...]]:
-    found = {}
-    feature_tags: Tuple[str, ...] = ()
+def feature_tags(features_dir: str) -> Dict[Tuple[str, str], Tuple[str, ...]]:
+    """(feature file stem, scenario name) -> its tags, the feature's included.
+    (stem, "") carries the feature's own tags, for a scenario the file no longer
+    names."""
+    return {key: feature.tags[key[1]] for feature in read_features(features_dir).values() for key in feature.keys()}
+
+
+def parse_feature(text: str, stem: str) -> Feature:
+    feature = Feature(stem)
     pending: List[str] = []
+    in_description = False
+    description: List[str] = []
     for line in text.splitlines():
         tag_match = TAG_LINE.match(line)
         if tag_match:
+            in_description = False
             pending.extend(tag.lstrip("@") for tag in tag_match.group(1).split())
             continue
-        if FEATURE_LINE.match(line):
-            feature_tags = tuple(sorted(pending))
-            found[(stem, "")] = feature_tags
+        title = FEATURE_LINE.match(line)
+        if title:
+            feature.name = title.group(1)
+            feature.feature_tags = tuple(sorted(pending))
+            feature.tags[""] = feature.feature_tags
             pending = []
+            in_description = True
             continue
+        if KEYWORD_LINE.match(line):
+            in_description = False
         scenario = SCENARIO_LINE.match(line)
         if scenario:
-            found[(stem, scenario.group(1))] = tuple(sorted(set(feature_tags) | set(pending)))
+            feature.tags[scenario.group(1)] = tuple(sorted(set(feature.feature_tags) | set(pending)))
             pending = []
-    return found
+            continue
+        if in_description and line.strip():
+            description.append(line.strip())
+    feature.description = "\n".join(description)
+    return feature
 
 
 def registry_tokens(cmake_text: str) -> List[str]:

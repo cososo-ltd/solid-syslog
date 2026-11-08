@@ -41,8 +41,21 @@ BEHAVE = textwrap.dedent(
     <testsuite name="tls_matrix.TLS cipher matrix" tests="3" errors="0" failures="1" skipped="1" time="1.5" timestamp="2026-11-08T13:35:44" hostname="x"><testcase classname="tls_matrix.TLS cipher matrix" name="Server accepts the default cipher" status="passed" time="0.5"><system-out>
     <![CDATA[
     @scenario.begin
+      Scenario: Server accepts the default cipher
+        Given a thing ... passed in 0.001s
+        When it runs ... passed in 0.250s
+
+    @scenario.end
     ]]>
-    </system-out></testcase><testcase classname="tls_matrix.TLS cipher matrix" name="Server rejects a weak cipher -- @1.2 " status="skipped" time="0"><skipped /></testcase><testcase classname="tls_matrix.TLS cipher matrix" name="Handshake completes" status="failed" time="1.0"><failure type="AssertionError" message="Assertion Failed: expected 1 message">
+    </system-out></testcase><testcase classname="tls_matrix.TLS cipher matrix" name="Server rejects a weak cipher -- @1.2 " status="skipped" time="0"><skipped /><system-out>
+    <![CDATA[
+    @scenario.begin
+      Scenario Outline: Server rejects a weak cipher -- @1.2
+        Given a RC4 ... skipped in 0.000s
+
+    @scenario.end
+    ]]>
+    </system-out></testcase><testcase classname="tls_matrix.TLS cipher matrix" name="Handshake completes" status="failed" time="1.0"><failure type="AssertionError" message="Assertion Failed: expected 1 message">
     <![CDATA[
     Traceback (most recent call last):
       File "steps.py", line 10, in step_impl
@@ -180,6 +193,18 @@ class ReadingBehave(unittest.TestCase):
 
     def test_a_scenario_knows_its_feature_file(self):
         self.assertEqual(self.lane.tests[0].file, "Bdd/features/tls_matrix.feature")
+
+    def test_a_scenario_carries_its_steps_with_their_outcome_and_time(self):
+        first = self.lane.tests[0]
+        self.assertEqual([(s.keyword, s.text, s.status, s.time) for s in first.steps], [("Given", "a thing", "passed", 0.001), ("When", "it runs", "passed", 0.25)])
+        self.assertEqual([s.status for s in self.lane.tests[1].steps], ["skipped"])
+
+    def test_the_run_knows_each_features_name_and_prose(self):
+        feature = self.run.features["tls_matrix"]
+        self.assertEqual(feature.name, "TLS cipher matrix")
+        self.assertEqual(feature.description, "Prose about the feature.")
+        self.assertEqual(feature.feature_tags, ("tcp", "tls"))
+        self.assertEqual(self.lane.tests[0].feature_stem, "tls_matrix")
 
     def test_statuses_follow_the_markup(self):
         self.assertEqual([t.status for t in self.lane.tests], ["passed", "skipped", "failed"])

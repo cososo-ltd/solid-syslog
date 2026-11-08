@@ -18,8 +18,8 @@ SUMMARY = {
     "provenance": "Measured from main at 1234567.",
     "totals": {"total": 19543, "passed": 19442, "failed": 1, "skipped": 100, "time": 2673.4},
     "kinds": [
-        {"kind": "unit", "name": "Unit", "lanes": 5, "total": 16364, "passed": 16363, "failed": 1, "skipped": 0, "time": 805.2},
-        {"kind": "bdd", "name": "BDD", "lanes": 8, "total": 688, "passed": 588, "failed": 0, "skipped": 100, "time": 1554.6},
+        {"kind": "unit", "name": "Unit", "href": "unit.html", "lanes": 5, "total": 16364, "passed": 16363, "failed": 1, "skipped": 0, "time": 805.2},
+        {"kind": "bdd", "name": "BDD", "href": "bdd.html", "lanes": 8, "total": 688, "passed": 588, "failed": 0, "skipped": 100, "time": 1554.6},
     ],
     "lanes": [{"name": f"lane-{i}", "kind": "unit", "total": 1, "passed": 1, "failed": 0, "skipped": 0, "time": 0.0} for i in range(13)],
 }
@@ -50,9 +50,12 @@ class WithAReport(unittest.TestCase):
         self.assertIn("| Unit | 5 | 16364 | 16363 | 1 | 0 | 13 min 25 s |", self.out)
         self.assertIn("| BDD | 8 | 688 | 588 | 0 | 100 | 25 min 55 s |", self.out)
 
-    def test_links_every_doorway_into_the_report(self):
-        for href in ("index.html", "failures.html", "skipped.html", "suites.html", "scenarios.html", "slowest.html"):
+    def test_links_every_doorway_into_the_report_with_the_kinds_between(self):
+        for href in ("index.html", "unit.html", "bdd.html", "failures.html", "skipped.html", "slowest.html"):
             self.assertIn(f"](test-report/{href})", self.out)
+        self.assertLess(self.out.index("test-report/unit.html"), self.out.index("test-report/bdd.html"))
+        self.assertLess(self.out.index("test-report/bdd.html"), self.out.index("test-report/failures.html"))
+        self.assertIn("[Unit](test-report/unit.html): its 5 lanes, and which lanes ran each suite.", self.out)
 
     def test_the_prose_around_the_marker_is_kept(self):
         self.assertTrue(self.out.startswith("# Tests\n\nIntro.\n\n"))

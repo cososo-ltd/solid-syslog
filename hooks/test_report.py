@@ -27,12 +27,15 @@ ABSENT = (
     "the run that built them."
 )
 
-DOORWAYS = [
-    ("index.html", "Overview", "headline counts, failures first, then every lane by kind and every pack"),
+# The doorways into the report. The kinds between the overview and the rest
+# come from the summary, since they are whatever the run had.
+FIRST = [("index.html", "Overview", "headline counts, failures first, then each kind of testing with its lanes, and each pack")]
+KIND_BLURB = {
+    "bdd": "every feature as its file describes it, and every scenario against every target",
+}
+LAST = [
     ("failures.html", "Failures", "each with its message and a link to the line"),
     ("skipped.html", "Skipped", "each with the tags that decided it"),
-    ("suites.html", "Suites across lanes", "where each unit suite ran, and how many of its tests"),
-    ("scenarios.html", "Scenarios across lanes", "every BDD scenario against every target"),
     ("slowest.html", "Slowest", "test time by lane, and the slowest suites and tests"),
 ]
 
@@ -66,7 +69,11 @@ def render(summary):
         f"| {k['name']} | {k['lanes']} | {k['total']} | {k['passed']} | {k['failed']} | {k['skipped']} | {fmt_time(k['time'])} |"
         for k in summary["kinds"]
     )
-    doors = [f"- [{label}]({REPORT}/{href}): {text}." for href, label, text in DOORWAYS]
+    kinds = [
+        (k["href"], k["name"], KIND_BLURB.get(k["kind"], f"its {k['lanes']} lanes, and which lanes ran each suite"))
+        for k in summary["kinds"]
+    ]
+    doors = [f"- [{label}]({REPORT}/{href}): {text}." for href, label, text in FIRST + kinds + LAST]
     return "\n\n".join([summary["provenance"], sentence, "\n".join(rows), "\n".join(doors)])
 
 
