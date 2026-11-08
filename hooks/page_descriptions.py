@@ -269,6 +269,12 @@ DESCRIPTIONS = {
         "The post-it diagram kit behind the SolidSyslog architecture pictures: "
         "what each colour and arrow means, and how the diagrams are generated."
     ),
+    # Testing
+    "testing/coverage.md": (
+        "Line and branch coverage of SolidSyslog as measured by CI for the build "
+        "that produced this site, per pack, with the full genhtml report to drill "
+        "into file by file."
+    ),
     # Maintaining
     "builds.md": (
         "The contributor build doc: the CMake preset catalogue for developing "

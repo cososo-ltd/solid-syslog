@@ -123,7 +123,7 @@ When a new image tag is available:
 |---|---|
 | `cpputest` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
 | `cpputest-clang` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
-| `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
+| `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `.github/workflows/docs-bundle.yml`, `docs/containers.md` |
 | `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
 | `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
 | `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `.github/workflows/docs-bundle.yml`, `docs/containers.md` |

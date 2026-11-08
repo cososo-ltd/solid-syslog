@@ -112,6 +112,14 @@ hooks:
   # GitHub, which renders front matter as a table; the hook fails the build if
   # the map and the nav disagree.
   - hooks/page_descriptions.py
+  # Fills the Coverage page's table from the tracefile the coverage lane gated
+  # on, each pack linking into the genhtml report docs-build stages beside it.
+  # A build without the report, every local one, gets a sentence and no links.
+  - hooks/coverage_report.py
+  # After the build, dresses the genhtml pages under testing/coverage-report in
+  # the Coverage page's own rendered header, tabs and footer, so the report
+  # reads as part of the site; the credit names LCOV in place of MkDocs.
+  - hooks/report_chrome.py
 
 # not_found — enforced (fatal under --strict): the hook above resolves every
 #             in-repo source link, so a genuinely broken link fails the build.
@@ -273,6 +281,11 @@ nav:
           - AtomicCounter: api/structSolidSyslogAtomicCounter.md
           - StructuredData: api/structSolidSyslogStructuredData.md
           - SecurityPolicy: api/structSolidSyslogSecurityPolicy.md
+  # What CI measured on main, published so it can be inspected rather than
+  # summed: coverage first, the test report to follow. Both are generated from
+  # the run that built the site, under docs/testing/, and git-ignored.
+  - Testing:
+      - Coverage: testing/coverage.md
   - Maintaining:
       - Building & testing: builds.md
       - Local checks: local-checks.md

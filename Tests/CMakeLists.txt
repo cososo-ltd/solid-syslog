@@ -445,9 +445,24 @@ if(COVERAGE)
                 "${CMAKE_SOURCE_DIR}/Platform/*/Source/*"
                 --output-file ${CMAKE_BINARY_DIR}/coverage.filtered.info
                 ${lcov_branch_rc}
+            # --prefix pins the report's layout to the source tree, so a pack's
+            # pages are at Platform/<Pack>/Source/ and Core's at Core/Source/,
+            # which is where hooks/coverage_report.py links. Without it genhtml
+            # strips whatever prefix the tracefile happens to share. The prolog,
+            # epilog and stylesheet dress the report as part of the
+            # documentation site; Tests/Coverage/prolog.html says how.
             COMMAND ${GENHTML_EXECUTABLE} ${CMAKE_BINARY_DIR}/coverage.filtered.info
                 --output-directory ${CMAKE_BINARY_DIR}/coverage_report
                 --branch-coverage
+                --prefix ${CMAKE_SOURCE_DIR}
+                --title SolidSyslog
+                --header-title "SolidSyslog coverage report"
+                --html-prolog ${CMAKE_SOURCE_DIR}/Tests/Coverage/prolog.html
+                --html-epilog ${CMAKE_SOURCE_DIR}/Tests/Coverage/epilog.html
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/Tests/Coverage/solidsyslog.css
+                ${CMAKE_SOURCE_DIR}/docs/assets/images/solidsyslog-cube.svg
+                ${CMAKE_BINARY_DIR}/coverage_report/
             DEPENDS junit
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Generating coverage report in build/coverage/coverage_report/"

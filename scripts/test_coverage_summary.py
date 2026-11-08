@@ -80,6 +80,12 @@ class Gate(unittest.TestCase):
 
 
 class Table(unittest.TestCase):
+    def test_markdown_renders_each_name_cell_through_the_label(self):
+        packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
+        rows = coverage_summary.markdown(packs, label=lambda name: f"<{name}>").splitlines()
+        self.assertTrue(rows[2].startswith("| <Core> |"))
+        self.assertTrue(rows[-1].startswith("| <**Total**> |"))
+
     def test_markdown_has_a_row_per_pack_and_a_total(self):
         packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
         rows = coverage_summary.markdown(packs).splitlines()

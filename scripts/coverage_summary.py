@@ -18,9 +18,10 @@ Exit code:
 import argparse
 import re
 import sys
-from typing import Dict, List, NamedTuple, TextIO
+from typing import Callable, Dict, List, NamedTuple, TextIO
 
 PACK_PATTERN = re.compile(r"Platform/([A-Za-z0-9]+)/")
+TOTAL = "**Total**"
 COUNTER_FIELDS = {"LF": "lines_found", "LH": "lines_hit", "BRF": "branches_found", "BRH": "branches_hit"}
 
 
@@ -92,11 +93,16 @@ def row(name: str, counts: Counts) -> str:
     )
 
 
-def markdown(packs: Dict[str, Counts]) -> str:
+def markdown(packs: Dict[str, Counts], label: Callable[[str], str] = str) -> str:
+    """The table, Core first and the packs alphabetical, then the total row.
+
+    `label` renders each row's name cell from the pack name, or from TOTAL for
+    the last row; the docs build passes one that wraps the name in a link.
+    """
     lines = ["| Pack | Lines | | Branches | |", "|---|---:|---:|---:|---:|"]
     ordered = ["Core"] + sorted(name for name in packs if name != "Core")
-    lines.extend(row(name, packs[name]) for name in ordered if name in packs)
-    lines.append(row("**Total**", total(packs)))
+    lines.extend(row(label(name), packs[name]) for name in ordered if name in packs)
+    lines.append(row(label(TOTAL), total(packs)))
     return "\n".join(lines)
 
 

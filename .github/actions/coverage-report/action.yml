@@ -1,0 +1,56 @@
+# The coverage measurement, shared by ci.yml's unit-linux-gcc-coverage lane and
+# the documentation bundle workflow, which measures the released commit for the
+# bundle it attaches. One definition, so the figure a release ships is produced
+# the way the gate on main produced it.
+#
+# Runs inside the cpputest-freertos container, which the calling job declares,
+# after it has checked the tree out. Leaves the genhtml report in
+# build/coverage/coverage_report/ with the tracefile beside it, so one artifact
+# carries both the pages and the figures the gate judged.
+name: Coverage report
+description: Build the coverage preset, run every test executable, apply the gate and leave the report with its tracefile
+
+inputs:
+  threshold:
+    description: Minimum percent for lines and for branches, each over all packs
+    default: "90"
+
+runs:
+  using: composite
+  steps:
+    - name: Configure
+      shell: bash
+      run: cmake --preset coverage
+
+    - name: Build and generate coverage report
+      shell: bash
+      run: cmake --build --preset coverage --target coverage
+
+    # One script both writes the per-pack table to the step summary and
+    # applies the gate, so the figure shown is the figure judged. A
+    # tracefile with no branch data fails rather than skipping the check.
+    # The script's FAIL lines go to stderr, merged here so the summary shows
+    # the verdict next to the table. `shell: bash` already runs with
+    # pipefail, so the script's exit status survives the tee.
+    - name: Summarise coverage and enforce the gate
+      shell: bash
+      env:
+        THRESHOLD: ${{ inputs.threshold }}
+      run: |
+        {
+          echo '## Coverage'
+          python3 scripts/coverage_summary.py build/coverage/coverage.filtered.info --threshold "$THRESHOLD"
+        } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+    # Kept even when the gate fails, which is exactly when the report is wanted.
+    # A build that failed before the tracefile existed has nothing to copy, and
+    # says so rather than adding a second red step over the one that matters.
+    - name: Put the tracefile beside the report
+      if: success() || failure()
+      shell: bash
+      run: |
+        if [ -f build/coverage/coverage.filtered.info ]; then
+          cp build/coverage/coverage.filtered.info build/coverage/coverage_report/
+        else
+          echo "No tracefile: the build did not get as far as capturing coverage"
+        fi

@@ -83,7 +83,9 @@ cmake --build --preset coverage --target coverage
 
 Open `build/coverage/coverage_report/index.html` to view results. The report
 covers every test executable registered with `junit`, not only the main one,
-so a pack tested from its own executable counts. `scripts/coverage_summary.py` prints the
+so a pack tested from its own executable counts. CI publishes the same report
+as measured on `main` at [Coverage](testing/coverage.md), so what the gate saw
+can be read without building it. `scripts/coverage_summary.py` prints the
 same tracefile as a table per pack and applies the gate:
 
 ```bash

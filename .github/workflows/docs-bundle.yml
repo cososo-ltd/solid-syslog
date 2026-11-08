@@ -9,6 +9,8 @@
 # ci.yml), so the packaging path is exercised continuously. This workflow builds
 # it again from the tag rather than reusing that artifact: a release asset should
 # come from the released commit, not from whichever main build happened last.
+# The coverage report the bundle carries is measured here from the tag for the
+# same reason.
 name: Documentation bundle
 
 on:
@@ -20,8 +22,41 @@ permissions:
   contents: read
 
 jobs:
+  coverage:
+    # The bundle carries the coverage report under its Testing pages, measured
+    # from the same commit as the pages around it rather than taken from
+    # whichever main build happened last. The same measurement as ci.yml's
+    # unit-linux-gcc-coverage lane, in the same image, through the shared action.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:d95be8e58e28ac16a308c6290b87567619732ef13f3f245ea46d2accf2c05b44 # sha-75d6e03
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Measure coverage and enforce the gate
+        uses: ./.github/actions/coverage-report
+
+      - name: Upload coverage report artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report-linux-gcc
+          path: build/coverage/coverage_report/
+          if-no-files-found: error
+          retention-days: 1
+
   bundle:
     # Build and validate - shared by both triggers. Read-only; no secrets.
+    needs: coverage
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,6 +67,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # Where hooks/coverage_report.py and the Coverage page expect it; the
+      # directory is git-ignored and copied into the bundle untouched.
+      - name: Stage the coverage report for the Testing pages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-report-linux-gcc
+          path: docs/testing/coverage-report/
 
       - name: Read version from release-please manifest
         id: version
