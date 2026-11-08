@@ -109,7 +109,7 @@ def markdown(packs: Dict[str, Counts], label: Callable[[str], str] = str) -> str
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("tracefile")
-    parser.add_argument("--threshold", type=float, default=90.0, help="minimum percent for lines and for branches")
+    parser.add_argument("--threshold", type=float, default=99.0, help="minimum percent for lines and for branches")
     args = parser.parse_args(argv)
 
     with open(args.tracefile, encoding="utf-8") as handle:

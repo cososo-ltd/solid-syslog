@@ -92,7 +92,7 @@ same tracefile as a table per pack and applies the gate:
 scripts/coverage_summary.py build/coverage/coverage.filtered.info --threshold 90
 ```
 
-The CI gate is 90% on lines and 90% on branches, over all packs together. A
+The CI gate is 99% on lines and 99% on branches, over all packs together. A
 tracefile with no branch data fails the gate rather than skipping it. The
 target is 100%.
 
