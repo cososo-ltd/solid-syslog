@@ -16,6 +16,8 @@ under its Testing tab and the offline bundle carries:
     scenarios.html  Scenarios across lanes: the BDD matrix, grouped by feature.
     packs/<pack>    What ran for one pack, lane by lane.
     slowest.html    The slowest tests and suites across the run.
+    summary.json    The headline figures, for the Tests page that introduces
+                    the report (hooks/test_report.py).
 
 Every page carries the marker comments ``hooks/report_chrome.py`` fills with
 the site's header and footer; opened from a build tree it keeps a plain header.
@@ -28,6 +30,7 @@ Usage:
 
 import argparse
 import html
+import json
 import os
 import re
 import sys
@@ -452,7 +455,25 @@ class Report:
         for pack, lanes in self.packs().items():
             written += self._write(out_dir, f"packs/{slug(pack)}.html", self.pack_page(pack, lanes))
         written += self._write(out_dir, "report.css", CSS)
+        written += self._write(out_dir, "summary.json", json.dumps(self.summary(), indent=1))
         return written
+
+    def summary(self) -> dict:
+        """The figures the Tests page shows above its links into the report,
+        read by hooks/test_report.py at the documentation build."""
+
+        def counts(c: model.Counts) -> dict:
+            return {"total": c.total, "passed": c.passed, "failed": c.failed, "skipped": c.skipped, "time": round(c.time, 3)}
+
+        return {
+            "provenance": self.provenance,
+            "totals": counts(model.count(self.run.tests)),
+            "kinds": [
+                {"kind": kind, "name": kind_name(kind), "lanes": len(lanes_of_kind(self.run, kind)), **counts(model.count(t for lane in lanes_of_kind(self.run, kind) for t in lane.tests))}
+                for kind in kinds_in(self.run)
+            ],
+            "lanes": [{"name": lane.name, "kind": lane.kind, **counts(lane.counts)} for lane in self.run.lanes.values()],
+        }
 
     @staticmethod
     def _write(out_dir: str, relative: str, text: str) -> int:

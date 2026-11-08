@@ -73,9 +73,9 @@ class Rendered(unittest.TestCase):
 
     def test_every_page_kind_is_written(self):
         for name in ["index.html", "failures.html", "skipped.html", "suites.html", "scenarios.html", "slowest.html", "report.css",
-                     "lanes/unit-linux-gcc.html", "lanes/bdd-linux-openssl-syslogng.html", "packs/core.html", "packs/posix.html", "packs/bdd-scenarios.html"]:
+                     "summary.json", "lanes/unit-linux-gcc.html", "lanes/bdd-linux-openssl-syslogng.html", "packs/core.html", "packs/posix.html", "packs/bdd-scenarios.html"]:
             self.assertTrue(os.path.exists(os.path.join(self.out.name, name)), name)
-        self.assertEqual(self.written, 13)
+        self.assertEqual(self.written, 14)
 
     def test_the_overview_leads_with_the_failure_count_and_links_to_it(self):
         out = self.read("index.html")
