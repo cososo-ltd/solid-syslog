@@ -3373,6 +3373,10 @@ TEST_GROUP_BASE(SolidSyslogBlockStorePool, BlockDeviceTestBase)
 {
     struct SolidSyslogStore* pooled[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
     struct SolidSyslogStore* overflow                                   = nullptr;
+    /* Slots taken in the sibling pools the store draws on. Released in
+     * teardown, so a failed assertion cannot leave them taken. */
+    struct SolidSyslogRecordStore*   siblingRecordStores[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE]   = {};
+    struct SolidSyslogBlockSequence* siblingBlockSequences[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
 
     void setup() override
     {
@@ -3388,7 +3392,39 @@ TEST_GROUP_BASE(SolidSyslogBlockStorePool, BlockDeviceTestBase)
         }
         SolidSyslogBlockStore_Destroy(overflow);
         overflow = nullptr;
+        ReleaseSiblingSlots();
         teardownBlockDeviceFakes();
+    }
+
+    void TakeEveryRecordStoreSlot()
+    {
+        for (auto*& slot : siblingRecordStores)
+        {
+            slot = SolidSyslogRecordStore_Create(SolidSyslogNullSecurityPolicy_Get());
+        }
+    }
+
+    void TakeEveryBlockSequenceSlot()
+    {
+        struct SolidSyslogBlockSequenceConfig blockConfig = {};
+        for (auto*& slot : siblingBlockSequences)
+        {
+            slot = SolidSyslogBlockSequence_Create(&blockConfig);
+        }
+    }
+
+    void ReleaseSiblingSlots()
+    {
+        for (auto*& slot : siblingRecordStores)
+        {
+            SolidSyslogRecordStore_Destroy(slot);
+            slot = nullptr;
+        }
+        for (auto*& slot : siblingBlockSequences)
+        {
+            SolidSyslogBlockSequence_Destroy(slot);
+            slot = nullptr;
+        }
     }
 
     struct SolidSyslogStore* MakeStore()
@@ -3445,52 +3481,27 @@ TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)
  * the only way to meet one of them full is to have taken its slots directly. */
 TEST(SolidSyslogBlockStorePool, ARecordStorePoolWithNoSlotLeftResolvesToNullStore)
 {
-    struct SolidSyslogRecordStore* recordStores[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
-    for (auto*& slot : recordStores)
-    {
-        slot = SolidSyslogRecordStore_Create(SolidSyslogNullSecurityPolicy_Get());
-    }
+    TakeEveryRecordStoreSlot();
 
     overflow = MakeStore();
 
     POINTERS_EQUAL(SolidSyslogNullStore_Get(), overflow);
-    for (auto* slot : recordStores)
-    {
-        SolidSyslogRecordStore_Destroy(slot);
-    }
 }
 
 TEST(SolidSyslogBlockStorePool, ABlockSequencePoolWithNoSlotLeftResolvesToNullStore)
 {
-    struct SolidSyslogBlockSequenceConfig blockConfig = {};
-    struct SolidSyslogBlockSequence* blockSequences[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
-    for (auto*& slot : blockSequences)
-    {
-        slot = SolidSyslogBlockSequence_Create(&blockConfig);
-    }
+    TakeEveryBlockSequenceSlot();
 
     overflow = MakeStore();
 
     POINTERS_EQUAL(SolidSyslogNullStore_Get(), overflow);
-    for (auto* slot : blockSequences)
-    {
-        SolidSyslogBlockSequence_Destroy(slot);
-    }
 }
 
 TEST(SolidSyslogBlockStorePool, ACreateRefusedForWantOfASiblingSlotLeavesItsOwnSlotFree)
 {
-    struct SolidSyslogBlockSequenceConfig blockConfig = {};
-    struct SolidSyslogBlockSequence* blockSequences[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
-    for (auto*& slot : blockSequences)
-    {
-        slot = SolidSyslogBlockSequence_Create(&blockConfig);
-    }
+    TakeEveryBlockSequenceSlot();
     overflow = MakeStore();
-    for (auto* slot : blockSequences)
-    {
-        SolidSyslogBlockSequence_Destroy(slot);
-    }
+    ReleaseSiblingSlots();
 
     FillPool();
 
