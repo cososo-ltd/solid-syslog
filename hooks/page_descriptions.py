@@ -271,8 +271,9 @@ DESCRIPTIONS = {
     ),
     # Testing
     "testing/coverage.md": (
-        "Line and branch coverage of SolidSyslog as measured by CI on main, per "
-        "pack, with the full genhtml report to drill into file by file."
+        "Line and branch coverage of SolidSyslog as measured by CI for the build "
+        "that produced this site, per pack, with the full genhtml report to drill "
+        "into file by file."
     ),
     # Maintaining
     "builds.md": (

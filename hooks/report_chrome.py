@@ -148,7 +148,7 @@ class Chrome:
         self.url = url
         self.styles = "\n".join(STYLESHEET.findall(html))
         self.scripts = "\n".join(tag for tag in SITE_SCRIPT.findall(html) if MATERIAL_BUNDLE not in tag)
-        self.body = BODY_TAG.search(html).group(0)
+        self.body = _first(BODY_TAG, html, "body tag")
         self.header = strip_controls(_first(HEADER_TAG, html, "header"))
         self.tabs = _first(TABS_TAG, html, "tabs")
         self.footer = credit(_first(FOOTER_TAG, html, "footer"), generator)

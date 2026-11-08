@@ -43,7 +43,14 @@ runs:
         } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
     # Kept even when the gate fails, which is exactly when the report is wanted.
+    # A build that failed before the tracefile existed has nothing to copy, and
+    # says so rather than adding a second red step over the one that matters.
     - name: Put the tracefile beside the report
       if: success() || failure()
       shell: bash
-      run: cp build/coverage/coverage.filtered.info build/coverage/coverage_report/
+      run: |
+        if [ -f build/coverage/coverage.filtered.info ]; then
+          cp build/coverage/coverage.filtered.info build/coverage/coverage_report/
+        else
+          echo "No tracefile: the build did not get as far as capturing coverage"
+        fi

@@ -9,10 +9,12 @@ each linking into that pack's part of the report. The figures are computed by
 ``scripts/coverage_summary.py`` from the same tracefile the lane gated on, so
 the number a reader sees is the number that passed.
 
-The provenance line reads the same variables as ``hooks/build_version.py``, so
-it names the branch and commit, the pull request, or the release that the
-footer names: the report in a release bundle was measured from the tag, and
-saying "main" there would be false.
+The provenance line reads ``SOLIDSYSLOG_DOCS_RELEASE``, ``SOLIDSYSLOG_DOCS_ORIGIN``
+and ``SOLIDSYSLOG_DOCS_COMMIT``, three of the variables ``hooks/build_version.py``
+reads for the footer, so it names the branch and commit, the pull request, or
+the release that the footer names: the report in a release bundle was measured
+from the tag, and saying "main" there would be false. Unlike the footer it has
+no use for the last release number, so it does not wait for it.
 
 A build with no report in hand - every local one - gets a sentence saying so and
 no links, so a local ``mkdocs build --strict`` passes without the artifact. The
