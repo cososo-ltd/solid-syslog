@@ -437,6 +437,23 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsAClientCredentialWith
     );
 }
 
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsAClientCertificateWithNoExtent)
+{
+    GivenAClientCredential();
+    config.ClientCertPem.Length = 0U;
+    ReCreateWithUpdatedConfig();
+
+    CHECK_TRUE(Install());
+
+    LONGS_EQUAL(0, WolfSslTlsFake_UseCertificateChainBufferCallCount());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_PARSED
+    );
+}
+
 TEST(SolidSyslogWolfSslPemBufferCredentials, ReleaseIsSafeWithOrWithoutAnInstall)
 {
     credentials->Release(credentials);

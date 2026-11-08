@@ -116,6 +116,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     size_t WolfSslFake_LastHashDataLen(void);
     void* WolfSslFake_LastHashHeap(void);
     void WolfSslFake_SetHashUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm);
+    /* Makes wc_Hash_ex answer MEMORY_E for a digest the build does have, as
+       the library does when it cannot allocate. */
+    void WolfSslFake_SetHashFails(bool fails);
 
     /* wc_InitDecodedCert / wc_ParseCert / wc_FreeDecodedCert - the stream's
        own check of a certificate the library found no signer for. ParseCert

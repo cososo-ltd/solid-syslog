@@ -517,6 +517,21 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientKeyItCannotPar
     );
 }
 
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientCertificateItCannotParse)
+{
+    GiveAClientCredential();
+    clientCertPem[40] = 'X';
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    credentials->Install(credentials, &conf, &installed);
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_PARSED
+    );
+}
+
 /* No fault in our own credential stops delivery - the connection continues
  * server-authenticated and the collector decides whether to accept it. */
 TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallStillSucceedsWhenTheClientCredentialIsFaulty)

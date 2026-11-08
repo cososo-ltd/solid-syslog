@@ -74,6 +74,7 @@ static size_t lastHashDataLen;
 static void* lastHashHeap;
 static bool sha256Unavailable;
 static bool sha1Unavailable;
+static bool hashFails;
 
 static int parseCertCallCount;
 static const void* lastDecodedCertSource;
@@ -125,6 +126,7 @@ void WolfSslFake_Reset(void)
     lastHashHeap = NULL;
     sha256Unavailable = false;
     sha1Unavailable = false;
+    hashFails = false;
     parseCertCallCount = 0;
     lastDecodedCertSource = NULL;
     lastDecodedCertSourceLen = 0U;
@@ -530,6 +532,11 @@ void WolfSslFake_SetHashUnavailable(enum SolidSyslogTlsHashAlgorithm algorithm)
     }
 }
 
+void WolfSslFake_SetHashFails(bool fails)
+{
+    hashFails = fails;
+}
+
 void* WolfSslFake_LastHashHeap(void)
 {
     return lastHashHeap;
@@ -566,8 +573,8 @@ int wc_Hash_ex(
     lastHashDataLen = data_len;
     lastHashAlgorithm = (hash_type == WC_HASH_TYPE_SHA) ? SOLIDSYSLOG_TLS_HASH_SHA1 : SOLIDSYSLOG_TLS_HASH_SHA256;
     int size = wc_HashGetDigestSize(hash_type);
-    int result = HASH_TYPE_E;
-    if ((size > 0) && (hash_len >= (word32) size))
+    int result = hashFails ? MEMORY_E : HASH_TYPE_E;
+    if (!hashFails && (size > 0) && (hash_len >= (word32) size))
     {
         int fill = (hash_type == WC_HASH_TYPE_SHA) ? WOLFSSLFAKE_SHA1_DIGEST_BYTE : WOLFSSLFAKE_SHA256_DIGEST_BYTE;
         memset(hash, fill, (size_t) size);
