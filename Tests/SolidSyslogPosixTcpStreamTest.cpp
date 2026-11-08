@@ -320,6 +320,17 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmedia
     );
 }
 
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenTheStackGivesUpOnThePeer)
+{
+    openAfterConnectFails(ETIMEDOUT);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ETIMEDOUT
+    );
+}
+
 TEST(SolidSyslogPosixTcpStream, OpenReportsARepeatedRefusalOnce)
 {
     openAfterConnectFails(ECONNREFUSED);
@@ -420,6 +431,18 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWithTheErrnoWhenTheDefe
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         ENOTSOCK
     );
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenSelectAnswersReadyWithoutTheSocketWritable)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(false);
+    SocketFake_SetSelectReturn(1);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
@@ -750,6 +773,19 @@ TEST(SolidSyslogPosixTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
     LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
 }
 
+TEST(SolidSyslogPosixTcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
+{
+    SolidSyslogPosixTcpStream_Destroy(stream);
+    struct SolidSyslogPosixTcpStreamConfig config = {};
+    stream = SolidSyslogPosixTcpStream_Create(&config);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    LONGS_EQUAL(0, SocketFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
+}
+
 TEST(SolidSyslogPosixTcpStream, OpenInvokesConfiguredConnectTimeoutGetter)
 {
     OpenStreamWithFakeGetter();
@@ -887,16 +923,6 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
     LONGS_EQUAL(-1, Read16ByteBuffer());
     CHECK_SOCKET_CLOSED_ONCE();
 }
-
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
 
 // clang-format off
 TEST_GROUP(SolidSyslogPosixTcpStreamPool)

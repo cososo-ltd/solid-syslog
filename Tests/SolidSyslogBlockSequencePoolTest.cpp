@@ -77,3 +77,14 @@ TEST(BlockSequencePool, DestroyOfNullIsSilentNoop)
      * no-op. */
     SolidSyslogBlockSequence_Destroy(nullptr);
 }
+
+TEST(BlockSequencePool, DestroyOfAHandleThePoolDoesNotOwnFreesNoSlot)
+{
+    struct SolidSyslogBlockSequence stranger = {};
+    FillPool();
+
+    SolidSyslogBlockSequence_Destroy(&stranger);
+
+    overflow = SolidSyslogBlockSequence_Create(&config);
+    POINTERS_EQUAL(nullptr, overflow);
+}

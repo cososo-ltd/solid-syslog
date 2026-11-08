@@ -190,6 +190,21 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, DestroyingAHandleThePoolDoesNotOwnI
     );
 }
 
+TEST(SolidSyslogWolfSslPemBufferCredentials, DestroyingAHandleTwiceReportsTheSecond)
+{
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+    credentials = SolidSyslogWolfSslPemBufferCredentials_Create(&config);
+}
+
 TEST(SolidSyslogWolfSslPemBufferCredentials, InstallLoadsTheTrustAnchorsOntoTheContextAsPem)
 {
     Install();
@@ -409,6 +424,23 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsAClientCredentialWith
 {
     GivenAClientCredential();
     config.ClientKeyPem.Length = 0U;
+    ReCreateWithUpdatedConfig();
+
+    CHECK_TRUE(Install());
+
+    LONGS_EQUAL(0, WolfSslTlsFake_UseCertificateChainBufferCallCount());
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_PARSED
+    );
+}
+
+TEST(SolidSyslogWolfSslPemBufferCredentials, InstallReportsAClientCertificateWithNoExtent)
+{
+    GivenAClientCredential();
+    config.ClientCertPem.Length = 0U;
     ReCreateWithUpdatedConfig();
 
     CHECK_TRUE(Install());

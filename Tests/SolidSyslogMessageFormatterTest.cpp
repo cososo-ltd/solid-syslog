@@ -368,3 +368,19 @@ TEST(SolidSyslogMessageFormatter, BomOnlyMessageProducesEmptyMsgField)
     format();
     STRCMP_EQUAL("<134>1 - - - - - -", OUTPUT());
 }
+
+/* Only the BOM itself is stripped: a message whose first character merely
+ * shares its leading bytes keeps that character. */
+TEST(SolidSyslogMessageFormatter, MsgBeginningWithTheReplacementCharacterKeepsIt)
+{
+    message.Msg = "\xEF\xBF\xBDx";
+    format();
+    STRCMP_EQUAL("<134>1 - - - - - - \xEF\xBB\xBF\xEF\xBF\xBDx", OUTPUT());
+}
+
+TEST(SolidSyslogMessageFormatter, MsgBeginningWithTheCodepointBeforeTheBomKeepsIt)
+{
+    message.Msg = "\xEF\xBB\xBEx";
+    format();
+    STRCMP_EQUAL("<134>1 - - - - - - \xEF\xBB\xBF\xEF\xBB\xBEx", OUTPUT());
+}

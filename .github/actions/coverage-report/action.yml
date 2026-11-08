@@ -13,7 +13,7 @@ description: Build the coverage preset, run every test executable, apply the gat
 inputs:
   threshold:
     description: Minimum percent for lines and for branches, each over all packs
-    default: "90"
+    default: "99"
 
 runs:
   using: composite

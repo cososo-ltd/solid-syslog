@@ -80,3 +80,14 @@ TEST(RecordStorePool, DestroyOfNullIsSilentNoop)
      * no-op. */
     SolidSyslogRecordStore_Destroy(nullptr);
 }
+
+TEST(RecordStorePool, DestroyOfAHandleThePoolDoesNotOwnFreesNoSlot)
+{
+    struct SolidSyslogRecordStore stranger = {};
+    FillPool();
+
+    SolidSyslogRecordStore_Destroy(&stranger);
+
+    overflow = SolidSyslogRecordStore_Create(policy);
+    POINTERS_EQUAL(nullptr, overflow);
+}

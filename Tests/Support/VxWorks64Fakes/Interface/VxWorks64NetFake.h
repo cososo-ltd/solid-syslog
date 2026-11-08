@@ -78,6 +78,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  zero restores success. */
     void VxWorks64NetFake_FailConnectWithErrno(int errnoValue);
 
+    /** Make connectWithTimeout answer ERROR with errno left at zero, as a
+     *  routine that fails before setting one does. */
+    void VxWorks64NetFake_FailConnectLeavingNoErrno(void);
+
     unsigned VxWorks64NetFake_ConnectWithTimeoutCallCount(void);
 
     int VxWorks64NetFake_LastConnectFd(void);

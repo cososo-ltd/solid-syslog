@@ -30,7 +30,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `unit-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
 | `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
 | `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
-| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 90% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the HTML report with the site at [Coverage](testing/coverage.md) |
+| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 99% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the HTML report with the site at [Coverage](testing/coverage.md) |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |

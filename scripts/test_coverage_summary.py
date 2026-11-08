@@ -121,10 +121,11 @@ class Main(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertTrue(out.endswith("|\n\n"))
 
-    def test_default_threshold_is_ninety(self):
+    def test_default_threshold_is_ninety_nine(self):
         status, _, err = self.run_main(TRACEFILE)
         self.assertEqual(status, 1)
-        self.assertIn("branch coverage 75.0% is below 90%", err)
+        self.assertIn("line coverage 96.0% is below 99%", err)
+        self.assertIn("branch coverage 75.0% is below 99%", err)
 
 
 if __name__ == "__main__":

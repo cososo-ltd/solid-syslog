@@ -35,17 +35,6 @@ using namespace CososoTesting;
 
 static const uint16_t TEST_PORT = 514;
 
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 // Asserts the most recent ErrorHandlerFake call matched (severity, source, code).
 #define CHECK_REPORTED(severity, source, expectedCategory, code) \
     CHECK_ERROR_REPORTED_ONCE((severity), &(source), (expectedCategory), (code))
@@ -1012,6 +1001,21 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDrainsRxQueueBeforeTcpClose)
 
     CALLED_FAKE(LwipPbufFake_PbufFree, ONCE);
     CALLED_FAKE(LwipTcpFake_TcpClose, ONCE);
+}
+
+/* tcp_err has already taken the pcb; the pbufs accepted before it are still
+   ours to free, and there is no pcb left to close. */
+TEST(SolidSyslogLwipRawTcpStreamConnected, CloseAfterTcpErrFreesTheQueuedPbufsAndClosesNoPcb)
+{
+    struct pbuf p = {};
+    const char d[] = "q";
+    pushIncomingPbuf(&p, d, 1);
+    pushTcpErr(ERR_RST);
+
+    SolidSyslogStream_Close(stream);
+
+    CALLED_FAKE(LwipPbufFake_PbufFree, ONCE);
+    CALLED_FAKE(LwipTcpFake_TcpClose, NEVER);
 }
 
 /* ------------------------------------------------------------------

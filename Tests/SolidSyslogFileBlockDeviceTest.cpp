@@ -190,6 +190,28 @@ TEST(SolidSyslogFileBlockDevice, DisposeLeavesOtherBlocksUntouched)
     CHECK_BLOCK_SIZE(1, 4);
 }
 
+TEST(SolidSyslogFileBlockDevice, DisposeOfAnotherBlockLeavesTheOpenHandleAlone)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Acquire(device, 1);
+    SolidSyslogBlockDevice_Read(device, 0, 0, nullptr, 0);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 1));
+
+    CHECK_TRUE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogFileBlockDevice, DisposeWithNoHandleOpenDeletesTheBlock)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Acquire(device, 1);
+    SolidSyslogBlockDevice_Dispose(device, 1);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 0));
+
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 0));
+}
+
 TEST(SolidSyslogFileBlockDevice, BlockFilenameZeroPadsSequenceToTwoDigits)
 {
     SolidSyslogBlockDevice_Acquire(device, 7);
@@ -260,6 +282,25 @@ TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheBlockWillNotOpen)
     size_t size = 0U;
     FileFake_FailNextOpen(file);
     CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
+}
+
+TEST(SolidSyslogFileBlockDevice, ReadFailsWhenTheBlockWillNotOpen)
+{
+    char buf[4] = {};
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buf, 3));
+}
+
+TEST(SolidSyslogFileBlockDevice, AppendFailsWhenTheBlockWillNotOpen)
+{
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, "abc", 3));
+}
+
+TEST(SolidSyslogFileBlockDevice, WriteAtFailsWhenTheBlockWillNotOpen)
+{
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_WriteAt(device, 0, 0, "abc", 3));
 }
 
 TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheFileCannotTellItsSize)
@@ -403,12 +444,22 @@ TEST(SolidSyslogFileBlockDevicePool, FillingPoolThenOverflowReturnsDistinctFallb
 
     overflow = MakeDevice();
 
-    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
-        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogFileBlockDevicePool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeDevice();
+    SolidSyslogFileBlockDevice_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogFileBlockDevice_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogFileBlockDeviceErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogFileBlockDevice, TheErrorSourceNamesItsDetailsThroughFileBlockDeviceErrors)

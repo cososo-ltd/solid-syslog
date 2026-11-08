@@ -268,6 +268,21 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, DestroyingAHandleThePoolDoesNotOwnI
     );
 }
 
+TEST(SolidSyslogMbedTlsPemBufferCredentials, DestroyingAHandleTwiceReportsTheSecond)
+{
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    SolidSyslogMbedTlsPemBufferCredentials_Destroy(credentials);
+
+    SolidSyslogMbedTlsPemBufferCredentials_Destroy(credentials);
+    credentials = nullptr;
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallWiresTheParsedChainAsTheConfigurationsTrustAnchors)
 {
     credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
@@ -491,6 +506,21 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientKeyItCannotPar
 {
     GiveAClientCredential();
     clientKeyPem[40] = 'X';
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+
+    credentials->Install(credentials, &conf, &installed);
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_CLIENT_CREDENTIAL_NOT_PARSED
+    );
+}
+
+TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallReportsAClientCertificateItCannotParse)
+{
+    GiveAClientCredential();
+    clientCertPem[40] = 'X';
     credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
 
     credentials->Install(credentials, &conf, &installed);

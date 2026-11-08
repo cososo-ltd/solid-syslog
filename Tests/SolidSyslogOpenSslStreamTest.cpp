@@ -2446,6 +2446,22 @@ TEST(SolidSyslogOpenSslStream, ARefusalAfterAPinWaivedChainTrustIsNotReportedAsA
     );
 }
 
+/* A pin waives only the missing anchor. An objection to the certificate itself
+   stands, and is reported as the peer's. */
+TEST(SolidSyslogOpenSslStream, AnObjectionNoPinCanWaiveIsReportedAsAnUntrustedCertificate)
+{
+    ArrangeCertificateVerificationFailure(X509_V_ERR_CERT_REVOKED);
+    OpenSslCredentialsFake_SetTrustAnchorsInstalled(false);
+    OpenSslCredentialsFake_SetFingerprints(TEST_SHA256_PINS, 1);
+
+    CHECK_FALSE(SolidSyslogStream_Open(stream, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_HANDSHAKE_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED
+    );
+}
+
 TEST(SolidSyslogOpenSslStream, TheErrorSourceNamesItsDetailsThroughTlsStreamErrors)
 {
     CHECK(SolidSyslogTlsStreamErrors_Name == SolidSyslogOpenSslStreamErrorSource.DetailName);

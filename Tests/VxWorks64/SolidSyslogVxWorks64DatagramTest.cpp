@@ -30,17 +30,6 @@ using namespace CososoTesting;
 #include "VxWorks64IoFake.h"
 #include "VxWorks64NetFake.h"
 
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 static const char TEST_MESSAGE[] = "hello";
 // Longer than any payload limit the datagram reports, so a test can send one byte past it.
 static const char TEST_LONG_RECORD[2048] = {0};

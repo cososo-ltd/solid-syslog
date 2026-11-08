@@ -6,6 +6,7 @@ extern "C"
 #include "ConfigLockFake.h"
 #include "ErrorHandlerFake.h"
 #include "LittleFsFake.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogFileDefinition.h"
@@ -20,17 +21,6 @@ extern "C"
 using namespace CososoTesting;
 
 static const lfs_size_t POOL_TEST_CACHE_SIZE = 32;
-
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
 
 // clang-format off
 TEST_GROUP(SolidSyslogLittleFsFilePool)
@@ -104,6 +94,21 @@ TEST(SolidSyslogLittleFsFilePool, ExhaustedCreateReportsError)
         &SolidSyslogLittleFsFileErrorSource,
         SOLIDSYSLOG_CAT_POOL_EXHAUSTED,
         SOLIDSYSLOG_FILE_ERROR_POOL_EXHAUSTED
+    );
+}
+
+TEST(SolidSyslogLittleFsFilePool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = CreateWithBuffer(buffers[0]);
+    SolidSyslogLittleFsFile_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogLittleFsFile_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogLittleFsFileErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
 }
 

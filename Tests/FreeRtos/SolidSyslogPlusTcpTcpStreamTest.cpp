@@ -27,17 +27,6 @@ using namespace CososoTesting;
 #include "SolidSyslogTcpStreamErrors.h"
 #include "SolidSyslogError.h"
 
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 static const uint16_t TEST_PORT = 514;
 static const char TEST_MESSAGE[] = "hello";
 static const size_t TEST_MESSAGE_LEN = sizeof(TEST_MESSAGE) - 1U;
@@ -221,6 +210,17 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenSetsRecvTimeoutBeforeConnect)
 {
     openStream();
     LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS), FreeRtosSocketsFake_RcvTimeoAtConnect());
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
+{
+    SolidSyslogPlusTcpTcpStream_Destroy(stream);
+    struct SolidSyslogPlusTcpTcpStreamConfig config = {};
+    stream = SolidSyslogPlusTcpTcpStream_Create(&config);
+
+    openStream();
+
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS), FreeRtosSocketsFake_SndTimeoAtConnect());
 }
 
 TEST(SolidSyslogPlusTcpTcpStream, OpenInvokesConfiguredConnectTimeoutGetter)

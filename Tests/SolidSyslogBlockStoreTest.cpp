@@ -21,6 +21,13 @@
 #include "FileFake.h"
 #include "TestUtils.h"
 
+extern "C"
+{
+#include "SolidSyslogBlockSequencePrivate.h"
+#include "SolidSyslogNullSecurityPolicy.h"
+#include "SolidSyslogRecordStorePrivate.h"
+}
+
 using namespace CososoTesting;
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
@@ -2382,6 +2389,17 @@ TEST(SolidSyslogBlockStoreCorruption, ZeroLengthRecordHasNoUnsent)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
+/* Releases before 0.4.0 flagged a record the policy rejected as discarded.
+ * Nothing writes the flag now; one left on the media still reads as finished
+ * with, so the record is not offered again. */
+TEST(SolidSyslogBlockStoreCorruption, ARecordAnOlderReleaseDiscardedHasNoUnsent)
+{
+    uint8_t discarded[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e', 'l', 'l', 'o', 0x0F};
+    WriteRawBytes("/tmp/test_store00.log", discarded, sizeof(discarded));
+    CreateStore();
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
 TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
 {
     /* What a power cut mid-append leaves: the record runs past the end of the
@@ -3355,6 +3373,10 @@ TEST_GROUP_BASE(SolidSyslogBlockStorePool, BlockDeviceTestBase)
 {
     struct SolidSyslogStore* pooled[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
     struct SolidSyslogStore* overflow                                   = nullptr;
+    /* Slots taken in the sibling pools the store draws on. Released in
+     * teardown, so a failed assertion cannot leave them taken. */
+    struct SolidSyslogRecordStore*   siblingRecordStores[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE]   = {};
+    struct SolidSyslogBlockSequence* siblingBlockSequences[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
 
     void setup() override
     {
@@ -3370,7 +3392,39 @@ TEST_GROUP_BASE(SolidSyslogBlockStorePool, BlockDeviceTestBase)
         }
         SolidSyslogBlockStore_Destroy(overflow);
         overflow = nullptr;
+        ReleaseSiblingSlots();
         teardownBlockDeviceFakes();
+    }
+
+    void TakeEveryRecordStoreSlot()
+    {
+        for (auto*& slot : siblingRecordStores)
+        {
+            slot = SolidSyslogRecordStore_Create(SolidSyslogNullSecurityPolicy_Get());
+        }
+    }
+
+    void TakeEveryBlockSequenceSlot()
+    {
+        struct SolidSyslogBlockSequenceConfig blockConfig = {};
+        for (auto*& slot : siblingBlockSequences)
+        {
+            slot = SolidSyslogBlockSequence_Create(&blockConfig);
+        }
+    }
+
+    void ReleaseSiblingSlots()
+    {
+        for (auto*& slot : siblingRecordStores)
+        {
+            SolidSyslogRecordStore_Destroy(slot);
+            slot = nullptr;
+        }
+        for (auto*& slot : siblingBlockSequences)
+        {
+            SolidSyslogBlockSequence_Destroy(slot);
+            slot = nullptr;
+        }
     }
 
     struct SolidSyslogStore* MakeStore()
@@ -3420,6 +3474,40 @@ TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "pool slot collided with NullStore singleton");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
+}
+
+/* The record store and block sequence pools are sized off the same tunable, so
+ * the only way to meet one of them full is to have taken its slots directly. */
+TEST(SolidSyslogBlockStorePool, ARecordStorePoolWithNoSlotLeftResolvesToNullStore)
+{
+    TakeEveryRecordStoreSlot();
+
+    overflow = MakeStore();
+
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), overflow);
+}
+
+TEST(SolidSyslogBlockStorePool, ABlockSequencePoolWithNoSlotLeftResolvesToNullStore)
+{
+    TakeEveryBlockSequenceSlot();
+
+    overflow = MakeStore();
+
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), overflow);
+}
+
+TEST(SolidSyslogBlockStorePool, ACreateRefusedForWantOfASiblingSlotLeavesItsOwnSlotFree)
+{
+    TakeEveryBlockSequenceSlot();
+    overflow = MakeStore();
+    ReleaseSiblingSlots();
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a slot stayed taken by the refused Create");
     }
 }
 

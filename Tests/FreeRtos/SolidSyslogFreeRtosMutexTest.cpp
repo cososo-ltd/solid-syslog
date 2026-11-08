@@ -17,17 +17,6 @@ using namespace CososoTesting;
 #include "SolidSyslogMutexErrors.h"
 #include "SolidSyslogError.h"
 
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 // clang-format off
 TEST_GROUP(SolidSyslogFreeRtosMutex)
 {
@@ -76,6 +65,32 @@ TEST(SolidSyslogFreeRtosMutex, DestroyCallsSemaphoreDeleteOnce)
     mutex = nullptr;
 
     CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreDelete, ONCE);
+}
+
+TEST(SolidSyslogFreeRtosMutex, AMutexTheKernelWouldNotCreateLocksAndUnlocksAsANoOp)
+{
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
+    FreeRtosSemaphoreFake_SetCreateMutexStaticFails(true);
+    mutex = SolidSyslogFreeRtosMutex_Create();
+
+    SolidSyslogMutex_Lock(mutex);
+    SolidSyslogMutex_Unlock(mutex);
+
+    CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreTake, NEVER);
+    CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreGive, NEVER);
+}
+
+TEST(SolidSyslogFreeRtosMutex, DestroyOfAMutexTheKernelWouldNotCreateDeletesNothing)
+{
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
+    FreeRtosSemaphoreFake_SetCreateMutexStaticFails(true);
+    mutex = SolidSyslogFreeRtosMutex_Create();
+    FreeRtosSemaphoreFake_Reset();
+
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
+    mutex = nullptr;
+
+    CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreDelete, NEVER);
 }
 
 // clang-format off

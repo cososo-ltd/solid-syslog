@@ -1,5 +1,7 @@
 #include "FreeRtosSemaphoreFake.h"
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "FreeRTOS.h"
@@ -10,6 +12,7 @@ static unsigned createMutexStaticCallCount = 0U;
 static unsigned semaphoreTakeCallCount = 0U;
 static unsigned semaphoreGiveCallCount = 0U;
 static unsigned semaphoreDeleteCallCount = 0U;
+static bool createMutexStaticFails = false;
 
 void FreeRtosSemaphoreFake_Reset(void)
 {
@@ -17,6 +20,12 @@ void FreeRtosSemaphoreFake_Reset(void)
     semaphoreTakeCallCount = 0;
     semaphoreGiveCallCount = 0;
     semaphoreDeleteCallCount = 0;
+    createMutexStaticFails = false;
+}
+
+void FreeRtosSemaphoreFake_SetCreateMutexStaticFails(bool fails)
+{
+    createMutexStaticFails = fails;
 }
 
 unsigned FreeRtosSemaphoreFake_CreateMutexStaticCallCount(void)
@@ -43,7 +52,7 @@ SemaphoreHandle_t xQueueCreateMutexStatic(const uint8_t ucQueueType, StaticQueue
 {
     (void) ucQueueType;
     ++createMutexStaticCallCount;
-    return (SemaphoreHandle_t) pxStaticQueue;
+    return createMutexStaticFails ? NULL : (SemaphoreHandle_t) pxStaticQueue;
 }
 
 BaseType_t xQueueSemaphoreTake(QueueHandle_t xQueue, TickType_t xTicksToWait)

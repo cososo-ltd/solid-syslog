@@ -193,12 +193,22 @@ TEST(SolidSyslogPassthroughBufferPool, FillingPoolThenOverflowReturnsDistinctFal
 
     overflow = MakeBuffer();
 
-    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
-        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
+}
+
+TEST(SolidSyslogPassthroughBufferPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeBuffer();
+    SolidSyslogPassthroughBuffer_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogPassthroughBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogPassthroughBufferErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY
+    );
 }
 
 TEST(SolidSyslogPassthroughBufferPool, FallbackWriteAndReadAreNoOps)
@@ -235,11 +245,7 @@ TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderReturnsFallbackDistin
 
     overflow = SolidSyslogPassthroughBuffer_Create(nullptr);
 
-    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
 }
 
 TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderDoesNotConsumeAPoolSlot)

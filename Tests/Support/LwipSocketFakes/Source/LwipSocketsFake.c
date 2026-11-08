@@ -64,6 +64,7 @@ static int lastRecvFlags = 0;
 static unsigned selectCallCount = 0U;
 static int selectResult = 1;
 static bool selectSignalsException = false;
+static bool selectSignalsBoth = false;
 static int lastSelectMaxFdPlusOne = 0;
 static int lastSelectWriteDescriptor = -1;
 static int lastSelectExceptionDescriptor = -1;
@@ -89,6 +90,7 @@ static bool refusesEverySockOpt = false;
 
 static unsigned getSockOptCallCount = 0U;
 static int socketError = 0;
+static bool getSockOptFails = false;
 static int lastGetSockOptSocket = 0;
 static int lastGetSockOptLevel = 0;
 static int lastGetSockOptName = 0;
@@ -149,6 +151,7 @@ void LwipSocketsFake_Reset(void)
     selectCallCount = 0U;
     selectResult = 1;
     selectSignalsException = false;
+    selectSignalsBoth = false;
     lastSelectMaxFdPlusOne = 0;
     lastSelectWriteDescriptor = -1;
     lastSelectExceptionDescriptor = -1;
@@ -162,6 +165,7 @@ void LwipSocketsFake_Reset(void)
 
     getSockOptCallCount = 0U;
     socketError = 0;
+    getSockOptFails = false;
     lastGetSockOptSocket = 0;
     lastGetSockOptLevel = 0;
     lastGetSockOptName = 0;
@@ -367,6 +371,11 @@ void LwipSocketsFake_SetSelectSignalsException(void)
     selectSignalsException = true;
 }
 
+void LwipSocketsFake_SetSelectSignalsWritableAndException(void)
+{
+    selectSignalsBoth = true;
+}
+
 unsigned LwipSocketsFake_SelectCallCount(void)
 {
     return selectCallCount;
@@ -421,6 +430,11 @@ bool LwipSocketsFake_SockOptWasSetTo(int level, int optname, int value)
 void LwipSocketsFake_SetSocketError(int err)
 {
     socketError = err;
+}
+
+void LwipSocketsFake_SetGetSockOptFails(void)
+{
+    getSockOptFails = true;
 }
 
 unsigned LwipSocketsFake_GetSockOptCallCount(void)
@@ -568,6 +582,11 @@ int lwip_select(int maxfdp1, fd_set* readset, fd_set* writeset, fd_set* exceptse
         {
             FD_SET(watched, exceptset);
         }
+        else if (selectSignalsBoth && (exceptset != NULL) && (writeset != NULL))
+        {
+            FD_SET(watched, exceptset);
+            FD_SET(watched, writeset);
+        }
         else if (writeset != NULL)
         {
             FD_SET(watched, writeset);
@@ -590,12 +609,22 @@ int lwip_getsockopt(int s, int level, int optname, void* optval, socklen_t* optl
     lastGetSockOptSocket = s;
     lastGetSockOptLevel = level;
     lastGetSockOptName = optname;
-    if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
+    int result = 0;
+    if (getSockOptFails)
+    {
+        errno = ENOTSOCK;
+        result = -1;
+    }
+    else if ((optval != NULL) && (optlen != NULL) && (*optlen >= sizeof(int)))
     {
         *(int*) optval = socketError;
         *optlen = sizeof(int);
     }
-    return 0;
+    else
+    {
+        /* nothing to answer into */
+    }
+    return result;
 }
 
 ssize_t lwip_send(int s, const void* dataptr, size_t size, int flags)

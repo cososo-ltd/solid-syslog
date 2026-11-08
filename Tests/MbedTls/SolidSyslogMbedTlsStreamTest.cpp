@@ -870,6 +870,59 @@ TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenSslSetupCanno
     );
 }
 
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenAnX509AllocationFails)
+{
+    MbedTlsFake_SetSslSetupReturn(MBEDTLS_ERR_X509_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenAKeyAllocationFails)
+{
+    MbedTlsFake_SetSslSetupReturn(MBEDTLS_ERR_PK_ALLOC_FAILED);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+    CHECK_OPEN_UNWOUND_WITH_ERROR(
+        transport,
+        SOLIDSYSLOG_CAT_TLS_STREAM_INIT_FAILED,
+        SOLIDSYSLOG_TLS_STREAM_ERROR_LIBRARY_OUT_OF_MEMORY
+    );
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenReturnsFalseWhenTransportOpenFails)
+{
+    StreamFake_SetOpenFails(transport, true);
+
+    CHECK_FALSE(SolidSyslogStream_Open(handle, addr));
+}
+
+TEST(SolidSyslogMbedTlsStream, OpenConfiguresNothingWhenTransportOpenFails)
+{
+    StreamFake_SetOpenFails(transport, true);
+
+    SolidSyslogStream_Open(handle, addr);
+
+    LONGS_EQUAL(0, MbedTlsFake_SslConfigDefaultsCallCount());
+}
+
+/* The profile is optional: with none configured no cipher or certificate
+   policy reaches the configuration, and Open still reaches the handshake. */
+TEST(SolidSyslogMbedTlsStream, OpenUsesTheLibraryDefaultsWhenNoProfileIsConfigured)
+{
+    config.Profile = nullptr;
+    ReCreateHandleWithUpdatedConfig();
+
+    CHECK_TRUE(SolidSyslogStream_Open(handle, addr));
+    LONGS_EQUAL(0, FakeProfile_CallCount);
+    LONGS_EQUAL(0, MbedTlsFake_SslConfCiphersuitesCallCount());
+    LONGS_EQUAL(0, MbedTlsFake_SslConfCertProfileCallCount());
+}
+
 /* The one that cost an integrator a long detour: a pool too small for a second
    concurrent session failed here and read as the collector refusing the device. */
 TEST(SolidSyslogMbedTlsStream, OpenReportsTheLibraryOutOfMemoryWhenTheHandshakeCannotAllocate)
@@ -1230,6 +1283,17 @@ TEST(SolidSyslogMbedTlsStream, BioSendCallbackForwardsBufferToTransport)
     LONGS_EQUAL(1, StreamFake_SendCallCount(transport));
     POINTERS_EQUAL(payload, StreamFake_LastSendBuf(transport));
     LONGS_EQUAL(sizeof(payload), StreamFake_LastSendSize(transport));
+}
+
+TEST(SolidSyslogMbedTlsStream, BioSendCallbackAnswersMinusOneWhenTheTransportRefusesTheBytes)
+{
+    SolidSyslogStream_Open(handle, addr);
+    StreamFake_SetSendFails(transport, true);
+    auto* bioSend = MbedTlsFake_LastSslSetBioSendCallback();
+    void* bioContext = MbedTlsFake_LastSslSetBioPBioArg();
+    const unsigned char payload[] = {0xAA};
+
+    LONGS_EQUAL(-1, bioSend(bioContext, payload, sizeof(payload)));
 }
 
 TEST(SolidSyslogMbedTlsStream, BioRecvCallbackForwardsBufferToTransport)

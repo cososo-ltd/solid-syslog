@@ -454,6 +454,22 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyOfUnknownHandleReportsWarning)
     );
 }
 
+TEST(SolidSyslogUdpSenderDestroy, DestroyingAHandleTwiceReportsTheSecond)
+{
+    struct SolidSyslogSender* localSender = SolidSyslogUdpSender_Create(&config);
+    SolidSyslogUdpSender_Destroy(localSender);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogUdpSender_Destroy(localSender);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogUdpSenderConfig, UdpSenderTestBase)
 {
@@ -1040,12 +1056,7 @@ TEST(SolidSyslogUdpSenderPool, FillingPoolThenOverflowReturnsDistinctFallback)
 
     overflow = MakeSender();
 
-    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
-        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
 }
 
 TEST(SolidSyslogUdpSenderPool, ExhaustedCreateReportsError)

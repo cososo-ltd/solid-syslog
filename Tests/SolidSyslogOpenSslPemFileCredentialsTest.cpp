@@ -145,6 +145,21 @@ TEST(SolidSyslogOpenSslPemFileCredentials, DestroyingAHandleThePoolDoesNotOwnIsR
     );
 }
 
+TEST(SolidSyslogOpenSslPemFileCredentials, DestroyingAHandleTwiceReportsTheSecond)
+{
+    credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
+    SolidSyslogOpenSslPemFileCredentials_Destroy(credentials);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogOpenSslPemFileCredentials_Destroy(credentials);
+    credentials = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogOpenSslPemFileCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogOpenSslPemFileCredentials, InstallLoadsTheConfiguredTrustAnchors)
 {
     credentials = SolidSyslogOpenSslPemFileCredentials_Create(&config);
