@@ -868,8 +868,13 @@ jobs:
     # from every lane's JUnit results under its Testing pages, so this waits for
     # all of them: every lane that uploads a junit-* artifact, and the coverage
     # lane. It adds little to the run: the summary job already waits for the
-    # same lanes, and this one takes a minute once they are done. A failed lane
-    # skips this job, and blocks the merge on its own.
+    # same lanes, and this one takes a minute once they are done.
+    #
+    # It runs whether those lanes passed or not. A lane uploads its results on
+    # failure too, and the report puts failures first precisely so a red run
+    # can be read; the failing lane blocks the merge on its own, and a release
+    # is only ever cut from a green main. Only a cancelled run skips this.
+    if: ${{ !cancelled() }}
     needs:
       - unit-linux-gcc
       - unit-linux-gcc-tunables
@@ -962,7 +967,11 @@ jobs:
       # hooks/coverage_report.py and the Coverage page expect them. The
       # directory is git-ignored; MkDocs copies it into the site and the offline
       # bundle untouched.
+      # The coverage lane uploads its report on failure too, so a gate that
+      # failed still shows its figures here; only a lane that never got as far
+      # as a report leaves nothing, and then the Coverage page says so.
       - name: Stage the coverage report for the Testing pages
+        continue-on-error: true
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: coverage-report-linux-gcc
