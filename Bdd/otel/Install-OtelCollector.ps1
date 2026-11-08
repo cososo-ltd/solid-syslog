@@ -54,6 +54,13 @@ if ($actual -ne $Sha256)
 $systemTar = Join-Path $env:SystemRoot 'System32\tar.exe'
 Write-Host "Extracting otelcol-contrib.exe via $systemTar"
 & $systemTar -xzf $tarballDst -C $BinDir otelcol-contrib.exe
+# A native command's failure does not stop the script under
+# $ErrorActionPreference, and an old exe left in place would pass the check
+# below and be marked as the new version.
+if ($LASTEXITCODE -ne 0)
+{
+    throw "Extraction failed: tar exited with code $LASTEXITCODE"
+}
 if (-not (Test-Path $exePath))
 {
     throw "Extraction failed: $exePath not present"
