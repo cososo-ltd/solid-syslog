@@ -71,7 +71,10 @@ jobs:
           path: |
             build/debug/cpputest_*.xml
             build/debug/vxworks64/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   integration-linux-openssl:
     runs-on: ubuntu-latest
@@ -114,7 +117,10 @@ jobs:
         with:
           name: junit-integration-linux-openssl
           path: build/debug/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   integration-linux-littlefs:
     runs-on: ubuntu-latest
@@ -159,7 +165,10 @@ jobs:
         with:
           name: junit-integration-linux-littlefs
           path: build/debug/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   integration-linux-mbedtls:
     runs-on: ubuntu-latest
@@ -204,7 +213,10 @@ jobs:
         with:
           name: junit-integration-linux-mbedtls
           path: build/debug/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   # The wolfSSL pack compiles against whatever build an integrator has, so the
   # policies are proved against both installs the cpputest image carries:
@@ -255,7 +267,10 @@ jobs:
         with:
           name: junit-integration-linux-wolfssl
           path: build/debug/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   integration-windows-openssl:
     runs-on: windows-latest
@@ -330,7 +345,10 @@ jobs:
         with:
           name: junit-integration-windows-openssl
           path: build/msvc-debug/Tests/OpenSslIntegration/Debug/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   unit-linux-gcc-tunables:
     runs-on: ubuntu-latest
@@ -374,7 +392,10 @@ jobs:
           path: |
             build/tunable-override-debug/cpputest_*.xml
             build/tunable-override-debug/vxworks64/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Upload BDD target binaries
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -435,7 +456,10 @@ jobs:
           path: |
             build/clang-debug/cpputest_*.xml
             build/clang-debug/vxworks64/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   # Proves the public claim that Core compiles as C99, then checks the POSIX and
   # OpenSSL packs have not drifted off it. Library only, no tests.
@@ -556,7 +580,10 @@ jobs:
           path: |
             build/sanitize/cpputest_*.xml
             build/sanitize/vxworks64/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
   unit-linux-gcc-coverage:
     runs-on: ubuntu-latest
@@ -1399,7 +1426,10 @@ jobs:
           path: |
             build/msvc-debug/cpputest_*.xml
             build/msvc-debug/vxworks64/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Upload Windows BDD target binary
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1536,7 +1566,10 @@ jobs:
         with:
           name: junit-bdd-windows-openssl-otel
           path: Bdd/junit/TESTS-*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: OTel collector logs on failure
         if: failure()
@@ -1594,7 +1627,10 @@ jobs:
         with:
           name: junit-bdd-linux-openssl-syslogng
           path: Bdd/junit/TESTS-*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()
@@ -1652,7 +1688,10 @@ jobs:
         with:
           name: junit-bdd-linux-openssl-syslogng-passthrough
           path: Bdd/junit/TESTS-*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()
@@ -1701,7 +1740,10 @@ jobs:
           path: |
             build/tunable-override-wolfssl/cpputest_*.xml
             build/tunable-override-wolfssl/vxworks64/cpputest_*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Upload BDD target binary
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1772,7 +1814,10 @@ jobs:
         with:
           name: junit-bdd-linux-wolfssl-syslogng
           path: Bdd/junit/TESTS-*.xml
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()
@@ -2029,7 +2074,10 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()
@@ -2089,7 +2137,10 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()
@@ -2153,7 +2204,10 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()
@@ -2209,7 +2263,10 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
-          retention-days: 1
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
       - name: Compose logs on failure
         if: failure()

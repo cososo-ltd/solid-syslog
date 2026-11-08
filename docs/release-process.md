@@ -171,13 +171,16 @@ listed above; the written sections are added by hand in the release pull request
    `LICENSES/`), cosign keyless-signs both (GitHub OIDC), and attaches each
    file with its signature to the Release.
 7. The same event triggers `docs-bundle.yml`: it measures coverage from the
-   tag, with the gate CI applies, builds the documentation from the tag with
-   `mkdocs-offline.yml` and the coverage report under its Testing pages,
-   checks that the result works with no server and no network, cosign-signs
-   the zip and attaches it with its signature. The bundle is built and checked
-   on every CI run as well, so only the signing and the attachment wait for a
-   release. A coverage gate that fails here withholds the bundle: a release
-   does not ship with its evidence missing, so fix the cause and re-run.
+   tag, with the gate CI applies, fetches the JUnit results of the CI run that
+   tested the tagged commit on `main`, builds the documentation from the tag
+   with `mkdocs-offline.yml` and the coverage and test reports under its
+   Testing pages, checks that the result works with no server and no network,
+   cosign-signs the zip and attaches it with its signature. The bundle is built
+   and checked on every CI run as well, so only the signing and the attachment
+   wait for a release. A coverage gate that fails here, or a CI run whose
+   results have expired - they are kept a month - withholds the bundle: a
+   release does not ship with its evidence missing, so fix the cause and
+   re-run.
 8. Signing and attachment hard-fail. The Release already exists by the time the
    jobs run, so a failure cannot block it - it means the Release went out
    without provenance. A red run is the signal: fix the cause and re-run the
