@@ -65,25 +65,30 @@ def rate(hit: int, found: int) -> float:
     return 100.0 * hit / found if found else 0.0
 
 
+def percent(hit: int, found: int) -> str:
+    # Truncated, not rounded, so a rate just short of the threshold is never
+    # shown as the threshold itself.
+    tenths = 1000 * hit // found if found else 0
+    return f"{tenths // 10}.{tenths % 10}%"
+
+
 def failures(counts: Counts, threshold: float) -> List[str]:
     found = []
     if counts.lines_found == 0:
         found.append("no line data in the tracefile")
     elif rate(counts.lines_hit, counts.lines_found) < threshold:
-        found.append(f"line coverage {rate(counts.lines_hit, counts.lines_found):.1f}% is below {threshold:g}%")
+        found.append(f"line coverage {percent(counts.lines_hit, counts.lines_found)} is below {threshold:g}%")
     if counts.branches_found == 0:
         found.append("no branch data in the tracefile")
     elif rate(counts.branches_hit, counts.branches_found) < threshold:
-        found.append(
-            f"branch coverage {rate(counts.branches_hit, counts.branches_found):.1f}% is below {threshold:g}%"
-        )
+        found.append(f"branch coverage {percent(counts.branches_hit, counts.branches_found)} is below {threshold:g}%")
     return found
 
 
 def row(name: str, counts: Counts) -> str:
     return (
-        f"| {name} | {counts.lines_hit} / {counts.lines_found} | {rate(counts.lines_hit, counts.lines_found):.1f}% "
-        f"| {counts.branches_hit} / {counts.branches_found} | {rate(counts.branches_hit, counts.branches_found):.1f}% |"
+        f"| {name} | {counts.lines_hit} / {counts.lines_found} | {percent(counts.lines_hit, counts.lines_found)} "
+        f"| {counts.branches_hit} / {counts.branches_found} | {percent(counts.branches_hit, counts.branches_found)} |"
     )
 
 
@@ -106,6 +111,11 @@ def main(argv: List[str]) -> int:
 
     print(markdown(packs))
     problems = failures(total(packs), args.threshold)
+    if problems:
+        # A blank line ends the table, so a reader merging the two streams
+        # gets the verdict beneath it rather than as another row; the flush
+        # puts the table first when stdout is a pipe.
+        print(flush=True)
     for problem in problems:
         print(f"FAIL: {problem}", file=sys.stderr)
     return 1 if problems else 0

@@ -43,6 +43,9 @@ class Aggregation(unittest.TestCase):
         packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
         self.assertEqual(packs["Core"], coverage_summary.Counts(20, 19, 6, 5))
 
+    def test_a_windows_path_is_grouped_by_its_pack(self):
+        self.assertEqual(coverage_summary.pack_of(r"C:\repos\solid-syslog\Platform\Windows\Source\Clock.c"), "Windows")
+
     def test_total_is_the_sum_of_every_pack(self):
         packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
         self.assertEqual(coverage_summary.total(packs), coverage_summary.Counts(25, 24, 8, 6))
@@ -61,6 +64,10 @@ class Gate(unittest.TestCase):
         found = coverage_summary.failures(coverage_summary.Counts(100, 89, 100, 95), 90)
         self.assertEqual(len(found), 1)
         self.assertIn("line", found[0])
+
+    def test_a_rate_just_short_is_not_shown_as_the_threshold(self):
+        found = coverage_summary.failures(coverage_summary.Counts(10000, 8996, 100, 100), 90)
+        self.assertEqual(found, ["line coverage 89.9% is below 90%"])
 
     def test_no_branch_data_is_a_failure_not_a_skip(self):
         found = coverage_summary.failures(coverage_summary.Counts(100, 100, 0, 0), 90)
@@ -102,6 +109,11 @@ class Main(unittest.TestCase):
         status, _, err = self.run_main(without_branches)
         self.assertEqual(status, 1)
         self.assertIn("FAIL: no branch data in the tracefile", err)
+
+    def test_a_failing_gate_ends_the_table_before_the_verdict(self):
+        status, out, _ = self.run_main(TRACEFILE)
+        self.assertEqual(status, 1)
+        self.assertTrue(out.endswith("|\n\n"))
 
     def test_default_threshold_is_ninety(self):
         status, _, err = self.run_main(TRACEFILE)
