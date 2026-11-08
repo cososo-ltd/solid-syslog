@@ -2,8 +2,11 @@
 """Render the test report: what a CI run tested, organised so it can be read.
 
 Reads the ``junit-<lane>`` artifacts of one run (``junit_report.py``) and writes
-a directory of static pages, no script, that the documentation site publishes
-under its Testing tab and the offline bundle carries. The pages drill down:
+a directory of static pages that the documentation site publishes under its
+Testing tab and the offline bundle carries. The one script is the expand-all
+control on a page of folds, inlined so the bundle fetches nothing, which is
+what ``scripts/check_offline_bundle.py`` holds the bundle to. The pages drill
+down:
 
     index.html      Overview: headline counts, failures first, then each kind
                     of testing with its lanes, and each pack.
@@ -60,12 +63,16 @@ esc = html.escape
 
 
 def fmt_time(seconds: float) -> str:
-    if seconds >= 60:
-        minutes, rest = divmod(seconds, 60)
-        return f"{int(minutes)} min {int(round(rest))} s"
-    if seconds >= 1:
-        return f"{seconds:.1f} s"
-    return f"{int(round(seconds * 1000))} ms"
+    """A duration in the unit that fits, rounded before the unit is chosen so
+    a value just short of a boundary never reads as 1000 ms or 1 min 60 s."""
+    milliseconds = int(round(seconds * 1000))
+    if milliseconds < 1000:
+        return f"{milliseconds} ms"
+    tenths = int(round(seconds * 10))
+    if tenths < 600:
+        return f"{tenths // 10}.{tenths % 10} s"
+    minutes, rest = divmod(int(round(seconds)), 60)
+    return f"{minutes} min {rest} s"
 
 
 def slug(text: str) -> str:
@@ -103,6 +110,12 @@ def suite_id(test: model.Test) -> str:
 
 def scenario_id(test: model.Test) -> str:
     return slug(f"{test.suite}-{test.name}")
+
+
+def anchor_of(test: model.Test) -> str:
+    """Where a test sits on its lane page: a scenario block on a BDD lane, a
+    suite block elsewhere."""
+    return scenario_id(test) if model.kind_of(test.lane) == "bdd" else suite_id(test)
 
 
 def source(test: model.Test, source_url: Optional[str]) -> str:
@@ -496,7 +509,7 @@ class Report:
 
     def failure_table(self, failures: List[model.Test], depth: int) -> str:
         rows = "".join(
-            f'<tr><td><a href="{lane_href(t.lane, depth)}#{scenario_id(t) if t.lane.startswith("bdd") else suite_id(t)}">{esc(t.lane)}</a></td><td>{esc(t.suite)}</td>'
+            f'<tr><td><a href="{lane_href(t.lane, depth)}#{anchor_of(t)}">{esc(t.lane)}</a></td><td>{esc(t.suite)}</td>'
             f'<td>{esc(t.name)}</td><td>{source(t, self.source_url)}</td></tr>'
             for t in failures
         )
@@ -509,7 +522,7 @@ class Report:
             items = "".join(
                 f'<section class="tr-failure" id="{slug(t.lane + "-" + t.suite + "-" + t.name)}">'
                 f'<h3>{esc(t.suite)}: {esc(t.name)}</h3>'
-                f'<p><a href="{lane_href(t.lane)}#{scenario_id(t) if t.lane.startswith("bdd") else suite_id(t)}">{esc(t.lane)}</a>, {esc(t.executable)} &middot; {source(t, self.source_url)} &middot; {fmt_time(t.time)}</p>'
+                f'<p><a href="{lane_href(t.lane)}#{anchor_of(t)}">{esc(t.lane)}</a>, {esc(t.executable)} &middot; {source(t, self.source_url)} &middot; {fmt_time(t.time)}</p>'
                 f'<pre>{esc(t.message or "")}</pre></section>'
                 for t in self.failures
             )
@@ -524,9 +537,8 @@ class Report:
             sections = []
             grouped = by(self.skips, lambda t: t.lane)
             for lane_name, tests in grouped.items():
-                is_bdd = lane_name.startswith("bdd")
                 rows = "".join(
-                    f'<tr><td>{esc(t.suite)}</td><td><a href="{lane_href(lane_name)}#{scenario_id(t) if is_bdd else suite_id(t)}">{esc(t.name)}</a></td><td>{self.tags(t.tags)}</td></tr>'
+                    f'<tr><td>{esc(t.suite)}</td><td><a href="{lane_href(lane_name)}#{anchor_of(t)}">{esc(t.name)}</a></td><td>{self.tags(t.tags)}</td></tr>'
                     for t in tests
                 )
                 sections.append(
@@ -547,19 +559,18 @@ class Report:
             f'<tr><td><a href="{lane_href(lane, 1)}">{esc(lane)}</a></td><td class="tr-num">{len({(t.executable, t.suite) for t in tests})}</td>{counts_cells(model.count(tests))}</tr>'
             for lane, tests in sorted(lanes.items())
         )
-        suites: Dict[str, set] = defaultdict(set)
+        # One grouping pass: suite -> lane -> its first test there, and the
+        # distinct names per suite, rather than a scan of the pack per suite.
+        first_in: Dict[str, Dict[str, model.Test]] = defaultdict(dict)
+        names: Dict[str, set] = defaultdict(set)
         for lane, tests in lanes.items():
             for t in tests:
-                suites[t.suite].add(lane)
+                first_in[t.suite].setdefault(lane, t)
+                names[t.suite].add(t.name)
         suite_rows = []
-        for suite, ran in sorted(suites.items()):
-            links = []
-            for lane in sorted(ran):
-                first = next(t for t in lanes[lane] if t.suite == suite)
-                anchor = scenario_id(first) if lane.startswith("bdd") else suite_id(first)
-                links.append(f'<a href="{lane_href(lane, 1)}#{anchor}">{esc(lane)}</a>')
-            distinct = len({t.name for t in all_tests if t.suite == suite})
-            suite_rows.append(f'<tr><td>{esc(suite)}</td><td class="tr-num">{distinct}</td><td>{", ".join(links)}</td></tr>')
+        for suite, per_lane in sorted(first_in.items()):
+            links = [f'<a href="{lane_href(lane, 1)}#{anchor_of(first)}">{esc(lane)}</a>' for lane, first in sorted(per_lane.items())]
+            suite_rows.append(f'<tr><td>{esc(suite)}</td><td class="tr-num">{len(names[suite])}</td><td>{", ".join(links)}</td></tr>')
         files = sorted({t.file for t in all_tests if t.file})
         body = f"""
     <h2 id="lanes">By lane</h2>
@@ -575,7 +586,7 @@ class Report:
     def slowest_page(self) -> str:
         tests = sorted(self.run.tests, key=lambda t: t.time, reverse=True)[:SLOWEST_TESTS]
         test_rows = "".join(
-            f'<tr><td class="tr-num">{fmt_time(t.time)}</td><td><a href="{lane_href(t.lane)}#{scenario_id(t) if t.lane.startswith("bdd") else suite_id(t)}">{esc(t.lane)}</a></td>'
+            f'<tr><td class="tr-num">{fmt_time(t.time)}</td><td><a href="{lane_href(t.lane)}#{anchor_of(t)}">{esc(t.lane)}</a></td>'
             f'<td>{esc(t.suite)}</td><td>{esc(t.name)}</td>{status_cell(t.status)}</tr>'
             for t in tests
         )
@@ -585,7 +596,7 @@ class Report:
             reverse=True,
         )[:SLOWEST_SUITES]
         suite_rows = "".join(
-            f'<tr><td class="tr-num">{fmt_time(c.time)}</td><td><a href="{lane_href(lane)}#{slug(suite) if lane.startswith("bdd") else suite_id(first)}">{esc(lane)}</a></td>'
+            f'<tr><td class="tr-num">{fmt_time(c.time)}</td><td><a href="{lane_href(lane)}#{slug(suite) if model.kind_of(lane) == "bdd" else suite_id(first)}">{esc(lane)}</a></td>'
             f'<td>{esc(suite)}</td><td class="tr-num">{c.total}</td></tr>'
             for c, (lane, _, suite), first in suites
         )
@@ -763,7 +774,7 @@ def main(argv: List[str]) -> int:
         return 1
     with open(args.registry, encoding="utf-8") as handle:
         tokens = model.registry_tokens(handle.read())
-    report = Report(run, tokens, args.source_url, docs_provenance.provenance(os.environ))
+    report = Report(run, tokens, args.source_url, docs_provenance.provenance(os.environ, verb="Tested"))
     written = report.write(args.output_dir)
     total = model.count(run.tests)
     print(f"{written} files: {len(run.lanes)} lanes, {total.total} tests, {total.failed} failed, {total.skipped} skipped")

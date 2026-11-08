@@ -285,9 +285,9 @@ nav:
           - AtomicCounter: api/structSolidSyslogAtomicCounter.md
           - StructuredData: api/structSolidSyslogStructuredData.md
           - SecurityPolicy: api/structSolidSyslogSecurityPolicy.md
-  # What CI measured on main, published so it can be inspected rather than
-  # summed: coverage first, the test report to follow. Both are generated from
-  # the run that built the site, under docs/testing/, and git-ignored.
+  # What CI measured in the build that produced the site, published so it can
+  # be inspected rather than summed: the test report, then coverage. Both are
+  # generated from that run's artifacts under docs/testing/, and git-ignored.
   - Testing:
       - Tests: testing/tests.md
       - Coverage: testing/coverage.md

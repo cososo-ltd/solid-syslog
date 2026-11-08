@@ -52,6 +52,11 @@ class Formatting(unittest.TestCase):
         self.assertEqual(pages.fmt_time(1.25), "1.2 s")
         self.assertEqual(pages.fmt_time(295.2), "4 min 55 s")
 
+    def test_a_time_just_short_of_a_unit_boundary_rounds_into_the_next_unit(self):
+        self.assertEqual(pages.fmt_time(0.9996), "1.0 s")
+        self.assertEqual(pages.fmt_time(59.96), "1 min 0 s")
+        self.assertEqual(pages.fmt_time(119.6), "2 min 0 s")
+
     def test_a_slug_is_safe_for_an_anchor_and_a_file_name(self):
         self.assertEqual(pages.slug("BDD scenarios"), "bdd-scenarios")
 

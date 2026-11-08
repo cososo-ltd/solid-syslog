@@ -14,6 +14,11 @@ dresses its pages in the site's header and footer after the build.
 
 import json
 import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from junit_report_pages import fmt_time  # noqa: E402
 
 PAGE = "testing/tests.md"
 MARKER = "<!-- test-summary -->"
@@ -46,15 +51,6 @@ def _src_uri(file):
 
 def _summary_path(config):
     return os.path.join(config["docs_dir"], "testing", REPORT, SUMMARY)
-
-
-def fmt_time(seconds):
-    if seconds >= 60:
-        minutes, rest = divmod(seconds, 60)
-        return f"{int(minutes)} min {int(round(rest))} s"
-    if seconds >= 1:
-        return f"{seconds:.1f} s"
-    return f"{int(round(seconds * 1000))} ms"
 
 
 def render(summary):

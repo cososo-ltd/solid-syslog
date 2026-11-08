@@ -23,15 +23,12 @@ suites, and each suite opens to its tests with status, duration and a link to
 the test's source at the commit that ran. A BDD lane page is the living
 documentation of that target: each feature's prose, its scenarios with their
 tags and outcome, and each scenario opening to its steps as they ran, with the
-time each took. A skip is a target whose tag filter excluded the scenario, or
-a `@requires_` tag naming a tunable the target is built below, so a skip there
-is a decision, not a gap.
+time each took. The Skipped page says what a skip means and which tags decided
+each one.
 
 Failures have a page of their own with the message each left. A pack page
 gathers the tests that exercise one pack, attributed by the test file that
-holds them, lane by lane. Test time is the sum of every test's own duration;
-lanes run in parallel, so it is not the run's wall clock, and CppUTest reports
-to the millisecond.
+holds them, lane by lane. The overview says how test time is counted.
 
 To run the same tests locally, build the `debug` preset's `junit` target as
 [Building & testing](../builds.md) describes; the BDD scenarios are run as

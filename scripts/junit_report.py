@@ -10,8 +10,8 @@ kind of lane, the executable, the suite, the status, the duration, the source
 position, a failure's message, and for a scenario its tags, read from the
 feature files in the tree so a skip can be explained by what skipped it.
 
-The report pages are rendered from this model by ``junit_report_pages.py``; the
-command line that runs both is ``junit_report_main.py``.
+The report pages are rendered from this model by ``junit_report_pages.py``,
+which is also the command line that runs both.
 """
 
 import os
@@ -145,7 +145,7 @@ def kind_of(lane: str) -> str:
 def read_run(artifacts_dir: str, features_dir: Optional[str] = FEATURES_DIR) -> Run:
     """Every ``junit-<lane>`` directory under `artifacts_dir`, as a Run."""
     features = read_features(features_dir) if features_dir and os.path.isdir(features_dir) else {}
-    tags = {key: feature.tags[key[1]] for key, feature in ((k, f) for f in features.values() for k in f.keys())}
+    tags = {key: feature.tags[key[1]] for feature in features.values() for key in feature.keys()}
     run = Run(features=features)
     for entry in sorted(os.listdir(artifacts_dir)):
         if not entry.startswith(ARTIFACT_PREFIX):
@@ -249,13 +249,6 @@ def read_features(features_dir: str) -> Dict[str, Feature]:
         with open(os.path.join(features_dir, name), encoding="utf-8") as handle:
             found[stem] = parse_feature(handle.read(), stem)
     return found
-
-
-def feature_tags(features_dir: str) -> Dict[Tuple[str, str], Tuple[str, ...]]:
-    """(feature file stem, scenario name) -> its tags, the feature's included.
-    (stem, "") carries the feature's own tags, for a scenario the file no longer
-    names."""
-    return {key: feature.tags[key[1]] for feature in read_features(features_dir).values() for key in feature.keys()}
 
 
 def parse_feature(text: str, stem: str) -> Feature:
