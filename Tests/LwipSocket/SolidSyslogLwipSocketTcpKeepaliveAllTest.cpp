@@ -75,3 +75,31 @@ TEST(SolidSyslogLwipSocketTcpKeepaliveAll, AKeepaliveTimingTheStackRefusesIsRepo
         SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED
     );
 }
+
+TEST(SolidSyslogLwipSocketTcpKeepaliveAll, ARefusedIdlePeriodIsReportedLikeAnyOtherOption)
+{
+    LwipSocketsFake_SetSockOptRefuses(IPPROTO_TCP, TCP_KEEPIDLE);
+
+    CHECK_TRUE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED
+    );
+}
+
+TEST(SolidSyslogLwipSocketTcpKeepaliveAll, ARefusedProbeCountIsReportedLikeAnyOtherOption)
+{
+    LwipSocketsFake_SetSockOptRefuses(IPPROTO_TCP, TCP_KEEPCNT);
+
+    CHECK_TRUE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_OPTION_REFUSED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_SOCKET_OPTION_REFUSED
+    );
+}

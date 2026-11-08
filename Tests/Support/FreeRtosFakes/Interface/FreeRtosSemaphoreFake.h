@@ -2,6 +2,8 @@
 #define FREERTOSSEMAPHOREFAKE_H
 
 #include "SolidSyslogExternC.h"
+#include <stdbool.h>
+
 #include "FreeRTOS.h"
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
@@ -9,6 +11,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void FreeRtosSemaphoreFake_Reset(void);
 
     unsigned FreeRtosSemaphoreFake_CreateMutexStaticCallCount(void);
+
+    /* Makes xSemaphoreCreateMutexStatic answer NULL. */
+    void FreeRtosSemaphoreFake_SetCreateMutexStaticFails(bool fails);
 
     unsigned FreeRtosSemaphoreFake_SemaphoreTakeCallCount(void);
 

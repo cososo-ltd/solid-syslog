@@ -259,6 +259,19 @@ TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectRefusedWhenTheStackGive
     );
 }
 
+TEST(SolidSyslogVxWorks64TcpStream, OpenReportsTheConnectNotStartedWhenTheStackFailsWithoutAnErrno)
+{
+    ErrorHandlerFake_Install(nullptr);
+    VxWorks64NetFake_FailConnectLeavingNoErrno();
+
+    SolidSyslogStream_Open(stream, address);
+
+    CHECK_CONNECT_FAILURE_REPORTED(
+        SOLIDSYSLOG_STREAM_CONNECT_LOCAL_SEVERITY,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_NOT_STARTED
+    );
+}
+
 TEST(SolidSyslogVxWorks64TcpStream, OpenReportsARepeatedRefusalOnce)
 {
     OpenAfterConnectFails(ECONNREFUSED);

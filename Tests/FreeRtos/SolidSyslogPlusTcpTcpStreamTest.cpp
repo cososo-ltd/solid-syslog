@@ -212,6 +212,17 @@ TEST(SolidSyslogPlusTcpTcpStream, OpenSetsRecvTimeoutBeforeConnect)
     LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS), FreeRtosSocketsFake_RcvTimeoAtConnect());
 }
 
+TEST(SolidSyslogPlusTcpTcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
+{
+    SolidSyslogPlusTcpTcpStream_Destroy(stream);
+    struct SolidSyslogPlusTcpTcpStreamConfig config = {};
+    stream = SolidSyslogPlusTcpTcpStream_Create(&config);
+
+    openStream();
+
+    LONGS_EQUAL(pdMS_TO_TICKS(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS), FreeRtosSocketsFake_SndTimeoAtConnect());
+}
+
 TEST(SolidSyslogPlusTcpTcpStream, OpenInvokesConfiguredConnectTimeoutGetter)
 
 {

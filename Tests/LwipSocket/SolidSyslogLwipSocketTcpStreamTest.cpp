@@ -288,6 +288,37 @@ TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsInTheExceptionSetIsRefused
     );
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsWritableAndInTheExceptionSetIsRefused)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetSelectSignalsWritableAndException();
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED
+    );
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, AWritableSocketWhoseDeferredErrorCannotBeReadIsRefusedWithTheLookupsErrno)
+{
+    LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
+    LwipSocketsFake_SetGetSockOptFails();
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ENOTSOCK
+    );
+}
+
 TEST(SolidSyslogLwipSocketTcpStream, AWaitTheStackEndsInTheExceptionSetCarriesThePendingSocketError)
 {
     LwipSocketsFake_SetConnectResult(-1, EINPROGRESS);
@@ -354,6 +385,21 @@ TEST(SolidSyslogLwipSocketTcpStream, ADestinationThatRefusesImmediatelyIsReporte
         SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         ECONNREFUSED
+    );
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, ADestinationTheStackGaveUpOnIsReportedAsRefused)
+{
+    LwipSocketsFake_SetConnectResult(-1, ETIMEDOUT);
+
+    CHECK_FALSE(Open());
+
+    CHECK_ERROR_REPORTED_ONCE_WITH_NATIVE_CODE(
+        SOLIDSYSLOG_STREAM_CONNECT_REMOTE_SEVERITY,
+        &SolidSyslogLwipSocketTcpStreamErrorSource,
+        SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ETIMEDOUT
     );
 }
 
@@ -465,6 +511,17 @@ TEST(SolidSyslogLwipSocketTcpStream, AShortWriteIsTakenAsADeadConnectionAndClose
     LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
     CHECK_TRUE(Open());
     LwipSocketsFake_SetSendResult((ssize_t) TEST_PAYLOAD_SIZE - 1, 0);
+
+    CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
+
+    CHECK_SOCKET_CLOSED_ONCE(TEST_DESCRIPTOR);
+}
+
+TEST(SolidSyslogLwipSocketTcpStream, ASendTheStackRefusesIsTakenAsADeadConnectionAndClosesIt)
+{
+    LwipSocketsFake_SetSocketResult(TEST_DESCRIPTOR);
+    CHECK_TRUE(Open());
+    LwipSocketsFake_SetSendResult(-1, ECONNRESET);
 
     CHECK_FALSE(SolidSyslogStream_Send(stream, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
 

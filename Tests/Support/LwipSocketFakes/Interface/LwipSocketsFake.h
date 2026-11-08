@@ -90,6 +90,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * instead. */
     void LwipSocketsFake_SetSelectResult(int result);
     void LwipSocketsFake_SetSelectSignalsException(void);
+    /* The descriptor comes back in the write set and the exception set at
+     * once, as a stack reporting the deferred error alongside writability. */
+    void LwipSocketsFake_SetSelectSignalsWritableAndException(void);
 
     /* lwip_select spy. */
     unsigned LwipSocketsFake_SelectCallCount(void);
@@ -111,6 +114,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* The value lwip_getsockopt hands back for SO_ERROR. Defaults to 0, the
      * connect having completed. */
     void LwipSocketsFake_SetSocketError(int err);
+    /* Makes lwip_getsockopt answer -1 with errno ENOTSOCK: a socket that
+     * cannot be asked. */
+    void LwipSocketsFake_SetGetSockOptFails(void);
 
     /* lwip_getsockopt spy. */
     unsigned LwipSocketsFake_GetSockOptCallCount(void);

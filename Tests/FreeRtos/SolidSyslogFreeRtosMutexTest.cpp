@@ -67,6 +67,32 @@ TEST(SolidSyslogFreeRtosMutex, DestroyCallsSemaphoreDeleteOnce)
     CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreDelete, ONCE);
 }
 
+TEST(SolidSyslogFreeRtosMutex, AMutexTheKernelWouldNotCreateLocksAndUnlocksAsANoOp)
+{
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
+    FreeRtosSemaphoreFake_SetCreateMutexStaticFails(true);
+    mutex = SolidSyslogFreeRtosMutex_Create();
+
+    SolidSyslogMutex_Lock(mutex);
+    SolidSyslogMutex_Unlock(mutex);
+
+    CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreTake, NEVER);
+    CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreGive, NEVER);
+}
+
+TEST(SolidSyslogFreeRtosMutex, DestroyOfAMutexTheKernelWouldNotCreateDeletesNothing)
+{
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
+    FreeRtosSemaphoreFake_SetCreateMutexStaticFails(true);
+    mutex = SolidSyslogFreeRtosMutex_Create();
+    FreeRtosSemaphoreFake_Reset();
+
+    SolidSyslogFreeRtosMutex_Destroy(mutex);
+    mutex = nullptr;
+
+    CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreDelete, NEVER);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogFreeRtosMutexPool)
 {

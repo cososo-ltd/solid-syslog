@@ -1003,6 +1003,21 @@ TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDrainsRxQueueBeforeTcpClose)
     CALLED_FAKE(LwipTcpFake_TcpClose, ONCE);
 }
 
+/* tcp_err has already taken the pcb; the pbufs accepted before it are still
+   ours to free, and there is no pcb left to close. */
+TEST(SolidSyslogLwipRawTcpStreamConnected, CloseAfterTcpErrFreesTheQueuedPbufsAndClosesNoPcb)
+{
+    struct pbuf p = {};
+    const char d[] = "q";
+    pushIncomingPbuf(&p, d, 1);
+    pushTcpErr(ERR_RST);
+
+    SolidSyslogStream_Close(stream);
+
+    CALLED_FAKE(LwipPbufFake_PbufFree, ONCE);
+    CALLED_FAKE(LwipTcpFake_TcpClose, NEVER);
+}
+
 /* ------------------------------------------------------------------
  * Pool tests - handed-out handles never call lwIP, so they don't need
  * the fake state. Same TEST_GROUP shape as Commit 1.

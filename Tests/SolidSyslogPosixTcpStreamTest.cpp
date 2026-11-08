@@ -320,6 +320,17 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenConnectFailsImmedia
     );
 }
 
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenTheStackGivesUpOnThePeer)
+{
+    openAfterConnectFails(ETIMEDOUT);
+
+    CHECK_CONNECT_FAILURE_REPORTED_WITH_ERRNO(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
+        ETIMEDOUT
+    );
+}
+
 TEST(SolidSyslogPosixTcpStream, OpenReportsARepeatedRefusalOnce)
 {
     openAfterConnectFails(ECONNREFUSED);
@@ -420,6 +431,18 @@ TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWithTheErrnoWhenTheDefe
         SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED,
         ENOTSOCK
     );
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenReportsConnectRefusedWhenSelectAnswersReadyWithoutTheSocketWritable)
+{
+    ErrorHandlerFake_Install(nullptr);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+    SocketFake_SetSelectWritable(false);
+    SocketFake_SetSelectReturn(1);
+
+    SolidSyslogStream_Open(stream, addr);
+
+    CHECK_CONNECT_FAILURE_REPORTED(SOLIDSYSLOG_SEVERITY_WARNING, SOLIDSYSLOG_TCP_STREAM_ERROR_CONNECT_REFUSED);
 }
 
 TEST(SolidSyslogPosixTcpStream, OpenReportsConnectTimedOutWhenSelectExpires)
@@ -746,6 +769,19 @@ TEST(SolidSyslogPosixTcpStream, OpenPassesBoundedConnectTimeoutToSelect)
     SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
     SolidSyslogStream_Open(stream, addr);
     /* Default tunable SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS = 200 -> 0 s + 200 000 µs. */
+    LONGS_EQUAL(0, SocketFake_LastSelectTimeoutSec());
+    LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
+}
+
+TEST(SolidSyslogPosixTcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
+{
+    SolidSyslogPosixTcpStream_Destroy(stream);
+    struct SolidSyslogPosixTcpStreamConfig config = {};
+    stream = SolidSyslogPosixTcpStream_Create(&config);
+    SocketFake_SetConnectFailsWithErrno(EINPROGRESS);
+
+    SolidSyslogStream_Open(stream, addr);
+
     LONGS_EQUAL(0, SocketFake_LastSelectTimeoutSec());
     LONGS_EQUAL(200000, SocketFake_LastSelectTimeoutUsec());
 }

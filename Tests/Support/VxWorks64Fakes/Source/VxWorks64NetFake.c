@@ -43,6 +43,7 @@ static int VxWorks64NetFake_SendtoFlags = -1;
 static const struct sockaddr* VxWorks64NetFake_SendtoTo = NULL;
 static int VxWorks64NetFake_SendtoToLen = 0;
 static int VxWorks64NetFake_ConnectErrno = 0;
+static bool VxWorks64NetFake_ConnectFailsSilently = false;
 static unsigned VxWorks64NetFake_ConnectCount = 0U;
 static int VxWorks64NetFake_ConnectFd = -1;
 static const struct sockaddr* VxWorks64NetFake_ConnectAddress = NULL;
@@ -110,6 +111,7 @@ void VxWorks64NetFake_Reset(void)
     VxWorks64NetFake_SendtoTo = NULL;
     VxWorks64NetFake_SendtoToLen = 0;
     VxWorks64NetFake_ConnectErrno = 0;
+    VxWorks64NetFake_ConnectFailsSilently = false;
     VxWorks64NetFake_ConnectCount = 0U;
     VxWorks64NetFake_ConnectFd = -1;
     VxWorks64NetFake_ConnectAddress = NULL;
@@ -338,6 +340,11 @@ void VxWorks64NetFake_FailConnectWithErrno(int errnoValue)
     VxWorks64NetFake_ConnectErrno = errnoValue;
 }
 
+void VxWorks64NetFake_FailConnectLeavingNoErrno(void)
+{
+    VxWorks64NetFake_ConnectFailsSilently = true;
+}
+
 unsigned VxWorks64NetFake_ConnectWithTimeoutCallCount(void)
 {
     return VxWorks64NetFake_ConnectCount;
@@ -387,10 +394,19 @@ STATUS connectWithTimeout(int sock, struct sockaddr* adrs, int adrsLen, struct t
         VxWorks64NetFake_ConnectTimeoutMicroseconds = timeVal->tv_usec;
     }
     STATUS result = OK;
-    if (VxWorks64NetFake_ConnectErrno != 0)
+    if (VxWorks64NetFake_ConnectFailsSilently)
+    {
+        errno = 0;
+        result = ERROR;
+    }
+    else if (VxWorks64NetFake_ConnectErrno != 0)
     {
         errno = VxWorks64NetFake_ConnectErrno;
         result = ERROR;
+    }
+    else
+    {
+        /* the connect completes */
     }
     return result;
 }
