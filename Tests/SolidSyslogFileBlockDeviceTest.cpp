@@ -262,6 +262,25 @@ TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheBlockWillNotOpen)
     CHECK_FALSE(SolidSyslogBlockDevice_Size(device, 0, &size));
 }
 
+TEST(SolidSyslogFileBlockDevice, ReadFailsWhenTheBlockWillNotOpen)
+{
+    char buf[4] = {};
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buf, 3));
+}
+
+TEST(SolidSyslogFileBlockDevice, AppendFailsWhenTheBlockWillNotOpen)
+{
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, "abc", 3));
+}
+
+TEST(SolidSyslogFileBlockDevice, WriteAtFailsWhenTheBlockWillNotOpen)
+{
+    FileFake_FailNextOpen(file);
+    CHECK_FALSE(SolidSyslogBlockDevice_WriteAt(device, 0, 0, "abc", 3));
+}
+
 TEST(SolidSyslogFileBlockDevice, SizeFailsWhenTheFileCannotTellItsSize)
 {
     size_t size = 0U;

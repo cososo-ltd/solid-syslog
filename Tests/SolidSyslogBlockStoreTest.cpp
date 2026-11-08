@@ -21,6 +21,13 @@
 #include "FileFake.h"
 #include "TestUtils.h"
 
+extern "C"
+{
+#include "SolidSyslogBlockSequencePrivate.h"
+#include "SolidSyslogNullSecurityPolicy.h"
+#include "SolidSyslogRecordStorePrivate.h"
+}
+
 using namespace CososoTesting;
 
 static const char* const TEST_PATH_PREFIX = "/tmp/test_store";
@@ -3420,6 +3427,65 @@ TEST(SolidSyslogBlockStorePool, FillingPoolThenOverflowResolvesToNullStore)
         CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
         CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "pool slot collided with NullStore singleton");
         CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
+    }
+}
+
+/* The record store and block sequence pools are sized off the same tunable, so
+ * the only way to meet one of them full is to have taken its slots directly. */
+TEST(SolidSyslogBlockStorePool, ARecordStorePoolWithNoSlotLeftResolvesToNullStore)
+{
+    struct SolidSyslogRecordStore* recordStores[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
+    for (auto*& slot : recordStores)
+    {
+        slot = SolidSyslogRecordStore_Create(SolidSyslogNullSecurityPolicy_Get());
+    }
+
+    overflow = MakeStore();
+
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), overflow);
+    for (auto* slot : recordStores)
+    {
+        SolidSyslogRecordStore_Destroy(slot);
+    }
+}
+
+TEST(SolidSyslogBlockStorePool, ABlockSequencePoolWithNoSlotLeftResolvesToNullStore)
+{
+    struct SolidSyslogBlockSequenceConfig blockConfig = {};
+    struct SolidSyslogBlockSequence* blockSequences[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
+    for (auto*& slot : blockSequences)
+    {
+        slot = SolidSyslogBlockSequence_Create(&blockConfig);
+    }
+
+    overflow = MakeStore();
+
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), overflow);
+    for (auto* slot : blockSequences)
+    {
+        SolidSyslogBlockSequence_Destroy(slot);
+    }
+}
+
+TEST(SolidSyslogBlockStorePool, ACreateRefusedForWantOfASiblingSlotLeavesItsOwnSlotFree)
+{
+    struct SolidSyslogBlockSequenceConfig blockConfig = {};
+    struct SolidSyslogBlockSequence* blockSequences[SOLIDSYSLOG_BLOCK_STORE_POOL_SIZE] = {};
+    for (auto*& slot : blockSequences)
+    {
+        slot = SolidSyslogBlockSequence_Create(&blockConfig);
+    }
+    overflow = MakeStore();
+    for (auto* slot : blockSequences)
+    {
+        SolidSyslogBlockSequence_Destroy(slot);
+    }
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a slot stayed taken by the refused Create");
     }
 }
 

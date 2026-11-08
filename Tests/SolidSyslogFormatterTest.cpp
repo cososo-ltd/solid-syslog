@@ -284,6 +284,15 @@ TEST(SolidSyslogFormatter, BoundedStringPassesMiddleValidTwoByteCodepointThrough
     CHECK_FORMATTED("\xCC\x80");
 }
 
+TEST(SolidSyslogFormatter, BoundedStringReplacesTwoByteLeadFollowedByAscii)
+{
+    /* \xC3 is a 2-byte lead; the next byte \x40 ('@') is not a continuation,
+     * so the lead alone becomes U+FFFD and the ASCII byte passes through. */
+    formatBoundedString("\xC3\x40\x80", 3);
+
+    CHECK_FORMATTED("\xEF\xBF\xBD\x40\xEF\xBF\xBD");
+}
+
 TEST(SolidSyslogFormatter, BoundedStringPassesValidThreeByteCodepointThrough)
 {
     /* \xE0\xA0\x80 is the canonical 3-byte encoding of U+0800, the smallest
@@ -332,6 +341,15 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesUtf16SurrogateEncodingPerByte)
     CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD");
 }
 
+TEST(SolidSyslogFormatter, BoundedStringPassesHighestCodepointBelowTheSurrogatesThrough)
+{
+    /* \xED\x9F\xBF is U+D7FF, the last codepoint before the surrogate range:
+     * an ED lead with a continuation in 80-9F is valid. */
+    formatBoundedString("\xED\x9F\xBF", 3);
+
+    CHECK_FORMATTED("\xED\x9F\xBF");
+}
+
 TEST(SolidSyslogFormatter, BoundedStringReplacesThreeByteLeadFollowedByAscii)
 {
     /* \xE1 is a 3-byte lead; the next byte \x40 ('@') is not a valid
@@ -341,6 +359,16 @@ TEST(SolidSyslogFormatter, BoundedStringReplacesThreeByteLeadFollowedByAscii)
     formatBoundedString("\xE1\x40\x80", 3);
 
     CHECK_FORMATTED("\xEF\xBF\xBD\x40\xEF\xBF\xBD");
+}
+
+TEST(SolidSyslogFormatter, BoundedStringReplacesThreeByteLeadWhoseSecondContinuationIsAscii)
+{
+    /* \xE1\x80 opens a 3-byte sequence that \x40 ('@') does not complete.
+     * Each byte of the broken prefix becomes U+FFFD; the ASCII byte passes
+     * through; the stray \x80 is another U+FFFD. */
+    formatBoundedString("\xE1\x80\x40\x80", 4);
+
+    CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD\x40\xEF\xBF\xBD");
 }
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesTopOfThreeByteLeadRangeWhenInvalid)
@@ -368,6 +396,37 @@ TEST(SolidSyslogFormatter, BoundedStringPassesFourByteCodepointWithF1LeadThrough
     formatBoundedString("\xF1\x80\x80\x80", 4);
 
     CHECK_FORMATTED("\xF1\x80\x80\x80");
+}
+
+TEST(SolidSyslogFormatter, BoundedStringPassesTheHighestUnicodeCodepointThrough)
+{
+    /* \xF4\x8F\xBF\xBF is U+10FFFF, the top of the Unicode range: an F4 lead
+     * with a continuation in 80-8F is valid. */
+    formatBoundedString("\xF4\x8F\xBF\xBF", 4);
+
+    CHECK_FORMATTED("\xF4\x8F\xBF\xBF");
+}
+
+TEST(SolidSyslogFormatter, BoundedStringReplacesFourByteLeadFollowedByAscii)
+{
+    /* \xF0 is a 4-byte lead; \x40 ('@') is not a continuation. */
+    formatBoundedString("\xF0\x40\x80\x80", 4);
+
+    CHECK_FORMATTED("\xEF\xBF\xBD\x40\xEF\xBF\xBD\xEF\xBF\xBD");
+}
+
+TEST(SolidSyslogFormatter, BoundedStringReplacesFourByteLeadWhoseSecondContinuationIsAscii)
+{
+    formatBoundedString("\xF0\x90\x40\x80", 4);
+
+    CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD\x40\xEF\xBF\xBD");
+}
+
+TEST(SolidSyslogFormatter, BoundedStringReplacesFourByteLeadWhoseThirdContinuationIsAscii)
+{
+    formatBoundedString("\xF0\x90\x80\x40", 4);
+
+    CHECK_FORMATTED("\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\x40");
 }
 
 TEST(SolidSyslogFormatter, BoundedStringReplacesOverlongFourByteEncodingPerByte)
