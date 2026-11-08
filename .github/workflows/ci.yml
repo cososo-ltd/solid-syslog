@@ -837,11 +837,33 @@ jobs:
   # PR as a required check; on main it also stages the built site as the Pages
   # artifact for the docs-deploy job to publish. PRs build but never deploy.
   docs-build:
-    # The site publishes the coverage lane's report under its Testing pages, so
-    # this waits for that lane. It costs nothing on the critical path: the run
-    # is bounded by the BDD lanes, which finish after coverage does. A failed
-    # coverage gate skips this job, and blocks the merge on its own.
-    needs: unit-linux-gcc-coverage
+    # The site publishes the coverage lane's report and a test report generated
+    # from every lane's JUnit results under its Testing pages, so this waits for
+    # all of them: every lane that uploads a junit-* artifact, and the coverage
+    # lane. It adds little to the run: the summary job already waits for the
+    # same lanes, and this one takes a minute once they are done. A failed lane
+    # skips this job, and blocks the merge on its own.
+    needs:
+      - unit-linux-gcc
+      - unit-linux-gcc-tunables
+      - unit-linux-clang
+      - unit-linux-gcc-sanitize
+      - unit-linux-gcc-coverage
+      - unit-windows-msvc
+      - build-linux-wolfssl
+      - integration-linux-openssl
+      - integration-linux-littlefs
+      - integration-linux-mbedtls
+      - integration-linux-wolfssl
+      - integration-windows-openssl
+      - bdd-linux-openssl-syslogng
+      - bdd-linux-openssl-syslogng-passthrough
+      - bdd-linux-wolfssl-syslogng
+      - bdd-windows-openssl-otel
+      - bdd-freertos-plustcp-mbedtls-plusfat-syslogng
+      - bdd-freertos-lwipraw-mbedtls-fatfs-syslogng
+      - bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng
+      - bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng
     runs-on: ubuntu-latest
     # `issues: read` and `pull-requests: read` are for the issue-link check below,
     # which reads the state of every issue a document links. The repository is
@@ -918,6 +940,26 @@ jobs:
         with:
           name: coverage-report-linux-gcc
           path: docs/testing/coverage-report/
+
+      # Every lane's JUnit results, one directory per artifact, which is the
+      # layout scripts/junit_report_pages.py reads: the directory name is the
+      # lane. The report it writes is git-ignored under docs/testing/ like the
+      # coverage report, and hooks/test_report.py fills the Tests page from the
+      # summary it leaves beside the pages.
+      - name: Download every lane's JUnit results
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: junit-*
+          path: build/junit/
+
+      # The source links point at the commit this run built, so a failing line
+      # is the line as it was, not as main has it by the time someone looks.
+      - name: Generate the test report for the Testing pages
+        env:
+          SOLIDSYSLOG_DOCS_ORIGIN: "${{ github.event.pull_request.number && format('pull request #{0}', github.event.pull_request.number) || github.ref_name }}"
+          SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
+        run: python3 scripts/junit_report_pages.py build/junit docs/testing/test-report --source-url "$SOURCE_URL"
 
       # --strict fails the build on broken nav, config, or links. Out-of-docs
       # source links (../Core/…, ../SECURITY.md) are rewritten to canonical
