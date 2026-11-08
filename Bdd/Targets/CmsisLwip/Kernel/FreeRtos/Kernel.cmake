@@ -58,9 +58,9 @@ set(BDD_KERNEL_UPSTREAM_SOURCES
 # Outside a CMSIS-Pack RTE build the wrapper will not compile without a device
 # header named by CMSIS_device_header. Naming one also defines SysTick, so the
 # wrapper supplies SysTick_Handler itself and calls the port's handler from it.
-set_source_files_properties(
-    ${CMSIS_FREERTOS_PATH}/CMSIS/RTOS2/FreeRTOS/Source/cmsis_os2.c
-    PROPERTIES COMPILE_DEFINITIONS "CMSIS_device_header=\"BddTargetCmsisDevice.h\""
+set_property(
+    SOURCE ${CMSIS_FREERTOS_PATH}/CMSIS/RTOS2/FreeRTOS/Source/cmsis_os2.c
+    APPEND PROPERTY COMPILE_DEFINITIONS "CMSIS_device_header=\"BddTargetCmsisDevice.h\""
 )
 
 set(BDD_KERNEL_UPSTREAM_INCLUDES

@@ -1,6 +1,8 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#include "Mps2An385.h"
+
 /* FreeRTOS kernel configuration for Cortex-M3 on QEMU mps2-an385 with lwIP
  * (Raw API) under NO_SYS=0, running the CMSIS-RTOS2 wrapper on top.
  *
@@ -89,8 +91,8 @@
 #define configUSE_OS2_EVENTFLAGS_FROM_ISR 0
 #define configUSE_OS2_TIMER 0
 
-/* Cortex-M3 NVIC: top 3 priority bits implemented. */
-#define configPRIO_BITS 3
+/* The NVIC priority bits this machine implements - see Mps2An385.h. */
+#define configPRIO_BITS MPS2_AN385_NVIC_PRIO_BITS
 #define configKERNEL_INTERRUPT_PRIORITY (7 << (8 - configPRIO_BITS))
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY (5 << (8 - configPRIO_BITS))
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY 7

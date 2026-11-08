@@ -167,6 +167,7 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Common                # Mps2An385.h, for FreeRTOSConfig.h
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include

@@ -107,6 +107,7 @@ target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
 target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # lwipopts.h
     ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
+    ${FREERTOS_COMMON_DIR}                            # Mps2An385.h, for FreeRTOSConfig.h
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${LWIP_DIR}/src/include
