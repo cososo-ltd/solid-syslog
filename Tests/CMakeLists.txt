@@ -326,6 +326,7 @@ add_test(NAME ${PROJECT_NAME}Tests COMMAND ${PROJECT_NAME}Tests)
 add_custom_target(junit
     COMMAND ${CMAKE_COMMAND}
         -DEXECUTABLE=$<TARGET_FILE:${PROJECT_NAME}Tests>
+        -DPACKAGE=${PROJECT_NAME}Tests
         -DDIR=${CMAKE_BINARY_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
     DEPENDS ${PROJECT_NAME}Tests
@@ -333,11 +334,13 @@ add_custom_target(junit
 )
 
 # Each executable enrolled by solidsyslog_add_test runs through run_junit.cmake
-# as a POST_BUILD step on the `junit` custom target, so its cpputest_<group>.xml
-# lands in the build dir alongside SolidSyslogTests' output. CI's junit-*
-# upload-artifact then picks them all up for the Quality Summary panel. Only
-# executables a configuration actually defines are enrolled, so a job running
-# outside a FreeRTOS-aware container just runs SolidSyslogTests as before.
+# as a POST_BUILD step on the `junit` custom target, so its
+# cpputest_<Executable>_<group>.xml files land in the build dir alongside
+# SolidSyslogTests' output, each naming the executable they came from. CI's
+# junit-* upload-artifact then picks them all up for the Quality Summary panel
+# and the published test report. Only executables a configuration actually
+# defines are enrolled, so a job running outside a FreeRTOS-aware container
+# just runs SolidSyslogTests as before.
 function(register_junit_test test_target)
     set(junit_dir ${CMAKE_BINARY_DIR})
     if(ARGC GREATER 1)
@@ -346,6 +349,7 @@ function(register_junit_test test_target)
     add_custom_command(TARGET junit POST_BUILD
         COMMAND ${CMAKE_COMMAND}
             -DEXECUTABLE=$<TARGET_FILE:${test_target}>
+            -DPACKAGE=${test_target}
             -DDIR=${junit_dir}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
         COMMENT "Running ${test_target} with JUnit XML output"
