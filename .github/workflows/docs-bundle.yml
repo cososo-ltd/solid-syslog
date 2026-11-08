@@ -56,12 +56,11 @@ jobs:
 
   bundle:
     # Build and validate - shared by both triggers. Read-only; no secrets.
-    # `actions: read` is for fetching the JUnit results of the CI run that
-    # tested this commit, below.
     needs: coverage
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Fetches the JUnit results of the CI run that tested this commit, below.
       actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}

@@ -969,9 +969,10 @@ jobs:
       # bundle untouched.
       # The coverage lane uploads its report on failure too, so a gate that
       # failed still shows its figures here; only a lane that never got as far
-      # as a report leaves nothing, and then the Coverage page says so.
+      # as a report leaves nothing, and then the Coverage page says so. A lane
+      # that succeeded has the artifact, so a missing one is then a fault.
       - name: Stage the coverage report for the Testing pages
-        continue-on-error: true
+        continue-on-error: ${{ needs.unit-linux-gcc-coverage.result != 'success' }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: coverage-report-linux-gcc

@@ -192,6 +192,26 @@ class Rendered(unittest.TestCase):
         self.assertEqual(summary["totals"]["failed"], 1)
 
 
+class CommandLine(unittest.TestCase):
+    def test_a_registry_without_the_platform_table_fails_rather_than_misattributing(self):
+        import contextlib
+        import io
+
+        with tempfile.TemporaryDirectory() as root:
+            lane = os.path.join(root, "junit-unit-linux-gcc")
+            os.makedirs(lane)
+            with open(os.path.join(lane, "cpputest_SolidSyslogTests_Formatter.xml"), "w", encoding="utf-8") as handle:
+                handle.write('<testsuite name="Formatter"><testcase classname="SolidSyslogTests.Formatter" name="WritesPri" time="0.001"/></testsuite>')
+            registry = os.path.join(root, "CMakeLists.txt")
+            with open(registry, "w", encoding="utf-8") as handle:
+                handle.write("project(Nothing)\n")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                status = pages.main([root, os.path.join(root, "out"), "--registry", registry, "--features", os.path.join(root, "none")])
+        self.assertEqual(status, 1)
+        self.assertIn("declares no SOLIDSYSLOG_PLATFORM_REGISTRY", err.getvalue())
+
+
 class WithoutFailures(unittest.TestCase):
     def test_the_overview_and_failures_page_say_so(self):
         run = model.Run()

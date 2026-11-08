@@ -774,6 +774,11 @@ def main(argv: List[str]) -> int:
         return 1
     with open(args.registry, encoding="utf-8") as handle:
         tokens = model.registry_tokens(handle.read())
+    if not tokens:
+        # Without the registry every test would be attributed to Core, and the
+        # pack views would be wrong under a green step.
+        print(f"{args.registry} declares no SOLIDSYSLOG_PLATFORM_REGISTRY, so packs cannot be attributed", file=sys.stderr)
+        return 1
     report = Report(run, tokens, args.source_url, docs_provenance.provenance(os.environ, verb="Tested"))
     written = report.write(args.output_dir)
     total = model.count(run.tests)
