@@ -95,8 +95,8 @@ provide `mbedtls_hardware_poll` instead.
 
 ## 1. Install an error handler
 
-Every fault below reaches this handler. A handshake refusal is also written to the
-collector as a record of the logger's own, which
+Every fault below reaches this handler. A handshake refusal is also reported as a
+record of the logger's own, delivered as
 [Records the logger writes about itself](../../self-reporting.md) describes. Install
 the handler before anything is created.
 

@@ -969,9 +969,11 @@ The worst case measured on the example is 538 octets - five SD-ELEMENTs with bot
 counters at full 32-bit width and both addresses at fifteen characters, the fifth being
 the library's own event element at the longest kind the device can raise, plus that
 event's fixed message - so 560 leaves room for longer messages on that device. Anything
-longer is truncated rather than dropped, and a cap below the event records truncates
-them mid-element, which a collector rejects. RFC 5424 section 6.1 says a receiver should
-accept 2048 octets; over UDP, RFC 5426 section 3.2 guarantees only 480.
+longer is truncated rather than dropped: a cut that falls in the message shortens it,
+while a cut that falls inside the structured data leaves an element unclosed, which a
+collector rejects. That is what the event records met under a 400-octet cap. RFC 5424
+section 6.1 says a receiver should accept 2048 octets; over UDP, RFC 5426 section 3.2
+guarantees only 480.
 
 The pools follow. Their defaults suit a device running several transports at once; this
 one runs a single sender, over a single stream, to a single destination. Then the ring,

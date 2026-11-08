@@ -55,7 +55,7 @@ your library came from `./configure`; the adapter does the same inside.
 ## 1. Install an error handler
 
 Every fault below reaches `SolidSyslog_SetErrorHandler`; a handshake refusal is also
-written to the collector as a record of the logger's own, which
+reported as a record of the logger's own, delivered as
 [Records the logger writes about itself](../../self-reporting.md) describes. Install
 a handler before creating anything, or a bad configuration degrades to a Null object,
 so the store seals nothing or the sender has no stream to send over, and the

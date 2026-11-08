@@ -106,7 +106,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 | FreeRTOS-Plus-FAT | Host-TDD against fakes in `unit-linux-gcc` and its sanitizer and coverage lanes, and built in the Plus-TCP cross lane; store-and-forward scenarios run in `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` |
 | LittleFS | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` |
 | POSIX, Windows | Every Linux host lane that builds `Tests/`, `build-linux-wolfssl`, and `unit-windows-msvc`, plus the host BDD lanes |
-| C11 atomics | Probe-selected into `libSolidSyslog.a` in every Linux host lane, and named explicitly by both lwIP cross presets |
+| C11 atomics | Probe-selected into `libSolidSyslog.a` in every Linux host lane that builds `Tests/` except `build-linux-wolfssl`, whose preset names it, as the three lwIP cross presets do. Not in `build-c99`, which has no C11 header to find |
 
 <!-- /platforms -->
 
