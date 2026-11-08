@@ -576,36 +576,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Configure
-        run: cmake --preset coverage
-
-      - name: Build and generate coverage report
-        run: cmake --build --preset coverage --target coverage
-
-      # One script both writes the per-pack table to the step summary and
-      # applies the gate, so the figure shown is the figure judged. A
-      # tracefile with no branch data fails rather than skipping the check.
-      # The script's FAIL lines go to stderr, merged here so the summary shows
-      # the verdict next to the table. `shell: bash` already runs with
-      # pipefail, so the script's exit status survives the tee.
-      - name: Summarise coverage and enforce the gate
-        shell: bash
-        run: |
-          {
-            echo '## Coverage'
-            python3 scripts/coverage_summary.py build/coverage/coverage.filtered.info --threshold 90
-          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+      # Build, measure, gate, and leave the report with its tracefile. Shared
+      # with the documentation bundle workflow, which measures the released
+      # commit the same way; the comments on the steps live with the action.
+      - name: Measure coverage and enforce the gate
+        uses: ./.github/actions/coverage-report
 
       # The report is published: docs-build stages this artifact under the
       # site's Testing pages, where hooks/coverage_report.py fills the Coverage
-      # page's table from the tracefile. The tracefile travels inside the report
-      # directory so one artifact carries both the pages and the figures the gate
-      # judged. success()||failure() keeps it uploaded even when the threshold
-      # gate above fails, which is exactly when you want to read it.
-      - name: Put the tracefile beside the report
-        if: success() || failure()
-        run: cp build/coverage/coverage.filtered.info build/coverage/coverage_report/
-
+      # page's table from the tracefile. success()||failure() keeps it uploaded
+      # even when the threshold gate above fails, which is exactly when you want
+      # to read it.
       - name: Upload coverage report artifact
         if: success() || failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
