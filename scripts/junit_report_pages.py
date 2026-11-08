@@ -109,11 +109,20 @@ def counts_cells(counts: model.Counts) -> str:
 COUNT_HEADERS = "<th>Tests</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Time</th>"
 
 
-def page(title: str, body: str, depth: int, provenance: str, active: Optional[str] = None) -> str:
+def page(title: str, body: str, depth: int, provenance: str, active: Optional[str] = None, crumbs=(), jump=()) -> str:
+    """One page. `crumbs` are (href, label) pairs leading here from the
+    overview, rendered as a trail above the title; `jump` are (anchor, label)
+    pairs for the sections on this page, rendered as a line beneath it."""
     rel = "../" * depth
     nav = "".join(
         f'<a href="{rel}{href}"{" class=\"tr-nav--active\"" if href == active else ""}>{esc(label)}</a>' for href, label in NAV
     )
+    trail = ""
+    if crumbs:
+        trail = '<nav class="tr-crumbs">' + "".join(f'<a href="{href}">{esc(label)}</a><span class="tr-crumbs__sep">/</span>' for href, label in crumbs) + f"<span>{esc(title)}</span></nav>"
+    on_page = ""
+    if jump:
+        on_page = '<p class="tr-jump">On this page: ' + " &middot; ".join(f'<a href="#{anchor}">{esc(label)}</a>' for anchor, label in jump) + "</p>"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -129,8 +138,10 @@ def page(title: str, body: str, depth: int, provenance: str, active: Optional[st
   <!-- /site-header -->
   <main class="tr">
     <nav class="tr-nav">{nav}</nav>
+    {trail}
     <h1>{esc(title)}</h1>
     <p class="tr-prov">{esc(provenance)}</p>
+    {on_page}
 {body}
   </main>
   <!-- site-footer -->
@@ -238,7 +249,8 @@ class Report:
     <p>Tests attributed by the test file that holds them. A pack's figure counts every lane that ran it.</p>
     <table class="tr-table"><thead><tr><th>Pack</th><th>Lanes</th>{COUNT_HEADERS}</tr></thead><tbody>{"".join(pack_rows)}</tbody></table>
 """
-        return page("Tests", body, 0, self.provenance, "index.html")
+        jump = [("failures", "Failures"), ("kinds", "By kind"), ("lanes", "By lane"), ("packs", "By pack")]
+        return page("Tests", body, 0, self.provenance, "index.html", jump=jump)
 
     def failure_table(self, failures: List[model.Test], depth: int) -> str:
         rows = "".join(
@@ -279,7 +291,8 @@ class Report:
                 "<p>A scenario is skipped when the lane's tag filter excludes it, or a <code>@requires_</code> tag "
                 "names a tunable the target is built below. The tags are what the filter saw.</p>" + "".join(sections)
             )
-        return page("Skipped", body, 0, self.provenance, "skipped.html")
+        jump = [(slug(lane), lane) for lane in by(self.skips, lambda t: t.lane)]
+        return page("Skipped", body, 0, self.provenance, "skipped.html", jump=jump)
 
     def tags(self, test: model.Test) -> str:
         return " ".join(f'<span class="tr-tag">@{esc(tag)}</span>' for tag in test.tags)
@@ -326,7 +339,9 @@ class Report:
             f'<span class="{"tr-bad" if counts.failed else ""}">{counts.failed} failed</span>, {counts.skipped} skipped, {fmt_time(counts.time)}.</p>'
             + "".join(sections)
         )
-        return page(lane.name, body, 1, self.provenance)
+        crumbs = [("../index.html", "Tests"), ("../index.html#lanes", "Lanes")]
+        jump = [(slug(executable), executable) for executable in sorted({t.executable for t in lane.tests})]
+        return page(lane.name, body, 1, self.provenance, crumbs=crumbs, jump=jump)
 
     def suites_page(self) -> str:
         lanes = [lane for lane in self.run.lanes.values() if lane.kind != "bdd"]
@@ -340,7 +355,7 @@ class Report:
         for (executable, suite), per_lane in sorted(rows_by_key.items()):
             if executable != current:
                 current = executable
-                rows.append(f'<tr class="tr-group"><th colspan="{len(lanes) + 1}">{esc(executable)}</th></tr>')
+                rows.append(f'<tr class="tr-group" id="{slug(executable)}"><th colspan="{len(lanes) + 1}">{esc(executable)}</th></tr>')
             cells = []
             for lane in lanes:
                 found = per_lane.get(lane.name)
@@ -356,7 +371,8 @@ class Report:
             "A dash means the lane does not build the suite.</p>"
             f'<table class="tr-table tr-matrix"><thead><tr><th>Suite</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
         )
-        return page("Suites across lanes", body, 0, self.provenance, "suites.html")
+        jump = [(slug(executable), executable) for executable in sorted({key[0] for key in rows_by_key})]
+        return page("Suites across lanes", body, 0, self.provenance, "suites.html", jump=jump)
 
     def scenarios_page(self) -> str:
         lanes = lanes_of_kind(self.run, "bdd")
@@ -367,7 +383,7 @@ class Report:
         head = "".join(f'<th class="tr-vert"><a href="{lane_href(lane.name)}"><span>{esc(lane.name)}</span></a></th>' for lane in lanes)
         rows = []
         for feature, scenarios in sorted(features.items()):
-            rows.append(f'<tr class="tr-group"><th colspan="{len(lanes) + 2}">{esc(feature)}</th></tr>')
+            rows.append(f'<tr class="tr-group" id="{slug(feature)}"><th colspan="{len(lanes) + 2}">{esc(feature)}</th></tr>')
             for name, per_lane in scenarios.items():
                 any_test = next(iter(per_lane.values()))
                 cells = "".join(
@@ -379,7 +395,8 @@ class Report:
             "<code>@requires_</code> tag; the tags column is what decided it.</p>"
             f'<table class="tr-table tr-matrix"><thead><tr><th>Scenario</th><th>Tags</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
         )
-        return page("Scenarios across lanes", body, 0, self.provenance, "scenarios.html")
+        jump = [(slug(feature), feature) for feature in sorted(features)]
+        return page("Scenarios across lanes", body, 0, self.provenance, "scenarios.html", jump=jump)
 
     def pack_page(self, pack: str, lanes: Dict[str, List[model.Test]]) -> str:
         all_tests = [t for tests in lanes.values() for t in tests]
@@ -400,13 +417,14 @@ class Report:
         files = sorted({t.file for t in all_tests if t.file})
         body = f"""
     <p>{total.total} test results across {len(lanes)} lanes, from {len(files)} test files.</p>
-    <h2>By lane</h2>
+    <h2 id="lanes">By lane</h2>
     <table class="tr-table"><thead><tr><th>Lane</th><th>Suites</th>{COUNT_HEADERS}</tr></thead><tbody>{lane_rows}</tbody></table>
-    <h2>Suites</h2>
+    <h2 id="suites">Suites</h2>
     <p>Distinct tests per suite, and the lanes that ran it.</p>
     <table class="tr-table"><thead><tr><th>Suite</th><th>Tests</th><th>Lanes</th></tr></thead><tbody>{suite_rows}</tbody></table>
 """
-        return page(pack, body, 1, self.provenance)
+        crumbs = [("../index.html", "Tests"), ("../index.html#packs", "Packs")]
+        return page(pack, body, 1, self.provenance, crumbs=crumbs, jump=[("lanes", "By lane"), ("suites", "Suites")])
 
     def slowest_page(self) -> str:
         tests = sorted(self.run.tests, key=lambda t: t.time, reverse=True)[:SLOWEST_TESTS]
@@ -431,14 +449,14 @@ class Report:
         )
         body = f"""
     <p>Durations as each test runner reported them; CppUTest reports to the millisecond.</p>
-    <h2>Test time by lane</h2>
+    <h2 id="lanes">Test time by lane</h2>
     <table class="tr-table"><thead><tr><th>Lane</th><th>Tests</th><th>Time</th></tr></thead><tbody>{lane_rows}</tbody></table>
-    <h2>Slowest suites</h2>
+    <h2 id="suites">Slowest suites</h2>
     <table class="tr-table"><thead><tr><th>Time</th><th>Lane</th><th>Suite</th><th>Tests</th></tr></thead><tbody>{suite_rows}</tbody></table>
-    <h2>Slowest tests</h2>
+    <h2 id="tests">Slowest tests</h2>
     <table class="tr-table"><thead><tr><th>Time</th><th>Lane</th><th>Suite</th><th>Test</th><th>Status</th></tr></thead><tbody>{test_rows}</tbody></table>
 """
-        return page("Slowest", body, 0, self.provenance, "slowest.html")
+        return page("Slowest", body, 0, self.provenance, "slowest.html", jump=[("lanes", "Test time by lane"), ("suites", "Slowest suites"), ("tests", "Slowest tests")])
 
     # ---- writing ---------------------------------------------------------
 
@@ -507,7 +525,10 @@ body[data-md-color-scheme] .md-footer { margin-top: auto; }
 .tr-nav { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 8px 0; border-bottom: 1px solid #e0e0e0; font-size: 0.95em; }
 .tr-nav a { color: #3e2199; }
 .tr-nav--active { font-weight: 700; }
-.tr-prov { color: #7a7a7a; margin: 0 0 16px; }
+.tr-prov { color: #7a7a7a; margin: 0 0 8px; }
+.tr-crumbs { margin: 10px 0 0; font-size: 0.92em; color: #5f5f5f; }
+.tr-crumbs__sep { margin: 0 6px; color: #aaa; }
+.tr-jump { margin: 0 0 16px; padding: 6px 10px; background: #f7f6fb; border-radius: 6px; font-size: 0.95em; }
 .tr-tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .tr-tile { min-width: 110px; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 6px; display: flex; flex-direction: column; }
 .tr-tile__n { font-size: 1.6em; font-weight: 700; color: #3e2199; }

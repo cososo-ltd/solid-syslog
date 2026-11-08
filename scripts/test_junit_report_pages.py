@@ -114,6 +114,16 @@ class Rendered(unittest.TestCase):
         self.assertIn('<td class="tr-status tr-failed">FAIL</td>', out)
         self.assertIn('<td class="tr-status tr-skipped">skip</td>', out)
 
+    def test_a_lane_page_says_where_it_sits_and_what_is_on_it(self):
+        out = self.read("lanes/unit-linux-gcc.html")
+        self.assertIn('<nav class="tr-crumbs"><a href="../index.html">Tests</a><span class="tr-crumbs__sep">/</span><a href="../index.html#lanes">Lanes</a>', out)
+        self.assertIn('On this page: <a href="#solidsyslogtests">SolidSyslogTests</a>', out)
+
+    def test_the_matrices_offer_a_jump_to_each_group(self):
+        self.assertIn('<a href="#solidsyslogtests">SolidSyslogTests</a>', self.read("suites.html"))
+        self.assertIn('<a href="#tls">TLS</a>', self.read("scenarios.html"))
+        self.assertIn('<tr class="tr-group" id="tls">', self.read("scenarios.html"))
+
     def test_the_bdd_lane_page_shows_tags_in_place_of_source(self):
         out = self.read("lanes/bdd-linux-openssl-syslogng.html")
         self.assertIn('<span class="tr-tag">@tls13</span>', out)
