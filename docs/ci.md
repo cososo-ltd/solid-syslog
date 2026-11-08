@@ -30,7 +30,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `unit-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
 | `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
 | `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
-| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 90% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and the HTML report is a downloadable run artifact |
+| `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 90% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the HTML report with the site at [Coverage](testing/coverage.md) |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
@@ -62,7 +62,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `smoke-freertos-lwipraw` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `analyze-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |
 | `tools-vxworks64-runner` | - | Python `unittest` over the VxWorks 6.4 runner's job service: its queue, token, routes and TLS. The runner's Pester tests need Windows PowerShell 5.1 and run locally, recorded in the PR |
-| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`, runs the documentation consistency, reference and issue-link checks and the hook tests, and rehearses the offline bundle; on `main`, `docs-deploy` publishes it to GitHub Pages |
+| `docs-build` | - | Builds the MkDocs + mkdoxy site with `mkdocs build --strict`, runs the documentation consistency, reference and issue-link checks and the hook tests, and rehearses the offline bundle; waits for `unit-linux-gcc-coverage` and stages its report under the Testing pages; on `main`, `docs-deploy` publishes it to GitHub Pages |
 | `analyze-actionlint` | - | Validates the workflow files themselves. In its own workflow, not a job here: a lane inside the file being validated cannot run when that file is the broken one |
 | `docs-links` | - | Checks the documentation's external links with lychee. Its own workflow (`docs-links.yml`); advisory on pull requests, failing on its weekly schedule |
 | `summary` | - | Aggregates the JUnit artifacts into a run summary. Declared `if: always()` and asserts nothing about the other jobs' results |
