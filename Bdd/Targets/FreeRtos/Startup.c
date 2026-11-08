@@ -89,7 +89,7 @@ __attribute__((section(".vectors"), used)) const uint32_t vector_table[] = {
     (uint32_t) DebugMon_Handler, /* 0x30                         */
     0U, /* 0x34 reserved                */
     (uint32_t) PendSV_Handler, /* 0x38 - FreeRTOS              */
-    (uint32_t) SysTick_Handler, /* 0x3C - FreeRTOS              */
+    (uint32_t) SysTick_Handler, /* 0x3C - RTOS tick             */
 
     /* External interrupts - IRQ0..IRQ31. IRQ 13 = LAN9118 Ethernet. */
     (uint32_t) Default_Handler, /* IRQ  0 - UART0 RX  */

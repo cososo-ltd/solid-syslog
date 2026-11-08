@@ -19,7 +19,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* The routed lookup names this gateway as the next hop, as the stack does
      * for a destination off the subnet. */
     void FreeRtosArpFake_SetGateway(uint32_t nextHop);
-    /* The routed lookup answers eCantSendPacket rather than a miss, as the
+    /* The routed lookup answers eResolutionFailed rather than a miss, as the
      * stack does for an entry still waiting for its reply. */
     void FreeRtosArpFake_SetReplyPending(bool pending);
 

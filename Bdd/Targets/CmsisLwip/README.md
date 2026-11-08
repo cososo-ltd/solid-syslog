@@ -65,8 +65,8 @@ docker compose -f ci/docker-compose.bdd.yml \
 Everything tied to the particular kernel underneath - its sources, its
 `FreeRTOSConfig.h`, its application hooks and the CMSIS-RTOS2 wrapper - is in
 [`Kernel/FreeRtos/`](Kernel/FreeRtos/). A second kernel is a sibling directory
-supplying the same three files, and a one-line change to which `Kernel.cmake`
-the target includes.
+supplying the same `Kernel.cmake`, configuration, hooks and CMSIS device
+header, and a one-line change to which `Kernel.cmake` the target includes.
 
 Two things outside that directory still call the kernel directly, because they
 sit beneath the wrapper and no CMSIS-RTOS2 port of them exists: lwIP's

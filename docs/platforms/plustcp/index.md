@@ -10,8 +10,10 @@ address handle they share.
 
 ## Requirements
 
-FreeRTOS-Plus-TCP, selected at CMake time by
-naming `PlusTcp` in `SOLIDSYSLOG_PLATFORMS`. The resolver wraps `FreeRTOS_getaddrinfo`, so
+FreeRTOS-Plus-TCP V4.3.0 or later, selected at CMake time by
+naming `PlusTcp` in `SOLIDSYSLOG_PLATFORMS`. The datagram reads the next-hop
+lookup through the `eResolutionLookupResult_t` names that release introduced.
+The pack is tested against V4.4.2. The resolver wraps `FreeRTOS_getaddrinfo`, so
 your `FreeRTOSIPConfig.h` needs `ipconfigUSE_DNS=1`.
 
 ## Security behaviour and obligations
@@ -51,10 +53,10 @@ again once its cache entry ages out under `ipconfigMAX_ARP_AGE`, not to
 steady-state traffic; budget for it if you are logging inline from a task with
 a deadline. A resolution that fails is reported once, as
 `SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` with the stack's lookup
-result as the event's `NativeCode`: `eARPCacheMiss` when the cache has
-no entry for the next hop, `eCantSendPacket` when it has one still waiting for
-its reply, or when the stack cannot send to that next hop at all, as for a
-destination off the subnet with no gateway configured. Until a resolution
+result as the event's `NativeCode`: `eResolutionCacheMiss` when the cache
+has no entry for the next hop, `eResolutionFailed` when it has one still
+waiting for its reply, or when the stack cannot send to that next hop at all,
+as for a destination off the subnet with no gateway configured. Until a resolution
 succeeds again, sends ask for the next hop but do not wait and are not
 reported again, so an unreachable collector costs one wait rather than one
 per record.

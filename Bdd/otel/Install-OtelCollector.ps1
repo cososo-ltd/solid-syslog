@@ -7,8 +7,8 @@
 
 [CmdletBinding()]
 param(
-    [string]$Version = '0.150.1',
-    [string]$Sha256  = '53466D9A16B0D8BC6CB9A7A24EDA306751AFBD28BB115BEE1D2B11E9AF65A334',
+    [string]$Version = '0.165.0',
+    [string]$Sha256  = 'E728B24C23F54EC304845112A3E3C7A555C9A19D5EDC6417AFC9819D2AB892B0',
     [string]$BinDir
 )
 
@@ -54,6 +54,13 @@ if ($actual -ne $Sha256)
 $systemTar = Join-Path $env:SystemRoot 'System32\tar.exe'
 Write-Host "Extracting otelcol-contrib.exe via $systemTar"
 & $systemTar -xzf $tarballDst -C $BinDir otelcol-contrib.exe
+# A native command's failure does not stop the script under
+# $ErrorActionPreference, and an old exe left in place would pass the check
+# below and be marked as the new version.
+if ($LASTEXITCODE -ne 0)
+{
+    throw "Extraction failed: tar exited with code $LASTEXITCODE"
+}
 if (-not (Test-Path $exePath))
 {
     throw "Extraction failed: $exePath not present"

@@ -415,9 +415,10 @@ if(COVERAGE)
 
     if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         # The branch-coverage switch was renamed between lcov 1.x
-        # (lcov_branch_coverage) and 2.x (branch_coverage). Either version
-        # ignores the other's key without a word, and a capture made that
-        # way holds no branch data at all, so the key is chosen by version.
+        # (lcov_branch_coverage) and 2.x (branch_coverage). 1.x ignores the
+        # new key without a word, and a capture made that way holds no branch
+        # data at all. 2.x still honours the old key but deprecates it, so the
+        # key is chosen by version rather than left on the old one.
         execute_process(
             COMMAND ${LCOV_EXECUTABLE} --version
             OUTPUT_VARIABLE lcov_version_text
