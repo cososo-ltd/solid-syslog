@@ -43,8 +43,8 @@ repositories carry the exact figures, every stage's run report, the diff that pr
 each, and the reasoning behind it.
 
 Rounded stage by stage, the figures do not sum exactly to the cost of the whole path.
-Measured cumulatively against the same baseline, the path costs about 22.6 KB of flash and
-36.3 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
+Measured cumulatively against the same baseline, the path costs about 23.9 KB of flash and
+38.1 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
 stage's figure as the cost of that step and the example's own measurements as the cost of
 the path.
 
@@ -133,7 +133,7 @@ read it only when `HasNativeCode` is set.
 
 For more detail see [error handling and severity](error-severity.md).
 
-**Cost.** Flash ~1.6k, RAM ~10 B, for the handler shown. The category and severity
+**Cost.** Flash ~1.7k, RAM ~10 B, for the handler shown. The category and severity
 names are linked only when called, and this handler calls both. Each class brings its
 own detail names whether or not the handler asks for them, so those arrive in the
 figures of the stages that link the classes.
@@ -171,8 +171,9 @@ reported, while a collaborator you have deliberately done without is passed as i
 object. The library distinguishes the two, and so should anyone reading your wiring
 later.
 
-**Cost.** Flash ~1.0k, RAM ~730 B. Most of the RAM is the record slot the logger keeps
-for the record `SolidSyslog_Service` is dealing with, `SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes.
+**Cost.** Flash ~1.3k, RAM ~1.0k. Half the RAM is the record slot the logger keeps
+for the record `SolidSyslog_Service` is dealing with, `SOLIDSYSLOG_MAX_MESSAGE_SIZE` bytes;
+most of the rest is the library's table of the events it has yet to report.
 Stage 21 fits the cap to the device.
 
 ## Stage 4: A first record on the wire
@@ -256,7 +257,7 @@ enough: it drops records silently, and anyone on the path can read them. Stage 8
 the first, stage 13 the second - treat UDP as a stepping stone to whichever your threat
 model needs.
 
-**Cost.** Flash ~4.1k, RAM ~1.7k, nearly all of it stack depth on the logging task.
+**Cost.** Flash ~4.2k, RAM ~1.7k, nearly all of it stack depth on the logging task.
 
 ## Stage 5: Name it and time it
 
@@ -367,7 +368,7 @@ it costs and how a device turns it off.
 however many events can be logged before it is next serviced. It also makes logging from
 multiple tasks safe.
 
-**Cost.** Flash ~1.4k, RAM ~5.5k - the ring and the service task's stack. That stack
+**Cost.** Flash ~2.5k, RAM ~5.5k - the ring and the service task's stack. That stack
 holds the send beneath `SolidSyslog_Service` but not the record being sent, which lives
 in the logger and was counted at stage 3. You choose the ring size, and stage 21
 revisits it once the store is there to hold a backlog.
@@ -398,7 +399,7 @@ what makes the delivery-failed and delivery-restored events from stage 2 meaning
 **When you need it.** If the device must know that delivery is failing - to raise an
 alarm, to fall back, to start storing. Over UDP it never finds out.
 
-**Cost.** Flash ~750 B, RAM ~190 B.
+**Cost.** Flash ~900 B, RAM ~210 B.
 
 > RFC 6587 is Historic, and the IESG recommends TLS (stage 13) over plain TCP for new
 > deployments. Plain TCP is here for collectors you do not control, and as the step
@@ -492,7 +493,7 @@ Making stored records tamper-*evident* is stage 15.
 **When you need it.** What is your audit-loss budget? If the collector is unreachable
 for an hour, is losing that hour acceptable? Must records survive a reboot?
 
-**Cost.** Flash ~5.9k, RAM ~1.4k - handles and one record buffer, not capacity.
+**Cost.** Flash ~5.9k, RAM ~1.5k - handles and one record buffer, not capacity.
 **Upstream:** files on your filesystem. Both the number of files and the size of each are
 tunable.
 
@@ -548,7 +549,7 @@ value per index rather than taking a single string.
 a gateway, or NAT - and the source address the collector sees can no longer be trusted
 to identify the device.
 
-**Cost.** Flash ~400 B, no RAM.
+**Cost.** Flash ~110 B, no RAM.
 
 ## Stage 13: Trust the channel
 
@@ -611,7 +612,7 @@ host with no site PKI behind it, and a fingerprint provisioned at commissioning 
 none - which is why this path pins first, and adds a CA chain only at stage 19, for sites
 that run one.
 
-**Cost.** Flash ~3.3k. RAM ~28k on the example device - but only ~730 B of that is the
+**Cost.** Flash ~3.4k. RAM ~28k on the example device - but only ~730 B of that is the
 library; the rest is a second concurrent TLS session: the Mbed TLS memory pool grows from
 32 to 53 KiB, and the service task's stack grows for the handshake.
 
@@ -741,7 +742,7 @@ and never stores one. See [at-rest cryptography](security/at-rest-cryptography.m
 **When you need it.** If an attacker could reach the medium - removable, unattended, or
 stealable - and stored records must be provably unaltered.
 
-**Cost.** Flash ~430 B, RAM ~25 B. **Upstream:** a crypto primitive, which your TLS
+**Cost.** Flash ~460 B, RAM ~25 B. **Upstream:** a crypto primitive, which your TLS
 library already provides and has already linked if you took stage 13. Reaching for
 at-rest protection *without* TLS is where this stage carries an upstream cost of its
 own.
@@ -773,7 +774,7 @@ claim is exactly what a collector is watching for.
 each record, rather than assume it. It is also the cheapest way to detect a fleet
 member whose pipeline has silently degraded.
 
-**Cost.** Flash ~140 B, RAM negligible.
+**Cost.** Flash ~125 B, RAM negligible.
 
 ## Stage 17: Prove which device sent it
 
@@ -887,7 +888,7 @@ collector certificate renewed by the same CA still crosses as it did at stage 14
 **When you need it.** When the site runs a PKI and its policy requires every peer to
 chain to it. Where there is no site PKI, the pin from stage 13 is complete on its own.
 
-**Cost.** Flash ~90 B, RAM negligible. The chain itself costs nothing measurable on the
+**Cost.** Flash ~115 B, RAM negligible. The chain itself costs nothing measurable on the
 example: the collector's certificate is already parsed to compute its fingerprint, and the
 CA is one the device already holds for its broker session. The flash is the pipeline
 element's new parameter.
@@ -945,7 +946,7 @@ engineer to decide rather than the firmware, or if the device must stop rather t
 a record. A device content to keep the newest records can leave every policy argument
 `NULL`.
 
-**Cost.** Flash ~130 B, all of it the example's own code, and no RAM: the queues already
+**Cost.** Flash ~105 B, all of it the example's own code, and no RAM: the queues already
 carried the pointers.
 
 ## Stage 21: Fit the sizes to the device
@@ -986,7 +987,7 @@ mechanism and the way it is most often got wrong.
 a device that is still missing collaborators, and the high-water marks that justify a
 stack are only trustworthy when everything that runs on it is there.
 
-**Cost.** No flash. RAM ~4.1k **returned**.
+**Cost.** Flash negligible. RAM ~2.6k **returned**.
 
 ---
 
