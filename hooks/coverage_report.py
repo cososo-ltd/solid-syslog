@@ -9,12 +9,10 @@ each linking into that pack's part of the report. The figures are computed by
 ``scripts/coverage_summary.py`` from the same tracefile the lane gated on, so
 the number a reader sees is the number that passed.
 
-The provenance line reads ``SOLIDSYSLOG_DOCS_RELEASE``, ``SOLIDSYSLOG_DOCS_ORIGIN``
-and ``SOLIDSYSLOG_DOCS_COMMIT``, three of the variables ``hooks/build_version.py``
-reads for the footer, so it names the branch and commit, the pull request, or
-the release that the footer names: the report in a release bundle was measured
-from the tag, and saying "main" there would be false. Unlike the footer it has
-no use for the last release number, so it does not wait for it.
+The provenance line comes from ``scripts/docs_provenance.py``, which reads the
+variables the footer reads, so it names the branch and commit, the pull
+request, or the release that the footer names: the report in a release bundle
+was measured from the tag, and saying "main" there would be false.
 
 A build with no report in hand - every local one - gets a sentence saying so and
 no links, so a local ``mkdocs build --strict`` passes without the artifact. The
@@ -28,13 +26,13 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import coverage_summary  # noqa: E402
+import docs_provenance  # noqa: E402
 
 PAGE = "testing/coverage.md"
 MARKER = "<!-- coverage-table -->"
 # Relative to the Coverage page, which sits beside the directory.
 REPORT = "coverage-report"
 TRACEFILE = "coverage.filtered.info"
-SHORT_COMMIT_LENGTH = 7
 
 ABSENT = (
     "This build was made without a coverage report. The published site and the "
@@ -51,15 +49,7 @@ def _tracefile(config):
     return os.path.join(config["docs_dir"], "testing", REPORT, TRACEFILE)
 
 
-def provenance(environ):
-    release = environ.get("SOLIDSYSLOG_DOCS_RELEASE", "").strip()
-    if release:
-        return f"Measured for release {release}."
-    origin = environ.get("SOLIDSYSLOG_DOCS_ORIGIN", "").strip()
-    commit = environ.get("SOLIDSYSLOG_DOCS_COMMIT", "").strip()[:SHORT_COMMIT_LENGTH]
-    if origin and commit:
-        return f"Measured from {origin} at {commit}."
-    return "Measured by a local build."
+provenance = docs_provenance.provenance
 
 
 def _link(name):
