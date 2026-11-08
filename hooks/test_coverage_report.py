@@ -4,8 +4,9 @@ Run:  python3 hooks/test_coverage_report.py
       (or: python3 -m unittest discover -s hooks -p 'test_*.py')
 
 The strict build proves the links resolve when the report is present. What it
-cannot prove is the shape of the table, or that a build with no report in hand
-- every local one - still says something true and links to nothing.
+cannot prove is the shape of the table, that the provenance line names the
+build that measured it, or that a build with no report in hand - every local
+one - still says something true and links to nothing.
 """
 
 import os
@@ -14,6 +15,7 @@ import tempfile
 import textwrap
 import types
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coverage_report as h  # noqa: E402
@@ -38,6 +40,12 @@ TRACEFILE = textwrap.dedent(
 
 PAGE = "# Coverage\n\nIntro.\n\n<!-- coverage-table -->\n\nOutro.\n"
 
+BRANCH_BUILD = {
+    "SOLIDSYSLOG_DOCS_ORIGIN": "main",
+    "SOLIDSYSLOG_DOCS_COMMIT": "73f3646abcdef0123456789",
+    "SOLIDSYSLOG_DOCS_VERSION": "0.3.0",
+}
+
 
 def page_of(src_uri):
     return types.SimpleNamespace(file=types.SimpleNamespace(src_uri=src_uri))
@@ -50,7 +58,8 @@ class WithAReport(unittest.TestCase):
         os.makedirs(report)
         with open(os.path.join(report, "coverage.filtered.info"), "w", encoding="utf-8") as handle:
             handle.write(TRACEFILE)
-        self.out = h.on_page_markdown(PAGE, page_of("testing/coverage.md"), {"docs_dir": self.docs.name}, None)
+        with mock.patch.dict(os.environ, BRANCH_BUILD, clear=True):
+            self.out = h.on_page_markdown(PAGE, page_of("testing/coverage.md"), {"docs_dir": self.docs.name}, None)
 
     def tearDown(self):
         self.docs.cleanup()
@@ -62,10 +71,25 @@ class WithAReport(unittest.TestCase):
     def test_the_total_row_links_to_the_report_root(self):
         self.assertIn("| [**Total**](coverage-report/index.html) | 14 / 15 |", self.out)
 
+    def test_names_the_build_that_measured_it_above_the_table(self):
+        self.assertIn("Measured from main at 73f3646.\n\n| Pack |", self.out)
+
     def test_the_prose_around_the_marker_is_kept(self):
         self.assertTrue(self.out.startswith("# Coverage\n\nIntro.\n\n"))
         self.assertTrue(self.out.endswith("\n\nOutro.\n"))
         self.assertNotIn("<!-- coverage-table -->", self.out)
+
+
+class Provenance(unittest.TestCase):
+    def test_a_release_build_names_the_release_alone(self):
+        self.assertEqual(h.provenance({**BRANCH_BUILD, "SOLIDSYSLOG_DOCS_RELEASE": "0.4.0"}), "Measured for release 0.4.0.")
+
+    def test_a_pull_request_build_names_the_pull_request(self):
+        environ = {**BRANCH_BUILD, "SOLIDSYSLOG_DOCS_ORIGIN": "pull request #896"}
+        self.assertEqual(h.provenance(environ), "Measured from pull request #896 at 73f3646.")
+
+    def test_a_build_with_nothing_set_says_so(self):
+        self.assertEqual(h.provenance({}), "Measured by a local build.")
 
 
 class WithoutAReport(unittest.TestCase):
@@ -81,12 +105,18 @@ class WithoutAReport(unittest.TestCase):
 
     def test_links_to_nothing_the_strict_build_could_miss(self):
         self.assertNotIn("coverage-report/", self.out)
+        self.assertNotIn("Measured", self.out)
         self.assertNotIn("<!-- coverage-table -->", self.out)
 
 
 class OtherPages(unittest.TestCase):
     def test_are_returned_untouched(self):
         self.assertEqual(h.on_page_markdown(PAGE, page_of("ci.md"), {"docs_dir": "/nowhere"}, None), PAGE)
+
+    def test_an_older_mkdocs_without_src_uri_is_read_by_src_path(self):
+        page = types.SimpleNamespace(file=types.SimpleNamespace(src_path=os.path.join("testing", "coverage.md")))
+        out = h.on_page_markdown(PAGE, page, {"docs_dir": "/nowhere"}, None)
+        self.assertIn("This build was made without a coverage report", out)
 
 
 if __name__ == "__main__":

@@ -4,10 +4,15 @@ The coverage lane leaves two things in its run artifact: the genhtml report,
 one directory per pack with a page per source file, and the lcov tracefile the
 gate was judged on. docs-build places both under ``docs/testing/coverage-report/``
 before it builds, and this hook fills the ``<!-- coverage-table -->`` marker on
-the Coverage page with one row per pack, each linking into that pack's part of
-the report. The figures are computed by ``scripts/coverage_summary.py`` from the
-same tracefile the lane gated on, so the number a reader sees is the number that
-passed.
+the Coverage page with a line saying what was measured, then one row per pack,
+each linking into that pack's part of the report. The figures are computed by
+``scripts/coverage_summary.py`` from the same tracefile the lane gated on, so
+the number a reader sees is the number that passed.
+
+The provenance line reads the same variables as ``hooks/build_version.py``, so
+it names the branch and commit, the pull request, or the release that the
+footer names: the report in a release bundle was measured from the tag, and
+saying "main" there would be false.
 
 A build with no report in hand - every local one - gets a sentence saying so and
 no links, so a local ``mkdocs build --strict`` passes without the artifact. The
@@ -27,6 +32,7 @@ MARKER = "<!-- coverage-table -->"
 # Relative to the Coverage page, which sits beside the directory.
 REPORT = "coverage-report"
 TRACEFILE = "coverage.filtered.info"
+SHORT_COMMIT_LENGTH = 7
 
 ABSENT = (
     "This build was made without a coverage report. The published site and the "
@@ -35,31 +41,41 @@ ABSENT = (
 )
 
 
+def _src_uri(file):
+    return getattr(file, "src_uri", None) or file.src_path.replace(os.sep, "/")
+
+
 def _tracefile(config):
     return os.path.join(config["docs_dir"], "testing", REPORT, TRACEFILE)
 
 
-def _index_of(pack):
-    if pack == "Core":
-        return f"{REPORT}/Core/Source/index.html"
-    return f"{REPORT}/Platform/{pack}/Source/index.html"
+def provenance(environ):
+    release = environ.get("SOLIDSYSLOG_DOCS_RELEASE", "").strip()
+    if release:
+        return f"Measured for release {release}."
+    origin = environ.get("SOLIDSYSLOG_DOCS_ORIGIN", "").strip()
+    commit = environ.get("SOLIDSYSLOG_DOCS_COMMIT", "").strip()[:SHORT_COMMIT_LENGTH]
+    if origin and commit:
+        return f"Measured from {origin} at {commit}."
+    return "Measured by a local build."
 
 
-def _table(packs):
-    lines = ["| Pack | Lines | | Branches | |", "|---|---:|---:|---:|---:|"]
-    ordered = ["Core"] + sorted(name for name in packs if name != "Core")
-    lines.extend(coverage_summary.row(f"[{name}]({_index_of(name)})", packs[name]) for name in ordered if name in packs)
-    lines.append(coverage_summary.row(f"[**Total**]({REPORT}/index.html)", coverage_summary.total(packs)))
-    return "\n".join(lines)
+def _link(name):
+    if name == coverage_summary.TOTAL:
+        return f"[{name}]({REPORT}/index.html)"
+    if name == "Core":
+        return f"[{name}]({REPORT}/Core/Source/index.html)"
+    return f"[{name}]({REPORT}/Platform/{name}/Source/index.html)"
 
 
 def on_page_markdown(markdown, page, config, files, **kwargs):
-    if page.file.src_uri != PAGE:
+    if _src_uri(page.file) != PAGE:
         return markdown
     path = _tracefile(config)
     if os.path.exists(path):
         with open(path, encoding="utf-8") as handle:
-            filled = _table(coverage_summary.aggregate(handle))
+            table = coverage_summary.markdown(coverage_summary.aggregate(handle), label=_link)
+        filled = provenance(os.environ) + "\n\n" + table
     else:
         filled = ABSENT
     return markdown.replace(MARKER, filled)
