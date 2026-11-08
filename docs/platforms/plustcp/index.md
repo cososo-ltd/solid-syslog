@@ -55,8 +55,8 @@ a deadline. A resolution that fails is reported once, as
 `SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED` with the stack's lookup
 result as the event's `NativeCode`: `eResolutionCacheMiss` when the cache
 has no entry for the next hop, `eResolutionFailed` when it has one still
-waiting for its reply, or when the stack cannot send to that next hop at all, as for a
-destination off the subnet with no gateway configured. Until a resolution
+waiting for its reply, or when the stack cannot send to that next hop at all,
+as for a destination off the subnet with no gateway configured. Until a resolution
 succeeds again, sends ask for the next hop but do not wait and are not
 reported again, so an unreachable collector costs one wait rather than one
 per record.
