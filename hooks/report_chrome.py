@@ -38,6 +38,11 @@ REPORTS = [
         "testing/coverage-report",
         'Reported by <a href="https://github.com/linux-test-project/lcov" target="_blank" rel="noopener">LCOV</a>',
     ),
+    (
+        "testing/tests",
+        "testing/test-report",
+        "Reported from the run's JUnit results",
+    ),
 ]
 
 STYLES_MARKER = "<!-- site-styles -->"

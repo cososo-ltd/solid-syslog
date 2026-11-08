@@ -81,6 +81,10 @@ Bdd/features/steps/solidsyslog_tunables.py
 # scripts/check_references.py asks git about the path in a tree without it.
 /docs/testing/coverage-report
 
+# The test report scripts/junit_report_pages.py generates from the run's JUnit
+# artifacts, staged here by docs-build for the Testing pages (hooks/test_report.py)
+/docs/testing/test-report
+
 # Claude Code local config
 .claude/
 pr*-comments.json

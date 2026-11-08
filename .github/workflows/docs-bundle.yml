@@ -60,6 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Fetches the JUnit results of the CI run that tested this commit, below.
+      actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -81,6 +83,39 @@ jobs:
         run: |
           VERSION=$(python3 -c "import json; print(json.load(open('.release-please-manifest.json'))['.'])")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # The test report needs every lane's JUnit results, and nineteen lanes
+      # cannot be re-run here. They come from the CI run that tested this very
+      # commit on main, whose junit-* artifacts are kept a month for this
+      # purpose (ci.yml). No successful run, or artifacts that have expired,
+      # fails the bundle: a release does not ship without its evidence.
+      - name: Fetch the JUnit results of the CI run that tested this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          # The newest CI run for the commit, whatever state it is in. A release
+          # is published by hand from a draft well after main went green, but
+          # should one be published while that run is still going, wait for it
+          # rather than report nothing: `gh run watch` returns the run's own
+          # exit status, so a run that fails fails this step with it.
+          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" \
+                     --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No CI run for $SHA, so there are no test results to report" >&2
+            exit 1
+          fi
+          gh run watch "$RUN_ID" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30 > /dev/null
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'junit-*' --dir build/junit
+          test -n "$(ls -A build/junit)" || { echo "::error::Run $RUN_ID has no junit-* artifacts left to download" >&2; exit 1; }
+
+      - name: Generate the test report for the Testing pages
+        env:
+          SOLIDSYSLOG_DOCS_RELEASE: ${{ github.event_name == 'release' && steps.version.outputs.version || '' }}
+          SOLIDSYSLOG_DOCS_ORIGIN: ${{ github.ref_name }}
+          SOLIDSYSLOG_DOCS_COMMIT: ${{ github.sha }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.event.release.tag_name || github.sha }}/
+        run: python3 scripts/junit_report_pages.py build/junit docs/testing/test-report --source-url "$SOURCE_URL"
 
       # SOLIDSYSLOG_DOCS_RELEASE makes the footer read "Documentation for release
       # X" rather than naming a branch and commit: this build is the release, so

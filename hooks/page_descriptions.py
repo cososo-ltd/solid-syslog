@@ -270,6 +270,11 @@ DESCRIPTIONS = {
         "what each colour and arrow means, and how the diagrams are generated."
     ),
     # Testing
+    "testing/tests.md": (
+        "What CI tested in the build that produced this site: every lane, "
+        "executable, suite and test with its duration, failures first, and where "
+        "each suite and scenario ran."
+    ),
     "testing/coverage.md": (
         "Line and branch coverage of SolidSyslog as measured by CI for the build "
         "that produced this site, per pack, with the full genhtml report to drill "

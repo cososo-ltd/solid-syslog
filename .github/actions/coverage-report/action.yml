@@ -33,6 +33,7 @@ runs:
     # the verdict next to the table. `shell: bash` already runs with
     # pipefail, so the script's exit status survives the tee.
     - name: Summarise coverage and enforce the gate
+      id: gate
       shell: bash
       env:
         THRESHOLD: ${{ inputs.threshold }}
@@ -45,12 +46,20 @@ runs:
     # Kept even when the gate fails, which is exactly when the report is wanted.
     # A build that failed before the tracefile existed has nothing to copy, and
     # says so rather than adding a second red step over the one that matters.
+    # But a gate that passed read that very file, so its absence then is a
+    # fault of its own, and the artifact must not go out without the figures
+    # the Coverage page is filled from.
     - name: Put the tracefile beside the report
       if: success() || failure()
       shell: bash
+      env:
+        GATE_OUTCOME: ${{ steps.gate.outcome }}
       run: |
         if [ -f build/coverage/coverage.filtered.info ]; then
           cp build/coverage/coverage.filtered.info build/coverage/coverage_report/
+        elif [ "$GATE_OUTCOME" = "success" ]; then
+          echo "::error::The gate passed but the tracefile it read is missing" >&2
+          exit 1
         else
           echo "No tracefile: the build did not get as far as capturing coverage"
         fi
