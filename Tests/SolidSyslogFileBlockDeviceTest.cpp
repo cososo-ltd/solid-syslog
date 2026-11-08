@@ -190,6 +190,28 @@ TEST(SolidSyslogFileBlockDevice, DisposeLeavesOtherBlocksUntouched)
     CHECK_BLOCK_SIZE(1, 4);
 }
 
+TEST(SolidSyslogFileBlockDevice, DisposeOfAnotherBlockLeavesTheOpenHandleAlone)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Acquire(device, 1);
+    SolidSyslogBlockDevice_Read(device, 0, 0, nullptr, 0);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 1));
+
+    CHECK_TRUE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogFileBlockDevice, DisposeWithNoHandleOpenDeletesTheBlock)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    SolidSyslogBlockDevice_Acquire(device, 1);
+    SolidSyslogBlockDevice_Dispose(device, 1);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 0));
+
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 0));
+}
+
 TEST(SolidSyslogFileBlockDevice, BlockFilenameZeroPadsSequenceToTwoDigits)
 {
     SolidSyslogBlockDevice_Acquire(device, 7);

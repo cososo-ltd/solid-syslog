@@ -2389,6 +2389,17 @@ TEST(SolidSyslogBlockStoreCorruption, ZeroLengthRecordHasNoUnsent)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
+/* Releases before 0.4.0 flagged a record the policy rejected as discarded.
+ * Nothing writes the flag now; one left on the media still reads as finished
+ * with, so the record is not offered again. */
+TEST(SolidSyslogBlockStoreCorruption, ARecordAnOlderReleaseDiscardedHasNoUnsent)
+{
+    uint8_t discarded[] = {0xA5, 0x5A, 0x05, 0x00, 'h', 'e', 'l', 'l', 'o', 0x0F};
+    WriteRawBytes("/tmp/test_store00.log", discarded, sizeof(discarded));
+    CreateStore();
+    CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
+}
+
 TEST(SolidSyslogBlockStoreCorruption, ATruncatedRecordDoesNotFreezeTheStore)
 {
     /* What a power cut mid-append leaves: the record runs past the end of the
