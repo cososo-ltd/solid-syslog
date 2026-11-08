@@ -33,20 +33,6 @@ using namespace CososoTesting;
         MEMCMP_EQUAL((expected), readData, (size)); \
     }
 
-// Asserts buf is a non-null handle that is not one of the slots in pool.
-// Used to pin the pool-exhaustion Fallback contract: every legitimate
-// SolidSyslogCircularBuffer_Create returns either a pool slot or the Fallback
-// singleton, never NULL.
-#define CHECK_IS_FALLBACK(buf, pool)                                                 \
-    {                                                                                \
-        CHECK_TEXT((buf) != nullptr, "Fallback handle was nullptr");                 \
-        for (auto* slot : (pool))                                                    \
-        {                                                                            \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)"); \
-            CHECK_TEXT((buf) != slot, "Fallback handle collided with a pool slot");  \
-        }                                                                            \
-    }
-
 enum
 {
     TEST_MAX_MESSAGES = 1,

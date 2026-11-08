@@ -25,16 +25,6 @@ static const char* const TEST_PATH = "/tmp/test_posix_file.dat";
 /* A FIFO: open succeeds, and lseek on it fails with ESPIPE. */
 static const char* const TEST_FIFO_PATH = "/tmp/test_posix_file.fifo";
 
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 // Asserts the call raised exactly the File fault naming this operation, with
 // the errno behind it.
 #define CHECK_FAILURE_REPORTED_WITH_ERRNO(code, nativeErrno) \

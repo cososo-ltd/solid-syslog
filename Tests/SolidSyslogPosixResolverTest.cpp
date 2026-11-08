@@ -130,16 +130,6 @@ TEST(SolidSyslogPosixResolver, FreesAddrInfoOnSuccess)
     CALLED_FAKE(SocketFake_FreeAddrInfo, ONCE);
 }
 
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 // clang-format off
 TEST_GROUP(SolidSyslogPosixResolverPool)
 {

@@ -233,12 +233,7 @@ TEST(SolidSyslogTimeQualitySdPool, FillingPoolThenOverflowReturnsDistinctFallbac
 
     overflow = MakeSd();
 
-    CHECK_TEXT(overflow != nullptr, "Fallback handle was nullptr");
-    for (auto* slot : pooled)
-    {
-        CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");
-        CHECK_TEXT(overflow != slot, "Fallback handle collided with a pool slot");
-    }
+    CHECK_IS_FALLBACK(overflow, pooled);
 }
 
 // Bad-setup test - SolidSyslogTimeQualitySd_Create rejects NULL callback and

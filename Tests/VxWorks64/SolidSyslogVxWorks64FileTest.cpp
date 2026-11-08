@@ -34,17 +34,6 @@ static const int VX_FIOCOMMITFS = 56;
 static const int VX_S_DOSFSLIB_FILE_NOT_FOUND = 0x380003;
 static const int OWNER_READ_WRITE = 0x180;
 
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 // Asserts the call raised exactly the File fault naming this operation, with
 // the errno behind it.
 #define CHECK_FAILURE_REPORTED_WITH_ERRNO(code, nativeErrno) \

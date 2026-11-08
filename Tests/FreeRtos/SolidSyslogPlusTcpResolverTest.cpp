@@ -25,17 +25,6 @@ using namespace CososoTesting;
 #include "SolidSyslogResolverErrors.h"
 #include "SolidSyslogError.h"
 
-// Asserts handle is non-null and not one of the slots in pool.
-#define CHECK_IS_FALLBACK(handle, pool)                                                \
-    {                                                                                  \
-        CHECK_TEXT((handle) != nullptr, "Fallback handle was nullptr");                \
-        for (auto* slot : (pool))                                                      \
-        {                                                                              \
-            CHECK_TEXT(slot != nullptr, "pool slot was nullptr (FillPool failed?)");   \
-            CHECK_TEXT((handle) != slot, "Fallback handle collided with a pool slot"); \
-        }                                                                              \
-    }
-
 static const char* const TEST_HOST = "10.0.2.2";
 static const char* const TEST_ALTERNATE_HOST = "192.168.1.1";
 static const uint16_t TEST_PORT = 514;
