@@ -700,7 +700,7 @@ exactly one implementation of a given role - the tunable is named for the
 ```c
 #define SOLIDSYSLOG_TCP_STREAM_POOL_SIZE 2U   /* not _POSIX_TCP_STREAM_ */
 #define SOLIDSYSLOG_MUTEX_POOL_SIZE      1U   /* not _POSIX_MUTEX_ / _WINDOWS_MUTEX_ */
-#define SOLIDSYSLOG_TLS_STREAM_POOL_SIZE 1U   /* OpenSSL or Mbed TLS, one name */
+#define SOLIDSYSLOG_TLS_STREAM_POOL_SIZE 1U   /* every TLS pack, one name */
 ```
 
 The integrator reasons about "how many TCP streams", never "how many POSIX

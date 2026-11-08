@@ -95,8 +95,10 @@ provide `mbedtls_hardware_poll` instead.
 
 ## 1. Install an error handler
 
-Every fault below reaches this handler and nothing else. Install it before
-anything is created.
+Every fault below reaches this handler. A handshake refusal is also written to the
+collector as a record of the logger's own, which
+[Records the logger writes about itself](../../self-reporting.md) describes. Install
+the handler before anything is created.
 
 ```c
 static void OnError(void* context, const struct SolidSyslogErrorEvent* event)

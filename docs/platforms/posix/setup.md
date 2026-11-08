@@ -54,8 +54,9 @@ should come from somewhere other than the operating system.
 
 If your application logs from one thread and drains from another, put a
 circular buffer between them with `SolidSyslogPosixMutex` filling the mutex
-role. Leaving the mutex unfilled is safe only while `Log` and `Service` run on
-the same thread.
+role. Where `Log` and `Service` run on the same thread, inject
+`SolidSyslogNullMutex_Get()` instead: a NULL mutex is refused as bad configuration and
+Create returns the Null buffer.
 
 The message-queue buffer needs `SolidSyslogPosixMutex` whenever `Log` and
 `Service` run on different threads, not only when several threads log: the

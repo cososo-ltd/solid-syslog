@@ -191,6 +191,18 @@ listed above; the written sections are added by hand in the release pull request
    it reads as a release still in flight. [CLAUDE.md](../CLAUDE.md#milestones)
    states what goes in the next one, and when it carries a due date.
 
+### Bringing the documentation to the release
+
+The documentation is brought to a release on one branch, from one issue, and that
+branch merges after the last functional change and before the release pull request.
+It carries everything the checklist below names: the example stacks' `release/<version>`
+links, the `GIT_TAG`, the cost figures in `README.md`, and `docs/hardening-path.md`
+re-taken stage by stage. The figures come from the example stacks' `wip/<version>`
+branches, replayed onto the current `main` and swept; the evidence commit on each
+release branch states why the figures hold at the tag. From the moment the branch merges
+the site links release branches that do not yet exist, so the release PR, the tag, the
+release branches and the publication follow in one sitting.
+
 ### Releasing the example stacks
 
 Each example stack - `solid-syslog-example` and `solid-syslog-example-make` -

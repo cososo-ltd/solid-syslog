@@ -191,7 +191,7 @@ project(my_logger C)
 include(FetchContent)
 FetchContent_Declare(SolidSyslog
     GIT_REPOSITORY https://github.com/cososo-ltd/solid-syslog.git
-    GIT_TAG        v0.3.0)
+    GIT_TAG        v0.4.0)
 
 set(SOLIDSYSLOG_PLATFORMS "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic")
 FetchContent_MakeAvailable(SolidSyslog)
@@ -317,7 +317,7 @@ nothing rather than failing, and nothing has to be excluded by hand.
 Set `SOLIDSYSLOG_DIR` before the `include` if the library does not sit where the fragment
 does - by default it locates itself.
 
-[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0) is
+[`solid-syslog-example-make`](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.4.0) is
 a worked consumer of this shape, cross-building FreeRTOS, lwIP, Mbed TLS and FatFs.
 
 ---

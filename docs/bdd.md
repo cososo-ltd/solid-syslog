@@ -48,9 +48,11 @@ fault-finding tips.
 |---|---|---|
 | Linux | `behave-linux` | `syslog-ng-linux` |
 | Linux, passthrough wiring | `behave-linux-passthrough` - the same binary with `--buffer passthrough`, which the `BDD_BUFFER` env var selects | `syslog-ng-linux` |
+| Linux, wolfSSL | `behave-linux-wolfssl` - the target built over the wolfSSL pack | `syslog-ng-linux` |
 | FreeRTOS (Plus-TCP) | `behave-freertos` (cross image carries QEMU + Behave) | `syslog-ng-freertos` (shared netns; QEMU slirp `10.0.2.2` reaches it on loopback) |
 | FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
+| CMSIS-RTOS2 (lwIP Sockets API), wolfSSL | `behave-cmsis-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 | VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 

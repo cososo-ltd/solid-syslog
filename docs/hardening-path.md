@@ -15,8 +15,8 @@ resources say to stop.
 Every code snippet and every figure below comes from a worked integration, published in
 full for this release:
 
-- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.3.0) - consumed with CMake.
-- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.3.0) - the same integration, consumed with Make.
+- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.4.0) - consumed with CMake.
+- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.4.0) - the same integration, consumed with Make.
 
 The baseline is constructed to carry the third-party platform code a real-world device
 would already have - an RTOS, a network stack, and cryptography. A device that needs
@@ -955,7 +955,7 @@ device actually uses.
 
 ```c
 /* app/config/solid_syslog_tunables.h */
-#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 400U
+#define SOLIDSYSLOG_MAX_MESSAGE_SIZE 560U
 
 #define SOLIDSYSLOG_ADDRESS_POOL_SIZE 1U
 #define SOLIDSYSLOG_TCP_STREAM_POOL_SIZE 1U
@@ -964,11 +964,13 @@ device actually uses.
 
 The message cap comes first, because the ring, the record slot from stage 3, the
 store's record buffer and the formatter frame on the logging task's stack all follow it.
-The worst case measured on the example is 379 octets - four SD-ELEMENTs with both
-counters at full 32-bit width and both addresses at fifteen characters, plus a short
-message - so 400 leaves room for longer messages on that device. Anything longer is
-truncated rather than dropped. RFC 5424 section 6.1 says a receiver should accept 2048
-octets; over UDP, RFC 5426 section 3.2 guarantees only 480.
+The worst case measured on the example is 538 octets - five SD-ELEMENTs with both
+counters at full 32-bit width and both addresses at fifteen characters, the fifth being
+the library's own event element at the longest kind the device can raise, plus that
+event's fixed message - so 560 leaves room for longer messages on that device. Anything
+longer is truncated rather than dropped, and a cap below the event records truncates
+them mid-element, which a collector rejects. RFC 5424 section 6.1 says a receiver should
+accept 2048 octets; over UDP, RFC 5426 section 3.2 guarantees only 480.
 
 The pools follow. Their defaults suit a device running several transports at once; this
 one runs a single sender, over a single stream, to a single destination. Then the ring,

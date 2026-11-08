@@ -96,8 +96,8 @@ chosen for this path applies to every transport the instance uses.
 
 ### A failed connect is reported, with the stack's answer
 
-Each step of a TCP connect that fails is reported under the stream's own error
-source, with the detail naming the step, as
+Each step of a TCP connect that fails is reported, once per run of the same step,
+under the stream's own error source, with the detail naming the step, as
 [`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
 When `FreeRTOS_connect` fails, the event's `NativeCode` is the value it
 answered: the negated FreeRTOS `errno`, `-pdFREERTOS_ERRNO_ETIMEDOUT` for the

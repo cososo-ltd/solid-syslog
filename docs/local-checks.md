@@ -303,7 +303,7 @@ adjust those by hand.
   Deliberately not in the pre-push budget - an invalid workflow is caught before
   merge, and the budget is short on purpose
 - Windows MSVC + BDD + integration: depend on tools you may not have
-- `bdd-linux-openssl-syslogng`, `bdd-windows-openssl-otel`, `bdd-freertos-plustcp-mbedtls-plusfat-syslogng`,
+- `bdd-linux-openssl-syslogng`, `bdd-linux-openssl-syslogng-passthrough`, `bdd-linux-wolfssl-syslogng`, `bdd-windows-openssl-otel`, `bdd-freertos-plustcp-mbedtls-plusfat-syslogng`,
   `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng`, `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng`, `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`:
   heavy multi-container stacks
 
