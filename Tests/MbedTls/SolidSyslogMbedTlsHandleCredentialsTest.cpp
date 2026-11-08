@@ -184,6 +184,21 @@ TEST(SolidSyslogMbedTlsHandleCredentials, DestroyingAHandleThePoolDoesNotOwnIsRe
     );
 }
 
+TEST(SolidSyslogMbedTlsHandleCredentials, DestroyingAHandleTwiceReportsTheSecond)
+{
+    credentials = SolidSyslogMbedTlsHandleCredentials_Create(&config);
+    SolidSyslogMbedTlsHandleCredentials_Destroy(credentials);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogMbedTlsHandleCredentials_Destroy(credentials);
+    credentials = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogMbedTlsHandleCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogMbedTlsHandleCredentials, InstallWiresTheConfiguredCaChainWithNoRevocationList)
 {
     credentials = SolidSyslogMbedTlsHandleCredentials_Create(&config);

@@ -411,6 +411,21 @@ TEST(SolidSyslogSwitchingSenderPool, FillingPoolThenOverflowReturnsDistinctFallb
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
+TEST(SolidSyslogSwitchingSenderPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeSender();
+    SolidSyslogSwitchingSender_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogSwitchingSender_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogSwitchingSenderErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_SWITCHING_SENDER_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 // Bad-setup tests - SolidSyslogSwitchingSender_Create rejects malformed config
 // and routes to NullSender.
 

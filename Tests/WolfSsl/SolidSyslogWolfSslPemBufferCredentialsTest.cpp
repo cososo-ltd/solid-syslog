@@ -190,6 +190,21 @@ TEST(SolidSyslogWolfSslPemBufferCredentials, DestroyingAHandleThePoolDoesNotOwnI
     );
 }
 
+TEST(SolidSyslogWolfSslPemBufferCredentials, DestroyingAHandleTwiceReportsTheSecond)
+{
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+
+    SolidSyslogWolfSslPemBufferCredentials_Destroy(credentials);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogWolfSslPemBufferCredentialsErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+    credentials = SolidSyslogWolfSslPemBufferCredentials_Create(&config);
+}
+
 TEST(SolidSyslogWolfSslPemBufferCredentials, InstallLoadsTheTrustAnchorsOntoTheContextAsPem)
 {
     Install();

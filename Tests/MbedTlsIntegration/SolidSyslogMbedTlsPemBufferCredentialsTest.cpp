@@ -268,6 +268,21 @@ TEST(SolidSyslogMbedTlsPemBufferCredentials, DestroyingAHandleThePoolDoesNotOwnI
     );
 }
 
+TEST(SolidSyslogMbedTlsPemBufferCredentials, DestroyingAHandleTwiceReportsTheSecond)
+{
+    credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);
+    SolidSyslogMbedTlsPemBufferCredentials_Destroy(credentials);
+
+    SolidSyslogMbedTlsPemBufferCredentials_Destroy(credentials);
+    credentials = nullptr;
+
+    CHECK_PEM_BUFFER_ERROR_REPORTED(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_TLS_CREDENTIALS_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogMbedTlsPemBufferCredentials, InstallWiresTheParsedChainAsTheConfigurationsTrustAnchors)
 {
     credentials = SolidSyslogMbedTlsPemBufferCredentials_Create(&config);

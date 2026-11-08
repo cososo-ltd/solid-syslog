@@ -613,6 +613,21 @@ TEST(SolidSyslogOriginSdPool, FillingPoolThenOverflowReturnsDistinctFallback)
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
+TEST(SolidSyslogOriginSdPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeSd();
+    SolidSyslogOriginSd_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogOriginSd_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogOriginSdErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_ORIGIN_SD_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogOriginSd, TheErrorSourceNamesItsDetailsThroughOriginSdErrors)
 {
     CHECK(SolidSyslogOriginSdErrors_Name == SolidSyslogOriginSdErrorSource.DetailName);

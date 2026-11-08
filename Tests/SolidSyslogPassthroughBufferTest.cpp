@@ -196,6 +196,21 @@ TEST(SolidSyslogPassthroughBufferPool, FillingPoolThenOverflowReturnsDistinctFal
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
+TEST(SolidSyslogPassthroughBufferPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeBuffer();
+    SolidSyslogPassthroughBuffer_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogPassthroughBuffer_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogPassthroughBufferErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_PASSTHROUGH_BUFFER_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogPassthroughBufferPool, FallbackWriteAndReadAreNoOps)
 {
     FillPool();

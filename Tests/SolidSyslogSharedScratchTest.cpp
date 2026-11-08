@@ -239,3 +239,18 @@ TEST(SolidSyslogSharedScratchPool, OverflowFallsBackToTheStackScratch)
 
     POINTERS_EQUAL(SolidSyslogStackScratch_Get(), overflow);
 }
+
+TEST(SolidSyslogSharedScratchPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = SolidSyslogSharedScratch_Create(SolidSyslogNullMutex_Get());
+    SolidSyslogSharedScratch_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogSharedScratch_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogSharedScratchErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_SHARED_SCRATCH_ERROR_UNKNOWN_DESTROY
+    );
+}

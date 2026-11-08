@@ -406,6 +406,21 @@ TEST(SolidSyslogFileBlockDevicePool, FillingPoolThenOverflowReturnsDistinctFallb
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
+TEST(SolidSyslogFileBlockDevicePool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeDevice();
+    SolidSyslogFileBlockDevice_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogFileBlockDevice_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogFileBlockDeviceErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogFileBlockDevice, TheErrorSourceNamesItsDetailsThroughFileBlockDeviceErrors)
 {
     CHECK(SolidSyslogFileBlockDeviceErrors_Name == SolidSyslogFileBlockDeviceErrorSource.DetailName);

@@ -386,6 +386,21 @@ TEST(SolidSyslogMetaSdPool, FillingPoolThenOverflowReturnsDistinctFallback)
     CHECK_IS_FALLBACK(overflow, pooled);
 }
 
+TEST(SolidSyslogMetaSdPool, DestroyingAHandleTwiceReportsTheSecond)
+{
+    pooled[0] = MakeSd();
+    SolidSyslogMetaSd_Destroy(pooled[0]);
+    ErrorHandlerFake_Install(nullptr);
+    SolidSyslogMetaSd_Destroy(pooled[0]);
+    pooled[0] = nullptr;
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogMetaSdErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 TEST(SolidSyslogMetaSd, TheErrorSourceNamesItsDetailsThroughMetaSdErrors)
 {
     CHECK(SolidSyslogMetaSdErrors_Name == SolidSyslogMetaSdErrorSource.DetailName);

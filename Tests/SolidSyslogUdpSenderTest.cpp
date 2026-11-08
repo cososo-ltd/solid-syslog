@@ -454,6 +454,22 @@ TEST(SolidSyslogUdpSenderDestroy, DestroyOfUnknownHandleReportsWarning)
     );
 }
 
+TEST(SolidSyslogUdpSenderDestroy, DestroyingAHandleTwiceReportsTheSecond)
+{
+    struct SolidSyslogSender* localSender = SolidSyslogUdpSender_Create(&config);
+    SolidSyslogUdpSender_Destroy(localSender);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogUdpSender_Destroy(localSender);
+
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_UNKNOWN_DESTROY_SEVERITY,
+        &SolidSyslogUdpSenderErrorSource,
+        SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
+        SOLIDSYSLOG_UDP_SENDER_ERROR_UNKNOWN_DESTROY
+    );
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogUdpSenderConfig, UdpSenderTestBase)
 {
