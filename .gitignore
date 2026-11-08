@@ -75,6 +75,10 @@ Bdd/features/steps/solidsyslog_tunables.py
 /site/
 /docs/api/
 
+# The coverage lane's genhtml report and tracefile, staged here by docs-build
+# for the Testing pages (hooks/coverage_report.py)
+/docs/testing/coverage-report/
+
 # Claude Code local config
 .claude/
 pr*-comments.json
