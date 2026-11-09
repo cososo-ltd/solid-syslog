@@ -14,6 +14,7 @@ The report pages are rendered from this model by ``junit_report_pages.py``,
 which is also the command line that runs both.
 """
 
+import json
 import os
 import posixpath
 import re
@@ -24,6 +25,8 @@ from typing import Dict, List, Optional, Tuple
 ARTIFACT_PREFIX = "junit-"
 CPPUTEST_PREFIX = "cpputest_"
 BEHAVE_PREFIX = "TESTS-"
+VERSIONS_FILE = "solidsyslog-versions.json"
+SHORT_COMMIT = 7
 FEATURES_DIR = "Bdd/features"
 UNNAMED = "unnamed executable"
 
@@ -92,10 +95,62 @@ class Counts:
         self.time += test.time
 
 
+@dataclass(frozen=True)
+class Upstream:
+    """One upstream tree a pack compiled against, as its header and its git
+    checkout described it. The version is what the header states; the tag and
+    commit are what the checkout is. Any of the three may be missing."""
+
+    tree: str
+    version: Optional[str] = None
+    tag: Optional[str] = None
+    commit: Optional[str] = None
+    path: Optional[str] = None
+
+    @property
+    def label(self) -> str:
+        if self.version:
+            return self.version
+        if self.tag:
+            return self.tag
+        return (self.commit or "")[:SHORT_COMMIT]
+
+    def answers_to(self, claim: str) -> bool:
+        """Whether a page's claim names this tree: its version, its tag with
+        or without a leading v, or its commit by at least its short form."""
+        if not claim:
+            return False
+        if claim in (self.version, self.tag):
+            return True
+        if self.tag and self.tag.startswith("v") and claim == self.tag[1:]:
+            return True
+        return bool(self.commit) and len(claim) >= SHORT_COMMIT and self.commit.startswith(claim)
+
+
+@dataclass(frozen=True)
+class Versions:
+    """What a lane's configure compiled against, from the record CMake writes
+    beside the build (cmake/VersionRecord.cmake)."""
+
+    compiler_id: str
+    compiler_version: str
+    compiler_executable: str
+    system: str
+    cross_compiling: bool
+    packs: Tuple[str, ...]
+    bdd_target: Optional[str]
+    upstreams: Dict[str, Tuple[Upstream, ...]]
+
+    @property
+    def compiler(self) -> str:
+        return f"{self.compiler_id} {self.compiler_version}"
+
+
 @dataclass
 class Lane:
     name: str
     tests: List[Test] = field(default_factory=list)
+    versions: Optional[Versions] = None
 
     @property
     def kind(self) -> str:
@@ -159,8 +214,34 @@ def read_run(artifacts_dir: str, features_dir: Optional[str] = FEATURES_DIR) -> 
                     lane.tests.extend(read_cpputest(os.path.join(root, name), lane.name, subdirectory))
                 elif name.startswith(BEHAVE_PREFIX) and name.endswith(".xml"):
                     lane.tests.extend(read_behave(os.path.join(root, name), lane.name, tags))
+                elif name == VERSIONS_FILE:
+                    lane.versions = read_versions(os.path.join(root, name))
         run.lanes[lane.name] = lane
     return run
+
+
+def read_versions(path: str) -> Versions:
+    with open(path, encoding="utf-8") as handle:
+        record = json.load(handle)
+    compiler = record.get("compiler", {})
+    system = record.get("system", {})
+    upstreams = {
+        pack: tuple(
+            Upstream(entry["tree"], entry.get("version"), entry.get("tag"), entry.get("commit"), entry.get("path"))
+            for entry in entries
+        )
+        for pack, entries in record.get("upstreams", {}).items()
+    }
+    return Versions(
+        compiler.get("id", ""),
+        compiler.get("version", ""),
+        compiler.get("executable", ""),
+        " ".join(part for part in (system.get("name"), system.get("processor")) if part),
+        bool(system.get("crossCompiling", False)),
+        tuple(record.get("packs", [])),
+        record.get("bddTarget"),
+        upstreams,
+    )
 
 
 def read_cpputest(path: str, lane: str, subdirectory: str = ".") -> List[Test]:
