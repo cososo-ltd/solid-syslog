@@ -367,8 +367,8 @@ This drives automated changelog generation and release versioning via release-pl
 | `chore` | Maintenance (e.g. container image bump) |
 | `docs` | Documentation only |
 
-Append `!` for breaking changes: `feat!: rename Example target`. What counts as one -
-and that a raised upstream, CMake or C-standard floor does not - is defined once, in
+Append `!` for breaking changes: `feat!: rename Example target`. What counts as one is
+defined once, in
 [docs/release-process.md](docs/release-process.md#what-is-a-breaking-change).
 
 PR titles must also follow this format — on squash merge the PR title becomes the commit message.
