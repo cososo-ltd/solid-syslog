@@ -41,10 +41,12 @@ Four rules, over every file read:
   `src/include`. This states the concern directly: one kernel, one tree. The
   compiler's own headers are exempt, since newlib has a `sys/queue.h` of its
   own that no kernel include could have resolved to.
-- **A name the target owns resolves only in the target.** Every header read
-  from under `Bdd/Targets/` is a name the target owns; a second header of the
-  same name read from anywhere outside this checkout is a configuration
-  header the build took from the wrong place.
+- **A name the target owns resolves to one file.** Every header read from
+  under `Bdd/Targets/` is a name the target owns; a second file of the same
+  name read from anywhere else, an upstream tree's example or a sibling
+  target's, is a configuration header the build took from the wrong place.
+  A copy CMake staged into the build tree is the same header, seen at its
+  source through the configure inputs, so it is not a second file.
 
 The per-tree summary is printed as Markdown, and appended to the GitHub step
 summary when `GITHUB_STEP_SUMMARY` is set. Beside it, when the target wires
@@ -297,11 +299,10 @@ def kernel_version(task_header):
     return match.group(1) if match else "not stated"
 
 
-def check(files_read, allowed, wired, owned, exempt_from_owned, source_root):
+def check(files_read, allowed, wired, owned, exempt_from_owned, source_root, build):
     """Apply the rules. Returns (failures, counts by tree)."""
     failures = []
     counts = {}
-    target_headers = {}
     for path in sorted(files_read):
         name, problem = allowed.classify(path)
         tree = (name if not problem else None) or "(unaccounted)"
@@ -312,17 +313,31 @@ def check(files_read, allowed, wired, owned, exempt_from_owned, source_root):
             for relative, root in owned.items():
                 if ends_with(path, relative) and not path.is_relative_to(root):
                     failures.append(f"{path}: {relative} is owned by {root}")
-        if path.suffix == ".h" and path.is_relative_to(source_root / TARGET_DIRECTORY):
-            target_headers.setdefault(path.name, path)
-    for path in sorted(files_read):
-        if path.name in target_headers and not path.is_relative_to(source_root):
-            failures.append(
-                f"{path}: {path.name} is owned by the target, at {target_headers[path.name]}"
-            )
+    failures.extend(target_header_duplicates(files_read, source_root, build))
     for variable in wired:
         if tree_name(variable) not in counts:
             failures.append(f"{variable}: wired by the target, but nothing was read from it")
     return failures, counts
+
+
+def target_header_duplicates(files_read, source_root, build):
+    """One name the target owns, one file. A header read from under
+    Bdd/Targets/ is a name the target owns, and every other file of that name
+    the build read is a configuration header taken from the wrong place:
+    an upstream tree's example, or a sibling target's. A copy CMake staged
+    into the build tree is the same header, read at its source through the
+    configure inputs, so the build tree does not count."""
+    by_name = {}
+    for path in files_read:
+        if path.suffix == ".h" and not path.is_relative_to(build):
+            by_name.setdefault(path.name, []).append(path)
+    failures = []
+    for name, paths in sorted(by_name.items()):
+        owned_by_target = any(path.is_relative_to(source_root / TARGET_DIRECTORY) for path in paths)
+        if owned_by_target and (len(paths) > 1):
+            listed = ", ".join(str(path) for path in sorted(paths))
+            failures.append(f"{name}: a name the target owns resolved to more than one file: {listed}")
+    return failures
 
 
 def summary(build, counts, files_read, cache, wired):
@@ -401,7 +416,7 @@ def main(argv=None):
             allowed.add_unwired(tree_name(variable), cache[variable])
 
     more_failures, counts = check(
-        files_read, allowed, wired, owned_names(cache, wired), compiler_directories, source_root
+        files_read, allowed, wired, owned_names(cache, wired), compiler_directories, source_root, build
     )
     failures.extend(more_failures)
 

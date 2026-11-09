@@ -154,19 +154,36 @@ class BuildProvenanceTest(unittest.TestCase):
         self.given_object_that_read(self.checkout / "main.c", self.toolchain / "sys" / "queue.h")
         self.assertEqual(0, self.run_main())
 
-    def test_fails_when_a_target_header_name_resolves_outside_the_checkout(self):
+    def test_fails_when_a_target_header_name_also_resolves_in_an_upstream_tree(self):
         ours = self.checkout / "Bdd" / "Targets" / "T" / "FreeRTOSConfig.h"
         theirs = self.kernel / "portable" / "MemMang" / "FreeRTOSConfig.h"
         self.given_object_that_read(self.checkout / "main.c", ours, theirs)
         self.assertEqual(1, self.run_main())
-        self.assertIn(f"::error::{theirs}: FreeRTOSConfig.h is owned by the target, at {ours}", self.output.getvalue())
-
-    def test_a_target_name_may_recur_inside_the_checkout(self):
-        self.given_object_that_read(
-            self.checkout / "Bdd" / "Targets" / "T" / "lwipopts.h",
-            self.checkout / "Bdd" / "Targets" / "U" / "lwipopts.h",
+        self.assertIn(
+            f"::error::FreeRTOSConfig.h: a name the target owns resolved to more than one file: {ours}, {theirs}",
+            self.output.getvalue(),
         )
+
+    def test_fails_when_a_target_header_name_also_resolves_in_a_sibling_target(self):
+        ours = self.checkout / "Bdd" / "Targets" / "T" / "lwipopts.h"
+        sibling = self.checkout / "Bdd" / "Targets" / "U" / "lwipopts.h"
+        self.given_object_that_read(ours, sibling)
+        self.assertEqual(1, self.run_main())
+        self.assertIn("lwipopts.h: a name the target owns resolved to more than one file", self.output.getvalue())
+
+    def test_a_copy_cmake_staged_into_the_build_tree_is_the_same_header(self):
+        self.given_object_that_read(self.checkout / "main.c", self.build / "fatfs" / "ffconf.h")
+        self.given_configure_inputs(self.checkout / "Bdd" / "Targets" / "Common" / "ffconf.h")
         self.assertEqual(0, self.run_main())
+
+    def test_an_upstream_header_name_the_target_does_not_own_may_recur(self):
+        self.given_object_that_read(
+            self.kernel / "include" / "FreeRTOS.h",
+            self.fatfs / "source" / "FreeRTOS.h",
+        )
+        # The kernel owns FreeRTOS.h, so the second copy fails that rule, not this one.
+        self.assertEqual(1, self.run_main())
+        self.assertNotIn("a name the target owns", self.output.getvalue())
 
     def test_a_target_source_name_is_not_an_owned_name(self):
         self.given_object_that_read(
