@@ -12,24 +12,32 @@ The build already records what every compile read: CMake asks the compiler
 for a dependency file per object, so when the build is done the build tree
 holds, for each object, the source it was compiled from and every header the
 compiler resolved. This reads those rather than re-running the compiles, so it
-reports what was actually built.
+reports what was actually built. Make leaves the files in place; Ninja folds
+them into its own log, which `ninja -t deps` prints back. A source or header
+that CMake copied into the build tree at configure time is classified at the
+place CMake copied it from, which CMake records as well.
 
-Three rules, over every file any object read:
+Three rules, over every file read:
 
 - **It resolves inside the allowed set.** The allowed set is this checkout,
-  the build tree, the compiler's own include directories, and for each
-  upstream tree the build was configured with, the specific subtrees a target
-  wires rather than the whole repository. CMSIS-FreeRTOS is allowed only at
+  the build tree, the compiler's and CMake's own directories, and for each
+  upstream tree the image pins, the specific subtrees a target wires rather
+  than the whole repository. CMSIS-FreeRTOS is allowed only at
   `CMSIS/RTOS2/FreeRTOS/Source` and `CMSIS/RTOS2/FreeRTOS/Include`, so the
-  kernel it bundles under `Source/` is outside the set by construction.
+  kernel it bundles under `Source/` is outside the set by construction. The
+  image pins every tree for every build, so this rule does not ask whether a
+  target should be reading a tree at all; the per-tree table in the summary
+  shows that.
 - **A name the pinned kernel owns resolves only in the pinned kernel.** The
   names are read from the kernel's `include/` directory at run time, plus
   `portmacro.h`. lwIP gets the same rule for the paths under
-  `src/include`. This states the concern directly: one kernel, one tree.
+  `src/include`. This states the concern directly: one kernel, one tree. The
+  compiler's own headers are exempt, since newlib has a `sys/queue.h` of its
+  own that no kernel include could have resolved to.
 - **A name the target owns resolves only in the target.** Every header read
-  from under `Bdd/Targets/` is a name the target owns; a second file of the
-  same name read from anywhere outside this checkout is a configuration header
-  the build took from the wrong place.
+  from under `Bdd/Targets/` is a name the target owns; a second header of the
+  same name read from anywhere outside this checkout is a configuration
+  header the build took from the wrong place.
 
 The per-tree summary is printed as Markdown, and appended to the GitHub step
 summary when `GITHUB_STEP_SUMMARY` is set. Beside it, when the build was
@@ -44,13 +52,14 @@ Exit code:
     0  every file read is accounted for
     1  a file resolved outside the allowed set, or an owned name resolved
        elsewhere
-    2  the build directory has no dependency files to read
+    2  the build directory has no dependency records to read
 """
 
 import argparse
 import os
 import pathlib
 import re
+import subprocess
 import sys
 
 # The subtrees of each upstream repository that a target may read, relative to
@@ -92,9 +101,13 @@ OWNED_NAME_TREES = {
 KERNEL_PORT_HEADER = "portmacro.h"
 
 TARGET_DIRECTORY = "Bdd/Targets"
+SOURCE_SUFFIXES = (".c", ".h")
 
 CACHE_ENTRY = re.compile(r"^([A-Za-z0-9_]+):[A-Z]+=(.*)$")
 IMPLICIT_INCLUDES = re.compile(r'set\(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "([^"]*)"\)')
+MAKEFILE_DEPENDS = re.compile(r"set\(CMAKE_MAKEFILE_DEPENDS\s*(.*?)\)", re.DOTALL)
+QUOTED = re.compile(r'"([^"]*)"')
+NINJA_RERUN = re.compile(r"^build build\.ninja: RERUN_CMAKE (.*?)$", re.MULTILINE)
 KERNEL_VERSION = re.compile(r'#define\s+tskKERNEL_VERSION_NUMBER\s+"([^"]+)"')
 
 
@@ -107,15 +120,20 @@ def read_cache(build):
     return entries
 
 
-def dependency_files(build):
-    """Every per-object dependency file. The object suffix is the toolchain's
-    (`.o` on a host, `.obj` from the ARM cross compiler), so match the `.d`."""
-    return sorted(path for path in build.rglob("CMakeFiles/**/*.d") if path.is_file())
+def read_dependencies(build, cache):
+    """Every file any object read, as the compiler wrote it. Ninja keeps the
+    compiler's dependency files in its own log; Make leaves them on disk."""
+    if (build / "build.ninja").exists():
+        return ninja_dependencies(build, cache.get("CMAKE_MAKE_PROGRAM", "ninja"))
+    prerequisites = []
+    for path in sorted(build.rglob("CMakeFiles/**/*.d")):
+        if path.is_file():
+            prerequisites.extend(parse_dependency_file(path.read_text(encoding="utf-8", errors="replace")))
+    return prerequisites
 
 
-def read_dependencies(path):
-    """The prerequisites of one dependency file, source first, as written."""
-    text = path.read_text(encoding="utf-8", errors="replace")
+def parse_dependency_file(text):
+    """The prerequisites of one Make-style dependency file, source first."""
     text = text.replace("\\\n", " ")
     _, _, prerequisites = text.partition(":")
     return [
@@ -123,6 +141,32 @@ def read_dependencies(path):
         for item in re.split(r"(?<!\\)\s+", prerequisites.strip())
         if item
     ]
+
+
+def ninja_dependencies(build, ninja):
+    result = subprocess.run(
+        [ninja, "-C", str(build), "-t", "deps"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return [line.strip() for line in result.stdout.splitlines() if line.startswith("    ")]
+
+
+def configure_inputs(build):
+    """The sources and headers CMake read at configure time, which is where a
+    `configure_file(... COPYONLY)` copy in the build tree came from."""
+    makefile = build / "CMakeFiles" / "Makefile.cmake"
+    ninja = build / "build.ninja"
+    inputs = []
+    if makefile.exists():
+        match = MAKEFILE_DEPENDS.search(makefile.read_text(encoding="utf-8", errors="replace"))
+        inputs = QUOTED.findall(match.group(1)) if match else []
+    elif ninja.exists():
+        text = ninja.read_text(encoding="utf-8", errors="replace").replace("$\n", "")
+        match = NINJA_RERUN.search(text)
+        inputs = match.group(1).split() if match else []
+    return [item for item in inputs if item.endswith(SOURCE_SUFFIXES)]
 
 
 def resolve(prerequisite, build):
@@ -143,19 +187,13 @@ def compiler_include_directories(build):
     for record in build.glob("CMakeFiles/*/CMakeCCompiler.cmake"):
         match = IMPLICIT_INCLUDES.search(record.read_text(encoding="utf-8"))
         for directory in match.group(1).split(";") if match else []:
+            if not directory:
+                continue
             path = pathlib.Path(directory)
             directories.append(path)
             if path.resolve() != path:
                 directories.append(path.resolve())
     return directories
-
-
-def is_under(path, root):
-    try:
-        path.relative_to(root)
-    except ValueError:
-        return False
-    return True
 
 
 class AllowedSet:
@@ -171,7 +209,7 @@ class AllowedSet:
         """(tree name, problem). The problem is None for a file that is where
         it should be; the name is None for a file under no root at all."""
         for name, root, subtrees in self.roots:
-            if is_under(path, root):
+            if path.is_relative_to(root):
                 if subtrees is None or self.matches_subtree(path, root, subtrees):
                     return name, None
                 return name, "inside the repository but outside its wired subtrees"
@@ -184,7 +222,7 @@ class AllowedSet:
             if "*" in subtree:
                 if len(relative.parts) == 1 and relative.match(subtree):
                     return True
-            elif is_under(relative, pathlib.Path(subtree)):
+            elif relative.is_relative_to(pathlib.Path(subtree)):
                 return True
         return False
 
@@ -219,34 +257,29 @@ def kernel_version(task_header):
     return match.group(1) if match else "not stated"
 
 
-def check(build, allowed, owned, source_root):
-    """Walk every dependency file. Returns (failures, counts by tree, files read)."""
+def check(files_read, allowed, owned, exempt_from_owned, source_root):
+    """Apply the three rules. Returns (failures, counts by tree)."""
     failures = []
     counts = {}
-    files_read = set()
-    target_names = {}
-    for dependency_file in dependency_files(build):
-        for prerequisite in read_dependencies(dependency_file):
-            path = resolve(prerequisite, build)
-            if path in files_read:
-                continue
-            files_read.add(path)
-            name, problem = allowed.classify(path)
-            tree = name or "(unaccounted)"
-            counts[tree] = counts.get(tree, 0) + 1
-            if problem:
-                failures.append(f"{path}: {problem}")
-            for relative, root in owned.items():
-                if ends_with(path, relative) and not is_under(path, root):
-                    failures.append(f"{path}: {relative} is owned by {root}")
-            if is_under(path, source_root / TARGET_DIRECTORY):
-                target_names.setdefault(path.name, path)
+    target_headers = {}
     for path in sorted(files_read):
-        if path.name in target_names and not is_under(path, source_root):
+        name, problem = allowed.classify(path)
+        tree = name or "(unaccounted)"
+        counts[tree] = counts.get(tree, 0) + 1
+        if problem:
+            failures.append(f"{path}: {problem}")
+        if not any(path.is_relative_to(root) for root in exempt_from_owned):
+            for relative, root in owned.items():
+                if ends_with(path, relative) and not path.is_relative_to(root):
+                    failures.append(f"{path}: {relative} is owned by {root}")
+        if path.suffix == ".h" and path.is_relative_to(source_root / TARGET_DIRECTORY):
+            target_headers.setdefault(path.name, path)
+    for path in sorted(files_read):
+        if path.name in target_headers and not path.is_relative_to(source_root):
             failures.append(
-                f"{path}: {path.name} is owned by the target, at {target_names[path.name]}"
+                f"{path}: {path.name} is owned by the target, at {target_headers[path.name]}"
             )
-    return failures, counts, files_read
+    return failures, counts
 
 
 def summary(build, counts, files_read, cache):
@@ -292,19 +325,24 @@ def main(argv=None):
     arguments = parser.parse_args(argv)
     build = arguments.build.resolve()
 
-    if not dependency_files(build):
-        print(f"no dependency files under {build}: was it built?")
-        return 2
-
     cache = read_cache(build)
     source_root = pathlib.Path(cache["CMAKE_HOME_DIRECTORY"])
 
+    prerequisites = read_dependencies(build, cache)
+    if not prerequisites:
+        print(f"no dependency records under {build}: was it built?")
+        return 2
+    files_read = {resolve(item, build) for item in prerequisites + configure_inputs(build)}
+
+    compiler_directories = compiler_include_directories(build)
     allowed = AllowedSet()
     # The build tree usually sits inside the checkout: first match wins.
     allowed.add("build tree", build)
     allowed.add("this checkout", source_root)
-    for directory in compiler_include_directories(build):
+    for directory in compiler_directories:
         allowed.add("compiler", directory)
+    if cache.get("CMAKE_ROOT"):
+        allowed.add("cmake", cache["CMAKE_ROOT"])
     for directory in arguments.allow:
         allowed.add(directory, pathlib.Path(directory).resolve())
     for variable, subtrees in UPSTREAM_SUBTREES.items():
@@ -312,7 +350,7 @@ def main(argv=None):
         if root:
             allowed.add(variable.removeprefix("SOLIDSYSLOG_"), root, subtrees)
 
-    failures, counts, files_read = check(build, allowed, owned_names(cache), source_root)
+    failures, counts = check(files_read, allowed, owned_names(cache), compiler_directories, source_root)
 
     text = summary(build, counts, files_read, cache)
     print(text)
