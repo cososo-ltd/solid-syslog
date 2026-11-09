@@ -18,6 +18,34 @@ provenance and keep the documentation for the version they pinned (per
 - release-please derives the version from the Conventional Commit types merged
   since the last release.
 
+### What is a breaking change
+
+A breaking change is a change to a public header - one under `Core/Interface/`
+or `Platform/*/Interface/` - or to the documented behaviour behind one, that
+stops code written against the previous release building or changes what it
+does. Only such a change carries `!` or a `BREAKING CHANGE` trailer, and only
+such a change costs a major version after `1.0.0`. The platform packs' headers
+count: an integrator cannot tell a Core header from a pack header, so both are
+held to the same bar. Removing a pack is a breaking change, since its headers go.
+
+Raising the floor of something the library builds against - a platform pack's
+upstream RTOS, network stack or crypto library, the CMake version, the C
+standard - is **not** a breaking change, and is not marked as one, because no
+SolidSyslog header changed and code written against the previous release builds
+unchanged once the integrator meets the new floor. The exception is a floor that
+forces a change to a vendor type a public header passes through: the header
+changed, so it is a break. A new major version of an upstream is not a floor
+move: it is platform work, decided in an epic of its own, and may land as a
+second pack rather than a raised floor. [`SUPPORT.md`](../SUPPORT.md) states
+how the floors move and what a major version means.
+
+A raised floor is always listed under *Before you upgrade*, which is wider than
+the version bump: it holds everything an integrator must act on, whether or not
+it changed the version. The record of a floor is the platform's own page under
+`docs/platforms/<slug>/`, which states the minimum and the version the pack is
+tested against; the release process reads the floors from the diff of those
+pages rather than from a commit marker.
+
 ## What the release notes contain
 
 A release's notes open with one paragraph naming what the release is for: each
@@ -31,10 +59,17 @@ section restating it in other words was dropped at 0.4.0 as repetition.
    release building, or changes what it does without a build error: a signature,
    a config field, a vtable slot an adapter fills, a default. Say for each what to
    change and, where there is one, how to keep the old behaviour. Take the list
-   from `git diff v<previous>..HEAD -- Core/Interface Platform/*/Interface` and the
-   merged stories, not from the generated list. When nothing breaks, say so in one
-   line. The section holds only what an integrator acts on; a fix or a feature the
-   generated list already names is not repeated here.
+   from `git diff v<previous>..HEAD -- Core/Interface 'Platform/*/Interface/**'`,
+   quoted so that a removed pack's headers are in the diff, and the merged
+   stories, not from the generated list. Then take the raised floors from
+   `git diff v<previous>..HEAD -- docs/platforms/*/index.md CMakeLists.txt docs/builds.md`,
+   which covers the packs' upstream floors, the CMake floor and the C standard,
+   since a raised floor is not a breaking change and appears in neither the
+   interface diff nor the generated list (see
+   [What is a breaking change](#what-is-a-breaking-change)).
+   When nothing breaks, say so in one line. The section holds only what an
+   integrator acts on; a fix or a feature the generated list already names is not
+   repeated here.
 
    It is written by hand because the generated list names each break by its
    commit subject and says nothing about what to change. A commit that breaks
@@ -291,6 +326,12 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 - [ ] The release PR's notes carry the written sections, *Before you upgrade*
       included, written after release-please's run on the last merge before the
       release.
+- [ ] Each pack's page states the latest patch or minor release of its upstream
+      within the major it supports, and that is the version the CI images pin:
+      compare the version each page under `docs/platforms/` names against the
+      `ARG <NAME>_TAG` pins in the image repositories' Dockerfiles. A pack left
+      behind is either bumped before the release or listed under *Known
+      limitations* with the reason, per [`SUPPORT.md`](../SUPPORT.md).
 - [ ] Run each target that has a target checklist against the release PR's head,
       and record the run as a comment on the PR, per
       [Cutting a release](#cutting-a-release).
