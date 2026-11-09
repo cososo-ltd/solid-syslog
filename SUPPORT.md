@@ -20,6 +20,19 @@ Thanks for using SolidSyslog. Here is where to get help.
 - Please search existing discussions and issues first - someone may already have
   asked.
 
+## Upstream versions
+
+Each platform pack builds against a third-party RTOS, network stack, file
+system or crypto library. Every release supports the latest release of each,
+and the pack's page under `docs/platforms/` states the minimum it needs and
+the version it is tested against. A minimum rises when the latest upstream
+release requires it, and such a rise is listed in the release notes under
+*Before you upgrade*; it is not a breaking change of the library's own API and
+does not by itself change the major version
+([release process](docs/release-process.md#what-is-a-breaking-change)).
+An older upstream version is supported only on an explicit requirement; raise
+one in Discussions.
+
 ## Security issues
 
 Do **not** report security vulnerabilities in public issues. Follow the

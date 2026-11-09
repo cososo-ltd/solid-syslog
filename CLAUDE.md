@@ -339,7 +339,8 @@ a reservation, exercised only if integration feedback shows a problem. Do not
 write it up as though instability were expected.
 
 `1.0.0` is the commitment that the public API is stable; after it, a breaking
-change costs a major version. It is not a feature bucket: platform support and
+change, as [docs/release-process.md](docs/release-process.md#what-is-a-breaking-change)
+defines one, costs a major version. It is not a feature bucket: platform support and
 feedback-driven work belong to the 0.x releases in between, each milestoned as it
 is planned. `1.0.0` admits only what must be settled before the commitment
 itself — API review, and any breaking change beta feedback shows is needed.
@@ -366,7 +367,9 @@ This drives automated changelog generation and release versioning via release-pl
 | `chore` | Maintenance (e.g. container image bump) |
 | `docs` | Documentation only |
 
-Append `!` for breaking changes: `feat!: rename Example target`.
+Append `!` for breaking changes: `feat!: rename Example target`. What counts as one -
+and that a raised upstream, CMake or C-standard floor does not - is defined once, in
+[docs/release-process.md](docs/release-process.md#what-is-a-breaking-change).
 
 PR titles must also follow this format — on squash merge the PR title becomes the commit message.
 
@@ -499,7 +502,7 @@ Not all directories carry the same review rigour or long-term support commitment
 | Tier | Scope | Directories |
 |---|---|---|
 | 1 | Full support, highest review bar, stable API | `Core/Interface/`, `Core/Source/` |
-| 2 | Supported, API may evolve per target platform | `Platform/*/` |
+| 2 | Supported, stable API; each pack's upstream floor moves per `SUPPORT.md` | `Platform/*/` |
 | 3 | Best-effort BDD targets | `Bdd/Targets/` |
 | — | Out of scope for support | `Tests/`, `Bdd/`, `docs/`, `ci/`, `.github/`, `.devcontainer/`, build tooling |
 
