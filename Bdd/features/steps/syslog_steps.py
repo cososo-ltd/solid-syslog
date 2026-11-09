@@ -1580,11 +1580,38 @@ def step_check_contiguous_sequence_ids(context):
     """The client's records arrive in order and none is missing. The logger's
     reports take their numbers from the same count when Service makes them,
     so they are judged with the client's records: every number from the first
-    to the last must have arrived, once."""
+    to the last must have arrived, once.
+
+    A report is stored behind the client's records it follows, so it is the
+    last record the store drains, and the count step before this one is
+    satisfied by the client's records alone. This step therefore reads the
+    oracle again until the numbers are contiguous or the wait runs out, and
+    judges what it last saw: a report still in flight is given its time, a
+    record that never arrives still fails."""
+    deadline = time.monotonic() + CONDITION_TIMEOUT_SECONDS
+    while True:
+        records = read_new_oracle_records(context.received_log, context.oracle_format, context.lines_before)
+        ids, client_ids = _sequence_ids(records, context.oracle_format)
+        expected = list(range(min(ids), max(ids) + 1)) if ids else []
+        if (sorted(ids) == expected) or (time.monotonic() > deadline):
+            break
+        time.sleep(0.1)
+    context.all_lines = records
+    assert client_ids == sorted(client_ids), (
+        f"The client's records arrived out of order: {client_ids}"
+    )
+    assert sorted(ids) == expected, (
+        f"Non-contiguous sequenceIds: expected {expected}, got {sorted(ids)}"
+    )
+
+
+def _sequence_ids(records, oracle_format):
+    """The sequenceId of every record, in arrival order, and of the client's
+    records alone. A record without one is malformed and raises."""
     ids = []
     client_ids = []
-    for line in context.all_lines:
-        fields = parse_oracle_line(line, context.oracle_format)
+    for line in records:
+        fields = parse_oracle_line(line, oracle_format)
         sd = fields.get("STRUCTURED_DATA", "")
         match = re.search(r'sequenceId="(\d+)"', sd)
         assert match, (
@@ -1593,13 +1620,7 @@ def step_check_contiguous_sequence_ids(context):
         ids.append(int(match.group(1)))
         if not is_library_report(fields):
             client_ids.append(int(match.group(1)))
-    assert client_ids == sorted(client_ids), (
-        f"The client's records arrived out of order: {client_ids}"
-    )
-    expected = list(range(min(ids), max(ids) + 1)) if ids else []
-    assert sorted(ids) == expected, (
-        f"Non-contiguous sequenceIds: expected {expected}, got {sorted(ids)}"
-    )
+    return ids, client_ids
 
 
 @then("the last {count:d} messages have contiguous sequenceIds starting from {start:d}")
