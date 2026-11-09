@@ -57,8 +57,9 @@ section restating it in other words was dropped at 0.4.0 as repetition.
    release building, or changes what it does without a build error: a signature,
    a config field, a vtable slot an adapter fills, a default. Say for each what to
    change and, where there is one, how to keep the old behaviour. Take the list
-   from `git diff v<previous>..HEAD -- Core/Interface Platform/*/Interface` and the
-   merged stories, not from the generated list. Then take the raised floors from
+   from `git diff v<previous>..HEAD -- Core/Interface 'Platform/*/Interface/**'`,
+   quoted so that a removed pack's headers are in the diff, and the merged
+   stories, not from the generated list. Then take the raised floors from
    `git diff v<previous>..HEAD -- docs/platforms/*/index.md CMakeLists.txt docs/builds.md`,
    which covers the packs' upstream floors, the CMake floor and the C standard,
    since a raised floor is not a breaking change and appears in neither the

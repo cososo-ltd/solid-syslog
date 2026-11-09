@@ -367,7 +367,7 @@ This drives automated changelog generation and release versioning via release-pl
 | `chore` | Maintenance (e.g. container image bump) |
 | `docs` | Documentation only |
 
-Append `!` for breaking changes: `feat!: rename Example target`. What counts as one is
+Append `!` for breaking changes: `feat!: remove the block store's discard-failed error code`. What counts as one is
 defined once, in
 [docs/release-process.md](docs/release-process.md#what-is-a-breaking-change).
 
