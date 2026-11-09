@@ -42,6 +42,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `analyze-spdx` | - | `scripts/check_spdx_headers.py`: every file under `Core/` and `Platform/` carries the licence header `LICENSE.md` declares, and none claims anyone else's copyright |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
+| `integration-linux-wolfssl` | `debug` | The same integration tests against wolfSSL, twice: against the build the pack asks for and against the baseline build the image also carries |
 | `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
 | `integration-linux-littlefs` | `debug` | Drives `SolidSyslogLittleFsFile` against a real LittleFS volume rather than a fake, because durability is the pack's whole claim and nothing short of the filesystem proves `lfs_file_sync` committed. Runs in `cpputest-freertos`, which carries `/opt/littlefs` |
 | `build-c89-headers` | - | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here. Then `scripts/check_vxworks64_header_proof.py` asserts that `Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c`, the C89 proof the VxWorks 6.4 project compiles and no lane can build, includes every public header of Core and that pack and nothing else of ours |
@@ -49,6 +50,8 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `unit-linux-gcc-tunables` | `tunable-override-debug` | Builds against a user tunables header to prove `SOLIDSYSLOG_USER_TUNABLES_FILE` overrides the defaults. Also builds the Linux BDD target, for the reason under [`@requires_message_size_1500`](bdd.md#feature-tags) |
 | `bdd-linux-openssl-syslogng` | - | End-to-end BDD test via Docker Compose (`syslog-ng-linux` + `behave-linux`), Linux runner |
 | `bdd-linux-openssl-syslogng-passthrough` | - | The same Linux target under `--buffer passthrough` - no service thread, the logger serviced on the thread that logs, which is what the hardening path's first wiring does. Runs every scenario not tagged `@buffered`, and the `@passthrough` scenarios no other lane can |
+| `build-linux-wolfssl` | `tunable-override-wolfssl` | The Linux BDD target over the wolfSSL pack in place of OpenSSL, with the unit tests; uploads the target binary |
+| `bdd-linux-wolfssl-syslogng` | - | The Linux scenarios against that target (`syslog-ng-linux` + `behave-linux-wolfssl`) |
 | `bdd-windows-openssl-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
 | `build-freertos-plustcp-mbedtls-plusfat` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
 | `build-freertos-lwipraw-mbedtls-fatfs` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
@@ -91,7 +94,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 | Adapter | Where it is exercised |
 |---|---|
 | OpenSSL (`SolidSyslogOpenSslStream`, security policies) | `integration-linux-openssl`, `integration-windows-openssl` against real libssl |
-| Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; all three QEMU BDD lanes over a real handshake |
+| Mbed TLS (`SolidSyslogMbedTlsStream`, security policies) | `integration-linux-mbedtls` against real Mbed TLS; the three Mbed TLS QEMU BDD lanes over a real handshake |
 | wolfSSL (`SolidSyslogWolfSslStream`, security policies) | Unit tests against the fake in every host lane that builds `Tests/`; `integration-linux-wolfssl` against both wolfSSL builds the image carries; `build-linux-wolfssl` and `bdd-linux-wolfssl-syslogng`, the Linux target without OpenSSL; `build-cmsisrtos-lwipsocket-wolfssl-littlefs` and `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`, a wolfSSL built from source under QEMU |
 | FreeRTOS-Plus-TCP | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` end to end under QEMU |
 | lwIP (Raw API) | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` end to end under QEMU; static analysis in the `analyze-*-embedded` lanes |
@@ -100,10 +103,10 @@ The lane names say the platform and toolchain but not the adapter, so:
 | CMSIS-RTOS2 | Unit tests in every host lane that builds `Tests/`; `build-cmsisrtos-lwipsocket-mbedtls-littlefs` cross build; `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` end to end under QEMU |
 | VxWorks 6.4 | Unit tests at strict C99 against fakes in every host lane that builds `Tests/`. Target runs are outside CI: the toolchain and kernel are licensed, so the target checklist in `Bdd/Targets/VxWorks64/README.md` covers them |
 | ChaN FatFs | Unit tested in `unit-linux-gcc` and its sanitizer and coverage lanes, analysed in the `analyze-*-embedded` lanes; store-and-forward scenarios run in `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` |
-| FreeRTOS-Plus-FAT | Host-TDD against fakes in `unit-linux-gcc` and its sanitizer and coverage lanes, and built in the Plus-TCP cross lanes; store-and-forward scenarios run in `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` |
+| FreeRTOS-Plus-FAT | Host-TDD against fakes in `unit-linux-gcc` and its sanitizer and coverage lanes, and built in the Plus-TCP cross lane; store-and-forward scenarios run in `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` |
 | LittleFS | `unit-linux-gcc` and its sanitizer and coverage lanes against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` |
-| POSIX, Windows | The `build-linux-*` and `unit-windows-msvc` lanes, plus both host BDD lanes |
-| C11 atomics | Probe-selected into `libSolidSyslog.a` in the `build-linux-*` lanes, and named explicitly by both lwIP cross presets |
+| POSIX, Windows | Every Linux host lane that builds `Tests/`, `build-linux-wolfssl`, and `unit-windows-msvc`, plus the host BDD lanes |
+| C11 atomics | Probe-selected into `libSolidSyslog.a` in every Linux host lane that builds `Tests/` except `build-linux-wolfssl`, whose preset names it, as the three lwIP cross presets do. Not in `build-c99`, which has no C11 header to find |
 
 <!-- /platforms -->
 

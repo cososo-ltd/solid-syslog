@@ -75,8 +75,8 @@ boot, before any adapter is created.
 
 ### A failed connect is reported, with its err_t
 
-Each step of a TCP connect that fails is reported under the stream's own error
-source, with the detail naming the step, as
+Each step of a TCP connect that fails is reported, once per run of the same step,
+under the stream's own error source, with the detail naming the step, as
 [`SOLIDSYSLOG_CAT_STREAM_CONNECT_FAILED`](../../api/SolidSyslogStreamCategories_8h.md).
 Where the stack gave an `err_t` - the one `tcp_connect` answered, or the one it
 handed the connected or error callback that ended the attempt - the event's

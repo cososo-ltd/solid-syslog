@@ -43,7 +43,7 @@ That is the whole point of it. SolidSyslog vendors no third-party source, and
 Core reaches no further than a C99 compiler and four standard headers -
 `<stddef.h>`, `<stdbool.h>`, `<stdint.h>` and `<string.h>`. It calls `memcpy`
 and `strlen`, and makes no operating-system calls at all: no OS, no network
-stack, no filesystem, no heap. The `c99` lane proves it on every pull request
+stack, no filesystem, no heap. The `build-c99` lane proves it on every pull request
 by building Core alone, and the FreeRTOS cross lanes build it with no host
 platform present.
 

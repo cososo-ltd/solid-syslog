@@ -11,8 +11,8 @@ replay-read. The policy owns a fixed-size *trailer* appended to each record;
 |---|---|---|---|---|
 | `SolidSyslogNullSecurityPolicy` | none | none | 0 B | no protection |
 | `SolidSyslogCrc16Policy` | checksum | none | 2 B | accidental-corruption detection |
-| `SolidSyslogOpenSslHmacSha256Policy` / `SolidSyslogMbedTlsHmacSha256Policy` | cryptographic | none | 32 B | tamper-evident records |
-| `SolidSyslogOpenSslAesGcmPolicy` / `SolidSyslogMbedTlsAesGcmPolicy` | cryptographic | AEAD | 28 B | encrypted and tamper-evident records |
+| `SolidSyslogOpenSslHmacSha256Policy` / `SolidSyslogMbedTlsHmacSha256Policy` / `SolidSyslogWolfSslHmacSha256Policy` | cryptographic | none | 32 B | tamper-evident records |
+| `SolidSyslogOpenSslAesGcmPolicy` / `SolidSyslogMbedTlsAesGcmPolicy` / `SolidSyslogWolfSslAesGcmPolicy` | cryptographic | AEAD | 28 B | encrypted and tamper-evident records |
 
 The library is the abstraction, not an algorithm catalogue: one HMAC variant and
 one AEAD variant are demonstrated. Other algorithms (ChaCha20-Poly1305,
@@ -36,9 +36,9 @@ treats it as one.
 
 ## AES-256-GCM
 
-Two implementations of one policy, `SolidSyslogOpenSslAesGcmPolicy` and
-`SolidSyslogMbedTlsAesGcmPolicy`, selected by which crypto library your build
-already links rather than by which target you are on. Both fill the same
+Three implementations of one policy, `SolidSyslogOpenSslAesGcmPolicy`,
+`SolidSyslogMbedTlsAesGcmPolicy` and `SolidSyslogWolfSslAesGcmPolicy`, selected by which
+crypto library your build already links rather than by which target you are on. All fill the same
 `SolidSyslogSecurityPolicy` slot and produce the same record format, so the
 choice is a build-time one and nothing above it changes. The
 [capability matrix](../platforms/index.md) says where each is
@@ -52,11 +52,12 @@ trailer is `nonce (12) ‖ tag (16)`.
 - Key: a caller-supplied 32-byte key fetched on demand through the
   integrator's `SolidSyslogKeyFunction` and wiped after every operation -
   `OPENSSL_cleanse` on the OpenSSL policy, `mbedtls_platform_zeroize` on the Mbed TLS
-  one. The key is never stored on the policy instance.
+  one, `wc_ForceZero` on the wolfSSL one. The key is never stored on the policy instance.
 - Nonce: a fresh 12-byte random nonce per record, written into the trailer.
   The OpenSSL policy draws it from `RAND_bytes`; the Mbed TLS policy draws it from a
   seeded CTR-DRBG you inject as `Rng` and continue to own, because Mbed TLS has no
-  context-free RNG. Random (not counter-based) nonces carry no
+  context-free RNG, and the wolfSSL policy likewise from the initialised `WC_RNG` you
+  inject as `Rng`. Random (not counter-based) nonces carry no
   cross-power-cycle counter state to lose, so a reboot cannot force the
   systematic reuse a reset counter would - provided each new DRBG instance is seeded
   from fresh entropy. On the Mbed TLS path that guarantee is yours: a CTR-DRBG
@@ -86,7 +87,7 @@ into the same slot.
 ## What a seal covers
 
 A policy seals the content of one record: its magic, length and message. It does
-not seal the byte after the trailer that marks the record sent or discarded, the
+not seal the byte after the trailer that marks the record sent, the
 record's place in the store, or which records are there. Someone who can write the
 medium, without the key, can therefore cut records from the end of a block, mark
 unsent records as sent so they are never delivered, or mark sent records as unsent -

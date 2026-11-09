@@ -46,8 +46,8 @@ diagram of the backends that realise it.
 The credentials vtable supplies a TLS Stream with its trust anchors, its client
 credential, and any pinned peer fingerprints. Each TLS platform declares its own
 rather than sharing one, because the material is typed by the backend: what
-`Install` configures is an `SSL_CTX` under OpenSSL and an `mbedtls_ssl_config`
-under Mbed TLS, and no neutral vtable can carry either.
+`Install` configures is an `SSL_CTX` under OpenSSL, an `mbedtls_ssl_config` under
+Mbed TLS and a `WOLFSSL_CTX` under wolfSSL, and no neutral vtable can carry any of them.
 
 A backend fetches the material when a connection is being made and lets go of it
 when the connection ends, so a deployment can keep credentials out of memory in
