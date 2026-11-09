@@ -201,7 +201,7 @@ static uint32_t WolfSslStream_NullHandshakeTimeoutGetter(void* context)
 
 static inline bool WolfSslStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogWolfSslStreamConfig* config)
 {
-    return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+    return config->GetHandshakeTimeoutMs != NULL;
 }
 
 /* Null Object substituted at Initialise when the integrator installs no version
@@ -215,7 +215,7 @@ static uint32_t WolfSslStream_NullVersion(void* context)
 
 static inline bool WolfSslStream_ConfigProvidesVersion(const struct SolidSyslogWolfSslStreamConfig* config)
 {
-    return (config != NULL) && (config->Version != NULL);
+    return config->Version != NULL;
 }
 
 /* Null Object substituted at Initialise when the integrator supplies no profile -
@@ -228,7 +228,7 @@ static void WolfSslStream_NullProfile(struct SolidSyslogWolfSslProfile* profile,
 
 static inline bool WolfSslStream_ConfigProvidesProfile(const struct SolidSyslogWolfSslStreamConfig* config)
 {
-    return (config != NULL) && (config->Profile != NULL);
+    return config->Profile != NULL;
 }
 
 static inline struct SolidSyslogWolfSslStream* WolfSslStream_SelfFromBase(struct SolidSyslogStream* base)

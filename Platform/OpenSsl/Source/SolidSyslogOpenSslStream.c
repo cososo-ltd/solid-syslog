@@ -72,7 +72,7 @@ static inline bool OpenSslStream_InstallCredentials(struct SolidSyslogOpenSslStr
 static inline bool OpenSslStream_PeerIsAuthorisable(const struct SolidSyslogTlsCredentialsInstalled* installed);
 static inline bool OpenSslStream_FingerprintsAreUsable(struct SolidSyslogOpenSslStream* self);
 static inline void OpenSslStream_ReleaseCredentials(struct SolidSyslogOpenSslStream* self);
-static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
+static inline void OpenSslStream_RequirePeerVerification(SSL_CTX* ctx);
 static int OpenSslStream_VerifyPeer(int preverifyOk, X509_STORE_CTX* storeCtx);
 static inline void OpenSslStream_RaiseSecurityLevel(SSL_CTX* ctx);
 static inline void OpenSslStream_RequireSecureRenegotiation(SSL_CTX* ctx);
@@ -225,11 +225,8 @@ static inline void OpenSslStream_ReleaseHandshakeState(struct SolidSyslogOpenSsl
 
 static inline void OpenSslStream_ReleaseSsl(struct SolidSyslogOpenSslStream* self)
 {
-    if (self->Ssl != NULL)
-    {
-        SSL_free(self->Ssl);
-        self->Ssl = NULL;
-    }
+    SSL_free(self->Ssl);
+    self->Ssl = NULL;
 }
 
 static inline void OpenSslStream_ReleaseBioMethod(struct SolidSyslogOpenSslStream* self)
@@ -355,8 +352,7 @@ static inline void OpenSslStream_PullProfile(struct SolidSyslogOpenSslStream* se
 static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream* self)
 {
     self->Ctx = SSL_CTX_new(TLS_client_method());
-    bool ok = (self->Ctx != NULL) && OpenSslStream_RequirePeerVerification(self->Ctx) &&
-              OpenSslStream_ConfigureProtocolFloor(self->Ctx);
+    bool ok = (self->Ctx != NULL) && OpenSslStream_ConfigureProtocolFloor(self->Ctx);
     if (!ok)
     {
         OpenSslStream_ReportOpenFailure(
@@ -380,6 +376,7 @@ static inline bool OpenSslStream_InitSslContext(struct SolidSyslogOpenSslStream*
     }
     else
     {
+        OpenSslStream_RequirePeerVerification(self->Ctx);
         OpenSslStream_RaiseSecurityLevel(self->Ctx);
         OpenSslStream_RequireSecureRenegotiation(self->Ctx);
         OpenSslStream_RefusePassphrasePrompts(self->Ctx);
@@ -527,10 +524,9 @@ static int OpenSslStream_RefusePassphrase(char* buf, int size, int rwflag, void*
  * two together is how a fingerprint-only configuration would come to verify
  * nothing - the one place in this design that could fail open rather than
  * closed. */
-static inline bool OpenSslStream_RequirePeerVerification(SSL_CTX* ctx)
+static inline void OpenSslStream_RequirePeerVerification(SSL_CTX* ctx)
 {
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, OpenSslStream_VerifyPeer);
-    return true;
 }
 
 /* Called for each certificate in the chain; only the leaf, at depth 0, is
@@ -738,12 +734,15 @@ static inline const EVP_MD* OpenSslStream_DigestFor(enum SolidSyslogTlsHashAlgor
     return md;
 }
 
+/* Reached only once a pin has matched the leaf, so the pin is known to be
+ * configured; what remains to ask is whether it is the whole of the
+ * authorisation. */
 static inline bool OpenSslStream_IsChainTrustWaived(
     const struct SolidSyslogOpenSslStream* self,
     const X509_STORE_CTX* storeCtx
 )
 {
-    return (self->Installed.FingerprintCount > 0U) && !self->Installed.TrustAnchorsInstalled &&
+    return !self->Installed.TrustAnchorsInstalled &&
            OpenSslStream_IsChainTrustError(X509_STORE_CTX_get_error(storeCtx));
 }
 
@@ -1029,7 +1028,7 @@ static uint32_t OpenSslStream_NullHandshakeTimeoutGetter(void* context)
 
 static inline bool OpenSslStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogOpenSslStreamConfig* config)
 {
-    return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+    return config->GetHandshakeTimeoutMs != NULL;
 }
 
 /* Null Object substituted at Initialise when the integrator installs no version
@@ -1043,7 +1042,7 @@ static uint32_t OpenSslStream_NullVersion(void* context)
 
 static inline bool OpenSslStream_ConfigProvidesVersion(const struct SolidSyslogOpenSslStreamConfig* config)
 {
-    return (config != NULL) && (config->Version != NULL);
+    return config->Version != NULL;
 }
 
 /* Null Object substituted at Initialise when the integrator supplies no profile -
@@ -1056,7 +1055,7 @@ static void OpenSslStream_NullProfile(struct SolidSyslogOpenSslProfile* profile,
 
 static inline bool OpenSslStream_ConfigProvidesProfile(const struct SolidSyslogOpenSslStreamConfig* config)
 {
-    return (config != NULL) && (config->Profile != NULL);
+    return config->Profile != NULL;
 }
 
 /* Bridges the integrator-installed getter (or the Null Object substituted at
