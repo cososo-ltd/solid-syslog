@@ -2,6 +2,74 @@
 
 ## [0.4.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.3.0...v0.4.0) (2026-11-09)
 
+The 0.4.0 release adds self-reporting. The library writes a
+[syslog record about its own failures](https://github.com/cososo-ltd/solid-syslog/blob/v0.4.0/docs/self-reporting.md),
+on by default, so a collector learns which audit-processing fault occurred rather
+than only that records are missing. It adds wolfSSL as a third TLS pack, with both
+at-rest policies, tested on Linux and built from source under QEMU. The block store
+is now tested adversarially in CI, with every single media fault applied at every
+position. A failed connect or a refused handshake is reported once per outage, not
+once per attempt. Every CI run's test results and coverage, gated at 99%, are
+published with the documentation.
+
+Still 0.x: the label describes platform breadth and the absence of field
+integrations, not the maturity of the code. Two changes break source compatibility,
+both under *Before you upgrade*.
+
+### Before you upgrade
+
+These break source compatibility with 0.3.0:
+
+- **FreeRTOS-Plus-TCP V4.3.0 or later.** The Plus-TCP pack uses the names V4.3.0 gave
+  the next-hop lookup result. No SolidSyslog header changed; upgrade Plus-TCP.
+- **`SOLIDSYSLOG_BLOCK_STORE_ERROR_DISCARD_FAILED` is removed.** A rejected record is
+  no longer marked on the device, so the failure cannot arise.
+
+These build unchanged but behave differently:
+
+- **Reports need room.** A report carries one more SD-ELEMENT than the application's
+  records, so a `SOLIDSYSLOG_MAX_MESSAGE_SIZE` fitted tightly to those truncates it;
+  the hardening path's example grew from 400 to 560 octets. A report also occupies
+  store capacity, one per kind per run of the fault, and the table of pending events
+  adds sixteen slots of 16 bytes of static RAM on a 32-bit target.
+- **`SolidSyslogConfig` has three new fields:** `Scratch`, `IsEventReportingOn` and
+  `EventReportingContext`. Zero keeps the defaults; a positional initialiser needs
+  them.
+- **Two new categories reach a handler:** `SOLIDSYSLOG_CAT_LOGGER_HALTED` and
+  `SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED`.
+- **A NULL mutex or NULL ring is refused at Create.** `SolidSyslogCircularBuffer_Create`
+  and `SolidSyslogPosixMessageQueueBuffer_Create` report `BAD_CONFIG` and return the
+  NullBuffer, where 0.3.0 dereferenced the NULL at the first write. A wiring that
+  logs and services on one thread passes `SolidSyslogNullMutex_Get()`.
+
+### RFC compliance at this release
+
+| RFC | Total | Supported | Partial | Not Met | N/A |
+|---|---|---|---|---|---|
+| RFC 5424 | 40 | 33 | 0 | 0 | 7 |
+| RFC 5425 | 21 | 16 | 0 | 0 | 5 |
+| RFC 5426 | 16 | 7 | 0 | 0 | 9 |
+| RFC 6587 | 8 | 7 | 0 | 0 | 1 |
+
+No clause changed status since 0.3.0, and no row was added or removed. The records
+the logger writes about itself carry an SD-ID under the maintainer's IANA private
+enterprise number, as RFC 5424 section 7.2.2 requires.
+
+The maintainer's assessment, not a certification; each status assumes a conforming
+platform supplying the roles it needs. The full matrix:
+[`docs/rfc-compliance.md` at `v0.4.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.4.0/docs/rfc-compliance.md).
+
+### Known limitations
+
+No defect is tracked at this release.
+
+### Verifying this release
+
+Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256 and the offline
+documentation bundle, each with a cosign signature bundle. Signing is keyless via
+GitHub OIDC; there is no personal key. The bundle carries the test report and
+coverage of the tagged commit. Commands:
+[`docs/security/release-verification.md` at `v0.4.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.4.0/docs/security/release-verification.md).
 
 ### ⚠ BREAKING CHANGES
 
@@ -36,38 +104,16 @@
 
 ## [0.3.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.2.0...v0.3.0) (2026-10-31)
 
-The failure-policy release. 0.3.0 lets a device decide what a full queue gives up,
-reports every failed call a platform makes with the platform's own code, names every
-error it raises, and adds VxWorks 6.4.
+The failure-policy release. 0.3.0 lets a device decide what a full queue gives up:
+the ring, the store and the logger each ask one function of yours whether to drop
+the oldest records, the newest, or halt. Loss is reported once per run, a store whose
+device fails stops using it, and a stored record that fails verification is discarded
+and the rest delivered. Every error names itself, and a platform's own code travels
+in the event. VxWorks 6.4 is added.
 
-Still 0.x, for the reason 0.1.0 gave: the label describes platform breadth and the
-absence of field integrations, not the maturity of the code. This release does break
-the public API. Every break is listed below, under *Before you upgrade*.
-
-### What's in this release
-
-- **A discard policy for every queue.** The ring, the store and the logger ask one
-  function of yours what a full queue gives up - the oldest records, the newest, or
-  the logger itself under Halt - at the moment each has to decide, so the answer can
-  change on a running device. `OnHalt` tells the device when the logger stops.
-- **Loss is reported once per run.** The buffers, the store, the senders and the
-  logger each report when a run of losses starts, and the sequence number shows each
-  loss at the collector.
-- **A store that fails stops using its device.** The first failed device operation
-  freezes the store, reported once; delivery continues without storage.
-- **A stored record that fails verification is discarded and the rest delivered**;
-  one the policy cannot yet check waits for its key.
-- **Errors name themselves.** Severity, category and detail each have a name function,
-  and a platform's own code - errno, an FRESULT, an lfs error - travels in the event's
-  `NativeCode`.
-- **The IPv4 payload limit is stated** where the stack cannot discover the path MTU.
-- **Every transport refuses Open while open**, every TCP stream bounds its connect at
-  five minutes, and no stream takes a record after the collector has closed the
-  connection.
-
-Platforms added: VxWorks 6.4. The full list is POSIX, Windows, C11 atomics, OpenSSL,
-Mbed TLS, lwIP Raw API, lwIP Sockets API, FreeRTOS-Plus-TCP, FreeRTOS, CMSIS-RTOS2,
-VxWorks 6.4, ChaN FatFs, FreeRTOS-Plus-FAT and LittleFS.
+Still 0.x: the label describes platform breadth and the absence of field
+integrations, not the maturity of the code. This release breaks the public API; every
+break is under *Before you upgrade*.
 
 ### Before you upgrade
 
@@ -239,8 +285,7 @@ These build unchanged but behave differently:
   where 0.2.0 yielded once for about 50 ms. A next hop still unresolved fails the
   send and is reported.
 
-Documentation corrected in this release, where acting on the old text would have
-cost you:
+Documentation corrected, where the old text would have cost you:
 
 - A CMake host consumer of the OpenSSL pack calls `find_package(OpenSSL 3.0
   REQUIRED)` itself; the documented recipe did not, and does not configure.
@@ -271,43 +316,32 @@ cost you:
 | RFC 6587 | 8 | 7 | 0 | 0 | 1 |
 
 No clause changed status since 0.2.0, and no row was added or removed. One note
-changed: the RFC 5424 section 5 row now names the UDP sender's trim of a record the
-path will not carry as the one deliberate alteration, which RFC 5426 section 3.1
-permits, and its status stays Supported.
+changed: the RFC 5424 section 5 row names the UDP sender's trim of a record the path
+will not carry as the one deliberate alteration, permitted by RFC 5426 section 3.1.
 
-The maintainer's assessment, not a certification. Each status describes the
-library with a conforming platform supplying the roles it needs, and depends on
-the components selected, including any you write yourself, which the library
-cannot speak for. The full matrix at this release, one row and one note per
-clause:
+The maintainer's assessment, not a certification; each status assumes a conforming
+platform supplying the roles it needs. The full matrix:
 [`docs/rfc-compliance.md` at `v0.3.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.3.0/docs/rfc-compliance.md).
 
 ### Known limitations
 
-Every limitation 0.2.0 shipped with is resolved in this release: the OpenSSL
-pin-first ordering ([#919](https://github.com/cososo-ltd/solid-syslog/issues/919)),
-the lwIP Raw resolver's IPv6 answer
-([#842](https://github.com/cososo-ltd/solid-syslog/issues/842)), and the store's
-unreported verification and write failures
+Every limitation 0.2.0 shipped with is resolved: the OpenSSL pin-first ordering
+([#919](https://github.com/cososo-ltd/solid-syslog/issues/919)), the lwIP Raw
+resolver's IPv6 answer ([#842](https://github.com/cososo-ltd/solid-syslog/issues/842))
+and the store's unreported verification and write failures
 ([#921](https://github.com/cososo-ltd/solid-syslog/issues/921)).
 
-The pre-release audit of 0.3.0 read every documentation page against the code
-again and questioned nine behaviours
-([#1061](https://github.com/cososo-ltd/solid-syslog/issues/1061)); each is fixed in
-this release or confirmed as designed and documented as such, so no defect is
-tracked at this release. Where a platform diverges from a role's contract by
-design, that is stated on the platform's page rather than here.
+The pre-release audit questioned nine behaviours
+([#1061](https://github.com/cososo-ltd/solid-syslog/issues/1061)); each is fixed here
+or confirmed as designed and documented. No defect is tracked at this release. Where
+a platform diverges from a role's contract by design, its page says so.
 
 ### Verifying this release
 
-Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256, and the
-offline documentation bundle, each with a cosign signature bundle. Signing is
-keyless via GitHub OIDC, so each signature commits to the workflow run that
-produced it. There is no personal key. The content-tree hash is reproducible from
-any clone. Commands:
+Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256 and the offline
+documentation bundle, each with a cosign signature bundle. Signing is keyless via
+GitHub OIDC; there is no personal key. Commands:
 [`docs/security/release-verification.md` at `v0.3.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.3.0/docs/security/release-verification.md).
-The check that matters is that a bundle verifies, not that the assets are
-present.
 
 ### ⚠ BREAKING CHANGES
 
@@ -368,46 +402,15 @@ present.
 ## [0.2.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.1.0...v0.2.0) (2026-09-28)
 
 The TLS release. 0.2.0 lets a device authorise its collector by certificate
-fingerprint, gives each TLS pack a credentials role of its own, and closes every
-limitation 0.1.0 shipped with. It also adds three platform packs aimed at
-microcontroller targets.
+fingerprint (RFC 5425 section 5.1), with no CA involved, and gives each TLS pack a
+credentials role that fetches trust anchors, client credential and pins at each
+connection. The cipher policy now binds the connection negotiated. Every limitation
+0.1.0 shipped with is closed, and lwIP Sockets API, CMSIS-RTOS2 and LittleFS are
+added.
 
-Still 0.x, for the reason 0.1.0 gave: the label describes platform breadth and
-the absence of field integrations, not the maturity of the code. This release
-does break the public API. Every break is listed below, under *Before you
-upgrade*.
-
-### What's in this release
-
-- **Fingerprint pinning (RFC 5425 section 5.1).** A collector can be authorised by the
-  fingerprint of its certificate, with no CA involved, so a closed site with no
-  PKI can run TLS. More than one pin can be held at once, so a collector's
-  certificate renewal can be crossed without stopping delivery. A CA chain can be required
-  as well as the pin.
-- **A credentials role per TLS pack.** The OpenSSL and Mbed TLS streams fetch
-  their trust anchors, client credential and pins from a credentials source when
-  they connect, and let go of them when the connection ends. A file, a
-  caller-built handle, a secure element or a keyring can each back it.
-- **TLS policy per connection.** The expected peer name, the cipher policy and,
-  on Mbed TLS, the certificate profile are asked for at each connection. The
-  cipher policy an integrator sets now binds the connection that is negotiated.
-  A configuration change is picked up without a restart when the stream's
-  version moves.
-- **Certificate validity is enforced by contract.** A peer certificate outside
-  its validity period stops delivery. 0.1.0 already behaved this way, but its
-  contract said report and continue; the contract now says what the code does,
-  and `docs/tls.md` gives the reasoning.
-- **One portable set of detail codes per role.** A handler that matches on
-  detail codes reacts the same way whichever backend raised the code.
-- **TCP.** Keepalive timings are tunables shared by every TCP backend, and a
-  failed connect reports which step gave up.
-- **An oversize datagram is trimmed** on a platform that can only report a
-  failure, not name the size.
-
-Platforms added: lwIP Sockets API, CMSIS-RTOS2 (mutex and uptime), and
-LittleFS. The full list is POSIX, Windows, C11 atomics, OpenSSL, Mbed TLS, lwIP
-Raw API, lwIP Sockets API, FreeRTOS-Plus-TCP, FreeRTOS, CMSIS-RTOS2, ChaN FatFs,
-FreeRTOS-Plus-FAT and LittleFS.
+Still 0.x: the label describes platform breadth and the absence of field
+integrations, not the maturity of the code. This release breaks the public API; every
+break is under *Before you upgrade*.
 
 ### Before you upgrade
 
@@ -427,8 +430,7 @@ These break source compatibility with 0.1.0:
   name and cipher policy from a per-connection profile. The TLS setup pages show
   the new wiring.
 
-Documentation corrected in this release, where acting on the old text would have
-cost you:
+Documentation corrected, where the old text would have cost you:
 
 - A consumer of the OpenSSL pack links `OpenSSL::SSL OpenSSL::Crypto` alongside
   `SolidSyslog`. The library does not link OpenSSL for you, and the docs said it
@@ -463,20 +465,16 @@ RFC 5425 is now met throughout.
 RFC 5426 has one row fewer because its two section 3.2 rows are now one. No clause
 changed status. RFC 5424 and RFC 6587 are unchanged.
 
-The maintainer's assessment, not a certification. Each status describes the
-library with a conforming platform supplying the roles it needs, and depends on
-the components selected, including any you write yourself, which the library
-cannot speak for. The full matrix at this release, one row and one note per
-clause:
+The maintainer's assessment, not a certification; each status assumes a conforming
+platform supplying the roles it needs. The full matrix:
 [`docs/rfc-compliance.md` at `v0.2.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.2.0/docs/rfc-compliance.md).
 
 ### Known limitations
 
-Every limitation 0.1.0 shipped with is resolved in this release.
+Every limitation 0.1.0 shipped with is resolved.
 
-The pre-release audit of 0.2.0 read every documentation page against the code
-again. Each finding is disclosed on the page for the affected platform, or in the
-compliance guides:
+The pre-release audit found three, each disclosed on the affected platform's page or
+in the compliance guides:
 
 - [#919](https://github.com/cososo-ltd/solid-syslog/issues/919) - the OpenSSL
   stream reports an expired issuer ahead of a pin that matches nothing, where the
@@ -498,17 +496,11 @@ library:
 
 ### Verifying this release
 
-Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256, and the
-offline documentation bundle, each with a cosign signature bundle. Signing is
-keyless via GitHub OIDC, so each signature commits to the workflow run that
-produced it. There is no personal key. The content-tree hash is reproducible from
-any clone. Commands:
+Six assets are attached: the CycloneDX SBOM, the content-tree SHA-256 and the offline
+documentation bundle, each with a cosign signature bundle. Signing is keyless via
+GitHub OIDC; there is no personal key. The documentation bundle is new: the
+documentation at this tag, readable with no server and no network. Commands:
 [`docs/security/release-verification.md` at `v0.2.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.2.0/docs/security/release-verification.md).
-The check that matters is that a bundle verifies, not that the assets are
-present.
-
-The offline documentation bundle is new in this release: the documentation as
-of this tag, readable with no server and no network.
 
 ### ⚠ BREAKING CHANGES
 
@@ -574,14 +566,13 @@ of this tag, readable with no server and no network.
 ## 0.1.0 (2026-08-18)
 
 First public release. SolidSyslog is a structured syslog client library for
-embedded and industrial systems, built to give a shipping product the security
-audit trail the EU Cyber Resilience Act and IEC 62443 expect. Everything in this
-release is new; the generated change list begins at 0.2.0.
+embedded and industrial systems, giving a shipping product the security audit trail
+the EU Cyber Resilience Act and IEC 62443 expect. Everything here is new; the
+generated change list begins at 0.2.0.
 
-Released as 0.x deliberately: the beta label describes the breadth of platform
-coverage and the absence of field integrations to date, not the maturity of the
-code. The public API changes before 1.0.0 only if integration feedback or a
-security fix requires it.
+0.x describes platform breadth and the absence of field integrations, not the
+maturity of the code. The public API changes before 1.0.0 only if integration
+feedback or a security fix requires it.
 
 ### What ships
 
@@ -608,19 +599,14 @@ OpenSSL, Mbed TLS, FatFs, FreeRTOS-Plus-FAT, C11 atomics.
 | RFC 5426 | 17 | 8 | 0 | 0 | 9 |
 | RFC 6587 | 8 | 7 | 0 | 0 | 1 |
 
-The maintainer's assessment, not a certification. Each status describes the
-library with a conforming platform supplying the roles it needs, and depends on
-the components selected, including any you write yourself, which the library
-cannot speak for. The full matrix at this release, one row and one note per
-clause:
+The maintainer's assessment, not a certification; each status assumes a conforming
+platform supplying the roles it needs. The full matrix:
 [`docs/rfc-compliance.md` at `v0.1.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.1.0/docs/rfc-compliance.md).
 
 ### Known limitations
 
-Found by a pre-release audit that read every documentation page against the
-code it describes. Each is disclosed where the reader meets it: on the page for
-the platform it affects, or in the TLS contract and the compliance matrix. All
-are tracked for 0.2.0.
+Found by a pre-release audit of the documentation against the code. Each is
+disclosed where the reader meets it, and all are tracked for 0.2.0.
 
 TLS divergences from the contract in
 [`docs/tls.md`](https://github.com/cososo-ltd/solid-syslog/blob/v0.1.0/docs/tls.md):
@@ -655,17 +641,13 @@ Transport:
   `sysUpTime` wraps early at tick rates that do not divide 100, including the
   1000 Hz default
 
-The report-and-continue posture behind the TLS items is stated and argued in
+The report-and-continue posture behind the TLS items is argued in
 [`docs/tls.md`](https://github.com/cososo-ltd/solid-syslog/blob/v0.1.0/docs/tls.md).
-It is reasoned rather than field-tested, and 0.x is when integration feedback
-can still change it cheaply.
+It is reasoned rather than field-tested.
 
 ### Verifying this release
 
-Four assets are attached: the CycloneDX SBOM, the content-tree SHA-256, and a
-cosign signature bundle for each. Signing is keyless via GitHub OIDC, so each
-signature commits to the workflow run that produced it. There is no personal
-key. The content-tree hash is reproducible from any clone. Commands:
+Four assets are attached: the CycloneDX SBOM, the content-tree SHA-256 and a cosign
+signature bundle for each. Signing is keyless via GitHub OIDC; there is no personal
+key. Commands:
 [`docs/security/release-verification.md` at `v0.1.0`](https://github.com/cososo-ltd/solid-syslog/blob/v0.1.0/docs/security/release-verification.md).
-The check that matters is that a bundle verifies, not that the assets are
-present.
