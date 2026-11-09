@@ -53,13 +53,13 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `build-linux-wolfssl` | `tunable-override-wolfssl` | The Linux BDD target over the wolfSSL pack in place of OpenSSL, with the unit tests; uploads the target binary |
 | `bdd-linux-wolfssl-syslogng` | - | The Linux scenarios against that target (`syslog-ng-linux` + `behave-linux-wolfssl`) |
 | `bdd-windows-openssl-otel` | - | Windows-eligible BDD scenarios driven against an OTel Collector oracle |
-| `build-freertos-plustcp-mbedtls-plusfat` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact |
-| `build-freertos-lwipraw-mbedtls-fatfs` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`) |
+| `build-freertos-plustcp-mbedtls-plusfat` | `freertos-cross` | ARM cross-build (Cortex-M3, mps2-an385) of the BDD target ELF over FreeRTOS-Plus-TCP; uploads it as an artifact. `scripts/check_build_provenance.py` then reads the build's dependency files and asserts every file the compiler read came from the tree it was pinned to, since the image carries a second FreeRTOS kernel bundled inside CMSIS-FreeRTOS and example copies of the configuration headers; the per-tree counts and the two kernel versions go to the step summary |
+| `build-freertos-lwipraw-mbedtls-fatfs` | `freertos-cross-lwip` | The same cross-build over lwIP with ChaN FatFs (`FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic`), with the same provenance check |
 | `bdd-freertos-plustcp-mbedtls-plusfat-syslogng` | - | Pulls the Plus-TCP target ELF, brings up the freertos compose pair (`syslog-ng-freertos` + `behave-freertos`); Behave drives the target through `qemu-system-arm`'s UART |
 | `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` | - | The same scenarios against the lwIP target ELF |
-| `build-cmsisrtos-lwipsocket-mbedtls-littlefs` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS |
+| `build-cmsisrtos-lwipsocket-mbedtls-littlefs` | `cmsis-cross-lwip` | The cross-build of the CMSIS-RTOS2 BDD target, over CMSIS-RTOS2, LittleFS and the lwIP Sockets API (`CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic`) - the three packs it exists to prove, plus Mbed TLS; with the same provenance check |
 | `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` | - | The same scenarios again, against that target's ELF |
-| `build-cmsisrtos-lwipsocket-wolfssl-littlefs` | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack in place of Mbed TLS, with wolfSSL compiled from source under the target's `user_settings.h`; asserts from the ELF's symbols which TLS pack was linked |
+| `build-cmsisrtos-lwipsocket-wolfssl-littlefs` | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack in place of Mbed TLS, with wolfSSL compiled from source under the target's `user_settings.h`; asserts from the ELF's symbols which TLS pack was linked, and runs the same provenance check |
 | `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` | - | The QEMU scenarios against that ELF, less the one cell the wolfSSL platform page lists as a shortfall |
 | `smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `smoke-freertos-lwipraw` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
