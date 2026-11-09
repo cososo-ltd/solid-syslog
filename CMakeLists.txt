@@ -647,6 +647,9 @@ endif()
 if(SOLIDSYSLOG_IS_TOP_LEVEL
    AND CMAKE_CROSSCOMPILING
    AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+    # Each target resolves its upstream trees through this, and the configure
+    # records which ones for scripts/check_build_provenance.py.
+    include(Bdd/Targets/Common/UpstreamTrees.cmake)
     if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
         add_subdirectory(Bdd/Targets/CmsisLwip)
     elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "FREERTOS_LWIP")

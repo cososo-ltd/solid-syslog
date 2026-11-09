@@ -27,6 +27,7 @@ class BuildProvenanceTest(unittest.TestCase):
         self.kernel = self.root / "opt" / "kernel"
         self.wrapper = self.root / "opt" / "cmsis-freertos"
         self.fatfs = self.root / "opt" / "fatfs"
+        self.lwip = self.root / "opt" / "lwip"
         self.toolchain = self.root / "toolchain" / "include"
         self.cmake_root = self.root / "usr" / "share" / "cmake"
         self.given_file(self.kernel / "include" / "FreeRTOS.h")
@@ -40,9 +41,17 @@ class BuildProvenanceTest(unittest.TestCase):
             f"SOLIDSYSLOG_FREERTOS_KERNEL_PATH:PATH={self.kernel.as_posix()}\n"
             f"SOLIDSYSLOG_CMSIS_FREERTOS_PATH:PATH={self.wrapper.as_posix()}\n"
             f"SOLIDSYSLOG_FATFS_PATH:PATH={self.fatfs.as_posix()}\n"
-            "SOLIDSYSLOG_LWIP_PATH:PATH=\n",
+            f"SOLIDSYSLOG_LWIP_PATH:PATH={self.lwip.as_posix()}\n",
         )
         self.given_compiler_record(self.toolchain.as_posix())
+        self.given_wired("SOLIDSYSLOG_FREERTOS_KERNEL_PATH", "SOLIDSYSLOG_CMSIS_FREERTOS_PATH", "SOLIDSYSLOG_FATFS_PATH")
+        self.given_configure_inputs()
+        # Every wired tree must be read from, so each test starts from a build that did.
+        self.baseline = (
+            self.kernel / "include" / "task.h",
+            self.wrapper / "CMSIS" / "RTOS2" / "FreeRTOS" / "Source" / "cmsis_os2.c",
+            self.fatfs / "source" / "ff.h",
+        )
 
     def given_file(self, path, text=""):
         path = Path(path)
@@ -55,8 +64,11 @@ class BuildProvenanceTest(unittest.TestCase):
             f'set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "{implicit_includes}")\n',
         )
 
+    def given_wired(self, *variables):
+        self.given_file(self.build / "SolidSyslogUpstreamTrees.txt", "".join(f"{v}\n" for v in variables))
+
     def given_object_that_read(self, *files, name="main.c.obj.d"):
-        prerequisites = " \\\n ".join(Path(file).as_posix() for file in files)
+        prerequisites = " \\\n ".join(Path(file).as_posix() for file in (*self.baseline, *files))
         self.given_file(
             self.build / "CMakeFiles" / "target.dir" / name,
             f"CMakeFiles/target.dir/{name[:-2]}: {prerequisites}\n",
@@ -77,7 +89,6 @@ class BuildProvenanceTest(unittest.TestCase):
     def test_passes_when_every_file_is_inside_a_wired_subtree(self):
         self.given_object_that_read(
             self.checkout / "Bdd" / "Targets" / "T" / "main.c",
-            self.kernel / "include" / "task.h",
             self.kernel / "tasks.c",
             self.kernel / "portable" / "GCC" / "ARM_CM3" / "portmacro.h",
             self.toolchain / "stdint.h",
@@ -88,7 +99,6 @@ class BuildProvenanceTest(unittest.TestCase):
     def test_summary_counts_files_by_tree(self):
         self.given_object_that_read(
             self.checkout / "main.c",
-            self.kernel / "include" / "task.h",
             self.kernel / "tasks.c",
             self.toolchain / "stdint.h",
         )
@@ -108,6 +118,25 @@ class BuildProvenanceTest(unittest.TestCase):
         self.given_object_that_read(self.checkout / "main.c", bundled)
         self.assertEqual(1, self.run_main())
         self.assertIn(f"::error::{bundled}: inside the repository but outside its wired subtrees", self.output.getvalue())
+
+    def test_fails_naming_a_file_from_a_pinned_tree_the_target_does_not_wire(self):
+        unwired = self.lwip / "src" / "include" / "lwip" / "opt.h"
+        self.given_object_that_read(self.checkout / "main.c", unwired)
+        self.assertEqual(1, self.run_main())
+        self.assertIn(f"::error::{unwired}: inside LWIP_PATH, a tree this target does not wire", self.output.getvalue())
+        self.assertNotIn("| LWIP_PATH |", self.output.getvalue())
+
+    def test_fails_when_a_wired_tree_was_never_read(self):
+        self.given_wired("SOLIDSYSLOG_FREERTOS_KERNEL_PATH", "SOLIDSYSLOG_CMSIS_FREERTOS_PATH", "SOLIDSYSLOG_FATFS_PATH", "SOLIDSYSLOG_LWIP_PATH")
+        self.given_object_that_read(self.checkout / "main.c")
+        self.assertEqual(1, self.run_main())
+        self.assertIn("::error::SOLIDSYSLOG_LWIP_PATH: wired by the target, but nothing was read from it", self.output.getvalue())
+
+    def test_fails_when_a_wired_tree_has_no_subtree_rule(self):
+        self.given_wired("SOLIDSYSLOG_FREERTOS_KERNEL_PATH", "SOLIDSYSLOG_CMSIS_FREERTOS_PATH", "SOLIDSYSLOG_FATFS_PATH", "SOLIDSYSLOG_NEW_PATH")
+        self.given_object_that_read(self.checkout / "main.c")
+        self.assertEqual(1, self.run_main())
+        self.assertIn("::error::SOLIDSYSLOG_NEW_PATH: wired by the target, but this script has no subtree rule for it", self.output.getvalue())
 
     def test_fails_when_a_kernel_header_name_resolves_outside_the_pinned_kernel(self):
         shadow = self.wrapper / "CMSIS" / "RTOS2" / "FreeRTOS" / "Include" / "FreeRTOS.h"
@@ -147,10 +176,10 @@ class BuildProvenanceTest(unittest.TestCase):
         self.assertEqual(0, self.run_main())
 
     def test_counts_a_file_once_however_many_objects_read_it(self):
-        self.given_object_that_read(self.checkout / "a.c", self.kernel / "include" / "task.h", name="a.c.obj.d")
-        self.given_object_that_read(self.checkout / "b.c", self.kernel / "include" / "task.h", name="b.c.obj.d")
+        self.given_object_that_read(self.checkout / "a.c", self.kernel / "tasks.c", name="a.c.obj.d")
+        self.given_object_that_read(self.checkout / "b.c", self.kernel / "tasks.c", name="b.c.obj.d")
         self.run_main()
-        self.assertIn("| FREERTOS_KERNEL_PATH | 1 |", self.output.getvalue())
+        self.assertIn("| FREERTOS_KERNEL_PATH | 2 |", self.output.getvalue())
 
     def test_a_relative_prerequisite_is_relative_to_the_build_directory(self):
         self.given_object_that_read(self.checkout / "main.c", "generated/tunables.h")
@@ -161,10 +190,14 @@ class BuildProvenanceTest(unittest.TestCase):
         spaced = self.checkout / "with space" / "main.c"
         self.given_file(
             self.build / "CMakeFiles" / "target.dir" / "main.c.obj.d",
-            f"main.c.obj: {spaced.as_posix().replace(' ', chr(92) + ' ')}\n",
+            "main.c.obj: "
+            + " ".join(p.as_posix() for p in self.baseline)
+            + " "
+            + spaced.as_posix().replace(" ", chr(92) + " ")
+            + "\n",
         )
         self.assertEqual(0, self.run_main())
-        self.assertIn("1 distinct files read", self.output.getvalue())
+        self.assertIn("4 distinct files read", self.output.getvalue())
 
     def test_an_empty_compiler_record_allows_nothing_extra(self):
         self.given_compiler_record("")
@@ -182,32 +215,61 @@ class BuildProvenanceTest(unittest.TestCase):
     def test_configure_time_listfiles_and_templates_are_not_sources(self):
         self.given_object_that_read(self.checkout / "main.c")
         self.given_configure_inputs(
-            self.root / "opt" / "lwip" / "doc" / "lwip.Doxyfile.cmake.in",
+            self.lwip / "doc" / "lwip.Doxyfile.cmake.in",
             self.root / "opt" / "mbedtls" / "pkgconfig" / "CMakeLists.txt",
-            self.fatfs / "source" / "ff.h",
+            self.fatfs / "source" / "ff.c",
         )
         self.assertEqual(0, self.run_main())
-        self.assertIn("| FATFS_PATH | 1 |", self.output.getvalue())
+        self.assertIn("| FATFS_PATH | 2 |", self.output.getvalue())
 
-    def test_reads_ninja_dependencies_from_its_log(self):
-        self.given_file(self.build / "build.ninja", "build build.ninja: RERUN_CMAKE $\n  CMakeLists.txt $\n  " + (self.fatfs / "source" / "ff.c").as_posix() + "\n")
+    def test_returns_two_without_a_record_of_the_configure_inputs(self):
+        self.given_object_that_read(self.checkout / "main.c")
+        (self.build / "CMakeFiles" / "Makefile.cmake").unlink()
+        self.assertEqual(2, self.run_main())
+        self.assertIn("no record of the configure-time inputs", self.output.getvalue())
+
+    def given_ninja_build(self, manifest):
+        (self.build / "CMakeFiles" / "Makefile.cmake").unlink()
+        self.given_file(
+            manifest,
+            "build build.ninja: RERUN_CMAKE $\n  CMakeLists.txt $\n  " + (self.fatfs / "source" / "ff.c").as_posix() + "\n",
+        )
+        if manifest.name != "build.ninja":
+            self.given_file(self.build / "build.ninja", "include CMakeFiles/common.ninja\n")
         self.given_file(self.build / "CMakeCache.txt", (self.build / "CMakeCache.txt").read_text(encoding="utf-8") + "CMAKE_MAKE_PROGRAM:FILEPATH=/usr/bin/ninja\n")
-        deps = (
+        return (
             "CMakeFiles/target.dir/main.c.obj: #deps 2, deps mtime 1 (VALID)\n"
-            f"    {(self.checkout / 'main.c').as_posix()}\n"
-            f"    {(self.wrapper / 'Source' / 'include' / 'FreeRTOS.h').as_posix()}\n"
+            + "".join(f"    {p.as_posix()}\n" for p in self.baseline)
+            + f"    {(self.checkout / 'main.c').as_posix()}\n"
+            + f"    {(self.wrapper / 'Source' / 'include' / 'FreeRTOS.h').as_posix()}\n"
             "\n"
         )
+
+    def test_reads_ninja_dependencies_from_its_log(self):
+        deps = self.given_ninja_build(self.build / "build.ninja")
         with mock.patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0, deps, "")) as run:
             self.assertEqual(1, self.run_main())
         self.assertEqual(["/usr/bin/ninja", "-C", str(self.build), "-t", "deps"], run.call_args.args[0])
         self.assertIn("FreeRTOS.h is owned by", self.output.getvalue())
-        self.assertIn("| FATFS_PATH | 1 |", self.output.getvalue())
+        self.assertIn("| FATFS_PATH | 2 |", self.output.getvalue())
 
-    def test_summary_shows_the_kernel_version_pairing(self):
+    def test_reads_the_configure_inputs_from_ninja_multi_configs_common_file(self):
+        deps = self.given_ninja_build(self.build / "CMakeFiles" / "common.ninja")
+        with mock.patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0, deps, "")):
+            self.run_main()
+        self.assertIn("| FATFS_PATH | 2 |", self.output.getvalue())
+
+    def test_summary_shows_the_kernel_version_pairing_when_the_wrapper_is_wired(self):
         self.given_object_that_read(self.checkout / "main.c")
         self.run_main()
         self.assertIn("the pinned kernel is V11.3.3; the kernel CMSIS-FreeRTOS bundles is V11.3.0", self.output.getvalue())
+
+    def test_summary_omits_the_pairing_when_the_wrapper_is_not_wired(self):
+        self.given_wired("SOLIDSYSLOG_FREERTOS_KERNEL_PATH", "SOLIDSYSLOG_FATFS_PATH")
+        self.baseline = (self.kernel / "include" / "task.h", self.fatfs / "source" / "ff.h")
+        self.given_object_that_read(self.checkout / "main.c")
+        self.assertEqual(0, self.run_main())
+        self.assertNotIn("Kernel version pairing", self.output.getvalue())
 
     def test_an_extra_allowed_directory_is_accepted(self):
         extra = self.root / "extra"
@@ -224,6 +286,12 @@ class BuildProvenanceTest(unittest.TestCase):
     def test_returns_two_when_nothing_was_built(self):
         self.assertEqual(2, self.run_main())
         self.assertIn("was it built?", self.output.getvalue())
+
+    def test_returns_two_without_a_record_of_the_wired_trees(self):
+        (self.build / "SolidSyslogUpstreamTrees.txt").unlink()
+        self.given_object_that_read(self.checkout / "main.c")
+        self.assertEqual(2, self.run_main())
+        self.assertIn("SolidSyslogUpstreamTrees.txt", self.output.getvalue())
 
 
 if __name__ == "__main__":

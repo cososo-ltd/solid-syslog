@@ -16,33 +16,11 @@
 # BddTargetInteractive.c) stays in the executable target under the strict
 # project warning bar so regressions in our own code can't slip through.
 
-set(FREERTOS_KERNEL_PATH "${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}")
-if(NOT FREERTOS_KERNEL_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_KERNEL_PATH is empty (falls back to $FREERTOS_KERNEL_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/freertos/kernel.")
-endif()
-
-set(FREERTOS_PLUS_TCP_PATH "${SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH}")
-if(NOT FREERTOS_PLUS_TCP_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH is empty (falls back to $FREERTOS_PLUS_TCP_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/freertos/plus-tcp.")
-endif()
-
-set(FREERTOS_PLUS_FAT_PATH "${SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH}")
-if(NOT FREERTOS_PLUS_FAT_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH is empty (falls back to $FREERTOS_PLUS_FAT_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/freertos/plus-fat.")
-endif()
-
-set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
-if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_MBEDTLS_DIR is empty or invalid (falls back to $MBEDTLS_DIR). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/mbedtls.")
-endif()
+# The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
+solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
+solidsyslog_bdd_upstream(FREERTOS_PLUS_TCP_PATH SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH /opt/freertos/plus-tcp)
+solidsyslog_bdd_upstream(FREERTOS_PLUS_FAT_PATH SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH /opt/freertos/plus-fat)
+solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
 
 # No source staging for FreeRTOS-Plus-FAT (unlike ChaN-FatFs). ff_headers.h's
 # `#include "FreeRTOSFATConfig.h"` finds no copy beside itself in
