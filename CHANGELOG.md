@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.4.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.3.0...v0.4.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* S47.04 upstream pins move to current releases; Plus-TCP needs V4.3.0 ([#1171](https://github.com/cososo-ltd/solid-syslog/issues/1171))
+* S25.02 a rejected record is stepped past unmarked ([#1113](https://github.com/cososo-ltd/solid-syslog/issues/1113))
+
+### Features
+
+* a refused TLS peer's dates are named ahead of its name, on all three packs ([#1140](https://github.com/cososo-ltd/solid-syslog/issues/1140)) ([ac49cf5](https://github.com/cososo-ltd/solid-syslog/commit/ac49cf53949518a7bfbed685b02439ef37b5793a))
+* S38.01 injectable log scratch so the message buffer costs RAM once, not once per task ([#1096](https://github.com/cososo-ltd/solid-syslog/issues/1096)) ([a5b766e](https://github.com/cososo-ltd/solid-syslog/commit/a5b766eabec49ca4fd3c363ccd019e509d610ff9))
+* S44.02 pending-kind table behind SolidSyslog_Error, capture only ([#1131](https://github.com/cososo-ltd/solid-syslog/issues/1131)) ([3bebe32](https://github.com/cososo-ltd/solid-syslog/commit/3bebe324039f3953f94ec2a2d47d6b02d2f7d21b))
+* S44.03 Service reports a buffer loss as a record of its own ([#1137](https://github.com/cososo-ltd/solid-syslog/issues/1137)) ([6897120](https://github.com/cososo-ltd/solid-syslog/commit/6897120ab094628e7eb80bcb45bec90dab6f6c0c))
+* S44.04 the full first-cut set of reported kinds, each with its scenario invariant ([#1146](https://github.com/cososo-ltd/solid-syslog/issues/1146)) ([6c3f514](https://github.com/cososo-ltd/solid-syslog/commit/6c3f5149e0fc39f4898a035d6fc991c3c321e4a4))
+* S44.05 store threshold crossed and logger halted are raised as events and reported ([#1149](https://github.com/cososo-ltd/solid-syslog/issues/1149)) ([5f32716](https://github.com/cososo-ltd/solid-syslog/commit/5f32716e076f4680f2c4cc5d6158e7b7dfefc849))
+* S47.05 a browsable test report of every CI run is published with the documentation ([#1181](https://github.com/cososo-ltd/solid-syslog/issues/1181)) ([2e099f1](https://github.com/cososo-ltd/solid-syslog/commit/2e099f16c8593eda6848a9e7ea4938719d57efb0))
+* S47.06 coverage can be inspected line by line on the documentation site ([#1176](https://github.com/cososo-ltd/solid-syslog/issues/1176)) ([a88c0fe](https://github.com/cososo-ltd/solid-syslog/commit/a88c0fea27216f6e634671fdcd519bc4ed7c15dc))
+* wolfSSL is supported - the stream and credentials role over Posix TCP, pinned fingerprints, cipher policy and mutual TLS, both at-rest policies, on Linux and built from source on the CMSIS-RTOS2 lwIP Sockets QEMU target ([#1125](https://github.com/cososo-ltd/solid-syslog/issues/1125)) ([430bfc8](https://github.com/cososo-ltd/solid-syslog/commit/430bfc81422c63aa872490a272d28a355410f1b8))
+
+
+### Bug Fixes
+
+* a reset that lands before Open reads its pcb is a refusal, not a missing endpoint ([#1130](https://github.com/cososo-ltd/solid-syslog/issues/1130)) ([04ba6f3](https://github.com/cososo-ltd/solid-syslog/commit/04ba6f39f640966874b50e240326f18285d919c4))
+* a stream reports a failed connect once per outage, not once per attempt ([#1112](https://github.com/cososo-ltd/solid-syslog/issues/1112)) ([5cab846](https://github.com/cososo-ltd/solid-syslog/commit/5cab8465081107630ea2bba44c2a1e7f9919ffc7))
+* a TLS credentials source reports a refusal that fails Install once per run, not once per attempt ([#1142](https://github.com/cososo-ltd/solid-syslog/issues/1142)) ([a9a99c9](https://github.com/cososo-ltd/solid-syslog/commit/a9a99c9a18873dd5e57191031a1434c92500619b))
+* CircularBuffer and PosixMessageQueueBuffer report a NULL mutex instead of dereferencing it ([#1097](https://github.com/cososo-ltd/solid-syslog/issues/1097)) ([a838a9a](https://github.com/cososo-ltd/solid-syslog/commit/a838a9a0b898454855cc05129da9be1c1d8f5934))
+* S25.02 a rejected record is stepped past unmarked ([#1113](https://github.com/cososo-ltd/solid-syslog/issues/1113)) ([34445e2](https://github.com/cososo-ltd/solid-syslog/commit/34445e240c443b2deee78b4db61cb3767302fe16))
+* S25.03 a hole in the block set no longer wraps the resume run or evicts an intact block ([#1111](https://github.com/cososo-ltd/solid-syslog/issues/1111)) ([1c63bce](https://github.com/cososo-ltd/solid-syslog/commit/1c63bce49133024772c73f4d6a9883fc2f8970d8))
+* S25.05 a block the read has finished with is disposed of however its last record was passed ([#1117](https://github.com/cososo-ltd/solid-syslog/issues/1117)) ([0c41265](https://github.com/cososo-ltd/solid-syslog/commit/0c412652df050d088662c78cca12e2ac5e13d635))
+* S47.04 upstream pins move to current releases; Plus-TCP needs V4.3.0 ([#1171](https://github.com/cososo-ltd/solid-syslog/issues/1171)) ([510a6f2](https://github.com/cososo-ltd/solid-syslog/commit/510a6f29cd32d36b0ffdad41482f3f356524340c))
+* the circular buffer reports a NULL ring at Create and returns the NullBuffer ([#1102](https://github.com/cososo-ltd/solid-syslog/issues/1102)) ([7ff7e9d](https://github.com/cososo-ltd/solid-syslog/commit/7ff7e9d98ad93e20236d994d2d0b016beaccafad))
+* the three TLS streams report a refusal that ends an Open once per run, not once per attempt ([#1141](https://github.com/cososo-ltd/solid-syslog/issues/1141)) ([83aaea3](https://github.com/cososo-ltd/solid-syslog/commit/83aaea36dcbfbec54230ccc247338aee0770dc53))
+
 ## [0.3.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.2.0...v0.3.0) (2026-10-31)
 
 The failure-policy release. 0.3.0 lets a device decide what a full queue gives up,
