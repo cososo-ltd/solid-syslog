@@ -172,7 +172,7 @@ static uint32_t MbedTlsStream_NullHandshakeTimeoutGetter(void* context)
 
 static inline bool MbedTlsStream_ConfigProvidesHandshakeGetter(const struct SolidSyslogMbedTlsStreamConfig* config)
 {
-    return (config != NULL) && (config->GetHandshakeTimeoutMs != NULL);
+    return config->GetHandshakeTimeoutMs != NULL;
 }
 
 /* Null Object substituted at Initialise when the integrator installs no version
@@ -186,7 +186,7 @@ static uint32_t MbedTlsStream_NullVersion(void* context)
 
 static inline bool MbedTlsStream_ConfigProvidesVersion(const struct SolidSyslogMbedTlsStreamConfig* config)
 {
-    return (config != NULL) && (config->Version != NULL);
+    return config->Version != NULL;
 }
 
 /* Null Object substituted at Initialise when the integrator supplies no profile -
@@ -199,7 +199,7 @@ static void MbedTlsStream_NullProfile(struct SolidSyslogMbedTlsProfile* profile,
 
 static inline bool MbedTlsStream_ConfigProvidesProfile(const struct SolidSyslogMbedTlsStreamConfig* config)
 {
-    return (config != NULL) && (config->Profile != NULL);
+    return config->Profile != NULL;
 }
 
 /* Bridges the integrator-installed getter (or the Null Object substituted at
