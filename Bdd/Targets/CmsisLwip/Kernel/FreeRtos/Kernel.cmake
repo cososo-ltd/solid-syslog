@@ -15,30 +15,14 @@
 
 set(BDD_KERNEL_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-set(FREERTOS_KERNEL_PATH "${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}")
-if(NOT FREERTOS_KERNEL_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_KERNEL_PATH is empty (falls back to $FREERTOS_KERNEL_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/freertos/kernel.")
-endif()
-
-# CMSIS-RTOS2 needs both repositories and says so only when the build fails:
-# CMSIS-FreeRTOS ships cmsis_os2.c but no cmsis_os2.h, and the header plus
-# os_tick.h and cmsis_compiler.h come from CMSIS_6. The two are version-paired
-# with the kernel - bump all three together or none.
-set(CMSIS_PATH "${SOLIDSYSLOG_CMSIS_PATH}")
-if(NOT CMSIS_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_CMSIS_PATH is empty (falls back to $CMSIS_PATH). Use the cpputest-freertos-cross container, "
-        "which sets this to /opt/cmsis.")
-endif()
-
-set(CMSIS_FREERTOS_PATH "${SOLIDSYSLOG_CMSIS_FREERTOS_PATH}")
-if(NOT CMSIS_FREERTOS_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_CMSIS_FREERTOS_PATH is empty (falls back to $CMSIS_FREERTOS_PATH). Use the "
-        "cpputest-freertos-cross container, which sets this to /opt/cmsis-freertos.")
-endif()
+# The upstream trees this kernel wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
+# CMSIS-RTOS2 needs both CMSIS repositories and says so only when the build
+# fails: CMSIS-FreeRTOS ships cmsis_os2.c but no cmsis_os2.h, and the header
+# plus os_tick.h and cmsis_compiler.h come from CMSIS_6. The two are
+# version-paired with the kernel - bump all three together or none.
+solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
+solidsyslog_bdd_upstream(CMSIS_PATH SOLIDSYSLOG_CMSIS_PATH /opt/cmsis)
+solidsyslog_bdd_upstream(CMSIS_FREERTOS_PATH SOLIDSYSLOG_CMSIS_FREERTOS_PATH /opt/cmsis-freertos)
 
 set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
 

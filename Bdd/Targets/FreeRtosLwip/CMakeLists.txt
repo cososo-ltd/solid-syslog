@@ -15,38 +15,16 @@
 # Platform/LwipRaw + Platform/FreeRtos adapters, and the shared BddTarget
 # sources) stays in the executable under the strict project warning bar.
 
-set(FREERTOS_KERNEL_PATH "${SOLIDSYSLOG_FREERTOS_KERNEL_PATH}")
-if(NOT FREERTOS_KERNEL_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FREERTOS_KERNEL_PATH is empty (falls back to $FREERTOS_KERNEL_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/freertos/kernel.")
-endif()
+# The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
+solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
+solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
+solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
+solidsyslog_bdd_upstream(FATFS_PATH SOLIDSYSLOG_FATFS_PATH /opt/fatfs)
 
 # The LAN9118 netif wrapper, the vendored Arm driver under it, and lwIP's
 # arch/cc.h are shared with the other lwIP BDD target, so they live under
 # Bdd/Targets/Common/lwip/ rather than in either target's own directory.
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
-
-set(LWIP_DIR "${SOLIDSYSLOG_LWIP_PATH}")
-if(NOT LWIP_DIR)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_LWIP_PATH is empty (falls back to $LWIP_PATH). Use the cpputest-freertos-cross container, "
-        "which sets this to /opt/lwip.")
-endif()
-
-set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
-if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_MBEDTLS_DIR is empty or invalid (falls back to $MBEDTLS_DIR). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/mbedtls.")
-endif()
-
-set(FATFS_PATH "${SOLIDSYSLOG_FATFS_PATH}")
-if(NOT FATFS_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_FATFS_PATH is empty (falls back to $FATFS_PATH). Use the cpputest-freertos-cross container, "
-        "which sets this to /opt/fatfs.")
-endif()
 
 # Stage the upstream FatFs source pack alongside our integrator ffconf.h
 # (shared with the Plus-TCP target — Bdd/Targets/Common/ffconf.h) in the

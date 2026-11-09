@@ -1856,6 +1856,9 @@ jobs:
       - name: Cross-build FreeRTOS BDD target ELF
         run: cmake --build --preset freertos-cross --target SolidSyslogBddTarget
 
+      - name: Assert every file the build read came from its pinned tree
+        run: python3 scripts/check_build_provenance.py --build build/freertos-cross
+
       - name: Upload FreeRTOS BDD target ELF
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1898,6 +1901,9 @@ jobs:
 
       - name: Cross-build FreeRTOS+lwIP BDD target ELF
         run: cmake --build --preset freertos-cross-lwip --target SolidSyslogBddTargetLwip
+
+      - name: Assert every file the build read came from its pinned tree
+        run: python3 scripts/check_build_provenance.py --build build/freertos-cross-lwip
 
       - name: Assert no PlusTcp / Plus-TCP symbols linked
         run: |
@@ -1953,6 +1959,12 @@ jobs:
       - name: Cross-build CmsisLwip BDD target ELF
         run: cmake --build --preset cmsis-cross-lwip --target SolidSyslogBddTargetCmsis
 
+      # The image carries a second FreeRTOS kernel, bundled inside
+      # CMSIS-FreeRTOS at a different version. This proves the build read the
+      # pinned one and nothing from the bundle but the wrapper.
+      - name: Assert every file the build read came from its pinned tree
+        run: python3 scripts/check_build_provenance.py --build build/cmsis-cross-lwip
+
       - name: Assert no PlusTcp / Plus-TCP symbols linked
         run: |
           elf=build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
@@ -2003,6 +2015,9 @@ jobs:
 
       - name: Cross-build CmsisLwip BDD target ELF with wolfSSL from source
         run: cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
+
+      - name: Assert every file the build read came from its pinned tree
+        run: python3 scripts/check_build_provenance.py --build build/cmsis-cross-lwip-wolfssl
 
       # A green lane does not say which TLS pack was linked; the symbols do.
       - name: Assert the wolfSSL pack is linked and Mbed TLS is not

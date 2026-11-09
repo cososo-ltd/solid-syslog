@@ -26,19 +26,10 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/Kernel/FreeRtos/Kernel.cmake)
 # Shared with the sibling lwIP target - see Bdd/Targets/Common/lwip/.
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
 
-set(LWIP_DIR "${SOLIDSYSLOG_LWIP_PATH}")
-if(NOT LWIP_DIR)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_LWIP_PATH is empty (falls back to $LWIP_PATH). Use the cpputest-freertos-cross container, "
-        "which sets this to /opt/lwip.")
-endif()
-
-set(LITTLEFS_PATH "${SOLIDSYSLOG_LITTLEFS_PATH}")
-if(NOT LITTLEFS_PATH)
-    message(FATAL_ERROR
-        "SOLIDSYSLOG_LITTLEFS_PATH is empty (falls back to $LITTLEFS_PATH). Use the cpputest-freertos-cross "
-        "container, which sets this to /opt/littlefs.")
-endif()
+# The upstream trees this target wires, beyond the kernel's - see
+# Bdd/Targets/Common/UpstreamTrees.cmake.
+solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
+solidsyslog_bdd_upstream(LITTLEFS_PATH SOLIDSYSLOG_LITTLEFS_PATH /opt/littlefs)
 
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
 # NO_SYS=0 we consume the IPv4 core set plus the api/ set, which already names
@@ -122,12 +113,7 @@ target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
 # says which upstream it compiles, which of our sources fill the TLS and
 # at-rest seams, and what the executable links and defines.
 if(SOLIDSYSLOG_WOLFSSL)
-    set(WOLFSSL_SOURCE_DIR "${SOLIDSYSLOG_WOLFSSL_SOURCE_DIR}")
-    if(NOT EXISTS "${WOLFSSL_SOURCE_DIR}/wolfssl/ssl.h")
-        message(FATAL_ERROR
-            "SOLIDSYSLOG_WOLFSSL_SOURCE_DIR is empty or invalid (falls back to $WOLFSSL_SOURCE_DIR). Use the "
-            "cpputest-freertos-cross container, which sets this to /opt/wolfssl-src.")
-    endif()
+    solidsyslog_bdd_upstream(WOLFSSL_SOURCE_DIR SOLIDSYSLOG_WOLFSSL_SOURCE_DIR /opt/wolfssl-src PROBE wolfssl/ssl.h)
 
     # wolfSSL from source, the way an embedded integrator builds it: the file
     # list, compiled under this target's user_settings.h. Its own CMake is not
@@ -205,12 +191,7 @@ if(SOLIDSYSLOG_WOLFSSL)
     # anything we compile.
     set(BDD_TLS_SYSTEM_INCLUDES ${WOLFSSL_SOURCE_DIR})
 else()
-    set(MBEDTLS_SOURCE_DIR "${SOLIDSYSLOG_MBEDTLS_DIR}")
-    if(NOT EXISTS "${MBEDTLS_SOURCE_DIR}/CMakeLists.txt")
-        message(FATAL_ERROR
-            "SOLIDSYSLOG_MBEDTLS_DIR is empty or invalid (falls back to $MBEDTLS_DIR). Use the cpputest-freertos-cross "
-            "container, which sets this to /opt/mbedtls.")
-    endif()
+    solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
 
     # --- mbedTLS upstream as a subproject ----------------------------------------
     #
