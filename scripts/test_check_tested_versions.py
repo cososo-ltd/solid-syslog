@@ -118,6 +118,12 @@ class Checking(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("::error::mbedtls/index.md: the marker says 3.6.7, but the page's prose does not", out)
 
+    def test_a_tree_known_only_by_its_version_defers_to_one_that_also_has_a_tag(self):
+        installed = check_tested_versions.model.Upstream("WOLFSSL_DIR", version="5.9.4")
+        source = check_tested_versions.model.Upstream("WOLFSSL_SOURCE_DIR", version="5.9.4", tag="v5.9.4-stable", commit="3c5eead44904df64e6a5a1f4ebdce377d35a849a")
+        self.assertEqual(check_tested_versions.describe_all([installed, source]), "5.9.4 (v5.9.4-stable at 3c5eead)")
+        self.assertEqual(check_tested_versions.describe_all([installed]), "5.9.4")
+
     def test_a_page_without_upstreams_needs_no_marker(self):
         self.all_pages_right()
         code, out = self.run_check()

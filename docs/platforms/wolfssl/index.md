@@ -26,12 +26,14 @@ for no configure flag.
 
 wolfSSL 5.7.0 or later: the stream's pin digest calls `wc_Hash_ex`, which
 earlier releases do not have. The pack is tested against 5.9.4 on both routes
-in CI. As a `./configure` build it runs twice: once against a build with the options it
+in CI.
+As a `./configure` build it runs twice: once against a build with the options it
 asks for, and once against a bare `./configure`, so it is known to compile,
 link and work on the build an integrator has rather than only on the one it
 prefers. As a `user_settings.h` build it runs on an embedded target, with
 wolfSSL compiled from source into the image, static memory and no filesystem.
 The build choices that change what it does are listed below.
+<!-- tested-against: 5.9.4 -->
 
 wolfSSL is dual-licensed, GPLv3 or commercial, since 5.8.2; earlier releases
 were GPLv2. SolidSyslog links your build and ships none of it, so the licence

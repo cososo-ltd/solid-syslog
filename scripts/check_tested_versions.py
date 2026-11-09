@@ -81,9 +81,14 @@ def describe(upstream):
 
 
 def describe_all(upstreams):
+    """Every distinct tree, a bare version standing aside for a tree that has
+    the same version and a tag or commit too."""
+    detailed = {u.label for u in upstreams if describe(u) != u.label}
     descriptions = []
     for upstream in upstreams:
         text = describe(upstream)
+        if text == upstream.label and upstream.label in detailed:
+            continue
         if text not in descriptions:
             descriptions.append(text)
     return ", ".join(descriptions)

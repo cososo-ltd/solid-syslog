@@ -327,11 +327,13 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       included, written after release-please's run on the last merge before the
       release.
 - [ ] Each pack's page states the latest patch or minor release of its upstream
-      within the major it supports, and that is the version the CI images pin:
-      compare the version each page under `docs/platforms/` names against the
-      `ARG <NAME>_TAG` pins in the image repositories' Dockerfiles. A pack left
-      behind is either bumped before the release or listed under *Known
-      limitations* with the reason, per [`SUPPORT.md`](../SUPPORT.md).
+      within the major it supports. The version each page names is the one CI
+      built against - `docs-build` holds the pages to the record every lane
+      uploads, so a green `main` settles that - and the test report's
+      [Versions](testing/tests.md) table shows what that was. Compare it with
+      the upstream's latest release. A pack left behind is either bumped before
+      the release or listed under *Known limitations* with the reason, per
+      [`SUPPORT.md`](../SUPPORT.md).
 - [ ] Run each target that has a target checklist against the release PR's head,
       and record the run as a comment on the PR, per
       [Cutting a release](#cutting-a-release).

@@ -63,6 +63,10 @@ jobs:
           path: build/debug/cpputest_*.xml,build/debug/vxworks64/cpputest_*.xml
           reporter: java-junit
 
+      # Every junit-* artifact also carries the configure's record of what the
+      # lane compiled against (cmake/VersionRecord.cmake): the test report
+      # shows it per lane, and docs-build holds the platform pages to it. A BDD
+      # lane carries the record of the build that produced its target.
       - name: Upload JUnit XML
         if: success() || failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -71,6 +75,7 @@ jobs:
           path: |
             build/debug/cpputest_*.xml
             build/debug/vxworks64/cpputest_*.xml
+            build/debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -116,7 +121,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-openssl
-          path: build/debug/cpputest_*.xml
+          path: |
+            build/debug/cpputest_*.xml
+            build/debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -164,7 +171,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-littlefs
-          path: build/debug/cpputest_*.xml
+          path: |
+            build/debug/cpputest_*.xml
+            build/debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -212,7 +221,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-mbedtls
-          path: build/debug/cpputest_*.xml
+          path: |
+            build/debug/cpputest_*.xml
+            build/debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -266,7 +277,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-linux-wolfssl
-          path: build/debug/cpputest_*.xml
+          path: |
+            build/debug/cpputest_*.xml
+            build/debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -344,7 +357,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-integration-windows-openssl
-          path: build/msvc-debug/Tests/OpenSslIntegration/Debug/cpputest_*.xml
+          path: |
+            build/msvc-debug/Tests/OpenSslIntegration/Debug/cpputest_*.xml
+            build/msvc-debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -392,6 +407,7 @@ jobs:
           path: |
             build/tunable-override-debug/cpputest_*.xml
             build/tunable-override-debug/vxworks64/cpputest_*.xml
+            build/tunable-override-debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -403,6 +419,7 @@ jobs:
           name: solid-syslog-bdd-targets
           path: |
             build/tunable-override-debug/Bdd/Targets/SolidSyslogBddTarget
+            build/tunable-override-debug/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -456,6 +473,7 @@ jobs:
           path: |
             build/clang-debug/cpputest_*.xml
             build/clang-debug/vxworks64/cpputest_*.xml
+            build/clang-debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -580,6 +598,7 @@ jobs:
           path: |
             build/sanitize/cpputest_*.xml
             build/sanitize/vxworks64/cpputest_*.xml
+            build/sanitize/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -978,16 +997,24 @@ jobs:
           name: coverage-report-linux-gcc
           path: docs/testing/coverage-report/
 
-      # Every lane's JUnit results, one directory per artifact, which is the
-      # layout scripts/junit_report_pages.py reads: the directory name is the
-      # lane. The report it writes is git-ignored under docs/testing/ like the
-      # coverage report, and hooks/test_report.py fills the Tests page from the
-      # summary it leaves beside the pages.
+      # Every lane's JUnit results and version record, one directory per
+      # artifact, which is the layout scripts/junit_report_pages.py reads: the
+      # directory name is the lane. The report it writes is git-ignored under
+      # docs/testing/ like the coverage report, and hooks/test_report.py fills
+      # the Tests page from the summary it leaves beside the pages.
       - name: Download every lane's JUnit results
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: junit-*
           path: build/junit/
+
+      # Each artifact also carries the record of what its lane compiled against
+      # (cmake/VersionRecord.cmake). SUPPORT.md defines supported as built and
+      # tested in CI against the version a pack's page names, so this holds
+      # every page's `<!-- tested-against: ... -->` marker to that record: a
+      # page naming a version no lane built against fails here.
+      - name: Check the platform pages' tested-against claims against the record
+        run: python3 scripts/check_tested_versions.py build/junit
 
       # The source links point at the commit this run built, so a failing line
       # is the line as it was, not as main has it by the time someone looks.
@@ -1436,6 +1463,7 @@ jobs:
           path: |
             build/msvc-debug/cpputest_*.xml
             build/msvc-debug/vxworks64/cpputest_*.xml
+            build/msvc-debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -1445,7 +1473,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-windows
-          path: build/msvc-tunable-override/Bdd/Targets/Debug/SolidSyslogBddTarget.exe
+          path: |
+            build/msvc-tunable-override/Bdd/Targets/Debug/SolidSyslogBddTarget.exe
+            build/msvc-tunable-override/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -1489,7 +1519,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-target-windows
-          path: build/msvc-tunable-override/Bdd/Targets/Debug/
+          path: build/msvc-tunable-override/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -1575,7 +1605,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-windows-openssl-otel
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            build/msvc-tunable-override/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -1604,7 +1636,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-targets
-          path: build/tunable-override-debug/Bdd/Targets/
+          path: build/tunable-override-debug/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -1636,7 +1668,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-linux-openssl-syslogng
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            build/tunable-override-debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -1665,7 +1699,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-targets
-          path: build/tunable-override-debug/Bdd/Targets/
+          path: build/tunable-override-debug/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -1697,7 +1731,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-linux-openssl-syslogng-passthrough
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            build/tunable-override-debug/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -1750,6 +1786,7 @@ jobs:
           path: |
             build/tunable-override-wolfssl/cpputest_*.xml
             build/tunable-override-wolfssl/vxworks64/cpputest_*.xml
+            build/tunable-override-wolfssl/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -1759,7 +1796,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-wolfssl
-          path: build/tunable-override-wolfssl/Bdd/Targets/SolidSyslogBddTarget
+          path: |
+            build/tunable-override-wolfssl/Bdd/Targets/SolidSyslogBddTarget
+            build/tunable-override-wolfssl/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -1789,7 +1828,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-target-wolfssl
-          path: build/tunable-override-wolfssl/Bdd/Targets/
+          path: build/tunable-override-wolfssl/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -1823,7 +1862,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: junit-bdd-linux-wolfssl-syslogng
-          path: Bdd/junit/TESTS-*.xml
+          path: |
+            Bdd/junit/TESTS-*.xml
+            build/tunable-override-wolfssl/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -1863,7 +1904,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-freertos
-          path: build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
+          path: |
+            build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
+            build/freertos-cross/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -1919,7 +1962,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-freertos-lwip
-          path: build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
+          path: |
+            build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
+            build/freertos-cross-lwip/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -1979,7 +2024,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-cmsis-lwip
-          path: build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+          path: |
+            build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+            build/cmsis-cross-lwip/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -2038,7 +2085,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-bdd-target-cmsis-lwip-wolfssl
-          path: build/cmsis-cross-lwip-wolfssl/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+          path: |
+            build/cmsis-cross-lwip-wolfssl/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+            build/cmsis-cross-lwip-wolfssl/solidsyslog-versions.json
           retention-days: 1
           compression-level: 0
 
@@ -2064,7 +2113,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-target-freertos
-          path: build/freertos-cross/Bdd/Targets/FreeRtos/
+          path: build/freertos-cross/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -2099,6 +2148,7 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
+            build/freertos-cross/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -2127,7 +2177,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-target-freertos-lwip
-          path: build/freertos-cross-lwip/Bdd/Targets/FreeRtosLwip/
+          path: build/freertos-cross-lwip/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -2162,6 +2212,7 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
+            build/freertos-cross-lwip/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -2194,7 +2245,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-target-cmsis-lwip
-          path: build/cmsis-cross-lwip/Bdd/Targets/CmsisLwip/
+          path: build/cmsis-cross-lwip/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -2229,6 +2280,7 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
+            build/cmsis-cross-lwip/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -2253,7 +2305,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: solid-syslog-bdd-target-cmsis-lwip-wolfssl
-          path: build/cmsis-cross-lwip-wolfssl/Bdd/Targets/CmsisLwip/
+          path: build/cmsis-cross-lwip-wolfssl/
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -2288,6 +2340,7 @@ jobs:
           path: |
             Bdd/junit/TESTS-*.xml
             Bdd/junit/stack-hwm.txt
+            build/cmsis-cross-lwip-wolfssl/solidsyslog-versions.json
           # A day on a pull request; a month on main, so the documentation bundle a
           # release builds from its tag can still fetch the results of the run that
           # tested that commit (docs-bundle.yml).
@@ -2603,7 +2656,7 @@ jobs:
                   {
                     "id": "junit",
                     "name": "bdd-linux-openssl-syslogng",
-                    "pattern": "**/junit-bdd-linux-openssl-syslogng/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-linux-openssl-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
@@ -2613,37 +2666,37 @@ jobs:
                   {
                     "id": "junit",
                     "name": "bdd-linux-wolfssl-syslogng",
-                    "pattern": "**/junit-bdd-linux-wolfssl-syslogng/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-linux-wolfssl-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
                     "name": "bdd-linux-openssl-syslogng-passthrough",
-                    "pattern": "**/junit-bdd-linux-openssl-syslogng-passthrough/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-linux-openssl-syslogng-passthrough/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
                     "name": "bdd-windows-openssl-otel",
-                    "pattern": "**/junit-bdd-windows-openssl-otel/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-windows-openssl-otel/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
                     "name": "bdd-freertos-plustcp-mbedtls-plusfat-syslogng",
-                    "pattern": "**/junit-bdd-freertos-plustcp-mbedtls-plusfat-syslogng/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-freertos-plustcp-mbedtls-plusfat-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
                     "name": "bdd-freertos-lwipraw-mbedtls-fatfs-syslogng",
-                    "pattern": "**/junit-bdd-freertos-lwipraw-mbedtls-fatfs-syslogng/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-freertos-lwipraw-mbedtls-fatfs-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
                     "name": "bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng",
-                    "pattern": "**/junit-bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
                     "name": "bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng",
-                    "pattern": "**/junit-bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng/TESTS-*.xml"
+                    "pattern": "**/junit-bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",
