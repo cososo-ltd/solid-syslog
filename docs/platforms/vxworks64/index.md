@@ -14,6 +14,9 @@ is left unset and sent as the nil value.
 
 ## Requirements
 
+VxWorks 6.4: the release the pack is written for, and the one it is tested
+against. It has run on no other release.
+
 A VxWorks 6.4 kernel image and the VxWorks headers on your include path. The
 datagram calls `socket`, `inet_ntoa_b`, `arpResolve`, `sendto` and `close`;
 the TCP stream calls `socket`, `connectWithTimeout`, `setsockopt`, `send`,
