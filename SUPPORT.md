@@ -33,8 +33,8 @@ API and does not by itself change the major version
 An older upstream version is supported only on an explicit requirement; raise
 one in Discussions.
 
-A pack written for one release of its platform says so on its page, and stays
-on that release: the latest-release policy does not apply to it.
+A pack whose name carries a release of its platform applies the same policy
+within that release, following its latest patch rather than a later release.
 
 ## Security issues
 
