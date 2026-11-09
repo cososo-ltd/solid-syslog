@@ -20,20 +20,21 @@ provenance and keep the documentation for the version they pinned (per
 
 ## What the release notes contain
 
-A release's notes open with a sentence or two on what the release is for, then
-carry five written sections and the generated list, in this order. The written
-sections are added by hand in the release pull request.
+A release's notes open with one paragraph naming what the release is for: each
+theme in a sentence, linking the page that specifies it, and any platform added.
+Then four written sections and the generated list, in this order. The written
+sections are added by hand in the release pull request. There is no feature
+summary beyond the opening paragraph: the generated list is the inventory, and a
+section restating it in other words was dropped at 0.4.0 as repetition.
 
-1. **What's in this release** - what changed that an integrator would act on, in
-   prose. Then the platforms: name what was added, and give the full list.
-   "Unchanged" is rarely true of the rest, since most releases touch them.
-2. **Before you upgrade** - every change that stops code written for the previous
+1. **Before you upgrade** - every change that stops code written for the previous
    release building, or changes what it does without a build error: a signature,
    a config field, a vtable slot an adapter fills, a default. Say for each what to
    change and, where there is one, how to keep the old behaviour. Take the list
    from `git diff v<previous>..HEAD -- Core/Interface Platform/*/Interface` and the
    merged stories, not from the generated list. When nothing breaks, say so in one
-   line.
+   line. The section holds only what an integrator acts on; a fix or a feature the
+   generated list already names is not repeated here.
 
    It is written by hand because the generated list names each break by its
    commit subject and says nothing about what to change. A commit that breaks
@@ -46,12 +47,12 @@ sections are added by hand in the release pull request.
    It also lists the documentation corrected in the release, where acting on the
    old text would have cost an integrator something, since `docs` commits do not
    appear in the generated list.
-3. **RFC compliance at this release** - state in prose what moved - a clause
+2. **RFC compliance at this release** - state in prose what moved - a clause
    newly met, a standard newly covered. Restate the summary table whenever a
    number changed; one line saying nothing changed when none did. Read the
    numbers off the matrix at the tag, not from memory.
 
-   **This table and the platform list are restated rather than linked**, which is deliberate and
+   **This table is restated rather than linked**, which is deliberate and
    is not the duplication the documentation rules forbid. Those rules guard
    against two *current-state* copies drifting apart. A release note is not a
    copy - it is a frozen record with a different lifetime. The
@@ -80,17 +81,17 @@ sections are added by hand in the release pull request.
    they depend on how the integrator configures it, and that they are neither a
    certification nor a conformance claim. One sentence is enough; omitting it is
    not.
-4. **Known limitations** - the defects tracked at the release, listed here, each
+3. **Known limitations** - the defects tracked at the release, listed here, each
    linking its tracking issue. State that they were found by audit and that the
    page of each affected platform discloses them too: a bare list of open
    defects reads as unfinished work, and the same facts framed as deliberate
    disclosure read as rigour. A divergence a platform accepts by design is not a
-   limitation of the release: it is stated on that platform's page alone, and
-   the note points there in one sentence rather than listing it.
-5. **Verifying this release** - the attached assets, how they are signed, and a
+   limitation of the release: it is stated on that platform's page alone. When
+   none is tracked, one sentence says so.
+4. **Verifying this release** - the attached assets, how they are signed, and a
    link to the verification guide at the tag. The check that matters is that a
    bundle verifies, not that the assets are present.
-6. **Full changelog** - release-please's generated list.
+5. **Full changelog** - release-please's generated list.
 
 ### Getting the written parts into both places
 
