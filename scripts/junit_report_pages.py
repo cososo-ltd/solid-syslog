@@ -158,6 +158,40 @@ def counts_phrase(counts: model.Counts, noun: str = "tests") -> str:
 COUNT_HEADERS = "<th>Tests</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Time</th>"
 
 
+def compiler_label(versions: model.Versions, with_executable: bool = False) -> str:
+    """The compiler as the overview names it: id and version, the executable
+    added when it is a cross compiler, whose name is the target."""
+    if with_executable or versions.cross_compiling:
+        return f"{versions.compiler} ({versions.compiler_executable})"
+    return versions.compiler
+
+
+def upstream_labels(upstreams) -> str:
+    """The distinct labels of one pack's upstream trees, joined."""
+    labels = []
+    for upstream in upstreams:
+        if upstream.label and upstream.label not in labels:
+            labels.append(upstream.label)
+    return " / ".join(labels)
+
+
+def upstreams_phrase(versions: model.Versions) -> str:
+    return ", ".join(f"{pack} {upstream_labels(upstreams)}" for pack, upstreams in sorted(versions.upstreams.items()))
+
+
+def upstream_detail(upstream: model.Upstream) -> str:
+    """What identifies the tree beyond its label: tag at commit, and the
+    variable that located it."""
+    parts = []
+    short = (upstream.commit or "")[: model.SHORT_COMMIT]
+    if upstream.tag and short:
+        parts.append(f"{upstream.tag} at {short}")
+    elif short:
+        parts.append(short)
+    parts.append(upstream.tree)
+    return ", ".join(parts)
+
+
 def by(tests, key):
     grouped: Dict = defaultdict(list)
     for test in tests:
@@ -321,9 +355,22 @@ class Report:
     <h2 id="packs">By pack</h2>
     <p>Tests attributed by the test file that holds them. A pack's figure counts every lane that ran it.</p>
     <table class="tr-table"><thead><tr><th>Pack</th><th>Lanes</th>{COUNT_HEADERS}</tr></thead><tbody>{"".join(pack_rows)}</tbody></table>
+    <h2 id="versions">Versions</h2>
+    <p>What each lane compiled against, from the record its configure wrote: the compiler, and the version each selected pack's upstream states in its own header. A lane page has the tag and commit of each tree.</p>
+    <table class="tr-table"><thead><tr><th>Lane</th><th>Compiler</th><th>Upstreams</th></tr></thead><tbody>{"".join(self.version_rows())}</tbody></table>
 """
-        jump = [("failures", "Failures")] + [(kind, kind_name(kind)) for kind in kinds_in(run)] + [("packs", "By pack")]
+        jump = [("failures", "Failures")] + [(kind, kind_name(kind)) for kind in kinds_in(run)] + [("packs", "By pack"), ("versions", "Versions")]
         return self.page("Tests", body, 0, "index.html", jump=jump)
+
+    def version_rows(self) -> List[str]:
+        rows = []
+        for lane in self.run.lanes.values():
+            link = f'<a href="{lane_href(lane.name)}">{esc(lane.name)}</a>'
+            if lane.versions is None:
+                rows.append(f'<tr><td>{link}</td><td class="tr-none" colspan="2">no record uploaded</td></tr>')
+            else:
+                rows.append(f"<tr><td>{link}</td><td>{esc(compiler_label(lane.versions))}</td><td>{esc(upstreams_phrase(lane.versions))}</td></tr>")
+        return rows
 
     # ---- kind pages --------------------------------------------------------
 
@@ -450,7 +497,26 @@ class Report:
             noun = "tests"
         crumbs = [("../index.html", "Tests"), (kind_href(kind, 1), kind_name(kind))]
         lead = f'<span class="tr-kind">{kind_name(kind)}</span> {counts_phrase(counts, noun)}.'
+        body = body + self.versions_block(lane.versions)
+        jump = jump + [("versions", "Built against")]
         return self.page(lane.name, body, 1, crumbs=crumbs, jump=jump, lead=lead, folds=True)
+
+    def versions_block(self, versions: Optional[model.Versions]) -> str:
+        heading = '<h2 id="versions">Built against</h2>'
+        if versions is None:
+            return heading + '<p class="tr-muted">No version record was uploaded with this lane.</p>'
+        if versions.cross_compiling:
+            compiler = f"{compiler_label(versions, True)}, cross-compiling for {versions.system}"
+        else:
+            compiler = f"{compiler_label(versions, True)} on {versions.system}"
+        rows = [f"<tr><th>Compiler</th><td>{esc(compiler)}</td></tr>"]
+        if versions.bdd_target:
+            rows.append(f"<tr><th>BDD target</th><td>{esc(versions.bdd_target)}</td></tr>")
+        rows.append(f"<tr><th>Packs</th><td>{esc(', '.join(versions.packs))}</td></tr>")
+        for pack, upstreams in versions.upstreams.items():
+            cells = "<br>".join(f'{esc(u.label)} <span class="tr-muted">{esc(upstream_detail(u))}</span>' for u in upstreams)
+            rows.append(f"<tr><th>{esc(pack)}</th><td>{cells}</td></tr>")
+        return heading + f'<table class="tr-table tr-kv"><tbody>{"".join(rows)}</tbody></table>'
 
     def unit_lane_body(self, lane: model.Lane) -> Tuple[str, List[Tuple[str, str]]]:
         sections = []
@@ -556,7 +622,8 @@ class Report:
         all_tests = [t for tests in lanes.values() for t in tests]
         total = model.count(all_tests)
         lane_rows = "".join(
-            f'<tr><td><a href="{lane_href(lane, 1)}">{esc(lane)}</a></td><td class="tr-num">{len({(t.executable, t.suite) for t in tests})}</td>{counts_cells(model.count(tests))}</tr>'
+            f'<tr><td><a href="{lane_href(lane, 1)}">{esc(lane)}</a></td>{self.built_against_cell(lane, pack)}'
+            f'<td class="tr-num">{len({(t.executable, t.suite) for t in tests})}</td>{counts_cells(model.count(tests))}</tr>'
             for lane, tests in sorted(lanes.items())
         )
         # One grouping pass: suite -> lane -> its first test there, and the
@@ -574,7 +641,7 @@ class Report:
         files = sorted({t.file for t in all_tests if t.file})
         body = f"""
     <h2 id="lanes">By lane</h2>
-    <table class="tr-table"><thead><tr><th>Lane</th><th>Suites</th>{COUNT_HEADERS}</tr></thead><tbody>{lane_rows}</tbody></table>
+    <table class="tr-table"><thead><tr><th>Lane</th><th>Built against</th><th>Suites</th>{COUNT_HEADERS}</tr></thead><tbody>{lane_rows}</tbody></table>
     <h2 id="suites">Suites</h2>
     <p>Distinct tests per suite, and the lanes that ran it.</p>
     <table class="tr-table"><thead><tr><th>Suite</th><th>Tests</th><th>Lanes</th></tr></thead><tbody>{"".join(suite_rows)}</tbody></table>
@@ -582,6 +649,12 @@ class Report:
         crumbs = [("../index.html", "Tests"), ("../index.html#packs", "Packs")]
         lead = f"{total.total} test results across {len(lanes)} lanes, from {len(files)} test files."
         return self.page(pack, body, 1, crumbs=crumbs, jump=[("lanes", "By lane"), ("suites", "Suites")], lead=lead)
+
+    def built_against_cell(self, lane: str, pack: str) -> str:
+        """The upstream this lane built the pack against, where its record says."""
+        versions = self.run.lanes[lane].versions if lane in self.run.lanes else None
+        labels = upstream_labels(versions.upstreams.get(pack, ())) if versions else ""
+        return f"<td>{esc(labels)}</td>" if labels else '<td class="tr-none">-</td>'
 
     def slowest_page(self) -> str:
         tests = sorted(self.run.tests, key=lambda t: t.time, reverse=True)[:SLOWEST_TESTS]
@@ -654,7 +727,15 @@ class Report:
                 }
                 for kind in kinds_in(self.run)
             ],
-            "lanes": [{"name": lane.name, "kind": lane.kind, **counts(lane.counts)} for lane in self.run.lanes.values()],
+            "lanes": [
+                {
+                    "name": lane.name,
+                    "kind": lane.kind,
+                    **({"compiler": compiler_label(lane.versions)} if lane.versions else {}),
+                    **counts(lane.counts),
+                }
+                for lane in self.run.lanes.values()
+            ],
         }
 
     @staticmethod

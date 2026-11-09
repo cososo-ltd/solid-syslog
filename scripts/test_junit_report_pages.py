@@ -22,6 +22,23 @@ def scenario(lane, feature, name, status="passed", time=0.5, tags=("tcp",), step
 STEPS = (model.Step("Given", "the oracle is running", "passed", 0.001), model.Step("When", "a message is sent", "passed", 0.25))
 
 
+HOST_VERSIONS = model.Versions(
+    "GNU", "12.2.0", "gcc", "Linux x86_64", False, ("Posix", "OpenSsl", "MbedTls"), "Linux",
+    {
+        "OpenSsl": (model.Upstream("OpenSSL", version="3.0.22"),),
+        "MbedTls": (model.Upstream("MBEDTLS_DIR", version="3.6.7", tag="mbedtls-3.6.7", commit="068ff080b369adfac81509f9b57b2afabaf82dc5", path="/opt/mbedtls"),),
+    },
+)
+
+CROSS_VERSIONS = model.Versions(
+    "GNU", "12.2.1", "arm-none-eabi-gcc", "Generic arm", True, ("FreeRtos", "PlusFat"), "FREERTOS_PLUSTCP",
+    {
+        "FreeRtos": (model.Upstream("FREERTOS_KERNEL_PATH", version="V11.3.3", tag="V11.3.3", commit="89592801dd8b73329a7583719b7e3567b50910e5"),),
+        "PlusFat": (model.Upstream("FREERTOS_PLUS_FAT_PATH", commit="9ca465c3f2426c301b6b660286f3f964a2abdce5"),),
+    },
+)
+
+
 def a_run():
     run = model.Run()
     run.features["tls"] = model.Feature("tls", "TLS", "The library speaks TLS to the oracle.\nWith pins.", ("tcp",), {"": ("tcp",)})
@@ -32,6 +49,7 @@ def a_run():
             unit("unit-linux-gcc", "Formatter", "Escapes <sd>", "failed", 0.2, 42, message="Tests/SolidSyslogFormatterTest.cpp:44: expected <a> but was <b>"),
             unit("unit-linux-gcc", "PosixClock", "ReadsTheClock", "skipped", 0.0, 7),
         ],
+        HOST_VERSIONS,
     )
     run.lanes["unit-linux-clang"] = model.Lane("unit-linux-clang", [unit("unit-linux-clang", "Formatter", "WritesPri", time=61.5)])
     run.lanes["integration-linux-openssl"] = model.Lane("integration-linux-openssl", [unit("integration-linux-openssl", "OpenSslStream", "Connects", executable="OpenSslIntegrationTests")])
@@ -41,6 +59,7 @@ def a_run():
             scenario("bdd-linux-openssl-syslogng", "TLS", "Handshake completes", steps=STEPS),
             scenario("bdd-linux-openssl-syslogng", "TLS", "Weak cipher refused", "skipped", 0, ("tcp", "tls13")),
         ],
+        CROSS_VERSIONS,
     )
     return run
 
@@ -185,6 +204,41 @@ class Rendered(unittest.TestCase):
     def test_the_slowest_page_puts_the_longest_test_first(self):
         out = self.read("slowest.html")
         self.assertLess(out.index("1 min 2 s"), out.index("200 ms"))
+
+    def test_the_overview_says_what_each_lane_compiled_against(self):
+        out = self.read("index.html")
+        self.assertIn('<h2 id="versions">Versions</h2>', out)
+        self.assertIn('<tr><td><a href="lanes/unit-linux-gcc.html">unit-linux-gcc</a></td><td>GNU 12.2.0</td><td>MbedTls 3.6.7, OpenSsl 3.0.22</td></tr>', out)
+        self.assertIn('<tr><td><a href="lanes/bdd-linux-openssl-syslogng.html">bdd-linux-openssl-syslogng</a></td><td>GNU 12.2.1 (arm-none-eabi-gcc)</td><td>FreeRtos V11.3.3, PlusFat 9ca465c</td></tr>', out)
+        self.assertIn('<tr><td><a href="lanes/unit-linux-clang.html">unit-linux-clang</a></td><td class="tr-none" colspan="2">no record uploaded</td></tr>', out)
+        self.assertIn('<a href="#versions">Versions</a>', out)
+
+    def test_a_lane_page_lists_what_the_build_compiled_against(self):
+        out = self.read("lanes/bdd-linux-openssl-syslogng.html")
+        self.assertIn('<h2 id="versions">Built against</h2>', out)
+        self.assertIn("<tr><th>Compiler</th><td>GNU 12.2.1 (arm-none-eabi-gcc), cross-compiling for Generic arm</td></tr>", out)
+        self.assertIn("<tr><th>BDD target</th><td>FREERTOS_PLUSTCP</td></tr>", out)
+        self.assertIn("<tr><th>Packs</th><td>FreeRtos, PlusFat</td></tr>", out)
+        self.assertIn("<tr><th>FreeRtos</th><td>V11.3.3 <span class=\"tr-muted\">V11.3.3 at 8959280, FREERTOS_KERNEL_PATH</span></td></tr>", out)
+        self.assertIn("<tr><th>PlusFat</th><td>9ca465c <span class=\"tr-muted\">9ca465c, FREERTOS_PLUS_FAT_PATH</span></td></tr>", out)
+        host = self.read("lanes/unit-linux-gcc.html")
+        self.assertIn("<tr><th>Compiler</th><td>GNU 12.2.0 (gcc) on Linux x86_64</td></tr>", host)
+        self.assertIn("<tr><th>OpenSsl</th><td>3.0.22 <span class=\"tr-muted\">OpenSSL</span></td></tr>", host)
+
+    def test_a_lane_without_a_record_says_so(self):
+        out = self.read("lanes/unit-linux-clang.html")
+        self.assertIn("No version record was uploaded with this lane.", out)
+
+    def test_the_pack_page_shows_the_upstream_each_lane_built_the_pack_against(self):
+        out = self.read("packs/openssl.html")
+        self.assertIn("<th>Built against</th>", out)
+        self.assertIn('<tr><td><a href="../lanes/integration-linux-openssl.html">integration-linux-openssl</a></td><td class="tr-none">-</td>', out)
+
+    def test_the_summary_carries_each_lanes_compiler(self):
+        summary = json.loads(self.read("summary.json"))
+        lanes = {lane["name"]: lane for lane in summary["lanes"]}
+        self.assertEqual(lanes["unit-linux-gcc"]["compiler"], "GNU 12.2.0")
+        self.assertNotIn("compiler", lanes["unit-linux-clang"])
 
     def test_the_summary_names_each_kind_with_its_page(self):
         summary = json.loads(self.read("summary.json"))
