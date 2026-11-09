@@ -23,18 +23,34 @@ Thanks for using SolidSyslog. Here is where to get help.
 ## Upstream versions
 
 Each platform pack builds against a third-party RTOS, network stack, file
-system or crypto library. From 1.0.0 every release supports the latest release
-of each, and the pack's page under `docs/platforms/` states the minimum it
-needs and the version it is tested against. A minimum rises when the latest
-upstream release requires it, and such a rise is listed in the release notes
-under *Before you upgrade*; it is not a breaking change of the library's own
-API and does not by itself change the major version
+system or crypto library. Supported means built and tested in CI against that
+version. The pack's page under `docs/platforms/` states the minimum it needs
+and the version it is tested against.
+
+From 1.0.0 every release follows the latest patch or minor release of each
+upstream within the major version the pack supports. Such a bump is routine
+and is taken as it appears. A minimum rises when the latest upstream release
+requires it, and such a rise is listed in the release notes under *Before you
+upgrade*; it is not a breaking change of the library's own API and does not by
+itself change the major version
 ([release process](docs/release-process.md#what-is-a-breaking-change)).
-An older upstream version is supported only on an explicit requirement; raise
-one in Discussions.
+
+A new major version of an upstream is platform work, not a bump. It is taken
+up as an epic of its own, open to votes like any platform epic, and lands
+either as a raised minimum or as a second pack where the existing pack must
+keep serving the older major. Until it lands, the pack states the major it
+supports. The free tier carries no date for it; a commercial maintenance
+agreement is where dates live.
+
+A pack is not supported past its upstream's own end of support. When an
+upstream line leaves support, the pack that tracks it is retired at the
+library's next major version.
 
 A pack whose name carries a release of its platform applies the same policy
 within that release, following its latest patch rather than a later release.
+
+An older upstream version is supported only on an explicit requirement; raise
+one in Discussions.
 
 ## Security issues
 
