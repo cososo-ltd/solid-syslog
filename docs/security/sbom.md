@@ -195,9 +195,9 @@ document, so its canonical URL is enough:
 ]
 ```
 
-`LicenseRef-COSOSO-Commercial` needs more again. It names a class of negotiated
-agreement rather than your particular contract, so on its own it tells a
-downstream reader of your SBOM nothing about what was granted. CycloneDX has
+`LicenseRef-COSOSO-Commercial` needs more again. It names the standard agreement
+rather than your particular schedule, so on its own it tells a downstream reader
+of your SBOM nothing about what was granted. CycloneDX has
 fields for exactly this - use the named-licence form:
 
 ```json

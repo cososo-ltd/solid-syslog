@@ -49,8 +49,9 @@ For the free tier - either of the two free licences in
 - **Acknowledgement** within **72 hours** of receipt.
 - **Initial triage** and a **CVSS v3.1** assessment within **7 days**.
 - **Fixes** are best-effort and severity-driven. The free tier carries no
-  fixed fix-time SLA. A commercial licence carries committed response and fix
-  times - see [Commercial support](#commercial-support).
+  fixed fix-time SLA. A commercial licence with maintenance carries committed
+  response times and a fix-or-workaround deadline - see
+  [Commercial support](#commercial-support).
 
 These timelines are best-effort commitments from a solo maintainer. They may
 be exceeded during periods of illness, bereavement, or other circumstances
