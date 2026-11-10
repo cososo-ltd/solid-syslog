@@ -969,7 +969,7 @@ image to one architecture.
 
 When updating an image:
 
-1. Build and push the new image in the container image repo
+1. Merge the bump in the container image repo, which builds and pushes the new image. For an upstream pinned by tag and SHA, Renovate opens it; [`docs/containers.md`](docs/containers.md) links each image repository's README for the detail
 2. Resolve the new tag to its digest — `docker buildx imagetools inspect <repo>:<tag> --format '{{.Manifest.Digest}}'`
 3. Update the digest and the accompanying tag comment in all files that reference it (see [`docs/containers.md`](docs/containers.md) for the full list)
 4. Rebuild the devcontainer and verify the new tooling works locally
