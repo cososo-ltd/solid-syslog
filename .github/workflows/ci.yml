@@ -1008,14 +1008,6 @@ jobs:
           pattern: junit-*
           path: build/junit/
 
-      # Each artifact also carries the record of what its lane compiled against
-      # (cmake/VersionRecord.cmake). SUPPORT.md defines supported as built and
-      # tested in CI against the version a pack's page names, so this holds
-      # every page's `<!-- tested-against: ... -->` marker to that record: a
-      # page naming a version no lane built against fails here.
-      - name: Check the platform pages' tested-against claims against the record
-        run: python3 scripts/check_tested_versions.py build/junit
-
       # The source links point at the commit this run built, so a failing line
       # is the line as it was, not as main has it by the time someone looks.
       - name: Generate the test report for the Testing pages
@@ -1111,6 +1103,15 @@ jobs:
           retention-days: 7
           compression-level: 0
 
+      # Each artifact also carries the record of what its lane compiled against
+      # (cmake/VersionRecord.cmake). SUPPORT.md defines supported as built and
+      # tested in CI against the version a pack's page names, so this holds
+      # every page's `<!-- tested-against: ... -->` marker to that record: a
+      # page naming a version no lane built against fails here. It runs after
+      # the site and the bundle are uploaded so that a red run, which can leave
+      # a page's claim with no record to back it, still has a report to read.
+      - name: Check the platform pages' tested-against claims against the record
+        run: python3 scripts/check_tested_versions.py build/junit
 
       # On main only, restage the built site as the GitHub Pages artifact so
       # docs-deploy can publish it. PRs stop at the build+artifact above.
