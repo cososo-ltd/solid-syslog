@@ -13,10 +13,6 @@ A C11 compiler with `<stdatomic.h>`. Where a toolchain lacks it, the
 [capability matrix](../index.md) shows which other platforms fill
 the AtomicCounter role.
 
-The pack is tested with GCC 12.2 and Clang 19 on the host, and with
-arm-none-eabi-gcc 12.2.1 on Cortex-M3. Nothing older has been tried, so those
-stand as the minimum until one is.
-
 ## Security behaviour and obligations
 
 ### The sequence wraps, and a collector must expect it

@@ -25,6 +25,7 @@ introduced. An older kernel defines neither it nor the `TICK_TYPE_WIDTH_*`
 constants, and the preprocessor reads an undefined name as zero, so both
 implementations compile in and the link fails on the duplicate definition. The
 pack is tested against V11.3.3.
+<!-- tested-against: V11.3.3 -->
 
 ## Security behaviour and obligations
 

@@ -13,7 +13,9 @@ address handle they share.
 FreeRTOS-Plus-TCP V4.3.0 or later, selected at CMake time by
 naming `PlusTcp` in `SOLIDSYSLOG_PLATFORMS`. The datagram reads the next-hop
 lookup through the `eResolutionLookupResult_t` names that release introduced.
-The pack is tested against V4.4.2. The resolver wraps `FreeRTOS_getaddrinfo`, so
+The pack is tested against V4.4.2.
+<!-- tested-against: V4.4.2 -->
+The resolver wraps `FreeRTOS_getaddrinfo`, so
 your `FreeRTOSIPConfig.h` needs `ipconfigUSE_DNS=1`.
 
 ## Security behaviour and obligations

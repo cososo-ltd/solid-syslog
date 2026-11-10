@@ -25,7 +25,10 @@ Thanks for using SolidSyslog. Here is where to get help.
 Each platform pack builds against a third-party RTOS, network stack, file
 system or crypto library. Supported means built and tested in CI against that
 version. The pack's page under `docs/platforms/` states the minimum it needs
-and the version it is tested against.
+and the version it is tested against, and the documentation build holds that
+version to the record each CI run leaves of what it compiled against. The
+minimum is the oldest release the pack's code needs, with the reason; where
+nothing in the code needs more, it is the major the pack supports.
 
 From 1.0.0 every release follows the latest patch or minor release of each
 upstream within the major version the pack supports. Such a bump is routine

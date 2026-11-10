@@ -628,9 +628,15 @@ endforeach()
 
 # Host BDD targets — top-level only, and only where a host network stack exists
 # to drive them.
+set(solidsyslog_bdd_target "")
 if(SOLIDSYSLOG_IS_TOP_LEVEL
    AND (SOLIDSYSLOG_POSIX OR (SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)))
     add_subdirectory(Bdd/Targets)
+    if(SOLIDSYSLOG_POSIX)
+        set(solidsyslog_bdd_target "Linux")
+    else()
+        set(solidsyslog_bdd_target "Windows")
+    endif()
 endif()
 
 # The cross-compiled FreeRTOS target is selected by the arm-none-eabi
@@ -650,6 +656,7 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL
     # Each target resolves its upstream trees through this, and the configure
     # records which ones for scripts/check_build_provenance.py.
     include(Bdd/Targets/Common/UpstreamTrees.cmake)
+    set(solidsyslog_bdd_target "${SOLIDSYSLOG_BDD_TARGET}")
     if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
         add_subdirectory(Bdd/Targets/CmsisLwip)
     elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "FREERTOS_LWIP")
@@ -671,4 +678,12 @@ endif()
 # cmake/Manifest.cmake.
 if(SOLIDSYSLOG_IS_TOP_LEVEL)
     solidsyslog_generate_manifest()
+endif()
+
+# What this configure compiled against - compiler, packs, BDD target and each
+# upstream's version read from its header - for the CI lane to upload beside
+# its JUnit results. See cmake/VersionRecord.cmake.
+if(SOLIDSYSLOG_IS_TOP_LEVEL)
+    include(cmake/VersionRecord.cmake)
+    solidsyslog_write_version_record("${solidsyslog_bdd_target}")
 endif()

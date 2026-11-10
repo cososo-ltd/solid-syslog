@@ -86,6 +86,22 @@ FEATURE = textwrap.dedent(
     """
 )
 
+VERSIONS = textwrap.dedent(
+    """\
+    {
+      "compiler": {"id": "GNU", "version": "12.2.1", "executable": "arm-none-eabi-gcc"},
+      "system": {"name": "Generic", "processor": "arm", "crossCompiling": true},
+      "packs": ["FreeRtos", "MbedTls", "PlusFat"],
+      "bddTarget": "FREERTOS_PLUSTCP",
+      "upstreams": {
+        "MbedTls": [{"tree": "MBEDTLS_DIR", "path": "/opt/mbedtls", "version": "3.6.7", "tag": "mbedtls-3.6.7", "commit": "068ff080b369adfac81509f9b57b2afabaf82dc5"}],
+        "FreeRtos": [{"tree": "FREERTOS_KERNEL_PATH", "path": "/opt/freertos/kernel", "version": "V11.3.3", "tag": "V11.3.3", "commit": "89592801dd8b73329a7583719b7e3567b50910e5"}],
+        "PlusFat": [{"tree": "FREERTOS_PLUS_FAT_PATH", "path": "/opt/freertos/plus-fat", "commit": "9ca465c3f2426c301b6b660286f3f964a2abdce5"}]
+      }
+    }
+    """
+)
+
 REGISTRY = textwrap.dedent(
     """\
     set(SOLIDSYSLOG_PLATFORM_REGISTRY
@@ -235,6 +251,46 @@ class Packs(unittest.TestCase):
     def test_the_bdd_target_tests_and_scenarios_are_their_own_group(self):
         self.assertEqual(junit_report.pack_of("Tests/Bdd/Targets/BddTargetAppNameTest.cpp", self.tokens), "BDD target")
         self.assertEqual(junit_report.pack_of("Bdd/features/tls_matrix.feature", self.tokens), "BDD scenarios")
+
+
+class ReadingTheVersionRecord(unittest.TestCase):
+    def setUp(self):
+        self.tree = ATree()
+        self.tree.write("junit-bdd-freertos/build/freertos-cross/solidsyslog-versions.json", VERSIONS)
+        self.tree.write("junit-bdd-freertos/Bdd/junit/TESTS-tls.xml", BEHAVE)
+        self.tree.write("junit-unit-linux-gcc/cpputest_SolidSyslogTests_AtomicCounterContract.xml", CPPUTEST)
+        self.run = junit_report.read_run(self.tree.root.name, features_dir=None)
+        self.versions = self.run.lanes["bdd-freertos"].versions
+
+    def tearDown(self):
+        self.tree.cleanup()
+
+    def test_the_record_is_found_wherever_the_artifact_holds_it(self):
+        self.assertEqual((self.versions.compiler_id, self.versions.compiler_version, self.versions.compiler_executable), ("GNU", "12.2.1", "arm-none-eabi-gcc"))
+        self.assertEqual((self.versions.system, self.versions.cross_compiling), ("Generic arm", True))
+        self.assertEqual(self.versions.packs, ("FreeRtos", "MbedTls", "PlusFat"))
+        self.assertEqual(self.versions.bdd_target, "FREERTOS_PLUSTCP")
+
+    def test_each_upstream_carries_what_the_tree_said_about_itself(self):
+        mbedtls = self.versions.upstreams["MbedTls"][0]
+        self.assertEqual((mbedtls.tree, mbedtls.version, mbedtls.tag), ("MBEDTLS_DIR", "3.6.7", "mbedtls-3.6.7"))
+        self.assertEqual(mbedtls.commit, "068ff080b369adfac81509f9b57b2afabaf82dc5")
+        self.assertIsNone(self.versions.upstreams["PlusFat"][0].version)
+
+    def test_an_upstream_is_labelled_by_its_version_then_its_tag_then_its_commit(self):
+        self.assertEqual(self.versions.upstreams["MbedTls"][0].label, "3.6.7")
+        self.assertEqual(junit_report.Upstream("FATFS_PATH", tag="R0.16", commit="30ca13c62615df0d2e9104ab41256985b96590c1").label, "R0.16")
+        self.assertEqual(self.versions.upstreams["PlusFat"][0].label, "9ca465c")
+
+    def test_an_upstream_answers_to_its_version_its_tag_with_or_without_the_v_and_its_commit(self):
+        upstream = junit_report.Upstream("LITTLEFS_PATH", version="2.11", tag="v2.11.3", commit="6cb4e86540eca0d9ba62500a298385c9d863c8be")
+        for claim in ["2.11", "v2.11.3", "2.11.3", "6cb4e86", "6cb4e86540eca0d9ba62500a298385c9d863c8be"]:
+            self.assertTrue(upstream.answers_to(claim), claim)
+        for claim in ["2.11.4", "6cb4e8", "V2.11.3", ""]:
+            self.assertFalse(upstream.answers_to(claim), claim)
+
+    def test_a_lane_without_a_record_has_no_versions(self):
+        self.assertIsNone(self.run.lanes["unit-linux-gcc"].versions)
 
 
 class Kinds(unittest.TestCase):

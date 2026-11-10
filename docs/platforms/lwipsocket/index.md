@@ -13,8 +13,9 @@ address handle a transport reads back to send. The
 
 ## What your build must enable
 
-lwIP 2.2.1. That is the version the pack is tested against; nothing older has
-been tried, so it stands as the minimum until one is.
+lwIP 2.1.0 or later: the TCP stream needs `LWIP_SOCKET_SELECT`, which that
+release introduced. The pack is tested against 2.2.1 in CI.
+<!-- tested-against: 2.2.1 -->
 
 `LWIP_SOCKET=1`, and `LWIP_NETCONN=1` with it, because lwIP builds its sockets
 layer on netconn. Both require `NO_SYS=0` and a `sys_arch` port. Then the

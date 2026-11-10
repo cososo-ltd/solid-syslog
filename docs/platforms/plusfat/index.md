@@ -33,11 +33,13 @@ It flushes the IO manager's cache rather than the file: `ff_stdio.h` declares
 `ff_fflush` but the library never defines it, so `FF_FlushCache` is the real
 durability primitive. That holds of the upstream tree as of June 2026 - the
 declaration is still there and no source file defines it - and the pack is
-tested against a June 2026 checkout of it, Plus-FAT having no tagged
-releases. Whether the flush reaches the medium is a property of your
+tested against a June 2026 checkout of it, commit `9ca465c`, Plus-FAT having
+no tagged releases.
+Whether the flush reaches the medium is a property of your
 `FF_Disk_t` driver and the hardware under it. FAT is not a journalling
 filesystem, and a partially written directory entry is possible on a device that
 loses power mid-update.
+<!-- tested-against: 9ca465c -->
 
 ### A failed file call is reported, with its errno
 

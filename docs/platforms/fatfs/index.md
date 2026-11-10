@@ -11,8 +11,10 @@ BlockDevice.
 
 ## Requirements
 
-FatFs R0.16. That is the version the pack is tested against; nothing older has
-been tried, so it stands as the minimum until one is.
+FatFs R0.13 or later: the adapter reads the `FF_FS_LOCK` and `FF_FS_REENTRANT`
+configuration names, which that revision introduced. The pack is tested against
+R0.16 in CI.
+<!-- tested-against: R0.16 -->
 
 Your `ffconf.h`, a `diskio.c` media driver, and - if `FF_FS_REENTRANT=1` - an
 `ffsystem.c`. The adapter writes, syncs, truncates, stats and unlinks, so

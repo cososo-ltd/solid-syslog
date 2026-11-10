@@ -84,6 +84,9 @@ failure and raises nothing: the store judges it for itself. Nor is a path
 
 ### What the pack has been tested against
 
+LittleFS 2. The pack is tested against 2.11.3 in CI.
+<!-- tested-against: 2.11.3 -->
+
 The durability claim is tested, not asserted. An integration suite runs the whole store
 stack over an emulated flash device that can lose power mid-write: the device
 counts program and erase operations and, on a chosen one, either does nothing or

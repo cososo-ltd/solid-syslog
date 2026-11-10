@@ -28,7 +28,17 @@ each one.
 
 Failures have a page of their own with the message each left. A pack page
 gathers the tests that exercise one pack, attributed by the test file that
-holds them, lane by lane. The overview says how test time is counted.
+holds them, lane by lane, with the upstream version each lane built the pack
+against. The overview says how test time is counted.
+
+The overview ends with what each lane compiled against: the compiler, and the
+version each selected pack's upstream states in its own header, with the tree's
+git tag beside it where the tag names something the header does not, or the
+tag or commit alone for a tree whose header states no version. All of it is
+read at configure time rather than from an image tag. A lane page carries the
+tag and commit of each tree. The platform pages' "tested against" claims are
+held to this record by the documentation build, so a version a page names is
+one CI built against.
 
 To run the same tests locally, build the `debug` preset's `junit` target as
 [Building & testing](../builds.md) describes; the BDD scenarios are run as

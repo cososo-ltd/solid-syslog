@@ -21,12 +21,18 @@ where it falls short of that contract.
 The adapter sources compile in your target against your own `mbedtls_config.h`,
 so the features you enable are the features it gets.
 
-Mbed TLS 3.6. The pack is tested against 3.6.7 in CI. From 3.6.3 the library
-refuses a chain-verified handshake unless the client has said it is
-deliberately not naming the peer, and the stream says so, so a NULL or empty
-`ServerName` behaves as [the profile](setup.md#3-a-profile) describes on the
-releases either side of that change; the earlier side was last checked against
-3.6.2.
+Mbed TLS 3.6.3 or later, within 3.x: the AES-GCM policy decrypts a stored
+record in place, which the GCM API's contract permits from that release and
+forbade before it, and Mbed TLS 4 removes calls the stream makes, so it is a
+pack of its own, open to votes as
+[#1189](https://github.com/cososo-ltd/solid-syslog/issues/1189). That contract
+covers the library's own GCM; an alternative implementation under
+`MBEDTLS_GCM_ALT` must also accept decrypting in place, or every stored record
+opens as could-not-run. The pack is tested against 3.6.7 in CI. The library refuses a
+chain-verified handshake unless the client has said it is deliberately not
+naming the peer, and the stream says so, so a NULL or empty `ServerName`
+behaves as [the profile](setup.md#3-a-profile) describes.
+<!-- tested-against: 3.6.7 -->
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
