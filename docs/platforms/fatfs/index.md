@@ -11,8 +11,9 @@ BlockDevice.
 
 ## Requirements
 
-FatFs. Its revisions are numbered R0.NN with no major to stand as a floor; the
-pack is tested against R0.16 in CI.
+FatFs R0.13 or later: the adapter reads the `FF_FS_LOCK` and `FF_FS_REENTRANT`
+configuration names, which that revision introduced. The pack is tested against
+R0.16 in CI.
 <!-- tested-against: R0.16 -->
 
 Your `ffconf.h`, a `diskio.c` media driver, and - if `FF_FS_REENTRANT=1` - an

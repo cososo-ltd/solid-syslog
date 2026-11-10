@@ -32,9 +32,11 @@ holds them, lane by lane, with the upstream version each lane built the pack
 against. The overview says how test time is counted.
 
 The overview ends with what each lane compiled against: the compiler, and the
-version each selected pack's upstream states in its own header, read at
-configure time rather than from an image tag. A lane page carries the tag and
-commit of each tree beside it. The platform pages' "tested against" claims are
+version each selected pack's upstream states in its own header, with the tree's
+git tag beside it where the tag names something the header does not, or the
+tag or commit alone for a tree whose header states no version. All of it is
+read at configure time rather than from an image tag. A lane page carries the
+tag and commit of each tree. The platform pages' "tested against" claims are
 held to this record by the documentation build, so a version a page names is
 one CI built against.
 

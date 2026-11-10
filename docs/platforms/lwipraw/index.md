@@ -32,7 +32,8 @@ callback runs, so a mailbox marshal has to wait for completion itself.
 
 ## Requirements
 
-lwIP 2. The pack is tested against 2.2.1 in CI.
+lwIP 2.1.0 or later: the TCP stream includes `lwip/tcpbase.h`, which that
+release introduced. The pack is tested against 2.2.1 in CI.
 <!-- tested-against: 2.2.1 -->
 
 The source calls lwIP only - no direct OS calls. The TCP stream's synchronous
