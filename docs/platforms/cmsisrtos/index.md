@@ -23,9 +23,8 @@ path. The mutex calls `osMutexNew`, `osMutexAcquire`, `osMutexRelease` and
 in the API needs to be present or configured, and a build that takes only one
 of the two needs only that one's calls.
 
-CMSIS_6 v6.4.0, whose `cmsis_os2.h` is the header the pack compiles against.
-That is the version the pack is tested against; nothing older has been tried,
-so it stands as the minimum until one is.
+CMSIS 6, whose `cmsis_os2.h` is the header the pack compiles against. The pack
+is tested against 6.4.0 in CI.
 <!-- tested-against: 6.4.0 -->
 
 ## What it has run on

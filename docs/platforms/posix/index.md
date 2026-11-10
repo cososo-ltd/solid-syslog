@@ -17,10 +17,6 @@ Linux. The pack uses `CLOCK_BOOTTIME`, `IP_MTU`, `IP_MTU_DISCOVER` and
 `TCP_USER_TIMEOUT`, which POSIX does not define. The message-queue buffer needs
 POSIX message queues.
 
-The pack is tested against glibc 2.36 on Debian 12, built with GCC 12.2 and
-Clang 19. Nothing older has been tried, so those stand as the minimum until
-one is.
-
 ## Security behaviour and obligations
 
 ### The transport carries syslog in clear

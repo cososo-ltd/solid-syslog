@@ -11,8 +11,8 @@ BlockDevice.
 
 ## Requirements
 
-FatFs R0.16. That is the version the pack is tested against; nothing older has
-been tried, so it stands as the minimum until one is.
+FatFs. Its revisions are numbered R0.NN with no major to stand as a floor; the
+pack is tested against R0.16 in CI.
 <!-- tested-against: R0.16 -->
 
 Your `ffconf.h`, a `diskio.c` media driver, and - if `FF_FS_REENTRANT=1` - an
