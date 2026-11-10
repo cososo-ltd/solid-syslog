@@ -21,8 +21,9 @@ where it falls short of that contract.
 The adapter sources compile in your target against your own `mbedtls_config.h`,
 so the features you enable are the features it gets.
 
-Mbed TLS 3.6. The pack is tested against 3.6.7 in CI.
-From 3.6.3 the library
+Mbed TLS 3.2.0 or later: the stream pins the protocol version with
+`mbedtls_ssl_conf_min_tls_version`, which that release introduced. The pack is
+tested against 3.6.7 in CI. From 3.6.3 the library
 refuses a chain-verified handshake unless the client has said it is
 deliberately not naming the peer, and the stream says so, so a NULL or empty
 `ServerName` behaves as [the profile](setup.md#3-a-profile) describes on the
