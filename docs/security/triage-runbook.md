@@ -21,9 +21,7 @@ channel, open one.
       form has already sent an automatic one.
 - [ ] Check whether the reporter is a commercial licensee with maintenance in
       force. If so the [commercial commitments](../../SECURITY.md#commercial-support)
-      apply instead: acknowledge within two business days, triage within five,
-      and for High or Critical deliver a fix or documented workaround within 30
-      days of triage.
+      replace the free-tier timings in this stage and the next.
 - [ ] Capture the reporter's contact and their credit preference (name/handle,
       or anonymous) in the advisory.
 - [ ] Do not confirm or deny severity yet; that's triage.
