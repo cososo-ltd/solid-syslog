@@ -100,7 +100,14 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
 
 When a new image tag is available:
 
-1. Build and push the new image in the container image repo
+1. Merge the bump in the container image repo, which builds and pushes the
+   new image. For an upstream pinned by tag and SHA, Renovate opens that
+   bump when the upstream releases, and the repository's README says how it
+   finds the pin and which updates it holds back:
+   [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#keeping-the-pins-current)
+   and
+   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-wolfssl-pin-current).
+   Anything else is a hand edit there
 2. Resolve the new tag to its digest:
 
    ```bash
