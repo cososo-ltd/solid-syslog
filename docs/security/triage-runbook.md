@@ -19,6 +19,11 @@ channel, open one.
 - [ ] Log the report by opening (or confirming) a draft GHSA on the repo.
 - [ ] Send a human acknowledgement within 72 hours, whatever the channel. The web
       form has already sent an automatic one.
+- [ ] Check whether the reporter is a commercial licensee with maintenance in
+      force. If so the [commercial commitments](../../SECURITY.md#commercial-support)
+      apply instead: acknowledge within two business days, triage within five,
+      and for High or Critical deliver a fix or documented workaround within 30
+      days of triage.
 - [ ] Capture the reporter's contact and their credit preference (name/handle,
       or anonymous) in the advisory.
 - [ ] Do not confirm or deny severity yet; that's triage.
