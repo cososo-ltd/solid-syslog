@@ -11,6 +11,9 @@ BlockDevice.
 
 ## Requirements
 
+FatFs R0.16. That is the version the pack is tested against; nothing older has
+been tried, so it stands as the minimum until one is.
+
 Your `ffconf.h`, a `diskio.c` media driver, and - if `FF_FS_REENTRANT=1` - an
 `ffsystem.c`. The adapter writes, syncs, truncates, stats and unlinks, so
 `FF_FS_READONLY` and `FF_FS_MINIMIZE` must both be 0; any other value compiles

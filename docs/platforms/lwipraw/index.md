@@ -32,6 +32,9 @@ callback runs, so a mailbox marshal has to wait for completion itself.
 
 ## Requirements
 
+lwIP 2.2.1. That is the version the pack is tested against; nothing older has
+been tried, so it stands as the minimum until one is.
+
 The source calls lwIP only - no direct OS calls. The TCP stream's synchronous
 Open and the DNS resolver's bounded wait both need a sleep, injected as a
 `SolidSyslogSleepFunction`. Create either without one, and it reports a
