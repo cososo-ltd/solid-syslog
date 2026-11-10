@@ -119,7 +119,7 @@ different reasons:
 | Term | Why it is a `LicenseRef-` |
 |---|---|
 | `LicenseRef-PolyForm-Internal-Use-1.0.0` | A published, unmodified PolyForm licence that SPDX has not listed. The verbatim text ships in the repository and is linked from [`LICENSE.md`](../../LICENSE.md). |
-| `LicenseRef-COSOSO-Commercial` | A negotiated agreement between COSOSO and the licensee. It has no single public text, so no published identifier could describe it. |
+| `LicenseRef-COSOSO-Commercial` | A standard agreement between COSOSO and the licensee, with a schedule that is confidential to the parties. Its text is not yet published, so no published identifier could describe it. |
 
 If your scanner reports these identifiers as unknown or custom, that result is
 expected. A `LicenseRef-` is how SPDX names a licence its list does not cover,
@@ -136,11 +136,11 @@ an `externalReferences` entry of type `license` for each PolyForm licence,
 pointing at its canonical URL. An SPDX expression has nowhere to put a URL,
 which is why they are attached to the component instead.
 
-`LicenseRef-COSOSO-Commercial` has no such entry. There is no public document to
-point at, and type `license` means the URL of a licence file - labelling an
-enquiry form as one would resolve the identifier to something that is not a
-licence. The enquiry route is carried as an `other` reference instead, with a
-comment saying what it is.
+`LicenseRef-COSOSO-Commercial` has no such entry yet. Until the agreement text
+is published there is no licence document to point at, and type `license` means
+the URL of a licence file - labelling an enquiry form as one would resolve the
+identifier to something that is not a licence. The enquiry route is carried as
+an `other` reference instead, with a comment saying what it is.
 
 ### Which term applies
 
@@ -227,8 +227,8 @@ fields for exactly this - use the named-licence form:
 describes your agreement. A `licenses` array is *either* a list of named
 licences *or* exactly one expression; the two forms cannot be mixed.
 
-**Do not put the agreement itself in `license.text`.** A negotiated commercial
-agreement is confidential between the parties, and an SBOM is a document you
+**Do not put the agreement itself in `license.text`.** Your agreement's
+schedule is confidential between the parties, and an SBOM is a document you
 distribute. The reference is what belongs here; the terms are not.
 
 The same question applies to `purchaseOrder` and `licensee`. They are exactly

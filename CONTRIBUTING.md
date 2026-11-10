@@ -64,6 +64,6 @@ Participation in this project is governed by our
 
 ## Commercial licensing and support
 
-For commercial licensing, guaranteed response times, or paid support, enquire
+For commercial licensing, committed response times, or paid support, enquire
 via the form at
 [cososo.co.uk](https://www.cososo.co.uk/?service=solidsyslog#contact).

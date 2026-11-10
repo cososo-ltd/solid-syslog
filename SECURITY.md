@@ -49,8 +49,8 @@ For the free tier - either of the two free licences in
 - **Acknowledgement** within **72 hours** of receipt.
 - **Initial triage** and a **CVSS v3.1** assessment within **7 days**.
 - **Fixes** are best-effort and severity-driven. The free tier carries no
-  fixed fix-time SLA. Extended support and guaranteed timelines are
-  available under a commercial agreement.
+  fixed fix-time SLA. A commercial licence carries committed response and fix
+  times - see [Commercial support](#commercial-support).
 
 These timelines are best-effort commitments from a solo maintainer. They may
 be exceeded during periods of illness, bereavement, or other circumstances
@@ -91,9 +91,21 @@ does not do.
 
 ## Supported versions
 
-SolidSyslog is maintained as a **single mainline**. Security fixes land on the
-**latest published release** only. There is no back-port commitment on the
-free tier; back-ports are available under a commercial agreement.
+SolidSyslog is developed as a **single mainline**. On the free tier, security
+fixes land on the **latest published release** only; there is no back-port
+commitment.
+
+A commercial licensee declares each year which releases its products ship. A
+vulnerability in SolidSyslog is fixed for every declared release, free of
+charge and whether or not maintenance is renewed, for five years from that
+release's publication or for as long as it stays declared, up to ten years.
+Where moving to the latest release is not an option, the fix is issued as a
+patch release of the declared release, so a licensee is never required to take
+a feature release to receive a security fix.
+
+Vulnerabilities in the third-party libraries a product links against are
+outside this commitment, as [Scope](#scope) states. Following a library's own
+breaking update is maintenance work, not a security fix.
 
 ## Continuity
 
@@ -103,6 +115,17 @@ successor maintainer, the continuity commitment stated in
 
 ## Commercial support
 
-For commercial licensing, guaranteed response times, or back-port support,
-enquire via the form at
+Under a commercial licence with maintenance in force, the commitments are:
+
+- **Acknowledgement** of a reported defect or vulnerability within **2
+  business days**.
+- **Triage** and a CVSS v3.1 assessment within **5 business days**.
+- For a vulnerability assessed **High or Critical**, a fix or a documented
+  workaround within **30 days** of triage.
+
+These carry the same solo-maintainer qualification as the free tier above.
+Security fixes for declared releases are free regardless of maintenance, as
+[Supported versions](#supported-versions) states.
+
+For commercial licensing enquire via the form at
 [cososo.co.uk](https://www.cososo.co.uk/?service=solidsyslog#contact).
