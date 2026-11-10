@@ -16,15 +16,14 @@ tick, converting through `osKernelGetTickFreq()`.
 
 ## Requirements
 
-An implementation of the CMSIS-RTOS2 API, and its `cmsis_os2.h` on your include
-path. The mutex calls `osMutexNew`, `osMutexAcquire`, `osMutexRelease` and
-`osMutexDelete`; the uptime callback calls `osKernelGetTickCount`,
-`osKernelGetTickFreq`, `osKernelLock` and `osKernelRestoreLock`. Nothing else
-in the API needs to be present or configured, and a build that takes only one
-of the two needs only that one's calls.
-
-CMSIS 6, whose `cmsis_os2.h` is the header the pack compiles against. The pack
-is tested against 6.4.0 in CI.
+An implementation of the CMSIS-RTOS2 API at 2.1.0 or later, and its
+`cmsis_os2.h` on your include path. The mutex calls `osMutexNew`,
+`osMutexAcquire`, `osMutexRelease` and `osMutexDelete`; the uptime callback
+calls `osKernelGetTickCount`, `osKernelGetTickFreq`, `osKernelLock` and
+`osKernelRestoreLock`, which API 2.1.0 introduced. Nothing else in the API
+needs to be present or configured, and a build that takes only one of the two
+needs only that one's calls. CI compiles the pack against the header CMSIS
+6.4.0 ships.
 <!-- tested-against: 6.4.0 -->
 
 ## What it has run on
