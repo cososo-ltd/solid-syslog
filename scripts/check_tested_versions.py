@@ -16,8 +16,8 @@ header's version, the tree's tag with or without a leading ``v``, or its commit
 by at least the first seven characters, which is how a tree with no releases
 is named. The rules:
 
-* A pack some lane built against an upstream carries at least one marker on
-  its page, so there is a claim to check.
+* A pack some lane built against an upstream has a page, and that page
+  carries at least one marker, so there is a claim to check.
 * Every marker names something a lane built against.
 * A marker on a pack no lane recorded an upstream for is a claim CI cannot
   back.
@@ -103,6 +103,9 @@ def check(tokens, recorded, docs_dir):
         relative = f"{token.lower()}/index.md"
         upstreams = recorded.get(token, [])
         if not os.path.exists(page):
+            if upstreams:
+                failures.append(f"{relative}: CI built {token} against {describe_all(upstreams)}, but there is no such page")
+                rows.append((token, "-", describe_all(upstreams)))
             continue
         claims, prose = read_claims(page)
         if upstreams and not claims:

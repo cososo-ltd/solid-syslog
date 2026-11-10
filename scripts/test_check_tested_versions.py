@@ -124,6 +124,13 @@ class Checking(unittest.TestCase):
         self.assertEqual(check_tested_versions.describe_all([installed, source]), "5.9.4 (v5.9.4-stable at 3c5eead)")
         self.assertEqual(check_tested_versions.describe_all([installed]), "5.9.4")
 
+    def test_a_pack_ci_builds_against_an_upstream_must_have_a_page(self):
+        self.all_pages_right()
+        os.remove(os.path.join(self.tree.docs, "littlefs", "index.md"))
+        code, out = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("::error::littlefs/index.md: CI built LittleFs against 2.11 (v2.11.3 at 6cb4e86), but there is no such page", out)
+
     def test_a_page_without_upstreams_needs_no_marker(self):
         self.all_pages_right()
         code, out = self.run_check()

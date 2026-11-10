@@ -27,6 +27,7 @@ HOST_VERSIONS = model.Versions(
     {
         "OpenSsl": (model.Upstream("OpenSSL", version="3.0.22"),),
         "MbedTls": (model.Upstream("MBEDTLS_DIR", version="3.6.7", tag="mbedtls-3.6.7", commit="068ff080b369adfac81509f9b57b2afabaf82dc5", path="/opt/mbedtls"),),
+        "LittleFs": (model.Upstream("LITTLEFS_PATH", version="2.11", tag="v2.11.3", commit="6cb4e86540eca0d9ba62500a298385c9d863c8be"),),
     },
 )
 
@@ -208,7 +209,7 @@ class Rendered(unittest.TestCase):
     def test_the_overview_says_what_each_lane_compiled_against(self):
         out = self.read("index.html")
         self.assertIn('<h2 id="versions">Versions</h2>', out)
-        self.assertIn('<tr><td><a href="lanes/unit-linux-gcc.html">unit-linux-gcc</a></td><td>GNU 12.2.0</td><td>MbedTls 3.6.7, OpenSsl 3.0.22</td></tr>', out)
+        self.assertIn('<tr><td><a href="lanes/unit-linux-gcc.html">unit-linux-gcc</a></td><td>GNU 12.2.0</td><td>LittleFs 2.11 (v2.11.3), MbedTls 3.6.7, OpenSsl 3.0.22</td></tr>', out)
         self.assertIn('<tr><td><a href="lanes/bdd-linux-openssl-syslogng.html">bdd-linux-openssl-syslogng</a></td><td>GNU 12.2.1 (arm-none-eabi-gcc)</td><td>FreeRtos V11.3.3, PlusFat 9ca465c</td></tr>', out)
         self.assertIn('<tr><td><a href="lanes/unit-linux-clang.html">unit-linux-clang</a></td><td class="tr-none" colspan="2">no record uploaded</td></tr>', out)
         self.assertIn('<a href="#versions">Versions</a>', out)

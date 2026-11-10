@@ -166,12 +166,28 @@ def compiler_label(versions: model.Versions, with_executable: bool = False) -> s
     return versions.compiler
 
 
+def upstream_label(upstream: model.Upstream) -> str:
+    """The tree's label, with its tag beside it where the tag names something
+    the header's version does not: a header that lags its tag shows both."""
+    label = upstream.label
+    if upstream.tag and not tag_names(upstream.tag, label):
+        label = f"{label} ({upstream.tag})"
+    return label
+
+
+def tag_names(tag: str, version: str) -> bool:
+    """Whether the tag spells this version as a whole number, so v2.11.3 names
+    2.11.3 and mbedtls-3.6.7 names 3.6.7, but v2.11.3 does not name 2.11."""
+    return re.search(rf"(?<![0-9])(?<![0-9]\.){re.escape(version)}(?!\.?[0-9])", tag.replace("_", ".")) is not None
+
+
 def upstream_labels(upstreams) -> str:
     """The distinct labels of one pack's upstream trees, joined."""
     labels = []
     for upstream in upstreams:
-        if upstream.label and upstream.label not in labels:
-            labels.append(upstream.label)
+        label = upstream_label(upstream)
+        if label and label not in labels:
+            labels.append(label)
     return " / ".join(labels)
 
 
