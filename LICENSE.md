@@ -48,7 +48,18 @@ Required if you supply, sell, distribute or otherwise make available any
 product, device, firmware or service containing SolidSyslog, where that is not
 a noncommercial purpose under licence 2.
 
-Offered per product line, with an all-products option, and annual maintenance.
+Offered per product line, with a business option covering every product of one
+legal entity and a group option covering several. The licence is one-off and
+perpetual for the versions received. Annual maintenance, at a percentage of the
+licence fee with the first year included, brings every new release, the
+adapters kept building against new upstream releases under the upstream-version
+policy in [`SUPPORT.md`](SUPPORT.md#upstream-versions), email support from a
+named contact, and the committed response times in
+[`SECURITY.md`](SECURITY.md#commercial-support). Security fixes for
+the releases a licensee declares as shipping are free for the support period
+whether or not maintenance is renewed; [`SECURITY.md`](SECURITY.md#supported-versions) states
+the commitment. Pricing is on the
+[SolidSyslog product page](https://www.cososo.co.uk/products/solid-syslog/).
 
 Enquiries: <https://www.cososo.co.uk/#contact>
 

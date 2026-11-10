@@ -67,6 +67,8 @@ how to get in touch about Platform-adapter contributions.
 
 ## Commercial support
 
-Free-tier support is best-effort. For commercial licensing, guaranteed
-response times, or paid support, enquire via the form at
+Free-tier support is best-effort. A commercial licence includes annual
+maintenance; [LICENSE.md](LICENSE.md) says what it covers and
+[SECURITY.md](SECURITY.md#commercial-support) states the committed response
+times. Enquire via the form at
 [cososo.co.uk](https://www.cososo.co.uk/?service=solidsyslog#contact).
