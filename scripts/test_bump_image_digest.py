@@ -89,6 +89,13 @@ class BumpImageDigestTest(unittest.TestCase):
             self.read("docs/containers.md"),
         )
 
+    def test_refuses_when_the_references_do_not_already_agree(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        self.write("ci/docker-compose.bdd.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + "c" * 64 + " # sha-3333333\n")
+        with self.assertRaises(bump_image_digest.BumpError):
+            bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", NEW)
+        self.assertIn(OLD, self.read(".devcontainer/docker-compose.yml"))
+
 
 if __name__ == "__main__":
     unittest.main()
