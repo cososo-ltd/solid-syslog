@@ -8,7 +8,11 @@ import os
 import re
 
 PINNED_FILES = (
+    ".github/workflows/ci.yml",
+    ".github/workflows/docs-bundle.yml",
+    ".github/workflows/lint-workflows.yml",
     ".devcontainer/docker-compose.yml",
+    "ci/docker-compose.bdd.yml",
 )
 
 

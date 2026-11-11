@@ -14,6 +14,8 @@ class BumpImageDigestTest(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.TemporaryDirectory()
         self.addCleanup(self.root.cleanup)
+        for relative in bump_image_digest.PINNED_FILES:
+            self.write(relative, "")
 
     def write(self, path, text):
         full = os.path.join(self.root.name, path)
@@ -35,6 +37,18 @@ class BumpImageDigestTest(unittest.TestCase):
             "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + NEW + " # sha-2222222\n",
             self.read(".devcontainer/docker-compose.yml"),
         )
+
+    def test_moves_every_pinned_file_and_leaves_other_images_alone(self):
+        self.write(".github/workflows/ci.yml", "      image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        self.write(".github/workflows/docs-bundle.yml", "      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:" + OLD + " # sha-1111111\n")
+        self.write(".github/workflows/lint-workflows.yml", "ACTIONLINT_IMAGE: rhysd/actionlint@sha256:" + OLD + " # 1.7.7\n")
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        self.write("ci/docker-compose.bdd.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", NEW)
+        self.assertIn(NEW + " # sha-2222222", self.read(".github/workflows/ci.yml"))
+        self.assertIn(NEW + " # sha-2222222", self.read("ci/docker-compose.bdd.yml"))
+        self.assertIn("cpputest-freertos@sha256:" + OLD + " # sha-1111111", self.read(".github/workflows/docs-bundle.yml"))
+        self.assertIn("actionlint@sha256:" + OLD + " # 1.7.7", self.read(".github/workflows/lint-workflows.yml"))
 
 
 if __name__ == "__main__":
