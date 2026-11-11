@@ -14,7 +14,7 @@ class BumpImageDigestTest(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.TemporaryDirectory()
         self.addCleanup(self.root.cleanup)
-        for relative in bump_image_digest.PINNED_FILES:
+        for relative in bump_image_digest.PINNED_FILES + (bump_image_digest.CONTAINERS_DOC,):
             self.write(relative, "")
 
     def write(self, path, text):
@@ -69,6 +69,24 @@ class BumpImageDigestTest(unittest.TestCase):
             "            ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:" + NEW + " \\\n"
             "            python3 -m unittest discover -s /docs/hooks -p 'test_*.py'\n",
             self.read(".github/workflows/ci.yml"),
+        )
+
+    def test_moves_the_tag_in_the_containers_table(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        self.write(
+            "docs/containers.md",
+            "| Image | Tag | What it is for |\n"
+            "|---|---|---|\n"
+            "| `ghcr.io/cososo-ltd/cpputest` | `sha-1111111` | The GCC base |\n"
+            "| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-1111111` | The Clang counterpart |\n",
+        )
+        bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", NEW)
+        self.assertEqual(
+            "| Image | Tag | What it is for |\n"
+            "|---|---|---|\n"
+            "| `ghcr.io/cososo-ltd/cpputest` | `sha-2222222` | The GCC base |\n"
+            "| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-1111111` | The Clang counterpart |\n",
+            self.read("docs/containers.md"),
         )
 
 

@@ -15,6 +15,8 @@ PINNED_FILES = (
     "ci/docker-compose.bdd.yml",
 )
 
+CONTAINERS_DOC = "docs/containers.md"
+
 
 def bump(root, image, tag, digest):
     short_name = image.rsplit("/", 1)[-1]
@@ -39,3 +41,13 @@ def bump(root, image, tag, digest):
         )
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
+    path = os.path.join(root, CONTAINERS_DOC)
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    text = re.sub(
+        r"(\| `" + re.escape(image) + r"` \| `)[^`]*`",
+        r"\g<1>" + tag + "`",
+        text,
+    )
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
