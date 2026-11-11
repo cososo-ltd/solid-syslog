@@ -181,4 +181,5 @@ Security tab; `sbom.yml`'s publish job adds `contents: write` and `id-token: wri
 attach keyless-signed assets to a release, as does `docs-bundle.yml`'s publish job for
 the documentation bundle; and `release-please.yml`'s job declares `contents: write` and
 `pull-requests: write`, though the release PR and the tag are made with a GitHub App
-token rather than the job's own.
+token rather than the job's own. `image-bump.yml`'s job stays read-only: the push and
+the pull request it opens use the same App token, so the bump runs CI like any other.

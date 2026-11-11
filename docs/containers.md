@@ -98,17 +98,42 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
 
 ## Updating an image
 
-When a new image tag is available:
+A bump is a pull request titled `chore: bump container image to sha-<short>`
+that moves every reference to the image onto the digest of the new tag. Every
+lane runs on the new image there, so a green run is the evidence and the
+maintainer merges. The chain that opens it unaided:
 
-1. Merge the bump in the container image repo, which builds and pushes the
-   new image. For an upstream pinned by tag and SHA, Renovate opens that
-   bump when the upstream releases, and the repository's README says how it
-   finds the pin and which updates it holds back:
-   [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#keeping-the-pins-current)
-   and
-   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-wolfssl-pin-current).
-   Anything else is a hand edit there
-2. Resolve the new tag to its digest:
+1. A push to the image repository's `main` builds the image and publishes it
+   at a new `sha-<short>` tag. The usual push is a merged Renovate pull request:
+   for an upstream pinned by tag and SHA, Renovate opens that bump when the
+   upstream releases, and the repository's README says how it finds the pin
+   and which updates it holds back
+   ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#keeping-the-pins-current),
+   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-wolfssl-pin-current)).
+2. The publish workflow sends a `repository_dispatch` event, `image-published`,
+   to this repository, naming the images that commit published and their tag.
+   The token is minted from the release GitHub App, which is installed here.
+3. `image-bump.yml` resolves the tag to its digest, runs
+   `scripts/bump_image_digest.py` for each image named, and opens the pull
+   request with the App token, because one opened with `GITHUB_TOKEN` does not
+   run CI. A tag the tree is already on opens nothing.
+
+A change to the `cpputest` base flows through the images built on it the same
+way. `cpputest-freertos` names its base as `cpputest:latest` pinned by digest,
+so when `cpputest` publishes, Renovate in CppUTestFreertosDocker opens the
+digest bump; merging it publishes both FreeRTOS images, and step 2 follows.
+
+The `cpputest`, `cpputest-freertos` and `cpputest-freertos-cross` images send
+the event. The others reach step 3 by hand.
+
+### By hand
+
+Run the **Image Bump** workflow from the Actions tab with the image names and
+the tag, and it does step 3. That is the path for `cpputest-clang`, `behave`
+and `mkdocs-mkdoxy`, whose repositories do not send the event, and the
+fallback when a dispatch did not arrive. Or do the same locally:
+
+1. Resolve the new tag to its digest:
 
    ```bash
    docker buildx imagetools inspect ghcr.io/cososo-ltd/<image>:sha-<new> \
@@ -122,68 +147,49 @@ When a new image tag is available:
    Of the images here, only `balabit/syslog-ng` is genuinely multi-arch
    (`linux/amd64` and `linux/arm64`); the rest are `linux/amd64` only.
 
-3. Update the digest **and** the accompanying tag comment in every file that
-   references the image (see table below), plus the tag in `docs/containers.md`
-4. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container") and verify locally
-5. Raise a PR: use `chore: bump container image to <sha>` as the title
+2. Move every reference, the tag comment beside each and the tag in the table
+   above:
 
-| Image | Files to update |
-|---|---|
-| `cpputest` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
-| `cpputest-clang` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `docs/containers.md` |
-| `cpputest-freertos` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `.github/workflows/docs-bundle.yml`, `docs/containers.md` |
-| `cpputest-freertos-cross` | `.devcontainer/docker-compose.yml`, `.github/workflows/ci.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
-| `behave` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/bdd.md`, `docs/containers.md` |
-| `mkdocs-mkdoxy` | `.github/workflows/ci.yml`, `.github/workflows/docs-bundle.yml`, `docs/containers.md` |
-| `markdownlint-cli2` | `.github/workflows/ci.yml`, `docs/local-checks.md`, `docs/containers.md` |
-| `actionlint` | `.github/workflows/lint-workflows.yml`, `docs/containers.md` |
-| `syslog-ng` | `.devcontainer/docker-compose.yml`, `ci/docker-compose.bdd.yml`, `docs/containers.md` |
+   ```bash
+   python3 scripts/bump_image_digest.py ghcr.io/cososo-ltd/<image> sha-<new> <digest>
+   ```
+
+   The script walks the digest-pinned files and refuses a tree whose
+   references for that image already disagree, so an uneven earlier bump is
+   caught before it is compounded. It takes the image as the files reference
+   it, so `balabit/syslog-ng` with its release tag works the same way.
+
+3. Rebuild the devcontainer (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container")
+   and verify locally.
+4. Raise the pull request under the title above.
 
 `syslog-ng`, `markdownlint-cli2` and `actionlint` are upstream images rather than
 ours, published by [balabit](https://hub.docker.com/r/balabit/syslog-ng),
 [DavidAnson](https://hub.docker.com/r/davidanson/markdownlint-cli2) and
-[rhysd](https://hub.docker.com/r/rhysd/actionlint). Step 1 does not apply to any
-of them: the version is chosen from what upstream published and pinned, not
-built. Read the 4.8 LTS pinning rationale in the first table before moving
-`syslog-ng`.
+[rhysd](https://hub.docker.com/r/rhysd/actionlint). There is no publish step and
+no event: the version is chosen from what upstream published and pinned by hand.
+Read the 4.8 LTS pinning rationale in the first table before moving `syslog-ng`.
+`docs/local-checks.md` invokes `markdownlint-cli2` by tag, deliberately: it is a
+command a developer types, where a digest is unreadable and the engine version
+is the thing worth stating, so a `markdownlint-cli2` bump edits that line too.
 
 The `cpputest-freertos` and `cpputest-freertos-cross` images both come from
 [CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker).
 A single push to that repo's `main` rebuilds and publishes both images at
-the same `sha-<short>` tag; always update both rows together.
+the same `sha-<short>` tag, and its event names both, so one pull request
+moves both rows.
 
 The `mkdocs-mkdoxy` image comes from
 [MkdocsMkdoxyDocker](https://github.com/cososo-ltd/MkdocsMkdoxyDocker); a push to
 that repo's `main` rebuilds and publishes it at a new `sha-<short>` tag.
-
-`mkdocs-mkdoxy` is a CI-only image; it is not a devcontainer service, so the
-generic "rebuild the devcontainer and verify" step above does not exercise it.
-Verify a tag bump by running the same command the `docs-build` job runs, from the
-repo root, before raising the bump PR:
+It is a CI-only image, not a devcontainer service, so the "rebuild the
+devcontainer and verify" step above does not exercise it. Verify a bump by
+running the same command the `docs-build` job runs, from the repo root:
 
 ```bash
 docker run --rm -v "$PWD:/docs" \
   ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:<new> mkdocs build --strict
 ```
-
-All references to a given image must use the same digest. Never update one
-without the others. To check that invariant across the digest-pinned files:
-
-```bash
-grep -rhno 'ghcr.io/cososo-ltd/[a-z-]*@sha256:[0-9a-f]*\|balabit/syslog-ng@sha256:[0-9a-f]*\|davidanson/markdownlint-cli2@sha256:[0-9a-f]*\|rhysd/actionlint@sha256:[0-9a-f]*' \
-  .github/workflows/ci.yml .github/workflows/docs-bundle.yml \
-  .github/workflows/lint-workflows.yml \
-  .devcontainer/docker-compose.yml ci/docker-compose.bdd.yml \
-  | sed 's/^[0-9]*://' | sort -u
-```
-
-One line per image means every reference agrees; two lines for the same image
-name means a bump was applied unevenly.
-
-The audit covers digest-pinned references only. `docs/local-checks.md` invokes
-`markdownlint-cli2` by tag, deliberately: it is a command a developer types, where
-a digest is unreadable and the engine version is the thing worth stating. That
-line is out of this check by design, so leave it out when extending the pattern.
 
 ## Switching to a different container as the devcontainer
 
