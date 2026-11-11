@@ -122,6 +122,18 @@ class BumpImageDigestTest(unittest.TestCase):
         bump_image_digest.main(["--root", self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", "sha256:" + NEW])
         self.assertIn("@sha256:" + NEW + " # sha-2222222", self.read(".devcontainer/docker-compose.yml"))
 
+    def test_refuses_a_malformed_digest_before_touching_any_file(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        for bad in ("", NEW[:-1], "g" * 64, "sha512:" + NEW):
+            with self.assertRaises(bump_image_digest.BumpError, msg=repr(bad)):
+                bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", bad)
+        self.assertIn(OLD, self.read(".devcontainer/docker-compose.yml"))
+
+    def test_bump_accepts_the_digest_with_or_without_the_sha256_prefix(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", "sha256:" + NEW)
+        self.assertIn("@sha256:" + NEW + " # sha-2222222", self.read(".devcontainer/docker-compose.yml"))
+
 
 if __name__ == "__main__":
     unittest.main()

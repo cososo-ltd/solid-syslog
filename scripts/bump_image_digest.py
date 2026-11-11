@@ -25,6 +25,7 @@ class BumpError(Exception):
 
 
 def bump(root, image, tag, digest):
+    digest = _bare_digest(digest)
     texts = {relative: _read(root, relative) for relative in PINNED_FILES + (CONTAINERS_DOC,)}
     _check_references_agree(image, texts)
     short_name = image.rsplit("/", 1)[-1]
@@ -33,6 +34,13 @@ def bump(root, image, tag, digest):
     texts[CONTAINERS_DOC] = _bump_table(texts[CONTAINERS_DOC], image, tag)
     for relative, text in texts.items():
         _write(root, relative, text)
+
+
+def _bare_digest(digest):
+    match = re.fullmatch(r"(?:sha256:)?([0-9a-f]{64})", digest)
+    if match is None:
+        raise BumpError("not a sha256 digest: " + repr(digest))
+    return match.group(1)
 
 
 def _check_references_agree(image, texts):
@@ -80,7 +88,7 @@ def main(argv):
     args = parser.parse_args(argv)
     status = 0
     try:
-        bump(args.root, args.image, args.tag, args.digest.split(":")[-1])
+        bump(args.root, args.image, args.tag, args.digest)
     except BumpError as error:
         print("bump_image_digest: " + str(error), file=sys.stderr)
         status = 1
