@@ -973,7 +973,7 @@ When updating an image:
 2. Resolve the new tag to its digest — `docker buildx imagetools inspect <repo>:<tag> --format '{{.Manifest.Digest}}'`
 3. Update the digest and the accompanying tag comment in all files that reference it (see [`docs/containers.md`](docs/containers.md) for the full list)
 4. Rebuild the devcontainer and verify the new tooling works locally
-5. Then commit — use `chore: bump container image to <sha>`
+5. Then commit — use `chore: bump <image> image to <sha>`
 
 ---
 

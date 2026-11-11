@@ -70,7 +70,15 @@ jobs:
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           branch="chore/bump-image-$TAG-$(echo "$IMAGES" | tr ' ' '-')"
-          title="chore: bump container image to $TAG"
+          read -ra list <<< "$IMAGES"
+          if [ "${#list[@]}" -eq 1 ]; then
+            named="${list[0]} image"
+          else
+            last="${list[-1]}"
+            unset 'list[-1]'
+            named="$(printf '%s, ' "${list[@]}" | sed 's/, $//') and $last images"
+          fi
+          title="chore: bump $named to $TAG"
           bot_id=$(gh api "/users/${APP_SLUG}[bot]" --jq .id)
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
