@@ -102,7 +102,7 @@ services:
     command: sleep infinity
 
   freertos-host:
-    image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:d95be8e58e28ac16a308c6290b87567619732ef13f3f245ea46d2accf2c05b44 # sha-75d6e03
+    image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:84a73baecf6b30af3808467c4671595263cb189b39ded49423d8f04a8b4430f7 # sha-d28b223
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
@@ -153,7 +153,7 @@ services:
           - syslog-ng
 
   freertos-target:
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:20d08a978ba87d6dbb93ecfef4452825d98b2c05672e63ed7610d3094f5fdf84 # sha-75d6e03
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:7c0e28358e4f2a15398190eb07dd51fb603487d37c634403734fa60d4ad2d38a # sha-d28b223
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - syslog-ng-ctl-freertos:/var/lib/syslog-ng
