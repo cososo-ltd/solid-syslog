@@ -99,9 +99,10 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
 ## Updating an image
 
 A bump is a pull request titled `chore: bump <image> image to sha-<short>`,
-naming both images when one commit published two, that moves every reference to the image onto the digest of the new tag. Every
-lane runs on the new image there, so a green run is the evidence and the
-maintainer merges. The chain that opens it unaided:
+naming both images when one commit published two, that moves every reference
+to the image onto the digest of the new tag. Every lane runs on the new image
+there, so a green run is the evidence and the maintainer merges. The chain
+that opens it unaided:
 
 1. A push to the image repository's `main` builds the image and publishes it
    at a new `sha-<short>` tag. The usual push is a merged Renovate pull request:
