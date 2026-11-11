@@ -1,5 +1,7 @@
 """Tests for bump_image_digest.py: moving every reference to an image to a new digest."""
 
+import contextlib
+import io
 import os
 import tempfile
 import unittest
@@ -100,6 +102,25 @@ class BumpImageDigestTest(unittest.TestCase):
         self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
         with self.assertRaises(bump_image_digest.BumpError):
             bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/behave", "sha-2222222", NEW)
+
+    def test_main_reports_a_refusal_on_stderr_and_exits_one(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            status = bump_image_digest.main(["--root", self.root.name, "ghcr.io/cososo-ltd/behave", "sha-2222222", NEW])
+        self.assertEqual(1, status)
+        self.assertIn("nothing references ghcr.io/cososo-ltd/behave", stderr.getvalue())
+
+    def test_main_applies_a_bump_and_exits_zero(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        status = bump_image_digest.main(["--root", self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", NEW])
+        self.assertEqual(0, status)
+        self.assertIn(NEW + " # sha-2222222", self.read(".devcontainer/docker-compose.yml"))
+
+    def test_main_accepts_the_digest_as_imagetools_prints_it(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        bump_image_digest.main(["--root", self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", "sha256:" + NEW])
+        self.assertIn("@sha256:" + NEW + " # sha-2222222", self.read(".devcontainer/docker-compose.yml"))
 
 
 if __name__ == "__main__":

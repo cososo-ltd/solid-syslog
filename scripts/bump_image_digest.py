@@ -4,8 +4,10 @@
 Run:  python3 scripts/bump_image_digest.py <image> <tag> <digest>
 """
 
+import argparse
 import os
 import re
+import sys
 
 PINNED_FILES = (
     ".github/workflows/ci.yml",
@@ -69,6 +71,22 @@ def _bump_table(text, image, tag):
     )
 
 
+def main(argv):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("image", help="the image as the files reference it, e.g. ghcr.io/cososo-ltd/cpputest")
+    parser.add_argument("tag", help="the tag to name in the comments and the table, e.g. sha-d5d2af8")
+    parser.add_argument("digest", help="the digest that tag resolves to, with or without the sha256: prefix")
+    parser.add_argument("--root", default=".", help="the repository root (default: the current directory)")
+    args = parser.parse_args(argv)
+    status = 0
+    try:
+        bump(args.root, args.image, args.tag, args.digest.split(":")[-1])
+    except BumpError as error:
+        print("bump_image_digest: " + str(error), file=sys.stderr)
+        status = 1
+    return status
+
+
 def _read(root, relative):
     with open(os.path.join(root, relative), encoding="utf-8") as f:
         return f.read()
@@ -77,3 +95,7 @@ def _read(root, relative):
 def _write(root, relative, text):
     with open(os.path.join(root, relative), "w", encoding="utf-8") as f:
         f.write(text)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
