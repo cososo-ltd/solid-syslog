@@ -37,6 +37,8 @@ def _check_references_agree(image, texts):
     digests = set()
     for text in texts.values():
         digests.update(re.findall(re.escape(image) + r"@sha256:([0-9a-f]{64})", text))
+    if not digests:
+        raise BumpError("nothing references " + image)
     if len(digests) > 1:
         raise BumpError(image + " is pinned at more than one digest: " + ", ".join(sorted(digests)))
 

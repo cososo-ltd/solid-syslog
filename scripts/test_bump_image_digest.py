@@ -96,6 +96,11 @@ class BumpImageDigestTest(unittest.TestCase):
             bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/cpputest", "sha-2222222", NEW)
         self.assertIn(OLD, self.read(".devcontainer/docker-compose.yml"))
 
+    def test_refuses_an_image_nothing_references(self):
+        self.write(".devcontainer/docker-compose.yml", "    image: ghcr.io/cososo-ltd/cpputest@sha256:" + OLD + " # sha-1111111\n")
+        with self.assertRaises(bump_image_digest.BumpError):
+            bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/behave", "sha-2222222", NEW)
+
 
 if __name__ == "__main__":
     unittest.main()
