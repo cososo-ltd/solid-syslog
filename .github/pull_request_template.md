@@ -4,7 +4,7 @@
        feat: add arm-cortex-m toolchain preset
        fix: correct coverage filter path for out-of-tree builds
        ci: pin all actions to SHA
-       chore: bump container image to sha-xxxxxxx
+       chore: bump cpputest image to sha-xxxxxxx
        refactor: extract coverage threshold logic to cmake function
      Append ! for breaking changes: feat!: rename Example target to match project name
 -->
