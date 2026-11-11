@@ -17,13 +17,24 @@ PINNED_FILES = (
 
 
 def bump(root, image, tag, digest):
+    short_name = image.rsplit("/", 1)[-1]
     for relative in PINNED_FILES:
         path = os.path.join(root, relative)
         with open(path, encoding="utf-8") as f:
             text = f.read()
         text = re.sub(
-            re.escape(image) + r"@sha256:[0-9a-f]{64} # \S+",
-            image + "@sha256:" + digest + " # " + tag,
+            re.escape(image) + r"@sha256:[0-9a-f]{64}( # )\S+",
+            image + "@sha256:" + digest + r"\g<1>" + tag,
+            text,
+        )
+        text = re.sub(
+            re.escape(image) + r"@sha256:[0-9a-f]{64}",
+            image + "@sha256:" + digest,
+            text,
+        )
+        text = re.sub(
+            r"(# Image digest below is " + re.escape(short_name) + r" )\S+",
+            r"\g<1>" + tag,
             text,
         )
         with open(path, "w", encoding="utf-8") as f:

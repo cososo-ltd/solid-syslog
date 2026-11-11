@@ -50,6 +50,27 @@ class BumpImageDigestTest(unittest.TestCase):
         self.assertIn("cpputest-freertos@sha256:" + OLD + " # sha-1111111", self.read(".github/workflows/docs-bundle.yml"))
         self.assertIn("actionlint@sha256:" + OLD + " # 1.7.7", self.read(".github/workflows/lint-workflows.yml"))
 
+    def test_moves_a_reference_whose_tag_comment_sits_on_the_line_above(self):
+        self.write(
+            ".github/workflows/ci.yml",
+            "      # Image digest below is mkdocs-mkdoxy sha-1111111 (see docs/containers.md).\n"
+            "      - name: Test docs build hooks\n"
+            "        run: |\n"
+            "          docker run --rm -v \"$PWD:/docs\" \\\n"
+            "            ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:" + OLD + " \\\n"
+            "            python3 -m unittest discover -s /docs/hooks -p 'test_*.py'\n",
+        )
+        bump_image_digest.bump(self.root.name, "ghcr.io/cososo-ltd/mkdocs-mkdoxy", "sha-2222222", NEW)
+        self.assertEqual(
+            "      # Image digest below is mkdocs-mkdoxy sha-2222222 (see docs/containers.md).\n"
+            "      - name: Test docs build hooks\n"
+            "        run: |\n"
+            "          docker run --rm -v \"$PWD:/docs\" \\\n"
+            "            ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:" + NEW + " \\\n"
+            "            python3 -m unittest discover -s /docs/hooks -p 'test_*.py'\n",
+            self.read(".github/workflows/ci.yml"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
