@@ -1,0 +1,101 @@
+name: Image Bump
+
+# Moves every reference to one of our container images onto the digest of a
+# newly published tag, and opens the pull request that tests it. The image
+# repositories send repository_dispatch when they publish (docs/containers.md
+# describes the chain); workflow_dispatch takes the same two values by hand,
+# for an image whose repository does not send the event and as the fallback.
+on:
+  repository_dispatch:
+    types: [image-published]
+  workflow_dispatch:
+    inputs:
+      images:
+        description: Image names under ghcr.io/cososo-ltd, space-separated when one commit publishes several
+        required: true
+        type: string
+      tag:
+        description: The tag that was published, e.g. sha-d5d2af8
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    env:
+      IMAGES: ${{ github.event.inputs.images || github.event.client_payload.images }}
+      TAG: ${{ github.event.inputs.tag || github.event.client_payload.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Pin what imagetools reports for the tag: the index digest for a
+      # multi-architecture image, the manifest digest for a single-platform
+      # one. The script refuses a tree whose references already disagree.
+      - name: Move every reference to the new digest
+        run: |
+          for image in $IMAGES; do
+            digest=$(docker buildx imagetools inspect "ghcr.io/cososo-ltd/$image:$TAG" --format '{{.Manifest.Digest}}')
+            python3 scripts/bump_image_digest.py "ghcr.io/cososo-ltd/$image" "$TAG" "$digest"
+          done
+          git diff --stat
+
+      - name: Decide whether anything moved
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A GitHub App token, for the same reasons release-please.yml gives: a
+      # pull request GITHUB_TOKEN opens does not run CI, and running CI on the
+      # new image is the point.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        if: steps.diff.outputs.changed == 'true'
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_PRIVATE_KEY }}
+
+      - name: Open or update the pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          branch="chore/bump-image-$TAG"
+          title="chore: bump container image to $TAG"
+          bot_id=$(gh api "/users/${APP_SLUG}[bot]" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "$title"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:$branch"
+          cat > /tmp/body.md <<EOF
+          ## Purpose
+
+          Pins \`$IMAGES\` at the digest of \`$TAG\`, published by its image repository.
+          Every lane runs on the new image here; a green run is the evidence.
+
+          ## Change Description
+
+          Every reference in the digest-pinned files and the tag in \`docs/containers.md\`,
+          moved by \`scripts/bump_image_digest.py\`.
+
+          ## Test Evidence
+
+          CI on this pull request.
+
+          ## Areas Affected
+
+          - \`.github/workflows/\`, \`.devcontainer/\`, \`ci/\`, \`docs/containers.md\`
+          EOF
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head "$branch" --title "$title" --body-file /tmp/body.md
+          fi
