@@ -15,6 +15,8 @@
 #ifndef SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 #define SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 
+#include "BddTargetBoardConfig.h"
+
 /* --- OS abstraction (NO_SYS=0: tcpip thread + FreeRTOS sys_arch) ------- */
 #define NO_SYS 0
 #define SYS_LIGHTWEIGHT_PROT 1
@@ -68,10 +70,14 @@
  * - slirp cannot hand the guest a reachable address for the docker alias.
  * DNS_LOCAL_HOSTLIST_INIT is expanded inside lwIP's dns.c, where
  * DNS_LOCAL_HOSTLIST_ELEM (lwip/dns.h) and IPADDR4_INIT_BYTES (lwip/ip_addr.h)
- * are in scope. */
+ * are in scope. The address is the board's - see BddTargetBoardConfig.h - and
+ * reaches IPADDR4_INIT_BYTES through one more expansion, because that macro
+ * counts its arguments before it expands them. */
 #define LWIP_DNS 1
 #define DNS_LOCAL_HOSTLIST 1
-#define DNS_LOCAL_HOSTLIST_INIT {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", IPADDR4_INIT_BYTES(10, 0, 2, 2))}
+#define BDD_TARGET_HOSTLIST_ADDRESS(octets) IPADDR4_INIT_BYTES(octets)
+#define DNS_LOCAL_HOSTLIST_INIT \
+    {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", BDD_TARGET_HOSTLIST_ADDRESS(BDD_TARGET_BOARD_ORACLE_OCTETS))}
 
 /* etharp queues the first packet to a destination while ARP resolves it -
  * keep queueing on so the first UDP datagram after boot is not dropped

@@ -22,6 +22,23 @@
 #                                facts the kernel configuration reads, and
 #                                BddTargetCmsisDevice.h, the CMSIS device header
 #
+# and, for the Ethernet controller under each network stack a target may run:
+#
+#   BDD_BOARD_LWIP_PROJECT_SOURCES      - the netif that defines
+#                                         BddTargetBoardNetif_Init
+#   BDD_BOARD_LWIP_UPSTREAM_SOURCES     - third-party controller driver sources,
+#                                         compiled under the target's relaxed
+#                                         warnings
+#   BDD_BOARD_LWIP_INCLUDES             - include directories for both
+#   BDD_BOARD_PLUSTCP_PROJECT_SOURCES   - the file that defines
+#                                         BddTargetBoardPlusTcp_FillInterface
+#   BDD_BOARD_PLUSTCP_UPSTREAM_SOURCES  - the network interface and driver
+#                                         upstream ships for the board, relative
+#                                         to Plus-TCP's
+#                                         source/portable/NetworkInterface
+#   BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES - include directories for those,
+#                                         relative to the same place
+#
 # The toolchain file is the board's too, since it fixes the core for every
 # object in the image. It is named by the preset, not from here: CMake reads
 # it before any of this runs.

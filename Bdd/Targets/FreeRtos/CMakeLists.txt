@@ -36,11 +36,17 @@ set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_POR
 set(PLUS_TCP_SRC_DIR "${FREERTOS_PLUS_TCP_PATH}/source")
 set(PLUS_TCP_PORT_GCC_DIR "${PLUS_TCP_SRC_DIR}/portable/Compiler/GCC")
 set(PLUS_TCP_BUF_DIR "${PLUS_TCP_SRC_DIR}/portable/BufferManagement")
-set(PLUS_TCP_NIF_DIR "${PLUS_TCP_SRC_DIR}/portable/NetworkInterface/MPS2_AN385")
+
+# The board names its network interface relative to upstream's directory of them.
+set(PLUS_TCP_NIF_ROOT "${PLUS_TCP_SRC_DIR}/portable/NetworkInterface")
+list(TRANSFORM BDD_BOARD_PLUSTCP_UPSTREAM_SOURCES PREPEND "${PLUS_TCP_NIF_ROOT}/"
+    OUTPUT_VARIABLE PLUS_TCP_NIF_SOURCES)
+list(TRANSFORM BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES PREPEND "${PLUS_TCP_NIF_ROOT}/"
+    OUTPUT_VARIABLE PLUS_TCP_NIF_INCLUDES)
 
 # --- Upstream OBJECT library --------------------------------------------------
 #
-# Compiles all kernel + Plus-TCP + LAN9118 driver sources with the relaxed
+# Compiles all kernel + Plus-TCP + the board's Ethernet driver sources with the relaxed
 # warning set. Marked PRIVATE on this library; the executable consumes the
 # objects via $<TARGET_OBJECTS:...> so the relaxations don't leak.
 
@@ -96,9 +102,8 @@ add_library(solid_syslog_freertos_upstream OBJECT
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv4.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv6.c
     ${PLUS_TCP_BUF_DIR}/BufferAllocation_2.c
-    # MPS2_AN385 LAN9118 NetworkInterface + driver.
-    ${PLUS_TCP_NIF_DIR}/NetworkInterface.c
-    ${PLUS_TCP_NIF_DIR}/ether_lan9118/smsc9220_eth_drv.c
+    # The board's NetworkInterface + controller driver.
+    ${PLUS_TCP_NIF_SOURCES}
     # FreeRTOS-Plus-FAT upstream core (SHA 9ca465c). Like the FreeRTOS kernel
     # and Plus-TCP sources, these trip the relaxed warnings (sign-conversion,
     # shadow, type narrowing), so they live in this OBJECT lib. The integrator
@@ -151,8 +156,7 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
-    ${PLUS_TCP_NIF_DIR}                               # NetworkInterface.h consumed locally
-    ${PLUS_TCP_NIF_DIR}/ether_lan9118                 # SMM_MPS2.h, smsc9220_*.h
+    ${PLUS_TCP_NIF_INCLUDES}                          # the board's NetworkInterface and driver headers
     ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_headers.h, ff_stdio.h, ff_ioman.h, …
 )
 
@@ -253,6 +257,7 @@ set(BAKED_PEM_HEADERS
 add_executable(SolidSyslogBddTarget
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
+    ${BDD_BOARD_PLUSTCP_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
     # MbedTls,PlusFat} pack umbrellas linked below (S30.02 dogfood) — their

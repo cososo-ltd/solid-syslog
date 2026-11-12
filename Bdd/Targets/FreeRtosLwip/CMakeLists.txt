@@ -24,8 +24,7 @@ solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
 solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
 solidsyslog_bdd_upstream(FATFS_PATH SOLIDSYSLOG_FATFS_PATH /opt/fatfs)
 
-# The LAN9118 netif wrapper, the vendored Arm driver under it, and lwIP's
-# arch/cc.h are shared with the other lwIP BDD target, so they live under
+# lwIP's arch/cc.h is shared with the other lwIP BDD target, so it lives under
 # Bdd/Targets/Common/lwip/ rather than in either target's own directory.
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
 
@@ -77,10 +76,10 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) — required
     # for NO_SYS=0.
     ${LWIP_CONTRIB_FREERTOS_DIR}/sys_arch.c
-    # Vendored Arm LAN9118 (SMSC9220) low-level driver (Apache-2.0). The lwIP
-    # netif wrapper over it (netif/EthernetIf.c) stays in the executable under
-    # the strict bar; this third-party source sits under the relaxations.
-    ${LWIP_SHARED_DIR}/netif/smsc9220/smsc9220_eth_drv.c
+    # The board's third-party Ethernet controller driver. Our netif over it
+    # stays in the executable under the strict bar; this sits under the
+    # relaxations.
+    ${BDD_BOARD_LWIP_UPSTREAM_SOURCES}
     # FatFs upstream (R0.16) + our shared integrator ffsystem.c — same
     # relaxed-warnings treatment as the Plus-TCP target (ff.c inherits FatFs's
     # sign-conversion / typedef-via-BYTE patterns). ff.c is staged so its
@@ -112,7 +111,7 @@ target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
-    ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
+    ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include
@@ -217,7 +216,7 @@ add_executable(SolidSyslogBddTargetLwip
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
-    ${LWIP_SHARED_DIR}/netif/EthernetIf.c
+    ${BDD_BOARD_LWIP_PROJECT_SOURCES}
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
     # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
@@ -262,8 +261,7 @@ target_compile_options(SolidSyslogBddTargetLwip PRIVATE
 target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
-    ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
-    ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
+    ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters

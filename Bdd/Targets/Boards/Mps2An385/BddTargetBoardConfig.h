@@ -16,4 +16,24 @@
 /* The NVIC implements the top three bits of each 8-bit priority field. */
 #define BDD_TARGET_BOARD_NVIC_PRIO_BITS 3
 
+/* The network the board sits on, each address as the octets a stack's own
+ * initialiser takes. QEMU's user-mode network, slirp, has no DHCP server the
+ * targets rely on, so the address is the one slirp would have handed out. Its
+ * gateway is routed to the machine QEMU runs on, and its DNS forwarder sits
+ * beside it. */
+#define BDD_TARGET_BOARD_IP_OCTETS 10U, 0U, 2U, 15U
+#define BDD_TARGET_BOARD_NETMASK_OCTETS 255U, 255U, 255U, 0U
+#define BDD_TARGET_BOARD_GATEWAY_OCTETS 10U, 0U, 2U, 2U
+#define BDD_TARGET_BOARD_DNS_OCTETS 10U, 0U, 2U, 3U
+
+/* A locally administered unicast hardware address. */
+#define BDD_TARGET_BOARD_MAC_OCTETS 0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U
+
+/* Where the syslog oracle is reached from the board: the slirp gateway, since
+ * the oracle listens on the machine QEMU runs on. The same address twice, as
+ * the octets and as the text a resolver takes, because C offers no way to
+ * derive one from the other. */
+#define BDD_TARGET_BOARD_ORACLE_OCTETS 10U, 0U, 2U, 2U
+#define BDD_TARGET_BOARD_ORACLE_ADDRESS "10.0.2.2"
+
 #endif /* BDD_TARGET_BOARD_CONFIG_H */

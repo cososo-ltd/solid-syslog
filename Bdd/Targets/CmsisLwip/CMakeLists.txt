@@ -66,10 +66,10 @@ add_library(solid_syslog_cmsis_lwip_upstream OBJECT
     # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) — required
     # for NO_SYS=0.
     ${LWIP_CONTRIB_FREERTOS_DIR}/sys_arch.c
-    # Vendored Arm LAN9118 (SMSC9220) low-level driver (Apache-2.0). The lwIP
-    # netif wrapper over it (netif/EthernetIf.c) stays in the executable under
-    # the strict bar; this third-party source sits under the relaxations.
-    ${LWIP_SHARED_DIR}/netif/smsc9220/smsc9220_eth_drv.c
+    # The board's third-party Ethernet controller driver. Our netif over it
+    # stays in the executable under the strict bar; this sits under the
+    # relaxations.
+    ${BDD_BOARD_LWIP_UPSTREAM_SOURCES}
     # LittleFS upstream, under the same relaxations: lfs.c raises well over a
     # hundred diagnostics against this project's -Werror set, which is not
     # upstream's problem and not ours to pin a version over.
@@ -101,7 +101,7 @@ target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
-    ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
+    ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h
     ${LITTLEFS_PATH}                                  # lfs.h, lfs_util.h
@@ -308,7 +308,7 @@ add_executable(SolidSyslogBddTargetCmsis
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
-    ${LWIP_SHARED_DIR}/netif/EthernetIf.c
+    ${BDD_BOARD_LWIP_PROJECT_SOURCES}
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipSocket (Address/Datagram/TcpStream/
     # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
@@ -352,8 +352,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # lwipopts.h
     ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
-    ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
-    ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
+    ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters

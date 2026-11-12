@@ -19,9 +19,10 @@
 
 #include "BddTargetFatFsMount.h"
 #include "BddTargetBoard.h"
+#include "BddTargetBoardConfig.h"
+#include "BddTargetBoardNetif.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetOsPrimitives.h"
-#include "EthernetIf.h"
 
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsSender.h"
@@ -49,6 +50,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+/* IP4_ADDR counts its arguments before it expands them, so the four octets
+ * the board states as one macro have to arrive through one more expansion. */
+#define SET_IP4_ADDRESS(address, octets) IP4_ADDR((address), octets)
 
 /* lwIP netif descriptor - must outlive the tcpip thread. */
 static struct netif networkInterface;
@@ -143,13 +148,13 @@ static void NetworkBringUp(void* context)
     (void) context;
     ip4_addr_t ipAddress;
     ip4_addr_t netmask;
-    /* QEMU slirp default: 10.0.2.15 guest, 10.0.2.2 gateway (NATed to the QEMU
-     * host, where the syslog-ng oracle listens). */
-    IP4_ADDR(&ipAddress, 10, 0, 2, 15);
-    IP4_ADDR(&netmask, 255, 255, 255, 0);
-    IP4_ADDR(&gatewayAddress, 10, 0, 2, 2);
+    /* A static address on the board's network - see BddTargetBoardConfig.h. */
+    SET_IP4_ADDRESS(&ipAddress, BDD_TARGET_BOARD_IP_OCTETS);
+    SET_IP4_ADDRESS(&netmask, BDD_TARGET_BOARD_NETMASK_OCTETS);
+    SET_IP4_ADDRESS(&gatewayAddress, BDD_TARGET_BOARD_GATEWAY_OCTETS);
 
-    (void) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, EthernetIf_Init, tcpip_input);
+    (void
+    ) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, BddTargetBoardNetif_Init, tcpip_input);
     netif_set_default(&networkInterface);
     netif_set_up(&networkInterface);
     netif_set_link_up(&networkInterface);

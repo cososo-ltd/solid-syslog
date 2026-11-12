@@ -27,3 +27,29 @@ set(BDD_BOARD_PROJECT_SOURCES
 set(BDD_BOARD_INCLUDES
     ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h
 )
+
+# The LAN9118 under lwIP: our netif over the vendored Arm controller driver
+# (Apache-2.0), which sits under the relaxations as third-party source.
+set(BDD_BOARD_LWIP_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/Lwip/BddTargetBoardNetif.c
+)
+set(BDD_BOARD_LWIP_UPSTREAM_SOURCES
+    ${BDD_BOARD_DIR}/Lwip/smsc9220/smsc9220_eth_drv.c
+)
+set(BDD_BOARD_LWIP_INCLUDES
+    ${BDD_BOARD_DIR}/Lwip/smsc9220                    # smsc9220_eth_drv.h, smsc9220_emac_config.h
+)
+
+# The LAN9118 under FreeRTOS-Plus-TCP: upstream's own network interface and
+# controller driver for this machine, and our file that fills the descriptor.
+set(BDD_BOARD_PLUSTCP_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/PlusTcp/BddTargetBoardPlusTcp.c
+)
+set(BDD_BOARD_PLUSTCP_UPSTREAM_SOURCES
+    MPS2_AN385/NetworkInterface.c
+    MPS2_AN385/ether_lan9118/smsc9220_eth_drv.c
+)
+set(BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES
+    MPS2_AN385                                        # NetworkInterface.h consumed locally
+    MPS2_AN385/ether_lan9118                          # SMM_MPS2.h, smsc9220_*.h
+)
