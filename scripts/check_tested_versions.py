@@ -149,8 +149,12 @@ def check_compilers(tokens, compilers, docs_dir):
             continue
         with open(page, encoding="utf-8") as handle:
             claims = COMPILER_MARKER.findall(handle.read())
+        built = sorted(compilers.get(token, []))
+        for claim in claims:
+            if claim not in built:
+                failures.append(f"{token.lower()}/index.md: claims {claim}, but CI built {token} with {', '.join(built)}")
         if claims:
-            rows.append((token, ", ".join(claims), ", ".join(compilers.get(token, [])) or "-"))
+            rows.append((token, ", ".join(claims), ", ".join(built) or "-"))
     return failures, rows
 
 
