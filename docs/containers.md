@@ -21,15 +21,15 @@ find its consumers.
 
 | Image | Tag | What it is for |
 |---|---|---|
-| `ghcr.io/cososo-ltd/cpputest` | `sha-092346a` | The GCC base: CppUTest, CMake and the analysis tooling for host builds, tests and the static-analysis lanes. Ships `include-what-you-use 0.23 (clang_19)` matching the `cpputest-clang` build, so an `iwyu` run behaves the same in either. Carries wolfSSL twice as static installs, `/opt/wolfssl` (`WOLFSSL_DIR`) with the options the wolfSSL pack asks for and `/opt/wolfssl-baseline` (`WOLFSSL_BASELINE_DIR`) from a bare `./configure`, so the pack is proved against the build an integrator has as well as the one it prefers |
-| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-5905aea` | The Clang counterpart to the base, for the portability build and the IWYU lane |
-| `ghcr.io/cososo-ltd/cpputest-freertos` | `sha-74b6904` | Host-TDD of the embedded adapters against fakes, and the integration suites that need a real upstream. Adds the FreeRTOS-Kernel, Plus-TCP, Plus-FAT, lwIP, FatFs, LittleFS, Mbed TLS, CMSIS_6 and CMSIS-FreeRTOS sources and the wolfSSL source tree, nothing of it built, and inherits IWYU and the built wolfSSL host libraries from the `cpputest` base, so it builds every pack a Linux host can |
-| `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `sha-74b6904` | Cross-building the QEMU BDD targets and running them: everything the host image carries, plus `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, and `python3` + `behave` so one image both builds a target and drives it. Upstream sources sit at `/opt/freertos/kernel`, `/opt/freertos/plus-tcp`, `/opt/freertos/plus-fat`, `/opt/lwip`, `/opt/fatfs`, `/opt/littlefs`, `/opt/mbedtls`, `/opt/wolfssl-src`, `/opt/cmsis` and `/opt/cmsis-freertos`. This layer adds ST's STM32F7 HAL driver and CMSIS device files, at `/opt/stm32/f7-hal-driver` and `/opt/stm32/f7-cmsis-device`, for the NUCLEO-F767ZI firmware |
+| `ghcr.io/cososo-ltd/cpputest` | `sha-017ff1d` | The GCC base, on Debian trixie with GCC 14.2.0: CppUTest, CMake and the analysis tooling for host builds, tests and the static-analysis lanes. Ships `include-what-you-use 0.23 (clang_19)` matching the `cpputest-clang` build, so an `iwyu` run behaves the same in either. Carries wolfSSL twice as static installs, `/opt/wolfssl` (`WOLFSSL_DIR`) with the options the wolfSSL pack asks for and `/opt/wolfssl-baseline` (`WOLFSSL_BASELINE_DIR`) from a bare `./configure`, so the pack is proved against the build an integrator has as well as the one it prefers |
+| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-c3d815f` | The Clang counterpart to the base, on Debian trixie with Clang 19.1.7, for the portability build and the IWYU lane |
+| `ghcr.io/cososo-ltd/cpputest-freertos` | `sha-54d57c6` | Host-TDD of the embedded adapters against fakes, and the integration suites that need a real upstream. Built on the `cpputest` base, so Debian trixie with GCC 14.2.0. Adds the FreeRTOS-Kernel, Plus-TCP, Plus-FAT, lwIP, FatFs, LittleFS, Mbed TLS, CMSIS_6 and CMSIS-FreeRTOS sources and the wolfSSL source tree, nothing of it built, and inherits IWYU and the built wolfSSL host libraries from the `cpputest` base, so it builds every pack a Linux host can |
+| `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `sha-54d57c6` | Cross-building the QEMU BDD targets and running them: everything the host image carries, plus Debian trixie's `gcc-arm-none-eabi` (GCC 14.2), `libnewlib-arm-none-eabi`, `gdb-multiarch` (aliased as `arm-none-eabi-gdb`), `qemu-system-arm`, and `python3` + `behave` so one image both builds a target and drives it. Upstream sources sit at `/opt/freertos/kernel`, `/opt/freertos/plus-tcp`, `/opt/freertos/plus-fat`, `/opt/lwip`, `/opt/fatfs`, `/opt/littlefs`, `/opt/mbedtls`, `/opt/wolfssl-src`, `/opt/cmsis` and `/opt/cmsis-freertos`. This layer adds ST's STM32F7 HAL driver and CMSIS device files, at `/opt/stm32/f7-hal-driver` and `/opt/stm32/f7-cmsis-device`, for the NUCLEO-F767ZI firmware |
 | `balabit/syslog-ng` | `4.8.2` | The BDD test oracle, one instance per target so lanes cannot contend. Pinned to the 4.8 LTS line; 4.11.0 (`latest` as of 2026-02-24) regressed by aborting on `STATS` over the control socket, which crashed the oracle and cascaded to the dev-container network when a target shares the namespace |
 | `ghcr.io/cososo-ltd/behave` | `sha-be8da62` | Driving BDD scenarios against a host-built example: Debian trixie, Python 3.12 and Behave. A QEMU target is driven from `cpputest-freertos-cross` instead, which carries Behave alongside the emulator |
 | `davidanson/markdownlint-cli2` | `v0.22.1` | Linting Markdown, in the `analyze-markdown` lane and in the pre-push command `docs/local-checks.md` gives. Upstream, so the tag is the release rather than a source commit |
 | `rhysd/actionlint` | `1.7.7` | Validating the workflow files, in the lane that has to live outside `ci.yml` to survive a break in it. Upstream, same tag form |
-| `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-34173c0` | Building the documentation site: Doxygen 1.9.4, mkdocs 1.6.1, mkdocs-material 9.7.6, mkdoxy 1.2.8 and mkdocs-github-admonitions-plugin 0.1.1. mkdoxy renders `Core/Interface/*.h` as native Material API pages |
+| `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-81e064a` | Building the documentation site, on Debian trixie (`python:3.12-slim-trixie`): Doxygen 1.9.8, mkdocs 1.6.1, mkdocs-material 9.7.6, mkdoxy 1.2.8 and mkdocs-github-admonitions-plugin 0.1.1. mkdoxy renders `Core/Interface/*.h` as native Material API pages |
 
 ## Docker Compose setup
 
@@ -108,12 +108,14 @@ The chain that opens it unaided:
    GitHub Action. The repository's README says how it finds each pin and
    which updates it holds back
    ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#keeping-the-pins-current),
-   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-pins-current)).
+   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-pins-current),
+   [CppUTestDockerClang](https://github.com/cososo-ltd/CppUTestDockerClang#keeping-the-pins-current)).
 2. The publishing workflow builds and smokes the image on that pull request.
    Green, it merges itself; the README says what the smoke proves and what
    merges
    ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#what-merges-itself),
-   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#what-merges-itself)).
+   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#what-merges-itself),
+   [CppUTestDockerClang](https://github.com/cososo-ltd/CppUTestDockerClang#what-merges-itself)).
 3. The merge publishes the image at a new `sha-<short>` tag, and the workflow
    sends a `repository_dispatch` event, `image-published`, to this repository,
    naming the images that commit published and their tag. The token is minted
@@ -138,14 +140,15 @@ that fails on `main` after a green pull request sends no event at all, so
 repository's `main` and no open bump pull request names that image at the
 newer tag, using `scripts/check_image_drift.py`.
 
-The `cpputest`, `cpputest-freertos` and `cpputest-freertos-cross` images send
-the event. The others reach step 4 by hand.
+The `cpputest`, `cpputest-clang`, `cpputest-freertos` and
+`cpputest-freertos-cross` images send the event. The others reach step 4 by
+hand.
 
 ### By hand
 
 Run the **Image Bump** workflow from the Actions tab with the image names and
-the tag, and it does step 4. That is the path for `cpputest-clang`, `behave`
-and `mkdocs-mkdoxy`, whose repositories do not send the event, and the
+the tag, and it does step 4. That is the path for `behave` and
+`mkdocs-mkdoxy`, whose repositories do not send the event, and the
 fallback when a dispatch did not arrive. Or do the same locally:
 
 1. Resolve the new tag to its digest:

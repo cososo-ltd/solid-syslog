@@ -545,6 +545,7 @@ size_t SolidSyslogFormatter_Length(const struct SolidSyslogFormatter* formatter)
     return formatter->Position;
 }
 
+/* cppcheck-suppress constParameterPointer -- hands back the storage for the caller to write through. */
 char* SolidSyslogFormatter_Bytes(struct SolidSyslogFormatter* formatter)
 {
     return formatter->Buffer;

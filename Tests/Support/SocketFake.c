@@ -881,6 +881,7 @@ static int SocketFake_SelectResult(void);
 
 // clang-format off
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name,bugprone-easily-swappable-parameters) -- POSIX API
+// cppcheck-suppress constParameterPointer -- the signature is POSIX's, which this fakes.
 int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, struct timeval* timeout)
 // clang-format on
 {

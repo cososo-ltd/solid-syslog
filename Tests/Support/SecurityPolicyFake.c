@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "SecurityPolicyFake.h"
 
 #include <stdbool.h>
@@ -35,7 +36,7 @@ static const char* DetailName(int32_t detail)
 
 struct SolidSyslogSecurityPolicy* SecurityPolicyFake_Create(void)
 {
-    struct SecurityPolicyFake* fake = (struct SecurityPolicyFake*) calloc(1, sizeof(struct SecurityPolicyFake));
+    struct SecurityPolicyFake* fake = (struct SecurityPolicyFake*) TestCalloc(sizeof(struct SecurityPolicyFake));
     fake->Base.TrailerSize = 0U;
     fake->Base.SealRecord = SealRecord;
     fake->Base.OpenRecord = OpenRecord;

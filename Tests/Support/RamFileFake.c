@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "RamFileFake.h"
 
 #include <stdbool.h>
@@ -54,7 +55,7 @@ static bool FailsAs(const struct RamFileFake* fake, enum SolidSyslogFileErrors c
 
 struct SolidSyslogFile* RamFileFake_Create(void)
 {
-    struct RamFileFake* fake = (struct RamFileFake*) calloc(1, sizeof(struct RamFileFake));
+    struct RamFileFake* fake = (struct RamFileFake*) TestCalloc(sizeof(struct RamFileFake));
     fake->Base.Open = Open;
     fake->Base.Close = Close;
     fake->Base.IsOpen = IsOpen;

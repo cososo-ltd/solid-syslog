@@ -131,6 +131,8 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL)
                 "--error-exitcode=1"
                 "--suppress=missingIncludeSystem"
                 "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
+                "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions.txt"
+                "--check-level=exhaustive"
                 "--inline-suppr"
                 "--std=c11"
             )
@@ -141,6 +143,8 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL)
                 "--suppress=missingIncludeSystem"
                 "--suppress=useStlAlgorithm"
                 "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions_tests.txt"
+                "--suppressions-list=${SolidSyslog_SOURCE_DIR}/cppcheck_suppressions.txt"
+                "--check-level=exhaustive"
                 "--inline-suppr"
                 "--std=c++17"
             )

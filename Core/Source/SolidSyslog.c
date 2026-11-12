@@ -68,7 +68,7 @@ static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
 static inline void SolidSyslog_Halt(struct SolidSyslog* self, enum SolidSyslogErrors haltedAt);
 static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self);
 static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self);
-static inline bool SolidSyslog_IsBlocked(struct SolidSyslog* self, bool storeBlocked, bool drained);
+static inline bool SolidSyslog_IsBlocked(const struct SolidSyslog* self, bool storeBlocked, bool drained);
 static inline bool SolidSyslog_IsReportWaiting(const struct SolidSyslog* self);
 static void SolidSyslog_DoLog(
     struct SolidSyslog* handle,
@@ -728,7 +728,7 @@ static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self)
  * buffer stayed idle - buffer activity out-ranks a blocked store, so a down
  * sender never demotes the loop out of "keep draining" while there is a store to
  * drain into. */
-static inline bool SolidSyslog_IsBlocked(struct SolidSyslog* self, bool storeBlocked, bool drained)
+static inline bool SolidSyslog_IsBlocked(const struct SolidSyslog* self, bool storeBlocked, bool drained)
 {
     return self->HoldsRecord || (storeBlocked && !drained);
 }

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cstring>
 
+#include "DiscardPolicyAnswer.h"
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogBlockStore.h"
@@ -72,10 +73,6 @@ static const struct SolidSyslogBlockStoreConfig DEFAULT_CONFIG = {
 
 /* The store's policy function for the fixtures: answers the policy a test
  * configured, read through the context so one function serves every group. */
-static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
-{
-    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
-}
 
 static enum SolidSyslogDiscardPolicy AnswersNewest(void* context)
 {

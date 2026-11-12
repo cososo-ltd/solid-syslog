@@ -15,7 +15,9 @@ callbacks.
 
 Linux. The pack uses `CLOCK_BOOTTIME`, `IP_MTU`, `IP_MTU_DISCOVER` and
 `TCP_USER_TIMEOUT`, which POSIX does not define. The message-queue buffer needs
-POSIX message queues.
+POSIX message queues. The pack is tested with GNU 14.2.0 and Clang 19.1.7 in CI.
+<!-- tested-with: GNU 14.2.0 -->
+<!-- tested-with: Clang 19.1.7 -->
 
 ## Security behaviour and obligations
 

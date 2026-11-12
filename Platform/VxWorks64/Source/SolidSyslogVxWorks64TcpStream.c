@@ -54,7 +54,7 @@ static bool VxWorks64TcpStream_TakeSocketAndConnect(
 );
 static bool VxWorks64TcpStream_Send(struct SolidSyslogStream* base, const void* buffer, size_t size);
 static inline bool VxWorks64TcpStream_FitsTheStack(size_t size);
-static bool VxWorks64TcpStream_PeerIsStillThere(struct SolidSyslogVxWorks64TcpStream* self);
+static bool VxWorks64TcpStream_PeerIsStillThere(const struct SolidSyslogVxWorks64TcpStream* self);
 static inline bool VxWorks64TcpStream_WouldBlock(int err);
 static inline bool VxWorks64TcpStream_WroteAllBytes(int sent, size_t expected);
 static SolidSyslogSsize VxWorks64TcpStream_Read(struct SolidSyslogStream* base, void* buffer, size_t size);
@@ -375,7 +375,7 @@ static inline bool VxWorks64TcpStream_FitsTheStack(size_t size)
  * record that cannot arrive. Bytes the peer sent that nothing has read stand in
  * front of its FIN, and the peek sees those instead; a syslog collector sends
  * nothing back, so the queue is empty when the check runs. */
-static bool VxWorks64TcpStream_PeerIsStillThere(struct SolidSyslogVxWorks64TcpStream* self)
+static bool VxWorks64TcpStream_PeerIsStillThere(const struct SolidSyslogVxWorks64TcpStream* self)
 {
     char discard = 0;
     int peeked = recv(self->Fd, &discard, (int) sizeof(discard), MSG_PEEK | MSG_DONTWAIT);

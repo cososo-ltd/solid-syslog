@@ -128,7 +128,7 @@ static void PosixFile_Close(struct SolidSyslogFile* base)
 
 static bool PosixFile_IsOpen(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
+    const struct SolidSyslogPosixFile* self = PosixFile_SelfFromBase(base);
     return self->Fd != INVALID_FD;
 }
 

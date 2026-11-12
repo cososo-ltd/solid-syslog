@@ -49,7 +49,7 @@ void SolidSyslogOriginSd_Cleanup(struct SolidSyslogStructuredData* base)
 
 static void OriginSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
-    struct SolidSyslogOriginSd* self = OriginSd_SelfFromBase(base);
+    const struct SolidSyslogOriginSd* self = OriginSd_SelfFromBase(base);
 
     SolidSyslogSdElement_Begin(element, "origin", 0U);
     OriginSd_EmitSoftware(element, self->Software);

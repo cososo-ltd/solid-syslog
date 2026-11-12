@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "SocketStream.h"
 
 #include <stdbool.h>
@@ -29,7 +30,7 @@ static bool SocketStream_WouldBlock(const struct SocketStream* stream);
 
 struct SolidSyslogStream* SocketStream_Create(int fd)
 {
-    struct SocketStream* stream = (struct SocketStream*) calloc(1, sizeof(struct SocketStream));
+    struct SocketStream* stream = (struct SocketStream*) TestCalloc(sizeof(struct SocketStream));
     stream->Base.Open = SocketStream_Open;
     stream->Base.Send = SocketStream_Send;
     stream->Base.Read = SocketStream_Read;

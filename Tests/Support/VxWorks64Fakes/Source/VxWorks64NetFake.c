@@ -214,6 +214,7 @@ int gethostname(char* name, int nameLen)
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
 /* Keeps the name, as the kernel does, for gethostname to answer. */
+// cppcheck-suppress constParameterPointer -- the signature is VxWorks', which this fakes.
 int sethostname(char* name, int nameLen)
 {
     size_t length = ((size_t) nameLen < MAXHOSTNAMELEN) ? (size_t) nameLen : MAXHOSTNAMELEN;
@@ -381,6 +382,7 @@ long VxWorks64NetFake_LastConnectTimeoutMicroseconds(void)
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
+// cppcheck-suppress constParameterPointer -- the signature is VxWorks', which this fakes.
 STATUS connectWithTimeout(int sock, struct sockaddr* adrs, int adrsLen, struct timeval* timeVal)
 {
     VxWorks64NetFake_ConnectCount++;
@@ -441,6 +443,7 @@ bool VxWorks64NetFake_SocketOptionWasSetTo(int level, int optname, int value)
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
+// cppcheck-suppress constParameterPointer -- the signature is VxWorks', which this fakes.
 STATUS setsockopt(int s, int level, int optname, char* optval, int optlen)
 {
     if (VxWorks64NetFake_SetsockoptCount < (unsigned) VXWORKS64NETFAKE_MAX_SOCKET_OPTIONS)

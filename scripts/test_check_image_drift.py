@@ -12,18 +12,23 @@ HEAD = "1234567" + "8" * 33
 OTHER = "abcdef0" + "1" * 33
 
 
-def table(cpputest="sha-1234567", freertos="sha-1234567", cross="sha-1234567"):
+def table(cpputest="sha-1234567", freertos="sha-1234567", cross="sha-1234567", clang="sha-1234567"):
     return (
         "| Image | Tag | Use |\n"
         "|---|---|---|\n"
         "| `ghcr.io/cososo-ltd/cpputest` | `" + cpputest + "` | The GCC base |\n"
-        "| `ghcr.io/cososo-ltd/cpputest-clang` | `sha-5905aea` | The Clang counterpart |\n"
+        "| `ghcr.io/cososo-ltd/cpputest-clang` | `" + clang + "` | The Clang counterpart |\n"
         "| `ghcr.io/cososo-ltd/cpputest-freertos` | `" + freertos + "` | Host-TDD |\n"
         "| `ghcr.io/cososo-ltd/cpputest-freertos-cross` | `" + cross + "` | Cross |\n"
+        "| `ghcr.io/cososo-ltd/mkdocs-mkdoxy` | `sha-34173c0` | Building the documentation site |\n"
     )
 
 
-ALL_AT_HEAD = {"cososo-ltd/CppUTestDocker": HEAD, "cososo-ltd/CppUTestFreertosDocker": HEAD}
+ALL_AT_HEAD = {
+    "cososo-ltd/CppUTestDocker": HEAD,
+    "cososo-ltd/CppUTestDockerClang": HEAD,
+    "cososo-ltd/CppUTestFreertosDocker": HEAD,
+}
 
 
 class CheckImageDriftTest(unittest.TestCase):
@@ -35,6 +40,16 @@ class CheckImageDriftTest(unittest.TestCase):
         self.assertEqual(
             [
                 "ghcr.io/cososo-ltd/cpputest is pinned at sha-1234567, but cososo-ltd/CppUTestDocker main"
+                " publishes sha-abcdef0 and no open bump pull request carries it"
+            ],
+            check_image_drift.check(table(), heads, []),
+        )
+
+    def test_the_clang_image_is_held_to_its_own_repository(self):
+        heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestDockerClang": OTHER})
+        self.assertEqual(
+            [
+                "ghcr.io/cososo-ltd/cpputest-clang is pinned at sha-1234567, but cososo-ltd/CppUTestDockerClang main"
                 " publishes sha-abcdef0 and no open bump pull request carries it"
             ],
             check_image_drift.check(table(), heads, []),
@@ -71,7 +86,7 @@ class CheckImageDriftTest(unittest.TestCase):
 
     def test_a_bump_that_also_names_an_unchecked_image_still_carries_the_rest(self):
         heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestDocker": OTHER})
-        branches = ["chore/bump-image-sha-abcdef0-cpputest-clang-cpputest"]
+        branches = ["chore/bump-image-sha-abcdef0-mkdocs-mkdoxy-cpputest"]
         self.assertEqual([], check_image_drift.check(table(), heads, branches))
 
     def test_one_repository_publishing_two_images_is_checked_for_each(self):
@@ -82,7 +97,7 @@ class CheckImageDriftTest(unittest.TestCase):
         self.assertIn("ghcr.io/cososo-ltd/cpputest-freertos-cross is pinned", problems[1])
 
     def test_an_image_whose_repository_does_not_send_the_event_is_not_checked(self):
-        self.assertNotIn("ghcr.io/cososo-ltd/cpputest-clang", check_image_drift.SOURCES)
+        self.assertNotIn("ghcr.io/cososo-ltd/mkdocs-mkdoxy", check_image_drift.SOURCES)
 
     def test_an_image_missing_from_the_table_is_reported(self):
         text = table().replace("| `ghcr.io/cososo-ltd/cpputest` | `sha-1234567` | The GCC base |\n", "")
@@ -92,7 +107,7 @@ class CheckImageDriftTest(unittest.TestCase):
         )
 
     def test_a_repository_whose_head_was_not_given_is_reported(self):
-        heads = {"cososo-ltd/CppUTestDocker": HEAD}
+        heads = {"cososo-ltd/CppUTestDocker": HEAD, "cososo-ltd/CppUTestDockerClang": HEAD}
         problems = check_image_drift.check(table(), heads, [])
         self.assertEqual(
             ["no main head given for cososo-ltd/CppUTestFreertosDocker"] * 2,
@@ -120,7 +135,7 @@ class MainTest(unittest.TestCase):
     def test_lists_the_repositories_whose_heads_it_needs(self):
         status, out, _ = self.run_main(["--repositories"])
         self.assertEqual(0, status)
-        self.assertEqual("cososo-ltd/CppUTestDocker\ncososo-ltd/CppUTestFreertosDocker\n", out)
+        self.assertEqual("cososo-ltd/CppUTestDocker\ncososo-ltd/CppUTestDockerClang\ncososo-ltd/CppUTestFreertosDocker\n", out)
 
     def test_names_the_repository_that_publishes_an_image(self):
         status, out, _ = self.run_main(["--repository-of", "cpputest-freertos-cross"])
@@ -128,15 +143,22 @@ class MainTest(unittest.TestCase):
         self.assertEqual("cososo-ltd/CppUTestFreertosDocker\n", out)
 
     def test_fails_to_name_a_repository_for_an_image_that_sends_no_event(self):
-        status, out, err = self.run_main(["--repository-of", "cpputest-clang"])
+        status, out, err = self.run_main(["--repository-of", "mkdocs-mkdoxy"])
         self.assertEqual(1, status)
         self.assertEqual("", out)
-        self.assertIn("check_image_drift: no image repository sends image-published for cpputest-clang", err)
+        self.assertIn("check_image_drift: no image repository sends image-published for mkdocs-mkdoxy", err)
 
     def test_passes_when_every_pin_is_current(self):
         self.write_table(table())
         status, out, _ = self.run_main(
-            ["--head", "cososo-ltd/CppUTestDocker=" + HEAD, "--head", "cososo-ltd/CppUTestFreertosDocker=" + HEAD]
+            [
+                "--head",
+                "cososo-ltd/CppUTestDocker=" + HEAD,
+                "--head",
+                "cososo-ltd/CppUTestDockerClang=" + HEAD,
+                "--head",
+                "cososo-ltd/CppUTestFreertosDocker=" + HEAD,
+            ]
         )
         self.assertEqual(0, status)
         self.assertIn("ghcr.io/cososo-ltd/cpputest sha-1234567", out)

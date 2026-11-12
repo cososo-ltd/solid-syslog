@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "TlsTestServer.h"
 
 #include <openssl/bio.h>
@@ -20,7 +21,7 @@ struct TlsTestServer
 
 struct TlsTestServer* TlsTestServer_Create(const struct TlsTestServerConfig* config)
 {
-    struct TlsTestServer* self = (struct TlsTestServer*) calloc(1, sizeof(struct TlsTestServer));
+    struct TlsTestServer* self = (struct TlsTestServer*) TestCalloc(sizeof(struct TlsTestServer));
 
     self->Ctx = SSL_CTX_new(TLS_server_method());
     SSL_CTX_use_certificate(self->Ctx, config->ServerCert->cert);
@@ -76,7 +77,7 @@ void TlsTestServer_Destroy(struct TlsTestServer* self)
     free(self);
 }
 
-BIO* TlsTestServer_ClientSideBio(struct TlsTestServer* self)
+BIO* TlsTestServer_ClientSideBio(const struct TlsTestServer* self)
 {
     return self->ClientBio;
 }

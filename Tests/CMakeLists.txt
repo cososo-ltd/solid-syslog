@@ -407,7 +407,7 @@ endif()
 
 # Code coverage report using lcov/genhtml.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
-# lcov and genhtml must be installed (available in both container images).
+# lcov 2 and genhtml must be installed (available in both container images).
 #
 # The report measures what `junit` runs - every registered test executable -
 # so a pack whose tests live in their own executable counts the same as one
@@ -418,22 +418,6 @@ if(COVERAGE)
     find_program(GENHTML_EXECUTABLE genhtml)
 
     if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-        # The branch-coverage switch was renamed between lcov 1.x
-        # (lcov_branch_coverage) and 2.x (branch_coverage). 1.x ignores the
-        # new key without a word, and a capture made that way holds no branch
-        # data at all. 2.x still honours the old key but deprecates it, so the
-        # key is chosen by version rather than left on the old one.
-        execute_process(
-            COMMAND ${LCOV_EXECUTABLE} --version
-            OUTPUT_VARIABLE lcov_version_text
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        if(lcov_version_text MATCHES "version 1\\.")
-            set(lcov_branch_rc --rc lcov_branch_coverage=1)
-        else()
-            set(lcov_branch_rc --rc branch_coverage=1)
-        endif()
-
         add_custom_target(coverage-zero
             COMMAND ${LCOV_EXECUTABLE} --zerocounters --directory ${CMAKE_BINARY_DIR}
             COMMENT "Zeroing coverage counters"
@@ -441,14 +425,14 @@ if(COVERAGE)
         add_dependencies(junit coverage-zero)
 
         add_custom_target(coverage
+            # Only the production sources are captured. Test sources are not
+            # measured, and lcov 2 checks every file it captures for
+            # consistency, which GCC's records of CppUTest's TEST bodies fail.
             COMMAND ${LCOV_EXECUTABLE} --capture --directory ${CMAKE_BINARY_DIR}
-                --output-file ${CMAKE_BINARY_DIR}/coverage.info
-                ${lcov_branch_rc}
-            COMMAND ${LCOV_EXECUTABLE} --extract ${CMAKE_BINARY_DIR}/coverage.info
-                "${CMAKE_SOURCE_DIR}/Core/Source/*"
-                "${CMAKE_SOURCE_DIR}/Platform/*/Source/*"
+                --include "${CMAKE_SOURCE_DIR}/Core/Source/*"
+                --include "${CMAKE_SOURCE_DIR}/Platform/*/Source/*"
                 --output-file ${CMAKE_BINARY_DIR}/coverage.filtered.info
-                ${lcov_branch_rc}
+                --rc branch_coverage=1
             # --prefix pins the report's layout to the source tree, so a pack's
             # pages are at Platform/<Pack>/Source/ and Core's at Core/Source/,
             # which is where hooks/coverage_report.py links. Without it genhtml
@@ -470,6 +454,7 @@ if(COVERAGE)
             DEPENDS junit
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Generating coverage report in build/coverage/coverage_report/"
+            VERBATIM
         )
     else()
         message(STATUS "lcov/genhtml not found — 'coverage' target unavailable (requires updated base image)")

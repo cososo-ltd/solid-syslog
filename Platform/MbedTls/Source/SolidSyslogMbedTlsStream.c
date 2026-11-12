@@ -558,6 +558,7 @@ static inline bool MbedTlsStream_LeafMatchesAPin(struct SolidSyslogMbedTlsStream
 /* A hash compiled out of Mbed TLS has no md_info, which is the Core callback's
  * "algorithm cannot be computed" and refuses the peer. */
 static bool MbedTlsStream_DigestCertificate(
+    /* cppcheck-suppress constParameterCallback -- the parameter is SolidSyslogTlsDigestFunction's, declared in Core. */
     void* context,
     enum SolidSyslogTlsHashAlgorithm algorithm,
     uint8_t* digest,

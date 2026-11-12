@@ -11,7 +11,10 @@ Fills the [AtomicCounter](../../api/structSolidSyslogAtomicCounter.md) role.
 
 A C11 compiler with `<stdatomic.h>`. Where a toolchain lacks it, the
 [capability matrix](../index.md) shows which other platforms fill
-the AtomicCounter role.
+the AtomicCounter role. The pack is tested with GNU 14.2.0 and Clang 19.1.7 in
+CI.
+<!-- tested-with: GNU 14.2.0 -->
+<!-- tested-with: Clang 19.1.7 -->
 
 ## Security behaviour and obligations
 

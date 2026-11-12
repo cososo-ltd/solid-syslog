@@ -35,6 +35,18 @@ def record(**upstreams):
     )
 
 
+def host_record(compiler_id, compiler_version, packs):
+    return json.dumps(
+        {
+            "compiler": {"id": compiler_id, "version": compiler_version, "executable": "cc"},
+            "system": {"name": "Linux", "processor": "x86_64", "crossCompiling": False},
+            "packs": packs,
+            "bddTarget": None,
+            "upstreams": {},
+        }
+    )
+
+
 MBEDTLS = {"tree": "MBEDTLS_DIR", "version": "3.6.7", "tag": "mbedtls-3.6.7", "commit": "068ff080b369adfac81509f9b57b2afabaf82dc5"}
 LITTLEFS = {"tree": "LITTLEFS_PATH", "version": "2.11", "tag": "v2.11.3", "commit": "6cb4e86540eca0d9ba62500a298385c9d863c8be"}
 PLUSFAT = {"tree": "FREERTOS_PLUS_FAT_PATH", "commit": "9ca465c3f2426c301b6b660286f3f964a2abdce5"}
@@ -136,6 +148,38 @@ class Checking(unittest.TestCase):
         code, out = self.run_check()
         self.assertEqual(code, 0, out)
         self.assertNotIn("posix", out)
+
+    def test_a_compiler_a_lane_built_the_pack_with_passes(self):
+        self.all_pages_right()
+        self.tree.lane("unit-linux-clang", host_record("Clang", "19.1.7", ["Posix"]))
+        self.tree.page("posix", "Tested with Clang 19.1.7.\n<!-- tested-with: Clang 19.1.7 -->\n")
+        code, out = self.run_check()
+        self.assertEqual(code, 0, out)
+        self.assertIn("| Posix | Clang 19.1.7 | Clang 19.1.7 |", out)
+
+    def test_a_compiler_no_lane_built_the_pack_with_fails_naming_those_that_did(self):
+        self.all_pages_right()
+        self.tree.lane("unit-linux-gcc-posix", host_record("GNU", "14.2.0", ["Posix"]))
+        self.tree.lane("unit-linux-clang", host_record("Clang", "19.1.7", ["Posix"]))
+        self.tree.page("posix", "Tested with GNU 12.2.0.\n<!-- tested-with: GNU 12.2.0 -->\n")
+        code, out = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("::error::posix/index.md: claims GNU 12.2.0, but CI built Posix with Clang 19.1.7, GNU 14.2.0", out)
+
+    def test_the_prose_must_say_what_the_tested_with_marker_says(self):
+        self.all_pages_right()
+        self.tree.lane("unit-linux-clang", host_record("Clang", "19.1.7", ["Posix"]))
+        self.tree.page("posix", "Tested with Clang 19.\n<!-- tested-with: Clang 19.1.7 -->\n")
+        code, out = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("::error::posix/index.md: the marker says Clang 19.1.7, but the page's prose does not", out)
+
+    def test_a_tested_with_marker_on_a_pack_no_lane_built_fails(self):
+        self.all_pages_right()
+        self.tree.page("posix", "Tested with GNU 14.2.0.\n<!-- tested-with: GNU 14.2.0 -->\n")
+        code, out = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("::error::posix/index.md: claims GNU 14.2.0, but no lane built Posix", out)
 
     def test_no_record_at_all_is_a_missing_input_not_a_stale_page(self):
         self.all_pages_right()

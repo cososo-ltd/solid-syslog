@@ -4,6 +4,7 @@
  * servers pin it: its request/response cadence keeps a refusal synchronous, so
  * the worker sees the client close and exits rather than blocking in recv
  * after a one-flight server hello. */
+#include "TestCalloc.h"
 #include "WolfSslTestServer.h"
 
 #ifndef WOLFSSL_USER_SETTINGS
@@ -39,7 +40,7 @@ static void Join(struct WolfSslTestServer* self);
 
 struct WolfSslTestServer* WolfSslTestServer_Create(const struct WolfSslTestServerConfig* config)
 {
-    struct WolfSslTestServer* self = (struct WolfSslTestServer*) calloc(1U, sizeof(struct WolfSslTestServer));
+    struct WolfSslTestServer* self = (struct WolfSslTestServer*) TestCalloc(sizeof(struct WolfSslTestServer));
     self->Fd = config->ServerFd;
     self->Context = wolfSSL_CTX_new(wolfTLSv1_2_server_method());
     (void) wolfSSL_CTX_use_certificate_chain_file(self->Context, config->CertificatePath);

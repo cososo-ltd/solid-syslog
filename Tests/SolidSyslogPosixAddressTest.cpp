@@ -164,7 +164,7 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfUnknownHandleDoesNotLock)
     ConfigLockFake_Install();
     char stranger = 0;
 
-    SolidSyslogPosixAddress_Destroy((struct SolidSyslogAddress*) &stranger);
+    SolidSyslogPosixAddress_Destroy(reinterpret_cast<struct SolidSyslogAddress*>(&stranger));
 
     CALLED_FAKE(ConfigLockFake_Lock, NEVER);
     CALLED_FAKE(ConfigLockFake_Unlock, NEVER);
@@ -175,7 +175,7 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfUnknownHandleReportsWarning)
     ErrorHandlerFake_Install(nullptr);
     char stranger = 0;
 
-    SolidSyslogPosixAddress_Destroy((struct SolidSyslogAddress*) &stranger);
+    SolidSyslogPosixAddress_Destroy(reinterpret_cast<struct SolidSyslogAddress*>(&stranger));
 
     CHECK_ERROR_REPORTED_ONCE(
         SOLIDSYSLOG_SEVERITY_WARNING,

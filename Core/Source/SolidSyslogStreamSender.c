@@ -51,7 +51,7 @@ static inline bool StreamSender_ConfigurationMoved(
     uint32_t streamVersion
 );
 static inline bool StreamSender_EnsureConnected(struct SolidSyslogStreamSender* self);
-static inline bool StreamSender_Connected(struct SolidSyslogStreamSender* self);
+static inline bool StreamSender_Connected(const struct SolidSyslogStreamSender* self);
 static bool StreamSender_Connect(struct SolidSyslogStreamSender* self);
 static bool StreamSender_ResolveDestination(struct SolidSyslogStreamSender* self, struct SolidSyslogAddress* addr);
 static inline void StreamSender_CloseStream(struct SolidSyslogStreamSender* self);
@@ -146,7 +146,7 @@ static inline bool StreamSender_EnsureConnected(struct SolidSyslogStreamSender* 
     return StreamSender_Connected(self) || StreamSender_Connect(self);
 }
 
-static inline bool StreamSender_Connected(struct SolidSyslogStreamSender* self)
+static inline bool StreamSender_Connected(const struct SolidSyslogStreamSender* self)
 {
     return self->Connected;
 }

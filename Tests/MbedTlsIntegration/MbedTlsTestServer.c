@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "MbedTlsTestServer.h"
 
 #include <mbedtls/ctr_drbg.h>
@@ -32,7 +33,7 @@ static int ServerBioRecv(void* ctx, unsigned char* buf, size_t len);
 
 struct MbedTlsTestServer* MbedTlsTestServer_Create(const struct MbedTlsTestServerConfig* config)
 {
-    struct MbedTlsTestServer* self = (struct MbedTlsTestServer*) calloc(1U, sizeof(struct MbedTlsTestServer));
+    struct MbedTlsTestServer* self = (struct MbedTlsTestServer*) TestCalloc(sizeof(struct MbedTlsTestServer));
     self->Fd = config->ServerFd;
 
     mbedtls_ssl_config_init(&self->SslConfig);

@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "SenderFake.h"
 
 #include <stdlib.h>
@@ -47,7 +48,7 @@ static void Disconnect(struct SolidSyslogSender* self)
 
 struct SolidSyslogSender* SenderFake_Create(void)
 {
-    struct SenderFake* fake = (struct SenderFake*) calloc(1, sizeof(struct SenderFake));
+    struct SenderFake* fake = (struct SenderFake*) TestCalloc(sizeof(struct SenderFake));
     fake->Base.Send = Send;
     fake->Base.Disconnect = Disconnect;
     return &fake->Base;
