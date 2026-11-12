@@ -60,6 +60,21 @@ class NamesAnAnonymousEnumAsSuch(unittest.TestCase):
         out = render("### enum " + self.HASHED + " \n", "api/SolidSyslogEndpoint_8h.md")
         self.assertEqual(out, "### enum { #enum-solidsyslogendpoint_8h_1a99fb83031ce9923c84392b4e92f956b5 }\n")
 
+    def test_its_declaration_is_written_as_the_anonymous_enum_it_is(self):
+        page = "```C++\nenum SolidSyslogEndpoint_8h_1a99fb83031ce9923c84392b4e92f956b5 {\n    SOLIDSYSLOG_MAX_HOST_SIZE = 256\n};\n```\n"
+        out = render(page, "api/SolidSyslogEndpoint_8h.md")
+        self.assertIn("```C++\nenum {\n", out)
+
+    def test_its_summary_entry_reads_anonymous_and_still_links_to_it(self):
+        row = "| enum  | [**" + self.HASHED + "**](#enum-solidsyslogendpoint_8h_1a99fb83031ce9923c84392b4e92f956b5)  <br> |\n"
+        out = render(row, "api/SolidSyslogEndpoint_8h.md")
+        self.assertEqual(out, "| enum  | [**(anonymous)**](#enum-solidsyslogendpoint_8h_1a99fb83031ce9923c84392b4e92f956b5)  <br> |\n")
+
+    def test_its_entry_in_the_members_index_reads_anonymous_enum(self):
+        entry = "* **" + self.HASHED + "** ([**SolidSyslogEndpoint.h**](SolidSyslogEndpoint_8h.md))\n"
+        out = render(entry, "api/variables.md")
+        self.assertEqual(out, "* **(anonymous enum)** ([**SolidSyslogEndpoint.h**](SolidSyslogEndpoint_8h.md))\n")
+
 
 class KeepsTheAnchorTheHeadingHad(unittest.TestCase):
     """Links point at these anchors from inside the site and outside it."""

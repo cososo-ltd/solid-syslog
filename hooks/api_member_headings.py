@@ -22,8 +22,10 @@ An anonymous enum keeps its kind, because it has no name to stand alone.
 Doxygen 1.9.4 names one ``@0``, and a heading reading ``@0`` is worse than one
 reading ``enum @0``, so that form is left as it is. Doxygen 1.9.8 names it by
 its internal id instead - ``SolidSyslogEndpoint_8h_1a99fb...`` - which reads as
-noise wherever it appears, so the heading becomes plain ``enum``, keeping the
-anchor the id gave it.
+noise wherever it appears: the heading becomes plain ``enum``, keeping the
+anchor the id gave it, the declaration is written ``enum {`` as the source
+writes it, the page's summary entry reads ``(anonymous)``, and the members
+index, which lists every kind together, reads ``(anonymous enum)``.
 """
 
 import os
@@ -47,6 +49,9 @@ MEMBER_HEADING = re.compile(
 HASHED_NAME = r"\w+?\\?_8h\\?_1a[0-9a-f]{32}"
 
 HASHED_ENUM_HEADING = re.compile(r"^### enum (?P<name>" + HASHED_NAME + r")[ \t]*$", re.MULTILINE)
+HASHED_ENUM_DECLARATION = re.compile(r"^enum " + HASHED_NAME + r" \{$", re.MULTILINE)
+HASHED_ENUM_SUMMARY = re.compile(r"\[\*\*" + HASHED_NAME + r"\*\*\]")
+HASHED_ENUM_INDEX_ENTRY = re.compile(r"^\* \*\*" + HASHED_NAME + r"\*\* ", re.MULTILINE)
 
 GENERATED_PREFIX = "api/"
 
@@ -67,4 +72,7 @@ def on_page_markdown(markdown, page, config, files, **kwargs):
     if not src.startswith(GENERATED_PREFIX):
         return markdown
     markdown = HASHED_ENUM_HEADING.sub(_retitle_hashed_enum, markdown)
+    markdown = HASHED_ENUM_DECLARATION.sub("enum {", markdown)
+    markdown = HASHED_ENUM_SUMMARY.sub("[**(anonymous)**]", markdown)
+    markdown = HASHED_ENUM_INDEX_ENTRY.sub("* **(anonymous enum)** ", markdown)
     return MEMBER_HEADING.sub(_retitle, markdown)
