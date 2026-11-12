@@ -15,7 +15,7 @@
 #include "SolidSyslogStructuredDataDefinition.h"
 
 static void EventSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element);
-static inline const struct SolidSyslogEventSd* EventSd_SelfFromBase(struct SolidSyslogStructuredData* base);
+static inline const struct SolidSyslogEventSd* EventSd_SelfFromBase(const struct SolidSyslogStructuredData* base);
 static inline bool EventSd_HasSourceName(const struct SolidSyslogErrorEvent* event);
 static inline void EventSd_Detail(struct SolidSyslogSdValue* value, const struct SolidSyslogErrorEvent* event);
 static inline void EventSd_Int32(struct SolidSyslogSdValue* value, int32_t number);
@@ -55,7 +55,7 @@ static void EventSd_Format(struct SolidSyslogStructuredData* base, struct SolidS
     SolidSyslogSdElement_End(element);
 }
 
-static inline const struct SolidSyslogEventSd* EventSd_SelfFromBase(struct SolidSyslogStructuredData* base)
+static inline const struct SolidSyslogEventSd* EventSd_SelfFromBase(const struct SolidSyslogStructuredData* base)
 {
     return (const struct SolidSyslogEventSd*) base;
 }

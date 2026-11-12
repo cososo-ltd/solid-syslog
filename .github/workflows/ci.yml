@@ -1170,6 +1170,8 @@ jobs:
           --enable=warning,style,performance,portability
           --suppress=missingIncludeSystem
           --suppressions-list=cppcheck_suppressions_tests.txt
+          --suppressions-list=cppcheck_suppressions.txt
+          --check-level=exhaustive
           --inline-suppr
           --std=c11
           -DLWIP_DNS=1
