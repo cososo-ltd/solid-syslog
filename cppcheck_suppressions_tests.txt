@@ -21,12 +21,13 @@
 # fields are accessed across setup, teardown, and TEST() bodies via
 # implicit `this` from the macros. cppcheck's data-flow model does not
 # see these expansions, so any field-typed TEST_GROUP member appears
-# `unreadVariable`, the assignments appear to leave `constVariable`-eligible
+# `unusedVariable` or `unreadVariable`, the assignments appear to leave `constVariable`-eligible
 # variables, branches read from helper fixtures look `knownConditionTrueFalse`,
 # and the macro-expanded CALLED_* multiplicity macros generate spurious
 # `constVariablePointer` findings. The signal-to-noise of these rules in
 # test code is poor enough to disable tree-wide for Tests/*.
 unreadVariable:*Tests/*
+unusedVariable:*Tests/*
 variableScope:*Tests/*
 constVariable:*Tests/*
 knownConditionTrueFalse:*Tests/*

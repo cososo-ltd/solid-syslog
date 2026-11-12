@@ -30,6 +30,7 @@ struct SolidSyslogStructuredData* SolidSyslogEventSd_Initialise(
     return &self->Base;
 }
 
+/* cppcheck-suppress constParameterCallback -- the signature is the StructuredData vtable's Format. */
 static void EventSd_Format(struct SolidSyslogStructuredData* base, struct SolidSyslogSdElement* element)
 {
     /* The element's SD-ID is solidsyslog@67478: a private name under the IANA

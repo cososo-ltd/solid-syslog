@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "DiscardPolicyAnswer.h"
 #include "BufferFake.h"
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
@@ -343,11 +344,6 @@ static enum SolidSyslogDiscardPolicy AnswersHalt(void* context)
     return SOLIDSYSLOG_DISCARD_POLICY_HALT;
 }
 
-static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
-{
-    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
-}
-
 static int bufferFullHaltCount;
 
 /* The ring reports its own evictions under the same category, so Service's
@@ -616,6 +612,7 @@ static void NoteThresholdCrossed(void* context)
     thresholdOrder = ++nextOrder;
 }
 
+// cppcheck-suppress constParameterCallback -- the signature is the store config's GetCapacityThreshold.
 static size_t WholeStore(void* context)
 {
     return *static_cast<const size_t*>(context);

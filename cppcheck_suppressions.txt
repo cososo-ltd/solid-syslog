@@ -1,18 +1,17 @@
-# Non-MISRA cppcheck suppressions in production code.
+# Non-MISRA cppcheck suppressions that no single site can carry.
 # -
-# Companion to cppcheck_suppressions_tests.txt, which holds the test-only
-# ones, and misra_suppressions.txt, which holds the MISRA ones. Each entry
-# here is a finding the design answers, so the reason is stated once beside
-# it rather than inline at every site.
+# A finding at one site is suppressed inline, beside its reason. This list is
+# for the two cases an inline comment cannot serve: a finding the architecture
+# repeats in every class, and a finding inside a vendor header. The test-only
+# entries are in cppcheck_suppressions_tests.txt, the MISRA ones in
+# misra_suppressions.txt.
 # -
 # Format: <rule>:<file-glob>[:line]. cppcheck accepts * and ? in <file-glob>.
-# A line-specific entry fails loudly when its line moves, which is the point:
-# it cannot drift onto code it was not written for.
 
 # -----------------------------------------------------------------------
 # A pool handle is never const
 # -----------------------------------------------------------------------
-# Every <Class>_Destroy, and the internal sub-component Destroys, live in the
+# Every <Class>_Destroy, and every internal sub-component's, is in the
 # class's *Static.c, the pool's half of the three-TU split. Destroy only turns
 # the handle into a pool index, so cppcheck sees a parameter it could make
 # const. Destroying through a const pointer would misstate the call, and the
@@ -20,27 +19,8 @@
 constParameterPointer:*/Source/*Static.c
 
 # -----------------------------------------------------------------------
-# Accessors that hand back writable storage
+# Vendor headers
 # -----------------------------------------------------------------------
-# Each returns a pointer member for the caller to write through. A const
-# parameter would compile, but would say the call cannot lead to a write.
-constParameterPointer:*Core/Source/SolidSyslogFormatter.c:548
-constParameterPointer:*Core/Source/SolidSyslogRecordStore.c:42
-
-# -----------------------------------------------------------------------
-# Signatures a callback type fixes
-# -----------------------------------------------------------------------
-# Each is a function installed through a pointer whose type is declared
-# elsewhere - a role's vtable or a Core callback type - and only reads what
-# that type passes as mutable.
-constParameterCallback:*Core/Source/SolidSyslogEventSd.c:33
-constParameterCallback:*Platform/OpenSsl/Source/SolidSyslogOpenSslStream.c:702
-
-# -----------------------------------------------------------------------
-# Read before the slot is released
-# -----------------------------------------------------------------------
-# The inner pool pointers are taken out of the slot before FreeIfInUse runs
-# the cleanup callback, as the comment at the site says. Narrowing their scope
-# into the branch that uses them would move the read after it.
-variableScope:*Core/Source/SolidSyslogBlockStoreStatic.c:227
-variableScope:*Core/Source/SolidSyslogBlockStoreStatic.c:228
+# An inline function in wolfSSL's own header casts, and is seen by every
+# translation unit that includes it.
+cstyleCast:*wolfssl/wolfcrypt/wc_port.h

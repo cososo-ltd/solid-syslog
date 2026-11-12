@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "StreamFake.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogPrival.h"
@@ -221,7 +222,7 @@ static void Close(struct SolidSyslogStream* self)
 
 struct SolidSyslogStream* StreamFake_Create(void)
 {
-    struct StreamFake* fake = (struct StreamFake*) calloc(1, sizeof(struct StreamFake));
+    struct StreamFake* fake = (struct StreamFake*) TestCalloc(sizeof(struct StreamFake));
     fake->Base.Open = Open;
     fake->Base.Send = Send;
     fake->Base.Read = Read;

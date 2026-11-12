@@ -136,7 +136,7 @@ static void WindowsFile_Close(struct SolidSyslogFile* base)
 
 static bool WindowsFile_IsOpen(struct SolidSyslogFile* base)
 {
-    struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
+    const struct SolidSyslogWindowsFile* self = WindowsFile_SelfFromBase(base);
     return self->Fd != INVALID_FD;
 }
 

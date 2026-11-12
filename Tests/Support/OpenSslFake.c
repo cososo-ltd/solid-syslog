@@ -1196,6 +1196,7 @@ void SSL_set_bio(SSL* ssl, BIO* rbio, BIO* wbio)
 /* SSL_set_tlsext_host_name is a macro forwarding to SSL_ctrl; fake intercepts
  * the SET_TLSEXT_HOSTNAME command and captures the hostname pointer. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- signature fixed by OpenSSL API
+// cppcheck-suppress constParameterPointer -- the signature is OpenSSL's, which this fakes.
 long SSL_ctrl(SSL* ssl, int cmd, long larg, void* parg)
 {
     (void) larg;

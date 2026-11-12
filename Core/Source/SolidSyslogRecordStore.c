@@ -39,6 +39,7 @@ enum
  * record's base so the field offsets are stated in one place each. The same
  * chaining shapes the block-offset helpers below. */
 
+/* cppcheck-suppress constParameterPointer -- hands back the storage for the caller to write through. */
 static inline uint8_t* RecordStore_MagicAddress(struct SolidSyslogRecordStore* recordStore)
 {
     return recordStore->Buffer;

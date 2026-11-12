@@ -60,6 +60,7 @@ static size_t testKeyLength = TEST_KEY_SIZE;
  * every seal and verify; expectedTagFor() mirrors it so tests can predict the
  * fake's deterministic tag. `context` points at a bool the test can clear to
  * simulate the key being unavailable (GetKey returns false). */
+// cppcheck-suppress constParameterCallback -- the signature is SolidSyslogKeyFunction's.
 static bool TestGetKey(void* context, uint8_t* keyOut, size_t capacity, size_t* keyLengthOut)
 {
     lastGetKeyBuffer = keyOut;

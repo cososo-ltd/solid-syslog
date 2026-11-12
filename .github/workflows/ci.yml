@@ -1250,6 +1250,11 @@ jobs:
       # as a VLA (18.8). Core/Source is on the path for the same reason: a
       # platform pack that puts SolidSyslogFormatter storage on the stack
       # sizes it with a macro from Core/Source/SolidSyslogFormatter.h.
+      # misra-config is suppressed for the same reason the vendor constants
+      # are defined: with no system or vendor header on the path, an identifier
+      # they declare (EMSGSIZE, memory_order_relaxed) is unknown, and Cppcheck
+      # 2.17 reports each one as incomplete configuration. It was as blind to
+      # them before, without saying so.
       # KEEP_PEER_CERT picks which of the wolfSSL stream's anchored-pin bodies
       # is scanned: with no wolfSSL header on the path no flag is defined, and
       # only the refused body would be seen. The after-handshake body calls
@@ -1263,7 +1268,11 @@ jobs:
           mkdir -p build/cppcheck-misra
           cppcheck \
             --addon=misra \
+            --enable=style \
             --suppressions-list=misra_suppressions.txt \
+            --suppressions-list=cppcheck_suppressions.txt \
+            --suppress=misra-config \
+            --check-level=exhaustive \
             --error-exitcode=1 \
             --inline-suppr \
             --std=c11 \
@@ -1329,7 +1338,11 @@ jobs:
           mkdir -p build/cppcheck-misra
           cppcheck \
             --addon=misra \
+            --enable=style \
             --suppressions-list=misra_suppressions.txt \
+            --suppressions-list=cppcheck_suppressions.txt \
+            --suppress=misra-config \
+            --check-level=exhaustive \
             --error-exitcode=1 \
             --inline-suppr \
             --std=c11 \

@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "BioPairStream.h"
 
 #include <openssl/bio.h>
@@ -33,7 +34,7 @@ static uint32_t Version(struct SolidSyslogStream* self);
 
 struct SolidSyslogStream* BioPairStream_Create(BIO* bio)
 {
-    struct BioPairStream* stream = (struct BioPairStream*) calloc(1, sizeof(struct BioPairStream));
+    struct BioPairStream* stream = (struct BioPairStream*) TestCalloc(sizeof(struct BioPairStream));
     stream->Base.Open = Open;
     stream->Base.Send = Send;
     stream->Base.Read = Read;

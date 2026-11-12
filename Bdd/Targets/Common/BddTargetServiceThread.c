@@ -10,7 +10,7 @@ enum
 
 static uint32_t BddTargetServiceThread_YieldFor(enum SolidSyslogServiceStatus status);
 
-// cppcheck-suppress constParameter -- volatile bool written by another thread; const would be incorrect
+// cppcheck-suppress constParameterPointer -- volatile bool written by another thread; const would be incorrect
 // NOLINTNEXTLINE(readability-non-const-parameter) -- volatile bool written by another thread; const would be incorrect
 void BddTargetServiceThread_Run(struct SolidSyslog* handle, volatile bool* shutdown, SolidSyslogSleepFunction sleep)
 {
