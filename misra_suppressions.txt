@@ -75,7 +75,7 @@ misra-c2012-11.3:Platform/PlusTcp/Source/SolidSyslogPlusTcpTcpStream.c:147
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:216
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHandleCredentials.c:62
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsPemBufferCredentials.c:80
-misra-c2012-11.3:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:236
+misra-c2012-11.3:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:239
 misra-c2012-11.3:Platform/WolfSsl/Source/SolidSyslogWolfSslPemBufferCredentials.c:73
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsHmacSha256Policy.c:92
 misra-c2012-11.3:Platform/MbedTls/Source/SolidSyslogMbedTlsAesGcmPolicy.c:87
@@ -121,9 +121,9 @@ misra-c2012-11.5:Platform/LwipRaw/Source/SolidSyslogLwipRawTcpStream.c:195
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:495
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:884
 misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:896
-misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:753
-misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1072
-misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1079
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:756
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1075
+misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1082
 misra-c2012-11.5:Core/Source/SolidSyslog.c:808
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)

@@ -123,7 +123,10 @@ static inline bool WolfSslStream_IsPinCheckedHere(
     const struct SolidSyslogWolfSslStream* self,
     const WOLFSSL_X509_STORE_CTX* store
 );
-static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, const WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_LeafMatchesAPin(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
 static bool WolfSslStream_DigestCertificate(
     void* context,
     enum SolidSyslogTlsHashAlgorithm algorithm,
