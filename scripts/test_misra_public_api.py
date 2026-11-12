@@ -70,6 +70,15 @@ class Filtering(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(out.getvalue(), "")
 
+    def test_the_command_fails_on_a_finding_that_is_not_misra(self):
+        crash = "Core/Source/SolidSyslogThing.c:0:0: error: Bailing out from analysis: Failed to execute addon 'misra' [internalError]"
+        self.tree.write("cppcheck-misra.log", f"Checking Core/Source/SolidSyslogThing.c ...\n{crash}\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = misra_public_api.main([os.path.join(self.tree.root.name, "cppcheck-misra.log"), "--root", self.tree.root.name])
+        self.assertEqual(code, 1)
+        self.assertEqual(out.getvalue(), crash + "\n")
+
 
 if __name__ == "__main__":
     unittest.main()
