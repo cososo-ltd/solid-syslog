@@ -199,6 +199,7 @@ struct DOS_VOLUME_DESC
 static struct DOS_VOLUME_DESC VxWorks64FsFake_DosFsVolume;
 
 /* A descriptor only for a volume dosFs owns; NULL, as for HRFS or rawFs, else. */
+// cppcheck-suppress constParameterPointer -- the signature is VxWorks', which this fakes.
 DOS_VOLUME_DESC_ID dosFsVolDescGet(void* pDevNameOrPVolDesc, u_char** ppTail)
 {
     VxWorks64FsFake_VolDescGets++;

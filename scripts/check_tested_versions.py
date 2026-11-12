@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hold each platform page's "tested against" claim to what CI built.
+"""Hold each platform page's "tested against" and "tested with" claims to what CI built.
 
 SUPPORT.md defines supported as built and tested in CI against the version a
 pack's page names. Every lane's configure records what it compiled against -
@@ -24,8 +24,18 @@ is named. The rules:
 * The page's prose says what the marker says, so the sentence a reader sees
   cannot drift from the value the check reads.
 
-A pack with no upstream - the host packs - needs no marker. A platform is
-found by its registry token lower-cased, as the docs folders are named.
+A pack with no upstream - the host packs - needs no marker. It may instead say
+which compilers it is tested with, held to the compiler each lane records:
+
+    <!-- tested-with: GNU 14.2.0 -->
+
+* Every such marker names the compiler id and version of some lane that
+  selected the pack.
+* The page's prose says what the marker says.
+
+Nothing requires one: a compiler moves with the image or the runner, so a page
+that makes no claim cannot go stale. A platform is found by its registry token
+lower-cased, as the docs folders are named.
 
 Run:  python3 scripts/check_tested_versions.py build/junit
 
@@ -45,6 +55,7 @@ import junit_report as model  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MARKER = re.compile(r"<!--\s*tested-against:\s*([^\s>]+)\s*-->")
+COMPILER_MARKER = re.compile(r"<!--\s*tested-with:\s*([^>]*?)\s*-->")
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
@@ -53,6 +64,19 @@ def read_claims(page_path):
     with open(page_path, encoding="utf-8") as handle:
         text = handle.read()
     return MARKER.findall(text), COMMENT.sub("", text)
+
+
+def recorded_compilers(run):
+    """Every compiler any lane built each pack with, by pack, each kept once."""
+    by_pack = {}
+    for lane in run.lanes.values():
+        if lane.versions is None:
+            continue
+        for pack in lane.versions.packs:
+            seen = by_pack.setdefault(pack, [])
+            if lane.versions.compiler not in seen:
+                seen.append(lane.versions.compiler)
+    return by_pack
 
 
 def recorded_upstreams(run):
@@ -125,8 +149,33 @@ def check(tokens, recorded, docs_dir):
     return failures, rows
 
 
+def check_compilers(tokens, compilers, docs_dir):
+    """The tested-with rules. Returns (failures, summary rows)."""
+    failures = []
+    rows = []
+    for token in tokens:
+        page = os.path.join(docs_dir, token.lower(), "index.md")
+        if not os.path.exists(page):
+            continue
+        with open(page, encoding="utf-8") as handle:
+            text = handle.read()
+        claims = COMPILER_MARKER.findall(text)
+        prose = COMMENT.sub("", text)
+        built = sorted(compilers.get(token, []))
+        for claim in claims:
+            if not built:
+                failures.append(f"{token.lower()}/index.md: claims {claim}, but no lane built {token}")
+            elif claim not in built:
+                failures.append(f"{token.lower()}/index.md: claims {claim}, but CI built {token} with {', '.join(built)}")
+            if claim not in prose:
+                failures.append(f"{token.lower()}/index.md: the marker says {claim}, but the page's prose does not")
+        if claims:
+            rows.append((token, ", ".join(claims), ", ".join(built) or "-"))
+    return failures, rows
+
+
 def summary(rows):
-    lines = ["| Pack | Page claims | CI built against |", "|---|---|---|"]
+    lines = ["| Pack | Page claims | CI built against or with |", "|---|---|---|"]
     lines.extend(f"| {token} | {claimed} | {built} |" for token, claimed, built in rows)
     return "\n".join(lines) + "\n"
 
@@ -147,6 +196,9 @@ def main(argv=None):
         return 2
 
     failures, rows = check(tokens, recorded, arguments.docs)
+    compiler_failures, compiler_rows = check_compilers(tokens, recorded_compilers(run), arguments.docs)
+    failures += compiler_failures
+    rows += compiler_rows
     text = summary(rows)
     print(text)
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY")

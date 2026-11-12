@@ -31,7 +31,7 @@ void ClockFake_SetClockGettimeReturn(int returnValue)
     clockGettimeReturn = returnValue;
 }
 
-// cppcheck-suppress constParameter -- API allows NULL to signal failure; const would be misleading
+// cppcheck-suppress constParameterPointer -- API allows NULL to signal failure; const would be misleading
 void ClockFake_SetGmtimeReturn(struct tm* returnValue)
 {
     gmtimeFailure = (returnValue == NULL) ? 1 : 0;

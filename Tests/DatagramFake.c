@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "DatagramFake.h"
 
 #include <stdlib.h>
@@ -35,7 +36,7 @@ static void Close(struct SolidSyslogDatagram* self);
 
 struct SolidSyslogDatagram* DatagramFake_Create(void)
 {
-    struct DatagramFake* fake = (struct DatagramFake*) calloc(1, sizeof(struct DatagramFake));
+    struct DatagramFake* fake = (struct DatagramFake*) TestCalloc(sizeof(struct DatagramFake));
     fake->Base.Open = Open;
     fake->Base.SendTo = SendTo;
     fake->Base.MaxPayload = MaxPayload;

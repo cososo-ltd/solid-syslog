@@ -67,6 +67,7 @@ void SolidSyslogFreeRtosMutex_Cleanup(struct SolidSyslogMutex* base)
     *base = *SolidSyslogNullMutex_Get();
 }
 
+/* cppcheck-suppress constParameterPointer -- hands back the storage as a handle the kernel writes through. */
 static inline SemaphoreHandle_t FreeRtosMutex_AsHandle(struct SolidSyslogFreeRtosMutex* self)
 {
     return (SemaphoreHandle_t) &self->Buffer;

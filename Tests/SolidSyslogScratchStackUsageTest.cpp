@@ -4,6 +4,7 @@
    to its own fake stack, which would hide the very frame being measured. */
 #include <pthread.h>
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <stddef.h>
 #include <stdint.h>
@@ -33,13 +34,41 @@ constexpr size_t EXPECTED_SAVING = (MESSAGE_BYTES * 8U) / 10U;
 alignas(4096) uint8_t threadStack[THREAD_STACK_BYTES];
 /* Longer than the buffer, so the whole of it is written on every run. */
 char longMessage[SOLIDSYSLOG_MAX_MESSAGE_SIZE * 2U];
+size_t bytesDisturbedByLog = 0U;
+constexpr size_t REPAINT_MARGIN = 128U;
 
+void RepaintBelowHere();
+size_t BytesDisturbed();
+
+/* The C library's thread start and exit run on the same stack and can reach
+   deeper than Log does, so the stack below this frame is painted afresh before
+   Log runs and read as soon as it returns. */
 void* LogOnce(void* handle)
 {
     SolidSyslogMessage message =
         {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, longMessage};
+    RepaintBelowHere();
     SolidSyslog_Log(static_cast<struct SolidSyslog*>(handle), &message);
+    bytesDisturbedByLog = BytesDisturbed();
     return nullptr;
+}
+
+/* Paints up to this function's own frame, less a margin for the call to
+   memset doing the painting, so no live frame is overwritten. */
+void RepaintBelowHere()
+{
+    size_t below = 0U;
+    const void* frame = &below;
+    const uint8_t* end = std::find_if(
+        std::begin(threadStack),
+        std::end(threadStack),
+        [frame](const uint8_t& byte) { return !std::less<>()(&byte, frame); }
+    );
+    below = static_cast<size_t>(std::distance(std::cbegin(threadStack), end));
+    if (below > REPAINT_MARGIN)
+    {
+        memset(threadStack, PAINT, below - REPAINT_MARGIN);
+    }
 }
 
 /* The stack grows down from the top of the array, so the deepest point reached
@@ -105,7 +134,7 @@ TEST_GROUP(SolidSyslogScratchStackUsage)
         LogOnThePaintedStack(solidSyslog);
 
         SolidSyslog_Destroy(solidSyslog);
-        return BytesDisturbed();
+        return bytesDisturbedByLog;
     }
 };
 

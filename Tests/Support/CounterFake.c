@@ -1,3 +1,4 @@
+#include "TestCalloc.h"
 #include "CounterFake.h"
 
 #include <stdint.h>
@@ -20,7 +21,7 @@ static uint32_t Increment(struct SolidSyslogAtomicCounter* base)
 
 struct SolidSyslogAtomicCounter* CounterFake_Create(void)
 {
-    struct CounterFake* fake = (struct CounterFake*) calloc(1, sizeof(struct CounterFake));
+    struct CounterFake* fake = (struct CounterFake*) TestCalloc(sizeof(struct CounterFake));
     fake->Base.Increment = Increment;
     return &fake->Base;
 }

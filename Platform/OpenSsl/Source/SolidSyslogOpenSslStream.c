@@ -699,6 +699,7 @@ static inline bool OpenSslStream_LeafMatchesAPin(struct SolidSyslogOpenSslStream
 }
 
 static bool OpenSslStream_DigestCertificate(
+    /* cppcheck-suppress constParameterCallback -- the parameter is SolidSyslogTlsDigestFunction's, declared in Core. */
     void* context,
     enum SolidSyslogTlsHashAlgorithm algorithm,
     uint8_t* digest,

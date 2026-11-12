@@ -224,7 +224,9 @@ void SolidSyslogBlockStore_Destroy(struct SolidSyslogStore* base)
          * BlockSequence pointers stay in the slot. After the outer FreeIfInUse
          * releases the ConfigLock we destroy the inner slots - keeps each pool's
          * lock acquisition sequential rather than nested. */
+        /* cppcheck-suppress variableScope -- read here, before FreeIfInUse, as the comment above says. */
         struct SolidSyslogRecordStore* recordStore = BlockStore_Pool[index].RecordStore;
+        /* cppcheck-suppress variableScope -- as above. */
         struct SolidSyslogBlockSequence* blockSequence = BlockStore_Pool[index].BlockSequence;
 
         released = SolidSyslogPoolAllocator_FreeIfInUse(&BlockStore_Allocator, index, BlockStore_CleanupAtIndex, NULL);

@@ -35,6 +35,7 @@ struct IntegrationProfileValues
     const char* CipherList;
 };
 
+// cppcheck-suppress constParameterCallback -- the signature is the OpenSSL stream's profile callback.
 static void IntegrationProfile(struct SolidSyslogOpenSslProfile* profile, void* context)
 {
     const auto* values = static_cast<const struct IntegrationProfileValues*>(context);

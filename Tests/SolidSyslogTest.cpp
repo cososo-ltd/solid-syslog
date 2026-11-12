@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 
+#include "DiscardPolicyAnswer.h"
 #include "BufferFake.h"
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
@@ -1277,11 +1278,6 @@ TEST(SolidSyslogServiceEagerDrain, StoredMessagesDrainInFifoOrderAcrossTicks)
     SolidSyslog_Service(solidSyslog);
     STRCMP_EQUAL("m3", SenderFake_LastBufferAsString(fakeSender));
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, THRICE);
-}
-
-static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
-{
-    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
 }
 
 /* A retaining store that refuses a record while the policy answers HALT:

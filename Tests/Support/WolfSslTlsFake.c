@@ -1088,6 +1088,7 @@ WOLFSSL_X509* wolfSSL_get_peer_certificate(WOLFSSL* ssl)
     return getPeerCertificateReturnsNull ? NULL : WolfSslTlsFake_PeerCertificate();
 }
 
+// cppcheck-suppress constParameterPointer -- the signature is wolfSSL's, which this fakes.
 const byte* wolfSSL_X509_get_der(WOLFSSL_X509* x509, int* outSz)
 {
     const byte* der = NULL;

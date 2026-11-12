@@ -304,7 +304,7 @@ adjust those by hand.
   merge, and the budget is short on purpose
 - Windows MSVC + BDD + integration: depend on tools you may not have
 - `docs-build`'s check of the platform pages' `<!-- tested-against: ... -->`
-  markers: it reads the version record every lane uploads beside its JUnit
+  and `<!-- tested-with: ... -->` markers: it reads the version record every lane uploads beside its JUnit
   results, so it needs a run's artifacts. To reproduce a failure, download them
   and run the check over the directory:
 

@@ -1,0 +1,26 @@
+# Non-MISRA cppcheck suppressions that no single site can carry.
+# -
+# A finding at one site is suppressed inline, beside its reason. This list is
+# for the two cases an inline comment cannot serve: a finding the architecture
+# repeats in every class, and a finding inside a vendor header. The test-only
+# entries are in cppcheck_suppressions_tests.txt, the MISRA ones in
+# misra_suppressions.txt.
+# -
+# Format: <rule>:<file-glob>[:line]. cppcheck accepts * and ? in <file-glob>.
+
+# -----------------------------------------------------------------------
+# A pool handle is never const
+# -----------------------------------------------------------------------
+# Every <Class>_Destroy, and every internal sub-component's, is in the
+# class's *Static.c, the pool's half of the three-TU split. Destroy only turns
+# the handle into a pool index, so cppcheck sees a parameter it could make
+# const. Destroying through a const pointer would misstate the call, and the
+# public ones are API.
+constParameterPointer:*/Source/*Static.c
+
+# -----------------------------------------------------------------------
+# Vendor headers
+# -----------------------------------------------------------------------
+# An inline function in wolfSSL's own header casts, and is seen by every
+# translation unit that includes it.
+cstyleCast:*wolfssl/wolfcrypt/wc_port.h

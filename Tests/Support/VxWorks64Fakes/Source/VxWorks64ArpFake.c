@@ -53,6 +53,7 @@ int VxWorks64ArpFake_LastNumTicks(void)
 }
 
 // NOLINTNEXTLINE(readability-non-const-parameter) -- signature fixed by the VxWorks API
+// cppcheck-suppress constParameterPointer -- the signature is VxWorks', which this fakes.
 STATUS arpResolve(char* targetAddr, char* pHwAddr, int numTries, int numTicks)
 {
     STATUS status = OK;

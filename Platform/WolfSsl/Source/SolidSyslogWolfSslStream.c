@@ -123,7 +123,10 @@ static inline bool WolfSslStream_IsPinCheckedHere(
     const struct SolidSyslogWolfSslStream* self,
     const WOLFSSL_X509_STORE_CTX* store
 );
-static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store);
+static inline bool WolfSslStream_LeafMatchesAPin(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+);
 static bool WolfSslStream_DigestCertificate(
     void* context,
     enum SolidSyslogTlsHashAlgorithm algorithm,
@@ -716,7 +719,10 @@ static inline bool WolfSslStream_IsPinCheckedHere(
 /* A pin is the digest of the leaf. wolfSSL hands the callback the whole chain
  * the peer presented, leaf first, whichever certificate it is calling back
  * for. */
-static inline bool WolfSslStream_LeafMatchesAPin(struct SolidSyslogWolfSslStream* self, WOLFSSL_X509_STORE_CTX* store)
+static inline bool WolfSslStream_LeafMatchesAPin(
+    struct SolidSyslogWolfSslStream* self,
+    const WOLFSSL_X509_STORE_CTX* store
+)
 {
     return SolidSyslogWolfSslStream_AuthoriseLeaf(self, store->certs[0].buffer, store->certs[0].length);
 }
@@ -740,6 +746,7 @@ bool SolidSyslogWolfSslStream_AuthoriseLeaf(
 }
 
 static bool WolfSslStream_DigestCertificate(
+    /* cppcheck-suppress constParameterCallback -- the parameter is SolidSyslogTlsDigestFunction's, declared in Core. */
     void* context,
     enum SolidSyslogTlsHashAlgorithm algorithm,
     uint8_t* digest,
@@ -1062,6 +1069,7 @@ static inline SolidSyslogSsize WolfSslStream_Read(struct SolidSyslogStream* base
     return result;
 }
 
+/* cppcheck-suppress constParameterCallback -- wolfSSL's CallbackIOSend type declares buf without const. */
 static int WolfSslStream_IoSend(WOLFSSL* ssl, char* buf, int sz, void* ctx)
 {
     struct SolidSyslogWolfSslStream* self = (struct SolidSyslogWolfSslStream*) ctx;

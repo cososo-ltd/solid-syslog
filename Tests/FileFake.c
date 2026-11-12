@@ -88,7 +88,7 @@ static struct FileFake* lastCreated;
 
 /* helpers */
 static inline struct FileFake* AsFake(struct SolidSyslogFile* self);
-static void RequireOpenFile(struct FileFake* fake, const char* message);
+static void RequireOpenFile(const struct FileFake* fake, const char* message);
 static inline bool IsFileClosed(const struct FileFake* fake);
 static inline bool HasActiveFile(const struct FileFake* fake);
 static inline bool ShouldFailOnThisCall(bool* flag);
@@ -381,7 +381,7 @@ static void FileFake_Close(struct SolidSyslogFile* self)
     fake->position = 0;
 }
 
-static void RequireOpenFile(struct FileFake* fake, const char* message)
+static void RequireOpenFile(const struct FileFake* fake, const char* message)
 {
     if (IsFileClosed(fake))
     {

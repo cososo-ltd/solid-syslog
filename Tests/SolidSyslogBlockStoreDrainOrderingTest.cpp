@@ -11,6 +11,7 @@
  * ReadNextUnsent / MarkSent) directly - no Service task, no Sender, no
  * Buffer - because the drain order lives in BlockSequence/RecordStore. */
 
+#include "DiscardPolicyAnswer.h"
 #include "CppUTest/TestHarness.h"
 
 extern "C"
@@ -109,10 +110,6 @@ struct DrainTestConfig
  * SolidSyslogBlockStoreTest.cpp. */
 /* The store's policy function for the fixtures: answers the policy a test
  * configured, read through the context so one function serves every group. */
-static enum SolidSyslogDiscardPolicy AnswersConfiguredPolicy(void* context)
-{
-    return *static_cast<const enum SolidSyslogDiscardPolicy*>(context);
-}
 
 // clang-format off
 TEST_BASE(DrainTestFixtureBase)

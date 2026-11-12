@@ -42,7 +42,7 @@ static inline void UdpSender_UpdateDeliveryHealth(struct SolidSyslogUdpSender* s
 static inline bool UdpSender_Reconcile(struct SolidSyslogUdpSender* self);
 static inline void UdpSender_DisconnectIfStale(struct SolidSyslogUdpSender* self);
 static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* self);
-static inline bool UdpSender_Connected(struct SolidSyslogUdpSender* self);
+static inline bool UdpSender_Connected(const struct SolidSyslogUdpSender* self);
 static bool UdpSender_Connect(struct SolidSyslogUdpSender* self);
 static inline uint16_t UdpSender_QueryEndpointPort(
     struct SolidSyslogUdpSender* self,
@@ -191,7 +191,7 @@ static inline bool UdpSender_EnsureConnected(struct SolidSyslogUdpSender* self)
     return UdpSender_Connected(self) || UdpSender_Connect(self);
 }
 
-static inline bool UdpSender_Connected(struct SolidSyslogUdpSender* self)
+static inline bool UdpSender_Connected(const struct SolidSyslogUdpSender* self)
 {
     return self->Connected;
 }

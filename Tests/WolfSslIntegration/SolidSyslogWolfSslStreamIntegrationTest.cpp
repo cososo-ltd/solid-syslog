@@ -100,6 +100,7 @@ struct IntegrationProfileValues
     const char* CipherList;
 };
 
+// cppcheck-suppress constParameterCallback -- the signature is the wolfSSL stream's profile callback.
 static void IntegrationProfile(struct SolidSyslogWolfSslProfile* profile, void* context)
 {
     const auto* values  = static_cast<const struct IntegrationProfileValues*>(context);
