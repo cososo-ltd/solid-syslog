@@ -23,6 +23,14 @@ enum
     /* HAL_UART_Transmit takes its length as 16 bits. */
     CONSOLE_WRITE_CHUNK = 0xFFFF,
 
+    /* Received bytes wait here between the interrupt and the reader. A power
+     * of two, so an index wraps with a mask; one slot always stays empty. */
+    CONSOLE_RING_SIZE = 512,
+    CONSOLE_RING_MASK = CONSOLE_RING_SIZE - 1,
+
+    /* Above SysTick, which the HAL leaves at the lowest priority, 15. */
+    CONSOLE_INTERRUPT_PRIORITY = 6,
+
     /* 8 MHz in, divided to 2 MHz, multiplied to a 432 MHz VCO, halved to a
      * 216 MHz system clock. Q gives the 48 MHz the USB, RNG and SDMMC want. */
     PLL_M = 4,
@@ -32,6 +40,13 @@ enum
 
 static UART_HandleTypeDef console;
 
+/* Written by the receive interrupt and read by Board_ConsoleTryRead. The
+ * interrupt alone moves the head and the reader alone moves the tail, and
+ * each is one aligned word, so neither side needs the other held off. */
+static volatile uint8_t consoleRing[CONSOLE_RING_SIZE];
+static volatile uint32_t consoleRingHead;
+static volatile uint32_t consoleRingTail;
+
 static inline void Board_ConfigureLeds(void);
 static inline void Board_ConfigureClock(void);
 static inline bool Board_StartPll(void);
@@ -39,6 +54,7 @@ static inline bool Board_SwitchToPll(void);
 static inline void Board_HaltWithRedLed(void);
 static inline void Board_ConfigureConsole(void);
 static inline uint16_t Board_LedPin(enum BoardLed led);
+static inline void Board_ConsoleRingPut(uint8_t received);
 
 void Board_Init(void)
 {
@@ -131,15 +147,18 @@ static inline void Board_ConfigureConsole(void)
     console.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     console.Init.OverSampling = UART_OVERSAMPLING_16;
     console.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-    /* The console is polled, so a byte can arrive before the last was read.
-     * With overrun detection on, that would stop the receiver until the flag
-     * was cleared; off, the newer byte simply replaces the older. */
+    /* With overrun detection on, a byte arriving before the interrupt had
+     * taken the last would stop the receiver until the flag was cleared; off,
+     * the newer byte simply replaces the older. */
     console.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
     console.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
     if (HAL_UART_Init(&console) != HAL_OK)
     {
         Board_HaltWithRedLed();
     }
+    __HAL_UART_ENABLE_IT(&console, UART_IT_RXNE);
+    HAL_NVIC_SetPriority(USART3_IRQn, CONSOLE_INTERRUPT_PRIORITY, 0);
+    HAL_NVIC_EnableIRQ(USART3_IRQn);
 }
 
 void Board_ConsoleWrite(const char* text, size_t length)
@@ -155,10 +174,12 @@ void Board_ConsoleWrite(const char* text, size_t length)
 
 bool Board_ConsoleTryRead(char* received)
 {
-    bool arrived = __HAL_UART_GET_FLAG(&console, UART_FLAG_RXNE) != 0U;
+    uint32_t tail = consoleRingTail;
+    bool arrived = tail != consoleRingHead;
     if (arrived)
     {
-        *received = (char) (console.Instance->RDR & 0xFFU);
+        *received = (char) consoleRing[tail];
+        consoleRingTail = (tail + 1U) & (uint32_t) CONSOLE_RING_MASK;
     }
     return arrived;
 }
@@ -196,4 +217,26 @@ static inline uint16_t Board_LedPin(enum BoardLed led)
 void SysTick_Handler(void)
 {
     HAL_IncTick();
+}
+
+/* The console's receive interrupt. Reading the data register clears the
+ * request. The name is the one ST's vector table carries. */
+void USART3_IRQHandler(void)
+{
+    if (__HAL_UART_GET_FLAG(&console, UART_FLAG_RXNE) != 0U)
+    {
+        Board_ConsoleRingPut((uint8_t) (console.Instance->RDR & 0xFFU));
+    }
+}
+
+/* A byte that finds the ring full is dropped. */
+static inline void Board_ConsoleRingPut(uint8_t received)
+{
+    uint32_t head = consoleRingHead;
+    uint32_t next = (head + 1U) & (uint32_t) CONSOLE_RING_MASK;
+    if (next != consoleRingTail)
+    {
+        consoleRing[head] = received;
+        consoleRingHead = next;
+    }
 }

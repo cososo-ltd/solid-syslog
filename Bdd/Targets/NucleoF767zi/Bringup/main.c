@@ -5,10 +5,9 @@
  * LED blinking so a board with nothing attached to its serial port still
  * shows it is running. */
 
+#include "BddTargetLineAssembler.h"
 #include "Board.h"
 
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -18,7 +17,6 @@
 
 enum
 {
-    LINE_CAPACITY = 128,
     BLINK_HALF_PERIOD_MILLISECONDS = 500
 };
 
@@ -26,20 +24,17 @@ static const char BANNER[] = "\r\nSolidSyslog NUCLEO-F767ZI bring-up, commit " B
 static const char ECHO_PREFIX[] = "echo: ";
 static const char LINE_END[] = "\r\n";
 
-static char line[LINE_CAPACITY];
-static size_t lineLength;
+static struct BddTargetLineAssembler line;
 static uint32_t lastToggle;
 
 static inline void WriteText(const char* text);
 static inline void BlinkWhenDue(void);
 static inline void EchoWhenLineArrives(void);
-static inline bool IsLineEnd(char received);
-static inline void EchoLine(void);
-static inline void AppendToLine(char received);
 
 int main(void)
 {
     Board_Init();
+    BddTargetLineAssembler_Reset(&line);
     WriteText(BANNER);
     for (;;)
     {
@@ -66,43 +61,10 @@ static inline void BlinkWhenDue(void)
 static inline void EchoWhenLineArrives(void)
 {
     char received = '\0';
-    if (Board_ConsoleTryRead(&received))
-    {
-        if (IsLineEnd(received))
-        {
-            EchoLine();
-        }
-        else
-        {
-            AppendToLine(received);
-        }
-    }
-}
-
-static inline bool IsLineEnd(char received)
-{
-    return (received == '\r') || (received == '\n');
-}
-
-/* A terminal that ends a line with CR LF sends two line ends; the second
- * finds the line empty and is not echoed. */
-static inline void EchoLine(void)
-{
-    if (lineLength > 0U)
+    if (Board_ConsoleTryRead(&received) && BddTargetLineAssembler_Accept(&line, received))
     {
         WriteText(ECHO_PREFIX);
-        Board_ConsoleWrite(line, lineLength);
+        Board_ConsoleWrite(line.Text, line.Length);
         WriteText(LINE_END);
-        lineLength = 0U;
-    }
-}
-
-/* A line longer than the buffer is echoed truncated. */
-static inline void AppendToLine(char received)
-{
-    if (lineLength < (size_t) LINE_CAPACITY)
-    {
-        line[lineLength] = received;
-        lineLength++;
     }
 }

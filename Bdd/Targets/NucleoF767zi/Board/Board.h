@@ -23,7 +23,9 @@ void Board_Init(void);
 
 void Board_ConsoleWrite(const char* text, size_t length);
 
-/* True, with the byte in *received, when one has arrived. Never waits. */
+/* True, with the byte in *received, when one has arrived. Never waits.
+ * Bytes are received under interrupt and held until read, 511 of them at
+ * most; one that arrives with that many unread is dropped. */
 bool Board_ConsoleTryRead(char* received);
 
 /* Milliseconds since Board_Init, wrapping at 2^32. */

@@ -10,6 +10,15 @@
 # a relaxed warning set, as the other targets' upstream sources do; the code
 # in this directory stays under the project's own warning bar.
 
+# Any arm toolchain file passes the top-level gate, and one for another core
+# would compile this without complaint into an image the part cannot run.
+if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
+    message(FATAL_ERROR
+        "The NUCLEO-F767ZI firmware needs its own toolchain file, "
+        "Bdd/Targets/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake. "
+        "Configure with a nucleo-f767zi-* preset.")
+endif()
+
 # The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(STM32F7_HAL_DRIVER_PATH SOLIDSYSLOG_STM32F7_HAL_DRIVER_PATH /opt/stm32/f7-hal-driver
     PROBE Inc/stm32f7xx_hal.h)
@@ -44,6 +53,8 @@ add_library(solid_syslog_nucleo_f767zi_upstream OBJECT
     ${HAL_SOURCE_DIR}/stm32f7xx_hal.c
     ${HAL_SOURCE_DIR}/stm32f7xx_hal_cortex.c
     ${HAL_SOURCE_DIR}/stm32f7xx_hal_dma.c
+    ${HAL_SOURCE_DIR}/stm32f7xx_hal_flash.c
+    ${HAL_SOURCE_DIR}/stm32f7xx_hal_flash_ex.c
     ${HAL_SOURCE_DIR}/stm32f7xx_hal_gpio.c
     ${HAL_SOURCE_DIR}/stm32f7xx_hal_pwr.c
     ${HAL_SOURCE_DIR}/stm32f7xx_hal_pwr_ex.c
@@ -96,6 +107,7 @@ endif()
 add_executable(SolidSyslogNucleoF767ziBringup
     Bringup/main.c
     Board/Board.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
     $<TARGET_OBJECTS:solid_syslog_nucleo_f767zi_upstream>
 )
 
@@ -108,6 +120,8 @@ target_compile_definitions(SolidSyslogNucleoF767ziBringup PRIVATE
 
 target_include_directories(SolidSyslogNucleoF767ziBringup PRIVATE
     ${BOARD_DIR}                                      # Board.h, stm32f7xx_hal_conf.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetLineAssembler.h
+    ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h, which that header reads
 )
 target_include_directories(SolidSyslogNucleoF767ziBringup SYSTEM PRIVATE
     ${BOARD_UPSTREAM_INCLUDES}
