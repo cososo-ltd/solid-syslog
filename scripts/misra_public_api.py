@@ -31,6 +31,7 @@ COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
 EXTERN_OBJECT = re.compile(r"\s*extern\b")
 EXTERN_C = re.compile(r'\bextern\s*"C"\s*\{')
 TYPEDEF = re.compile(r"\s*typedef\b")
+LITERAL = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'')
 PREPROCESSOR = re.compile(r"^[ \t]*#(?:[^\n]*\\\n)*[^\n]*", re.MULTILINE)
 
 
@@ -51,7 +52,7 @@ def public_declarations(root):
 
 def declared_names(text):
     names = set()
-    for statement in EXTERN_C.sub(" ", text).split(";"):
+    for statement in LITERAL.sub(" ", EXTERN_C.sub(" ", text)).split(";"):
         before_parameters = statement.split("(", 1)[0]
         if TYPEDEF.match(statement):
             continue

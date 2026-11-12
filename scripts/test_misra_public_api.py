@@ -94,6 +94,12 @@ class Filtering(unittest.TestCase):
         finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
         self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
 
+    def test_a_name_a_public_header_quotes_before_a_parenthesis_stays(self):
+        self.tree.write("Core/Interface/SolidSyslogThing.h", "static const char SolidSyslogThing_Label[] = \"Thing_Helper(\";\n")
+        self.tree.write("Core/Source/SolidSyslogThing.c", "void Thing_Helper(void)\n{\n}\n")
+        finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
+        self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
+
     def test_a_function_declared_inside_an_extern_c_block_is_dropped(self):
         header = '#ifdef __cplusplus\nextern "C"\n{\n#endif\n\n    void SolidSyslogThing_Do(\n        int count\n    );\n\n#ifdef __cplusplus\n}\n#endif\n'
         self.tree.write("Core/Interface/SolidSyslogThing.h", header)
