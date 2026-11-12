@@ -1,3 +1,6 @@
+#include <array>
+#include <cstddef>
+
 #include "CppUTest/TestHarness.h"
 
 extern "C"
@@ -97,6 +100,11 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
     struct SolidSyslogStream* tlsStream         = nullptr;
     struct SolidSyslogMbedTlsHandleCredentialsConfig credsConfig = {};
     char pinText[160] = {};
+    /* Certificates a test builds for itself. The server thread may still be
+     * presenting one after the test body returns, so they are freed in
+     * teardown, after the server, never by the body. */
+    std::array<struct MbedTlsTestCert, 3> ownedCerts = {};
+    size_t ownedCertCount = 0U;
     const char* pins[1] = {};
     struct SolidSyslogMbedTlsCredentials* credentials = nullptr;
     struct SolidSyslogAddress* addr             = nullptr;
@@ -155,15 +163,16 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         {
             MbedTlsTestServer_Destroy(server);
         }
+        /* The server has been destroyed above, which also unlinks a leaf from
+           the issuer it presented, so the owned certificates are safe to free
+           now and only now - newest first, a leaf before its issuer. */
+        while (ownedCertCount > 0U)
+        {
+            ownedCertCount--;
+            MbedTlsTestCert_Destroy(&ownedCerts.at(ownedCertCount));
+        }
         MbedTlsTestCert_Destroy(&serverCert);
         MbedTlsTestCert_Destroy(&trustedCa);
-        /* The server has been destroyed above, which unlinks the leaf from its
-           issuer, so both are safe to free now and only now. */
-        if (chainBuilt)
-        {
-            MbedTlsTestCert_Destroy(&chainLeaf);
-            MbedTlsTestCert_Destroy(&chainIntermediate);
-        }
         mbedtls_ctr_drbg_free(&rng);
         mbedtls_entropy_free(&entropy);
     }
@@ -192,25 +201,36 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         return clientTransport;
     }
 
-    /* Build a CA + leaf-cert pair signed by it, for the per-test mTLS
-     * material. Both outputs must be MbedTlsTestCert_Destroy'd by the
-     * test body before it returns. */
-    void CreateClientIdentitySignedBy(
-        const struct MbedTlsTestCert* signingCa,
-        struct MbedTlsTestCert* outClientCert
-    )
+    /* Build a certificate the fixture owns and frees in teardown. */
+    struct MbedTlsTestCert* OwnCert(const struct MbedTlsTestCertConfig* config)
+    {
+        struct MbedTlsTestCert* cert = &ownedCerts.at(ownedCertCount);
+        ownedCertCount++;
+        MbedTlsTestCert_Create(config, cert, &rng);
+        return cert;
+    }
+
+    struct MbedTlsTestCert* CreateCa(const char* subject)
+    {
+        struct MbedTlsTestCertConfig caConfig = {};
+        caConfig.SubjectName = subject;
+        caConfig.IsCa = 1;
+        return OwnCert(&caConfig);
+    }
+
+    /* A client leaf signed by the given CA, for the per-test mTLS material. */
+    struct MbedTlsTestCert* CreateClientIdentitySignedBy(const struct MbedTlsTestCert* signingCa)
     {
         struct MbedTlsTestCertConfig leafConfig = {};
         leafConfig.SubjectName = "CN=solidsyslog-test-client";
         leafConfig.IsCa = 0;
         leafConfig.Issuer = signingCa;
-        MbedTlsTestCert_Create(&leafConfig, outClientCert, &rng);
+        return OwnCert(&leafConfig);
     }
 
     /* Build a server cert valid only between the two "YYYYMMDDHHMMSS" instants,
-     * identical to setup()'s in every other respect. The test body must
-     * MbedTlsTestCert_Destroy the result before it returns. */
-    void CreateServerCertValidBetween(const char* from, const char* to, struct MbedTlsTestCert* outCert)
+     * identical to setup()'s in every other respect. */
+    struct MbedTlsTestCert* CreateServerCertValidBetween(const char* from, const char* to)
     {
         struct MbedTlsTestCertConfig certConfig = {};
         certConfig.SubjectName = TEST_SERVER_SUBJECT;
@@ -218,7 +238,7 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         certConfig.Issuer = &trustedCa;
         certConfig.ValidityFrom = from;
         certConfig.ValidityTo = to;
-        MbedTlsTestCert_Create(&certConfig, outCert, &rng);
+        return OwnCert(&certConfig);
     }
 
     /* Common wiring used by every integration test: transport, sleep,
@@ -291,35 +311,18 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         return clientTransport;
     }
 
-    /* A leaf whose chain reaches a CA the client does not hold. Both outputs
-       must be destroyed by the test body. */
-    void CreateLeafSignedByAStranger(
-        const char* subject,
-        const char* altDns,
-        struct MbedTlsTestCert* outStrangerCa,
-        struct MbedTlsTestCert* outLeaf
-    )
+    /* A leaf whose chain reaches a CA the client does not hold. */
+    struct MbedTlsTestCert* CreateLeafSignedByAStranger(const char* subject, const char* altDns)
     {
-        struct MbedTlsTestCertConfig caConfig = {};
-        caConfig.SubjectName = "CN=Some Other Root CA";
-        caConfig.IsCa = 1;
-        MbedTlsTestCert_Create(&caConfig, outStrangerCa, &rng);
-
         struct MbedTlsTestCertConfig leafConfig = {};
         leafConfig.SubjectName = subject;
         leafConfig.SubjectAltDns = altDns;
-        leafConfig.Issuer = outStrangerCa;
-        MbedTlsTestCert_Create(&leafConfig, outLeaf, &rng);
+        leafConfig.Issuer = CreateCa("CN=Some Other Root CA");
+        return OwnCert(&leafConfig);
     }
 
     /* Root trusted, intermediate expired, leaf issued by the intermediate and
-       presented with it. The certificates stay on the fixture: the server links
-       the leaf to its issuer, so freeing either from the test body would free
-       the other twice. */
-    struct MbedTlsTestCert chainIntermediate = {};
-    struct MbedTlsTestCert chainLeaf = {};
-    bool chainBuilt = false;
-
+       presented with it. */
     void StartServerBehindAnExpiredIssuer(const char* leafSubject, const char* leafAltDns)
     {
         struct MbedTlsTestCertConfig intermediateConfig = {};
@@ -328,19 +331,18 @@ TEST_GROUP(SolidSyslogMbedTlsStreamIntegration)
         intermediateConfig.Issuer = &trustedCa;
         intermediateConfig.ValidityFrom = "20240101000000";
         intermediateConfig.ValidityTo = "20240102000000";
-        MbedTlsTestCert_Create(&intermediateConfig, &chainIntermediate, &rng);
+        struct MbedTlsTestCert* intermediate = OwnCert(&intermediateConfig);
 
         struct MbedTlsTestCertConfig leafConfig = {};
         leafConfig.SubjectName = leafSubject;
         leafConfig.SubjectAltDns = leafAltDns;
-        leafConfig.Issuer = &chainIntermediate;
-        MbedTlsTestCert_Create(&leafConfig, &chainLeaf, &rng);
-        chainBuilt = true;
+        leafConfig.Issuer = intermediate;
+        struct MbedTlsTestCert* leaf = OwnCert(&leafConfig);
 
         struct MbedTlsTestServerConfig serverConfig = {};
         serverConfig.ServerFd = fds[1];
-        serverConfig.ServerCert = &chainLeaf;
-        serverConfig.IssuerCert = &chainIntermediate;
+        serverConfig.ServerCert = leaf;
+        serverConfig.IssuerCert = intermediate;
         serverConfig.Rng = &rng;
         server = MbedTlsTestServer_Create(&serverConfig);
         clientTransport = SocketStream_Create(fds[0]);
@@ -377,23 +379,17 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertSignedByUn
 {
     /* Trust an unrelated CA: we hand the *client* a different CA chain than
      * the one that signed the server's cert, so the chain validation fails. */
-    struct MbedTlsTestCert untrustedCa = {};
-    struct MbedTlsTestCertConfig untrustedConfig = {};
-    untrustedConfig.SubjectName = "CN=Wrong Root CA";
-    untrustedConfig.IsCa = 1;
-    MbedTlsTestCert_Create(&untrustedConfig, &untrustedCa, &rng);
+    struct MbedTlsTestCert* untrustedCa = CreateCa("CN=Wrong Root CA");
 
     struct SolidSyslogStream* transport = StartServerWithCert(&serverCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    credsConfig.CaChain = &untrustedCa.Cert;
+    credsConfig.CaChain = &untrustedCa->Cert;
     tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
     CHECK_FALSE_TEXT(opened, "client-side handshake must fail when the server cert chains to an untrusted CA");
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
-
-    MbedTlsTestCert_Destroy(&untrustedCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerNameDoesNotMatchCert)
@@ -448,33 +444,27 @@ TEST(SolidSyslogMbedTlsStreamIntegration, OpenFailsWhenNothingAuthorisesThePeer)
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertHasExpired)
 
 {
-    struct MbedTlsTestCert expiredCert = {};
-    CreateServerCertValidBetween("20240101000000", "20240102000000", &expiredCert);
+    const struct MbedTlsTestCert* expiredCert = CreateServerCertValidBetween("20240101000000", "20240102000000");
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
+    struct SolidSyslogStream* transport = StartServerWithCert(expiredCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
-
-    MbedTlsTestCert_Destroy(&expiredCert);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeFailsWhenServerCertIsNotYetValid)
 
 {
-    struct MbedTlsTestCert futureCert = {};
-    CreateServerCertValidBetween("20980101000000", "20990101000000", &futureCert);
+    const struct MbedTlsTestCert* futureCert = CreateServerCertValidBetween("20980101000000", "20990101000000");
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&futureCert);
+    struct SolidSyslogStream* transport = StartServerWithCert(futureCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_NOT_YET_VALID);
-
-    MbedTlsTestCert_Destroy(&futureCert);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCertSignedByTrustedCa)
@@ -482,18 +472,13 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCe
 {
     /* Build per-test mTLS material: a client CA + a leaf cert signed by it.
      * Server is told to require + verify client certs against this CA. */
-    struct MbedTlsTestCert clientCa = {};
-    struct MbedTlsTestCertConfig clientCaConfig = {};
-    clientCaConfig.SubjectName = "CN=Test Client CA";
-    clientCaConfig.IsCa = 1;
-    MbedTlsTestCert_Create(&clientCaConfig, &clientCa, &rng);
-    struct MbedTlsTestCert clientCert = {};
-    CreateClientIdentitySignedBy(&clientCa, &clientCert);
+    const struct MbedTlsTestCert* clientCa = CreateCa("CN=Test Client CA");
+    struct MbedTlsTestCert* clientCert = CreateClientIdentitySignedBy(clientCa);
 
-    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &clientCa);
+    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, clientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    credsConfig.ClientCertChain = &clientCert.Cert;
-    credsConfig.ClientKey = &clientCert.Key;
+    credsConfig.ClientCertChain = &clientCert->Cert;
+    credsConfig.ClientKey = &clientCert->Key;
     tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
@@ -503,9 +488,6 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeSucceedsWithClientCe
         MbedTlsTestServer_JoinAndHandshakeSucceeded(server),
         "server-side mTLS handshake should mirror the client's success"
     );
-
-    MbedTlsTestCert_Destroy(&clientCert);
-    MbedTlsTestCert_Destroy(&clientCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientSendsNoCert)
@@ -514,21 +496,15 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientSe
     /* Server requires a client cert but the integrator hasn't opted in to
      * mTLS - ClientCertChain / ClientKey are NULL. Server-side verify must
      * fail and the client's Open must return false. */
-    struct MbedTlsTestCert clientCa = {};
-    struct MbedTlsTestCertConfig clientCaConfig = {};
-    clientCaConfig.SubjectName = "CN=Test Client CA";
-    clientCaConfig.IsCa = 1;
-    MbedTlsTestCert_Create(&clientCaConfig, &clientCa, &rng);
+    const struct MbedTlsTestCert* clientCa = CreateCa("CN=Test Client CA");
 
-    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &clientCa);
+    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, clientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
     CHECK_FALSE_TEXT(opened, "mTLS handshake must fail when the client does not present a cert");
-
-    MbedTlsTestCert_Destroy(&clientCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientCertSignedByUntrustedCa)
@@ -536,36 +512,22 @@ TEST(SolidSyslogMbedTlsStreamIntegration, MutualTlsHandshakeRejectedWhenClientCe
 {
     /* Client cert is signed by a CA the server doesn't trust. Server-side
      * chain validation fails and Open returns false on the client. */
-    struct MbedTlsTestCert trustedClientCa = {};
-    struct MbedTlsTestCertConfig trustedConfig = {};
-    trustedConfig.SubjectName = "CN=Trusted Client CA";
-    trustedConfig.IsCa = 1;
-    MbedTlsTestCert_Create(&trustedConfig, &trustedClientCa, &rng);
-
-    struct MbedTlsTestCert untrustedClientCa = {};
-    struct MbedTlsTestCertConfig untrustedConfig = {};
-    untrustedConfig.SubjectName = "CN=Untrusted Client CA";
-    untrustedConfig.IsCa = 1;
-    MbedTlsTestCert_Create(&untrustedConfig, &untrustedClientCa, &rng);
+    const struct MbedTlsTestCert* trustedClientCa = CreateCa("CN=Trusted Client CA");
+    const struct MbedTlsTestCert* untrustedClientCa = CreateCa("CN=Untrusted Client CA");
 
     /* Client cert is signed by the *untrusted* CA - server only trusts
      * trustedClientCa, so verify will reject this chain. */
-    struct MbedTlsTestCert clientCert = {};
-    CreateClientIdentitySignedBy(&untrustedClientCa, &clientCert);
+    struct MbedTlsTestCert* clientCert = CreateClientIdentitySignedBy(untrustedClientCa);
 
-    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &trustedClientCa);
+    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, trustedClientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    credsConfig.ClientCertChain = &clientCert.Cert;
-    credsConfig.ClientKey = &clientCert.Key;
+    credsConfig.ClientCertChain = &clientCert->Cert;
+    credsConfig.ClientKey = &clientCert->Key;
     tlsStream = CreateTlsStream(&config);
 
     bool opened = SolidSyslogStream_Open(tlsStream, addr);
 
     CHECK_FALSE_TEXT(opened, "mTLS handshake must fail when the client cert chains to an untrusted CA");
-
-    MbedTlsTestCert_Destroy(&clientCert);
-    MbedTlsTestCert_Destroy(&untrustedClientCa);
-    MbedTlsTestCert_Destroy(&trustedClientCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, BinaryLinksAgainstRealLibMbedTls)
@@ -663,20 +625,15 @@ TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertMatc
  * the server certificate is being judged. */
 TEST(SolidSyslogMbedTlsStreamIntegration, AClientCredentialIsNotPresentedToAPeerThatMatchesNoPin)
 {
-    struct MbedTlsTestCert clientCa = {};
-    struct MbedTlsTestCertConfig clientCaConfig = {};
-    clientCaConfig.SubjectName = "CN=Test Client CA";
-    clientCaConfig.IsCa = 1;
-    MbedTlsTestCert_Create(&clientCaConfig, &clientCa, &rng);
-    struct MbedTlsTestCert clientCert = {};
-    CreateClientIdentitySignedBy(&clientCa, &clientCert);
+    const struct MbedTlsTestCert* clientCa = CreateCa("CN=Test Client CA");
+    struct MbedTlsTestCert* clientCert = CreateClientIdentitySignedBy(clientCa);
 
-    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, &clientCa);
+    struct SolidSyslogStream* transport = StartServerRequiringClientCa(&serverCert, clientCa);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     credsConfig.CaChain = nullptr;
     PinLiterally(UNMATCHABLE_PIN);
-    credsConfig.ClientCertChain = &clientCert.Cert;
-    credsConfig.ClientKey = &clientCert.Key;
+    credsConfig.ClientCertChain = &clientCert->Cert;
+    credsConfig.ClientKey = &clientCert->Key;
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
@@ -685,26 +642,20 @@ TEST(SolidSyslogMbedTlsStreamIntegration, AClientCredentialIsNotPresentedToAPeer
         "the device must not present its credential to a peer no pin authorises"
     );
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
-
-    MbedTlsTestCert_Destroy(&clientCert);
-    MbedTlsTestCert_Destroy(&clientCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, HandshakeRejectedWhenTheServerCertIsExpiredEvenThoughItsPinMatches)
 {
-    struct MbedTlsTestCert expiredCert = {};
-    CreateServerCertValidBetween("20200101000000", "20200102000000", &expiredCert);
+    const struct MbedTlsTestCert* expiredCert = CreateServerCertValidBetween("20200101000000", "20200102000000");
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
+    struct SolidSyslogStream* transport = StartServerWithCert(expiredCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     credsConfig.CaChain = nullptr;
-    PinCertificate(&expiredCert, "sha-256");
+    PinCertificate(expiredCert, "sha-256");
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
-
-    MbedTlsTestCert_Destroy(&expiredCert);
 }
 
 /* Mbed TLS merges every certificate's flags into one verdict, so the chain
@@ -766,10 +717,9 @@ static const char* const EXPIRED_TO = "20240102000000";
 
 TEST(SolidSyslogMbedTlsStreamIntegration, AMalformedPinIsNamedBeforeAnyFaultInThePeersCertificate)
 {
-    struct MbedTlsTestCert expiredCert = {};
-    CreateServerCertValidBetween(EXPIRED_FROM, EXPIRED_TO, &expiredCert);
+    const struct MbedTlsTestCert* expiredCert = CreateServerCertValidBetween(EXPIRED_FROM, EXPIRED_TO);
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&expiredCert);
+    struct SolidSyslogStream* transport = StartServerWithCert(expiredCert);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     PinLiterally(MALFORMED_PIN);
     tlsStream = CreateTlsStream(&config);
@@ -782,84 +732,66 @@ TEST(SolidSyslogMbedTlsStreamIntegration, AMalformedPinIsNamedBeforeAnyFaultInTh
     LONGS_EQUAL(SOLIDSYSLOG_SEVERITY_ERROR, LastCapturedError.Severity);
     UNSIGNED_LONGS_EQUAL(SOLIDSYSLOG_CAT_BAD_CONFIG, LastCapturedError.Category);
     LONGS_EQUAL(SOLIDSYSLOG_TLS_STREAM_ERROR_FINGERPRINT_MALFORMED, LastCapturedError.Detail);
-
-    MbedTlsTestCert_Destroy(&expiredCert);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, AFingerprintThatMatchesNothingIsNamedBeforeAnUntrustedChain)
 {
-    struct MbedTlsTestCert strangerCa = {};
-    struct MbedTlsTestCert leaf = {};
-    CreateLeafSignedByAStranger(TEST_SERVER_SUBJECT, TEST_SERVER_HOSTNAME, &strangerCa, &leaf);
+    const struct MbedTlsTestCert* leaf = CreateLeafSignedByAStranger(TEST_SERVER_SUBJECT, TEST_SERVER_HOSTNAME);
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogStream* transport = StartServerWithCert(leaf);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     PinLiterally(UNMATCHABLE_PIN);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_FINGERPRINT_MISMATCHED);
-
-    MbedTlsTestCert_Destroy(&leaf);
-    MbedTlsTestCert_Destroy(&strangerCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, AnUntrustedChainIsNamedBeforeANameThatDoesNotMatch)
 {
-    struct MbedTlsTestCert strangerCa = {};
-    struct MbedTlsTestCert leaf = {};
-    CreateLeafSignedByAStranger(STRANGER_SUBJECT, STRANGER_HOSTNAME, &strangerCa, &leaf);
+    const struct MbedTlsTestCert* leaf = CreateLeafSignedByAStranger(STRANGER_SUBJECT, STRANGER_HOSTNAME);
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogStream* transport = StartServerWithCert(leaf);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_UNTRUSTED);
-
-    MbedTlsTestCert_Destroy(&leaf);
-    MbedTlsTestCert_Destroy(&strangerCa);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, ACertificateThatHasExpiredIsNamedBeforeANameThatDoesNotMatch)
 {
-    struct MbedTlsTestCert leaf = {};
     struct MbedTlsTestCertConfig leafConfig = {};
     leafConfig.SubjectName = STRANGER_SUBJECT;
     leafConfig.SubjectAltDns = STRANGER_HOSTNAME;
     leafConfig.Issuer = &trustedCa;
     leafConfig.ValidityFrom = EXPIRED_FROM;
     leafConfig.ValidityTo = EXPIRED_TO;
-    MbedTlsTestCert_Create(&leafConfig, &leaf, &rng);
+    const struct MbedTlsTestCert* leaf = OwnCert(&leafConfig);
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogStream* transport = StartServerWithCert(leaf);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_CERTIFICATE_EXPIRED);
-
-    MbedTlsTestCert_Destroy(&leaf);
 }
 
 TEST(SolidSyslogMbedTlsStreamIntegration, APinThatMatchesDoesNotWaiveANameThatDoesNot)
 {
-    struct MbedTlsTestCert leaf = {};
     struct MbedTlsTestCertConfig leafConfig = {};
     leafConfig.SubjectName = STRANGER_SUBJECT;
     leafConfig.SubjectAltDns = STRANGER_HOSTNAME;
     leafConfig.Issuer = &trustedCa;
-    MbedTlsTestCert_Create(&leafConfig, &leaf, &rng);
+    const struct MbedTlsTestCert* leaf = OwnCert(&leafConfig);
 
-    struct SolidSyslogStream* transport = StartServerWithCert(&leaf);
+    struct SolidSyslogStream* transport = StartServerWithCert(leaf);
     struct SolidSyslogMbedTlsStreamConfig config = BuildBaseConfig(transport);
-    PinCertificate(&leaf, "sha-256");
+    PinCertificate(leaf, "sha-256");
     tlsStream = CreateTlsStream(&config);
 
     CHECK_FALSE(SolidSyslogStream_Open(tlsStream, addr));
     CHECK_REFUSAL_REPORTED(SOLIDSYSLOG_TLS_STREAM_ERROR_PEER_NAME_MISMATCHED);
-
-    MbedTlsTestCert_Destroy(&leaf);
 }
 
 /* The order does not change with the depth the fault sits at: an issuer whose
