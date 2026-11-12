@@ -39,7 +39,10 @@ Each deviation is paired with a matching entry in `misra_suppressions.txt`
 are line-specific, so every individual site a deviation authorises appears there
 by rule, file and line, and each block back-references the deviation in this
 document that authorises it. A finding on a line not listed is not covered by
-any deviation and surfaces in CI. The suppressions file was populated
+any deviation and surfaces in CI. Two entries cover findings by what they are
+rather than where, because the set is open-ended by design; each names the
+mechanism that applies it: [D.016](#d016---rule-87-the-public-api-has-external-linkage)
+and [D.017](#d017---rule-173-vendor-calls-read-as-implicit-declarations). The suppressions file was populated
 under [S10.06](https://github.com/cososo-ltd/solid-syslog/issues/367)
 after the rule subset was curated; before then it carried only a
 header comment.
@@ -1368,3 +1371,109 @@ objects static storage for the life of the program, so only scope is deviated.
 
 Raised and approved 2026-09-20 by the project owner, David Cozens. Recorded under
 [S40.03](https://github.com/cososo-ltd/solid-syslog/issues/852).
+
+---
+
+## D.016 - Rule 8.7: the public API has external linkage
+
+### Guideline
+
+**MISRA C:2012 Rule 8.7** - Advisory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Deviation - the code departs from the guideline.
+
+### Construct
+
+Every function and object the library offers an integrator is declared in a
+public header and defined with external linkage. cppcheck-misra sees only the
+library's own sources, so a public function the library never calls itself -
+`SolidSyslogUdpSender_Create`, `SolidSyslog_Log` - is referenced from one
+translation unit, its definition's, and the rule asks for internal linkage.
+
+### Scope
+
+A rule 8.7 finding whose identifier a header under `Core/Interface/` or
+`Platform/*/Interface/` declares. Nothing else.
+
+`scripts/misra_public_api.py` applies the scope to the lane's log rather than
+`misra_suppressions.txt`, because the set is every public function and grows
+with the API: a line-specific entry per function would fail CI on each one
+added, for a reason already decided here. A rule 8.7 finding on anything a
+public header does not declare - a helper given external linkage by mistake -
+is printed and fails the lane.
+
+### Rationale
+
+The rule exists to keep an identifier's visibility no wider than its use. The
+use of a public function is the integrator's code, which is outside the scan by
+definition; internal linkage would remove the API. The analysis cannot see the
+reference the rule is asking about, so the finding is accurate about the scan
+and wrong about the program.
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| A line-specific entry per public function | Every new public function fails CI until an entry is written that says nothing this one does not. |
+| Suppress rule 8.7 for the whole lane | Hides the case the rule is for: a function that should be `static` and is not. |
+| Scan a consumer alongside the library | Proves the API is used by that consumer only, and puts an example program inside the MISRA scope. |
+
+### Risk and mitigation
+
+- **A private function declared in a public header.** It would be covered.
+  Public headers are reviewed as API, with each one's audience stated in its
+  `@file` brief, so such a declaration is an API defect in its own right.
+- **A name a public header only mentions.** Comments are removed before the
+  headers are read, so a name that appears only in prose is not treated as
+  declared; the filter's tests hold that.
+
+### Approval
+
+Raised and approved 2026-11-12 by the project owner, David Cozens. Recorded under
+[S48.05](https://github.com/cososo-ltd/solid-syslog/issues/1194), when Cppcheck
+2.17 first reported the rule over the whole program.
+
+---
+
+## D.017 - Rule 17.3: vendor calls read as implicit declarations
+
+### Guideline
+
+**MISRA C:2012 Rule 17.3** - Mandatory.
+**Rule text:** not reproduced (see [above](#guideline-text-is-not-reproduced-here)).
+**Classification:** Tool limitation - the code complies; the report is wrong.
+
+### Construct
+
+The cppcheck-misra lane runs with no system or vendor header on its include
+path, so a call into POSIX, Winsock, FreeRTOS, lwIP, OpenSSL, Mbed TLS or
+wolfSSL - `pthread_mutex_init`, `xSemaphoreCreateMutexStatic`, `wc_AesInit` -
+has no declaration in sight and is reported as implicitly declared. So is a
+platform pack's test seam whose function-pointer type a vendor header defines.
+
+### Scope
+
+Rule 17.3, suppressed for the cppcheck-misra lane by `--suppress` in
+`.github/workflows/ci.yml`.
+
+### Rationale
+
+Every file the lane scans is also compiled by a build lane against the real
+headers, with warnings as errors, and C99 removed implicit declaration from the
+language: GCC 14 and Clang reject it as an error, and MSVC's C4013 fails under
+`/WX`. The compilers enforce the rule on every push; the lane's report of it is
+an artefact of the include path alone, so no finding of it could be true.
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| A line-specific entry per vendor call | Records the include path, not the code, at every call site, and fails CI on each new one. |
+| Put the vendor headers on the lane's path | Brings each vendor's own macros into the MISRA scope, and the lane scans packs whose headers no single image carries. |
+
+### Risk and mitigation
+
+- **A file no build lane compiles.** It would lose the compiler's check, so
+  a pack's sources are only scanned once some lane builds them;
+  [CI lanes](ci.md#what-each-lane-exercises) says what each lane exercises.
+
+### Approval
+
+Raised and approved 2026-11-12 by the project owner, David Cozens. Recorded under
+[S48.05](https://github.com/cososo-ltd/solid-syslog/issues/1194).

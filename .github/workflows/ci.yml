@@ -1237,19 +1237,23 @@ jobs:
       # cppcheck-misra addon — runs the MISRA C:2012 addon over Strict +
       # Pragmatic levels (Core/Source/ + Platform/*/Source/). Suppressions
       # live in misra_suppressions.txt with rationales in
-      # docs/misra-deviations.md. The step fails on any finding printed,
-      # not on cppcheck's exit code: Cppcheck 2.10 reports the addon's
-      # whole-program rules (2.4, 2.5, 5.7) after the per-file pass, and
-      # those results are not counted towards --error-exitcode, so a
-      # fresh unused tag, unused macro or repeated tag would otherwise
-      # reach main with the lane green. The exit code is still honoured
-      # for the per-file rules; the grep catches what it misses.
+      # docs/misra-deviations.md. The step fails on any finding printed, as
+      # scripts/misra_public_api.py judges the log, and not on cppcheck's exit
+      # code: --error-exitcode would count the public-API 8.7 findings D.016
+      # covers, and before 2.17 it missed the whole-program rules entirely.
+      # --enable=style is what makes the addon's findings print at all:
+      # Cppcheck 2.17 reports them at style severity and drops them without it.
       # No vendor headers are on the path, so a vendor constant that sizes an
       # array is defined here at the value the vendor documents
       # (MAXHOSTNAMELEN and INET_ADDR_LEN, VxWorks 6.4); unexpanded, it reads
       # as a VLA (18.8). Core/Source is on the path for the same reason: a
       # platform pack that puts SolidSyslogFormatter storage on the stack
       # sizes it with a macro from Core/Source/SolidSyslogFormatter.h.
+      # Rule 8.7 findings on the public API are covered by D.016, which
+      # scripts/misra_public_api.py applies to the log; any other finding the
+      # log holds fails the step. Rule 17.3 is suppressed for the lane (D.017):
+      # with no vendor header on the path every vendor call reads as implicitly
+      # declared, and every compile lane already rejects a real one.
       # misra-config is suppressed for the same reason the vendor constants
       # are defined: with no system or vendor header on the path, an identifier
       # they declare (EMSGSIZE, memory_order_relaxed) is unknown, and Cppcheck
@@ -1272,8 +1276,8 @@ jobs:
             --suppressions-list=misra_suppressions.txt \
             --suppressions-list=cppcheck_suppressions.txt \
             --suppress=misra-config \
+            --suppress=misra-c2012-17.3 \
             --check-level=exhaustive \
-            --error-exitcode=1 \
             --inline-suppr \
             --std=c11 \
             -DLWIP_DNS=1 \
@@ -1327,8 +1331,8 @@ jobs:
             Platform/LittleFs/Source/ \
             Platform/PlusFat/Source/ \
             2>&1 | tee build/cppcheck-misra/cppcheck-misra.log
-          if grep -q '\[misra-c2012-' build/cppcheck-misra/cppcheck-misra.log; then
-            echo '::error::MISRA findings above are not covered by misra_suppressions.txt'
+          if ! python3 scripts/misra_public_api.py build/cppcheck-misra/cppcheck-misra.log; then
+            echo '::error::MISRA findings above are covered by neither misra_suppressions.txt nor D.016'
             exit 1
           fi
 
@@ -1342,8 +1346,8 @@ jobs:
             --suppressions-list=misra_suppressions.txt \
             --suppressions-list=cppcheck_suppressions.txt \
             --suppress=misra-config \
+            --suppress=misra-c2012-17.3 \
             --check-level=exhaustive \
-            --error-exitcode=1 \
             --inline-suppr \
             --std=c11 \
             -DLWIP_DNS=1 \
