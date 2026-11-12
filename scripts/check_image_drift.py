@@ -21,6 +21,7 @@ CONTAINERS_DOC = "docs/containers.md"
 # The images whose repositories send image-published, and those repositories.
 SOURCES = {
     "ghcr.io/cososo-ltd/cpputest": "cososo-ltd/CppUTestDocker",
+    "ghcr.io/cososo-ltd/cpputest-clang": "cososo-ltd/CppUTestDockerClang",
     "ghcr.io/cososo-ltd/cpputest-freertos": "cososo-ltd/CppUTestFreertosDocker",
     "ghcr.io/cososo-ltd/cpputest-freertos-cross": "cososo-ltd/CppUTestFreertosDocker",
 }
