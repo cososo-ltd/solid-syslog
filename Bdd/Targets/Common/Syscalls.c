@@ -1,26 +1,25 @@
-/* Newlib system-call retargeting for the QEMU mps2-an385 FreeRTOS image.
+/* Newlib system-call retargeting for the cross BDD targets.
  *
- * Replaces the rdimon (semihosting) syscalls. printf and friends route
- * through _write -> CmsdkUart_Write -> the CMSDK UART0 data register, which
- * QEMU surfaces over `-serial stdio`. _read pulls one byte at a time from
- * CmsdkUart_GetChar (blocking poll on STATE.RXFULL) so fgets in
+ * printf and friends route through _write to the board's console
+ * (BddTargetBoard.h). _read pulls one byte at a time from the same console,
+ * blocking until one arrives, so fgets in
  * Bdd/Targets/Common/BddTargetInteractive can drive `send N` / `quit` over the
  * same serial channel. CR (0x0D) is translated to LF (0x0A) so terminals
  * that send carriage-return on Enter still terminate fgets, and each
  * received byte is echoed back over TX so the user sees what they type.
  *
- * Two threads write the one UART, and the driver yields between bytes, so
+ * Two threads write the one console, and the board may sleep between bytes, so
  * each _write and each echoed byte holds the console lock from
  * BddTargetOsPrimitives.h. The lock keeps one write whole; it does not make
  * stdio shareable, which is why the pipeline keeps the Service thread's
  * output out of stdio altogether.
  *
  * Not host-TDD'd - this file exists only in the cross build (gated by
- * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The QEMU
- * smoke is the integration check that proves the path end-to-end. */
+ * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The BDD run
+ * is the integration check that proves the path end-to-end. */
 
+#include "BddTargetBoard.h"
 #include "BddTargetOsPrimitives.h"
-#include "CmsdkUart.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -64,7 +63,7 @@ int _write(int file, char* buffer, int length)
     if (length > 0)
     {
         BddTargetOsPrimitives_LockConsole();
-        CmsdkUart_Write(buffer, (size_t) length);
+        BddTargetBoard_ConsoleWrite(buffer, (size_t) length);
         BddTargetOsPrimitives_UnlockConsole();
     }
     return length;
@@ -76,7 +75,7 @@ int _read(int file, char* buffer, int length)
     int bytesRead = 0;
     if (length > 0)
     {
-        char byte = CmsdkUart_GetChar();
+        char byte = BddTargetBoard_ConsoleRead();
         if (byte == '\r')
         {
             byte = '\n';
@@ -84,12 +83,11 @@ int _read(int file, char* buffer, int length)
         BddTargetOsPrimitives_LockConsole();
         if (byte == '\n')
         {
-            CmsdkUart_PutChar('\r');
-            CmsdkUart_PutChar('\n');
+            BddTargetBoard_ConsoleWrite("\r\n", 2U);
         }
         else
         {
-            CmsdkUart_PutChar(byte);
+            BddTargetBoard_ConsoleWrite(&byte, 1U);
         }
         BddTargetOsPrimitives_UnlockConsole();
         buffer[0] = byte;

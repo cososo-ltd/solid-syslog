@@ -5,6 +5,7 @@
 
 #include "BddTargetFreeRtosPipeline.h"
 
+#include "BddTargetBoard.h"
 #include "BddTargetOsPrimitives.h"
 
 #include "BddTargetBlockFiles.h"
@@ -20,7 +21,6 @@
 #include "BddTargetSecurityPolicy.h"
 #include "BddTargetStoreSettings.h"
 #include "BddTargetTlsSender.h"
-#include "CmsdkUart.h"
 
 #include "SolidSyslog.h"
 #include "SolidSyslogAtomicCounter.h"
@@ -131,18 +131,6 @@ static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality);
 static void ErrorHandlerEx(void* context, const struct SolidSyslogErrorEvent* event);
 static void WriteConsoleLine(const char* line, size_t length);
 
-static uint32_t MmioRead32(uintptr_t address)
-{
-    // NOLINTNEXTLINE(performance-no-int-to-ptr) -- mapping the CMSDK UART MMIO address into a 32-bit volatile pointer.
-    return *(volatile uint32_t*) address;
-}
-
-static void MmioWrite32(uintptr_t address, uint32_t value)
-{
-    // NOLINTNEXTLINE(performance-no-int-to-ptr) -- mapping the CMSDK UART MMIO address into a 32-bit volatile pointer.
-    *(volatile uint32_t*) address = value;
-}
-
 void BddTargetFreeRtosPipeline_Sleep(uint32_t milliseconds)
 {
     /* Kept as a named function because main.c and the TLS sender pass it as a
@@ -156,13 +144,6 @@ enum
 {
     REPORT_LINE_CAPACITY = 256
 };
-
-static const CmsdkUartMemoryAccess MMIO_ACCESS = {MmioRead32, MmioWrite32, BddTargetFreeRtosPipeline_Sleep};
-
-void BddTargetFreeRtosPipeline_InitConsole(uint32_t uartBaseAddress)
-{
-    CmsdkUart_Init(&MMIO_ACCESS, uartBaseAddress);
-}
 
 void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineConfig* config)
 {
@@ -284,7 +265,7 @@ static bool OnSet(const char* name, const char* value)
         if (parsed != 0U)
         {
             TeardownAll();
-            BddTargetFreeRtosPipeline_Exit(0);
+            BddTargetBoard_Exit(0);
         }
         return true;
     }
@@ -375,10 +356,9 @@ static void OnHalt(void* context)
     (void) context;
     if (BddTargetStoreSettings_HaltExit())
     {
-        /* Semihosting SYS_EXIT - terminates QEMU with status 2 so the BDD
-         * harness sees the run end deterministically. Mirrors the Linux
-         * example's _exit(2). */
-        BddTargetFreeRtosPipeline_Exit(2);
+        /* Ends the run with status 2 so the BDD harness sees it end
+         * deterministically. Mirrors the Linux target's _exit(2). */
+        BddTargetBoard_Exit(2);
     }
 }
 
@@ -453,25 +433,6 @@ static void TeardownAll(void)
 
     /* Platform sender + network adapters last. */
     g_config->TeardownNetwork();
-}
-
-void BddTargetFreeRtosPipeline_Exit(int status)
-{
-    /* SYS_EXIT_EXTENDED (0x20) - the only ARM Semihosting exit form on AArch32
-     * that propagates a non-zero status: R1 points to a { reason, subcode }
-     * block. QEMU terminates the VM; the for(;;) is defensive. */
-    const struct
-    {
-        uint32_t reason;
-        uint32_t subcode;
-    } args = {0x20026U, (uint32_t) status};
-
-    register int r0 __asm("r0") = 0x20;
-    register const void* r1 __asm("r1") = &args;
-    __asm volatile("bkpt 0xAB" : "+r"(r0) : "r"(r1) : "memory");
-    for (;;)
-    {
-    }
 }
 
 void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)

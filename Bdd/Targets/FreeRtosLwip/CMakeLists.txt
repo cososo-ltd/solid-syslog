@@ -50,8 +50,6 @@ include(${LWIP_DIR}/src/Filelists.cmake)
 set(LWIP_CONTRIB_FREERTOS_DIR "${LWIP_DIR}/contrib/ports/freertos")
 
 set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_PORT}")
-set(FREERTOS_TCP_TARGET_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos")
-set(FREERTOS_COMMON_DIR "${FREERTOS_TCP_TARGET_DIR}/Common")
 
 # --- Upstream OBJECT library --------------------------------------------------
 #
@@ -218,8 +216,7 @@ set(BAKED_PEM_HEADERS
 add_executable(SolidSyslogBddTargetLwip
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
-    ${FREERTOS_COMMON_DIR}/CmsdkUart.c
-    ${FREERTOS_COMMON_DIR}/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     ${LWIP_SHARED_DIR}/netif/EthernetIf.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
@@ -267,7 +264,6 @@ target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
-    ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters

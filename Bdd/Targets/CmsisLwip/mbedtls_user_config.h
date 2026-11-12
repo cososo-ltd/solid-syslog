@@ -82,7 +82,7 @@
 
 /* Route mbedTLS allocations through a runtime-installed calloc/free pair. By
  * default mbedTLS calls libc calloc/free, which on this target funnels through
- * newlib into the small 4 KiB syscall heap in Bdd/Targets/FreeRtos/Common/
+ * newlib into the small 4 KiB syscall heap in Bdd/Targets/Common/
  * Syscalls.c (shared with this target) - far too small for mbedTLS's
  * per-context allocations (IN/OUT buffers plus handshake state run ~10-20 KiB).
  * Enabling MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls.c

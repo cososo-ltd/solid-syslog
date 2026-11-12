@@ -16,6 +16,7 @@
  * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host reachable at
  * the slirp gateway 10.0.2.2. */
 
+#include "BddTargetBoard.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetOsPrimitives.h"
@@ -44,8 +45,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
-#define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
 /* IRQ number for the QEMU mps2-an385 LAN9118 Ethernet controller. The upstream
  * Plus-TCP NetworkInterface.c enables ISER for this IRQ but does NOT write IPR -
@@ -121,7 +120,7 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
 
 int main(void)
 {
-    BddTargetFreeRtosPipeline_InitConsole(CMSDK_UART0_BASE_ADDRESS);
+    BddTargetBoard_Init();
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
     SetEthernetIrqPriority();

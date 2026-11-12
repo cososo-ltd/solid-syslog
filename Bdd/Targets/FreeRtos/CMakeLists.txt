@@ -5,13 +5,12 @@
 #
 # Wires SolidSyslogUdpSender behind the SolidSyslogPlusTcpDatagram adapter
 # and the static resolver, with Bdd/Targets/Common/BddTargetInteractive
-# driving `send N` / `quit` over the QEMU -serial stdio UART (CmsdkUart RX
-# path).
+# driving `send N` / `quit` over the board's console.
 #
 # Source layout: upstream FreeRTOS-Kernel + Plus-TCP sources are compiled
 # into a separate OBJECT library (`solid_syslog_freertos_upstream`) that
 # accepts the relaxed warning set those headers / sources require. Local
-# project code (main.c, the board's sources, Common/CmsdkUart.c, Common/Syscalls.c,
+# project code (main.c, the board's sources, Bdd/Targets/Common/Syscalls.c,
 # the Platform/FreeRtos/Source adapters, and Bdd/Targets/Common/
 # BddTargetInteractive.c) stays in the executable target under the strict
 # project warning bar so regressions in our own code can't slip through.
@@ -254,8 +253,7 @@ set(BAKED_PEM_HEADERS
 add_executable(SolidSyslogBddTarget
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common/CmsdkUart.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
     # MbedTls,PlusFat} pack umbrellas linked below (S30.02 dogfood) — their
     # target_sources(INTERFACE) compile here against this target's config.
@@ -296,7 +294,6 @@ target_compile_options(SolidSyslogBddTarget PRIVATE
 
 target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common                # CmsdkUart.h
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters

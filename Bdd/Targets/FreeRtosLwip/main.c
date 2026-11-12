@@ -18,6 +18,7 @@
  * the docker alias over real DNS). */
 
 #include "BddTargetFatFsMount.h"
+#include "BddTargetBoard.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetOsPrimitives.h"
 #include "EthernetIf.h"
@@ -48,8 +49,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
-#define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
 
 /* lwIP netif descriptor - must outlive the tcpip thread. */
 static struct netif networkInterface;
@@ -101,7 +100,7 @@ unsigned int LwipPortRand(void)
 
 int main(void)
 {
-    BddTargetFreeRtosPipeline_InitConsole(CMSDK_UART0_BASE_ADDRESS);
+    BddTargetBoard_Init();
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
     /* Pin every LwipRaw adapter call onto the tcpip thread. */
@@ -121,11 +120,11 @@ int main(void)
             BDD_TARGET_INTERACTIVE_STACK_BYTES
         ))
     {
-        BddTargetFreeRtosPipeline_Exit(1);
+        BddTargetBoard_Exit(1);
     }
     if (!BddTargetOsPrimitives_Spawn(BddTargetFreeRtosPipeline_ServiceTask, "service", BDD_TARGET_SERVICE_STACK_BYTES))
     {
-        BddTargetFreeRtosPipeline_Exit(1);
+        BddTargetBoard_Exit(1);
     }
 
     BddTargetOsPrimitives_StartScheduler();
