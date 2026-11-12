@@ -123,8 +123,9 @@ The chain that opens it unaided:
 4. `image-bump.yml` resolves the tag to its digest, runs
    `scripts/bump_image_digest.py` for each image named, and opens the pull
    request with the App token, because one opened with `GITHUB_TOKEN` does not
-   run CI. A tag the tree is already on opens nothing, and an open bump for the
-   same images at an earlier tag is closed as superseded.
+   run CI. A tag the tree is already on opens nothing. When the tag is what
+   the image repository's `main` publishes, any other open bump for the same
+   images is closed as superseded; a run for an older tag closes nothing.
 
 A change to the `cpputest` base flows through the images built on it the same
 way. `cpputest-freertos` names its base as `cpputest:latest` pinned by digest,
@@ -136,8 +137,8 @@ assignment, which is a GitHub notification: a Renovate pull request whose
 build or smoke fails, and any major, which never merges itself. A publish
 that fails on `main` after a green pull request sends no event at all, so
 `image-drift.yml` checks weekly: it fails when an image's pin here lags its
-repository's `main` and no open bump pull request carries the newer tag,
-using `scripts/check_image_drift.py`.
+repository's `main` and no open bump pull request names that image at the
+newer tag, using `scripts/check_image_drift.py`.
 
 The `cpputest`, `cpputest-freertos` and `cpputest-freertos-cross` images send
 the event. The others reach step 4 by hand.

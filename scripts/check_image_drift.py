@@ -7,6 +7,7 @@ fails after a green pull request sends nothing, so the pin here stays behind
 in silence; this is the check that notices. image-drift.yml runs it weekly.
 
 Run:  python3 scripts/check_image_drift.py --repositories
+      python3 scripts/check_image_drift.py --repository-of <image>
       python3 scripts/check_image_drift.py --head <repository>=<sha>... [--open-branch <name>...]
 """
 
@@ -24,11 +25,14 @@ SOURCES = {
     "ghcr.io/cososo-ltd/cpputest-freertos-cross": "cososo-ltd/CppUTestFreertosDocker",
 }
 
+REGISTRY = "ghcr.io/cososo-ltd/"
+
 BUMP_BRANCH_PREFIX = "chore/bump-image-"
 
 
 def check(table_text, heads, open_branches):
     problems = []
+    names = _table_image_names(table_text)
     for image, repository in SOURCES.items():
         pinned = _pinned_tag(table_text, image)
         if pinned is None:
@@ -37,7 +41,7 @@ def check(table_text, heads, open_branches):
             problems.append("no main head given for " + repository)
         else:
             published = "sha-" + heads[repository][:7]
-            if pinned != published and not _is_carried(published, open_branches):
+            if pinned != published and not _is_carried(image, published, open_branches, names):
                 problems.append(
                     image + " is pinned at " + pinned + ", but " + repository + " main publishes "
                     + published + " and no open bump pull request carries it"
@@ -50,13 +54,40 @@ def _pinned_tag(table_text, image):
     return None if match is None else match.group(1)
 
 
-def _is_carried(tag, open_branches):
-    return any(branch.startswith(BUMP_BRANCH_PREFIX + tag + "-") for branch in open_branches)
+def _table_image_names(table_text):
+    rows = re.findall(r"^\| `" + re.escape(REGISTRY) + r"([^`]*)` \|", table_text, re.MULTILINE)
+    return set(rows)
+
+
+def _is_carried(image, tag, open_branches, names):
+    # Image Bump names its branch for the tag and the image names joined by
+    # "-"; an image is carried only when one of those names is the whole name.
+    prefix = BUMP_BRANCH_PREFIX + tag + "-"
+    name = image[len(REGISTRY):]
+    return any(
+        branch.startswith(prefix) and name in _split_names(branch[len(prefix):], names)
+        for branch in open_branches
+    )
+
+
+def _split_names(joined, names):
+    """Every image name in any reading of joined as whole names separated by "-"."""
+    found = set()
+    for name in names:
+        if joined == name:
+            found.add(name)
+        elif joined.startswith(name + "-"):
+            rest = _split_names(joined[len(name) + 1:], names)
+            if rest:
+                found.add(name)
+                found.update(rest)
+    return found
 
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repositories", action="store_true", help="print the repositories whose main heads are needed, and stop")
+    parser.add_argument("--repository-of", metavar="IMAGE", help="print the repository that publishes IMAGE, a name under " + REGISTRY + ", and stop")
     parser.add_argument("--head", action="append", default=[], metavar="REPOSITORY=SHA", help="a repository's main head commit")
     parser.add_argument("--open-branch", action="append", default=[], metavar="NAME", help="the head branch of an open pull request here")
     parser.add_argument("--root", default=".", help="the repository root (default: the current directory)")
@@ -64,6 +95,13 @@ def main(argv):
     status = 0
     if args.repositories:
         for repository in sorted(set(SOURCES.values())):
+            print(repository)
+    elif args.repository_of is not None:
+        repository = SOURCES.get(REGISTRY + args.repository_of)
+        if repository is None:
+            print("check_image_drift: no image repository sends image-published for " + args.repository_of, file=sys.stderr)
+            status = 1
+        else:
             print(repository)
     else:
         heads = dict(pair.split("=", 1) for pair in args.head)

@@ -50,6 +50,30 @@ class CheckImageDriftTest(unittest.TestCase):
         branches = ["chore/bump-image-sha-7777777-cpputest"]
         self.assertEqual(1, len(check_image_drift.check(table(), heads, branches)))
 
+    def test_a_bump_of_one_image_does_not_carry_another_at_the_same_tag(self):
+        heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestFreertosDocker": OTHER})
+        branches = ["chore/bump-image-sha-abcdef0-cpputest-freertos"]
+        problems = check_image_drift.check(table(), heads, branches)
+        self.assertEqual(1, len(problems))
+        self.assertIn("ghcr.io/cososo-ltd/cpputest-freertos-cross is pinned", problems[0])
+
+    def test_a_grouped_bump_carries_every_image_it_names(self):
+        heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestFreertosDocker": OTHER})
+        branches = ["chore/bump-image-sha-abcdef0-cpputest-freertos-cpputest-freertos-cross"]
+        self.assertEqual([], check_image_drift.check(table(), heads, branches))
+
+    def test_a_bump_naming_an_image_only_by_prefix_does_not_carry_it(self):
+        heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestFreertosDocker": OTHER})
+        branches = ["chore/bump-image-sha-abcdef0-cpputest-freertos-cross"]
+        problems = check_image_drift.check(table(), heads, branches)
+        self.assertEqual(1, len(problems))
+        self.assertIn("ghcr.io/cososo-ltd/cpputest-freertos is pinned", problems[0])
+
+    def test_a_bump_that_also_names_an_unchecked_image_still_carries_the_rest(self):
+        heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestDocker": OTHER})
+        branches = ["chore/bump-image-sha-abcdef0-cpputest-clang-cpputest"]
+        self.assertEqual([], check_image_drift.check(table(), heads, branches))
+
     def test_one_repository_publishing_two_images_is_checked_for_each(self):
         heads = dict(ALL_AT_HEAD, **{"cososo-ltd/CppUTestFreertosDocker": OTHER})
         problems = check_image_drift.check(table(), heads, [])
@@ -97,6 +121,17 @@ class MainTest(unittest.TestCase):
         status, out, _ = self.run_main(["--repositories"])
         self.assertEqual(0, status)
         self.assertEqual("cososo-ltd/CppUTestDocker\ncososo-ltd/CppUTestFreertosDocker\n", out)
+
+    def test_names_the_repository_that_publishes_an_image(self):
+        status, out, _ = self.run_main(["--repository-of", "cpputest-freertos-cross"])
+        self.assertEqual(0, status)
+        self.assertEqual("cososo-ltd/CppUTestFreertosDocker\n", out)
+
+    def test_fails_to_name_a_repository_for_an_image_that_sends_no_event(self):
+        status, out, err = self.run_main(["--repository-of", "cpputest-clang"])
+        self.assertEqual(1, status)
+        self.assertEqual("", out)
+        self.assertIn("check_image_drift: no image repository sends image-published for cpputest-clang", err)
 
     def test_passes_when_every_pin_is_current(self):
         self.write_table(table())
