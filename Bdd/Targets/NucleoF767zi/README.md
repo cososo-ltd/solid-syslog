@@ -180,6 +180,7 @@ or not run.
    ```bash
    gh api repos/cososo-ltd/solid-syslog/commits/<banner commit> --jq '.parents[].sha'
    ```
+
 4. A line typed on the console comes back as `echo:` and the line.
 5. The green LED blinks, on for half a second and off for half a second, and
    the red LED is off.
