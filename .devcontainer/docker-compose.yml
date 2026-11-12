@@ -1,6 +1,6 @@
 services:
   gcc:
-    image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+    image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent

@@ -87,7 +87,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -240,7 +240,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -371,7 +371,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -487,7 +487,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -519,7 +519,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -644,7 +644,7 @@ jobs:
   analyze-tidy:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -783,7 +783,7 @@ jobs:
   analyze-format:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -1145,7 +1145,7 @@ jobs:
   analyze-cppcheck:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -1753,7 +1753,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2422,7 +2422,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest@sha256:7d8e56def41710d6ec8703c3f9f1b0bc4ef6bd9e22d17a63fa97f7247e548d5c # sha-9a3a71e
+      image: ghcr.io/cososo-ltd/cpputest@sha256:d401e2eabdc5e00a002a8ad5f6d63aeaf3ae5e58f7e91afd6a86ab407620cca3 # sha-434cb61
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
