@@ -62,7 +62,7 @@ void RepaintBelowHere()
     const uint8_t* end = std::find_if(
         std::begin(threadStack),
         std::end(threadStack),
-        [frame](const uint8_t& byte) { return !std::less<const void*>()(&byte, frame); }
+        [frame](const uint8_t& byte) { return !std::less<>()(&byte, frame); }
     );
     below = static_cast<size_t>(std::distance(std::cbegin(threadStack), end));
     if (below > REPAINT_MARGIN)
