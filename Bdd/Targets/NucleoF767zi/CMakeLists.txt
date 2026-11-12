@@ -77,9 +77,10 @@ target_include_directories(solid_syslog_nucleo_f767zi_upstream PRIVATE
 # SYSTEM includes: Board.c has to read them, and their macros expand in our
 # code, but their own style is not ours to hold to our warnings.
 
-# The commit goes into the banner, so the checklist can tell that the image on
-# the board is the one built from the commit under review. Read at configure
-# time, which is every time in CI.
+# The commit goes into the banner, so the checklist can tell which build is on
+# the board. It is the commit checked out, which on a pull request is CI's
+# merge of the branch into main. Read at configure time, which is every time
+# in CI.
 find_package(Git QUIET)
 set(BRINGUP_BUILD_COMMIT "unknown")
 if(GIT_EXECUTABLE)

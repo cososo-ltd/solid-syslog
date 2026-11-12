@@ -173,7 +173,13 @@ or not run.
 2. `STM32_Programmer_CLI` writes the ELF from that artifact and its verify
    passes.
 3. After a reset the console shows the banner, and the commit in it is the
-   commit under review.
+   one the lane built. On `main` that is the commit itself. On a pull request
+   it is the merge of the commit under review into `main`, so the commit under
+   review is its second parent:
+
+   ```bash
+   gh api repos/cososo-ltd/solid-syslog/commits/<banner commit> --jq '.parents[].sha'
+   ```
 4. A line typed on the console comes back as `echo:` and the line.
 5. The green LED blinks, on for half a second and off for half a second, and
    the red LED is off.
