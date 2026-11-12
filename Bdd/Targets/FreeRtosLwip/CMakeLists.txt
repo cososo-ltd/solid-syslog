@@ -222,9 +222,8 @@ add_executable(SolidSyslogBddTargetLwip
     # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
     # FreeRtos (Mutex +
     # SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM policies), FatFs (file
-    # adapter). diskio.c is the shared semihosting media driver (8 MiB FAT16).
+    # adapter). diskio.c is the FatFs media glue over the board's disk.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFatFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c

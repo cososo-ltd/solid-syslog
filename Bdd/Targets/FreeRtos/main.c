@@ -9,7 +9,7 @@
  * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
- * the FF_Disk_t semihosting media driver). The lwIP target pairs lwIP with
+ * the FF_Disk_t media driver on the board's disk). The lwIP target pairs lwIP with
  * ChaN-FatFs instead - together the two targets prove the SolidSyslogFile seam
  * is FS-vendor-portable (S29.05).
  *

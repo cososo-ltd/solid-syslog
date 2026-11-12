@@ -109,7 +109,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
     # shadow, type narrowing), so they live in this OBJECT lib. The integrator
     # FreeRTOSFATConfig.h is found off the -I path (CMAKE_CURRENT_SOURCE_DIR
     # below) — no source staging, see note above. The FF_Disk_t media driver
-    # (FFSemihostingDisk.c) is OUR code and stays in the strict executable
+    # (BddTargetPlusFatDisk.c) is OUR code and stays in the strict executable
     # target alongside the SolidSyslogPlusFatFile adapter.
     ${PLUS_FAT_SRC_DIR}/ff_crc.c
     ${PLUS_FAT_SRC_DIR}/ff_dir.c
@@ -282,8 +282,7 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_PlusTcpTcp.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatDisk.c
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_freertos_upstream>
 )
@@ -311,14 +310,14 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
     ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_stdio.h (adapter) + ff_headers.h / ff_ioman.h /
-                                                      # ff_format.h / ff_sys.h (FFSemihostingDisk.c). The
+                                                      # ff_format.h / ff_sys.h (BddTargetPlusFatDisk.c). The
                                                       # integrator FreeRTOSFATConfig.h resolves to
                                                       # CMAKE_CURRENT_SOURCE_DIR above — same as the OBJECT lib,
                                                       # so the Plus-FAT core and our adapter/driver share one
                                                       # config across all translation units.
 )
 
-# FFSemihostingDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
+# BddTargetPlusFatDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
 # FF_ERR_* macros, whose error codes carry the 0x80000000 FF_ERRFLAG bit and so
 # are unsigned-with-high-bit — they cannot be made -Wsign-conversion clean at the
 # call site. Relax only that one diagnostic for only this file; every other
@@ -326,7 +325,7 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
 # adapter needs no such relaxation — it uses the ff_stdio handle API, not the
 # error-code macros.
 set_source_files_properties(
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatDisk.c
     PROPERTIES COMPILE_OPTIONS "-Wno-sign-conversion"
 )
 

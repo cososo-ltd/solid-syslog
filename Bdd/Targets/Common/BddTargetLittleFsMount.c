@@ -4,7 +4,7 @@
 
 #include "BddTargetLittleFsMount.h"
 
-#include "LfsSemihostingDisk.h"
+#include "BddTargetLittleFsDisk.h"
 #include "SolidSyslogLittleFsFile.h"
 
 #include "lfs.h"
@@ -20,7 +20,7 @@ static bool mounted = false;
  * integrator knows the cache_size the filesystem was mounted with. Here that
  * integrator is this file, and the size comes from the same geometry the
  * block device declares. */
-static unsigned char fileCache[LFS_SEMIHOSTING_CACHE_SIZE];
+static unsigned char fileCache[BDD_TARGET_LITTLE_FS_DISK_CACHE_SIZE];
 
 bool BddTargetLittleFsMount_Mount(void)
 {
@@ -28,7 +28,7 @@ bool BddTargetLittleFsMount_Mount(void)
     {
         return true;
     }
-    const struct lfs_config* config = LfsSemihostingDisk_Config();
+    const struct lfs_config* config = BddTargetLittleFsDisk_Config();
     int result = lfs_mount(&filesystem, config);
     if (result == LFS_ERR_CORRUPT)
     {

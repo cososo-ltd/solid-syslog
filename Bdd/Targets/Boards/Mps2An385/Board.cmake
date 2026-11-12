@@ -21,6 +21,7 @@ set(BDD_BOARD_LINKER_SCRIPT ${BDD_BOARD_DIR}/mps2-an385.ld)
 set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Startup.c
     ${BDD_BOARD_DIR}/BddTargetBoard.c
+    ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
     ${BDD_BOARD_DIR}/CmsdkUart.c
 )
 

@@ -36,4 +36,11 @@
 #define BDD_TARGET_BOARD_ORACLE_OCTETS 10U, 0U, 2U, 2U
 #define BDD_TARGET_BOARD_ORACLE_ADDRESS "10.0.2.2"
 
+/* The disk, as BddTargetBoardDisk.h presents it: 16384 sectors of 512 B, which
+ * is 8 MiB. Large enough for the store-and-forward, capacity and power-cycle
+ * scenarios that exercise multi-block files, and clear of the ~4085-cluster
+ * FAT12/16 boundary so both FAT formatters land FAT16. */
+#define BDD_TARGET_BOARD_DISK_SECTOR_SIZE 512
+#define BDD_TARGET_BOARD_DISK_SECTOR_COUNT 16384
+
 #endif /* BDD_TARGET_BOARD_CONFIG_H */

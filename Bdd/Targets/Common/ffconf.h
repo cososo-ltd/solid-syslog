@@ -1,10 +1,8 @@
-/* FatFs integrator configuration shared by the FreeRTOS-Plus-TCP and lwIP
- * BDD targets on QEMU mps2-an385. FF_VOLUMES=1 - single logical drive on
- * the semihosting disk image; FF_USE_MKFS=1 so disk_initialize can fall
- * through to
- * f_mkfs when the image is fresh (after_scenario deletes
- * solidsyslog-disk.img between scenarios, so every scenario starts
- * with no filesystem and the integrator formats on first mount).
+/* FatFs integrator configuration shared by the cross BDD targets that run
+ * FatFs. FF_VOLUMES=1 - single logical drive on the board's disk;
+ * FF_USE_MKFS=1 so disk_initialize can fall through to f_mkfs when the disk
+ * is fresh (every scenario starts with no filesystem, and the integrator
+ * formats on first mount).
  *
  * FF_FS_REENTRANT=1 even though only the Service task touches the
  * store today - the future reentrancy stress test exercises the
@@ -54,7 +52,7 @@
 /* System */
 #define FF_FS_TINY 0
 #define FF_FS_EXFAT 0
-#define FF_FS_NORTC 1 /* No RTC on the QEMU target - fixed-date stamps. */
+#define FF_FS_NORTC 1 /* No RTC on these targets - fixed-date stamps. */
 #define FF_NORTC_MON 1
 #define FF_NORTC_MDAY 1
 #define FF_NORTC_YEAR 2026
