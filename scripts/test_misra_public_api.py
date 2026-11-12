@@ -66,6 +66,34 @@ class Filtering(unittest.TestCase):
         finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
         self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
 
+    def test_a_name_a_public_header_only_gives_a_struct_member_stays(self):
+        self.tree.write("Core/Interface/SolidSyslogThing.h", "struct SolidSyslogThing\n{\n    int Thing_Helper;\n    void (*Thing_Other)(void);\n};\n")
+        self.tree.write("Core/Source/SolidSyslogThing.c", "void Thing_Helper(void)\n{\n}\nvoid Thing_Other(void)\n{\n}\n")
+        findings = [
+            "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]",
+            "Core/Source/SolidSyslogThing.c:4:6: style: misra violation [misra-c2012-8.7]",
+        ]
+        self.assertEqual(misra_public_api.uncovered(findings, self.tree.root.name), findings)
+
+    def test_a_name_a_public_header_only_gives_a_typedef_stays(self):
+        self.tree.write("Core/Interface/SolidSyslogThing.h", "typedef void (*Thing_Helper)(void);\n")
+        self.tree.write("Core/Source/SolidSyslogThing.c", "void Thing_Helper(void)\n{\n}\n")
+        finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
+        self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
+
+    def test_a_name_a_public_header_only_quotes_stays(self):
+        self.tree.write("Core/Interface/SolidSyslogThing.h", "static const char SolidSyslogThing_Name[] = \"Thing_Helper\";\n")
+        self.tree.write("Core/Source/SolidSyslogThing.c", "void Thing_Helper(void)\n{\n}\n")
+        finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
+        self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
+
+    def test_a_function_declared_inside_an_extern_c_block_is_dropped(self):
+        header = '#ifdef __cplusplus\nextern "C"\n{\n#endif\n\n    void SolidSyslogThing_Do(\n        int count\n    );\n\n#ifdef __cplusplus\n}\n#endif\n'
+        self.tree.write("Core/Interface/SolidSyslogThing.h", header)
+        self.tree.write("Core/Source/SolidSyslogThing.c", "void SolidSyslogThing_Do(int count)\n{\n}\n")
+        finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
+        self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [])
+
     def test_the_command_prints_each_uncovered_finding_and_fails(self):
         self.tree.write("Core/Interface/SolidSyslogThing.h", "void SolidSyslogThing_Do(void);\n")
         self.tree.write("Core/Source/SolidSyslogThing.c", "void SolidSyslogThing_Do(void)\n{\n}\n")
