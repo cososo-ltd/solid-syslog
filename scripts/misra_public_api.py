@@ -10,6 +10,7 @@ import re
 
 FINDING = re.compile(r"^(?P<file>[^:\s]+):(?P<line>\d+):(?P<column>\d+): .*\[misra-c2012-8\.7\]")
 IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
+COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
 
 
 def uncovered(findings, root):
@@ -23,7 +24,7 @@ def public_declarations(root):
     names = set()
     for header in headers:
         with open(header, encoding="utf-8") as handle:
-            names.update(IDENTIFIER.findall(handle.read()))
+            names.update(IDENTIFIER.findall(COMMENT.sub(" ", handle.read())))
     return names
 
 
