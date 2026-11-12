@@ -5,6 +5,7 @@ Run:  python3 -m unittest discover -s scripts -p 'test_*.py'
 
 import contextlib
 import io
+import json
 import os
 import subprocess
 import sys
@@ -239,9 +240,16 @@ class BuildProvenanceTest(unittest.TestCase):
         self.assertEqual(0, self.run_main())
         self.assertIn("| FATFS_PATH | 2 |", self.output.getvalue())
 
-    def given_compile_database(self, *files):
-        entries = ",".join(f'{{"file": "{Path(file).as_posix()}"}}' for file in files)
-        self.given_file(self.build / "compile_commands.json", f"[{entries}]")
+    def given_compile_database(self, *files, built=True):
+        directory = self.build / "target"
+        entries = []
+        for file in files:
+            source = Path(file).as_posix()
+            compiled = f"CMakeFiles/target.dir/{Path(file).name}.obj"
+            entries.append({"directory": directory.as_posix(), "command": f"cc -o {compiled} -c {source}", "file": source})
+            if built:
+                self.given_file(directory / compiled)
+        self.given_file(self.build / "compile_commands.json", json.dumps(entries))
 
     def test_an_assembler_source_is_checked_though_no_dependency_file_names_it(self):
         startup = self.wrapper / "Source" / "startup.s"
@@ -255,6 +263,30 @@ class BuildProvenanceTest(unittest.TestCase):
         self.given_compile_database(self.kernel / "portable" / "GCC" / "ARM_CM3" / "port.S")
         self.assertEqual(0, self.run_main())
         self.assertIn("| FREERTOS_KERNEL_PATH | 2 |", self.output.getvalue())
+
+    def test_an_assembler_source_configured_but_never_compiled_is_not_read(self):
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_compile_database(self.root / "elsewhere" / "unbuilt.s", built=False)
+        self.assertEqual(0, self.run_main())
+
+    def test_an_unbuilt_assembler_source_does_not_stand_for_its_wired_tree(self):
+        self.given_wired("SOLIDSYSLOG_FREERTOS_KERNEL_PATH", "SOLIDSYSLOG_LWIP_PATH")
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_compile_database(self.lwip / "src" / "core" / "unbuilt.s", built=False)
+        self.assertEqual(1, self.run_main())
+        self.assertIn("SOLIDSYSLOG_LWIP_PATH: wired by the target, but nothing was read from it", self.output.getvalue())
+
+    def test_a_relative_assembler_source_is_relative_to_its_entry_directory(self):
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_compile_database("startup.s")
+        self.assertEqual(0, self.run_main())
+        self.assertIn("| build tree | 1 |", self.output.getvalue())
+
+    def test_returns_two_when_an_assembler_entry_names_no_object(self):
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_file(self.build / "compile_commands.json", '[{"directory": "/d", "command": "cc -c startup.s", "file": "startup.s"}]')
+        self.assertEqual(2, self.run_main())
+        self.assertIn("names no object", self.output.getvalue())
 
     def test_a_c_source_configured_but_never_compiled_is_not_read(self):
         self.given_object_that_read(self.checkout / "main.c")

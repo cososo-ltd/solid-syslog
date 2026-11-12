@@ -23,7 +23,8 @@ file is compiled and leaves no trace there. Those are read from CMake's
 compile database instead, when the configure exported one, which every cross
 preset's does. Only the assembler sources are taken from it: it lists every
 target the configure defined, built or not, and the dependency records
-already cover what C was compiled.
+already cover what C was compiled. An assembler source is counted only when
+the object its command writes exists, which is the evidence it was compiled.
 
 The configure also records which upstream trees the target wires. Every BDD
 target resolves its trees through `solidsyslog_bdd_upstream()` in
@@ -77,6 +78,7 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 
@@ -215,13 +217,32 @@ def configure_inputs(build):
 
 
 def assembler_sources(build):
-    """The assembler sources the configure defined, from the compile database.
-    The compiler writes no dependency file for one, so nothing else names it."""
+    """The assembler sources that were compiled, from the compile database.
+    The compiler writes no dependency file for one, so nothing else names it.
+    The database lists what the configure defined, so a source counts only
+    when the object its command writes is there."""
     database = build / COMPILE_DATABASE
     if not database.exists():
         return []
-    entries = json.loads(database.read_text(encoding="utf-8"))
-    return [entry["file"] for entry in entries if entry["file"].endswith(ASSEMBLER_SUFFIXES)]
+    sources = []
+    for entry in json.loads(database.read_text(encoding="utf-8")):
+        if entry["file"].endswith(ASSEMBLER_SUFFIXES):
+            directory = pathlib.Path(entry.get("directory", build))
+            if (directory / assembler_object(entry)).exists():
+                sources.append(str(directory / entry["file"]))
+    return sources
+
+
+def assembler_object(entry):
+    """The object an entry's command writes, relative to the entry's directory
+    unless the command gave it in full. CMake names it in `output` from 3.20
+    and in the command line always."""
+    if "output" in entry:
+        return entry["output"]
+    arguments = entry.get("arguments") or shlex.split(entry.get("command", ""))
+    if "-o" not in arguments[:-1]:
+        raise MissingRecord(f"{entry['file']}: the compile database names no object for it")
+    return arguments[arguments.index("-o") + 1]
 
 
 def resolve(prerequisite, build):
