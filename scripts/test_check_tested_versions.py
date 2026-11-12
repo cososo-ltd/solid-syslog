@@ -166,6 +166,14 @@ class Checking(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("::error::posix/index.md: claims GNU 12.2.0, but CI built Posix with Clang 19.1.7, GNU 14.2.0", out)
 
+    def test_the_prose_must_say_what_the_tested_with_marker_says(self):
+        self.all_pages_right()
+        self.tree.lane("unit-linux-clang", host_record("Clang", "19.1.7", ["Posix"]))
+        self.tree.page("posix", "Tested with Clang 19.\n<!-- tested-with: Clang 19.1.7 -->\n")
+        code, out = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("::error::posix/index.md: the marker says Clang 19.1.7, but the page's prose does not", out)
+
     def test_no_record_at_all_is_a_missing_input_not_a_stale_page(self):
         self.all_pages_right()
         empty = os.path.join(self.tree.root.name, "nothing")

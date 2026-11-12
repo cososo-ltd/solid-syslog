@@ -148,11 +148,15 @@ def check_compilers(tokens, compilers, docs_dir):
         if not os.path.exists(page):
             continue
         with open(page, encoding="utf-8") as handle:
-            claims = COMPILER_MARKER.findall(handle.read())
+            text = handle.read()
+        claims = COMPILER_MARKER.findall(text)
+        prose = COMMENT.sub("", text)
         built = sorted(compilers.get(token, []))
         for claim in claims:
             if claim not in built:
                 failures.append(f"{token.lower()}/index.md: claims {claim}, but CI built {token} with {', '.join(built)}")
+            if claim not in prose:
+                failures.append(f"{token.lower()}/index.md: the marker says {claim}, but the page's prose does not")
         if claims:
             rows.append((token, ", ".join(claims), ", ".join(built) or "-"))
     return failures, rows
