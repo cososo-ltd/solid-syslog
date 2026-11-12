@@ -31,7 +31,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:15126cbbe32a33e4eeed27c54714f7c148fa3e542d879274b3989916c239405f # sha-0bc855f
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:4a5334f402a877f4844f84bca49c0352f02009da0449424314be5d1b8ca044e1 # sha-a72c34b
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
