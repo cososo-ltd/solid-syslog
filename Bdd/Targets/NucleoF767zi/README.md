@@ -137,6 +137,9 @@ The PHY is the on-board LAN8742A.
 | TXD0 | PG13 |
 | TXD1 | PB13 |
 
+Jumpers JP6 and JP7 carry CRS_DV and TXD1 to the PHY, and both must be fitted
+for Ethernet.
+
 PA7 is also Arduino D11, the MOSI of the SPI on the Arduino header, so that
 SPI cannot be used with Ethernet as the board ships. The breakouts go on a
 different SPI.
@@ -146,13 +149,15 @@ different SPI.
 Both breakouts share SPI4, on the CN9 Zio connector, with a chip select each.
 None of these pins is shared with Ethernet, the ST-LINK or an LED.
 
-| Signal | Pin | Zio |
-|---|---|---|
-| SCK | PE2 | D56 |
-| MISO | PE5 | D58 |
-| MOSI | PE6 | D59 |
-| MicroSD chip select | PE4 | D57 |
-| W25Q128 chip select | PE3 | D60 |
+| Signal | Pin | Zio | CN9 pin |
+|---|---|---|---|
+| SCK | PE2 | D56 | 14 |
+| MISO | PE5 | D58 | 18 |
+| MOSI | PE6 | D59 | 20 |
+| MicroSD chip select | PE4 | D57 | 16 |
+| W25Q128 chip select | PE3 | D60 | 22 |
+
+PE2 also comes out on CN10 pin 25. Only one of the two is to be wired.
 
 Both breakouts take 3V3 and GND from CN8.
 
