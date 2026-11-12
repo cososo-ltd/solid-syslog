@@ -135,7 +135,7 @@ services:
 
   behave-freertos:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:6ed3741aecba77cc30ef6d26dee7d95f4bfdc496c648464d47a691d2328da6ff # sha-74b6904
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:959e2504d0ac0e04083ce39636e49f5b7dc7b7e8c3120f1520b0c9c5fb323242 # sha-54d57c6
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -212,7 +212,7 @@ services:
 
   behave-freertos-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:6ed3741aecba77cc30ef6d26dee7d95f4bfdc496c648464d47a691d2328da6ff # sha-74b6904
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:959e2504d0ac0e04083ce39636e49f5b7dc7b7e8c3120f1520b0c9c5fb323242 # sha-54d57c6
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -272,7 +272,7 @@ services:
 
   behave-cmsis-lwip:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:6ed3741aecba77cc30ef6d26dee7d95f4bfdc496c648464d47a691d2328da6ff # sha-74b6904
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:959e2504d0ac0e04083ce39636e49f5b7dc7b7e8c3120f1520b0c9c5fb323242 # sha-54d57c6
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
@@ -327,7 +327,7 @@ services:
 
   behave-cmsis-lwip-wolfssl:
     # Cross image carries qemu-system-arm + python3 + behave.
-    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:6ed3741aecba77cc30ef6d26dee7d95f4bfdc496c648464d47a691d2328da6ff # sha-74b6904
+    image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:959e2504d0ac0e04083ce39636e49f5b7dc7b7e8c3120f1520b0c9c5fb323242 # sha-54d57c6
     user: "0"
     volumes:
       - ..:/workspaces/SolidSyslog
