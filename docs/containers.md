@@ -101,36 +101,52 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
 A bump is a pull request titled `chore: bump <image> image to sha-<short>`,
 naming both images when one commit published two, that moves every reference
 to the image onto the digest of the new tag. Every lane runs on the new image
-there, so a green run is the evidence and the maintainer merges. The chain
-that opens it unaided:
+there, so a green run is the evidence and the maintainer merges. It is the one
+step in the chain anyone takes; the image repositories merge their own bumps.
+The chain that opens it unaided:
 
-1. A push to the image repository's `main` builds the image and publishes it
-   at a new `sha-<short>` tag. The usual push is a merged Renovate pull request:
-   for an upstream pinned by tag and SHA, Renovate opens that bump when the
-   upstream releases, and the repository's README says how it finds the pin
-   and which updates it holds back
+1. Renovate opens a pull request in the image repository when something its
+   image pins moves: an upstream release, the base image's digest, or a
+   GitHub Action. The repository's README says how it finds each pin and
+   which updates it holds back
    ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#keeping-the-pins-current),
-   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-wolfssl-pin-current)).
-2. The publish workflow sends a `repository_dispatch` event, `image-published`,
-   to this repository, naming the images that commit published and their tag.
-   The token is minted from the release GitHub App, which is installed here.
-3. `image-bump.yml` resolves the tag to its digest, runs
+   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-pins-current)).
+2. The publishing workflow builds and smokes the image on that pull request.
+   Green, it merges itself; the README says what the smoke proves and what
+   merges
+   ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#what-merges-itself),
+   [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#what-merges-itself)).
+3. The merge publishes the image at a new `sha-<short>` tag, and the workflow
+   sends a `repository_dispatch` event, `image-published`, to this repository,
+   naming the images that commit published and their tag. The token is minted
+   from the release GitHub App, which is installed here.
+4. `image-bump.yml` resolves the tag to its digest, runs
    `scripts/bump_image_digest.py` for each image named, and opens the pull
    request with the App token, because one opened with `GITHUB_TOKEN` does not
-   run CI. A tag the tree is already on opens nothing.
+   run CI. A tag the tree is already on opens nothing. When the tag is what
+   the image repository's `main` publishes, any other open bump for the same
+   images is closed as superseded; a run for an older tag closes nothing.
 
 A change to the `cpputest` base flows through the images built on it the same
 way. `cpputest-freertos` names its base as `cpputest:latest` pinned by digest,
 so when `cpputest` publishes, Renovate in CppUTestFreertosDocker opens the
-digest bump; merging it publishes both FreeRTOS images, and step 2 follows.
+digest bump, which merges itself and publishes both FreeRTOS images.
+
+What still comes to the maintainer from an image repository arrives as an
+assignment, which is a GitHub notification: a Renovate pull request whose
+build or smoke fails, and any major, which never merges itself. A publish
+that fails on `main` after a green pull request sends no event at all, so
+`image-drift.yml` checks weekly: it fails when an image's pin here lags its
+repository's `main` and no open bump pull request names that image at the
+newer tag, using `scripts/check_image_drift.py`.
 
 The `cpputest`, `cpputest-freertos` and `cpputest-freertos-cross` images send
-the event. The others reach step 3 by hand.
+the event. The others reach step 4 by hand.
 
 ### By hand
 
 Run the **Image Bump** workflow from the Actions tab with the image names and
-the tag, and it does step 3. That is the path for `cpputest-clang`, `behave`
+the tag, and it does step 4. That is the path for `cpputest-clang`, `behave`
 and `mkdocs-mkdoxy`, whose repositories do not send the event, and the
 fallback when a dispatch did not arrive. Or do the same locally:
 

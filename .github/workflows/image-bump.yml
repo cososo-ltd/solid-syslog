@@ -22,6 +22,12 @@ on:
 permissions:
   contents: read
 
+# Runs for the same images queue rather than overlap, so a run's check of the
+# image repository's head still holds when it closes superseded bumps.
+concurrency:
+  group: image-bump-${{ github.event.inputs.images || github.event.client_payload.images }}
+  cancel-in-progress: false
+
 jobs:
   bump:
     runs-on: ubuntu-latest
@@ -107,3 +113,25 @@ jobs:
           if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
             gh pr create --head "$branch" --title "$title" --body-file /tmp/body.md
           fi
+
+          # An open bump for the same images at another tag is superseded: only
+          # the newest is worth merging, so close the rest rather than leave a
+          # queue. Sha tags carry no order, so this closes them only when TAG is
+          # what the image repository's main publishes now; a run for an older
+          # tag closes nothing. The tag is a fixed width, so what follows it in
+          # a branch name is the image set.
+          for image in $IMAGES; do
+            repository=$(python3 scripts/check_image_drift.py --repository-of "$image") || exit 0
+            head=$(gh api "repos/$repository/commits/main" --jq .sha)
+            if [ "sha-${head:0:7}" != "$TAG" ]; then
+              echo "$TAG is not $repository main (sha-${head:0:7}); closing no other bump"
+              exit 0
+            fi
+          done
+          image_set="$(echo "$IMAGES" | tr ' ' '-')"
+          current=$(gh pr list --head "$branch" --state open --json number --jq '.[].number')
+          for other in $(gh pr list --state open --limit 200 --json headRefName --jq '.[].headRefName'); do
+            if [ "$other" != "$branch" ] && [ "${other#chore/bump-image-sha-???????-}" = "$image_set" ]; then
+              gh pr close "$other" --delete-branch --comment "Superseded by #$current, which pins $TAG."
+            fi
+          done

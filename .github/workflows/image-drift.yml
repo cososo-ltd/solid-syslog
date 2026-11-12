@@ -1,0 +1,38 @@
+name: Image Drift
+
+# The alarm for the one silent case in the image chain (docs/containers.md): a
+# publish that fails on an image repository's main after a green pull request
+# sends no event, so no bump pull request opens and the pin here lags unseen.
+# Once a week this compares each image repository's main with the tag pinned
+# here and with the open bump pull requests, and fails when a pin lags with
+# nothing to carry it. A failed scheduled run notifies whoever last changed the
+# cron line, so a quiet week shows nothing.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare each pin with its image repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          args=()
+          for repository in $(python3 scripts/check_image_drift.py --repositories); do
+            args+=(--head "$repository=$(gh api "repos/$repository/commits/main" --jq .sha)")
+          done
+          for branch in $(gh pr list --state open --limit 200 --json headRefName --jq '.[].headRefName'); do
+            args+=(--open-branch "$branch")
+          done
+          python3 scripts/check_image_drift.py "${args[@]}"
