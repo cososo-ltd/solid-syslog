@@ -1,7 +1,7 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include "Mps2An385.h"
+#include "BddTargetBoardConfig.h"
 
 /* FreeRTOS kernel configuration for Cortex-M3 on QEMU mps2-an385 with lwIP
  * (Raw API) under NO_SYS=0, running the CMSIS-RTOS2 wrapper on top.
@@ -22,7 +22,7 @@
 #define configUSE_PREEMPTION 1
 #define configUSE_IDLE_HOOK 0
 #define configUSE_TICK_HOOK 0
-#define configCPU_CLOCK_HZ ((unsigned long) 25000000)
+#define configCPU_CLOCK_HZ ((unsigned long) BDD_TARGET_BOARD_CPU_CLOCK_HZ)
 #define configTICK_RATE_HZ ((TickType_t) 100)
 /* CMSIS-RTOS2 defines 56 thread priorities and freertos_os2.h refuses to
  * compile against any other value, so this is not a tuning choice. The
@@ -91,8 +91,8 @@
 #define configUSE_OS2_EVENTFLAGS_FROM_ISR 0
 #define configUSE_OS2_TIMER 0
 
-/* The NVIC priority bits this machine implements - see Mps2An385.h. */
-#define configPRIO_BITS MPS2_AN385_NVIC_PRIO_BITS
+/* The NVIC priority bits the board implements - see BddTargetBoardConfig.h. */
+#define configPRIO_BITS BDD_TARGET_BOARD_NVIC_PRIO_BITS
 #define configKERNEL_INTERRUPT_PRIORITY (7 << (8 - configPRIO_BITS))
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY (5 << (8 - configPRIO_BITS))
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY 7

@@ -17,7 +17,10 @@
 #   BDD_BOARD_PROJECT_SOURCES  - the board's own sources, compiled under the
 #                                strict bar in the target's executable
 #   BDD_BOARD_INCLUDES         - include directories for the headers the board
-#                                supplies to the target and to its upstreams
+#                                supplies to the target and to its upstreams:
+#                                BddTargetBoardConfig.h, the clock and NVIC
+#                                facts the kernel configuration reads, and
+#                                BddTargetCmsisDevice.h, the CMSIS device header
 #
 # The toolchain file is the board's too, since it fixes the core for every
 # object in the image. It is named by the preset, not from here: CMake reads

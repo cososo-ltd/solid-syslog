@@ -25,5 +25,5 @@ set(BDD_BOARD_PROJECT_SOURCES
 )
 
 set(BDD_BOARD_INCLUDES
-    ${BDD_BOARD_DIR}                                  # Mps2An385.h, CmsdkUart.h
+    ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h
 )
