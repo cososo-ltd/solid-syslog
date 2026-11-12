@@ -2530,7 +2530,7 @@ jobs:
       - name: Configure the consumer project (ARM cross)
         run: |
           cmake -S ci/consumer-smoke -B build/consumer-smoke-cross \
-            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake" \
+            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/Boards/Mps2An385/cmake/arm-none-eabi.cmake" \
             -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)"
 
       - name: Cross-build the consumer project
@@ -2551,7 +2551,7 @@ jobs:
           env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
               -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
           cmake -S ci/consumer-smoke -B build/consumer-smoke-scrubbed \
-            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake" \
+            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/Boards/Mps2An385/cmake/arm-none-eabi.cmake" \
             -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
             -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos" \
             -DSOLIDSYSLOG_LWIP_PATH=/opt/lwip \
@@ -2568,7 +2568,7 @@ jobs:
           env -u LWIP_PATH -u FREERTOS_KERNEL_PATH -u MBEDTLS_DIR \
               -u FATFS_PATH -u FREERTOS_PLUS_FAT_PATH -u FREERTOS_PLUS_TCP_PATH \
           cmake -S ci/consumer-smoke -B build/consumer-smoke-gates-off \
-            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake" \
+            -DCMAKE_TOOLCHAIN_FILE="$(pwd)/Bdd/Targets/Boards/Mps2An385/cmake/arm-none-eabi.cmake" \
             -DFETCHCONTENT_SOURCE_DIR_SOLIDSYSLOG="$(pwd)" \
             -DSOLIDSYSLOG_PLATFORMS="LwipRaw;FreeRtos" \
             -DSOLIDSYSLOG_LWIP_PATH=/opt/lwip \

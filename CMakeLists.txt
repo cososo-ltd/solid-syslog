@@ -650,9 +650,9 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL
     endif()
 endif()
 
-# The cross-compiled FreeRTOS target is selected by the arm-none-eabi
-# toolchain file (see Bdd/Targets/FreeRtos/cmake/arm-none-eabi.cmake); it
-# only enters the build when a cross preset is active. SOLIDSYSLOG_BDD_TARGET
+# The cross-compiled targets are selected by an arm-none-eabi toolchain file,
+# which belongs to the board (see Bdd/Targets/Boards/Board.cmake); they
+# only enter the build when a cross preset is active. SOLIDSYSLOG_BDD_TARGET
 # picks which one: FREERTOS_PLUSTCP builds the full FreeRTOS-Plus-TCP BDD
 # target; FREERTOS_LWIP the FreeRtosLwip one (S28.09) — LAN9118 netif +
 # NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one

@@ -11,12 +11,15 @@
 # Source layout: upstream FreeRTOS-Kernel + Plus-TCP sources are compiled
 # into a separate OBJECT library (`solid_syslog_freertos_upstream`) that
 # accepts the relaxed warning set those headers / sources require. Local
-# project code (main.c, Startup.c, Common/CmsdkUart.c, Common/Syscalls.c,
+# project code (main.c, the board's sources, Common/CmsdkUart.c, Common/Syscalls.c,
 # the Platform/FreeRtos/Source adapters, and Bdd/Targets/Common/
 # BddTargetInteractive.c) stays in the executable target under the strict
 # project warning bar so regressions in our own code can't slip through.
 
 # The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
+# What belongs to the board - see Bdd/Targets/Boards/Board.cmake.
+include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
+
 solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
 solidsyslog_bdd_upstream(FREERTOS_PLUS_TCP_PATH SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH /opt/freertos/plus-tcp)
 solidsyslog_bdd_upstream(FREERTOS_PLUS_FAT_PATH SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH /opt/freertos/plus-fat)
@@ -29,7 +32,7 @@ solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls
 
 set(PLUS_FAT_SRC_DIR "${FREERTOS_PLUS_FAT_PATH}")
 
-set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
+set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_PORT}")
 
 set(PLUS_TCP_SRC_DIR "${FREERTOS_PLUS_TCP_PATH}/source")
 set(PLUS_TCP_PORT_GCC_DIR "${PLUS_TCP_SRC_DIR}/portable/Compiler/GCC")
@@ -120,8 +123,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
 )
 
 target_compile_options(solid_syslog_freertos_upstream PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -145,7 +147,7 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common                # Mps2An385.h, for FreeRTOSConfig.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
@@ -251,7 +253,7 @@ set(BAKED_PEM_HEADERS
 
 add_executable(SolidSyslogBddTarget
     main.c
-    Startup.c
+    ${BDD_BOARD_PROJECT_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/CmsdkUart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Common/Syscalls.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
@@ -286,8 +288,7 @@ add_executable(SolidSyslogBddTarget
 set_target_properties(SolidSyslogBddTarget PROPERTIES SUFFIX ".elf")
 
 target_compile_options(SolidSyslogBddTarget PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -296,6 +297,7 @@ target_compile_options(SolidSyslogBddTarget PRIVATE
 target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Common                # CmsdkUart.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{PlusFat,FreeRtos,PlusTcp,MbedTls}/{Interface,Source} include dirs
@@ -350,9 +352,8 @@ target_compile_definitions(SolidSyslogBddTarget PRIVATE
 )
 
 target_link_options(SolidSyslogBddTarget PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
-    -T${CMAKE_CURRENT_SOURCE_DIR}/Common/mps2-an385.ld
+    ${BDD_BOARD_ARCH_FLAGS}
+    -T${BDD_BOARD_LINKER_SCRIPT}
     --specs=nano.specs
     --specs=nosys.specs
     -Wl,--gc-sections
@@ -360,4 +361,4 @@ target_link_options(SolidSyslogBddTarget PRIVATE
 )
 
 set_target_properties(SolidSyslogBddTarget PROPERTIES
-    LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Common/mps2-an385.ld)
+    LINK_DEPENDS ${BDD_BOARD_LINKER_SCRIPT})

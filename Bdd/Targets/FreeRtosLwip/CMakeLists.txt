@@ -16,6 +16,9 @@
 # sources) stays in the executable under the strict project warning bar.
 
 # The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
+# What belongs to the board - see Bdd/Targets/Boards/Board.cmake.
+include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
+
 solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
 solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
 solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
@@ -46,7 +49,7 @@ include(${LWIP_DIR}/src/Filelists.cmake)
 
 set(LWIP_CONTRIB_FREERTOS_DIR "${LWIP_DIR}/contrib/ports/freertos")
 
-set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
+set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_PORT}")
 set(FREERTOS_TCP_TARGET_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos")
 set(FREERTOS_COMMON_DIR "${FREERTOS_TCP_TARGET_DIR}/Common")
 
@@ -89,8 +92,7 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
 )
 
 target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -110,7 +112,7 @@ target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
-    ${FREERTOS_COMMON_DIR}                            # Mps2An385.h, for FreeRTOSConfig.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${FREERTOS_KERNEL_PATH}/include
@@ -215,7 +217,7 @@ set(BAKED_PEM_HEADERS
 
 add_executable(SolidSyslogBddTargetLwip
     main.c
-    ${FREERTOS_TCP_TARGET_DIR}/Startup.c              # Ethernet variant: IRQ 13 -> EthernetISR
+    ${BDD_BOARD_PROJECT_SOURCES}
     ${FREERTOS_COMMON_DIR}/CmsdkUart.c
     ${FREERTOS_COMMON_DIR}/Syscalls.c
     ${LWIP_SHARED_DIR}/netif/EthernetIf.c
@@ -254,8 +256,7 @@ add_executable(SolidSyslogBddTargetLwip
 set_target_properties(SolidSyslogBddTargetLwip PROPERTIES SUFFIX ".elf")
 
 target_compile_options(SolidSyslogBddTargetLwip PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -267,6 +268,7 @@ target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{LwipRaw,FreeRtos,MbedTls,FatFs}/{Interface,Source} include dirs
@@ -304,9 +306,8 @@ target_compile_definitions(SolidSyslogBddTargetLwip PRIVATE
 )
 
 target_link_options(SolidSyslogBddTargetLwip PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
-    -T${FREERTOS_COMMON_DIR}/mps2-an385.ld
+    ${BDD_BOARD_ARCH_FLAGS}
+    -T${BDD_BOARD_LINKER_SCRIPT}
     --specs=nano.specs
     --specs=nosys.specs
     -Wl,--gc-sections
@@ -314,4 +315,4 @@ target_link_options(SolidSyslogBddTargetLwip PRIVATE
 )
 
 set_target_properties(SolidSyslogBddTargetLwip PROPERTIES
-    LINK_DEPENDS ${FREERTOS_COMMON_DIR}/mps2-an385.ld)
+    LINK_DEPENDS ${BDD_BOARD_LINKER_SCRIPT})

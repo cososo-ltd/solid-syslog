@@ -19,6 +19,10 @@
 # platform adapters and the shared BddTarget sources) stays in the executable
 # under the strict project warning bar.
 
+# What belongs to the board - see Bdd/Targets/Boards/Board.cmake. First, because
+# the kernel half below takes its port from it.
+include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
+
 # The kernel half: sources, include dirs and application hooks. Swapping
 # kernels is changing this one path.
 include(${CMAKE_CURRENT_SOURCE_DIR}/Kernel/FreeRtos/Kernel.cmake)
@@ -76,8 +80,7 @@ add_library(solid_syslog_cmsis_lwip_upstream OBJECT
 )
 
 target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -98,7 +101,7 @@ target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
 target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # lwipopts.h
     ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
-    ${FREERTOS_COMMON_DIR}                            # Mps2An385.h, for FreeRTOSConfig.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${LWIP_DIR}/src/include
@@ -151,8 +154,7 @@ if(SOLIDSYSLOG_WOLFSSL)
         ${WOLFSSL_SOURCE_DIR}/wolfcrypt/src/wolfmath.c
     )
     target_compile_options(solid_syslog_cmsis_wolfssl_upstream PRIVATE
-        -mcpu=cortex-m3
-        -mthumb
+        ${BDD_BOARD_ARCH_FLAGS}
         -ffunction-sections
         -fdata-sections
         -fno-common
@@ -306,7 +308,7 @@ set(BAKED_PEM_HEADERS
 
 add_executable(SolidSyslogBddTargetCmsis
     main.c
-    ${FREERTOS_TCP_TARGET_DIR}/Startup.c              # Ethernet variant: IRQ 13 -> EthernetISR
+    ${BDD_BOARD_PROJECT_SOURCES}
     ${FREERTOS_COMMON_DIR}/CmsdkUart.c
     ${FREERTOS_COMMON_DIR}/Syscalls.c
     ${LWIP_SHARED_DIR}/netif/EthernetIf.c
@@ -343,8 +345,7 @@ add_executable(SolidSyslogBddTargetCmsis
 set_target_properties(SolidSyslogBddTargetCmsis PROPERTIES SUFFIX ".elf")
 
 target_compile_options(SolidSyslogBddTargetCmsis PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -357,6 +358,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
     ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
     ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{LwipSocket,CmsisRtos,LittleFs}/{Interface,Source} and the TLS pack's include dirs
@@ -397,9 +399,8 @@ target_compile_definitions(SolidSyslogBddTargetCmsis PRIVATE
 )
 
 target_link_options(SolidSyslogBddTargetCmsis PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
-    -T${FREERTOS_COMMON_DIR}/mps2-an385.ld
+    ${BDD_BOARD_ARCH_FLAGS}
+    -T${BDD_BOARD_LINKER_SCRIPT}
     --specs=nano.specs
     --specs=nosys.specs
     -Wl,--gc-sections
@@ -407,4 +408,4 @@ target_link_options(SolidSyslogBddTargetCmsis PRIVATE
 )
 
 set_target_properties(SolidSyslogBddTargetCmsis PROPERTIES
-    LINK_DEPENDS ${FREERTOS_COMMON_DIR}/mps2-an385.ld)
+    LINK_DEPENDS ${BDD_BOARD_LINKER_SCRIPT})
