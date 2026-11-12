@@ -22,6 +22,14 @@ TEST_GROUP(BddTargetLineAssembler)
         }
         return completed;
     }
+
+    void AcceptOneMoreThanTheCapacity()
+    {
+        for (size_t sent = 0; sent < (size_t) BDDTARGET_LINE_ASSEMBLER_CAPACITY + 1U; sent++)
+        {
+            BddTargetLineAssembler_Accept(&assembler, 'x');
+        }
+    }
 };
 
 // clang-format on
@@ -83,10 +91,7 @@ TEST(BddTargetLineAssembler, TheNextLineStartsAfresh)
 
 TEST(BddTargetLineAssembler, ALineLongerThanTheCapacityIsCutToIt)
 {
-    for (size_t sent = 0; sent < (size_t) BDDTARGET_LINE_ASSEMBLER_CAPACITY + 1U; sent++)
-    {
-        BddTargetLineAssembler_Accept(&assembler, 'x');
-    }
+    AcceptOneMoreThanTheCapacity();
 
     CHECK_TRUE(BddTargetLineAssembler_Accept(&assembler, '\n'));
     LONGS_EQUAL(BDDTARGET_LINE_ASSEMBLER_CAPACITY, assembler.Length);
@@ -94,10 +99,7 @@ TEST(BddTargetLineAssembler, ALineLongerThanTheCapacityIsCutToIt)
 
 TEST(BddTargetLineAssembler, ACutLineIsStillTerminated)
 {
-    for (size_t sent = 0; sent < (size_t) BDDTARGET_LINE_ASSEMBLER_CAPACITY + 1U; sent++)
-    {
-        BddTargetLineAssembler_Accept(&assembler, 'x');
-    }
+    AcceptOneMoreThanTheCapacity();
 
     BddTargetLineAssembler_Accept(&assembler, '\n');
 
