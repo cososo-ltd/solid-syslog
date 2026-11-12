@@ -31,7 +31,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:a64f0d6024f81ab8a89cfb5d9e47bd498c8af66d167059511e6a54b401337c0c # sha-74b6904
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:879e29d63dd60253a46a03f43b0db8a8fcac24365cfdf5af06f3cce338b69888 # sha-54d57c6
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -130,10 +130,10 @@ jobs:
       # drifts away from the pages around it and eventually names a file that has
       # moved or gone. The tag holds. No page emits such a link today; pinning it
       # now means the first one that does is already correct.
-      # Image digest below is mkdocs-mkdoxy sha-34173c0 (see docs/containers.md).
+      # Image digest below is mkdocs-mkdoxy sha-81e064a (see docs/containers.md).
       - name: Build the offline documentation bundle
         env:
-          SOLIDSYSLOG_DOCS_IMAGE: ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:9ab3d41807a941f3d5a7077fb7288d0ffe2a926729ce13a4fc889cc8b6630d43
+          SOLIDSYSLOG_DOCS_IMAGE: ghcr.io/cososo-ltd/mkdocs-mkdoxy@sha256:6a437d062bec0e674dd8543d66467af0ada93fd4c16dee22f38d877614bcd84e
           SOLIDSYSLOG_DOCS_VERSION: ${{ steps.version.outputs.version }}
           SOLIDSYSLOG_DOCS_RELEASE: ${{ github.event_name == 'release' && steps.version.outputs.version || '' }}
           SOLIDSYSLOG_DOCS_ORIGIN: ${{ github.ref_name }}
