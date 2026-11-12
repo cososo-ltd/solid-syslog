@@ -1456,11 +1456,15 @@ Rule 17.3, suppressed for the cppcheck-misra lane by `--suppress` in
 
 ### Rationale
 
-Every file the lane scans is also compiled by a build lane against the real
-headers, with warnings as errors, and C99 removed implicit declaration from the
-language: GCC 14 and Clang reject it as an error, and MSVC's C4013 fails under
-`/WX`. The compilers enforce the rule on every push; the lane's report of it is
-an artefact of the include path alone, so no finding of it could be true.
+C99 removed implicit declaration from the language: GCC 14 and Clang reject it
+as an error, and MSVC's C4013 fails under `/WX`. Every file the lane scans is
+also compiled with warnings as errors. Every pack but VxWorks64 is compiled in
+CI against its real headers. VxWorks64 is compiled in CI against stand-in
+headers that declare everything the pack calls, and against the real headers by
+the target checklist in `Bdd/Targets/VxWorks64/README.md`, which requires a
+build with no diagnostics. The compilers enforce the rule; the lane's
+report of it is an artefact of the include path alone, so no finding of it could
+be true.
 
 | Alternative | Why rejected |
 |-------------|--------------|
