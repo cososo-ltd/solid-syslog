@@ -29,6 +29,8 @@ ANY_FINDING = re.compile(r"^\S+:\d+:\d+: \w+: .*\[[\w.-]+\]$")
 IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
 COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
 EXTERN_OBJECT = re.compile(r"\s*extern\b")
+EXTERN_C = re.compile(r'\bextern\s*"C"\s*\{')
+TYPEDEF = re.compile(r"\s*typedef\b")
 PREPROCESSOR = re.compile(r"^[ \t]*#(?:[^\n]*\\\n)*[^\n]*", re.MULTILINE)
 
 
@@ -49,8 +51,10 @@ def public_declarations(root):
 
 def declared_names(text):
     names = set()
-    for statement in text.split(";"):
+    for statement in EXTERN_C.sub(" ", text).split(";"):
         before_parameters = statement.split("(", 1)[0]
+        if TYPEDEF.match(statement):
+            continue
         if before_parameters != statement:
             names.update(IDENTIFIER.findall(before_parameters)[-1:])
         elif EXTERN_OBJECT.match(statement):
