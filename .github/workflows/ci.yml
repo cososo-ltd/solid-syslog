@@ -451,6 +451,9 @@ jobs:
         with:
           persist-credentials: false
 
+      # cpputest-clang carries the upstream trees cpputest-freertos does, copied
+      # from it at the same pins, so this lane selects every pack unit-linux-gcc
+      # does and its version record differs from that lane's only in the compiler.
       - name: Configure
         run: cmake --preset clang-debug
 
