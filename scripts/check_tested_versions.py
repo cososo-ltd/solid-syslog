@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hold each platform page's "tested against" claim to what CI built.
+"""Hold each platform page's "tested against" and "tested with" claims to what CI built.
 
 SUPPORT.md defines supported as built and tested in CI against the version a
 pack's page names. Every lane's configure records what it compiled against -
@@ -24,8 +24,18 @@ is named. The rules:
 * The page's prose says what the marker says, so the sentence a reader sees
   cannot drift from the value the check reads.
 
-A pack with no upstream - the host packs - needs no marker. A platform is
-found by its registry token lower-cased, as the docs folders are named.
+A pack with no upstream - the host packs - needs no marker. It may instead say
+which compilers it is tested with, held to the compiler each lane records:
+
+    <!-- tested-with: GNU 14.2.0 -->
+
+* Every such marker names the compiler id and version of some lane that
+  selected the pack.
+* The page's prose says what the marker says.
+
+Nothing requires one: a compiler moves with the image or the runner, so a page
+that makes no claim cannot go stale. A platform is found by its registry token
+lower-cased, as the docs folders are named.
 
 Run:  python3 scripts/check_tested_versions.py build/junit
 
@@ -165,7 +175,7 @@ def check_compilers(tokens, compilers, docs_dir):
 
 
 def summary(rows):
-    lines = ["| Pack | Page claims | CI built against |", "|---|---|---|"]
+    lines = ["| Pack | Page claims | CI built against or with |", "|---|---|---|"]
     lines.extend(f"| {token} | {claimed} | {built} |" for token, claimed, built in rows)
     return "\n".join(lines) + "\n"
 
