@@ -79,10 +79,8 @@ Which BDD ELF a *cross* build produces is separate, and maintainer-only -
 `CMSIS_LWIP` or `NUCLEO_F767ZI_BRINGUP`. It selects a test artefact, not a
 platform - platforms are named in `SOLIDSYSLOG_PLATFORMS` like everything else.
 
-CI runs each cross target in isolation, and all four of
-`build-freertos-plustcp-mbedtls-plusfat`, `build-freertos-lwipraw-mbedtls-fatfs`,
-`build-cmsisrtos-lwipsocket-mbedtls-littlefs` and
-`build-cmsisrtos-lwipsocket-wolfssl-littlefs` are required checks.
+CI runs each cross target in isolation, in a build lane of its own.
+[CI pipeline](ci.md) lists them and says which are required checks.
 
 ## Running the clang build locally
 

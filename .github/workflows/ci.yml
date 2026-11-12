@@ -2129,6 +2129,14 @@ jobs:
       - name: Assert every file the build read came from its pinned tree
         run: python3 scripts/check_build_provenance.py --build build/nucleo-f767zi-bringup
 
+      # The target checklist matches the image on the board to this build by
+      # the commit in its banner, and the configure falls back to "unknown"
+      # when it cannot ask git.
+      - name: Assert the image's banner names the commit built
+        run: |
+          grep --text --quiet "bring-up, commit $(git rev-parse --short=10 HEAD)" \
+            build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.bin
+
       - name: Upload the NUCLEO-F767ZI bring-up firmware
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -2137,6 +2145,7 @@ jobs:
             build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf
             build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.bin
             build/nucleo-f767zi-bringup/solidsyslog-versions.json
+          if-no-files-found: error
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
           compression-level: 0
 

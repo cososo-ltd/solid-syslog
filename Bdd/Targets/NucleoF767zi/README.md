@@ -166,7 +166,8 @@ Both breakouts take 3V3 and GND from CN8.
 ## Target checklist
 
 Run by hand against the commit under review, each step recorded as pass, fail
-or not run.
+or not run. The record names the commit and the id of the CI run the artifact
+came from.
 
 1. The `build-nucleo-bringup` lane passed on the commit, and its artifact is
    downloaded.
@@ -181,8 +182,11 @@ or not run.
    gh api repos/cososo-ltd/solid-syslog/commits/<banner commit> --jq '.parents[].sha'
    ```
 
-4. A line typed on the console comes back as `echo:` and the line.
-5. The green LED blinks, on for half a second and off for half a second, and
-   the red LED is off.
+4. A line typed on the console comes back as `echo:` and the line, and three
+   lines sent together, with no pause between them, come back as three.
+5. LD1, the green user LED, blinks, on for half a second and off for half a
+   second, and LD3, the red user LED, is off. The three user LEDs are the row
+   marked *User LEDs*. The power LED beside them and the ST-LINK's own LED by
+   its USB socket are lit throughout and are not part of this step.
 6. `arm-none-eabi-gdb` attaches through `ST-LINK_gdbserver` and a backtrace
    shows the part inside `main`.
