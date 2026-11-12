@@ -49,8 +49,8 @@ Nothing here needs an IDE.
 | `gh` | GitHub CLI | Fetching the image CI built |
 
 STM32CubeCLT is ST's command-line toolset and carries the first three, so it
-is the one install. Put its tools on `PATH`. The ST-LINK also needs its USB
-driver on Windows, which the same installer offers.
+is the one install. On Windows its installer puts them on `PATH` and offers
+the ST-LINK's USB driver, which the board needs.
 
 The board connects by the USB socket on the ST-LINK end, the one opposite the
 Ethernet socket. That one cable powers it.
@@ -86,11 +86,11 @@ line, ended by CR or LF, with `echo:` and the line.
 
 ## Attach gdb
 
-Start the server on SWD (`-d`), telling it where STM32CubeProgrammer's `bin`
-directory is (`-cp`):
+Start the server on SWD (`-d`), attaching to the part as it runs (`-g`), and
+telling it where STM32CubeProgrammer's `bin` directory is (`-cp`):
 
 ```bash
-ST-LINK_gdbserver -d -p 61234 -cp <STM32CubeProgrammer bin directory>
+ST-LINK_gdbserver -d -g -p 61234 -cp <STM32CubeProgrammer bin directory>
 ```
 
 Then, from another terminal, with the ELF that is on the board:
@@ -99,8 +99,10 @@ Then, from another terminal, with the ELF that is on the board:
 arm-none-eabi-gdb SolidSyslogNucleoF767ziBringup.elf -ex "target remote localhost:61234"
 ```
 
-The server halts the part on attach. `monitor reset` restarts it from the
-reset vector, still halted.
+The part halts where it was when gdb connected, so a backtrace shows what it
+was doing. Without `-g` the server resets the part as gdb connects and halts
+it at the reset vector, which is the way to debug from the start. The server
+serves one session and exits when gdb detaches.
 
 ## Pin plan
 
