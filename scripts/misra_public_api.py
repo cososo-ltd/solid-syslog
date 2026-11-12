@@ -28,6 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANY_FINDING = re.compile(r"^\S+:\d+:\d+: \w+: .*\[[\w.-]+\]$")
 IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
 COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
+EXTERN_OBJECT = re.compile(r"\s*extern\b")
 PREPROCESSOR = re.compile(r"^[ \t]*#(?:[^\n]*\\\n)*[^\n]*", re.MULTILINE)
 
 
@@ -52,6 +53,8 @@ def declared_names(text):
         before_parameters = statement.split("(", 1)[0]
         if before_parameters != statement:
             names.update(IDENTIFIER.findall(before_parameters)[-1:])
+        elif EXTERN_OBJECT.match(statement):
+            names.update(IDENTIFIER.findall(re.split(r"[\[=]", statement, maxsplit=1)[0])[-1:])
     return names
 
 

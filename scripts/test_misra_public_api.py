@@ -36,6 +36,12 @@ class Filtering(unittest.TestCase):
         finding = "Core/Source/SolidSyslogThing.c:2:6: style: misra violation [misra-c2012-8.7]"
         self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [])
 
+    def test_a_finding_on_an_object_a_public_header_declares_is_dropped(self):
+        self.tree.write("Core/Interface/SolidSyslogThing.h", "extern const struct SolidSyslogErrorSource SolidSyslogThingErrorSource;\n")
+        self.tree.write("Core/Source/SolidSyslogThing.c", "const struct SolidSyslogErrorSource SolidSyslogThingErrorSource = {0};\n")
+        finding = "Core/Source/SolidSyslogThing.c:1:37: style: misra violation [misra-c2012-8.7]"
+        self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [])
+
     def test_a_finding_on_a_function_no_public_header_declares_stays(self):
         self.tree.write("Core/Interface/SolidSyslogThing.h", "void SolidSyslogThing_Do(void);\n")
         self.tree.write("Core/Source/SolidSyslogThing.c", "void Thing_Helper(void)\n{\n}\n")
