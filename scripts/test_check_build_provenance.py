@@ -239,6 +239,28 @@ class BuildProvenanceTest(unittest.TestCase):
         self.assertEqual(0, self.run_main())
         self.assertIn("| FATFS_PATH | 2 |", self.output.getvalue())
 
+    def given_compile_database(self, *files):
+        entries = ",".join(f'{{"file": "{Path(file).as_posix()}"}}' for file in files)
+        self.given_file(self.build / "compile_commands.json", f"[{entries}]")
+
+    def test_an_assembler_source_is_checked_though_no_dependency_file_names_it(self):
+        startup = self.wrapper / "Source" / "startup.s"
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_compile_database(self.checkout / "main.c", startup)
+        self.assertEqual(1, self.run_main())
+        self.assertIn(f"::error::{startup}: inside the repository but outside its wired subtrees", self.output.getvalue())
+
+    def test_an_assembler_source_inside_a_wired_subtree_is_counted(self):
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_compile_database(self.kernel / "portable" / "GCC" / "ARM_CM3" / "port.S")
+        self.assertEqual(0, self.run_main())
+        self.assertIn("| FREERTOS_KERNEL_PATH | 2 |", self.output.getvalue())
+
+    def test_a_c_source_configured_but_never_compiled_is_not_read(self):
+        self.given_object_that_read(self.checkout / "main.c")
+        self.given_compile_database(self.root / "elsewhere" / "unbuilt.c")
+        self.assertEqual(0, self.run_main())
+
     def test_returns_two_without_a_record_of_the_configure_inputs(self):
         self.given_object_that_read(self.checkout / "main.c")
         (self.build / "CMakeFiles" / "Makefile.cmake").unlink()

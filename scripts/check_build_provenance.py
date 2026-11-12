@@ -17,6 +17,15 @@ them into its own log, which `ninja -t deps` prints back. A source or header
 that CMake copied into the build tree at configure time is classified at the
 place CMake copied it from, which CMake records as well.
 
+One kind of source is in none of those records. The compiler writes no
+dependency file for an assembler source it does not preprocess, so a startup
+file is compiled and
+leaves no trace there. Those are read from CMake's compile database instead,
+when the configure exported one, which every cross preset's does. Only the
+assembler sources are taken from it: it lists every target the configure
+defined, built or not, and the dependency records already cover what C was
+compiled.
+
 The configure also records which upstream trees the target wires. Every BDD
 target resolves its trees through `solidsyslog_bdd_upstream()` in
 `Bdd/Targets/Common/UpstreamTrees.cmake`, which leaves their variable names in
@@ -65,6 +74,7 @@ Exit code:
 """
 
 import argparse
+import json
 import os
 import pathlib
 import re
@@ -115,6 +125,8 @@ KERNEL_PORT_HEADER = "portmacro.h"
 WIRED_TREES_FILE = "SolidSyslogUpstreamTrees.txt"
 TARGET_DIRECTORY = "Bdd/Targets"
 SOURCE_SUFFIXES = (".c", ".h")
+COMPILE_DATABASE = "compile_commands.json"
+ASSEMBLER_SUFFIXES = (".s", ".S", ".asm")
 
 CACHE_ENTRY = re.compile(r"^([A-Za-z0-9_]+):[A-Z]+=(.*)$")
 IMPLICIT_INCLUDES = re.compile(r'set\(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "([^"]*)"\)')
@@ -201,6 +213,16 @@ def configure_inputs(build):
             if match:
                 return [item for item in match.group(1).split() if item.endswith(SOURCE_SUFFIXES)]
     raise MissingRecord(f"no record of the configure-time inputs under {build}")
+
+
+def assembler_sources(build):
+    """The assembler sources the configure defined, from the compile database.
+    The compiler writes no dependency file for one, so nothing else names it."""
+    database = build / COMPILE_DATABASE
+    if not database.exists():
+        return []
+    entries = json.loads(database.read_text(encoding="utf-8"))
+    return [entry["file"] for entry in entries if entry["file"].endswith(ASSEMBLER_SUFFIXES)]
 
 
 def resolve(prerequisite, build):
@@ -392,7 +414,10 @@ def main(argv=None):
     try:
         wired = read_wired_trees(build)
         prerequisites = read_dependencies(build, cache)
-        files_read = {resolve(item, build) for item in prerequisites + configure_inputs(build)}
+        files_read = {
+            resolve(item, build)
+            for item in prerequisites + configure_inputs(build) + assembler_sources(build)
+        }
     except MissingRecord as missing:
         print(missing)
         return 2
