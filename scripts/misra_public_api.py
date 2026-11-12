@@ -1,14 +1,29 @@
 #!/usr/bin/env python3
-"""Drop the rule 8.7 findings that deviation D.016 covers.
+"""Report the cppcheck-misra findings no suppression or deviation covers.
 
-Reads the cppcheck-misra finding lines and returns those still uncovered.
+misra_suppressions.txt covers findings line by line. Deviation D.016 in
+docs/misra-deviations.md covers one more set by what it is rather than where:
+a rule 8.7 finding on a function or object a public header declares - one
+under Core/Interface/ or Platform/*/Interface/ - is the library's API, external
+so an integrator can call it. Any other 8.7 finding, and every finding of any
+other rule, is printed.
+
+Run:  python3 scripts/misra_public_api.py build/cppcheck-misra/cppcheck-misra.log
+
+Exit code:
+    0  every finding in the log is covered
+    1  a finding is printed above
 """
 
+import argparse
 import glob
 import os
 import re
+import sys
 
 FINDING = re.compile(r"^(?P<file>[^:\s]+):(?P<line>\d+):(?P<column>\d+): .*\[misra-c2012-8\.7\]")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ANY_FINDING = "[misra-c2012-"
 IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
 COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
 
@@ -36,3 +51,20 @@ def is_public_api(finding, public, root):
         source = handle.read().split("\n")[int(match["line"]) - 1]
     named = IDENTIFIER.match(source, int(match["column"]) - 1)
     return bool(named) and named.group(0) in public
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("log", help="the cppcheck-misra log")
+    parser.add_argument("--root", default=ROOT, help="the source tree the log's paths are relative to")
+    arguments = parser.parse_args(argv)
+    with open(arguments.log, encoding="utf-8") as handle:
+        findings = [line.rstrip("\n") for line in handle if ANY_FINDING in line]
+    remaining = uncovered(findings, arguments.root)
+    for finding in remaining:
+        print(finding)
+    return 1 if remaining else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
