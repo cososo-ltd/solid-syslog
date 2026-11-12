@@ -42,7 +42,16 @@ def public_declarations(root):
     names = set()
     for header in headers:
         with open(header, encoding="utf-8") as handle:
-            names.update(IDENTIFIER.findall(PREPROCESSOR.sub(" ", COMMENT.sub(" ", handle.read()))))
+            names.update(declared_names(PREPROCESSOR.sub(" ", COMMENT.sub(" ", handle.read()))))
+    return names
+
+
+def declared_names(text):
+    names = set()
+    for statement in text.split(";"):
+        before_parameters = statement.split("(", 1)[0]
+        if before_parameters != statement:
+            names.update(IDENTIFIER.findall(before_parameters)[-1:])
     return names
 
 
