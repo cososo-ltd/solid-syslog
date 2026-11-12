@@ -153,7 +153,9 @@ def check_compilers(tokens, compilers, docs_dir):
         prose = COMMENT.sub("", text)
         built = sorted(compilers.get(token, []))
         for claim in claims:
-            if claim not in built:
+            if not built:
+                failures.append(f"{token.lower()}/index.md: claims {claim}, but no lane built {token}")
+            elif claim not in built:
                 failures.append(f"{token.lower()}/index.md: claims {claim}, but CI built {token} with {', '.join(built)}")
             if claim not in prose:
                 failures.append(f"{token.lower()}/index.md: the marker says {claim}, but the page's prose does not")

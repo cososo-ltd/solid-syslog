@@ -174,6 +174,13 @@ class Checking(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("::error::posix/index.md: the marker says Clang 19.1.7, but the page's prose does not", out)
 
+    def test_a_tested_with_marker_on_a_pack_no_lane_built_fails(self):
+        self.all_pages_right()
+        self.tree.page("posix", "Tested with GNU 14.2.0.\n<!-- tested-with: GNU 14.2.0 -->\n")
+        code, out = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("::error::posix/index.md: claims GNU 14.2.0, but no lane built Posix", out)
+
     def test_no_record_at_all_is_a_missing_input_not_a_stale_page(self):
         self.all_pages_right()
         empty = os.path.join(self.tree.root.name, "nothing")
