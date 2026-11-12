@@ -22,6 +22,12 @@ on:
 permissions:
   contents: read
 
+# Runs for the same images queue rather than overlap, so a run's check of the
+# image repository's head still holds when it closes superseded bumps.
+concurrency:
+  group: image-bump-${{ github.event.inputs.images || github.event.client_payload.images }}
+  cancel-in-progress: false
+
 jobs:
   bump:
     runs-on: ubuntu-latest
