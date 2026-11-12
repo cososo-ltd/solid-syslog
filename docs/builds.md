@@ -219,6 +219,25 @@ cmake --preset cmsis-cross-lwip-wolfssl
 cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
 ```
 
+## NUCLEO-F767ZI bring-up - `nucleo-f767zi-bringup`
+
+ARM cross-build for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
+hard-float ABI), under its own toolchain file. It builds the bring-up firmware,
+which carries no SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and the image
+does not link the library. ST's HAL driver and CMSIS device files come from
+`STM32F7_HAL_DRIVER_PATH` and `STM32F7_CMSIS_DEVICE_PATH`, which the cross image
+exports.
+
+```bash
+cmake --preset nucleo-f767zi-bringup
+cmake --build --preset nucleo-f767zi-bringup --target SolidSyslogNucleoF767ziBringup
+```
+
+The ELF lands at
+`build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf`,
+with a raw `.bin` beside it. See `Bdd/Targets/NucleoF767zi/README.md` for
+flashing it and for the target checklist.
+
 ## Tunable overrides - `tunable-override-debug` / `msvc-tunable-override`
 
 Both build against `Tests/Fixtures/TunableOverrides.h`, proving

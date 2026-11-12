@@ -15,7 +15,7 @@ always splits cleanly on `-`.
 | `unit` | CppUTest over the fakes, the `junit` target | `unit-<host>-<compiler>[-<variant>]` |
 | `integration` | CppUTest against a real upstream, in process | `integration-<host>-<pack>` |
 | `bdd` | Behave end to end against a real collector | `bdd-<os>-<network>-<tls>-<file>-<collector>[-<variant>]`, leaving out what the OS pack provides itself |
-| `build` | Compiles and runs no tests of its own | the fields of the BDD lane it feeds, without the collector, or `build-<standard>` |
+| `build` | Compiles and runs no tests of its own | the fields of the BDD lane it feeds, without the collector, or `build-<standard>`, or `build-nucleo-<image>` for firmware built for the NUCLEO-F767ZI, which CI never runs |
 | `smoke` | The FetchContent consumer build | `smoke-<os>[-<packs>]` |
 | `analyze` | Static checks | `analyze-<tool>[-<scope>]` |
 | `docs`, `tools` | The site, and tests of the repository's own tooling | |
@@ -61,6 +61,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` | - | The same scenarios again, against that target's ELF |
 | `build-cmsisrtos-lwipsocket-wolfssl-littlefs` | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack in place of Mbed TLS, with wolfSSL compiled from source under the target's `user_settings.h`; asserts from the ELF's symbols which TLS pack was linked, and runs the same provenance check |
 | `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` | - | The QEMU scenarios against that ELF, less the one cell the wolfSSL platform page lists as a shortfall |
+| `build-nucleo-bringup` | `nucleo-f767zi-bringup` | ARM cross-build (Cortex-M7, hard float) of the NUCLEO-F767ZI bring-up firmware, which carries no SolidSyslog, over ST's HAL driver and CMSIS device files; with the same provenance check. Uploads the ELF and a raw binary. Nothing in CI reaches the board: the image is flashed by hand and the run recorded against the target checklist in `Bdd/Targets/NucleoF767zi/README.md` |
 | `smoke-linux` | - | Builds `ci/consumer-smoke/` as a FetchContent consumer, proving the documented integration path still works |
 | `smoke-freertos-lwipraw` | - | The same consumer project cross-compiled for ARM with `LwipRaw;FreeRtos` |
 | `analyze-manifest` | - | Regenerates the Core and per-platform source manifests and fails if they differ from the committed ones |

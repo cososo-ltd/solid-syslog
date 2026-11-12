@@ -97,6 +97,9 @@ UPSTREAM_SUBTREES = {
     "SOLIDSYSLOG_FATFS_PATH": ("source",),
     "SOLIDSYSLOG_LITTLEFS_PATH": ("*.c", "*.h"),
     "SOLIDSYSLOG_WOLFSSL_SOURCE_DIR": ("wolfssl", "src", "wolfcrypt/src"),
+    "SOLIDSYSLOG_STM32F7_HAL_DRIVER_PATH": ("Inc", "Src"),
+    # The system file and the startup code are ST's templates, used as they are.
+    "SOLIDSYSLOG_STM32F7_CMSIS_DEVICE_PATH": ("Include", "Source/Templates"),
 }
 
 # Trees whose header names may resolve nowhere else. The value is the include

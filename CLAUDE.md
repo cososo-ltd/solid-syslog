@@ -469,6 +469,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `freertos-cross-lwip` | The same, over the lwIP Raw API with ChaN FatFs |
 | `cmsis-cross-lwip` | The same, over CMSIS-RTOS2, the lwIP Sockets API and LittleFS |
 | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack, with wolfSSL built from source |
+| `nucleo-f767zi-bringup` | ARM Cortex-M7 cross-build of the NUCLEO-F767ZI bring-up firmware, with no SolidSyslog in it |
 | `release` | Release build — optimisations enabled, no instrumentation |
 
 Build and test: `cmake --preset <name> && cmake --build --preset <name> --target junit`
