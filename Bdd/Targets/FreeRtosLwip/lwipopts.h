@@ -1,8 +1,8 @@
-/* lwIP options for the QEMU mps2-an385 FreeRTOS + lwIP BDD target.
+/* lwIP options for the FreeRTOS + lwIP BDD target.
  *
  * S28.09 flipped this from the S28.07 link-probe (NO_SYS=1, no netif) to a
- * worked NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, a LAN9118 netif
- * (netif/EthernetIf.c) drives the wire, and the SolidSyslog LwipRaw adapters
+ * worked NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, the board's netif
+ * (BddTargetBoardNetif.h) drives the wire, and the SolidSyslog LwipRaw adapters
  * reach the core through the tcpip_callback marshal (S28.06). We still only
  * use lwIP's Raw API (the adapters call udp_ / tcp_ functions directly via the
  * marshal),
@@ -28,7 +28,7 @@
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
  * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (7) is not
  * visible - TCPIP_THREAD_PRIO 6 == configMAX_PRIORITIES - 1, above the
- * LAN9118 RX task (configMAX_PRIORITIES - 2 == 5, set in EthernetIf.c).
+ * netif's RX task (configMAX_PRIORITIES - 2 == 5, set by the board's netif).
  * TCPIP_THREAD_STACKSIZE is in BYTES (LWIP_FREERTOS_THREAD_STACKSIZE_IS_
  * STACKWORDS defaults to 0, so the sys_arch divides by sizeof(StackType_t)). */
 /* lwIP's api/err.c maps err_t to errno; pull the E* codes from newlib's

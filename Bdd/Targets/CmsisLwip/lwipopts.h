@@ -1,7 +1,7 @@
-/* lwIP options for the QEMU mps2-an385 CMSIS-RTOS2 + lwIP BDD target.
+/* lwIP options for the CMSIS-RTOS2 + lwIP BDD target.
  *
- * NO_SYS=0: lwIP runs its own "tcpip" thread and a LAN9118 netif
- * (netif/EthernetIf.c) drives the wire. The sequential netconn and socket
+ * NO_SYS=0: lwIP runs its own "tcpip" thread and the board's netif
+ * (BddTargetBoardNetif.h) drives the wire. The sequential netconn and socket
  * layers are ON, because the SolidSyslog LwipSocket adapters call the
  * lwip_-prefixed socket entry points from whichever task they run on; the
  * tcpip thread serves them, RX delivery (tcpip_input) and the timers. No
@@ -29,8 +29,8 @@
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
  * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (56, which
  * the CMSIS-RTOS2 wrapper fixes) is not visible - TCPIP_THREAD_PRIO 55 ==
- * configMAX_PRIORITIES - 1, above the LAN9118 RX task
- * (configMAX_PRIORITIES - 2 == 54, set in EthernetIf.c). Both numbers are
+ * configMAX_PRIORITIES - 1, above the netif's RX task
+ * (configMAX_PRIORITIES - 2 == 54, set by the board's netif). Both numbers are
  * written out here and must be re-based by hand if that macro changes: the
  * tcpip thread sitting below the RX task that feeds it would let a burst
  * starve it.

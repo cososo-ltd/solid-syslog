@@ -1,21 +1,19 @@
-/* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target for QEMU
- * mps2-an385.
+/* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target.
  *
  * The platform-independent pipeline - SolidSyslog lifecycle, FatFs-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
- * marshal (S28.06), the hand-written LAN9118 netif (netif/EthernetIf.c), the
+ * marshal (S28.06), the board's netif (BddTargetBoardNetif.h), the
  * static-IP bring-up + gateway ARP warm-up, the LwipRaw sender wiring (UDP +
  * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
  * RFC 5424 HOSTNAME read from the netif.
  *
- * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the slirp
- * gateway 10.0.2.2. The oracle is addressed by name ("syslog-ng") via
- * SolidSyslogLwipRawDnsResolver; lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps
- * that name statically to 10.0.2.2 (slirp can't return a reachable address for
- * the docker alias over real DNS). */
+ * A static IPv4 address on the board's network (BddTargetBoardConfig.h). The
+ * oracle is addressed by name ("syslog-ng") via SolidSyslogLwipRawDnsResolver;
+ * lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps that name statically to the
+ * address the board reaches it at. */
 
 #include "BddTargetFatFsMount.h"
 #include "BddTargetBoard.h"
@@ -113,8 +111,8 @@ int main(void)
 
     /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the
      * thread runs once the scheduler starts. The netif bring-up is deferred to
-     * NetworkBringUp on that thread (smsc9220_init calls vTaskDelay, which would
-     * deref a NULL pxCurrentTCB before the scheduler). */
+     * NetworkBringUp on that thread (the board's netif init may block, which
+     * needs a running scheduler). */
     tcpip_init(NULL, NULL);
 
     BddTargetOsPrimitives_InitialiseOs();
@@ -141,8 +139,9 @@ int main(void)
 }
 
 /* Runs on the tcpip thread (dispatched via tcpip_callback once the scheduler is
- * up) so netif_add, the link/up transitions, and smsc9220_init's vTaskDelay all
- * execute in a valid task context with the lwIP core lock held. */
+ * up) so netif_add, the link/up transitions, and any blocking the board's
+ * netif init does all execute in a valid task context with the lwIP core lock
+ * held. */
 static void NetworkBringUp(void* context)
 {
     (void) context;

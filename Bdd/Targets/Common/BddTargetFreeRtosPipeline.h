@@ -29,7 +29,8 @@ struct SolidSyslogFile;
 struct BddTargetFreeRtosPipelineConfig
 {
     /* Default destination host before any `set host` - numeric for the no-DNS
-     * PlusTcp target ("10.0.2.2"); the DNS alias for lwIP ("syslog-ng"). */
+     * PlusTcp target, where the board reaches the oracle; the DNS alias for lwIP
+     * ("syslog-ng"). */
     const char* DefaultHost;
     /* Bring up the platform network and build the (Switching) sender, with the
      * default transport already selected. Runs on the interactive task, so an

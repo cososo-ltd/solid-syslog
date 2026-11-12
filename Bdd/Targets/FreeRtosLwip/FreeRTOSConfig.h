@@ -3,9 +3,9 @@
 
 #include "BddTargetBoardConfig.h"
 
-/* FreeRTOS kernel configuration for Cortex-M3 on QEMU mps2-an385 with lwIP
+/* FreeRTOS kernel configuration with lwIP
  * (Raw API) under NO_SYS=0. lwIP runs its own "tcpip" thread (priority and
- * stack sized in lwipopts.h via the contrib FreeRTOS sys_arch), the LAN9118
+ * stack sized in lwipopts.h via the contrib FreeRTOS sys_arch), the board's
  * netif RX task at configMAX_PRIORITIES - 2, and the SolidSyslog interactive /
  * service tasks at tskIDLE_PRIORITY + 1.
  *

@@ -3,9 +3,8 @@
 
 #include "BddTargetBoardConfig.h"
 
-/* FreeRTOS kernel configuration for Cortex-M3 on QEMU mps2-an385 with
- * FreeRTOS-Plus-TCP. The IP stack runs in its own task at
- * configMAX_PRIORITIES - 2, the NetworkInterface RX task at
+/* FreeRTOS kernel configuration with FreeRTOS-Plus-TCP. The IP stack runs in
+ * its own task at configMAX_PRIORITIES - 2, the NetworkInterface RX task at
  * configMAX_PRIORITIES - 3, and timers + dynamic allocation are required
  * by the stack. Heap is sized empirically to fit network buffer
  * descriptors, ARP cache, IP stack stack, and the smoke task. */

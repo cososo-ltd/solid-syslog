@@ -1,4 +1,4 @@
-# CMSIS-RTOS2 + lwIP BDD target ELF for QEMU mps2-an385 (Cortex-M3).
+# CMSIS-RTOS2 + lwIP BDD target ELF.
 #
 # The fourth BDD target (S40.01 #850). It is the home for the three packs E40,
 # E36 and E35 add: each is swapped in against a lane that is already green, so a
@@ -13,11 +13,11 @@
 #
 # Source layout mirrors Bdd/Targets/FreeRtosLwip/CMakeLists.txt: upstream
 # FreeRTOS-Kernel + lwIP-core + lwIP-api + the contrib FreeRTOS sys_arch + the
-# vendored LAN9118 driver compile into a separate OBJECT library
+# board's third-party Ethernet driver compile into a separate OBJECT library
 # (`solid_syslog_cmsis_lwip_upstream`) under a relaxed warning set; our own code
-# (main.c, the reused Cortex-M3 startup, the shared LAN9118 netif wrapper, the
-# platform adapters and the shared BddTarget sources) stays in the executable
-# under the strict project warning bar.
+# (main.c, the board's startup, console, disk and netif, the platform adapters
+# and the shared BddTarget sources) stays in the executable under the strict
+# project warning bar.
 
 # What belongs to the board - see Bdd/Targets/Boards/Board.cmake. First, because
 # the kernel half below takes its port from it.
@@ -49,7 +49,7 @@ set(LWIP_CONTRIB_FREERTOS_DIR "${LWIP_DIR}/contrib/ports/freertos")
 # --- Upstream OBJECT library --------------------------------------------------
 #
 # FreeRTOS kernel + lwIP IPv4 core + lwIP api (tcpip thread) + the contrib
-# FreeRTOS sys_arch + the vendored Arm LAN9118 driver, compiled with the
+# FreeRTOS sys_arch + the board's third-party Ethernet driver, compiled with the
 # relaxed warning set those upstream / third-party sources require. The
 # executable consumes the objects via $<TARGET_OBJECTS:...> so the relaxations
 # don't leak into project code.
@@ -312,8 +312,8 @@ add_executable(SolidSyslogBddTargetCmsis
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipSocket (Address/Datagram/TcpStream/
     # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
-    # HMAC/AES-GCM policies), LittleFs (file adapter). BddTargetLittleFsDisk.c is this target's
-    # block device over the board's disk.
+    # HMAC/AES-GCM policies), LittleFs (file adapter). BddTargetLittleFsDisk.c
+    # is this target's block device over the board's disk.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsMount.c

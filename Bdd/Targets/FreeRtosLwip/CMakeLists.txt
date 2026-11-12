@@ -1,24 +1,22 @@
-# FreeRTOS + lwIP (Raw API, NO_SYS=0) BDD target ELF for QEMU mps2-an385
-# (Cortex-M3).
+# FreeRTOS + lwIP (Raw API, NO_SYS=0) BDD target ELF.
 #
-# S28.09: grew the S28.07 link-probe into a runnable BDD target — a real
-# LAN9118 lwIP netif (netif/EthernetIf.c over the vendored Arm smsc9220
-# driver), tcpip_init + a static IP, and the SolidSyslog UDP pipeline reaching
-# the syslog-ng oracle on QEMU. Selected via SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP,
-# with zero dependency on Platform/PlusTcp / FreeRTOS-Plus-TCP.
+# A runnable BDD target: the board's lwIP netif, tcpip_init + a static IP, and
+# the SolidSyslog pipeline reaching the syslog-ng oracle. Selected via
+# SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP, with zero dependency on
+# Platform/PlusTcp / FreeRTOS-Plus-TCP.
 #
 # Source layout mirrors Bdd/Targets/FreeRtos/CMakeLists.txt: upstream
 # FreeRTOS-Kernel + lwIP-core + lwIP-api + the contrib FreeRTOS sys_arch + the
-# vendored LAN9118 driver compile into a separate OBJECT library
+# board's third-party Ethernet driver compile into a separate OBJECT library
 # (`solid_syslog_freertos_lwip_upstream`) under a relaxed warning set; our own
-# code (main.c, the reused Cortex-M3 startup, netif/EthernetIf.c, the
+# code (main.c, the board's startup, console, disk and netif, the
 # Platform/LwipRaw + Platform/FreeRtos adapters, and the shared BddTarget
 # sources) stays in the executable under the strict project warning bar.
 
-# The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 # What belongs to the board - see Bdd/Targets/Boards/Board.cmake.
 include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
 
+# The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
 solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
 solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
@@ -53,7 +51,7 @@ set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_POR
 # --- Upstream OBJECT library --------------------------------------------------
 #
 # FreeRTOS kernel + lwIP IPv4 core + lwIP api (tcpip thread) + the contrib
-# FreeRTOS sys_arch + the vendored Arm LAN9118 driver, compiled with the
+# FreeRTOS sys_arch + the board's third-party Ethernet driver, compiled with the
 # relaxed warning set those upstream / third-party sources require. The
 # executable consumes the objects via $<TARGET_OBJECTS:...> so the relaxations
 # don't leak into project code.

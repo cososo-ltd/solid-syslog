@@ -1,5 +1,5 @@
 /* Integrator FreeRTOS-Plus-FAT configuration for the FreeRTOS-Plus-TCP BDD
- * target (QEMU mps2-an385). Plus-FAT is header-configured: ff_headers.h includes
+ * target. Plus-FAT is header-configured: ff_headers.h includes
  * this file (after FreeRTOS.h) and FreeRTOSFATConfigDefaults.h fills in every
  * value not set here. Resolved off the -I path (ff_headers.h's `#include
  * "FreeRTOSFATConfig.h"` finds no copy beside itself), so no source staging is
@@ -12,7 +12,7 @@
 #ifndef FREERTOSFATCONFIG_H
 #define FREERTOSFATCONFIG_H
 
-/* QEMU mps2-an385 (Cortex-M3) is little-endian. */
+/* Every board these targets run on is little-endian. */
 #define ffconfigBYTE_ORDER (pdFREERTOS_LITTLE_ENDIAN)
 
 /* Base index into the per-task thread-local storage array for ff_stdio's errno

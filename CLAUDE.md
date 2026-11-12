@@ -492,6 +492,7 @@ Tests/Support/      — Shared test-support library: fakes for the platform and 
 Tests/Bdd/Targets/  — BDD target code unit tests (BddTargetTests executable).
 Bdd/                — BDD test infrastructure: Gherkin features, step definitions, syslog-ng config.
 Bdd/Targets/        — One BDD-driven binary per target configuration, over a shared Common. Not pedagogical examples. docs/bdd.md holds the set.
+Bdd/Targets/Boards/ — What a cross BDD target takes from the board it runs on, one directory per board, behind the BddTargetBoard*.h seam in Common. Boards/Board.cmake states the contract.
 ci/                 — CI-specific files (e.g. docker-compose.bdd.yml).
 docs/               — Project documentation.
 ```

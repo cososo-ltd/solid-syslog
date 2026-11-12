@@ -1,8 +1,10 @@
 # FreeRTOS BDD target
 
-Cross-compiled FreeRTOS binary that runs under `qemu-system-arm` with the
-`mps2-an385` (Cortex-M3) machine — the BDD harness drives it through
-QEMU's stdio UART.
+Cross-compiled FreeRTOS binary. In CI it runs under `qemu-system-arm`, and
+the BDD harness drives it through the board's console. What belongs to the
+board it runs on - startup, console, disk, Ethernet controller, addresses -
+sits behind the board seam; the board CI uses is described in
+[`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md).
 
 SolidSyslog runs here with the portable `SolidSyslogCircularBuffer` +
 `SolidSyslogFreeRtosMutex` drained by a dedicated FreeRTOS Service task,
@@ -10,44 +12,37 @@ a `SolidSyslogSwitchingSender` wrapping four inner senders — UDP over
 `SolidSyslogPlusTcpDatagram`, TCP over `SolidSyslogPlusTcpTcpStream` +
 `SolidSyslogStreamSender`, and TLS + mTLS via `SolidSyslogMbedTlsStream`
 layered over the same `SolidSyslogPlusTcpTcpStream` byte transport.
-`SolidSyslogPlusTcpResolver` is pinned to the QEMU slirp gateway
-(`10.0.2.2`), and the `Bdd/Targets/Common/BddTargetInteractive` runner
+`SolidSyslogPlusTcpResolver` is pinned to the address the board reaches the
+oracle at, and the `Bdd/Targets/Common/BddTargetInteractive` runner
 drives the target. Drive identity / endpoint / PRIVAL fields over the
-UART command channel with `set NAME VALUE`, flip the active transport at
+console command channel with `set NAME VALUE`, flip the active transport at
 runtime with `switch udp` / `switch tcp` / `switch tls` / `switch mtls`
 (routed through `BddTargetSwitchConfig`), emit N RFC 5424 messages with
 `send N`, list the block files on the store volume with `blocks` (one
 `BLOCKS: 00 01` line, asked of the store's own File, since Behave cannot see
 the disk image), exit cleanly with `quit`. See
 [`Bdd/README.md`](../../../Bdd/README.md) for how Behave pipes these
-commands through `qemu-system-arm`'s stdio UART.
+commands to the target.
 
-**Persistent store-and-forward** is wired via the ChaN FatFs adapter
-(`SolidSyslogFatFsFile`) over a semihosting-backed `diskio.c` —
-QEMU's BKPT 0xAB traps route FatFs's block I/O to a host-resident
-`solidsyslog-disk.img` (cleared by Behave's `before_scenario` and
-`after_scenario`), so writes survive a QEMU restart for the
-`power_cycle_replay` scenario. `set store file` flips the live store
-from `SolidSyslogNullStore` to a `SolidSyslogBlockStore` over the
-FatFs file backend; `set max-blocks` / `set max-block-size` /
+**Persistent store-and-forward** is wired via the FreeRTOS-Plus-FAT adapter
+(`SolidSyslogPlusFatFile`) over the board's disk, which outlives a restart of
+the target for the `power_cycle_replay` scenario. `set store file` flips the
+live store from `SolidSyslogNullStore` to a `SolidSyslogBlockStore` over that
+file backend; `set max-blocks` / `set max-block-size` /
 `set discard-policy` / `set halt-exit` parameterise the BlockStore
 config before that rebuild, and `set no-reporting 1` turns the logger's
 reports of its own events off. `set shutdown 1` performs a graceful
-teardown — destroys our objects (which close the FatFs files),
-`f_unmount`s, then `SemihostingExit`s — and is what the BDD
+teardown — destroys our objects (which close the store's files), unmounts
+the volume, then exits through the board — and is what the BDD
 `the client is killed` step uses on FreeRTOS so the next session's
-`f_mount` finds the directory entries up-to-date.
+mount finds the directory entries up-to-date.
 
-Production integrators ship their own `diskio.c` (flash / SD / eMMC)
-plus, if `FF_FS_REENTRANT=1`, their own `ffsystem.c`. The semihosting
-shape used here is BDD-target glue, not a reference port.
+Production integrators ship their own media driver (flash / SD / eMMC). The
+disk glue used here is BDD-target glue, not a reference port.
 
-`Common/` carries the shared infrastructure (CMSDK UART driver, newlib
-syscalls, mps2-an385 linker script, startup) and `cmake/` the
-`arm-none-eabi.cmake` toolchain file. The FatFs ports — `diskio.c`
-(semihosting media, 8 MiB FAT16), `ffsystem.c`, and `ffconf.h` — live in
-the cross-target `../Common/` pack (`Bdd/Targets/Common/`) since S29.01,
-shared with the lwIP BDD target. The `freertos-cross`
+The newlib syscalls, the shared pipeline and each filesystem's media glue
+live in the cross-target [`../Common/`](../Common/), shared with the other
+cross BDD targets. The `freertos-cross`
 CMake preset and the `freertos-target` devcontainer service
 ([`docs/containers.md`](../../../docs/containers.md)) carry everything
 needed to build and run.
@@ -111,77 +106,21 @@ build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
 
 ## Run under QEMU
 
-```bash
-qemu-system-arm \
-    -M mps2-an385 -m 16M \
-    -display none -serial stdio \
-    -icount shift=auto,sleep=off,align=off \
-    -netdev user,id=net0 \
-    -net nic,netdev=net0,model=lan9118 \
-    -kernel build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
-```
-
-You should see the `SolidSyslog>` prompt once the IP stack has come up
-(`eNetworkUp`). Type `send 1` to emit one RFC 5424 datagram to
-`10.0.2.2:514` (override with `set host` / `set port` first if you have
-a different oracle reachable through the slirp gateway), then `quit` to
-delete the interactive task. QEMU stays running because the FreeRTOS
-scheduler keeps idling — quit with `Ctrl+A` then `x`.
-
-## GDB attach (manual)
-
-The VS Code F5 path above does this for you under the hood. Use the
-manual flow when you need to reach behaviour the launch config doesn't
-expose, or when working outside VS Code.
-
-In one terminal — start QEMU paused, listening for GDB on `:1234`:
-
-```bash
-qemu-system-arm \
-    -M mps2-an385 -m 16M \
-    -display none -serial stdio \
-    -netdev user,id=net0 \
-    -net nic,netdev=net0,model=lan9118 \
-    -kernel build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf \
-    -s -S
-```
-
-In a second terminal — attach GDB and run to `main`:
-
-```bash
-arm-none-eabi-gdb \
-    build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
-(gdb) target remote :1234
-(gdb) break main
-(gdb) continue
-```
+The QEMU command, the GDB attach and how the image boots belong to the board:
+see [`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md).
 
 ## How it works
 
-mps2-an385 boots from `0x00000000`. The linker script
-([mps2-an385.ld](Common/mps2-an385.ld)) places the Cortex-M3 vector table
-at the start of the ELF, which QEMU loads at that address.
-`Reset_Handler` (in [startup.c](Common/startup.c)) initialises `.data`
-and `.bss`, calls `__libc_init_array`, then calls `main()`.
-
-`main()` initialises the CMSDK UART (CMSDK_UART0 @ `0x40004000`) for
-polled `_read` / `_write` via newlib retargeting
-([Syscalls.c](Common/Syscalls.c)). Both tasks write that one UART, so
-`_write` holds a console lock, and stdio belongs to the interactive task:
-the Service task's reports and markers leave in one `write()` each, so
-the host sees every prompt and every report whole. It then brings up
-FreeRTOS-Plus-TCP with a
-static IPv4 of `10.0.2.15` on the QEMU slirp network, and starts the
-scheduler. On link-up the IP-task event hook spawns the interactive task
-(running `BddTargetInteractive_Run`) and the Service task (draining the
-`SolidSyslogCircularBuffer` and pushing through the
-`SolidSyslogSwitchingSender`'s active inner — UDP by default; TCP, TLS,
-or mTLS after the matching `switch` command). Each `send N` line over
-the UART emits N RFC 5424 messages to `{10.0.2.2, port=g_port}` over
-whichever transport is currently selected.
-
-The FreeRTOS GCC ARM_CM3 port supplies `vPortSVCHandler`,
-`xPortPendSVHandler`, and `xPortSysTickHandler`.
-[FreeRTOSConfig.h](FreeRTOSConfig.h) aliases them to the
-standard CMSIS names (`SVC_Handler`, `PendSV_Handler`, `SysTick_Handler`)
-so the vector table in `startup.c` can reference the canonical names.
+`main()` brings the board up, which readies the console for polled `_read` /
+`_write` via newlib retargeting ([Syscalls.c](../Common/Syscalls.c)). Both
+tasks write that one console, so `_write` holds a console lock, and stdio
+belongs to the interactive task: the Service task's reports and markers leave
+in one `write()` each, so the host sees every prompt and every report whole.
+It then brings up FreeRTOS-Plus-TCP with a static IPv4 address on the board's
+network, and starts the scheduler. On link-up the IP-task event hook spawns
+the interactive task (running `BddTargetInteractive_Run`) and the Service task
+(draining the `SolidSyslogCircularBuffer` and pushing through the
+`SolidSyslogSwitchingSender`'s active inner — UDP by default; TCP, TLS, or
+mTLS after the matching `switch` command). Each `send N` line over the console
+emits N RFC 5424 messages to the oracle over whichever transport is currently
+selected.

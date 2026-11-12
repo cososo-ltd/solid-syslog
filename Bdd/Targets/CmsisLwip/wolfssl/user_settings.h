@@ -78,7 +78,7 @@
 
 /* --- Maths ----------------------------------------------------------------
  * Portable C, no assembly: the cost is handshake time, which the lane's
- * handshake budget has to cover on an emulated Cortex-M3. */
+ * handshake budget has to cover on an emulated core. */
 #define WOLFSSL_SP_MATH_ALL
 #define SP_WORD_SIZE 32
 

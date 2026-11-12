@@ -1,11 +1,11 @@
-/* FreeRTOS-Plus-TCP SolidSyslog BDD target for QEMU mps2-an385.
+/* FreeRTOS-Plus-TCP SolidSyslog BDD target.
  *
  * The platform-independent pipeline - SolidSyslog lifecycle, file-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the lwIP target, S29.03). This file keeps only the FreeRTOS-Plus-TCP
  * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
- * static-IP bring-up, the LAN9118 IRQ priority fix, the per-endpoint RNG /
+ * static-IP bring-up, the per-endpoint RNG /
  * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
@@ -13,8 +13,8 @@
  * ChaN-FatFs instead - together the two targets prove the SolidSyslogFile seam
  * is FS-vendor-portable (S29.05).
  *
- * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host reachable at
- * the slirp gateway 10.0.2.2. */
+ * A static IPv4 address on the board's network, with the oracle at the address
+ * the board reaches it by - see BddTargetBoardConfig.h. */
 
 #include "BddTargetBoard.h"
 #include "BddTargetBoardConfig.h"
@@ -190,7 +190,7 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
 }
 
 /* Plus-TCP requires the application to provide a per-endpoint random seed source
- * for ARP / IP-ID generation. The QEMU mps2-an385 has no RNG; for a
+ * for ARP / IP-ID generation. The seam asks the board for no RNG; for a
  * deterministic smoke test we return the run-time tick mixed with a constant. */
 BaseType_t xApplicationGetRandomNumber(uint32_t* pulValue)
 {

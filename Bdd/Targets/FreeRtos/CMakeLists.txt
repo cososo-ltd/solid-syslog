@@ -1,4 +1,4 @@
-# FreeRTOS-Plus-TCP BDD target ELF for QEMU mps2-an385 (Cortex-M3).
+# FreeRTOS-Plus-TCP BDD target ELF.
 #
 # Compiled cross-only — gated by the top-level CMakeLists.txt on
 # CMAKE_CROSSCOMPILING + CMAKE_SYSTEM_PROCESSOR == "arm".
@@ -15,10 +15,10 @@
 # BddTargetInteractive.c) stays in the executable target under the strict
 # project warning bar so regressions in our own code can't slip through.
 
-# The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 # What belongs to the board - see Bdd/Targets/Boards/Board.cmake.
 include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
 
+# The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
 solidsyslog_bdd_upstream(FREERTOS_PLUS_TCP_PATH SOLIDSYSLOG_FREERTOS_PLUS_TCP_PATH /opt/freertos/plus-tcp)
 solidsyslog_bdd_upstream(FREERTOS_PLUS_FAT_PATH SOLIDSYSLOG_FREERTOS_PLUS_FAT_PATH /opt/freertos/plus-fat)

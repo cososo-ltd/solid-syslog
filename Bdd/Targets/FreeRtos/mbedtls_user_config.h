@@ -6,7 +6,7 @@
  *
  * The defaults that mbedTLS picks for a generic build assume a Unix or
  * Windows host - they pull /dev/urandom for entropy, use fopen for cert
- * loading, and call BSD sockets directly. The Cortex-M3 / FreeRTOS QEMU
+ * loading, and call BSD sockets directly. This bare-metal
  * BDD target has none of those, so we strip them and rely on the integrator
  * (main.c, slice 6b) to wire entropy, transport, and cert handles via DI.
  *
