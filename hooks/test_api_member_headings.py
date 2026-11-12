@@ -51,6 +51,16 @@ class DropsTheKind(unittest.TestCase):
         self.assertEqual(render(page, "platforms/posix/index.md"), page)
 
 
+class NamesAnAnonymousEnumAsSuch(unittest.TestCase):
+    """Doxygen 1.9.8 names an anonymous enum by its internal id."""
+
+    HASHED = "SolidSyslogEndpoint\\_8h\\_1a99fb83031ce9923c84392b4e92f956b5"
+
+    def test_its_heading_reads_enum_and_keeps_its_anchor(self):
+        out = render("### enum " + self.HASHED + " \n", "api/SolidSyslogEndpoint_8h.md")
+        self.assertEqual(out, "### enum { #enum-solidsyslogendpoint_8h_1a99fb83031ce9923c84392b4e92f956b5 }\n")
+
+
 class KeepsTheAnchorTheHeadingHad(unittest.TestCase):
     """Links point at these anchors from inside the site and outside it."""
 
