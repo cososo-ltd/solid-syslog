@@ -37,31 +37,34 @@ char longMessage[SOLIDSYSLOG_MAX_MESSAGE_SIZE * 2U];
 size_t bytesDisturbedByLog = 0U;
 constexpr size_t REPAINT_MARGIN = 128U;
 
-void RepaintBelow(const void* frame);
+void RepaintBelowHere();
 size_t BytesDisturbed();
 
 /* The C library's thread start and exit run on the same stack and can reach
    deeper than Log does, so the stack below this frame is painted afresh before
-   Log runs and read as soon as it returns. The margin spares the frame of the
-   memset doing the painting. */
+   Log runs and read as soon as it returns. */
 void* LogOnce(void* handle)
 {
     SolidSyslogMessage message =
         {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, longMessage};
-    RepaintBelow(&message);
+    RepaintBelowHere();
     SolidSyslog_Log(static_cast<struct SolidSyslog*>(handle), &message);
     bytesDisturbedByLog = BytesDisturbed();
     return nullptr;
 }
 
-void RepaintBelow(const void* frame)
+/* Paints up to this function's own frame, less a margin for the call to
+   memset doing the painting, so no live frame is overwritten. */
+void RepaintBelowHere()
 {
+    size_t below = 0U;
+    const void* frame = &below;
     const uint8_t* end = std::find_if(
         std::begin(threadStack),
         std::end(threadStack),
         [frame](const uint8_t& byte) { return !std::less<const void*>()(&byte, frame); }
     );
-    auto below = static_cast<size_t>(std::distance(std::cbegin(threadStack), end));
+    below = static_cast<size_t>(std::distance(std::cbegin(threadStack), end));
     if (below > REPAINT_MARGIN)
     {
         memset(threadStack, PAINT, below - REPAINT_MARGIN);
