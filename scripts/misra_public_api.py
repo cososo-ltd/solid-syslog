@@ -28,6 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANY_FINDING = re.compile(r"^\S+:\d+:\d+: \w+: .*\[[\w.-]+\]$")
 IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
 COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
+PREPROCESSOR = re.compile(r"^[ \t]*#(?:[^\n]*\\\n)*[^\n]*", re.MULTILINE)
 
 
 def uncovered(findings, root):
@@ -41,7 +42,7 @@ def public_declarations(root):
     names = set()
     for header in headers:
         with open(header, encoding="utf-8") as handle:
-            names.update(IDENTIFIER.findall(COMMENT.sub(" ", handle.read())))
+            names.update(IDENTIFIER.findall(PREPROCESSOR.sub(" ", COMMENT.sub(" ", handle.read()))))
     return names
 
 

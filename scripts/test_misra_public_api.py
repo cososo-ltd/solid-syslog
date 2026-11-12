@@ -48,6 +48,12 @@ class Filtering(unittest.TestCase):
         finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
         self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
 
+    def test_a_name_a_public_macro_only_expands_to_stays(self):
+        self.tree.write("Core/Interface/SolidSyslogThing.h", "#define SOLIDSYSLOG_THING_CALLBACK Thing_Helper\n")
+        self.tree.write("Core/Source/SolidSyslogThing.c", "void Thing_Helper(void)\n{\n}\n")
+        finding = "Core/Source/SolidSyslogThing.c:1:6: style: misra violation [misra-c2012-8.7]"
+        self.assertEqual(misra_public_api.uncovered([finding], self.tree.root.name), [finding])
+
     def test_the_command_prints_each_uncovered_finding_and_fails(self):
         self.tree.write("Core/Interface/SolidSyslogThing.h", "void SolidSyslogThing_Do(void);\n")
         self.tree.write("Core/Source/SolidSyslogThing.c", "void SolidSyslogThing_Do(void)\n{\n}\n")
