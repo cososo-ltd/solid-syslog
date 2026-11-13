@@ -11,7 +11,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* What an Ethernet PHY says about its link, read through the registers
      * IEEE 802.3 clause 22 gives every PHY. Nothing here is particular to one
      * part, and nothing touches hardware: the caller supplies the register
-     * read, which is what lets this be tested off the board. */
+     * read and write, which is what lets this be tested off the board. */
 
     enum EthernetPhyLink
     {
@@ -24,6 +24,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Reads one clause-22 register. False when the PHY did not answer. */
     typedef bool (*EthernetPhyReadFunction)(void* context, uint8_t registerNumber, uint16_t* value);
+
+    /* Writes one clause-22 register. False when the PHY did not answer. */
+    typedef bool (*EthernetPhyWriteFunction)(void* context, uint8_t registerNumber, uint16_t value);
+
+    /* Has the PHY advertise every speed and duplex it has up to 100 Mbit/s,
+     * and negotiate afresh. A PHY takes its mode at reset from its strap pins,
+     * and one that came up with negotiation off never completes it, which
+     * EthernetPhy_ReadLink reads as a link that is down; this puts it in the
+     * mode ReadLink expects whatever the straps gave. False when the PHY did
+     * not answer. */
+    bool EthernetPhy_StartNegotiation(EthernetPhyWriteFunction write, void* context);
 
     /* The link as it stands now: down, or the best speed and duplex both ends
      * advertised. A link still negotiating is down, and so is a PHY that

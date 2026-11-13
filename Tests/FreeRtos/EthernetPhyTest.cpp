@@ -10,14 +10,19 @@ using namespace CososoTesting;
 enum
 {
     REGISTER_COUNT = 32,
+    CONTROL_REGISTER = 0,
     STATUS_REGISTER = 1,
     ADVERTISED_REGISTER = 4,
     PARTNER_REGISTER = 5,
+
+    CONTROL_NEGOTIATION_RESTART = 0x0200,
+    CONTROL_NEGOTIATION_ENABLE = 0x1000,
 
     STATUS_LINK_UP = 0x0004,
     STATUS_NEGOTIATED = 0x0020,
     STATUS_LINK_UP_AND_NEGOTIATED = STATUS_LINK_UP | STATUS_NEGOTIATED,
 
+    IEEE_802_3_SELECTOR = 0x0001,
     ABLE_10_HALF = 0x0020,
     ABLE_10_FULL = 0x0040,
     ABLE_100_HALF = 0x0080,
@@ -44,6 +49,20 @@ static bool ReadRegister(void* context, uint8_t registerNumber, uint16_t* value)
     return !readsFail;
 }
 
+static bool writesFail;
+static int writeCount;
+static uint8_t lastRegisterWritten;
+
+static bool WriteRegister(void* context, uint8_t registerNumber, uint16_t value)
+{
+    contextSeen = context;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) -- the code under test writes registers 0 and 4
+    registers[registerNumber] = value;
+    writeCount++;
+    lastRegisterWritten = registerNumber;
+    return !writesFail;
+}
+
 #define CHECK_LINK(expected) LONGS_EQUAL((expected), EthernetPhy_ReadLink(ReadRegister, nullptr))
 
 // clang-format off
@@ -59,6 +78,9 @@ TEST_GROUP(EthernetPhy)
         staleStatus = 0;
         readsFail = false;
         contextSeen = nullptr;
+        writesFail = false;
+        writeCount = 0;
+        lastRegisterWritten = 0;
     }
 
     static void GivenALinkWhosePartnerAdvertises(uint16_t partnerAbilities)
@@ -172,4 +194,42 @@ TEST(EthernetPhy, EachLinkHasItsOwnText)
     STRCMP_EQUAL("up, 10 Mbit/s full duplex", EthernetPhy_LinkText(ETHERNET_PHY_LINK_10_FULL));
     STRCMP_EQUAL("up, 100 Mbit/s half duplex", EthernetPhy_LinkText(ETHERNET_PHY_LINK_100_HALF));
     STRCMP_EQUAL("up, 100 Mbit/s full duplex", EthernetPhy_LinkText(ETHERNET_PHY_LINK_100_FULL));
+}
+
+TEST(EthernetPhy, StartingNegotiationAdvertisesEverySpeedAndDuplex)
+{
+    CHECK_TRUE(EthernetPhy_StartNegotiation(WriteRegister, nullptr));
+
+    LONGS_EQUAL(IEEE_802_3_SELECTOR | ABLE_EVERYTHING, registers[ADVERTISED_REGISTER]);
+}
+
+TEST(EthernetPhy, StartingNegotiationEnablesItAndRestartsIt)
+{
+    EthernetPhy_StartNegotiation(WriteRegister, nullptr);
+
+    LONGS_EQUAL(CONTROL_NEGOTIATION_ENABLE | CONTROL_NEGOTIATION_RESTART, registers[CONTROL_REGISTER]);
+}
+
+TEST(EthernetPhy, WhatIsAdvertisedIsSetBeforeNegotiationRestarts)
+{
+    EthernetPhy_StartNegotiation(WriteRegister, nullptr);
+
+    LONGS_EQUAL(2, writeCount);
+    LONGS_EQUAL(CONTROL_REGISTER, lastRegisterWritten);
+}
+
+TEST(EthernetPhy, StartingNegotiationFailsWhenThePhyDoesNotAnswer)
+{
+    writesFail = true;
+
+    CHECK_FALSE(EthernetPhy_StartNegotiation(WriteRegister, nullptr));
+}
+
+TEST(EthernetPhy, StartingNegotiationHandsTheCallersContextToTheWrite)
+{
+    int context = 0;
+
+    EthernetPhy_StartNegotiation(WriteRegister, &context);
+
+    POINTERS_EQUAL(&context, contextSeen);
 }

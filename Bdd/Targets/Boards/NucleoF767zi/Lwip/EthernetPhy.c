@@ -2,15 +2,21 @@
 
 enum
 {
+    REGISTER_CONTROL = 0,
     /* Basic status. Its link bit latches a drop until the register is read. */
     REGISTER_STATUS = 1,
     /* What this end advertises, and what the far end does. */
     REGISTER_ADVERTISED = 4,
     REGISTER_PARTNER = 5,
 
+    CONTROL_NEGOTIATION_RESTART = 0x0200,
+    CONTROL_NEGOTIATION_ENABLE = 0x1000,
+
     STATUS_LINK_UP = 0x0004,
     STATUS_NEGOTIATION_COMPLETE = 0x0020,
 
+    /* The low bits of an ability register say which standard the rest is in. */
+    SELECTOR_IEEE_802_3 = 0x0001,
     ABILITY_10_HALF = 0x0020,
     ABILITY_10_FULL = 0x0040,
     ABILITY_100_HALF = 0x0080,
@@ -19,6 +25,18 @@ enum
 
 static inline bool EthernetPhy_LinkHasSettled(uint16_t status);
 static inline enum EthernetPhyLink EthernetPhy_BestCommon(uint16_t common);
+
+/* What is advertised goes in first, so the negotiation the second write
+ * starts is the only one, and offers all of it. */
+bool EthernetPhy_StartNegotiation(EthernetPhyWriteFunction write, void* context)
+{
+    uint16_t everything = (uint16_t) SELECTOR_IEEE_802_3 | (uint16_t) ABILITY_10_HALF | (uint16_t) ABILITY_10_FULL |
+                          (uint16_t) ABILITY_100_HALF | (uint16_t) ABILITY_100_FULL;
+    uint16_t negotiate = (uint16_t) CONTROL_NEGOTIATION_ENABLE | (uint16_t) CONTROL_NEGOTIATION_RESTART;
+    bool wasWritten = write(context, (uint8_t) REGISTER_ADVERTISED, everything);
+    wasWritten = write(context, (uint8_t) REGISTER_CONTROL, negotiate) && wasWritten;
+    return wasWritten;
+}
 
 enum EthernetPhyLink EthernetPhy_ReadLink(EthernetPhyReadFunction read, void* context)
 {

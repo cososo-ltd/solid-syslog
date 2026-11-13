@@ -88,7 +88,10 @@ and a run on the board uses an image built for the network under test.
 The collector does not have to be on the board's own network: one that is not
 is reached through the gateway.
 
-The on-board PHY negotiates its link, and the target follows it. Each change is
+The on-board PHY negotiates its link, and the target follows it. The target
+starts that negotiation itself as it boots. The PHY takes its mode at reset
+from strap pins, and after a reset through the debug probe it sometimes comes
+up with negotiation off, where it would never report a negotiated link. Each change is
 a line on the console, so a pulled cable can be told from a fault:
 
 ```text

@@ -5,10 +5,11 @@
  * stands. What is here is the glue either side of it:
  *   - transmit copies the pbuf chain into one buffer and waits for the DMA to
  *     send it;
- *   - one task receives and watches the link. The Ethernet interrupt wakes it
- *     for a frame, which it copies into a pbuf for netif->input, and between
- *     frames it asks the PHY how the link stands, starts or stops the MAC to
- *     match, tells lwIP and says so on the console.
+ *   - one task starts the PHY negotiating, then receives and watches the
+ *     link. The Ethernet interrupt wakes it for a frame, which it copies into
+ *     a pbuf for netif->input, and between frames it asks the PHY how the link
+ *     stands, starts or stops the MAC to match, tells lwIP and says so on the
+ *     console.
  *
  * Every frame is copied, in both directions, between lwIP's memory and
  * buffers the DMA owns. Those buffers and the DMA's descriptors are static and
@@ -103,6 +104,7 @@ void ETH_IRQHandler(void);
 static void BddTargetBoardNetif_ConfigurePins(void);
 static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf* p);
 static void BddTargetBoardNetif_Task(void* parameters);
+static bool BddTargetBoardNetif_WritePhy(void* context, uint8_t registerNumber, uint16_t value);
 static void BddTargetBoardNetif_ReceiveFrames(void);
 static void BddTargetBoardNetif_DeliverFrame(void);
 static void BddTargetBoardNetif_ReleaseFrame(void);
@@ -242,6 +244,13 @@ static void BddTargetBoardNetif_Task(void* parameters)
     (void) parameters;
     TickType_t lastLinkPoll = xTaskGetTickCount();
 
+    /* The PHY does not always come out of a reset negotiating: its mode is a
+     * strap it reads from pins it shares with the MAC. Started here, on the
+     * task that does every other access to the PHY. */
+    if (!EthernetPhy_StartNegotiation(BddTargetBoardNetif_WritePhy, NULL))
+    {
+        BddTargetBoardNetif_Report("ethernet", "the PHY did not answer");
+    }
     BddTargetBoardNetif_Report("link", EthernetPhy_LinkText(BddTargetBoardNetif_Link));
     for (;;)
     {
@@ -253,6 +262,17 @@ static void BddTargetBoardNetif_Task(void* parameters)
             BddTargetBoardNetif_FollowLink();
         }
     }
+}
+
+static bool BddTargetBoardNetif_WritePhy(void* context, uint8_t registerNumber, uint16_t value)
+{
+    (void) context;
+    return HAL_ETH_WritePHYRegister(
+               &BddTargetBoardNetif_Ethernet,
+               (uint32_t) BOARD_NETIF_PHY_ADDRESS,
+               registerNumber,
+               value
+           ) == HAL_OK;
 }
 
 /* HAL_ETH_ReadData also rebuilds the descriptors of the frames taken so far,
