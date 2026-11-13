@@ -16,7 +16,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "steps"))
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE  # noqa: E402
 from wait_budgets import CONDITION_TIMEOUT_SECONDS  # noqa: E402
-from target_driver import prepare_vxworks64_target, reset_vxworks64_store  # noqa: E402
+from target_driver import (  # noqa: E402
+    NUCLEO_F767ZI,
+    prepare_nucleo_f767zi_board,
+    prepare_vxworks64_target,
+    reset_vxworks64_store,
+)
 from stack_marks import StackMarks, stack_marks_in  # noqa: E402
 
 logger = logging.getLogger("behave.environment")
@@ -183,6 +188,13 @@ def before_all(context):
     context.buffer_wiring = os.environ.get("BDD_BUFFER", "queue").lower()
     if context.target == "vxworks64":
         prepare_vxworks64_target()
+    # BDD_BOARD puts the target on a board rather than under an emulator: the
+    # steps then reach it over the board's serial port and start it by a reset.
+    context.board = os.environ.get("BDD_BOARD", "").lower()
+    if context.board not in ("", NUCLEO_F767ZI):
+        raise ValueError(f"Unsupported BDD_BOARD={context.board!r}. Expected {NUCLEO_F767ZI!r} or none.")
+    if context.board == NUCLEO_F767ZI:
+        context.board_address = prepare_nucleo_f767zi_board()
 
     # On the Windows runner the OTel oracle binds 127.0.0.1; on Linux the
     # example reaches syslog-ng via the docker compose service name. The

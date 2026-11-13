@@ -1131,9 +1131,12 @@ def step_check_system_hostname(context):
     hostname → dynamic IP → NILVALUE; each runner emits the highest-
     preference value it can supply. Linux/Windows: gethostname() (rung 3,
     "hostname"). FreeRTOS reference: the configured static IPv4 (rung 2)
-    because no FQDN, no integrator hostname, no DHCP. VxWorks 6.4: the name
-    the target sets for itself (rung 3)."""
-    if context.target == "freertos":
+    because no FQDN, no integrator hostname, no DHCP - on a board, the
+    address its image was built with. VxWorks 6.4: the name the target sets
+    for itself (rung 3)."""
+    if getattr(context, "board", ""):
+        expected = context.board_address
+    elif context.target == "freertos":
         expected = EXAMPLE_FREERTOS_STATIC_IP
     elif context.target == "vxworks64":
         expected = VXWORKS64_HOSTNAME

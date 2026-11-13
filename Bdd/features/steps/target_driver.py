@@ -58,6 +58,16 @@ _VXWORKS64_CONSOLE_BAUD = 9600
 _VXWORKS64_PROMPT = b"SolidSyslog> "
 _VXWORKS64_BUILD_TIMEOUT_SECONDS = 1800
 
+# A board is where a target runs when that is not under an emulator. BDD_BOARD
+# names it, and the target it runs is still the one BDD_TARGET names.
+NUCLEO_F767ZI = "nucleo-f767zi"
+_NUCLEO_F767ZI_RUNNER_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "Targets", "Boards", "NucleoF767zi", "Runner"
+)
+_NUCLEO_F767ZI_BUILD_DIR = os.path.join("build", "nucleo-f767zi-lwip")
+# From reset to prompt: the network is given a few seconds to come up.
+_NUCLEO_F767ZI_BOOT_TIMEOUT_SECONDS = 60
+
 
 # Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
 # flags features currently pass to run_example are mapped — adding a new
@@ -150,8 +160,9 @@ _QEMU_BASE_ARGS = [
 
 def assert_binary_present(context):
     """A local target's binary has to be built before the run; a remote one is
-    built on its own machine."""
-    if getattr(context, "target", "linux") in _LOCAL_TARGETS:
+    built on its own machine, and a board's is already on the board."""
+    on_a_board = bool(getattr(context, "board", ""))
+    if (getattr(context, "target", "linux") in _LOCAL_TARGETS) and not on_a_board:
         binary = context.example_binary
         assert os.path.exists(binary), (
             f"BDD target binary not found at {binary} — build with cmake first"
@@ -218,6 +229,42 @@ def _spawn_vxworks64():
         )
 
 
+def _import_from_nucleo_f767zi_runner(module_name):
+    if _NUCLEO_F767ZI_RUNNER_DIR not in sys.path:
+        sys.path.insert(0, _NUCLEO_F767ZI_RUNNER_DIR)
+    return __import__(module_name)
+
+
+def _open_nucleo_f767zi():
+    """Resets the board and returns its console. The run names the ST-LINK's
+    virtual COM port, and STM32_Programmer_CLI where PATH does not find it."""
+    port = os.environ.get("NUCLEO_F767ZI_SERIAL_PORT")
+    if not port:
+        raise RuntimeError("NUCLEO_F767ZI_SERIAL_PORT is not set to the board's serial port")
+    programmer = os.environ.get("STM32_PROGRAMMER_CLI") or "STM32_Programmer_CLI"
+    return _import_from_nucleo_f767zi_runner("nucleo_f767zi").open_board(port, programmer)
+
+
+def prepare_nucleo_f767zi_board():
+    """Checks, once per run, that the image on the board is a build of the
+    commit under test, and returns the address that build gave the board,
+    which is what it sends as its HOSTNAME."""
+    board = _import_from_nucleo_f767zi_runner("nucleo_f767zi")
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+    ).stdout.strip()
+    console = _open_nucleo_f767zi()
+    try:
+        board.check_image_is_of_commit(
+            board.output_to_prompt(console, _NUCLEO_F767ZI_BOOT_TIMEOUT_SECONDS), commit
+        )
+    finally:
+        console.kill()
+    build_dir = os.environ.get("NUCLEO_F767ZI_BUILD_DIR") or _NUCLEO_F767ZI_BUILD_DIR
+    with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
+        return board.board_address_in(cache.read())
+
+
 def spawn_example_process(context, extra_args=None, binary=None):
     """Spawn the example-under-test for the active target.
 
@@ -240,6 +287,8 @@ def spawn_example_process(context, extra_args=None, binary=None):
     target = getattr(context, "target", "linux")
     if target == "vxworks64":
         return _spawn_vxworks64()
+    if getattr(context, "board", "") == NUCLEO_F767ZI:
+        return _open_nucleo_f767zi()
     if binary is None:
         binary = context.example_binary
 
