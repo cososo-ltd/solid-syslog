@@ -163,7 +163,8 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
   bash -c 'cmake --preset iwyu && cmake --build --preset iwyu --target iwyu'
 ```
 
-`cpputest-clang` carries every upstream tree, so this covers every pack.
+`cpputest-clang` carries every upstream tree, so this covers every pack a Linux
+host can build.
 
 CI runs the IWYU lane advisory; findings appear in the `iwyu-report` artifact
 and do not block the build.
