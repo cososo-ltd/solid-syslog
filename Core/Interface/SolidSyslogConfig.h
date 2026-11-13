@@ -39,6 +39,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  as a syslog record of its own. */
     typedef bool (*SolidSyslogEventReportingFunction)(void* context);
 
+    /** Answers whether the device knows where its collector is. */
+    typedef bool (*SolidSyslogDestinationKnownFunction)(void* context);
+
     /** Wiring for SolidSyslog_Create. NULL is safe for any field: Buffer,
      *  Sender, and Store fall back to their Null object and report an error
      *  (a no-op unless an error handler is installed; inject the Null* object
@@ -89,6 +92,23 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  on while it runs. NULL means on. */
         SolidSyslogEventReportingFunction IsEventReportingOn;
         void* EventReportingContext; /**< Passed back to IsEventReportingOn unchanged. */
+        /** Asked, with DestinationKnownContext, on the task that calls
+         *  SolidSyslog_Service, on each pass that has a record to offer to the
+         *  sender, before it is offered. False holds the record back: the pass
+         *  still drains the buffer into the store, offers nothing to the
+         *  sender, so no delivery, resolve or connection event is raised, and
+         *  returns what it would for a sender that refuses; a later pass whose
+         *  answer is true sends. The store's own events are raised as they
+         *  would be for a collector that is down, and so is the buffer's
+         *  discard policy when the store keeps nothing. The question is about
+         *  the device, not the collector: whether it yet knows where the
+         *  collector is, for a destination read from configuration that
+         *  arrives after the first events are logged. A collector that is
+         *  known but unreachable is what the sender's delivery events report.
+         *  SolidSyslogPassthroughBuffer sends on the task that logs and never
+         *  reaches this gate. NULL means known. */
+        SolidSyslogDestinationKnownFunction IsDestinationKnown;
+        void* DestinationKnownContext; /**< Passed back to IsDestinationKnown unchanged. */
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or

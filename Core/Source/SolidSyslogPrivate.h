@@ -62,6 +62,8 @@ struct SolidSyslog
     void* HaltContext;
     SolidSyslogEventReportingFunction IsEventReportingOn;
     void* EventReportingContext;
+    SolidSyslogDestinationKnownFunction IsDestinationKnown;
+    void* DestinationKnownContext;
     /* Whether the switch turned a report down this pass; each pass starts
      * without. */
     bool ReportTurnedDown;
