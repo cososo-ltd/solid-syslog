@@ -62,6 +62,15 @@ has no view of: your application's records answer to it directly, and the librar
 through the function it provides. Retention, access control and disposal at the
 collector.
 
+**Honouring the opt-out.** Log the deactivation, with the identity that made it, and
+only then stop calling `SolidSyslog_Log`; log the reactivation the same way, as the first
+record after it. Records already in the buffer and the store are still delivered, which
+is what the guidance asks for. Where the product's opt-out is to cover the library's own
+records too, answer it from `IsEventReportingOn` on
+[`SolidSyslogConfig`](api/structSolidSyslogConfig.md); the field's doc comment states
+what a pass does with the answer. `IsDestinationKnown` on the same struct is not an
+opt-out: it holds delivery while the device has no collector, and the records are kept.
+
 ## Part I - requirements an audit trail contributes to
 
 The log path is not the primary means of meeting these, but it is in scope for each,
