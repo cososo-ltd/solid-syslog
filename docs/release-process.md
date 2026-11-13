@@ -263,9 +263,10 @@ Each example stack - `solid-syslog-example` and `solid-syslog-example-make` -
 gets a release of its own for every library release. Between releases the stacks
 are swept against every change to `main` that could reach them, and a stage that
 no longer builds or runs is an open issue here labelled `example-sweep`, per
-[ci.md](ci.md#example-stacks); a release starts from a stack already known to be
-green against `main`, so that no such issue is open is a precondition of the
-release checklist below. The library's
+[ci.md](ci.md#example-stacks). A release starts from stacks whose latest
+chain-started **Sweep** run passed, with no such issue open; both are
+preconditions of the release checklist below, since an unfinished sweep or a
+lost event opens no issue. The library's
 documentation links the branch by name, so the branch exists before the
 library release is published; the rest follows it. A stack's release is
 finished when all four parts exist, and the stack's `main` README names them.
@@ -321,7 +322,8 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 
 ## Checklist
 
-- [ ] `main` is green, and no `example-sweep` issue is open.
+- [ ] `main` is green, the latest chain-started **Sweep** run on each example
+      stack passed, and no `example-sweep` issue is open.
 - [ ] Bring the documentation to the release before it is tagged, since the bundle
       is built from the tag: the example stacks' `release/<version>` links in
       `README.md`, `docs/README.md`, `docs/build-integration.md` and

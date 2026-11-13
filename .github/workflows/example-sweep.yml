@@ -68,11 +68,16 @@ jobs:
   report:
     if: github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
+    # One issue per stack, so reports for one stack queue rather than race.
+    concurrency:
+      group: example-sweep-report-${{ github.event.client_payload.stack }}
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
       STACK: ${{ github.event.client_payload.stack }}
       SHA: ${{ github.event.client_payload.sha }}
       REF: ${{ github.event.client_payload.ref }}
