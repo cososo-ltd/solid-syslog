@@ -28,7 +28,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 |---|---|---|
 | `unit-linux-gcc` | `debug` | All fourteen packs a Linux host can build, on `cpputest-freertos`; also builds the Linux BDD target against the default tunables (every other host build of it uses a tunables override), and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has. Test results annotated on PR |
 | `unit-linux-clang` | `clang-debug` | Every pack `unit-linux-gcc` builds, built and tested with Clang 19 on `cpputest-clang`, which carries the upstream trees `cpputest-freertos` does at the same pins |
-| `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
+| `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`, with its dependencies from vcpkg as the [Windows build](builds.md#windows-build---msvc-debug) describes; test results annotated on PR |
 | `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
 | `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 99% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the HTML report with the site at [Coverage](testing/coverage.md) |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |

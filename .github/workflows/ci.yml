@@ -290,50 +290,18 @@ jobs:
     permissions:
       contents: read
       checks: write
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Enable vcpkg binary cache
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      # Cache vcpkg's classic-mode installed tree across runs and branches.
-      # x-gha (above) is per-workflow scope and goes cold on a fresh branch;
-      # actions/cache survives across branches with a static key. Bump the
-      # `v1` suffix to force a rebuild (e.g. when adding a package).
-      # C:\vcpkg is the standard VCPKG_INSTALLATION_ROOT on github-hosted
-      # windows runners — hardcoded here so the cache step doesn't depend
-      # on a runner-image-set env var (the linter can't see those).
-      - name: Cache vcpkg installed tree
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        # The cache is a pure speed optimisation — a flaky restore must never
-        # skip the build+test. actions/cache can fail mid-restore (even after
-        # reporting a hit); without continue-on-error that failure trips the
-        # default `if: success()` on every following step, so Install / Configure
-        # / Build-and-test all skip and the job goes red without ever compiling.
-        # On a miss or partial restore the `vcpkg install` below rebuilds the
-        # tree (backed by the x-gha binary cache), so the only cost is a slower
-        # run.
-        continue-on-error: true
-        with:
-          path: C:\vcpkg\installed
-          key: ${{ runner.os }}-vcpkg-cpputest-openssl-v1
-
-      - name: Install CppUTest and OpenSSL
-        run: |
-          vcpkg install cpputest openssl
-          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
-
+      # CppUTest and OpenSSL come from vcpkg.json as the preset configures; the
+      # action holds the baseline handling and the cache both Windows lanes share.
       - name: Configure
-        run: cmake --preset msvc-debug
+        uses: ./.github/actions/vcpkg-configure
+        with:
+          preset: msvc-debug
 
       - name: Build integration tests
         run: cmake --build --preset msvc-debug --target OpenSslIntegrationTests
@@ -1381,44 +1349,17 @@ jobs:
     permissions:
       contents: read
       checks: write
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Enable vcpkg binary cache
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      # Same cache as integration-windows-openssl — both jobs share one
-      # entry. See that job's comment for rationale and key-bump policy.
-      - name: Cache vcpkg installed tree
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        # The cache is a pure speed optimisation — a flaky restore must never
-        # skip the build+test. actions/cache can fail mid-restore (even after
-        # reporting a hit); without continue-on-error that failure trips the
-        # default `if: success()` on every following step, so Install / Configure
-        # / Build-and-test all skip and the job goes red without ever compiling.
-        # On a miss or partial restore the `vcpkg install` below rebuilds the
-        # tree (backed by the x-gha binary cache), so the only cost is a slower
-        # run.
-        continue-on-error: true
-        with:
-          path: C:\vcpkg\installed
-          key: ${{ runner.os }}-vcpkg-cpputest-openssl-v1
-
-      - name: Install CppUTest and OpenSSL
-        run: |
-          vcpkg install cpputest openssl
-          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
-
+      # CppUTest and OpenSSL come from vcpkg.json as the preset configures; the
+      # action holds the baseline handling and the cache both Windows lanes share.
       - name: Configure
-        run: cmake --preset msvc-debug
+        uses: ./.github/actions/vcpkg-configure
+        with:
+          preset: msvc-debug
 
       - name: Build and test
         run: cmake --build --preset msvc-debug --target junit

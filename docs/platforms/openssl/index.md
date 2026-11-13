@@ -19,10 +19,9 @@ adapter needs, how credentials reach it, and how it meets that contract.
 
 OpenSSL 3.0 or later. The CMake configure fails below that rather than the build,
 so an older libssl is caught before anything compiles. The pack is tested against
-3.5.7, the version the CI images carry, and against 3.6.3 from vcpkg on the MSVC
-lane, which takes whatever vcpkg ships on the day.
+3.5.7, the version the CI images carry, and against 3.6.5 on the MSVC lane.
 <!-- tested-against: 3.5.7 -->
-<!-- tested-against: 3.6.3 -->
+<!-- tested-against: 3.6.5 -->
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
