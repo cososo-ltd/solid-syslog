@@ -7,8 +7,13 @@ updates:
   # GitHub Actions used by the CI, release-please, and SBOM workflows.
   # Actions are SHA-pinned; Dependabot bumps the SHA and refreshes the version
   # comment, reinforcing the action-pinning hardening posture.
+  #
+  # `/` covers .github/workflows and nothing else, so a composite action that
+  # pins an action of its own is listed by its directory or its pins never move.
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/vcpkg-configure
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -21,14 +26,35 @@ updates:
     # pair fails the required check every time. Grouping makes the bump one PR
     # holding both pins, which is also the only way the SHA pinning means what it
     # says — two halves of one action cannot drift apart.
+    #
+    # actions/cache is grouped for the second reason alone: its restore and
+    # save halves write and read one cache, and are pinned side by side in the
+    # vcpkg-configure action.
     groups:
       codeql-action:
         patterns:
           - "github/codeql-action*"
+      actions-cache:
+        patterns:
+          - "actions/cache*"
 
   # Python packages used by the BDD test harness.
   - package-ecosystem: pip
     directory: /Bdd
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+
+  # CppUTest and OpenSSL on the Windows lanes, declared in vcpkg.json. A bump
+  # moves `builtin-baseline` to a newer commit of the vcpkg registry, which
+  # moves every port the manifest lists at once; a port that has to be held
+  # back takes an `overrides` entry in the manifest. When the bump moves
+  # OpenSSL, the tested-against marker on the OpenSSL platform page has to
+  # follow by hand before the docs lane passes.
+  - package-ecosystem: vcpkg
+    directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
