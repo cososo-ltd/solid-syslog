@@ -54,9 +54,21 @@ jobs:
           repositories: solid-syslog-example,solid-syslog-example-make
           permission-contents: write
 
+      # A commit typed by hand may be abbreviated; the stacks fetch by it and
+      # the report job matches run titles on it, so both need the full SHA.
+      - name: Resolve the commit
+        id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          full=$(gh api "repos/${GITHUB_REPOSITORY}/commits/$SHA" --jq .sha)
+          echo "sha=$full" >> "$GITHUB_OUTPUT"
+          echo "sweeping the stacks against $full"
+
       - name: Send library-changed to each stack
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
         run: |
           for stack in $STACKS; do
             gh api "repos/cososo-ltd/$stack/dispatches" \
