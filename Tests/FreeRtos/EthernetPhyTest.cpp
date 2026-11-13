@@ -34,6 +34,7 @@ static void* contextSeen;
 static bool ReadRegister(void* context, uint8_t registerNumber, uint16_t* value)
 {
     contextSeen = context;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) -- the code under test asks for registers 1, 4 and 5
     *value = registers[registerNumber];
     if ((registerNumber == STATUS_REGISTER) && statusIsStale)
     {
