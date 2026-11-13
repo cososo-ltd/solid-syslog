@@ -13,6 +13,11 @@ same feature files run on every target — the active runner is selected by the
 | `freertos` | `freertos-cross` | `qemu-system-arm` | `syslog-ng-freertos` |
 | `vxworks64` | the VxWorks 6.4 runner, on a build machine | QEMU (Malta) on that machine, its console over TCP | `otelcol-contrib` on the development machine |
 
+`BDD_BOARD` puts a target on a board where it otherwise runs under an emulator.
+`BDD_BOARD=nucleo-f767zi` beside `BDD_TARGET=freertos` drives the image on a
+NUCLEO-F767ZI over its serial port, against `otelcol-contrib` on the
+development machine.
+
 `environment.py` resolves each target's binary from these builds. Build the preset
 for your target, or set `EXAMPLE_BINARY` to a path of your own.
 
@@ -110,6 +115,13 @@ oracle on the shared loopback.
 Run `Bdd\Targets\VxWorks64\Run-VxWorks64Bdd.ps1` on the development machine.
 What it needs, and what it does, is in
 [its README](Targets/VxWorks64/README.md#running-the-bdd-scenarios).
+
+### NUCLEO-F767ZI (a board on the development machine)
+
+Run `Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1` on the
+development machine, with the board attached. What it needs, and what it does,
+is in
+[the board's README](Targets/Boards/NucleoF767zi/README.md#running-the-bdd-scenarios).
 
 ## Running in CI
 

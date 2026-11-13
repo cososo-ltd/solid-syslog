@@ -55,6 +55,7 @@ fault-finding tips.
 | CMSIS-RTOS2 (lwIP Sockets API), wolfSSL | `behave-cmsis-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 | VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
+| FreeRTOS (lwIP Raw API) on the NUCLEO-F767ZI | `behave` natively on the development machine, driving the board over its serial port and resetting it through its debug probe (`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via
 `subprocess.run`. Both services share the workspace mount, so `Bdd/output/received.log`
@@ -71,7 +72,7 @@ through the QEMU UART (`-serial stdio`).
 | `ghcr.io/cososo-ltd/behave` | GHCR image - Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
 | `Bdd/output/` | Shared directory - syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
-| `Bdd/junit/stack-hwm.txt` | Written by a FreeRTOS QEMU run: the least stack the logging task and the Service task had left, in bytes, in each scenario that ends by quitting the target, then the least of each over the run. A scenario that shuts the target down or kills it to stand in for a power cut gives no figure. The run prints the same lines as it ends |
+| `Bdd/junit/stack-hwm.txt` | Written by a FreeRTOS run, under QEMU or on a board: the least stack the logging task and the Service task had left, in bytes, in each scenario that ends by quitting the target, then the least of each over the run. A scenario that shuts the target down or kills it to stand in for a power cut gives no figure. The run prints the same lines as it ends |
 | `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender, or under `--buffer passthrough` a PassthroughBuffer with no service thread, the logger serviced on the thread that logs after each record. Accepts `--facility`, `--severity`, `--transport`, `--buffer`, `--app-name`, store-config flags; refuses a file store under passthrough, since nothing the application logs would reach it |
 | `Bdd/Targets/CMakeLists.txt` | Builds the BDD target binary, linked against the SolidSyslog library |
 
@@ -159,10 +160,12 @@ Rollout markers are also used (temporary; remove once the scenario passes):
 | `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on one scenario in `udp_mtu.feature`. |
 | `@freertoswip` | Skip on the QEMU targets only - scenario currently fails or errors on them and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Not currently in use on any scenario. |
 | `@vxworks64wip` | Skip on the VxWorks 6.4 target only - the scenario needs a capability that target does not have yet, and loses the tag when the story that adds it lands. |
+| `@nucleof767ziwip` | Skip on the NUCLEO-F767ZI only - the scenario needs a capability the board does not have yet, and loses the tag when the story that adds it lands. Not currently in use on any scenario. |
 
 Which runner excludes which tags is set on each Behave service's `command` in
 `ci/docker-compose.bdd.yml`, on the Windows step in `.github/workflows/ci.yml`, and
-in `Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`. Read
+in the two run scripts, `Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1` and
+`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1`. Read
 the filters there rather than from a copy here: a runner is added or a tag retired by
 editing those files, and a table restating them is wrong the moment one changes.
 
@@ -173,7 +176,7 @@ Step definitions read the active oracle from `ORACLE_FORMAT`:
 | Oracle | `ORACLE_FORMAT` | `RECEIVED_LOG` default | Runs on |
 | --- | --- | --- | --- |
 | syslog-ng (key=value text) | `syslog-ng` | `Bdd/output/received.log` | Linux container |
-| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native, and the VxWorks 6.4 run from the development machine |
+| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native, and the VxWorks 6.4 and NUCLEO-F767ZI runs from the development machine |
 
 `parse_oracle_line` dispatches to the right parser; both produce the same flat field dict
 (`PRIORITY`, `TIMESTAMP`, `HOSTNAME`, `APP_NAME`, `PROCID`, `STRUCTURED_DATA`, ...) so the
