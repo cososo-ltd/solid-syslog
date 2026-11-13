@@ -1,10 +1,10 @@
-# Firmware for the NUCLEO-F767ZI (STM32F767ZI, Cortex-M7).
+# The bring-up firmware for the NUCLEO-F767ZI (STM32F767ZI, Cortex-M7).
 #
 # Compiled cross-only - gated by the top-level CMakeLists.txt on
 # CMAKE_CROSSCOMPILING + CMAKE_SYSTEM_PROCESSOR == "arm", and selected by
-# SOLIDSYSLOG_BDD_TARGET. Board/ is the board support: the linker script, the
-# HAL configuration, and the clock, console and LEDs over ST's HAL. Bringup/ is
-# the one image built so far, which carries no SolidSyslog.
+# SOLIDSYSLOG_BDD_TARGET. The directory above is the board support: the linker
+# script, the HAL configuration, and the clock, console and LEDs over ST's HAL.
+# This is the image that carries no SolidSyslog.
 #
 # ST's HAL driver and CMSIS device files compile into an OBJECT library under
 # a relaxed warning set, as the other targets' upstream sources do; the code
@@ -15,7 +15,7 @@
 if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
     message(FATAL_ERROR
         "The NUCLEO-F767ZI firmware needs its own toolchain file, "
-        "Bdd/Targets/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake. "
+        "Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake. "
         "Configure with a nucleo-f767zi-* preset.")
 endif()
 
@@ -29,7 +29,7 @@ solidsyslog_bdd_upstream(CMSIS_PATH SOLIDSYSLOG_CMSIS_PATH /opt/cmsis PROBE CMSI
 # The startup code is ST's, in assembler.
 enable_language(ASM)
 
-set(BOARD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Board")
+get_filename_component(BOARD_DIR "${CMAKE_CURRENT_SOURCE_DIR}" DIRECTORY)
 set(BOARD_LINKER_SCRIPT "${BOARD_DIR}/stm32f767zi.ld")
 
 # The part, which selects its register definitions in ST's headers, and the
@@ -105,8 +105,8 @@ if(GIT_EXECUTABLE)
 endif()
 
 add_executable(SolidSyslogNucleoF767ziBringup
-    Bringup/main.c
-    Board/Board.c
+    main.c
+    ${BOARD_DIR}/Board.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
     $<TARGET_OBJECTS:solid_syslog_nucleo_f767zi_upstream>
 )

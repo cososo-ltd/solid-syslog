@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 /* The NUCLEO-F767ZI as firmware sees it: a clock, a console on the ST-LINK
- * virtual COM port, a millisecond count and the three user LEDs. README.md in
- * the directory above holds the pin plan. */
+ * virtual COM port, a millisecond count and the three user LEDs. README.md beside
+ * this file holds the pin plan. */
 
 enum BoardLed
 {

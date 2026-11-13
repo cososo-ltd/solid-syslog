@@ -12,7 +12,7 @@ development machine with the board attached, and recorded against the
 
 | Directory | Holds |
 |---|---|
-| `Board/` | The board support: the linker script, the HAL configuration, and the clock, console, LEDs and millisecond count over ST's HAL |
+| This directory | The board support: the linker script, the HAL configuration, and the clock, console, LEDs and millisecond count over ST's HAL |
 | `Bringup/` | The bring-up image, which carries no SolidSyslog. It prints a banner on the serial port, echoes each line it receives, and blinks the green LED |
 | `cmake/` | The Cortex-M7 toolchain file |
 
@@ -31,7 +31,7 @@ cmake --build --preset nucleo-f767zi-bringup --target SolidSyslogNucleoF767ziBri
 ```
 
 The image lands at
-`build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf`,
+`build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf`,
 with a raw `.bin` beside it. The `build-nucleo-bringup` CI lane builds the same
 thing on every pull request and uploads both as the
 `solid-syslog-nucleo-f767zi-bringup` artifact.
@@ -61,7 +61,7 @@ Fetch the image CI built for the commit, then write and verify it:
 
 ```bash
 gh run download <run-id> --name solid-syslog-nucleo-f767zi-bringup --dir nucleo
-STM32_Programmer_CLI -c port=SWD -w nucleo/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf -v -rst
+STM32_Programmer_CLI -c port=SWD -w nucleo/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf -v -rst
 ```
 
 The ELF carries its own load address. The `.bin` does not, and goes at the

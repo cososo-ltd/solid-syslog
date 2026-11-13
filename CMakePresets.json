@@ -195,7 +195,7 @@
             "name": "nucleo-f767zi-bringup",
             "displayName": "NUCLEO-F767ZI bring-up firmware (ARM Cortex-M7), no SolidSyslog in it",
             "binaryDir": "${sourceDir}/build/${presetName}",
-            "toolchainFile": "${sourceDir}/Bdd/Targets/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake",
+            "toolchainFile": "${sourceDir}/Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",

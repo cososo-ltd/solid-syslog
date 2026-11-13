@@ -2120,7 +2120,7 @@ jobs:
 
   # Firmware for the NUCLEO-F767ZI, which CI builds and never runs: nothing
   # here reaches the board. The image is flashed by hand and the run recorded
-  # against the target checklist in Bdd/Targets/NucleoF767zi/README.md, so the
+  # against the target checklist in Bdd/Targets/Boards/NucleoF767zi/README.md, so the
   # artifact is kept long enough for that.
   build-nucleo-bringup:
     runs-on: ubuntu-latest
@@ -2154,15 +2154,15 @@ jobs:
       - name: Assert the image's banner names the commit built
         run: |
           grep --text --quiet "bring-up, commit $(git rev-parse --short=10 HEAD)" \
-            build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.bin
+            build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.bin
 
       - name: Upload the NUCLEO-F767ZI bring-up firmware
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: solid-syslog-nucleo-f767zi-bringup
           path: |
-            build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf
-            build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.bin
+            build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf
+            build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.bin
             build/nucleo-f767zi-bringup/solidsyslog-versions.json
           if-no-files-found: error
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}

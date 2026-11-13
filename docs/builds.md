@@ -234,8 +234,8 @@ cmake --build --preset nucleo-f767zi-bringup --target SolidSyslogNucleoF767ziBri
 ```
 
 The ELF lands at
-`build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf`,
-with a raw `.bin` beside it. See `Bdd/Targets/NucleoF767zi/README.md` for
+`build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf`,
+with a raw `.bin` beside it. See `Bdd/Targets/Boards/NucleoF767zi/README.md` for
 flashing it and for the target checklist.
 
 ## Tunable overrides - `tunable-override-debug` / `msvc-tunable-override`
