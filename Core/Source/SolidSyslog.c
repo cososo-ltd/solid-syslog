@@ -63,6 +63,7 @@ static inline void SolidSyslog_FormatReport(struct SolidSyslog* self, const stru
 static bool SolidSyslog_DealWithHeldRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_SenderTakesRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_StoreDealsWithHeldRecord(struct SolidSyslog* self);
 static inline void SolidSyslog_HaltIfPolicyHalts(struct SolidSyslog* self);
 static inline void SolidSyslog_Halt(struct SolidSyslog* self, enum SolidSyslogErrors haltedAt);
@@ -590,9 +591,16 @@ static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog*
  * sends nothing after it. */
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self)
 {
-    return SolidSyslog_StoreDealsWithHeldRecord(self) ||
-           (!self->Halted && self->IsDestinationKnown(self->DestinationKnownContext) &&
-            SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength));
+    return SolidSyslog_StoreDealsWithHeldRecord(self) || (!self->Halted && SolidSyslog_SenderTakesRecord(self));
+}
+
+/* Offers the record in the slot to the sender, once the device says it knows
+ * where the sender is to deliver it: a record held back is not a failed send,
+ * so the sender hears nothing and reports nothing. */
+static inline bool SolidSyslog_SenderTakesRecord(struct SolidSyslog* self)
+{
+    return self->IsDestinationKnown(self->DestinationKnownContext) &&
+           SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength);
 }
 
 /* Offers the held record to the store. A store that retains records has dealt
@@ -725,8 +733,7 @@ static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 
     if (SolidSyslog_TakeNextFromStore(self))
     {
-        if (self->IsDestinationKnown(self->DestinationKnownContext) &&
-            SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength))
+        if (SolidSyslog_SenderTakesRecord(self))
         {
             SolidSyslogStore_MarkSent(self->Store);
         }
