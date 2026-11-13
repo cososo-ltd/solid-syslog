@@ -103,8 +103,11 @@ buffers of its own that the Ethernet DMA reads and writes. The part's data
 cache is left off, and nothing in the interface maintains it.
 
 Jumpers JP6 and JP7 carry two of the RMII signals to the PHY, and both must be
-fitted. Without them the MAC does not start, and the console says
-`[board] ethernet the MAC did not start`.
+fitted.
+
+The MAC's reset completes only while the PHY supplies its 50 MHz reference
+clock. If it does not complete, the console says
+`[board] ethernet the MAC did not start` and the interface stays without a link.
 
 ## What the board does not have yet
 

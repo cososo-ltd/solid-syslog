@@ -135,8 +135,8 @@ err_t BddTargetBoardNetif_Init(struct netif* netif)
     BddTargetBoardNetif_Ethernet.Init.RxBuffLen = BOARD_NETIF_BUFFER_BYTES;
 
     /* The MAC's reset completes only with the PHY's 50 MHz reference clock
-     * running, so a failure here is a PHY that is not clocking: held in reset,
-     * or JP6 and JP7 not fitted. The interface stays, with no link. */
+     * running, so a failure here is a PHY that is not clocking. The interface
+     * stays, with no link. */
     if (HAL_ETH_Init(&BddTargetBoardNetif_Ethernet) == HAL_OK)
     {
         /* The HAL leaves the management clock at the divider the part resets
@@ -214,15 +214,13 @@ static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf
         packet.CRCPadCtrl = ETH_CRC_PAD_INSERT;
         packet.Length = buffer.len;
         packet.TxBuffer = &buffer;
-        /* The HAL keeps this against the descriptor until it is released, and
-         * will not reuse a descriptor that still holds one. */
-        packet.pData = BddTargetBoardNetif_TxBuffer;
+        /* The polled transmit returns with the frame sent and holds nothing
+         * against the descriptor, so there is nothing to release after it. */
         HAL_StatusTypeDef sent = HAL_ETH_Transmit(
             &BddTargetBoardNetif_Ethernet,
             &packet,
             (uint32_t) BOARD_NETIF_TRANSMIT_TIMEOUT_MILLISECONDS
         );
-        (void) HAL_ETH_ReleaseTxPacket(&BddTargetBoardNetif_Ethernet);
         if (sent == HAL_OK)
         {
             result = ERR_OK;
@@ -270,11 +268,13 @@ static void BddTargetBoardNetif_ReceiveFrames(void)
     }
 }
 
-/* The HAL asks for a buffer for each receive descriptor it builds. Leaving
- * *buff NULL makes it try again on the next HAL_ETH_ReadData. The name and
- * the parameter are ST's. */
+/* The HAL asks for a buffer for each receive descriptor it builds. Answering
+ * NULL makes it try again on the next HAL_ETH_ReadData; it has to be written,
+ * because the HAL passes in whatever the descriptor before was given. The name
+ * and the parameter are ST's. */
 void HAL_ETH_RxAllocateCallback(uint8_t** buff) // NOLINT(readability-identifier-naming) -- ST's name
 {
+    *buff = NULL;
     for (uint32_t i = 0U; i < (uint32_t) BOARD_NETIF_RX_BUFFER_COUNT; i++)
     {
         if (!BddTargetBoardNetif_RxBufferInUse[i])
