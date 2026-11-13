@@ -128,11 +128,10 @@ cmake --build --preset iwyu --target iwyu
 
 Note the `--target iwyu`: building the bare preset does not run the tool.
 
-IWYU is advisory, not a gate. The CI lanes (`analyze-iwyu` and
-`analyze-iwyu-embedded`) run on every PR but
-do not block the build; their findings land in the `iwyu-report*` artifacts. Sweep
-those at release cleanup. See [local-checks.md](local-checks.md) for the FreeRTOS
-variants and the full pre-PR check budget.
+IWYU is advisory, not a gate. The CI lane, `analyze-iwyu`, runs on every PR but
+does not block the build; its findings land in the `iwyu-report` artifact. Sweep
+that at release cleanup. See [local-checks.md](local-checks.md) for the full pre-PR
+check budget.
 
 ## Windows build - `msvc-debug`
 

@@ -163,18 +163,11 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
   bash -c 'cmake --preset iwyu && cmake --build --preset iwyu --target iwyu'
 ```
 
-For FreeRTOS / Plus-TCP / lwIP / Mbed TLS / FatFs trees, use `freertos-host`
-with the clang-19 overrides instead:
+`cpputest-clang` carries every upstream tree, so this covers every pack a Linux
+host can build.
 
-```bash
-docker compose -f .devcontainer/docker-compose.yml run --rm freertos-host \
-  bash -c 'cmake --preset iwyu \
-    -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19 \
-    && cmake --build --preset iwyu --target iwyu'
-```
-
-CI runs both IWYU lanes advisory; findings appear in the `iwyu-report` and
-`iwyu-report-embedded` artifacts and do not block the build.
+CI runs the IWYU lane advisory; findings appear in the `iwyu-report` artifact
+and do not block the build.
 
 ### Licence headers
 
