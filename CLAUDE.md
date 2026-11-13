@@ -47,7 +47,7 @@ what matters — it becomes the permanent commit message on `main` on squash mer
 - Direct pushes to `main` are blocked
 - PRs require all status checks to pass before merging. Which lanes those are, what each
   one exercises, and the two qualifications on what "required" buys — the advisory
-  `analyze-iwyu*` lanes, and why feeding `summary` does not make a lane blocking — are in
+  `analyze-iwyu` lane, and why feeding `summary` does not make a lane blocking — are in
   [docs/ci.md](docs/ci.md). Read the list from GitHub, not from a copy:
   `gh api repos/cososo-ltd/solid-syslog/branches/main/protection --jq '.required_status_checks.contexts[]'`
 - Squash merge only — other merge strategies are disabled

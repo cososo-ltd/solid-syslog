@@ -27,7 +27,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | Job | Preset | Notes |
 |---|---|---|
 | `unit-linux-gcc` | `debug` | All fourteen packs a Linux host can build, on `cpputest-freertos`; also builds the Linux BDD target against the default tunables (every other host build of it uses a tunables override), and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has. Test results annotated on PR |
-| `unit-linux-clang` | `clang-debug` | Second compiler check using Clang 19 |
+| `unit-linux-clang` | `clang-debug` | Every pack `unit-linux-gcc` builds, built and tested with Clang 19 on `cpputest-clang`, which carries the upstream trees `cpputest-freertos` does at the same pins |
 | `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest via vcpkg; test results annotated on PR |
 | `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
 | `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 99% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the HTML report with the site at [Coverage](testing/coverage.md) |
@@ -35,9 +35,8 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
 | `analyze-format` | - | clang-format dry-run; fails if any file needs reformatting |
-| `analyze-iwyu` | `iwyu` | include-what-you-use; fails on missing or unused `#include` directives. Advisory - runs `continue-on-error` |
+| `analyze-iwyu` | `iwyu` | include-what-you-use over every pack a Linux host can build, on `cpputest-clang`; fails on missing or unused `#include` directives. Advisory - runs `continue-on-error` |
 | `analyze-tidy-embedded` | `tidy` | clang-tidy on `cpputest-freertos`, whose upstream trees select the eight embedded packs the base `analyze-tidy` lane cannot reach: FreeRtos, PlusTcp, PlusFat, LwipRaw, LwipSocket, MbedTls, FatFs and LittleFs |
-| `analyze-iwyu-embedded` | `iwyu` | IWYU over the same set. Advisory |
 | `analyze-markdown` | - | `markdownlint-cli2` over every tracked `.md` file |
 | `analyze-spdx` | - | `scripts/check_spdx_headers.py`: every file under `Core/` and `Platform/` carries the licence header `LICENSE.md` declares, and none claims anyone else's copyright |
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
@@ -80,8 +79,8 @@ only runs on `main`. Three more come from outside that file: `analyze-codeql` an
 workflow files from a workflow of its own. A pull request cannot be merged unless
 all of them pass. Direct pushes to `main` are blocked. Squash merge only.
 
-Two qualifications on what "required" buys. The `analyze-iwyu*` lanes run
-`continue-on-error`, so they are required contexts that report success whatever IWYU
+Two qualifications on what "required" buys. The `analyze-iwyu` lane runs
+`continue-on-error`, so it is a required context that reports success whatever IWYU
 finds - required in form, advisory in substance. And feeding the `summary` aggregator
 does not make a lane blocking: `summary` is declared `if: always()` and asserts nothing
 about `needs.*.result`, so a new lane gates merges only once its own context is added
