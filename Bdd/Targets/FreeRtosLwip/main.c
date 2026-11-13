@@ -156,7 +156,6 @@ static void NetworkBringUp(void* context)
     ) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, BddTargetBoardNetif_Init, tcpip_input);
     netif_set_default(&networkInterface);
     netif_set_up(&networkInterface);
-    netif_set_link_up(&networkInterface);
 
     /* Kick off ARP resolution for the gateway now, so the cache is warm before
      * the first datagram (SolidSyslogLwipRawDatagram sends PBUF_REF packets; an

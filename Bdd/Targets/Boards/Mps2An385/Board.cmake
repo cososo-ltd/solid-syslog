@@ -29,6 +29,12 @@ set(BDD_BOARD_INCLUDES
     ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h
 )
 
+# The machine has no vendor layer: its startup and drivers are in this
+# directory.
+set(BDD_BOARD_SYSTEM_INCLUDES)
+set(BDD_BOARD_DEFINITIONS)
+set(BDD_BOARD_UPSTREAM_SOURCES)
+
 # The LAN9118 under lwIP: our netif over the vendored Arm controller driver
 # (Apache-2.0), which sits under the relaxations as third-party source.
 set(BDD_BOARD_LWIP_PROJECT_SOURCES

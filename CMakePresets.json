@@ -192,6 +192,20 @@
             }
         },
         {
+            "name": "nucleo-f767zi-lwip",
+            "displayName": "FreeRTOS+lwIP cross BDD target (ARM Cortex-M7, NUCLEO-F767ZI)",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SOLIDSYSLOG_BDD_TARGET": "FREERTOS_LWIP",
+                "SOLIDSYSLOG_BDD_BOARD": "NucleoF767zi",
+                "SOLIDSYSLOG_PLATFORMS": "FreeRtos;LwipRaw;MbedTls;FatFs;StdAtomic",
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/FreeRtosLwip/solidsyslog_user_tunables.h"
+            }
+        },
+        {
             "name": "nucleo-f767zi-bringup",
             "displayName": "NUCLEO-F767ZI bring-up firmware (ARM Cortex-M7), no SolidSyslog in it",
             "binaryDir": "${sourceDir}/build/${presetName}",
@@ -223,6 +237,7 @@
         { "name": "freertos-cross-lwip", "configurePreset": "freertos-cross-lwip" },
         { "name": "cmsis-cross-lwip",  "configurePreset": "cmsis-cross-lwip" },
         { "name": "cmsis-cross-lwip-wolfssl", "configurePreset": "cmsis-cross-lwip-wolfssl" },
+        { "name": "nucleo-f767zi-lwip", "configurePreset": "nucleo-f767zi-lwip" },
         { "name": "nucleo-f767zi-bringup", "configurePreset": "nucleo-f767zi-bringup" }
     ],
     "testPresets": [

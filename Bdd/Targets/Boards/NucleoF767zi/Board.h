@@ -28,8 +28,13 @@ void Board_ConsoleWrite(const char* text, size_t length);
  * most; one that arrives with that many unread is dropped. */
 bool Board_ConsoleTryRead(char* received);
 
-/* Milliseconds since Board_Init, wrapping at 2^32. */
+/* Milliseconds since Board_Init, wrapping at 2^32. Counted by a timer of the
+ * board's own, so SysTick is free for a kernel. */
 uint32_t Board_Milliseconds(void);
+
+/* Stops the part with interrupts off, lighting the red LED first if asked.
+ * Does not return. */
+void Board_Halt(bool withRedLed);
 
 void Board_LedToggle(enum BoardLed led);
 
