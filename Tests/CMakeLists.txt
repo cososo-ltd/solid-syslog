@@ -108,6 +108,7 @@ set(TEST_SOURCES
     StoreBenchTest.cpp
     ScenarioBenchTest.cpp
     SolidSyslogServiceHeldRecordTest.cpp
+    SolidSyslogServiceDestinationKnownTest.cpp
     SolidSyslogPoolTest.cpp
     SolidSyslogTunablesTest.cpp
     SolidSyslogSwitchingSenderTest.cpp
