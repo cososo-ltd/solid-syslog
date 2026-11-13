@@ -259,3 +259,24 @@ target_include_directories(CmsdkUartTest PRIVATE
 )
 
 solidsyslog_add_test(CmsdkUartTest)
+
+# The NUCLEO-F767ZI's PHY link decoding, recompiled from that board's glue
+# against a fake register read. It touches neither the kernel nor an IP stack.
+add_executable(EthernetPhyTest
+    EthernetPhyTest.cpp
+    main.cpp
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/NucleoF767zi/Lwip/EthernetPhy.c
+)
+
+target_link_libraries(EthernetPhyTest PRIVATE
+    CppUTest
+    CppUTestExt
+)
+
+target_include_directories(EthernetPhyTest PRIVATE
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/NucleoF767zi/Lwip
+    ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h (via EthernetPhy.h)
+    ${CMAKE_SOURCE_DIR}/Tests/Support
+)
+
+solidsyslog_add_test(EthernetPhyTest)

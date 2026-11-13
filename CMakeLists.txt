@@ -662,7 +662,7 @@ endif()
 # NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one
 # (S40.01), which hosts the packs E40, E36 and E35 add; NUCLEO_F767ZI_BRINGUP
 # the NUCLEO-F767ZI bring-up firmware, which needs that board's own toolchain
-# file (Bdd/Targets/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake).
+# file (Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake).
 #
 # The top-level gate matters most here: an integrator cross-compiling for
 # Cortex-M sets exactly these two variables in their own toolchain file, and
@@ -675,7 +675,7 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL
     include(Bdd/Targets/Common/UpstreamTrees.cmake)
     set(solidsyslog_bdd_target "${SOLIDSYSLOG_BDD_TARGET}")
     if(SOLIDSYSLOG_BDD_TARGET STREQUAL "NUCLEO_F767ZI_BRINGUP")
-        add_subdirectory(Bdd/Targets/NucleoF767zi)
+        add_subdirectory(Bdd/Targets/Boards/NucleoF767zi/Bringup)
     elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
         add_subdirectory(Bdd/Targets/CmsisLwip)
     elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "FREERTOS_LWIP")

@@ -21,6 +21,18 @@
 #                                BddTargetBoardConfig.h, the clock and NVIC
 #                                facts the kernel configuration reads, and
 #                                BddTargetCmsisDevice.h, the CMSIS device header
+#   BDD_BOARD_SYSTEM_INCLUDES  - include directories for a vendor's headers,
+#                                which the board's sources read and the
+#                                target's upstreams may; SYSTEM for project
+#                                code, so the vendor's style is not held to
+#                                the project's warnings
+#   BDD_BOARD_DEFINITIONS      - compile definitions the vendor's headers need
+#                                wherever they are read
+#   BDD_BOARD_UPSTREAM_SOURCES - the vendor's own sources - a HAL, a system
+#                                file, startup code - compiled under the
+#                                target's relaxed warnings
+#
+# A board that has no vendor layer leaves the last three empty.
 #
 # and, for the Ethernet controller under each network stack a target may run:
 #

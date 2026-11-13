@@ -11,8 +11,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef BRINGUP_BUILD_COMMIT
-#define BRINGUP_BUILD_COMMIT "unknown"
+#ifndef BDD_TARGET_BOARD_BUILD_COMMIT
+#define BDD_TARGET_BOARD_BUILD_COMMIT "unknown"
 #endif
 
 enum
@@ -20,7 +20,7 @@ enum
     BLINK_HALF_PERIOD_MILLISECONDS = 500
 };
 
-static const char BANNER[] = "\r\nSolidSyslog NUCLEO-F767ZI bring-up, commit " BRINGUP_BUILD_COMMIT "\r\n";
+static const char BANNER[] = "\r\nSolidSyslog NUCLEO-F767ZI bring-up, commit " BDD_TARGET_BOARD_BUILD_COMMIT "\r\n";
 static const char ECHO_PREFIX[] = "echo: ";
 static const char LINE_END[] = "\r\n";
 

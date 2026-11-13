@@ -90,7 +90,9 @@ import sys
 UPSTREAM_SUBTREES = {
     "SOLIDSYSLOG_FREERTOS_KERNEL_PATH": (
         "include",
+        # One port per board: the mps2-an385's and the NUCLEO-F767ZI's.
         "portable/GCC/ARM_CM3",
+        "portable/GCC/ARM_CM7/r0p1",
         "portable/MemMang",
         "*.c",
     ),
