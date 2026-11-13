@@ -66,10 +66,11 @@ Build any of the targets with its preset, then give QEMU the ELF:
 ```bash
 qemu-system-arm \
     -M mps2-an385 -m 16M \
-    -display none -serial stdio \
+    -display none -serial mon:stdio \
     -icount shift=auto,sleep=off,align=off \
     -netdev user,id=net0 \
     -net nic,netdev=net0,model=lan9118 \
+    -semihosting-config enable=on,target=native \
     -kernel build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
 ```
 
@@ -77,6 +78,10 @@ The `SolidSyslog>` prompt appears once the network is up. `send 1` emits one
 RFC 5424 message to the oracle's address. `quit` tears the target down and
 leaves the scheduler idling, so end QEMU with `Ctrl+A` then `x`; `set shutdown
 1` tears down and ends QEMU itself, through the semihosting exit.
+
+`-serial mon:stdio` is what gives the terminal that `Ctrl+A` escape. The
+semihosting option is what the disk and the exit go through; without it the
+first use of either stops QEMU with a fault.
 
 ## Attaching GDB
 

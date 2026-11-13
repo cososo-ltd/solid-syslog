@@ -75,10 +75,11 @@
                 "-M", "mps2-an385",
                 "-m", "16M",
                 "-display", "none",
-                "-serial", "stdio",
+                "-serial", "mon:stdio",
                 "-icount", "shift=auto,sleep=off,align=off",
                 "-netdev", "user,id=net0",
                 "-net", "nic,netdev=net0,model=lan9118",
+                "-semihosting-config", "enable=on,target=native",
                 "-kernel", "build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf"
             ],
             "presentation": {
