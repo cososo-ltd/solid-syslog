@@ -74,8 +74,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      Service holds the record. Otherwise the buffer
      *                                      was idle and the store could not move a record:
      *                                      a send was attempted and failed, or the store
-     *                                      holds records it cannot hand out yet. Back off
-     *                                      and call again later. A Log also wakes it.
+     *                                      holds records it cannot hand out yet. A record
+     *                                      held back because the device does not yet know
+     *                                      where its collector is
+     *                                      (SolidSyslogConfig.IsDestinationKnown) counts
+     *                                      as waiting on the sender. Back off and call
+     *                                      again later. A Log also wakes it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The logger has stopped: a queue refused a record
      *                                      while the discard policy answered HALT, and the
      *                                      pass that saw it raised SOLIDSYSLOG_CAT_LOGGER_HALTED

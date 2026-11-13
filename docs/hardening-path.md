@@ -483,6 +483,19 @@ then reports that it has frozen:
 The example met it here: it created the logger before starting the scheduler and mounts
 its volume from a task, so creating the logger moved to that task, after the mount.
 
+The collector, by contrast, need not be known when the logger is created. A device that
+reads the collector's address from configuration that arrives after its first events
+are logged wires `IsDestinationKnown` on
+[`SolidSyslogConfig`](api/structSolidSyslogConfig.md) to answer false until it has it.
+The service task then drains the ring into the store and offers nothing to the sender,
+so nothing is resolved or opened and no delivery event is raised, and the records go
+once the answer is true. The gate answers for the device's configuration, not the
+collector's state: a collector that is known but down is what the sender's delivery
+events report. Where the transport is itself in that configuration, create each
+candidate sender and front them with a
+[`SolidSyslogSwitchingSender`](api/SolidSyslogSwitchingSender_8h.md) whose selector
+reads the same configuration.
+
 The file layer comes from your filesystem, so add its platform to the list from stage 1.
 
 The checksum here is a checksum, not tamper-evidence. It catches a truncated write or
