@@ -725,7 +725,8 @@ static inline bool SolidSyslog_SendOneFromStore(struct SolidSyslog* self)
 
     if (SolidSyslog_TakeNextFromStore(self))
     {
-        if (SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength))
+        if (self->IsDestinationKnown(self->DestinationKnownContext) &&
+            SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength))
         {
             SolidSyslogStore_MarkSent(self->Store);
         }
