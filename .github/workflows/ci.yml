@@ -439,7 +439,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:b71e1c8b9c6b397c10876d4084c05e92cafc8aa86667bb376d846a6ca5c9cf68 # sha-c3d815f
+      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:d6fa5a20b0a22eecd310b90332101bb0b03e02b3145452c13fd419d2ad4fbb50 # sha-0f78f76
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -451,6 +451,9 @@ jobs:
         with:
           persist-credentials: false
 
+      # cpputest-clang carries the upstream trees cpputest-freertos does, copied
+      # from it at the same pins, so this lane selects every pack unit-linux-gcc
+      # does and its version record differs from that lane's only in the compiler.
       - name: Configure
         run: cmake --preset clang-debug
 
@@ -674,7 +677,7 @@ jobs:
   analyze-iwyu:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:b71e1c8b9c6b397c10876d4084c05e92cafc8aa86667bb376d846a6ca5c9cf68 # sha-c3d815f
+      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:d6fa5a20b0a22eecd310b90332101bb0b03e02b3145452c13fd419d2ad4fbb50 # sha-0f78f76
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
