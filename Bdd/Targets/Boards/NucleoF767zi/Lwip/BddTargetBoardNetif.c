@@ -82,7 +82,8 @@ static ETH_DMADescTypeDef BddTargetBoardNetif_RxDescriptors[ETH_RX_DESC_CNT] BOA
 static ETH_DMADescTypeDef BddTargetBoardNetif_TxDescriptors[ETH_TX_DESC_CNT] BOARD_NETIF_DMA_ALIGNED;
 
 static uint8_t BddTargetBoardNetif_TxBuffer[BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_ALIGNED;
-static uint8_t BddTargetBoardNetif_RxBuffers[BOARD_NETIF_RX_BUFFER_COUNT][BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_ALIGNED;
+static uint8_t BddTargetBoardNetif_RxBuffers[BOARD_NETIF_RX_BUFFER_COUNT]
+                                            [BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_ALIGNED;
 static bool BddTargetBoardNetif_RxBufferInUse[BOARD_NETIF_RX_BUFFER_COUNT];
 
 /* The frame HAL_ETH_ReadData is handing over, as its link callback saw it:

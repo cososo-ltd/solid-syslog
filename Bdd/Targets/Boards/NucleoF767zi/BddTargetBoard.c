@@ -21,7 +21,8 @@ enum
     CONSOLE_POLL_MILLISECONDS = 1
 };
 
-static const char BANNER[] = "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, commit " BDD_TARGET_BOARD_BUILD_COMMIT "\r\n";
+static const char BANNER[] =
+    "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, commit " BDD_TARGET_BOARD_BUILD_COMMIT "\r\n";
 static const char EXIT_OK[] = "\r\nexit: ok\r\n";
 static const char EXIT_FAILED[] = "\r\nexit: failed\r\n";
 

@@ -17,14 +17,15 @@ oracle.
 
 - `main.c`: installs the `tcpip_callback` marshal
   (`SolidSyslogLwipRaw_SetMarshal`, S28.06), calls `tcpip_init`, then brings the
-  netif up on the tcpip thread (`netif_add` + a static IP + link-up).
+  netif up on the tcpip thread (`netif_add` + a static IP).
   Each `send N` over the console emits N RFC 5424 datagrams to the oracle —
   addressed **by name** (`syslog-ng`, resolved by
   `SolidSyslogLwipRawDnsResolver`; see [Name resolution](#name-resolution)) on
   port `5514` via `SolidSyslogUdpSender` over `SolidSyslogLwipRawDatagram`.
-- The lwIP `netif` is the board's, behind `BddTargetBoardNetif.h`: see
-  [`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md)
-  for the one CI runs on.
+- The lwIP `netif` is the board's, behind `BddTargetBoardNetif.h`, and so is
+  its link: see [`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md) for the
+  one CI runs on, and [`../Boards/NucleoF767zi/`](../Boards/NucleoF767zi/README.md)
+  for the one run by hand.
 
 ## Scope
 
