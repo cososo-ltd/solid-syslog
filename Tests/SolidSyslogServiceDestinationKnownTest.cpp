@@ -13,6 +13,7 @@
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogServiceStatus.h"
 #include "SolidSyslogStore.h"
 #include "StoreFake.h"
 #include "TestUtils.h"
@@ -23,20 +24,29 @@ struct SolidSyslogSender;
 struct SolidSyslogBuffer;
 struct SolidSyslogStore;
 
+struct Gate
+{
+    bool Known;
+    int Asked;
+};
+
 static bool IsKnown(void* context)
 {
-    return *(bool*) context;
+    struct Gate* gate = (struct Gate*) context;
+    gate->Asked++;
+    return gate->Known;
 }
 
-/* A circular buffer feeding a sender fake, with the gate wired to known, which
- * starts true; the store is each group's. */
+/* A circular buffer feeding a sender fake, with the gate wired to a Gate that
+ * starts known; the store is each group's. */
 // clang-format off
 TEST_BASE(DestinationKnownBase)
 {
     struct SolidSyslog*       solidSyslog    = nullptr;
     struct SolidSyslogSender* fakeSender     = nullptr;
     struct SolidSyslogBuffer* circularBuffer = nullptr;
-    bool known = true;
+    struct Gate gate = {true, 0};
+    SolidSyslogDestinationKnownFunction isDestinationKnown = IsKnown;
 
     void CreateOver(struct SolidSyslogStore* store)
     {
@@ -49,8 +59,8 @@ TEST_BASE(DestinationKnownBase)
         config.Buffer                  = circularBuffer;
         config.Sender                  = fakeSender;
         config.Store                   = store;
-        config.IsDestinationKnown      = IsKnown;
-        config.DestinationKnownContext = &known;
+        config.IsDestinationKnown      = isDestinationKnown;
+        config.DestinationKnownContext = &gate;
         solidSyslog = SolidSyslog_Create(&config);
     }
 
@@ -84,6 +94,21 @@ TEST_GROUP_BASE(SolidSyslogServiceDestinationKnown, DestinationKnownBase)
     }
 };
 
+/* The same logger with nothing wired to the gate. */
+TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownUnwired, DestinationKnownBase)
+{
+    void setup() override
+    {
+        isDestinationKnown = nullptr;
+        CreateOver(SolidSyslogNullStore_Get());
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
+    }
+};
+
 /* The same, over a store that keeps records. */
 TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownWithAStore, DestinationKnownBase)
 {
@@ -105,7 +130,7 @@ TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownWithAStore, DestinationKnownBa
 
 TEST(SolidSyslogServiceDestinationKnown, NotKnownNothingIsOfferedToTheSender)
 {
-    known = false;
+    gate.Known = false;
     Log();
 
     SolidSyslog_Service(solidSyslog);
@@ -115,10 +140,101 @@ TEST(SolidSyslogServiceDestinationKnown, NotKnownNothingIsOfferedToTheSender)
 
 TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownARecordTheStoreKeepsIsNotSent)
 {
-    known = false;
+    gate.Known = false;
     Log();
 
     SolidSyslog_Service(solidSyslog);
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
+TEST(SolidSyslogServiceDestinationKnown, NotKnownThePassIsBlocked)
+{
+    gate.Known = false;
+    Log();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, SolidSyslog_Service(solidSyslog));
+}
+
+TEST(SolidSyslogServiceDestinationKnown, KnownAgainTheRecordHeldBackIsSentOnThatPass)
+{
+    gate.Known = false;
+    Log();
+    SolidSyslog_Service(solidSyslog);
+    gate.Known = true;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+    STRCMP_CONTAINS("boot", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogServiceDestinationKnown, TheGateIsNotAskedWhenThereIsNothingToSend)
+{
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(0, gate.Asked);
+}
+
+TEST(SolidSyslogServiceDestinationKnown, NotKnownTheGateIsAskedOnceAPass)
+{
+    gate.Known = false;
+    Log();
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, gate.Asked);
+}
+
+TEST(SolidSyslogServiceDestinationKnownUnwired, NothingWiredMeansKnown)
+{
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}
+
+TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownTheBufferStillDrainsIntoTheStore)
+{
+    gate.Known = false;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
+}
+
+TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownAPassWithNothingToDrainIsBlocked)
+{
+    gate.Known = false;
+    Log();
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, SolidSyslog_Service(solidSyslog));
+}
+
+TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownTheGateIsAskedOnceAPass)
+{
+    gate.Known = false;
+    Log();
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(1, gate.Asked);
+}
+
+TEST(SolidSyslogServiceDestinationKnownWithAStore, KnownAgainTheStoredRecordsAreSentInOrder)
+{
+    gate.Known = false;
+    Log();
+    SolidSyslog_Service(solidSyslog);
+    gate.Known = true;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+    STRCMP_CONTAINS("boot", SenderFake_LastBufferAsString(fakeSender));
 }
