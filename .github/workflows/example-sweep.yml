@@ -1,0 +1,129 @@
+name: Example Sweep
+
+# Keeps the example stacks honest against main. A push to main that touches
+# Core, a pack the stacks link, or the build files sends `library-changed` to
+# each stack, which sweeps its latest release branch with the pin overridden to
+# that commit and answers with `sweep-finished`. A failed sweep becomes one
+# issue per stack here, updated while it stays red and closed by the next green
+# sweep. docs/ci.md describes the chain; workflow_dispatch sends the event for
+# a commit by hand.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - Core/**
+      - Platform/FatFs/**
+      - Platform/FreeRtos/**
+      - Platform/LwipRaw/**
+      - Platform/MbedTls/**
+      - Platform/StdAtomic/**
+      - CMakeLists.txt
+      - CMakePresets.json
+      - cmake/**
+      - .github/workflows/example-sweep.yml
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: The solid-syslog commit to sweep the stacks against
+        required: true
+        type: string
+  repository_dispatch:
+    types: [sweep-finished]
+
+permissions:
+  contents: read
+
+env:
+  STACKS: solid-syslog-example solid-syslog-example-make
+
+jobs:
+  dispatch:
+    if: github.event_name != 'repository_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      SHA: ${{ github.event.inputs.sha || github.sha }}
+    steps:
+      # The App is installed on the stacks; this token can start their sweeps
+      # and nothing else.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_PRIVATE_KEY }}
+          owner: cososo-ltd
+          repositories: solid-syslog-example,solid-syslog-example-make
+          permission-contents: write
+
+      - name: Send library-changed to each stack
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          for stack in $STACKS; do
+            gh api "repos/cososo-ltd/$stack/dispatches" \
+              -f event_type=library-changed \
+              -f "client_payload[sha]=$SHA"
+            echo "library-changed sent to $stack for $SHA"
+          done
+
+  report:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STACK: ${{ github.event.client_payload.stack }}
+      SHA: ${{ github.event.client_payload.sha }}
+      REF: ${{ github.event.client_payload.ref }}
+      VERDICT: ${{ github.event.client_payload.verdict }}
+      FAILED: ${{ github.event.client_payload.failed }}
+      RUN_URL: ${{ github.event.client_payload.run_url }}
+    steps:
+      - name: Open, update or close the stack's issue
+        run: |
+          case " $STACKS " in
+            *" $STACK "*) ;;
+            *) echo "unknown stack '$STACK'" >&2; exit 1 ;;
+          esac
+          title="Example stack $STACK fails against main"
+          number=$(gh issue list --label example-sweep --state open --search "\"$title\" in:title" \
+                     --json number,title --jq ".[] | select(.title == \"$title\") | .number")
+          short=${SHA:0:7}
+          if [ "$VERDICT" = pass ]; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "Green again at $short ([run]($RUN_URL))."
+            fi
+            echo "$STACK passes at $short"
+            exit 0
+          fi
+          # The last green is the newest successful sweep of this stack that
+          # the chain started; its title names the library commit it swept.
+          last_green=$(gh api "repos/cososo-ltd/$STACK/actions/workflows/sweep.yml/runs?event=repository_dispatch&status=success&per_page=1" \
+                         --jq '.workflow_runs[0].display_title // ""' | sed -n 's/.* at library \([0-9a-f]\{40\}\)$/\1/p')
+          if [ -n "$last_green" ]; then
+            range="[\`${last_green:0:7}...$short\`](https://github.com/${GITHUB_REPOSITORY}/compare/${last_green}...${SHA})"
+          else
+            range="no green sweep on record; the break is at or before \`$short\`"
+          fi
+          failed_list=$(echo "$FAILED" | tr ',' '\n' | sed '/^$/d; s/^/- `/; s/$/`/')
+          cat > /tmp/update.md <<MD
+          Sweep of \`$REF\` against solid-syslog \`$short\` failed ([run]($RUN_URL)).
+
+          Stages failed:
+          $failed_list
+
+          Commits since the last green sweep: $range
+          MD
+          if [ -z "$number" ]; then
+            cat > /tmp/body.md <<MD
+          The \`$STACK\` stack no longer builds and runs against \`main\`. Each stage below is one commit of its latest release branch, swept with \`solid-syslog.pin\` overridden to the commit named. The fix is to the stage, on the stack's \`wip/next\` branch where one exists, or to the library where the change was not meant.
+
+          This issue is updated by the Example Sweep workflow while the stack stays red, and closed by its next green sweep.
+
+          MD
+            cat /tmp/update.md >> /tmp/body.md
+            gh issue create --title "$title" --label example-sweep --body-file /tmp/body.md
+          else
+            gh issue comment "$number" --body-file /tmp/update.md
+          fi

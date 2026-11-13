@@ -168,6 +168,31 @@ and maintains a release PR that bumps the version and updates `CHANGELOG.md`.
 Merging that PR creates the tag and a draft GitHub Release; publishing it is a
 separate step, covered in the [release process](release-process.md).
 
+## Example stacks
+
+The example stacks, `solid-syslog-example` and `solid-syslog-example-make`, pin a
+library commit and are released with each library release, per the
+[release process](release-process.md#releasing-the-example-stacks). Between
+releases, `example-sweep.yml` keeps them honest against `main`:
+
+1. A push to `main` that touches `Core/`, a pack the stacks link, `CMakeLists.txt`,
+   `CMakePresets.json` or `cmake/` sends a `repository_dispatch` event,
+   `library-changed`, to each stack, naming the commit. The token is minted from
+   the release GitHub App, which is installed on the stacks.
+2. Each stack's **Sweep** workflow checks out its latest `release/<version>`
+   branch and sweeps every stage with `solid-syslog.pin` overridden to that
+   commit, as it does for a release, committing nothing. It
+   answers with `sweep-finished`, naming the stack, the commit, the verdict and
+   the stages that failed.
+3. A failed sweep opens one issue per stack here, labelled `example-sweep`,
+   naming the stages and the commits since the stack's last green sweep. Each
+   later red sweep comments on it, and the next green one closes it.
+
+The fix is to the stage, or to the library where the change was not meant. Run
+the **Example Sweep** workflow from the Actions tab with a commit to send the
+event by hand; a stack's **Sweep** workflow also takes the pin directly, for
+sweeping one stack against one commit.
+
 ## Permissions
 
 Each job is granted only the permissions it needs. Every workflow declares
@@ -184,3 +209,6 @@ the documentation bundle; and `release-please.yml`'s job declares `contents: wri
 `pull-requests: write`, though the release PR and the tag are made with a GitHub App
 token rather than the job's own. `image-bump.yml`'s job stays read-only: the push and
 the pull request it opens use the same App token, so the bump runs CI like any other.
+`example-sweep.yml`'s `report` job adds `issues: write`, to open and close the
+issues a failed sweep raises; its `dispatch` job stays read-only and starts the
+stacks' sweeps with an App token.
