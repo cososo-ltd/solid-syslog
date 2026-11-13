@@ -745,44 +745,6 @@ jobs:
           path: build/tidy/clang-tidy-output.txt
           retention-days: 1
 
-  # Same freertos coverage rationale as analyze-tidy-embedded. Overrides
-  # CMAKE_C_COMPILER explicitly to clang-19 because the cpputest-freertos image
-  # (chained from the cpputest gcc base) ships clang-19/clang++-19 but no
-  # `clang`/`clang++` alternative — only the cpputest-clang image creates that
-  # alias. A future image bump could add the alternative to the gcc base and
-  # drop these overrides.
-  analyze-iwyu-embedded:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:879e29d63dd60253a46a03f43b0db8a8fcac24365cfdf5af06f3cce338b69888 # sha-54d57c6
-      options: --user root
-    env:
-      GIT_CONFIG_COUNT: 1
-      GIT_CONFIG_KEY_0: safe.directory
-      GIT_CONFIG_VALUE_0: '*'
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Configure
-        run: cmake --preset iwyu -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19
-
-      # Advisory per S24.13 — see analyze-iwyu above for rationale.
-      - name: Run include-what-you-use (advisory)
-        shell: bash
-        continue-on-error: true
-        run: set -o pipefail && cmake --build --preset iwyu --target iwyu 2>&1 | tee build/iwyu/iwyu-output.txt
-
-      - name: Upload iwyu output
-        if: success() || failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: iwyu-report-embedded
-          path: build/iwyu/iwyu-output.txt
-          retention-days: 1
-
   analyze-format:
     runs-on: ubuntu-latest
     container:
@@ -2636,7 +2598,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, analyze-iwyu-embedded, tools-vxworks64-runner, bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read
