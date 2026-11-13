@@ -28,7 +28,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 |---|---|---|
 | `unit-linux-gcc` | `debug` | All fourteen packs a Linux host can build, on `cpputest-freertos`; also builds the Linux BDD target against the default tunables (every other host build of it uses a tunables override), and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has. Test results annotated on PR |
 | `unit-linux-clang` | `clang-debug` | Every pack `unit-linux-gcc` builds, built and tested with Clang 19 on `cpputest-clang`, which carries the upstream trees `cpputest-freertos` does at the same pins |
-| `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`; CppUTest and OpenSSL from the `vcpkg.json` manifest, at the versions its baseline resolves; test results annotated on PR |
+| `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`, with its dependencies from vcpkg as the [Windows build](builds.md#windows-build---msvc-debug) describes; test results annotated on PR |
 | `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
 | `unit-linux-gcc-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, lines and branches, gated at 99% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the HTML report with the site at [Coverage](testing/coverage.md) |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
@@ -42,7 +42,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `integration-linux-openssl` | `debug` | Runs the in-process TLS integration tests against libssl (no network oracle) |
 | `integration-linux-mbedtls` | `debug` | The same integration tests against Mbed TLS, exercising `SolidSyslogMbedTlsStream` and the Mbed TLS security policies |
 | `integration-linux-wolfssl` | `debug` | The same integration tests against wolfSSL, twice: against the build the pack asks for and against the baseline build the image also carries |
-| `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against the libssl the `vcpkg.json` manifest resolves |
+| `integration-windows-openssl` | `msvc-debug` | Same TLS integration tests on `windows-latest` against libssl from vcpkg |
 | `integration-linux-littlefs` | `debug` | Drives `SolidSyslogLittleFsFile` against a real LittleFS volume rather than a fake, because durability is the pack's whole claim and nothing short of the filesystem proves `lfs_file_sync` committed. Runs in `cpputest-freertos`, which carries `/opt/littlefs` |
 | `build-c89-headers` | - | Compiles every public header standalone as ISO C89 with `-pedantic-errors`, via `scripts/check_headers_c89.py`. Also proves each header is self-contained, since a header needing a companion first fails here. Then `scripts/check_vxworks64_header_proof.py` asserts that `Bdd/Targets/VxWorks64/BddTargetVxWorks64Headers.c`, the C89 proof the VxWorks 6.4 project compiles and no lane can build, includes every public header of Core and that pack and nothing else of ours |
 | `build-c99` | `c99`, `c99-platforms` | Builds Core alone at strict `-std=c99` (`CMAKE_C_EXTENSIONS=OFF`, no tests), then the POSIX and OpenSSL packs at C99 as a drift check. Proves the C99 conformance claim per PR |

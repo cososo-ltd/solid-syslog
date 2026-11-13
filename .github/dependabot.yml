@@ -48,7 +48,9 @@ updates:
       prefix: ci
 
   # CppUTest and OpenSSL on the Windows lanes, declared in vcpkg.json. A bump
-  # moves `builtin-baseline` to a newer commit of the vcpkg registry, which
+  # moves `builtin-baseline` to the commit of vcpkg's newest release tag, so
+  # it arrives when vcpkg tags a release rather than when a port changes, and
+  # the baseline is kept on a tagged commit for Dependabot to recognise. It
   # moves every port the manifest lists at once; a port that has to be held
   # back takes an `overrides` entry in the manifest. When the bump moves
   # OpenSSL, the tested-against marker on the OpenSSL platform page has to

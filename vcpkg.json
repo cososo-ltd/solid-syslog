@@ -4,5 +4,5 @@
         "cpputest",
         "openssl"
     ],
-    "builtin-baseline": "fe8e78fac7df2793f9848ed0d27aa59d9c035998"
+    "builtin-baseline": "9eec002df1cd109f8f104cd966a763daf9751489"
 }

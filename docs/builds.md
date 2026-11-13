@@ -148,13 +148,17 @@ restore it from vcpkg's binary cache.
 The vcpkg checkout must be at or past that baseline. vcpkg fetches neither the baseline
 commit nor the version database it needs, so against an older checkout the configure
 fails with `failed to git show versions/baseline.json` or `no version database entry`.
-Bring the checkout up to date and bootstrap it again, here and whenever the baseline
-moves:
+Move the checkout to the baseline and bootstrap it again, here and whenever the
+baseline moves:
 
 ```bash
-git -C "$VCPKG_ROOT" pull --ff-only
+git -C "$VCPKG_ROOT" fetch origin
+git -C "$VCPKG_ROOT" checkout <builtin-baseline>
 "$VCPKG_ROOT/bootstrap-vcpkg.bat"
 ```
+
+A checkout that follows a branch can `git pull` in place of the first two commands;
+anything at or past the baseline will do.
 
 ```bash
 cmake --preset msvc-debug

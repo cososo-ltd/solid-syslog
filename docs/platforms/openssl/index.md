@@ -19,8 +19,7 @@ adapter needs, how credentials reach it, and how it meets that contract.
 
 OpenSSL 3.0 or later. The CMake configure fails below that rather than the build,
 so an older libssl is caught before anything compiles. The pack is tested against
-3.5.7, the version the CI images carry, and against 3.6.5 on the MSVC lane, the
-version the vcpkg baseline in the repository's `vcpkg.json` resolves.
+3.5.7, the version the CI images carry, and against 3.6.5 on the MSVC lane.
 <!-- tested-against: 3.5.7 -->
 <!-- tested-against: 3.6.5 -->
 

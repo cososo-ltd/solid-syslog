@@ -27,16 +27,16 @@ runs:
     # ports, the scripts and the tool all the manifest's rather than the
     # image's.
     #
-    # C:\vcpkg is VCPKG_INSTALLATION_ROOT on the GitHub-hosted Windows images.
-    # It is written out here because the presets read VCPKG_ROOT, which the
-    # image does not set.
+    # The image says where its vcpkg is in VCPKG_INSTALLATION_ROOT; the presets
+    # read VCPKG_ROOT, which the image does not set.
     #
     # pwsh checks only the last native command's exit code, hence the explicit
     # checks.
     - name: Move vcpkg to the manifest's baseline
       shell: pwsh
       run: |
-        $vcpkgRoot = 'C:\vcpkg'
+        $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
+        if (-not $vcpkgRoot) { throw 'VCPKG_INSTALLATION_ROOT is not set: this is not a GitHub-hosted Windows image' }
         $baseline = (Get-Content vcpkg.json -Raw | ConvertFrom-Json).'builtin-baseline'
         if (-not $baseline) { throw 'vcpkg.json has no builtin-baseline' }
         git -C $vcpkgRoot fetch --quiet origin $baseline
@@ -56,10 +56,11 @@ runs:
     # never supply a stale binary: at worst it supplies nothing and the package
     # builds from source, which is about seven minutes for OpenSSL.
     #
-    # The key has two parts. The manifest's hash starts a fresh cache whenever
-    # the baseline or the dependency list moves. The archives' own hash, known
-    # only after the configure, is what the save below adds; the restore matches
-    # on the prefix and takes the most recent.
+    # The key has two parts. The manifest's hash, the prefix this step asks
+    # for, starts a fresh cache whenever the baseline or the dependency list
+    # moves. The archives' own hash is known only after the configure and is
+    # what the save below appends, so no entry ever has the bare prefix as its
+    # key: the restore matches on the prefix and takes the most recent.
     #
     # The cache is a speed optimisation and must never decide the lane's result,
     # so neither step may fail the job: actions/cache can fail mid-restore even
@@ -80,15 +81,38 @@ runs:
         PRESET: ${{ inputs.preset }}
       run: cmake --preset $env:PRESET
 
-    # Saved only when the configure wrote an archive the restore did not bring,
-    # which is a cold cache or a runner image whose compiler or tools have
-    # moved. A static key would restore the old archives for ever after such a
-    # move and rebuild OpenSSL on every run. Archives from before the move stay
-    # in the cache until the manifest next changes and the prefix starts again.
+    # Decides, once, whether there is anything to save and under which key. The
+    # archives are worth keeping whatever the configure went on to do: vcpkg
+    # writes them before CMake reads a line of CMakeLists.txt, and a configure
+    # that failed after seven minutes of OpenSSL should not cost the next push
+    # the same seven minutes. So this and the save run unless the job was
+    # cancelled.
+    #
+    # Nothing is saved when the archives are what the restore brought, which is
+    # the usual run, or when there are none, which would put an empty entry
+    # under the bare prefix where it would shadow every real one.
+    - name: Name the cache entry for the archives
+      id: entry
+      if: ${{ !cancelled() }}
+      shell: pwsh
+      env:
+        PREFIX: ${{ steps.archives.outputs.cache-primary-key }}
+        RESTORED: ${{ steps.archives.outputs.cache-matched-key }}
+        CONTENT: ${{ hashFiles('build/vcpkg-archives/**') }}
+      run: |
+        $key = "$env:PREFIX$env:CONTENT"
+        $save = [bool]$env:PREFIX -and [bool]$env:CONTENT -and ($key -ne $env:RESTORED)
+        "key=$key" >> $env:GITHUB_OUTPUT
+        "save=$($save.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+    # A cold cache, or a runner image whose compiler or tools have moved: a
+    # static key would restore the old archives for ever after such a move and
+    # rebuild OpenSSL on every run. Archives from before the move stay in the
+    # cache until the manifest next changes and the prefix starts again.
     - name: Save the vcpkg binary archives
-      if: steps.archives.outputs.cache-matched-key != format('{0}-vcpkg-{1}-{2}', runner.os, hashFiles('vcpkg.json'), hashFiles('build/vcpkg-archives/**'))
+      if: ${{ !cancelled() && steps.entry.outputs.save == 'true' }}
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       continue-on-error: true
       with:
         path: build/vcpkg-archives
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}-${{ hashFiles('build/vcpkg-archives/**') }}
+        key: ${{ steps.entry.outputs.key }}
