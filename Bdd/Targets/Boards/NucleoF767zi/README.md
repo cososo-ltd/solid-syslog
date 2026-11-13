@@ -227,6 +227,12 @@ the commit checked out, so a run cannot pass against an image of anything else.
 The build marks an image `-dirty` when a tracked file has changes its commit
 does not hold, so the script refuses to start from such a tree.
 
+A board that shows nothing within five seconds of a reset is reset again, up
+to three times, and the run says so on its output with what the probe reported.
+That silence has been seen once in about a thousand resets and its cause is not
+known, so a line beginning `NUCLEO-F767ZI: the board showed nothing` goes in
+the run's record.
+
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
 [does not have yet](#what-the-board-does-not-have-yet) and what any target
 without a real-time clock leaves out. The script holds the tag filter.
