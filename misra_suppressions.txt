@@ -124,7 +124,7 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:896
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:756
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1075
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1082
-misra-c2012-11.5:Core/Source/SolidSyslog.c:845
+misra-c2012-11.5:Core/Source/SolidSyslog.c:843
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003

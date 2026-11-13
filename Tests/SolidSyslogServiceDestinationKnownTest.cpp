@@ -47,8 +47,8 @@ static bool IsKnown(void* context)
     return gate->Known;
 }
 
-/* A circular buffer feeding a sender fake, with the gate wired to a Gate that
- * starts known; the store is each group's. */
+/* A circular buffer feeding a sender, with the gate wired to a Gate that starts
+ * known; the sender and the store are each group's. */
 // clang-format off
 TEST_BASE(DestinationKnownBase)
 {
@@ -60,14 +60,19 @@ TEST_BASE(DestinationKnownBase)
 
     void CreateOver(struct SolidSyslogStore* store)
     {
+        fakeSender = SenderFake_Create();
+        CreateOver(fakeSender, store);
+    }
+
+    void CreateOver(struct SolidSyslogSender* sender, struct SolidSyslogStore* store)
+    {
         static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)];
 
-        fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
             SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing), nullptr, nullptr);
         SolidSyslogConfig config = {};
         config.Buffer                  = circularBuffer;
-        config.Sender                  = fakeSender;
+        config.Sender                  = sender;
         config.Store                   = store;
         config.IsDestinationKnown      = isDestinationKnown;
         config.DestinationKnownContext = &gate;
@@ -137,6 +142,7 @@ TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownWithAStore, DestinationKnownBa
         StoreFake_Destroy();
     }
 };
+
 /* The device as wired: a stream sender over the stream fake, which keeps every
  * frame it accepts, behind a store that keeps records, with the error handler
  * fake listening. The gate starts closed, as at boot. */
@@ -157,17 +163,7 @@ TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownEndToEnd, DestinationKnownBase
         streamSender = SolidSyslogStreamSender_Create(&senderConfig);
         fakeStore    = StoreFake_Create();
         gate.Known   = false;
-        CreateOver(fakeStore);
-        SenderFake_Destroy(fakeSender);
-        fakeSender = nullptr;
-        SolidSyslog_Destroy(solidSyslog);
-        SolidSyslogConfig config = {};
-        config.Buffer                  = circularBuffer;
-        config.Sender                  = streamSender;
-        config.Store                   = fakeStore;
-        config.IsDestinationKnown      = IsKnown;
-        config.DestinationKnownContext = &gate;
-        solidSyslog = SolidSyslog_Create(&config);
+        CreateOver(streamSender, fakeStore);
         ErrorHandlerFake_Install(nullptr);
     }
 
@@ -287,7 +283,7 @@ TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownTheGateIsAskedOnceAPa
     LONGS_EQUAL(1, gate.Asked);
 }
 
-TEST(SolidSyslogServiceDestinationKnownWithAStore, KnownAgainTheStoredRecordsAreSentInOrder)
+TEST(SolidSyslogServiceDestinationKnownWithAStore, KnownAgainTheStoredRecordIsSent)
 {
     gate.Known = false;
     Log();

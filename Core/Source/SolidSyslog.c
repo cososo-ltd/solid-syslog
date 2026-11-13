@@ -594,9 +594,7 @@ static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* 
     return SolidSyslog_StoreDealsWithHeldRecord(self) || (!self->Halted && SolidSyslog_SenderTakesRecord(self));
 }
 
-/* Offers the record in the slot to the sender, once the device says it knows
- * where the sender is to deliver it: a record held back is not a failed send,
- * so the sender hears nothing and reports nothing. */
+/* A record held back is not a failed send, so the sender hears nothing. */
 static inline bool SolidSyslog_SenderTakesRecord(struct SolidSyslog* self)
 {
     return self->IsDestinationKnown(self->DestinationKnownContext) &&
