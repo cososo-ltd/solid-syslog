@@ -13,27 +13,32 @@
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogStore.h"
+#include "StoreFake.h"
 #include "TestUtils.h"
 
 using namespace CososoTesting;
 
 struct SolidSyslogSender;
 struct SolidSyslogBuffer;
+struct SolidSyslogStore;
 
 static bool IsKnown(void* context)
 {
     return *(bool*) context;
 }
 
+/* A circular buffer feeding a sender fake, with the gate wired to known, which
+ * starts true; the store is each group's. */
 // clang-format off
-TEST_GROUP(SolidSyslogServiceDestinationKnown)
+TEST_BASE(DestinationKnownBase)
 {
     struct SolidSyslog*       solidSyslog    = nullptr;
     struct SolidSyslogSender* fakeSender     = nullptr;
     struct SolidSyslogBuffer* circularBuffer = nullptr;
     bool known = true;
 
-    void setup() override
+    void CreateOver(struct SolidSyslogStore* store)
     {
         static uint8_t bufferRing[SOLIDSYSLOG_CIRCULAR_BUFFER_RING_BYTES(4)];
 
@@ -43,13 +48,13 @@ TEST_GROUP(SolidSyslogServiceDestinationKnown)
         SolidSyslogConfig config = {};
         config.Buffer                  = circularBuffer;
         config.Sender                  = fakeSender;
-        config.Store                   = SolidSyslogNullStore_Get();
+        config.Store                   = store;
         config.IsDestinationKnown      = IsKnown;
         config.DestinationKnownContext = &known;
         solidSyslog = SolidSyslog_Create(&config);
     }
 
-    void teardown() override
+    void DestroyLogger() const
     {
         SolidSyslog_Destroy(solidSyslog);
         SolidSyslogCircularBuffer_Destroy(circularBuffer);
@@ -65,9 +70,50 @@ TEST_GROUP(SolidSyslogServiceDestinationKnown)
         SolidSyslog_Log(solidSyslog, &message);
     }
 };
+
+TEST_GROUP_BASE(SolidSyslogServiceDestinationKnown, DestinationKnownBase)
+{
+    void setup() override
+    {
+        CreateOver(SolidSyslogNullStore_Get());
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
+    }
+};
+
+/* The same, over a store that keeps records. */
+TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownWithAStore, DestinationKnownBase)
+{
+    struct SolidSyslogStore* fakeStore = nullptr;
+
+    void setup() override
+    {
+        fakeStore = StoreFake_Create();
+        CreateOver(fakeStore);
+    }
+
+    void teardown() override
+    {
+        DestroyLogger();
+        StoreFake_Destroy();
+    }
+};
 // clang-format on
 
 TEST(SolidSyslogServiceDestinationKnown, NotKnownNothingIsOfferedToTheSender)
+{
+    known = false;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
+TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownARecordTheStoreKeepsIsNotSent)
 {
     known = false;
     Log();
