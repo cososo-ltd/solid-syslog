@@ -28,8 +28,16 @@ enum
     CONSOLE_RING_SIZE = 512,
     CONSOLE_RING_MASK = CONSOLE_RING_SIZE - 1,
 
-    /* Above SysTick, which the HAL leaves at the lowest priority, 15. */
+    /* Above the millisecond tick, which the HAL leaves at the lowest
+     * priority, 15. The handler calls nothing in a kernel, so where this sits
+     * against a kernel's own ceiling does not matter. */
     CONSOLE_INTERRUPT_PRIORITY = 6,
+
+    /* The millisecond count comes from TIM6, a basic timer nothing else on the
+     * board wants, counting microseconds up to one millisecond. SysTick is
+     * left alone for a kernel to take. */
+    TICK_TIMER_HZ = 1000000,
+    TICK_TIMER_PERIOD = 1000,
 
     /* 8 MHz in, divided to 2 MHz, multiplied to a 432 MHz VCO, halved to a
      * 216 MHz system clock. Q gives the 48 MHz the USB, RNG and SDMMC want. */
@@ -51,7 +59,7 @@ static inline void Board_ConfigureLeds(void);
 static inline void Board_ConfigureClock(void);
 static inline bool Board_StartPll(void);
 static inline bool Board_SwitchToPll(void);
-static inline void Board_HaltWithRedLed(void);
+static inline uint32_t Board_TickTimerClockHz(void);
 static inline void Board_ConfigureConsole(void);
 static inline uint16_t Board_LedPin(enum BoardLed led);
 static inline void Board_ConsoleRingPut(uint8_t received);
@@ -84,7 +92,7 @@ static inline void Board_ConfigureClock(void)
     }
     if (!started)
     {
-        Board_HaltWithRedLed();
+        Board_Halt(true);
     }
 }
 
@@ -118,14 +126,6 @@ static inline bool Board_SwitchToPll(void)
     return HAL_RCC_ClockConfig(&clocks, FLASH_LATENCY_7) == HAL_OK;
 }
 
-static inline void Board_HaltWithRedLed(void)
-{
-    HAL_GPIO_WritePin(GPIOB, LED_RED_PIN, GPIO_PIN_SET);
-    for (;;)
-    {
-    }
-}
-
 static inline void Board_ConfigureConsole(void)
 {
     GPIO_InitTypeDef pins = {0};
@@ -154,7 +154,7 @@ static inline void Board_ConfigureConsole(void)
     console.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
     if (HAL_UART_Init(&console) != HAL_OK)
     {
-        Board_HaltWithRedLed();
+        Board_Halt(true);
     }
     __HAL_UART_ENABLE_IT(&console, UART_IT_RXNE);
     HAL_NVIC_SetPriority(USART3_IRQn, CONSOLE_INTERRUPT_PRIORITY, 0);
@@ -189,6 +189,18 @@ uint32_t Board_Milliseconds(void)
     return HAL_GetTick();
 }
 
+void Board_Halt(bool withRedLed)
+{
+    __disable_irq();
+    if (withRedLed)
+    {
+        HAL_GPIO_WritePin(GPIOB, LED_RED_PIN, GPIO_PIN_SET);
+    }
+    for (;;)
+    {
+    }
+}
+
 void Board_LedToggle(enum BoardLed led)
 {
     HAL_GPIO_TogglePin(GPIOB, Board_LedPin(led));
@@ -212,10 +224,46 @@ static inline uint16_t Board_LedPin(enum BoardLed led)
     return pin;
 }
 
-/* The HAL's millisecond count is driven from the SysTick interrupt. The name
- * is the one ST's vector table carries. */
-void SysTick_Handler(void)
+/* The HAL calls this from HAL_Init, and again whenever the clock tree
+ * changes, to start its millisecond count. ST's own version, which this
+ * replaces, takes SysTick. The parameter is named as ST's prototype has it. */
+HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority) // NOLINT(readability-identifier-naming) -- ST's name
 {
+    __HAL_RCC_TIM6_CLK_ENABLE();
+    TIM6->CR1 = 0U;
+    TIM6->PSC = (Board_TickTimerClockHz() / (uint32_t) TICK_TIMER_HZ) - 1U;
+    TIM6->ARR = (uint32_t) TICK_TIMER_PERIOD - 1U;
+    /* Load the prescaler now, not at the first overflow, then drop the update
+     * that doing so raises. */
+    TIM6->EGR = TIM_EGR_UG;
+    TIM6->SR = 0U;
+    TIM6->DIER = TIM_DIER_UIE;
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, TickPriority, 0);
+    HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+    TIM6->CR1 = TIM_CR1_CEN;
+    uwTickPrio = TickPriority;
+    return HAL_OK;
+}
+
+/* A timer on APB1 is clocked at the bus frequency, or at twice it when the
+ * bus is divided down from the core clock. */
+static inline uint32_t Board_TickTimerClockHz(void)
+{
+    RCC_ClkInitTypeDef clocks = {0};
+    uint32_t flashLatency = 0U;
+    HAL_RCC_GetClockConfig(&clocks, &flashLatency);
+    uint32_t timerClock = HAL_RCC_GetPCLK1Freq();
+    if (clocks.APB1CLKDivider != RCC_HCLK_DIV1)
+    {
+        timerClock *= 2U;
+    }
+    return timerClock;
+}
+
+/* The millisecond tick. The name is the one ST's vector table carries. */
+void TIM6_DAC_IRQHandler(void)
+{
+    TIM6->SR = 0U;
     HAL_IncTick();
 }
 

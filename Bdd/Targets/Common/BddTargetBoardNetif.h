@@ -11,7 +11,12 @@
  * Pass it to netif_add() as the init callback. It sets the hardware address
  * and MTU, wires the output path, and starts whatever the board needs to hand
  * received frames to netif->input. It may block, so it runs on a task, after
- * the scheduler has started. */
+ * the scheduler has started.
+ *
+ * The link is the board's: a board whose link cannot drop brings the netif up
+ * with NETIF_FLAG_LINK_UP set, and one with a cable to pull raises and lowers
+ * it as the link comes and goes. The target sets the interface up and leaves
+ * the link alone. */
 err_t BddTargetBoardNetif_Init(struct netif* netif);
 
 #endif /* BDD_TARGET_BOARD_NETIF_H */

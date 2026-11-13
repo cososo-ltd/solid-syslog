@@ -218,6 +218,26 @@ cmake --preset cmsis-cross-lwip-wolfssl
 cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
 ```
 
+## FreeRTOS + lwIP on the NUCLEO-F767ZI - `nucleo-f767zi-lwip`
+
+The `freertos-cross-lwip` target again, built for the NUCLEO-F767ZI board
+(STM32F767ZI, Cortex-M7 with the hard-float ABI) under that board's toolchain
+file: `SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP` with
+`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`. The packs and the tunables are the same.
+The board's addresses are cache variables, and the configure defaults them to
+ones that reach nothing. CI builds this image in the
+`build-nucleo-freertos-lwipraw` lane and never runs it.
+
+```bash
+cmake --preset nucleo-f767zi-lwip
+cmake --build --preset nucleo-f767zi-lwip --target SolidSyslogBddTargetLwip
+```
+
+The ELF lands at
+`build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf`.
+See `Bdd/Targets/Boards/NucleoF767zi/README.md` for the address variables, for
+flashing it and for the target checklist.
+
 ## NUCLEO-F767ZI bring-up - `nucleo-f767zi-bringup`
 
 ARM cross-build for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
@@ -233,8 +253,8 @@ cmake --build --preset nucleo-f767zi-bringup --target SolidSyslogNucleoF767ziBri
 ```
 
 The ELF lands at
-`build/nucleo-f767zi-bringup/Bdd/Targets/NucleoF767zi/SolidSyslogNucleoF767ziBringup.elf`,
-with a raw `.bin` beside it. See `Bdd/Targets/NucleoF767zi/README.md` for
+`build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf`,
+with a raw `.bin` beside it. See `Bdd/Targets/Boards/NucleoF767zi/README.md` for
 flashing it and for the target checklist.
 
 ## Tunable overrides - `tunable-override-debug` / `msvc-tunable-override`

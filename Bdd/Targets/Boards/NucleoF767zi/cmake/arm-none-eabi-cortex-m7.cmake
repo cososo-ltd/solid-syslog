@@ -1,7 +1,7 @@
 # Cross toolchain for the NUCLEO-F767ZI: an STM32F767ZI, which is a Cortex-M7
 # with a double-precision FPU. Selected by the nucleo-f767zi-* CMake presets.
 
-include("${CMAKE_CURRENT_LIST_DIR}/../../Common/cmake/arm-none-eabi-common.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../../Common/cmake/arm-none-eabi-common.cmake")
 
 # The core and the float ABI are global, not per target: every object in one
 # image has to agree on how a floating-point argument is passed, and that

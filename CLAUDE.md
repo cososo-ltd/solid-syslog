@@ -432,8 +432,9 @@ Some platforms run only where a licensed toolchain or a particular machine is, s
 lane can build or run them. Such a platform is accepted by a **target checklist** instead:
 a fixed list of steps run by hand, outside CI, against the commit under review.
 
-- The checklist lives with the target, in its `Bdd/Targets/<Target>/README.md`. One list
-  per platform, not one per story.
+- The checklist lives with the target, in its `Bdd/Targets/<Target>/README.md`, or with
+  the board in `Bdd/Targets/Boards/<Board>/README.md` where it is a board that CI cannot
+  reach. One list per platform, not one per story.
 - Every story PR that touches the platform records the run: the commit, each step as pass
   or fail, and anything that did not pass. A step that was not run is recorded as not run,
   never as passed.
@@ -469,6 +470,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `freertos-cross-lwip` | The same, over the lwIP Raw API with ChaN FatFs |
 | `cmsis-cross-lwip` | The same, over CMSIS-RTOS2, the lwIP Sockets API and LittleFS |
 | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack, with wolfSSL built from source |
+| `nucleo-f767zi-lwip` | ARM Cortex-M7 cross-build of the FreeRTOS + lwIP Raw BDD target for the NUCLEO-F767ZI |
 | `nucleo-f767zi-bringup` | ARM Cortex-M7 cross-build of the NUCLEO-F767ZI bring-up firmware, with no SolidSyslog in it |
 | `release` | Release build — optimisations enabled, no instrumentation |
 
