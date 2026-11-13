@@ -136,16 +136,34 @@ check budget.
 ## Windows build - `msvc-debug`
 
 Builds with MSVC as a portability check against GCC and Clang. Requires a Windows
-environment with MSVC, CMake 3.25+, and vcpkg with CppUTest installed. The `VCPKG_ROOT`
-environment variable must point to the vcpkg installation.
+environment with MSVC, CMake 3.25+, and vcpkg. The `VCPKG_ROOT` environment variable
+must point to the vcpkg installation.
+
+CppUTest and OpenSSL are not installed beforehand. The repository's `vcpkg.json` lists
+them, and the configure installs them into the build directory's `vcpkg_installed/`,
+at the versions the manifest's `builtin-baseline` resolves. The first configure builds
+OpenSSL from source, which takes several minutes; later ones, in any build directory,
+restore it from vcpkg's binary cache.
+
+The vcpkg checkout must be at or past that baseline. vcpkg fetches neither the baseline
+commit nor the version database it needs, so against an older checkout the configure
+fails with `failed to git show versions/baseline.json` or `no version database entry`.
+Bring the checkout up to date and bootstrap it again, here and whenever the baseline
+moves:
+
+```bash
+git -C "$VCPKG_ROOT" pull --ff-only
+"$VCPKG_ROOT/bootstrap-vcpkg.bat"
+```
 
 ```bash
 cmake --preset msvc-debug
 cmake --build --preset msvc-debug --target junit
 ```
 
-On GitHub Actions (`windows-latest`), CppUTest is installed via `vcpkg install cpputest`
-and `VCPKG_ROOT` is set automatically.
+On GitHub Actions (`windows-latest`) the same configure runs through the
+`vcpkg-configure` action, which first moves the runner's vcpkg checkout to the baseline
+and caches the built packages between runs.
 
 POSIX-specific code (senders, message queue buffer, clock, hostname, PID) is excluded
 by the existing `SOLIDSYSLOG_POSIX` CMake guards. The core library and portable tests
