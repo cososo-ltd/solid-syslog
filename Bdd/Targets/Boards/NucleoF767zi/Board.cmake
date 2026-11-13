@@ -154,6 +154,7 @@ set(BDD_BOARD_UPSTREAM_SOURCES
     ${bdd_board_hal_source_dir}/stm32f7xx_hal.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_cortex.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_dma.c
+    ${bdd_board_hal_source_dir}/stm32f7xx_hal_eth.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_flash.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_flash_ex.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_gpio.c
@@ -167,10 +168,14 @@ set(BDD_BOARD_UPSTREAM_SOURCES
     ${STM32F7_CMSIS_DEVICE_PATH}/Source/Templates/gcc/startup_stm32f767xx.s
 )
 
-# The Ethernet MAC under lwIP: our netif. No media is fitted yet, and no
-# FreeRTOS-Plus-TCP interface is written, so those names stay empty.
+# The Ethernet MAC under lwIP: our netif over ST's HAL Ethernet driver, which
+# is in the list above with the rest of the HAL, and our reading of the PHY's
+# link. No FreeRTOS-Plus-TCP interface is written, so those names are not set.
 set(BDD_BOARD_LWIP_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Lwip/BddTargetBoardNetif.c
+    ${BDD_BOARD_DIR}/Lwip/EthernetPhy.c
 )
 set(BDD_BOARD_LWIP_UPSTREAM_SOURCES)
-set(BDD_BOARD_LWIP_INCLUDES)
+set(BDD_BOARD_LWIP_INCLUDES
+    ${BDD_BOARD_DIR}/Lwip                             # EthernetPhy.h
+)
