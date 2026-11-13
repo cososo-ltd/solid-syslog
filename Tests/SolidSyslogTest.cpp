@@ -125,7 +125,7 @@ TEST_GROUP(SolidSyslog)
         metaSdCounter = nullptr;
         metaSd        = nullptr;
         timeQualitySd = nullptr;
-        config = {buffer, nullptr, nullptr, StringFake_GetHostname, nullptr, StringFake_GetAppName, nullptr, StringFake_GetProcessId, nullptr, store, nullptr, 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+        config = {buffer, nullptr, nullptr, StringFake_GetHostname, nullptr, StringFake_GetAppName, nullptr, StringFake_GetProcessId, nullptr, store, nullptr, 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
         solidSyslog = SolidSyslog_Create(&config);
         message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};
     }
@@ -575,6 +575,8 @@ TEST(SolidSyslog, ServiceSendsMessageReadFromBuffer)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -616,6 +618,8 @@ TEST(SolidSyslog, ServiceSendsBufferedMessageWithNullStore)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -651,6 +655,8 @@ TEST(SolidSyslog, ServiceSendsFromStoreWhenHasUnsent)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -699,6 +705,8 @@ TEST(SolidSyslog, ServiceMarksSentAfterSuccessfulSend)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -733,6 +741,8 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentOnSendFailure)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -780,6 +790,8 @@ TEST(SolidSyslog, ServiceWritesBufferMessageToStore)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -819,6 +831,8 @@ TEST(SolidSyslog, ServiceSendsStoreMessageNotBufferMessage)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -871,6 +885,8 @@ TEST(SolidSyslog, ServiceDoesNotBypassToSenderWhenNonTransientStoreRejectsWrite)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -907,6 +923,8 @@ TEST(SolidSyslog, ServiceDoesNotSendWhenStoreReadFails)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -955,6 +973,8 @@ TEST(SolidSyslog, ServiceReturnsIdleWhenBufferAndStoreAreEmpty)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -986,6 +1006,8 @@ TEST(SolidSyslog, ServiceReturnsReadyWhenBufferDrainsAMessage)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -1025,6 +1047,8 @@ TEST(SolidSyslog, ServiceReturnsReadyWhenBufferDrainsEvenIfSenderFails)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -1071,6 +1095,8 @@ TEST(SolidSyslog, ServiceReturnsBlockedWhenBufferIdleAndSendFails)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -1105,6 +1131,8 @@ TEST(SolidSyslog, ServiceReturnsBlockedWhenBufferIdleAndTheStoreHoldsARecordItCa
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -1151,6 +1179,8 @@ TEST(SolidSyslog, ServiceReturnsReadyWhenStoreStillHasUnsentAfterSuccessfulSend)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
 
@@ -1185,6 +1215,8 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentWhenSendingFromBuffer)
         fakeStore,
         nullptr,
         0,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -1480,6 +1512,8 @@ TEST(SolidSyslog, LogAfterDestroyAndRecreateWithNullFunctionsProducesNilvalues)
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
         nullptr
     };
     solidSyslog = SolidSyslog_Create(&nilConfig);
@@ -1520,7 +1554,7 @@ TEST_GROUP(SolidSyslogLifecycle)
 
     [[nodiscard]] SolidSyslogConfig validConfig() const
     {
-        return {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+        return {buffer, sender, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, store, nullptr, 0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
     }
 };
 

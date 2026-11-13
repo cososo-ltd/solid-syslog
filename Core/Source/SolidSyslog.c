@@ -120,6 +120,12 @@ static void SolidSyslog_InstallEventReporting(
     SolidSyslogEventReportingFunction configured,
     void* context
 );
+static bool SolidSyslog_DestinationAlwaysKnown(void* context);
+static void SolidSyslog_InstallDestinationKnown(
+    struct SolidSyslog* self,
+    SolidSyslogDestinationKnownFunction configured,
+    void* context
+);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
@@ -146,6 +152,7 @@ void SolidSyslog_Initialise(
     SolidSyslog_InstallHalt(self, config->OnHalt, config->HaltContext);
     SolidSyslog_InstallScratch(self, config->Scratch);
     SolidSyslog_InstallEventReporting(self, config->IsEventReportingOn, config->EventReportingContext);
+    SolidSyslog_InstallDestinationKnown(self, config->IsDestinationKnown, config->DestinationKnownContext);
 }
 
 void SolidSyslog_Cleanup(struct SolidSyslog* self)
@@ -184,6 +191,8 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->HaltContext = NULL;
     self->IsEventReportingOn = SolidSyslog_ReportingAlwaysOn;
     self->EventReportingContext = NULL;
+    self->IsDestinationKnown = SolidSyslog_DestinationAlwaysKnown;
+    self->DestinationKnownContext = NULL;
     self->ReportTurnedDown = false;
     self->Halted = false;
 }
@@ -349,6 +358,25 @@ static void SolidSyslog_InstallEventReporting(
     {
         self->IsEventReportingOn = configured;
         self->EventReportingContext = context;
+    }
+}
+
+static bool SolidSyslog_DestinationAlwaysKnown(void* context)
+{
+    (void) context;
+    return true;
+}
+
+static void SolidSyslog_InstallDestinationKnown(
+    struct SolidSyslog* self,
+    SolidSyslogDestinationKnownFunction configured,
+    void* context
+)
+{
+    if (configured != NULL)
+    {
+        self->IsDestinationKnown = configured;
+        self->DestinationKnownContext = context;
     }
 }
 
@@ -563,7 +591,8 @@ static inline bool SolidSyslog_IsBufferRecordDealtWith(const struct SolidSyslog*
 static inline bool SolidSyslog_StoreOrSenderTakesHeldRecord(struct SolidSyslog* self)
 {
     return SolidSyslog_StoreDealsWithHeldRecord(self) ||
-           (!self->Halted && SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength));
+           (!self->Halted && self->IsDestinationKnown(self->DestinationKnownContext) &&
+            SolidSyslogSender_Send(self->Sender, self->Record, self->RecordLength));
 }
 
 /* Offers the held record to the store. A store that retains records has dealt

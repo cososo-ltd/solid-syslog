@@ -39,6 +39,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  as a syslog record of its own. */
     typedef bool (*SolidSyslogEventReportingFunction)(void* context);
 
+    /** Answers whether the device knows where its collector is. */
+    typedef bool (*SolidSyslogDestinationKnownFunction)(void* context);
+
     /** Wiring for SolidSyslog_Create. NULL is safe for any field: Buffer,
      *  Sender, and Store fall back to their Null object and report an error
      *  (a no-op unless an error handler is installed; inject the Null* object
@@ -89,6 +92,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  on while it runs. NULL means on. */
         SolidSyslogEventReportingFunction IsEventReportingOn;
         void* EventReportingContext; /**< Passed back to IsEventReportingOn unchanged. */
+        /** Asked, with DestinationKnownContext, on the task that calls
+         *  SolidSyslog_Service, before a pass offers a record to the sender.
+         *  False holds the record back without a send. NULL means known. */
+        SolidSyslogDestinationKnownFunction IsDestinationKnown;
+        void* DestinationKnownContext; /**< Passed back to IsDestinationKnown unchanged. */
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or
