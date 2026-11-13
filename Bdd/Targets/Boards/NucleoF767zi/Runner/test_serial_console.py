@@ -27,6 +27,9 @@ class FakePort:
         except queue.Empty:
             return b""
 
+    def has_arrived(self):
+        return not self.arrived.empty()
+
     def write(self, data):
         self.written += data
 

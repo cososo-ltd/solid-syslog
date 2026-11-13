@@ -77,6 +77,53 @@ class DiscardTest(unittest.TestCase):
         self.assertGreaterEqual(time.monotonic() - started, 0.05)
 
 
+# The banner is the first thing a reset draws, so a board that shows nothing
+# soon after one has not started.
+class ResetTest(unittest.TestCase):
+    def setUp(self):
+        self.port = FakePort()
+        self.resets = 0
+        self.reports = []
+        self.speaks_from_reset = 1
+
+    def reset(self):
+        self.resets += 1
+        if self.resets >= self.speaks_from_reset:
+            self.port.arrived.put(b"\r\nSolidSyslog BDD target")
+        return "MCU Reset"
+
+    def reset_until_it_speaks(self):
+        nucleo_f767zi.reset_until_board_speaks(self.port, self.reset, 0.05, 3, self.reports.append)
+
+    def test_a_board_that_speaks_is_reset_once_and_nothing_is_reported(self):
+        self.reset_until_it_speaks()
+
+        self.assertEqual(1, self.resets)
+        self.assertEqual([], self.reports)
+
+    def test_what_the_board_said_is_left_for_the_console(self):
+        self.reset_until_it_speaks()
+
+        self.assertEqual(b"\r\nSolidSyslog BDD target", self.port.read())
+
+    def test_a_board_that_stays_silent_is_reset_again_and_reported(self):
+        self.speaks_from_reset = 2
+
+        self.reset_until_it_speaks()
+
+        self.assertEqual(2, self.resets)
+        self.assertEqual(1, len(self.reports))
+        self.assertRegex(self.reports[0], "showed nothing.*reset 1.*MCU Reset")
+
+    def test_a_board_that_never_speaks_is_refused(self):
+        self.speaks_from_reset = 99
+
+        with self.assertRaisesRegex(RuntimeError, "3 resets"):
+            self.reset_until_it_speaks()
+
+        self.assertEqual(3, self.resets)
+
+
 class BoardAddressTest(unittest.TestCase):
     def test_the_address_is_the_one_the_image_was_configured_with(self):
         cache = "CMAKE_BUILD_TYPE:STRING=Debug\nSOLIDSYSLOG_BDD_BOARD_IP:STRING=192.0.2.2\nSOLIDSYSLOG_BDD_BOARD_NETMASK:STRING=255.255.255.0\n"

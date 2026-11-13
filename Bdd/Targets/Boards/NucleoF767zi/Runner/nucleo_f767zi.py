@@ -6,6 +6,7 @@ run reads from the image's banner and from the build that made the image.
 import os
 import re
 import subprocess
+import sys
 import threading
 import time
 
@@ -17,6 +18,9 @@ PROMPT = b"SolidSyslog> "
 _READ_WAIT_SECONDS = 0.05
 _RESET_TIMEOUT_SECONDS = 30
 _QUIET_SECONDS = 0.5
+# The banner follows a reset at once; this is far longer than it has ever taken.
+_BANNER_WAIT_SECONDS = 5
+_RESET_ATTEMPTS = 3
 
 _BANNER_COMMIT = re.compile(r"NUCLEO-F767ZI, commit (\S+)")
 _CACHED_ADDRESS = re.compile(r"^SOLIDSYSLOG_BDD_BOARD_IP:\w+=(\S+)$", re.MULTILINE)
@@ -29,16 +33,47 @@ def open_board(port_name, programmer):
     # Imported here so that only a run against the board needs pyserial.
     import serial
 
+    # Returns what the probe said, for a report of a reset that did not take.
     def reset():
-        subprocess.run(
+        done = subprocess.run(
             [programmer, "-c", "port=SWD", "-hardRst"],
             check=True, capture_output=True, timeout=_RESET_TIMEOUT_SECONDS,
         )
+        said = done.stdout.decode(errors="replace").splitlines()
+        return " | ".join(line.strip() for line in said if line.strip())
 
     port = _ArrivedBytes(serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS))
     discard_until_quiet(port, _QUIET_SECONDS)
-    reset()
+    reset_until_board_speaks(
+        port, reset, _BANNER_WAIT_SECONDS, _RESET_ATTEMPTS,
+        lambda report: print(report, file=sys.__stderr__, flush=True),
+    )
     return SerialConsole(port, reset)
+
+
+# Resets the board, and again if it shows nothing: the banner is the first
+# thing a reset draws, so a board silent for wait_seconds after one has not
+# started. Once in about a thousand resets through the probe the board has
+# stayed silent, for a reason not yet found, so each time is reported, with
+# what the probe said of the reset, rather than passed over. What the board
+# shows is left on the port for the console.
+def reset_until_board_speaks(port, reset, wait_seconds, attempts, report):
+    spoke = False
+    attempt = 0
+    while (not spoke) and (attempt < attempts):
+        attempt += 1
+        said = reset()
+        deadline = time.monotonic() + wait_seconds
+        while (not port.has_arrived()) and (time.monotonic() < deadline):
+            time.sleep(0.01)
+        spoke = port.has_arrived()
+        if (not spoke) and (attempt < attempts):
+            report(
+                f"NUCLEO-F767ZI: the board showed nothing within {wait_seconds} seconds of reset {attempt},"
+                f" and is reset again. The probe said: {said}"
+            )
+    if not spoke:
+        raise RuntimeError(f"The board showed nothing after any of {attempts} resets. The probe last said: {said}")
 
 
 # The ST-LINK keeps what the board printed while the port was closed - the
@@ -60,6 +95,9 @@ class _ArrivedBytes:
 
     def read(self):
         return self._port.read(self._port.in_waiting or 1)
+
+    def has_arrived(self):
+        return self._port.in_waiting > 0
 
     def write(self, data):
         self._port.write(data)
