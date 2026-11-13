@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import threading
+import time
 
 from serial_console import SerialConsole
 
@@ -15,6 +16,7 @@ PROMPT = b"SolidSyslog> "
 # How long a read of the port waits for a byte before it gives none.
 _READ_WAIT_SECONDS = 0.05
 _RESET_TIMEOUT_SECONDS = 30
+_QUIET_SECONDS = 0.5
 
 _BANNER_COMMIT = re.compile(r"NUCLEO-F767ZI, commit (\S+)")
 _CACHED_ADDRESS = re.compile(r"^SOLIDSYSLOG_BDD_BOARD_IP:\w+=(\S+)$", re.MULTILINE)
@@ -33,10 +35,22 @@ def open_board(port_name, programmer):
             check=True, capture_output=True, timeout=_RESET_TIMEOUT_SECONDS,
         )
 
-    port = serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS)
-    port.reset_input_buffer()
+    port = _ArrivedBytes(serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS))
+    discard_until_quiet(port, _QUIET_SECONDS)
     reset()
-    return SerialConsole(_ArrivedBytes(port), reset)
+    return SerialConsole(port, reset)
+
+
+# The ST-LINK keeps what the board printed while the port was closed - the
+# whole of a boot, after the reset that ended the last scenario - and hands it
+# over once the port is open. Read as this boot's, its prompt would be taken
+# for a board that is ready while the board is still starting, so it is
+# discarded, until nothing has arrived for quiet_seconds.
+def discard_until_quiet(port, quiet_seconds):
+    quiet_since = time.monotonic()
+    while (time.monotonic() - quiet_since) < quiet_seconds:
+        if port.read():
+            quiet_since = time.monotonic()
 
 
 # The port as SerialConsole reads it: what has arrived, without waiting for more.

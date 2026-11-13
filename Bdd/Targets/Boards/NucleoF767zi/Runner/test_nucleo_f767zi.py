@@ -5,6 +5,7 @@ Run:  python -m unittest discover -s Bdd/Targets/Boards/NucleoF767zi/Runner -p '
 
 import os
 import sys
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -53,6 +54,27 @@ class OutputToPromptTest(unittest.TestCase):
 
         with self.assertRaisesRegex(TimeoutError, "link down"):
             nucleo_f767zi.output_to_prompt(self.console, 0.2)
+
+
+# The ST-LINK keeps what the board printed while nobody had the port open, and
+# hands it over as the port opens.
+class DiscardTest(unittest.TestCase):
+    def test_what_the_port_held_before_the_reset_is_discarded(self):
+        port = FakePort()
+        port.arrived.put(b"commit 0000000000\r\n")
+        port.arrived.put(b"SolidSyslog> ")
+
+        nucleo_f767zi.discard_until_quiet(port, 0.05)
+
+        self.assertTrue(port.arrived.empty())
+
+    def test_a_quiet_port_is_left_once_it_has_been_quiet_for_the_time_given(self):
+        port = FakePort()
+        started = time.monotonic()
+
+        nucleo_f767zi.discard_until_quiet(port, 0.05)
+
+        self.assertGreaterEqual(time.monotonic() - started, 0.05)
 
 
 class BoardAddressTest(unittest.TestCase):
