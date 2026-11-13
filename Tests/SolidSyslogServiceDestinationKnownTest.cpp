@@ -15,11 +15,11 @@
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogConfig.h"
+#include "SolidSyslogError.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogServiceStatus.h"
-#include "SolidSyslogError.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogStreamSender.h"
 #include "StoreFake.h"
@@ -42,7 +42,7 @@ struct Gate
 
 static bool IsKnown(void* context)
 {
-    struct Gate* gate = (struct Gate*) context;
+    auto* gate = static_cast<struct Gate*>(context);
     gate->Asked++;
     return gate->Known;
 }
@@ -81,7 +81,7 @@ TEST_BASE(DestinationKnownBase)
         SenderFake_Destroy(fakeSender);
     }
 
-    void Log(const char* messageId = "boot")
+    void Log(const char* messageId = "boot") const
     {
         struct SolidSyslogMessage message = {};
         message.Facility  = SOLIDSYSLOG_FACILITY_LOCAL0;
