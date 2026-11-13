@@ -1,20 +1,22 @@
-# FreeRTOS-Plus-TCP BDD target ELF for QEMU mps2-an385 (Cortex-M3).
+# FreeRTOS-Plus-TCP BDD target ELF.
 #
 # Compiled cross-only — gated by the top-level CMakeLists.txt on
 # CMAKE_CROSSCOMPILING + CMAKE_SYSTEM_PROCESSOR == "arm".
 #
 # Wires SolidSyslogUdpSender behind the SolidSyslogPlusTcpDatagram adapter
 # and the static resolver, with Bdd/Targets/Common/BddTargetInteractive
-# driving `send N` / `quit` over the QEMU -serial stdio UART (CmsdkUart RX
-# path).
+# driving `send N` / `quit` over the board's console.
 #
 # Source layout: upstream FreeRTOS-Kernel + Plus-TCP sources are compiled
 # into a separate OBJECT library (`solid_syslog_freertos_upstream`) that
 # accepts the relaxed warning set those headers / sources require. Local
-# project code (main.c, Startup.c, Common/CmsdkUart.c, Common/Syscalls.c,
+# project code (main.c, the board's sources, Bdd/Targets/Common/Syscalls.c,
 # the Platform/FreeRtos/Source adapters, and Bdd/Targets/Common/
 # BddTargetInteractive.c) stays in the executable target under the strict
 # project warning bar so regressions in our own code can't slip through.
+
+# What belongs to the board - see Bdd/Targets/Boards/Board.cmake.
+include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
 
 # The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
@@ -29,16 +31,22 @@ solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls
 
 set(PLUS_FAT_SRC_DIR "${FREERTOS_PLUS_FAT_PATH}")
 
-set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
+set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_PORT}")
 
 set(PLUS_TCP_SRC_DIR "${FREERTOS_PLUS_TCP_PATH}/source")
 set(PLUS_TCP_PORT_GCC_DIR "${PLUS_TCP_SRC_DIR}/portable/Compiler/GCC")
 set(PLUS_TCP_BUF_DIR "${PLUS_TCP_SRC_DIR}/portable/BufferManagement")
-set(PLUS_TCP_NIF_DIR "${PLUS_TCP_SRC_DIR}/portable/NetworkInterface/MPS2_AN385")
+
+# The board names its network interface relative to upstream's directory of them.
+set(PLUS_TCP_NIF_ROOT "${PLUS_TCP_SRC_DIR}/portable/NetworkInterface")
+list(TRANSFORM BDD_BOARD_PLUSTCP_UPSTREAM_SOURCES PREPEND "${PLUS_TCP_NIF_ROOT}/"
+    OUTPUT_VARIABLE PLUS_TCP_NIF_SOURCES)
+list(TRANSFORM BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES PREPEND "${PLUS_TCP_NIF_ROOT}/"
+    OUTPUT_VARIABLE PLUS_TCP_NIF_INCLUDES)
 
 # --- Upstream OBJECT library --------------------------------------------------
 #
-# Compiles all kernel + Plus-TCP + LAN9118 driver sources with the relaxed
+# Compiles all kernel + Plus-TCP + the board's Ethernet driver sources with the relaxed
 # warning set. Marked PRIVATE on this library; the executable consumes the
 # objects via $<TARGET_OBJECTS:...> so the relaxations don't leak.
 
@@ -94,15 +102,14 @@ add_library(solid_syslog_freertos_upstream OBJECT
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv4.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv6.c
     ${PLUS_TCP_BUF_DIR}/BufferAllocation_2.c
-    # MPS2_AN385 LAN9118 NetworkInterface + driver.
-    ${PLUS_TCP_NIF_DIR}/NetworkInterface.c
-    ${PLUS_TCP_NIF_DIR}/ether_lan9118/smsc9220_eth_drv.c
+    # The board's NetworkInterface + controller driver.
+    ${PLUS_TCP_NIF_SOURCES}
     # FreeRTOS-Plus-FAT upstream core (SHA 9ca465c). Like the FreeRTOS kernel
     # and Plus-TCP sources, these trip the relaxed warnings (sign-conversion,
     # shadow, type narrowing), so they live in this OBJECT lib. The integrator
     # FreeRTOSFATConfig.h is found off the -I path (CMAKE_CURRENT_SOURCE_DIR
     # below) — no source staging, see note above. The FF_Disk_t media driver
-    # (FFSemihostingDisk.c) is OUR code and stays in the strict executable
+    # (BddTargetPlusFatDisk.c) is OUR code and stays in the strict executable
     # target alongside the SolidSyslogPlusFatFile adapter.
     ${PLUS_FAT_SRC_DIR}/ff_crc.c
     ${PLUS_FAT_SRC_DIR}/ff_dir.c
@@ -120,8 +127,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
 )
 
 target_compile_options(solid_syslog_freertos_upstream PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -145,13 +151,12 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common                # Mps2An385.h, for FreeRTOSConfig.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
-    ${PLUS_TCP_NIF_DIR}                               # NetworkInterface.h consumed locally
-    ${PLUS_TCP_NIF_DIR}/ether_lan9118                 # SMM_MPS2.h, smsc9220_*.h
+    ${PLUS_TCP_NIF_INCLUDES}                          # the board's NetworkInterface and driver headers
     ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_headers.h, ff_stdio.h, ff_ioman.h, …
 )
 
@@ -251,9 +256,9 @@ set(BAKED_PEM_HEADERS
 
 add_executable(SolidSyslogBddTarget
     main.c
-    Startup.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common/CmsdkUart.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common/Syscalls.c
+    ${BDD_BOARD_PROJECT_SOURCES}
+    ${BDD_BOARD_PLUSTCP_PROJECT_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
     # MbedTls,PlusFat} pack umbrellas linked below (S30.02 dogfood) — their
     # target_sources(INTERFACE) compile here against this target's config.
@@ -277,8 +282,7 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsInnerStream_PlusTcpTcp.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsSender_MbedTls.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatDisk.c
     ${BAKED_PEM_HEADERS}
     $<TARGET_OBJECTS:solid_syslog_freertos_upstream>
 )
@@ -286,8 +290,7 @@ add_executable(SolidSyslogBddTarget
 set_target_properties(SolidSyslogBddTarget PROPERTIES SUFFIX ".elf")
 
 target_compile_options(SolidSyslogBddTarget PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -295,7 +298,7 @@ target_compile_options(SolidSyslogBddTarget PRIVATE
 
 target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/Common                # CmsdkUart.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{PlusFat,FreeRtos,PlusTcp,MbedTls}/{Interface,Source} include dirs
@@ -307,14 +310,14 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
     ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_stdio.h (adapter) + ff_headers.h / ff_ioman.h /
-                                                      # ff_format.h / ff_sys.h (FFSemihostingDisk.c). The
+                                                      # ff_format.h / ff_sys.h (BddTargetPlusFatDisk.c). The
                                                       # integrator FreeRTOSFATConfig.h resolves to
                                                       # CMAKE_CURRENT_SOURCE_DIR above — same as the OBJECT lib,
                                                       # so the Plus-FAT core and our adapter/driver share one
                                                       # config across all translation units.
 )
 
-# FFSemihostingDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
+# BddTargetPlusFatDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
 # FF_ERR_* macros, whose error codes carry the 0x80000000 FF_ERRFLAG bit and so
 # are unsigned-with-high-bit — they cannot be made -Wsign-conversion clean at the
 # call site. Relax only that one diagnostic for only this file; every other
@@ -322,7 +325,7 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
 # adapter needs no such relaxation — it uses the ff_stdio handle API, not the
 # error-code macros.
 set_source_files_properties(
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/FFSemihostingDisk.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatDisk.c
     PROPERTIES COMPILE_OPTIONS "-Wno-sign-conversion"
 )
 
@@ -350,9 +353,8 @@ target_compile_definitions(SolidSyslogBddTarget PRIVATE
 )
 
 target_link_options(SolidSyslogBddTarget PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
-    -T${CMAKE_CURRENT_SOURCE_DIR}/Common/mps2-an385.ld
+    ${BDD_BOARD_ARCH_FLAGS}
+    -T${BDD_BOARD_LINKER_SCRIPT}
     --specs=nano.specs
     --specs=nosys.specs
     -Wl,--gc-sections
@@ -360,4 +362,4 @@ target_link_options(SolidSyslogBddTarget PRIVATE
 )
 
 set_target_properties(SolidSyslogBddTarget PROPERTIES
-    LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Common/mps2-an385.ld)
+    LINK_DEPENDS ${BDD_BOARD_LINKER_SCRIPT})

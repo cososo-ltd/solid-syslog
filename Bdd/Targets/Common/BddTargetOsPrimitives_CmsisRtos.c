@@ -142,7 +142,7 @@ bool BddTargetOsPrimitives_WaitForNotify(uint32_t timeoutMilliseconds)
 void BddTargetOsPrimitives_Sleep(uint32_t milliseconds)
 {
     /* Round a non-zero sub-tick request up to one tick, or osDelay(0) would
-     * only yield - the CmsdkUart yield against a 100 Hz tick relies on this. */
+     * only yield - a board console's 1 ms yield against a 100 Hz tick relies on this. */
     uint32_t ticks = (milliseconds * osKernelGetTickFreq()) / 1000U;
     if ((milliseconds > 0U) && (ticks == 0U))
     {

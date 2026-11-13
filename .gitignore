@@ -54,7 +54,7 @@ Bdd/junit/*
 !Bdd/junit/.gitkeep
 
 # FatFs semihosting disk image — QEMU creates this at its cwd
-# (the project root) per Bdd/Targets/FreeRtos/diskio.c::DISK_IMAGE_PATH.
+# (the project root) per DISK_IMAGE_PATH in Bdd/Targets/Boards/Mps2An385/BddTargetBoardDisk.c.
 # after_scenario removes it between scenarios, but an aborted run can
 # leave the file behind; never commit it.
 solidsyslog-disk.img

@@ -92,7 +92,7 @@ static mbedtls_pk_context clientKey;
 
 /* mbedTLS allocates its per-SSL-context IN/OUT buffers (~6 KiB combined) and
  * handshake state (~10 KiB) via libc calloc - on this FreeRTOS target that
- * funnels through newlib's tiny syscall heap (~4 KiB, see Common/Syscalls.c),
+ * funnels through newlib's tiny syscall heap (~4 KiB, see Syscalls.c),
  * which can't satisfy a single TLS context. Redirect to pvPortMalloc so
  * mbedTLS allocates from the 96 KiB FreeRTOS heap_4 region instead - the
  * standard FreeRTOS+mbedTLS integration. Gated on MBEDTLS_PLATFORM_MEMORY in
@@ -174,7 +174,7 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
  * connect/disconnect cycles.
  *
  * Each major step emits a printf diagnostic and yields one tick to the
- * scheduler. Under QEMU mps2-an385 the DRBG seed + cert/key parses can each
+ * scheduler. Under QEMU the DRBG seed + cert/key parses can each
  * take several seconds (mbedTLS does serious crypto work - RSA key
  * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
  * would starve until init finishes, and without the diagnostic prints the

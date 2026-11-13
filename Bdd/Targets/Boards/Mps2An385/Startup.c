@@ -1,11 +1,10 @@
-/* Cortex-M3 startup for the QEMU mps2-an385 machine - variant for the
- * FreeRTOS-Plus-TCP single-task example.
+/* Cortex-M3 startup for the QEMU mps2-an385 machine.
  *
- * Differs from Bdd/Targets/FreeRtos/Common/startup.c by extending the vector
- * table with the Cortex-M3 external IRQ entries (IRQ0..31). IRQ 13 is the
- * SMSC9220 (LAN9118) Ethernet controller in QEMU's mps2-an385 model and is
- * routed to EthernetISR (defined by the upstream Plus-TCP MPS2_AN385
- * NetworkInterface.c). All other IRQ slots fall through to Default_Handler. */
+ * The vector table carries the system exceptions and the 32 external IRQ
+ * entries. IRQ 13 is the SMSC9220 (LAN9118) Ethernet controller in QEMU's
+ * mps2-an385 model and is routed to EthernetISR, which the Ethernet driver
+ * under the target's network stack defines. All other IRQ slots fall through
+ * to Default_Handler. */
 
 #include <stdint.h>
 
@@ -33,8 +32,7 @@ void SVC_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
 
-/* Provided by the Plus-TCP MPS2_AN385 NetworkInterface.c - drained by the
- * EMAC RX task on each task notification. */
+/* Provided by the Ethernet driver under the target's network stack. */
 void EthernetISR(void) __attribute__((weak, alias("Default_Handler")));
 
 void Reset_Handler(void)

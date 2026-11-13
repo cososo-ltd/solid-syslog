@@ -2,13 +2,13 @@
 #define BDD_TARGET_CMSIS_DEVICE_H
 
 /* The CMSIS device header for QEMU mps2-an385, a Cortex-M3. CMSIS-FreeRTOS
- * includes it through CMSIS_device_header, which Kernel.cmake defines for the
- * wrapper's source; outside a CMSIS-Pack RTE build the wrapper refuses to
- * compile without one. It reads only the core, so nothing here goes beyond the
- * core's exceptions. A board vendor's device header plays this part on real
- * hardware. */
+ * includes it through CMSIS_device_header, which the CMSIS-RTOS2 target's
+ * kernel half defines for the wrapper's source; outside a CMSIS-Pack RTE build
+ * the wrapper refuses to compile without one. It reads only the core, so
+ * nothing here goes beyond the core's exceptions. Every board supplies a
+ * header of this name; on real hardware it wraps the vendor's device header. */
 
-#include "Mps2An385.h"
+#include "BddTargetBoardConfig.h"
 
 typedef enum IRQn
 {
@@ -26,7 +26,7 @@ typedef enum IRQn
 #define __CM3_REV 0x0201U
 #define __MPU_PRESENT 1U
 #define __VTOR_PRESENT 1U
-#define __NVIC_PRIO_BITS MPS2_AN385_NVIC_PRIO_BITS
+#define __NVIC_PRIO_BITS BDD_TARGET_BOARD_NVIC_PRIO_BITS
 #define __Vendor_SysTickConfig 0U
 
 #include "core_cm3.h"

@@ -237,14 +237,14 @@ target_include_directories(SolidSyslogFreeRtosSysUpTimeRolloverTest PRIVATE
 solidsyslog_add_test(SolidSyslogFreeRtosSysUpTimeRolloverTest)
 
 # CMSDK UART driver host tests — recompiles the driver source from the
-# Bdd/Targets/FreeRtos/Common board glue against an in-memory fake register
+# Bdd/Targets/Boards/Mps2An385 board glue against an in-memory fake register
 # block. No FreeRTOS-Plus-TCP involvement, so the include path is intentionally
 # narrower than the datagram test.
 add_executable(CmsdkUartTest
     CmsdkUartTest.cpp
     CmsdkUartFake.c
     main.cpp
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos/Common/CmsdkUart.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Mps2An385/CmsdkUart.c
 )
 
 target_link_libraries(CmsdkUartTest PRIVATE
@@ -253,7 +253,7 @@ target_link_libraries(CmsdkUartTest PRIVATE
 )
 
 target_include_directories(CmsdkUartTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos/Common
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Mps2An385
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h (via CmsdkUart.h)
     ${CMAKE_SOURCE_DIR}/Tests/Support
 )

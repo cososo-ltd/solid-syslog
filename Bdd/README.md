@@ -82,9 +82,10 @@ oracle on the shared loopback.
   detach the same QEMU command from Behave and drive it manually:
 
   ```bash
-  qemu-system-arm -M mps2-an385 -m 16M -display none -serial stdio \
+  qemu-system-arm -M mps2-an385 -m 16M -display none -serial mon:stdio \
       -icount shift=auto,sleep=off,align=off \
       -netdev user,id=net0 -net nic,netdev=net0,model=lan9118 \
+      -semihosting-config enable=on,target=native \
       -kernel build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
   ```
 

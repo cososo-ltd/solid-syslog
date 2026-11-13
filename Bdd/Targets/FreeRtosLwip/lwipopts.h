@@ -1,8 +1,8 @@
-/* lwIP options for the QEMU mps2-an385 FreeRTOS + lwIP BDD target.
+/* lwIP options for the FreeRTOS + lwIP BDD target.
  *
  * S28.09 flipped this from the S28.07 link-probe (NO_SYS=1, no netif) to a
- * worked NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, a LAN9118 netif
- * (netif/EthernetIf.c) drives the wire, and the SolidSyslog LwipRaw adapters
+ * worked NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, the board's netif
+ * (BddTargetBoardNetif.h) drives the wire, and the SolidSyslog LwipRaw adapters
  * reach the core through the tcpip_callback marshal (S28.06). We still only
  * use lwIP's Raw API (the adapters call udp_ / tcp_ functions directly via the
  * marshal),
@@ -15,6 +15,8 @@
 #ifndef SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 #define SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 
+#include "BddTargetBoardConfig.h"
+
 /* --- OS abstraction (NO_SYS=0: tcpip thread + FreeRTOS sys_arch) ------- */
 #define NO_SYS 0
 #define SYS_LIGHTWEIGHT_PROT 1
@@ -26,7 +28,7 @@
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
  * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (7) is not
  * visible - TCPIP_THREAD_PRIO 6 == configMAX_PRIORITIES - 1, above the
- * LAN9118 RX task (configMAX_PRIORITIES - 2 == 5, set in EthernetIf.c).
+ * netif's RX task (configMAX_PRIORITIES - 2 == 5, set by the board's netif).
  * TCPIP_THREAD_STACKSIZE is in BYTES (LWIP_FREERTOS_THREAD_STACKSIZE_IS_
  * STACKWORDS defaults to 0, so the sys_arch divides by sizeof(StackType_t)). */
 /* lwIP's api/err.c maps err_t to errno; pull the E* codes from newlib's
@@ -68,10 +70,14 @@
  * - slirp cannot hand the guest a reachable address for the docker alias.
  * DNS_LOCAL_HOSTLIST_INIT is expanded inside lwIP's dns.c, where
  * DNS_LOCAL_HOSTLIST_ELEM (lwip/dns.h) and IPADDR4_INIT_BYTES (lwip/ip_addr.h)
- * are in scope. */
+ * are in scope. The address is the board's - see BddTargetBoardConfig.h - and
+ * reaches IPADDR4_INIT_BYTES through one more expansion, because that macro
+ * counts its arguments before it expands them. */
 #define LWIP_DNS 1
 #define DNS_LOCAL_HOSTLIST 1
-#define DNS_LOCAL_HOSTLIST_INIT {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", IPADDR4_INIT_BYTES(10, 0, 2, 2))}
+#define BDD_TARGET_HOSTLIST_ADDRESS(octets) IPADDR4_INIT_BYTES(octets)
+#define DNS_LOCAL_HOSTLIST_INIT \
+    {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", BDD_TARGET_HOSTLIST_ADDRESS(BDD_TARGET_BOARD_ORACLE_OCTETS))}
 
 /* etharp queues the first packet to a destination while ARP resolves it -
  * keep queueing on so the first UDP datagram after boot is not dropped

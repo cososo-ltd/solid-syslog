@@ -1,21 +1,24 @@
-/* FreeRTOS-Plus-TCP SolidSyslog BDD target for QEMU mps2-an385.
+/* FreeRTOS-Plus-TCP SolidSyslog BDD target.
  *
  * The platform-independent pipeline - SolidSyslog lifecycle, file-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the lwIP target, S29.03). This file keeps only the FreeRTOS-Plus-TCP
  * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
- * static-IP bring-up, the LAN9118 IRQ priority fix, the per-endpoint RNG /
+ * static-IP bring-up, the per-endpoint RNG /
  * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
- * the FF_Disk_t semihosting media driver). The lwIP target pairs lwIP with
+ * the FF_Disk_t media driver on the board's disk). The lwIP target pairs lwIP with
  * ChaN-FatFs instead - together the two targets prove the SolidSyslogFile seam
  * is FS-vendor-portable (S29.05).
  *
- * Static IPv4 (10.0.2.15) on the QEMU slirp network with the host reachable at
- * the slirp gateway 10.0.2.2. */
+ * A static IPv4 address on the board's network, with the oracle at the address
+ * the board reaches it by - see BddTargetBoardConfig.h. */
 
+#include "BddTargetBoard.h"
+#include "BddTargetBoardConfig.h"
+#include "BddTargetBoardPlusTcp.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetMtlsConfig.h"
 #include "BddTargetOsPrimitives.h"
@@ -45,33 +48,13 @@
 #include <stdint.h>
 #include <string.h>
 
-#define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
-
-/* IRQ number for the QEMU mps2-an385 LAN9118 Ethernet controller. The upstream
- * Plus-TCP NetworkInterface.c enables ISER for this IRQ but does NOT write IPR -
- * leaving the priority at the reset default of 0, which is numerically more
- * urgent than configMAX_SYSCALL_INTERRUPT_PRIORITY and trips configASSERT the
- * first time the ISR calls a FreeRTOS API. We set IPR explicitly here before
- * FreeRTOS_IPInit_Multi triggers the interface init that flips ISER. */
-#define ETHERNET_IRQ_NUMBER 13U
-
-/* NVIC IPR (Interrupt Priority Register) base - one byte per IRQ. */
-#define NVIC_IPR_BASE_ADDRESS UINT32_C(0xE000E400)
-
-/* NVIC IPR is 8-bit per IRQ but only the top configPRIO_BITS are implemented.
- * Derive from the FreeRTOSConfig macros so a kernel-config change can't silently
- * leave IRQ 13 at a higher-than-syscall-safe priority. */
-#define ETHERNET_IRQ_PRIORITY ((uint8_t) (configLIBRARY_LOWEST_INTERRUPT_PRIORITY << (8U - configPRIO_BITS)))
-
-/* Static IPv4 wiring matching the QEMU slirp default. 10.0.2.15 is the standard
- * slirp DHCP-allocated guest address; we hardcode it so no DHCP server is
- * required. 10.0.2.2 is the slirp gateway routed to the QEMU host; 10.0.2.3 is
- * slirp's built-in DNS forwarder. */
-static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 15U};
-static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES] = {255U, 255U, 255U, 0U};
-static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 2U};
-static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES] = {10U, 0U, 2U, 3U};
-static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
+/* Static IPv4 wiring on the board's network - see BddTargetBoardConfig.h. No
+ * DHCP server is required. */
+static const uint8_t TEST_IP_ADDRESS[ipIP_ADDRESS_LENGTH_BYTES] = {BDD_TARGET_BOARD_IP_OCTETS};
+static const uint8_t TEST_NETMASK[ipIP_ADDRESS_LENGTH_BYTES] = {BDD_TARGET_BOARD_NETMASK_OCTETS};
+static const uint8_t TEST_GATEWAY[ipIP_ADDRESS_LENGTH_BYTES] = {BDD_TARGET_BOARD_GATEWAY_OCTETS};
+static const uint8_t TEST_DNS[ipIP_ADDRESS_LENGTH_BYTES] = {BDD_TARGET_BOARD_DNS_OCTETS};
+static const uint8_t TEST_MAC[ipMAC_ADDRESS_LENGTH_BYTES] = {BDD_TARGET_BOARD_MAC_OCTETS};
 
 /* Plus-TCP requires the network interface descriptor and its endpoint(s) to
  * outlive the IP stack. */
@@ -101,15 +84,12 @@ static BaseType_t interactiveTaskCreated = pdFALSE;
  * byte sizes back into the stack words xTaskCreate wants. */
 #define BDD_TARGET_STACK_WORDS(bytes) ((configSTACK_DEPTH_TYPE) ((bytes) / sizeof(StackType_t)))
 
-extern NetworkInterface_t* pxMPS2_FillInterfaceDescriptor(BaseType_t xEMACIndex, NetworkInterface_t* pxInterface);
-
-static void SetEthernetIrqPriority(void);
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
 
 static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
-    .DefaultHost = "10.0.2.2",
+    .DefaultHost = BDD_TARGET_BOARD_ORACLE_ADDRESS,
     .BuildSender = BuildSender,
     .GetHostname = GetHostname,
     .TeardownNetwork = TeardownNetwork,
@@ -121,12 +101,10 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
 
 int main(void)
 {
-    BddTargetFreeRtosPipeline_InitConsole(CMSDK_UART0_BASE_ADDRESS);
+    BddTargetBoard_Init();
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
-    SetEthernetIrqPriority();
-
-    (void) pxMPS2_FillInterfaceDescriptor(0, &networkInterface);
+    (void) BddTargetBoardPlusTcp_FillInterface(&networkInterface);
     FreeRTOS_FillEndPoint(
         &networkInterface,
         &networkEndPoint,
@@ -212,7 +190,7 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
 }
 
 /* Plus-TCP requires the application to provide a per-endpoint random seed source
- * for ARP / IP-ID generation. The QEMU mps2-an385 has no RNG; for a
+ * for ARP / IP-ID generation. The seam asks the board for no RNG; for a
  * deterministic smoke test we return the run-time tick mixed with a constant. */
 BaseType_t xApplicationGetRandomNumber(uint32_t* pulValue)
 {
@@ -234,13 +212,6 @@ uint32_t ulApplicationGetNextSequenceNumber(
     return (uint32_t) xTaskGetTickCount();
 }
 
-static void SetEthernetIrqPriority(void)
-{
-    // NOLINTNEXTLINE(performance-no-int-to-ptr) -- writing the NVIC IPR byte for IRQ 13.
-    volatile uint8_t* ipr = (volatile uint8_t*) (NVIC_IPR_BASE_ADDRESS + ETHERNET_IRQ_NUMBER);
-    *ipr = ETHERNET_IRQ_PRIORITY;
-}
-
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
     /* RFC 5424 section 6.2.4 rung 2 (static IP address). Read back from the IP stack so
@@ -260,12 +231,13 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
  * flips it at runtime. Runs on the interactive task. */
 static struct SolidSyslogSender* BuildSender(void)
 {
-    /* Route TLS / mTLS via the slirp gateway 10.0.2.2 (same path UDP/TCP take -
-     * slirp DNS doesn't reach the docker alias in CI). ServerName is pinned to
-     * "syslog-ng" (the cert subject) so SNI / cert verification still pass. */
-    BddTargetTlsConfig_SetHost("10.0.2.2");
+    /* Route TLS / mTLS to the oracle by the address the board reaches it at,
+     * the same path UDP/TCP take, since this target resolves no name for it.
+     * ServerName is pinned to "syslog-ng" (the cert subject) so SNI / cert
+     * verification still pass. */
+    BddTargetTlsConfig_SetHost(BDD_TARGET_BOARD_ORACLE_ADDRESS);
     BddTargetTlsConfig_SetServerName("syslog-ng");
-    BddTargetMtlsConfig_SetHost("10.0.2.2");
+    BddTargetMtlsConfig_SetHost(BDD_TARGET_BOARD_ORACLE_ADDRESS);
     BddTargetMtlsConfig_SetServerName("syslog-ng");
 
     resolver = SolidSyslogPlusTcpResolver_Create();

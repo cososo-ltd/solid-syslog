@@ -30,7 +30,7 @@ There is deliberately **no allowlist** for that second check. A third-party
 notice inside `Core/` or `Platform/` means either the file does not belong in
 the shipped library or the scope of this check is wrong, and both are decisions
 for a person. Vendored code lives outside these trees -- see the Arm driver
-under `Bdd/Targets/FreeRtosLwip/netif/smsc9220/`, which keeps its own Apache-2.0
+under `Bdd/Targets/Boards/Mps2An385/Lwip/smsc9220/`, which keeps its own Apache-2.0
 headers and is out of scope precisely so it can.
 
 Run:  python3 scripts/check_spdx_headers.py

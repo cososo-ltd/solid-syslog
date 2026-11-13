@@ -1,19 +1,20 @@
-# FreeRTOS + lwIP (Raw API, NO_SYS=0) BDD target ELF for QEMU mps2-an385
-# (Cortex-M3).
+# FreeRTOS + lwIP (Raw API, NO_SYS=0) BDD target ELF.
 #
-# S28.09: grew the S28.07 link-probe into a runnable BDD target — a real
-# LAN9118 lwIP netif (netif/EthernetIf.c over the vendored Arm smsc9220
-# driver), tcpip_init + a static IP, and the SolidSyslog UDP pipeline reaching
-# the syslog-ng oracle on QEMU. Selected via SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP,
-# with zero dependency on Platform/PlusTcp / FreeRTOS-Plus-TCP.
+# A runnable BDD target: the board's lwIP netif, tcpip_init + a static IP, and
+# the SolidSyslog pipeline reaching the syslog-ng oracle. Selected via
+# SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP, with zero dependency on
+# Platform/PlusTcp / FreeRTOS-Plus-TCP.
 #
 # Source layout mirrors Bdd/Targets/FreeRtos/CMakeLists.txt: upstream
 # FreeRTOS-Kernel + lwIP-core + lwIP-api + the contrib FreeRTOS sys_arch + the
-# vendored LAN9118 driver compile into a separate OBJECT library
+# board's third-party Ethernet driver compile into a separate OBJECT library
 # (`solid_syslog_freertos_lwip_upstream`) under a relaxed warning set; our own
-# code (main.c, the reused Cortex-M3 startup, netif/EthernetIf.c, the
+# code (main.c, the board's startup, console, disk and netif, the
 # Platform/LwipRaw + Platform/FreeRtos adapters, and the shared BddTarget
 # sources) stays in the executable under the strict project warning bar.
+
+# What belongs to the board - see Bdd/Targets/Boards/Board.cmake.
+include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
 
 # The upstream trees this target wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(FREERTOS_KERNEL_PATH SOLIDSYSLOG_FREERTOS_KERNEL_PATH /opt/freertos/kernel)
@@ -21,8 +22,7 @@ solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
 solidsyslog_bdd_upstream(MBEDTLS_SOURCE_DIR SOLIDSYSLOG_MBEDTLS_DIR /opt/mbedtls PROBE CMakeLists.txt)
 solidsyslog_bdd_upstream(FATFS_PATH SOLIDSYSLOG_FATFS_PATH /opt/fatfs)
 
-# The LAN9118 netif wrapper, the vendored Arm driver under it, and lwIP's
-# arch/cc.h are shared with the other lwIP BDD target, so they live under
+# lwIP's arch/cc.h is shared with the other lwIP BDD target, so it lives under
 # Bdd/Targets/Common/lwip/ rather than in either target's own directory.
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
 
@@ -46,14 +46,12 @@ include(${LWIP_DIR}/src/Filelists.cmake)
 
 set(LWIP_CONTRIB_FREERTOS_DIR "${LWIP_DIR}/contrib/ports/freertos")
 
-set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/GCC/ARM_CM3")
-set(FREERTOS_TCP_TARGET_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/FreeRtos")
-set(FREERTOS_COMMON_DIR "${FREERTOS_TCP_TARGET_DIR}/Common")
+set(FREERTOS_PORT_DIR "${FREERTOS_KERNEL_PATH}/portable/${BDD_BOARD_FREERTOS_PORT}")
 
 # --- Upstream OBJECT library --------------------------------------------------
 #
 # FreeRTOS kernel + lwIP IPv4 core + lwIP api (tcpip thread) + the contrib
-# FreeRTOS sys_arch + the vendored Arm LAN9118 driver, compiled with the
+# FreeRTOS sys_arch + the board's third-party Ethernet driver, compiled with the
 # relaxed warning set those upstream / third-party sources require. The
 # executable consumes the objects via $<TARGET_OBJECTS:...> so the relaxations
 # don't leak into project code.
@@ -76,10 +74,10 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) — required
     # for NO_SYS=0.
     ${LWIP_CONTRIB_FREERTOS_DIR}/sys_arch.c
-    # Vendored Arm LAN9118 (SMSC9220) low-level driver (Apache-2.0). The lwIP
-    # netif wrapper over it (netif/EthernetIf.c) stays in the executable under
-    # the strict bar; this third-party source sits under the relaxations.
-    ${LWIP_SHARED_DIR}/netif/smsc9220/smsc9220_eth_drv.c
+    # The board's third-party Ethernet controller driver. Our netif over it
+    # stays in the executable under the strict bar; this sits under the
+    # relaxations.
+    ${BDD_BOARD_LWIP_UPSTREAM_SOURCES}
     # FatFs upstream (R0.16) + our shared integrator ffsystem.c — same
     # relaxed-warnings treatment as the Plus-TCP target (ff.c inherits FatFs's
     # sign-conversion / typedef-via-BYTE patterns). ff.c is staged so its
@@ -89,8 +87,7 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
 )
 
 target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -110,9 +107,9 @@ target_compile_options(solid_syslog_freertos_lwip_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
-    ${FREERTOS_COMMON_DIR}                            # Mps2An385.h, for FreeRTOSConfig.h
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
-    ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
+    ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include
@@ -215,18 +212,16 @@ set(BAKED_PEM_HEADERS
 
 add_executable(SolidSyslogBddTargetLwip
     main.c
-    ${FREERTOS_TCP_TARGET_DIR}/Startup.c              # Ethernet variant: IRQ 13 -> EthernetISR
-    ${FREERTOS_COMMON_DIR}/CmsdkUart.c
-    ${FREERTOS_COMMON_DIR}/Syscalls.c
-    ${LWIP_SHARED_DIR}/netif/EthernetIf.c
+    ${BDD_BOARD_PROJECT_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
+    ${BDD_BOARD_LWIP_PROJECT_SOURCES}
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
     # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
     # FreeRtos (Mutex +
     # SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM policies), FatFs (file
-    # adapter). diskio.c is the shared semihosting media driver (8 MiB FAT16).
+    # adapter). diskio.c is the FatFs media glue over the board's disk.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/diskio.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/SemihostingDisk.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFatFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
@@ -254,8 +249,7 @@ add_executable(SolidSyslogBddTargetLwip
 set_target_properties(SolidSyslogBddTargetLwip PROPERTIES SUFFIX ".elf")
 
 target_compile_options(SolidSyslogBddTargetLwip PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
+    ${BDD_BOARD_ARCH_FLAGS}
     -ffunction-sections
     -fdata-sections
     -fno-common
@@ -264,9 +258,8 @@ target_compile_options(SolidSyslogBddTargetLwip PRIVATE
 target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
-    ${LWIP_SHARED_DIR}/netif                           # EthernetIf.h
-    ${LWIP_SHARED_DIR}/netif/smsc9220                  # smsc9220_eth_drv.h, smsc9220_emac_config.h
-    ${FREERTOS_COMMON_DIR}                            # CmsdkUart.h
+    ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
+    ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{LwipRaw,FreeRtos,MbedTls,FatFs}/{Interface,Source} include dirs
@@ -304,9 +297,8 @@ target_compile_definitions(SolidSyslogBddTargetLwip PRIVATE
 )
 
 target_link_options(SolidSyslogBddTargetLwip PRIVATE
-    -mcpu=cortex-m3
-    -mthumb
-    -T${FREERTOS_COMMON_DIR}/mps2-an385.ld
+    ${BDD_BOARD_ARCH_FLAGS}
+    -T${BDD_BOARD_LINKER_SCRIPT}
     --specs=nano.specs
     --specs=nosys.specs
     -Wl,--gc-sections
@@ -314,4 +306,4 @@ target_link_options(SolidSyslogBddTargetLwip PRIVATE
 )
 
 set_target_properties(SolidSyslogBddTargetLwip PROPERTIES
-    LINK_DEPENDS ${FREERTOS_COMMON_DIR}/mps2-an385.ld)
+    LINK_DEPENDS ${BDD_BOARD_LINKER_SCRIPT})

@@ -1,26 +1,26 @@
-/* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target for QEMU
- * mps2-an385.
+/* FreeRTOS + lwIP (Raw API, NO_SYS=0) SolidSyslog BDD target.
  *
  * The platform-independent pipeline - SolidSyslog lifecycle, FatFs-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
- * marshal (S28.06), the hand-written LAN9118 netif (netif/EthernetIf.c), the
+ * marshal (S28.06), the board's netif (BddTargetBoardNetif.h), the
  * static-IP bring-up + gateway ARP warm-up, the LwipRaw sender wiring (UDP +
  * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
  * RFC 5424 HOSTNAME read from the netif.
  *
- * Static IPv4 (10.0.2.15) on the QEMU slirp network, host reachable at the slirp
- * gateway 10.0.2.2. The oracle is addressed by name ("syslog-ng") via
- * SolidSyslogLwipRawDnsResolver; lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps
- * that name statically to 10.0.2.2 (slirp can't return a reachable address for
- * the docker alias over real DNS). */
+ * A static IPv4 address on the board's network (BddTargetBoardConfig.h). The
+ * oracle is addressed by name ("syslog-ng") via SolidSyslogLwipRawDnsResolver;
+ * lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps that name statically to the
+ * address the board reaches it at. */
 
 #include "BddTargetFatFsMount.h"
+#include "BddTargetBoard.h"
+#include "BddTargetBoardConfig.h"
+#include "BddTargetBoardNetif.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetOsPrimitives.h"
-#include "EthernetIf.h"
 
 #include "BddTargetSwitchConfig.h"
 #include "BddTargetTlsSender.h"
@@ -49,7 +49,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
+/* IP4_ADDR counts its arguments before it expands them, so the four octets
+ * the board states as one macro have to arrive through one more expansion. */
+#define SET_IP4_ADDRESS(address, octets) IP4_ADDR((address), octets)
 
 /* lwIP netif descriptor - must outlive the tcpip thread. */
 static struct netif networkInterface;
@@ -101,7 +103,7 @@ unsigned int LwipPortRand(void)
 
 int main(void)
 {
-    BddTargetFreeRtosPipeline_InitConsole(CMSDK_UART0_BASE_ADDRESS);
+    BddTargetBoard_Init();
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
     /* Pin every LwipRaw adapter call onto the tcpip thread. */
@@ -109,8 +111,8 @@ int main(void)
 
     /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the
      * thread runs once the scheduler starts. The netif bring-up is deferred to
-     * NetworkBringUp on that thread (smsc9220_init calls vTaskDelay, which would
-     * deref a NULL pxCurrentTCB before the scheduler). */
+     * NetworkBringUp on that thread (the board's netif init may block, which
+     * needs a running scheduler). */
     tcpip_init(NULL, NULL);
 
     BddTargetOsPrimitives_InitialiseOs();
@@ -121,11 +123,11 @@ int main(void)
             BDD_TARGET_INTERACTIVE_STACK_BYTES
         ))
     {
-        BddTargetFreeRtosPipeline_Exit(1);
+        BddTargetBoard_Exit(1);
     }
     if (!BddTargetOsPrimitives_Spawn(BddTargetFreeRtosPipeline_ServiceTask, "service", BDD_TARGET_SERVICE_STACK_BYTES))
     {
-        BddTargetFreeRtosPipeline_Exit(1);
+        BddTargetBoard_Exit(1);
     }
 
     BddTargetOsPrimitives_StartScheduler();
@@ -137,20 +139,21 @@ int main(void)
 }
 
 /* Runs on the tcpip thread (dispatched via tcpip_callback once the scheduler is
- * up) so netif_add, the link/up transitions, and smsc9220_init's vTaskDelay all
- * execute in a valid task context with the lwIP core lock held. */
+ * up) so netif_add, the link/up transitions, and any blocking the board's
+ * netif init does all execute in a valid task context with the lwIP core lock
+ * held. */
 static void NetworkBringUp(void* context)
 {
     (void) context;
     ip4_addr_t ipAddress;
     ip4_addr_t netmask;
-    /* QEMU slirp default: 10.0.2.15 guest, 10.0.2.2 gateway (NATed to the QEMU
-     * host, where the syslog-ng oracle listens). */
-    IP4_ADDR(&ipAddress, 10, 0, 2, 15);
-    IP4_ADDR(&netmask, 255, 255, 255, 0);
-    IP4_ADDR(&gatewayAddress, 10, 0, 2, 2);
+    /* A static address on the board's network - see BddTargetBoardConfig.h. */
+    SET_IP4_ADDRESS(&ipAddress, BDD_TARGET_BOARD_IP_OCTETS);
+    SET_IP4_ADDRESS(&netmask, BDD_TARGET_BOARD_NETMASK_OCTETS);
+    SET_IP4_ADDRESS(&gatewayAddress, BDD_TARGET_BOARD_GATEWAY_OCTETS);
 
-    (void) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, EthernetIf_Init, tcpip_input);
+    (void
+    ) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, BddTargetBoardNetif_Init, tcpip_input);
     netif_set_default(&networkInterface);
     netif_set_up(&networkInterface);
     netif_set_link_up(&networkInterface);

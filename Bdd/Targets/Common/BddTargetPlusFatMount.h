@@ -9,8 +9,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* FreeRTOS-Plus-FAT implementation of the shared pipeline's FS-mount seam
      * (struct BddTargetFreeRtosPipelineConfig). The Plus-FAT sibling of
-     * BddTargetFatFsMount: mount/unmount delegate to the FF_Disk_t semihosting
-     * media driver (FFSemihostingDisk); the SolidSyslogFile adapter is
+     * BddTargetFatFsMount: mount/unmount delegate to the FF_Disk_t media
+     * driver (BddTargetPlusFatDisk); the SolidSyslogFile adapter is
      * SolidSyslogPlusFatFile. Wired by the FreeRTOS-Plus-TCP target's main.c;
      * the lwIP target uses the ChaN-FatFs sibling. Introduced in SolidSyslog
      * S29.05. */

@@ -3,7 +3,7 @@
 
 /* FreeRTOS + lwIP BDD-target tuning. Mirrors
  * Bdd/Targets/FreeRtos/solidsyslog_user_tunables.h - the lwIP target runs the
- * same Cortex-M3 under the same FreeRtosMutex constraint.
+ * same board under the same FreeRtosMutex constraint.
  *
  * The target creates two FreeRtosMutex instances: `bufferMutex` (gating the
  * CircularBuffer producers against the Service-task drain) and

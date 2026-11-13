@@ -1,7 +1,7 @@
-/* lwIP options for the QEMU mps2-an385 CMSIS-RTOS2 + lwIP BDD target.
+/* lwIP options for the CMSIS-RTOS2 + lwIP BDD target.
  *
- * NO_SYS=0: lwIP runs its own "tcpip" thread and a LAN9118 netif
- * (netif/EthernetIf.c) drives the wire. The sequential netconn and socket
+ * NO_SYS=0: lwIP runs its own "tcpip" thread and the board's netif
+ * (BddTargetBoardNetif.h) drives the wire. The sequential netconn and socket
  * layers are ON, because the SolidSyslog LwipSocket adapters call the
  * lwip_-prefixed socket entry points from whichever task they run on; the
  * tcpip thread serves them, RX delivery (tcpip_input) and the timers. No
@@ -13,6 +13,8 @@
  * (MEM_LIBC_MALLOC) in Tests/Support/LwipFakes/Interface/lwipopts.h. */
 #ifndef SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 #define SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
+
+#include "BddTargetBoardConfig.h"
 
 /* --- OS abstraction (NO_SYS=0: tcpip thread + FreeRTOS sys_arch) ------- */
 #define NO_SYS 0
@@ -27,8 +29,8 @@
 /* tcpip thread. Priorities are numeric here: lwipopts.h is processed via
  * lwip/opt.h before any FreeRTOS header, so configMAX_PRIORITIES (56, which
  * the CMSIS-RTOS2 wrapper fixes) is not visible - TCPIP_THREAD_PRIO 55 ==
- * configMAX_PRIORITIES - 1, above the LAN9118 RX task
- * (configMAX_PRIORITIES - 2 == 54, set in EthernetIf.c). Both numbers are
+ * configMAX_PRIORITIES - 1, above the netif's RX task
+ * (configMAX_PRIORITIES - 2 == 54, set by the board's netif). Both numbers are
  * written out here and must be re-based by hand if that macro changes: the
  * tcpip thread sitting below the RX task that feeds it would let a burst
  * starve it.
@@ -72,10 +74,14 @@
  * the guest a reachable address for the docker alias.
  * DNS_LOCAL_HOSTLIST_INIT is expanded inside lwIP's dns.c, where
  * DNS_LOCAL_HOSTLIST_ELEM (lwip/dns.h) and IPADDR4_INIT_BYTES (lwip/ip_addr.h)
- * are in scope. */
+ * are in scope. The address is the board's - see BddTargetBoardConfig.h - and
+ * reaches IPADDR4_INIT_BYTES through one more expansion, because that macro
+ * counts its arguments before it expands them. */
 #define LWIP_DNS 1
 #define DNS_LOCAL_HOSTLIST 1
-#define DNS_LOCAL_HOSTLIST_INIT {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", IPADDR4_INIT_BYTES(10, 0, 2, 2))}
+#define BDD_TARGET_HOSTLIST_ADDRESS(octets) IPADDR4_INIT_BYTES(octets)
+#define DNS_LOCAL_HOSTLIST_INIT \
+    {DNS_LOCAL_HOSTLIST_ELEM("syslog-ng", BDD_TARGET_HOSTLIST_ADDRESS(BDD_TARGET_BOARD_ORACLE_OCTETS))}
 
 /* etharp queues the first packet to a destination while ARP resolves it -
  * keep queueing on so the first UDP datagram after boot is not dropped

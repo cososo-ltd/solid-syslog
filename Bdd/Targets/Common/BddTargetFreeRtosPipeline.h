@@ -29,7 +29,8 @@ struct SolidSyslogFile;
 struct BddTargetFreeRtosPipelineConfig
 {
     /* Default destination host before any `set host` - numeric for the no-DNS
-     * PlusTcp target ("10.0.2.2"); the DNS alias for lwIP ("syslog-ng"). */
+     * PlusTcp target, where the board reaches the oracle; the DNS alias for lwIP
+     * ("syslog-ng"). */
     const char* DefaultHost;
     /* Bring up the platform network and build the (Switching) sender, with the
      * default transport already selected. Runs on the interactive task, so an
@@ -66,18 +67,9 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
 void BddTargetFreeRtosPipeline_GetEndpoint(struct SolidSyslogEndpoint* endpoint, void* context);
 uint32_t BddTargetFreeRtosPipeline_GetEndpointVersion(void* context);
 
-/* Initialise the CMSDK UART console with the shared MMIO access. */
-void BddTargetFreeRtosPipeline_InitConsole(uint32_t uartBaseAddress);
-
 /* Shared bounded-spin sleep (SolidSyslogSleepFunction-shaped). The lwIP target
- * passes this into its resolver / TCP-stream config; both targets reuse it for
- * the CMSDK UART yield. */
+ * passes this into its resolver / TCP-stream config. */
 void BddTargetFreeRtosPipeline_Sleep(uint32_t milliseconds);
-
-/* ARM Semihosting SYS_EXIT - terminates QEMU with the given status. Used
- * internally by the `shutdown` / halt paths; exposed so a target's main() can
- * bail out on an unrecoverable bring-up failure (e.g. xTaskCreate). */
-void BddTargetFreeRtosPipeline_Exit(int status);
 
 /* Stack sizes in bytes, the unit BddTargetOsPrimitives_Spawn takes. Each
  * main.c spawns the threads itself so that it controls the timing - the

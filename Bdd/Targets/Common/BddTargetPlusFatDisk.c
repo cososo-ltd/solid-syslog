@@ -1,13 +1,13 @@
-/* FreeRTOS-Plus-FAT FF_Disk_t media driver over the shared semihosting flat
- * disk - see FFSemihostingDisk.h. Block read/write delegate to SemihostingDisk
- * (the same host image + BKPT 0xAB trap the ChaN-FatFs diskio.c uses). The IO
- * manager / partition / format / mount sequence mirrors Plus-FAT's reference
- * portable/common/ff_ramdisk.c, with format made first-use-only so a persistent
- * image survives a power cycle (power_cycle_replay). SolidSyslog S29.05. */
+/* FreeRTOS-Plus-FAT FF_Disk_t media driver over the board's disk - see
+ * BddTargetPlusFatDisk.h. Block read/write delegate to BddTargetBoardDisk (the
+ * same disk the ChaN-FatFs diskio.c uses). The IO manager / partition / format
+ * / mount sequence mirrors Plus-FAT's reference portable/common/ff_ramdisk.c,
+ * with format made first-use-only so a persistent disk survives a power cycle
+ * (power_cycle_replay). */
 
-#include "FFSemihostingDisk.h"
+#include "BddTargetPlusFatDisk.h"
 
-#include "SemihostingDisk.h"
+#include "BddTargetBoardDisk.h"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
@@ -46,28 +46,28 @@ static StaticSemaphore_t g_mutexStorage;
 static int32_t ReadBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk);
 static int32_t WriteBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk);
 static FF_Error_t PartitionAndFormat(void);
-static bool FFSemihostingDisk_IsValidDisk(const FF_Disk_t* disk);
+static bool BddTargetPlusFatDisk_IsValidDisk(const FF_Disk_t* disk);
 
-bool FFSemihostingDisk_Mount(void)
+bool BddTargetPlusFatDisk_Mount(void)
 {
     if (g_mounted)
     {
         return true;
     }
-    if (!SemihostingDisk_EnsureReady())
+    if (!BddTargetBoardDisk_EnsureReady())
     {
         return false;
     }
 
     memset(&g_disk, 0, sizeof(g_disk));
     g_disk.ulSignature = DISK_SIGNATURE;
-    g_disk.ulNumberOfSectors = (uint32_t) SEMIHOSTING_DISK_SECTOR_COUNT;
+    g_disk.ulNumberOfSectors = (uint32_t) BDD_TARGET_BOARD_DISK_SECTOR_COUNT;
 
     FF_CreationParameters_t parameters;
     memset(&parameters, 0, sizeof(parameters));
     parameters.pucCacheMemory = NULL; /* Plus-FAT mallocs the cache from heap_4. */
-    parameters.ulMemorySize = (uint32_t) (DISK_CACHE_SECTORS * SEMIHOSTING_DISK_SECTOR_SIZE);
-    parameters.ulSectorSize = SEMIHOSTING_DISK_SECTOR_SIZE;
+    parameters.ulMemorySize = (uint32_t) (DISK_CACHE_SECTORS * BDD_TARGET_BOARD_DISK_SECTOR_SIZE);
+    parameters.ulSectorSize = BDD_TARGET_BOARD_DISK_SECTOR_SIZE;
     parameters.fnWriteBlocks = WriteBlocks;
     parameters.fnReadBlocks = ReadBlocks;
     parameters.pxDisk = &g_disk;
@@ -109,7 +109,7 @@ bool FFSemihostingDisk_Mount(void)
     return true;
 }
 
-void FFSemihostingDisk_Unmount(void)
+void BddTargetPlusFatDisk_Unmount(void)
 {
     if (g_mounted)
     {
@@ -146,18 +146,18 @@ static FF_Error_t PartitionAndFormat(void)
 static int32_t ReadBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk)
 {
     int32_t result;
-    if (!FFSemihostingDisk_IsValidDisk(disk))
+    if (!BddTargetPlusFatDisk_IsValidDisk(disk))
     {
         result = FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG;
     }
     else
     {
-        switch (SemihostingDisk_Read(buffer, sector, count))
+        switch (BddTargetBoardDisk_Read(buffer, sector, count))
         {
-            case SEMIHOSTING_DISK_OK:
+            case BDD_TARGET_BOARD_DISK_OK:
                 result = FF_ERR_NONE;
                 break;
-            case SEMIHOSTING_DISK_OUT_OF_RANGE:
+            case BDD_TARGET_BOARD_DISK_OUT_OF_RANGE:
                 result = (int32_t) (FF_ERR_IOMAN_OUT_OF_BOUNDS_READ | FF_ERRFLAG);
                 break;
             default:
@@ -170,7 +170,7 @@ static int32_t ReadBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_D
 
 /* Guards the block callbacks: a disk handed to us must be non-NULL, carry our
  * signature, and have been through FF_CreateIOManager. */
-static bool FFSemihostingDisk_IsValidDisk(const FF_Disk_t* disk)
+static bool BddTargetPlusFatDisk_IsValidDisk(const FF_Disk_t* disk)
 {
     return (disk != NULL) && (disk->ulSignature == DISK_SIGNATURE) && (disk->xStatus.bIsInitialised != pdFALSE);
 }
@@ -178,18 +178,18 @@ static bool FFSemihostingDisk_IsValidDisk(const FF_Disk_t* disk)
 static int32_t WriteBlocks(uint8_t* buffer, uint32_t sector, uint32_t count, FF_Disk_t* disk)
 {
     int32_t result;
-    if (!FFSemihostingDisk_IsValidDisk(disk))
+    if (!BddTargetPlusFatDisk_IsValidDisk(disk))
     {
         result = FF_ERR_IOMAN_DRIVER_FATAL_ERROR | FF_ERRFLAG;
     }
     else
     {
-        switch (SemihostingDisk_Write(buffer, sector, count))
+        switch (BddTargetBoardDisk_Write(buffer, sector, count))
         {
-            case SEMIHOSTING_DISK_OK:
+            case BDD_TARGET_BOARD_DISK_OK:
                 result = FF_ERR_NONE;
                 break;
-            case SEMIHOSTING_DISK_OUT_OF_RANGE:
+            case BDD_TARGET_BOARD_DISK_OUT_OF_RANGE:
                 result = (int32_t) (FF_ERR_IOMAN_OUT_OF_BOUNDS_WRITE | FF_ERRFLAG);
                 break;
             default:

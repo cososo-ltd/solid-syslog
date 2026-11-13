@@ -1,7 +1,7 @@
 # CMSIS-RTOS2 + lwIP BDD target
 
-`SolidSyslogBddTargetCmsis` is a runnable BDD target for QEMU `mps2-an385`
-(Cortex-M3), and the home of the three platform packs E40, E36 and E35 added.
+`SolidSyslogBddTargetCmsis` is a runnable BDD target, and the home of the
+three platform packs E40, E36 and E35 added.
 
 It exists so each of those packs could be swapped in one at a time against a
 lane that was already green, which is what made a failure attributable to the
@@ -22,7 +22,7 @@ rather than the Raw one, so there is no marshal seam in `main.c`.
 | Story | Swap |
 |---|---|
 | S40.04 | OS pack `FreeRtos` -> `CmsisRtos`, over a CMSIS-RTOS2 layer on the same kernel |
-| S36.03 | File pack `FatFs` -> `LittleFs`, over the shared semihosting disk |
+| S36.03 | File pack `FatFs` -> `LittleFs`, over the same disk |
 | S35.03 | Network pack `LwipRaw` -> `LwipSocket`, with `LWIP_SOCKET=1` |
 
 Each swap changed one variable against a lane that was already green, so a
@@ -65,22 +65,23 @@ docker compose -f ci/docker-compose.bdd.yml \
 Everything tied to the particular kernel underneath - its sources, its
 `FreeRTOSConfig.h`, its application hooks and the CMSIS-RTOS2 wrapper - is in
 [`Kernel/FreeRtos/`](Kernel/FreeRtos/). A second kernel is a sibling directory
-supplying the same `Kernel.cmake`, configuration, hooks and CMSIS device
-header, and a one-line change to which `Kernel.cmake` the target includes.
+supplying the same `Kernel.cmake`, configuration and hooks, and a one-line
+change to which `Kernel.cmake` the target includes.
 
 Two things outside that directory still call the kernel directly, because they
 sit beneath the wrapper and no CMSIS-RTOS2 port of them exists: lwIP's
-`sys_arch` and the LAN9118 netif. They are what a genuinely different kernel
+`sys_arch` and the board's netif. They are what a genuinely different kernel
 would cost.
 
 ## What it shares
 
-Nothing here is a copy of the sibling target's runtime code. The LAN9118 netif
-wrapper, the vendored Arm SMSC9220 driver and lwIP's `arch/cc.h` live in
-[`../Common/lwip/`](../Common/lwip/) and are compiled by both targets; the
-Cortex-M3 startup, the linker script, the semihosting disk and every `BddTarget*`
-source come from [`../Common/`](../Common/) and `../FreeRtos/` as they already
-did.
+Nothing here is a copy of the sibling target's runtime code. lwIP's
+`arch/cc.h` lives in [`../Common/lwip/`](../Common/lwip/) and every shared
+`BddTarget*` source in [`../Common/`](../Common/), compiled by both targets.
+The startup, the linker script, the console, the disk and the netif belong to
+the board, behind the board seam: see
+[`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md)
+for the one CI runs on.
 
 What is genuinely this target's own is its `CMakeLists.txt`, its `main.c`, its
 `Kernel/` directory, and the configuration headers the swaps above change:

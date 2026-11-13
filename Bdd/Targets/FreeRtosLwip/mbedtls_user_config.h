@@ -12,7 +12,7 @@
  *
  * The defaults that mbedTLS picks for a generic build assume a Unix or
  * Windows host - they pull /dev/urandom for entropy, use fopen for cert
- * loading, and call BSD sockets directly. The Cortex-M3 / FreeRTOS QEMU
+ * loading, and call BSD sockets directly. This bare-metal
  * BDD target has none of those, so we strip them and rely on the integrator
  * (BddTargetTlsSender_MbedTls.c) to wire entropy, transport, and
  * cert handles via DI.
@@ -81,7 +81,7 @@
 
 /* Route mbedTLS allocations through a runtime-installed calloc/free pair. By
  * default mbedTLS calls libc calloc/free, which on this target funnels through
- * newlib into the small 4 KiB syscall heap in Bdd/Targets/FreeRtos/Common/
+ * newlib into the small 4 KiB syscall heap in Bdd/Targets/Common/
  * Syscalls.c (shared with this target) - far too small for mbedTLS's
  * per-context allocations (IN/OUT buffers plus handshake state run ~10-20 KiB).
  * Enabling MBEDTLS_PLATFORM_MEMORY lets BddTargetTlsSender_MbedTls.c
