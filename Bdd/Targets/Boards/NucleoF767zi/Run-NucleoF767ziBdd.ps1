@@ -116,11 +116,15 @@ function Build-Image
         $configure += " -DSOLIDSYSLOG_BDD_BOARD_GATEWAY=$Gateway"
         }
     # As root, and with every directory trusted, as the CI lane runs it: the
-    # tree is this machine's, and the build asks git which commit it is.
+    # tree is this machine's, and the build asks git which commit it is. A
+    # native command's stderr is fatal under 'Stop' when output is redirected,
+    # so each is judged by its exit code alone.
+    $ErrorActionPreference = 'Continue'
     & docker run --rm --user root `
         -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e 'GIT_CONFIG_VALUE_0=*' `
         -v "${repositoryRoot}:/workspaces/solid-syslog" -w /workspaces/solid-syslog $crossImage `
         sh -c "$configure && cmake --build --preset $preset --target SolidSyslogBddTargetLwip"
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0)
         {
         throw "The build of the image failed with exit code $LASTEXITCODE."
@@ -164,7 +168,9 @@ try
         Build-Image
         }
 
+    $ErrorActionPreference = 'Continue'
     & $programmer -c port=SWD -w $image -v -rst
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0)
         {
         throw "Writing the image to the board failed with exit code $LASTEXITCODE."
@@ -220,9 +226,7 @@ try
             }
         }
 
-    # Behave reports progress on stderr too. Windows PowerShell turns a native
-    # command's stderr into error records when its output is redirected, which
-    # 'Stop' would make fatal, so the run is judged by its exit code alone.
+    # Behave reports progress on stderr too.
     $ErrorActionPreference = 'Continue'
     & python -m behave --tags=$tags @Paths
     $exitCode = $LASTEXITCODE
