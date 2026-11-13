@@ -582,29 +582,9 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
 {
     struct SolidSyslogSender* fakeSender = SenderFake_Create();
     SolidSyslogStore* nullStore = SolidSyslogNullStore_Get();
-    SolidSyslogConfig config = {
-        buffer,
-        fakeSender,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullStore,
-        nullptr,
-        0,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr
-    };
+    SolidSyslogConfig config = {buffer,  fakeSender, nullptr,   nullptr, nullptr, nullptr, nullptr,
+                                nullptr, nullptr,    nullStore, nullptr, 0,       nullptr, nullptr,
+                                nullptr, nullptr,    nullptr,   nullptr, nullptr, nullptr, nullptr};
     struct SolidSyslog* solidSyslog = SolidSyslog_Create(&config);
 
     SolidSyslogMessage message = {SOLIDSYSLOG_FACILITY_LOCAL0, SOLIDSYSLOG_SEVERITY_INFORMATIONAL, nullptr, nullptr};

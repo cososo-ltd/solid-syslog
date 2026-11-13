@@ -124,7 +124,7 @@ misra-c2012-11.5:Platform/MbedTls/Source/SolidSyslogMbedTlsStream.c:896
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:756
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1075
 misra-c2012-11.5:Platform/WolfSsl/Source/SolidSyslogWolfSslStream.c:1082
-misra-c2012-11.5:Core/Source/SolidSyslog.c:808
+misra-c2012-11.5:Core/Source/SolidSyslog.c:845
 
 # D.003 — Rule 5.7: repeating struct tags (no-typedef-struct convention)
 # See docs/misra-deviations.md#d003
@@ -136,18 +136,18 @@ misra-c2012-18.7:Core/Source/SolidSyslogFormatter.c:16
 
 # D.006 — Rule 11.8: const-strip false-positives + platform-API (Winsock, lwIP, VxWorks)
 # See docs/misra-deviations.md#d006
-misra-c2012-11.8:Core/Source/SolidSyslog.c:137
-misra-c2012-11.8:Core/Source/SolidSyslog.c:138
-misra-c2012-11.8:Core/Source/SolidSyslog.c:139
-misra-c2012-11.8:Core/Source/SolidSyslog.c:140
-misra-c2012-11.8:Core/Source/SolidSyslog.c:141
-misra-c2012-11.8:Core/Source/SolidSyslog.c:142
-misra-c2012-11.8:Core/Source/SolidSyslog.c:143
 misra-c2012-11.8:Core/Source/SolidSyslog.c:144
 misra-c2012-11.8:Core/Source/SolidSyslog.c:145
 misra-c2012-11.8:Core/Source/SolidSyslog.c:146
 misra-c2012-11.8:Core/Source/SolidSyslog.c:147
 misra-c2012-11.8:Core/Source/SolidSyslog.c:148
+misra-c2012-11.8:Core/Source/SolidSyslog.c:149
+misra-c2012-11.8:Core/Source/SolidSyslog.c:150
+misra-c2012-11.8:Core/Source/SolidSyslog.c:151
+misra-c2012-11.8:Core/Source/SolidSyslog.c:152
+misra-c2012-11.8:Core/Source/SolidSyslog.c:153
+misra-c2012-11.8:Core/Source/SolidSyslog.c:154
+misra-c2012-11.8:Core/Source/SolidSyslog.c:155
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:76
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85

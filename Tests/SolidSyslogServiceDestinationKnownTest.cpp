@@ -186,6 +186,7 @@ TEST_GROUP_BASE(SolidSyslogServiceDestinationKnownEndToEnd, DestinationKnownBase
         return SyslogField(StreamFake_Frame(stream, index), SYSLOG_FIELD_MSGID);
     }
 };
+
 // clang-format on
 
 TEST(SolidSyslogServiceDestinationKnown, NotKnownNothingIsOfferedToTheSender)
