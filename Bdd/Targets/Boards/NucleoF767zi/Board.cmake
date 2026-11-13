@@ -13,6 +13,17 @@ if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
         "Configure with a nucleo-f767zi-* preset.")
 endif()
 
+# The board supplies an lwIP netif and nothing else a target could run on: no
+# FreeRTOS-Plus-TCP interface and no CMSIS device header. A target it has no
+# half for would configure and then fail somewhere in its build.
+set(bdd_board_targets FREERTOS_LWIP NUCLEO_F767ZI_BRINGUP)
+if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets)
+    string(REPLACE ";" ", " bdd_board_target_list "${bdd_board_targets}")
+    message(FATAL_ERROR
+        "The NUCLEO-F767ZI board supports SOLIDSYSLOG_BDD_TARGET ${bdd_board_target_list} "
+        "(got: '${SOLIDSYSLOG_BDD_TARGET}').")
+endif()
+
 # The upstream trees the board wires - see Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(STM32F7_HAL_DRIVER_PATH SOLIDSYSLOG_STM32F7_HAL_DRIVER_PATH /opt/stm32/f7-hal-driver
     PROBE Inc/stm32f7xx_hal.h)
@@ -62,11 +73,15 @@ function(bdd_board_ipv4_octets output variable)
     if(NOT address MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
         message(FATAL_ERROR "${variable} must be a dotted IPv4 address (got: '${address}').")
     endif()
-    set(octets ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4})
-    foreach(octet IN LISTS octets)
+    set(written ${CMAKE_MATCH_1} ${CMAKE_MATCH_2} ${CMAKE_MATCH_3} ${CMAKE_MATCH_4})
+    set(octets)
+    foreach(octet IN LISTS written)
+        # A leading zero would make the C literal octal.
+        string(REGEX REPLACE "^0+([0-9])" "\\1" octet "${octet}")
         if(octet GREATER 255)
             message(FATAL_ERROR "${variable} must be a dotted IPv4 address (got: '${address}').")
         endif()
+        list(APPEND octets ${octet})
     endforeach()
     list(TRANSFORM octets APPEND "U")
     list(JOIN octets ", " joined)
@@ -105,7 +120,8 @@ configure_file(
 # The commit goes into the banner, so the checklist can tell which build is on
 # the board. It is the commit checked out, which on a pull request is CI's
 # merge of the branch into main. Read at configure time, which is every time
-# in CI.
+# in CI. A tree with a tracked file changed since that commit says so, as
+# "-dirty", because the image is then not a build of the commit it names.
 find_package(Git QUIET)
 set(BDD_BOARD_BUILD_COMMIT "unknown")
 if(GIT_EXECUTABLE)
@@ -115,8 +131,21 @@ if(GIT_EXECUTABLE)
         RESULT_VARIABLE bdd_board_commit_result ERROR_QUIET)
     if(bdd_board_commit_result EQUAL 0)
         set(BDD_BOARD_BUILD_COMMIT "${bdd_board_commit}")
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" -C "${CMAKE_SOURCE_DIR}" status --porcelain --untracked-files=no
+            OUTPUT_VARIABLE bdd_board_changes OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE bdd_board_changes_result ERROR_QUIET)
+        if(NOT bdd_board_changes_result EQUAL 0 OR bdd_board_changes)
+            string(APPEND BDD_BOARD_BUILD_COMMIT "-dirty")
+        endif()
     endif()
 endif()
+
+# Only the file that prints the banner reads the commit, so only it is rebuilt
+# when the commit moves. The bring-up image names its own.
+set(BDD_BOARD_BUILD_COMMIT_DEFINITION BDD_TARGET_BOARD_BUILD_COMMIT="${BDD_BOARD_BUILD_COMMIT}")
+set_source_files_properties(${BDD_BOARD_DIR}/BddTargetBoard.c PROPERTIES
+    COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION}")
 
 # --- What the board supplies ---------------------------------------------------
 
@@ -125,7 +154,6 @@ endif()
 set(BDD_BOARD_DEFINITIONS
     STM32F767xx
     USE_HAL_DRIVER
-    BDD_TARGET_BOARD_BUILD_COMMIT="${BDD_BOARD_BUILD_COMMIT}"
 )
 
 set(BDD_BOARD_PROJECT_SOURCES

@@ -4,11 +4,11 @@
 /* Facts about the board that a target's configuration headers need at compile
  * time, as macros because the kernel configuration reads them in the
  * preprocessor. Every board directory under Bdd/Targets/Boards/ has a header
- * of this name defining the same macros, and each states its fact once, so the
- * kernel configuration and the CMSIS device header take it from here rather
- * than from each other.
+ * of this name, defining what the targets that board supports read, and each
+ * states its fact once, so the kernel configuration takes it from here.
  *
- * This one is ST's NUCLEO-F767ZI, a Cortex-M7. */
+ * This one is ST's NUCLEO-F767ZI, a Cortex-M7. Its Board.cmake names the
+ * targets it supports. */
 
 /* The network the board sits on, each address as the octets a stack's own
  * initialiser takes: BDD_TARGET_BOARD_IP_OCTETS, _NETMASK_OCTETS,

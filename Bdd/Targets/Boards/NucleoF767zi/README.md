@@ -311,7 +311,8 @@ The board is cabled to the test network, and the collector is running on it.
 2. The image is built from the commit under review, with the test network's
    addresses, and `STM32_Programmer_CLI` writes it and its verify passes.
 3. After a reset the console shows the banner, and the commit in it is the
-   commit under review.
+   commit under review. A commit that ends `-dirty` was built from a tree with
+   changes that commit does not hold, and fails this step.
 4. The console reports `[board] link up`, with the speed and duplex the test
    network gives, and then shows the `SolidSyslog>` prompt.
 5. `send 1` puts one record in `received_udp.jsonl`. The collector has parsed

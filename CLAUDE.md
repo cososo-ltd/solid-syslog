@@ -432,8 +432,9 @@ Some platforms run only where a licensed toolchain or a particular machine is, s
 lane can build or run them. Such a platform is accepted by a **target checklist** instead:
 a fixed list of steps run by hand, outside CI, against the commit under review.
 
-- The checklist lives with the target, in its `Bdd/Targets/<Target>/README.md`. One list
-  per platform, not one per story.
+- The checklist lives with the target, in its `Bdd/Targets/<Target>/README.md`, or with
+  the board in `Bdd/Targets/Boards/<Board>/README.md` where it is a board that CI cannot
+  reach. One list per platform, not one per story.
 - Every story PR that touches the platform records the run: the commit, each step as pass
   or fail, and anything that did not pass. A step that was not run is recorded as not run,
   never as passed.

@@ -51,6 +51,11 @@ set_target_properties(SolidSyslogNucleoF767ziBringup PROPERTIES SUFFIX ".elf")
 
 target_compile_definitions(SolidSyslogNucleoF767ziBringup PRIVATE ${BDD_BOARD_DEFINITIONS})
 
+# The banner is this image's own, so the commit in it is given to the one file
+# that prints it.
+set_source_files_properties(main.c PROPERTIES
+    COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION}")
+
 target_include_directories(SolidSyslogNucleoF767ziBringup PRIVATE
     ${BDD_BOARD_DIR}                                  # Board.h, stm32f7xx_hal_conf.h
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetLineAssembler.h

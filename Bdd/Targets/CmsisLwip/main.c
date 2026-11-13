@@ -9,7 +9,7 @@
  * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread, the
  * board's netif (BddTargetBoardNetif.h), the static-IP bring-up +
- * gateway ARP warm-up, the LwipSocket sender wiring (UDP + octet-framed TCP +
+ * oracle ARP warm-up, the LwipSocket sender wiring (UDP + octet-framed TCP +
  * TLS/mTLS via the linked TLS pack over a second LwipSocket TCP), and the RFC 5424 HOSTNAME
  * read from the netif.
  *
@@ -59,8 +59,10 @@
 
 /* lwIP netif descriptor - must outlive the tcpip thread. */
 static struct netif networkInterface;
-/* Gateway IP, kept at file scope so the ARP warm-up can reach it after bring-up. */
-static ip4_addr_t gatewayAddress;
+/* Where the first frame to the oracle goes: the oracle itself when it is on
+ * the board's own network, the gateway when it is not. Kept at file scope so
+ * the ARP warm-up can reach it after bring-up. */
+static ip4_addr_t oracleNextHop;
 
 /* LwipSocket sender adapters - built by BuildSender on the interactive task,
  * torn down by TeardownNetwork. */
@@ -74,8 +76,8 @@ static struct SolidSyslogSender* tcpSender = NULL;
 static struct SolidSyslogSender* switchingSender = NULL;
 
 static void NetworkBringUp(void* context);
-static void WarmUpGatewayArp(void);
-static bool GatewayIsResolved(void);
+static void WarmUpOracleArp(void);
+static bool OracleNextHopIsResolved(void);
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
@@ -147,38 +149,44 @@ static void NetworkBringUp(void* context)
     (void) context;
     ip4_addr_t ipAddress;
     ip4_addr_t netmask;
+    ip4_addr_t gatewayAddress;
+    ip4_addr_t oracleAddress;
     /* A static address on the board's network - see BddTargetBoardConfig.h. */
     SET_IP4_ADDRESS(&ipAddress, BDD_TARGET_BOARD_IP_OCTETS);
     SET_IP4_ADDRESS(&netmask, BDD_TARGET_BOARD_NETMASK_OCTETS);
     SET_IP4_ADDRESS(&gatewayAddress, BDD_TARGET_BOARD_GATEWAY_OCTETS);
+    SET_IP4_ADDRESS(&oracleAddress, BDD_TARGET_BOARD_ORACLE_OCTETS);
+    oracleNextHop = ip4_addr_netcmp(&oracleAddress, &ipAddress, &netmask) ? oracleAddress : gatewayAddress;
 
     (void
     ) netif_add(&networkInterface, &ipAddress, &netmask, &gatewayAddress, NULL, BddTargetBoardNetif_Init, tcpip_input);
     netif_set_default(&networkInterface);
     netif_set_up(&networkInterface);
 
-    /* Kick off ARP resolution for the gateway now, so the cache is warm before
-     * the first datagram; an ARP miss on the first send would drop it. The reply
-     * is processed by this tcpip thread; the interactive task waits via
-     * WarmUpGatewayArp. */
-    (void) etharp_request(&networkInterface, &gatewayAddress);
+    /* Kick off ARP resolution for the oracle's next hop now, so the cache is
+     * warm before the first datagram; an ARP miss on the first send would drop
+     * it. The reply is processed by this tcpip thread; the interactive task
+     * waits via WarmUpOracleArp, which asks again for as long as it waits,
+     * because a board whose link is still coming up could not send this one. */
+    (void) etharp_request(&networkInterface, &oracleNextHop);
 }
 
 /* Blocks the calling (interactive) task - never the tcpip thread - until the
- * gateway resolves or a bounded deadline passes. Generous deadline: QEMU is
- * markedly slower than host. */
-static void WarmUpGatewayArp(void)
+ * next hop resolves or a bounded deadline passes. Generous deadline: an
+ * emulated board is markedly slower than its host, and a real one waits a few
+ * seconds for its link to negotiate. */
+static void WarmUpOracleArp(void)
 {
     enum
     {
-        WARM_UP_ATTEMPTS = 60,
-        WARM_UP_INTERVAL_MS = 50
+        WARM_UP_ATTEMPTS = 50,
+        WARM_UP_INTERVAL_MS = 100
     };
 
     for (int attempt = 0; attempt < WARM_UP_ATTEMPTS; attempt++)
     {
         LOCK_TCPIP_CORE();
-        bool resolved = GatewayIsResolved();
+        bool resolved = OracleNextHopIsResolved();
         UNLOCK_TCPIP_CORE();
         if (resolved)
         {
@@ -188,13 +196,18 @@ static void WarmUpGatewayArp(void)
     }
 }
 
-/* Whether the gateway's MAC is in the ARP cache yet. Reads lwIP core state, so
- * the caller holds the core lock. */
-static bool GatewayIsResolved(void)
+/* Whether the next hop's MAC is in the ARP cache yet, asking for it again if
+ * it is not. Touches lwIP core state, so the caller holds the core lock. */
+static bool OracleNextHopIsResolved(void)
 {
     struct eth_addr* ethRet = NULL;
     const ip4_addr_t* ipRet = NULL;
-    return (etharp_find_addr(&networkInterface, &gatewayAddress, &ethRet, &ipRet) >= 0);
+    bool resolved = etharp_find_addr(&networkInterface, &oracleNextHop, &ethRet, &ipRet) >= 0;
+    if (!resolved)
+    {
+        (void) etharp_request(&networkInterface, &oracleNextHop);
+    }
+    return resolved;
 }
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
@@ -206,7 +219,7 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
     SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));
 }
 
-/* Bring up the netif on the tcpip thread, warm the gateway ARP, then build the
+/* Bring up the netif on the tcpip thread, warm the oracle's ARP, then build the
  * LwipSocket SwitchingSender: UDP, octet-framed TCP, and a TLS/mTLS slot (the
  * linked TLS pack over a second LwipSocket TCP stream). Default transport UDP. Runs on the
  * interactive task - the adapters open sockets against a started lwIP core,
@@ -214,9 +227,9 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 static struct SolidSyslogSender* BuildSender(void)
 {
     /* Bring the netif up on the tcpip thread now the scheduler is running, then
-     * wait for the gateway ARP so the first datagram is not lost to a cache miss. */
+     * wait for the oracle's ARP so the first datagram is not lost to a cache miss. */
     (void) tcpip_callback(NetworkBringUp, NULL);
-    WarmUpGatewayArp();
+    WarmUpOracleArp();
 
     /* SolidSyslogLwipSocketResolver resolves the oracle by name; the
      * DNS_LOCAL_HOSTLIST entry maps "syslog-ng" -> 10.0.2.2 on the guest, so the
