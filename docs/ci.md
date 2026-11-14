@@ -176,22 +176,28 @@ library commit and are released with each library release, per the
 releases, `example-sweep.yml` keeps them honest against `main`:
 
 1. A push to `main` that touches `Core/`, a pack the stacks link, `CMakeLists.txt`,
-   `CMakePresets.json` or `cmake/` sends a `repository_dispatch` event,
-   `library-changed`, to each stack, naming the commit. The token is minted from
-   the release GitHub App, which is installed on the stacks.
+   `CMakePresets.json`, `cmake/` or `ci.yml` sends a `repository_dispatch` event,
+   `library-changed`, to each stack, naming the commit and the
+   `cpputest-freertos-cross` image digest that commit's `ci.yml` pins. The token
+   is minted from the release GitHub App, which is installed on the stacks.
 2. Each stack's **Sweep** workflow checks out its latest `release/<version>`
    branch and sweeps every stage with `solid-syslog.pin` overridden to that
-   commit, as it does for a release, committing nothing. It
-   answers with `sweep-finished`, naming the stack, the commit, the verdict and
-   the stages that failed.
+   commit and every container on the cross image replaced by the one named, as
+   it does for a release, committing nothing. The release branch is not
+   touched: a sweep of it with neither override still measures the branch as it
+   shipped. It answers with `sweep-finished`, naming the stack, the commit, the
+   verdict and the stages that failed.
 3. A failed sweep opens one issue per stack here, labelled `example-sweep`,
    naming the stages and the commits since the stack's last green sweep. Each
    later red sweep comments on it, and the next green one closes it.
 
 The fix is to the stage, or to the library where the change was not meant. Run
 the **Example Sweep** workflow from the Actions tab with a commit to send the
-event by hand; a stack's **Sweep** workflow also takes the pin directly, for
-sweeping one stack against one commit.
+event by hand; a stack's **Sweep** workflow also takes the pin and the image
+directly, for sweeping one stack against one commit. Figures from a sweep with
+either override are not the release branch's and are never committed as its
+evidence; the evidence commit of a release holds the output of a sweep with
+neither.
 
 ## Permissions
 

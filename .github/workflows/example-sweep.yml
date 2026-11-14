@@ -1,9 +1,10 @@
 name: Example Sweep
 
 # Keeps the example stacks honest against main. A push to main that touches
-# Core, a pack the stacks link, or the build files sends `library-changed` to
-# each stack, which sweeps its latest release branch with the pin overridden to
-# that commit and answers with `sweep-finished`. A failed sweep becomes one
+# Core, a pack the stacks link, the build files or the cross image sends
+# `library-changed` to each stack, which sweeps its latest release branch with
+# the pin overridden to that commit, in the container image the commit's own CI
+# pins, and answers with `sweep-finished`. A failed sweep becomes one
 # issue per stack here, updated while it stays red and closed by the next green
 # sweep. docs/ci.md describes the chain; workflow_dispatch sends the event for
 # a commit by hand.
@@ -20,6 +21,7 @@ on:
       - CMakeLists.txt
       - CMakePresets.json
       - cmake/**
+      - .github/workflows/ci.yml
       - .github/workflows/example-sweep.yml
   workflow_dispatch:
     inputs:
@@ -65,15 +67,32 @@ jobs:
           echo "sha=$full" >> "$GITHUB_OUTPUT"
           echo "sweeping the stacks against $full"
 
+      # The cross image is pinned by digest in ci.yml; the commit's own pin is
+      # the image its CI tested it in, so the stacks sweep it in that one.
+      - name: Read the image the commit's CI pins
+        id: image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          image=$(gh api -H "Accept: application/vnd.github.raw+json" \
+                    "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/ci.yml?ref=$SHA" \
+                  | grep -o 'ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:[0-9a-f]\{64\}' | sort -u)
+          [ "$(echo "$image" | grep -c .)" -eq 1 ] || { echo "ci.yml at $SHA pins the cross image as:" "$image" >&2; exit 1; }
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "in $image"
+
       - name: Send library-changed to each stack
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           SHA: ${{ steps.commit.outputs.sha }}
+          IMAGE: ${{ steps.image.outputs.image }}
         run: |
           for stack in $STACKS; do
             gh api "repos/cososo-ltd/$stack/dispatches" \
               -f event_type=library-changed \
-              -f "client_payload[sha]=$SHA"
+              -f "client_payload[sha]=$SHA" \
+              -f "client_payload[image]=$IMAGE"
             echo "library-changed sent to $stack for $SHA"
           done
 
@@ -134,7 +153,7 @@ jobs:
           MD
           if [ -z "$number" ]; then
             cat > /tmp/body.md <<MD
-          The \`$STACK\` stack no longer builds and runs against \`main\`. Each stage below is one commit of its latest release branch, swept with \`solid-syslog.pin\` overridden to the commit named. The fix is to the stage, on the stack's \`wip/next\` branch where one exists, or to the library where the change was not meant.
+          The \`$STACK\` stack no longer builds and runs against \`main\`. Each stage below is one commit of its latest release branch, swept with \`solid-syslog.pin\` overridden to the commit named, in the container image that commit's CI pins. The fix is to the stage, on the stack's \`wip/next\` branch where one exists, or to the library where the change was not meant.
 
           This issue is updated by the Example Sweep workflow while the stack stays red, and closed by its next green sweep.
 
