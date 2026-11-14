@@ -248,8 +248,9 @@ writes the image already built, and `-Paths` runs only the features given.
 `-SustainedRun <count>` runs no scenario. It sends that many messages over UDP
 and then as many over TCP, one at a time, and passes if the collector recorded
 every one of them once, in order, and as the target sends it: only its
-sequence number, its up-time and the library's version are not held to a value. It ends with a line for each transport giving the
-messages sent, received and at fault.
+sequence number, its up-time and the library's version are not held to a
+value. It ends with a line for each transport giving the messages sent,
+received and at fault.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
