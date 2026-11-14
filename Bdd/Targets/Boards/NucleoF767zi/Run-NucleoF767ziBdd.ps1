@@ -31,9 +31,11 @@ Nothing else may hold that port, and no other collector may be running,
 because both would write Bdd/output/received.jsonl.
 
 The tag filter is this board's list of what it cannot do yet: a store (@store),
-for want of storage, and TLS (@tls), which has not been run on it. It has no
-real-time clock (@rtc). Anything tagged @nucleof767ziwip is a scenario waiting
-on a capability, and loses the tag as the story that adds it lands.
+for want of storage, and TLS (@tls), which has not been run on it. The board
+has a real-time clock, and the run tells it the time before the first scenario,
+so it runs the scenarios of a target that knows the time (@rtc) and not those
+of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
+waiting on a capability, and loses the tag as the story that adds it lands.
 
 -SkipBuild reuses the image already built, and still writes it to the board.
 -Paths runs only the features given, as behave takes them, under the same tag
@@ -41,7 +43,8 @@ filter.
 
 -SustainedRun runs no scenario. It sends the number of messages given over UDP
 and then as many over TCP, and passes if the collector recorded every one of
-them once, in order and as it was sent. Runner/sustained_run.py is what does it.
+them once, in order and as it was sent, with a time on it no earlier than the
+last. Runner/sustained_run.py is what does it.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
@@ -63,7 +66,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
-$tags = '(@udp or @tcp) and not @tls and not @store and not @rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
+$tags = '(@udp or @tcp) and not @tls and not @store and not @no_rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 $preset = 'nucleo-f767zi-lwip'

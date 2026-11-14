@@ -1,6 +1,6 @@
 """A sustained run against the NUCLEO-F767ZI: many messages over UDP, then as
 many over TCP, and a check that the collector recorded every one of them once,
-in order and as it was sent.
+in order and as it was sent, with a time on it no earlier than the last.
 
 Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and writes
 the image, starts the collector, and names the board's serial port and the
@@ -20,7 +20,7 @@ import subprocess
 import sys
 import time
 
-from nucleo_f767zi import board_address_in, check_image_is_of_commit, open_board, output_to_prompt
+from nucleo_f767zi import board_address_in, check_image_is_of_commit, open_board, output_to_prompt, tell_the_time
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
@@ -35,22 +35,26 @@ _BUILD_DIR = os.path.join("build", "nucleo-f767zi-lwip")
 
 # The message the target sends for `send 1`, as Bdd/Targets/Common has it, in
 # the parts between what is not the same in every message: the board's address,
-# which is its HOSTNAME, the two numbers that count up, and the library's
-# version.
+# which is its HOSTNAME, the time, the two numbers that count up, and the
+# library's version. The run tells the board the time before it sends, so every
+# message carries one, and says that its clock is set.
 _SENT = (
-    "<134>1 - ",
+    "<134>1 ",
+    " ",
     ' SolidSyslogBddTarget - example [meta sequenceId="',
     '" sysUpTime="',
-    '" language="en-GB"][timeQuality tzKnown="0" isSynced="0"][origin software="SolidSyslogBddTarget" swVersion="',
+    '" language="en-GB"][timeQuality tzKnown="1" isSynced="1"][origin software="SolidSyslogBddTarget" swVersion="',
     '" enterpriseId="32473" ip="192.0.2.1"] ﻿Hello from SolidSyslog',
 )
+_TIME = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z"
 _COUNT = r"\d+"
 _VERSION = r"\d+\.\d+\.\d+"
+_TIME_SENT = re.compile(r"^<\d+>1 (" + _TIME + ") ")
 
 
 # What a message sent by the board at hostname has to match, whole.
 def message_as_sent(hostname):
-    between = (re.escape(hostname), _COUNT, _COUNT, _VERSION)
+    between = (_TIME, re.escape(hostname), _COUNT, _COUNT, _VERSION)
     pattern = re.escape(_SENT[0])
     for varying, literal in zip(between, _SENT[1:]):
         pattern += varying + re.escape(literal)
@@ -74,10 +78,14 @@ def messages_in(lines):
 # What is wrong with messages as the record of count messages sent one after
 # another, the first with sequenceId first: nothing, for every message there
 # once, in order, and matching sent, which is message_as_sent's. Over TCP a
-# message arrives behind its octet count, which has to be its length.
+# message arrives behind its octet count, which has to be its length. The
+# messages are sent one after another, so the time on each is no earlier than
+# on the one before: every digit of it is of fixed width, and so it is compared
+# as it is written.
 def faults_in(messages, first, count, sent):
     faults = []
     ids = []
+    time_before = ""
     for message in messages:
         counted = _OCTET_COUNTED.match(message)
         if counted:
@@ -88,6 +96,11 @@ def faults_in(messages, first, count, sent):
         ids.append(int(sequence_id.group(1)) if sequence_id else None)
         if not sent.fullmatch(message):
             faults.append(f"a message that is not the one sent: {message!r}")
+        time_sent = _TIME_SENT.match(message)
+        if time_sent:
+            if time_sent.group(1) < time_before:
+                faults.append(f"a time before that of the message before it: {message!r}")
+            time_before = time_sent.group(1)
     expected = list(range(first, first + count))
     if ids != expected:
         arrived = set(ids)
@@ -142,6 +155,7 @@ def main(count):
         build_dir = os.environ.get("NUCLEO_F767ZI_BUILD_DIR") or _BUILD_DIR
         with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
             sent = message_as_sent(board_address_in(cache.read()))
+        tell_the_time(console, _ANSWER_TIMEOUT_SECONDS)
         _send(console, count)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)

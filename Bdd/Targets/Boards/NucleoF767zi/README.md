@@ -26,6 +26,7 @@ say what it supplies to the code.
 | Network addresses | `BddTargetBoardAddresses.h.in` | Written into the build tree by the configure, from cache variables |
 | Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
+| Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
 | Disk | `BddTargetBoardDisk.c` | None fitted: it never becomes ready |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
 
@@ -142,6 +143,42 @@ from memory that is not cached.
 With the caches on and that region not set, no message from the board reaches
 the collector, over UDP or over TCP.
 
+## Clock
+
+The board knows the time of day once it has been told it. `set time <seconds>`
+at the console gives it UTC in seconds since the epoch, and the STM32's
+real-time clock keeps it from there on its own 32.768 kHz crystal, through
+every reset. A board that has been told sends a TIMESTAMP on each message and
+`tzKnown="1" isSynced="1"`. One that has not sends NILVALUE and
+`tzKnown="0" isSynced="0"`. The clock stops when the board loses power, because
+nothing supplies it but the USB cable, so a board plugged in again has to be
+told again. A BDD run tells it [before its first scenario](#running-the-bdd-scenarios).
+
+The real-time clock keeps the seconds and nothing finer is taken from it once
+the target is running. It interrupts as each second starts, and a reading of
+the time is that second plus how far into it the reading is, measured on the
+core's cycle counter, which counts the 216 MHz system clock. So a reading is to
+the microsecond and costs a few instructions, where reading the real-time clock
+itself would give four milliseconds at best. The cycle counter is part of the
+core's debug unit. It runs with no debugger attached, and it is used so that
+the clock takes none of the part's timers.
+
+Two things follow from there being two oscillators. The crystal and the system
+clock drift against each other, by some tens of microseconds in a second, so a
+second as the cycle counter measures it can end a little before or after the
+real-time clock says it has. A reading never passes the end of its second, and
+the next second starts where the real-time clock puts it, so the time does not
+go back. And a target that has just been reset has had no interrupt yet, so
+until the first one it reads from where the real-time clock's own sub-second
+count put it at start-up, which is good to about four milliseconds.
+
+The real-time clock holds two digits of year and is taken as set when the year
+is not zero, so `set time` takes a time from 2001 to 2099 and answers
+`set: invalid` to any other. It answers the same if the crystal did not start,
+which the target waits up to five seconds for when it is first powered.
+
+The bring-up image does not start the clock.
+
 ## What the board does not have yet
 
 - No storage is fitted. `set store file` is refused and the target stays on the
@@ -248,8 +285,9 @@ writes the image already built, and `-Paths` runs only the features given.
 `-SustainedRun <count>` runs no scenario. It sends that many messages over UDP
 and then as many over TCP, one at a time, and passes if the collector recorded
 every one of them once, in order, and as the target sends it: only its
-sequence number, its up-time and the library's version are not held to a
-value. It ends with a line for each transport giving the messages sent,
+time, its sequence number, its up-time and the library's version are not held
+to a value, and the time on a message has to be no earlier than on the one
+before it. It ends with a line for each transport giving the messages sent,
 received and at fault.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
@@ -260,6 +298,9 @@ emulator.
 
 Before the first scenario the run reads the banner and stops unless it names
 the commit checked out, so a run cannot pass against an image of anything else.
+It then tells the board this machine's time, once, and the board's
+[clock](#clock) keeps it through the reset that starts each scenario. A
+sustained run does the same before its first message.
 The build marks an image `-dirty` when a tracked file has changes its commit
 does not hold, so the script refuses to start from such a tree.
 
@@ -286,8 +327,9 @@ port in either direction and every reset, each with its time, taken at the
 port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
-[does not have yet](#what-the-board-does-not-have-yet) and what any target
-without a real-time clock leaves out. The script holds the tag filter.
+[does not have yet](#what-the-board-does-not-have-yet). The board has been told
+the time by then, so it runs the scenarios tagged `@rtc` and not those tagged
+`@no_rtc`. The script holds the tag filter.
 
 Where a scenario kills the target to stand in for a power cut, the board is
 reset through the probe. That restarts the processor and loses what was in RAM.
@@ -324,6 +366,7 @@ the board lands on one of them.
 | Function | Pin | Notes |
 |---|---|---|
 | HSE clock in | PH0 | 8 MHz from the ST-LINK's MCO. No crystal is fitted, so HSE runs in bypass |
+| LSE crystal | PC14, PC15 | 32.768 kHz, for the real-time clock |
 | Console TX, USART3 | PD8 | To the ST-LINK virtual COM port |
 | Console RX, USART3 | PD9 | From the ST-LINK virtual COM port |
 | LD1, green | PB0 | The bring-up image blinks it |
@@ -423,6 +466,11 @@ first of them that fails.
 6. The script run again with `-SkipBuild -SustainedRun 10000` passes. The
    record gives its two lines: the messages sent, received and at fault over
    UDP and over TCP.
+7. By hand, where the pull request changes the [clock](#clock): the USB cable
+   is taken out and put back, and a `send 1` at the console arrives at the
+   collector with `-` for its TIMESTAMP and `tzKnown="0"`. After
+   `set time <seconds>` a second arrives with that time and `tzKnown="1"`, and
+   after the board's reset button is pressed, a third does too.
 
 A scenario that fails is recorded with what was found: fixed in the pull
 request, or raised as an issue and the scenario tagged `@nucleof767ziwip`
