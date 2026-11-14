@@ -262,7 +262,7 @@ static inline bool Formatter_IsAboveUnicodeMaxEncoding(char lead, char continuat
 {
     unsigned char uLead = (unsigned char) lead;
     bool f4WithCont1Above8F = (uLead == 0xF4U) && (((unsigned char) continuation1 & 0xF0U) != 0x80U);
-    bool f5OrHigherLead = (uLead >= 0xF5U) && (uLead <= 0xF7U);
+    bool f5OrHigherLead = uLead >= 0xF5U;
     return f4WithCont1Above8F || f5OrHigherLead;
 }
 
