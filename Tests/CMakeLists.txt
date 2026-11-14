@@ -469,6 +469,11 @@ if(COVERAGE)
             --output-directory ${CMAKE_BINARY_DIR}/report/coverage-report
             --branch-coverage
             --ignore-errors unsupported
+            # A static inline helper in a header is exported once per file
+            # that includes it, so genhtml's function figure counts copies no
+            # file calls as uncovered functions. llvm-cov's report, on the step
+            # summary, has the per-function figure; genhtml shows none.
+            --no-function-coverage
             --prefix ${CMAKE_SOURCE_DIR}
             --title SolidSyslog
             --header-title "SolidSyslog coverage report"

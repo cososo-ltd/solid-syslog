@@ -33,11 +33,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     struct SolidSyslogFormatter;
 
-    static inline struct SolidSyslogFormatter* SolidSyslogFormatter_FromStorage(SolidSyslogFormatterStorage * storage)
-    {
-        return (struct SolidSyslogFormatter*) storage;
-    }
-
     struct SolidSyslogFormatter* SolidSyslogFormatter_Create(SolidSyslogFormatterStorage * storage, size_t bufferSize);
     void SolidSyslogFormatter_AsciiCharacter(struct SolidSyslogFormatter * formatter, char value);
     void SolidSyslogFormatter_Bom(struct SolidSyslogFormatter * formatter);
