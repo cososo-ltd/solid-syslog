@@ -27,12 +27,14 @@ both ways; MC/DC asks that each condition has been shown to matter on its
 own. The MC/DC report lists every decision with its conditions and the test
 vectors the run produced, and names the pair each condition lacks.
 
-Three conditions are not covered, and will not be on this host. The TCP
-streams of the Posix, lwIP Sockets and VxWorks 6.4 packs treat `EAGAIN` and
-`EWOULDBLOCK` alike as a receive that would block. On Linux, where the tests
-run, the two names are one value, so the second comparison can never be the
-one that decides. The targets where they differ are the reason the second
-comparison is there.
+The conditions that remain uncovered will not be covered on this host. The
+TCP streams of the Posix, lwIP Sockets and VxWorks 6.4 packs treat `EAGAIN`
+and `EWOULDBLOCK` alike as a receive that would block. On Linux, where the
+tests run, the two names are one value, so the second comparison can never be
+the one that decides. The targets where they differ are the reason the second
+comparison is there. The OpenSSL stream refuses a peer whose pin names a hash
+it has no digest for; the pins reach it through Core's parser, which admits
+only the hashes it knows, so no test can present one it does not.
 
 The report covers Core and every platform pack a Linux host can build. The
 Windows pack is tested on Windows and is not measured. The cross-built targets

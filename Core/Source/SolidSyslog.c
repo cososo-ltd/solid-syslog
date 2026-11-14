@@ -686,7 +686,7 @@ static inline bool SolidSyslog_ReportIfPending(struct SolidSyslog* self, size_t 
         if (goesOn)
         {
             SolidSyslog_HoldPendingReport(self, index);
-            goesOn = SolidSyslog_DealWithHeldRecord(self) && !self->Halted;
+            goesOn = SolidSyslog_DealWithHeldRecord(self);
         }
     }
 

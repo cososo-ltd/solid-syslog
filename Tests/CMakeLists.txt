@@ -462,10 +462,13 @@ if(COVERAGE)
         # --prefix pins the report's layout to the source tree, so a pack's
         # pages are at Platform/<Pack>/Source/ and Core's at Core/Source/,
         # which is where hooks/coverage_report.py links. Without it genhtml
-        # strips whatever prefix the tracefile happens to share.
+        # strips whatever prefix the tracefile happens to share. The tracefile
+        # names no gcov version, so genhtml warns that it is deriving function
+        # end lines itself; it does so correctly, and the warning is silenced.
         COMMAND ${GENHTML_EXECUTABLE} ${CMAKE_BINARY_DIR}/coverage.filtered.info
             --output-directory ${CMAKE_BINARY_DIR}/report/coverage-report
             --branch-coverage
+            --ignore-errors unsupported
             --prefix ${CMAKE_SOURCE_DIR}
             --title SolidSyslog
             --header-title "SolidSyslog coverage report"

@@ -758,6 +758,7 @@ TEST_GROUP_BASE(SolidSyslogServiceHeldRecordRefusedLater, ServiceHeldRecordBase)
         StoreFake_Destroy();
     }
 };
+
 // clang-format on
 
 TEST(SolidSyslogServiceHeldRecordRefusedLater, TheRefusalOfAHeldRecordEndsThePassWithNothingReportedAfterIt)
