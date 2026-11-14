@@ -7,6 +7,7 @@ import os
 import queue
 import subprocess
 import sys
+import threading
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -97,6 +98,22 @@ class SerialConsoleTest(unittest.TestCase):
         self.addCleanup(console.kill)
 
         self.assertEqual(b"banner, link up", self.read_from(console, 15))
+
+    # A pipe holds only so much before a write to it waits for a reader, and
+    # nobody can read a console that has not been handed over yet.
+    def test_more_shown_already_than_a_pipe_holds_does_not_keep_the_console_from_opening(self):
+        shown = b"x" * 1000000
+        opened = []
+        opener = threading.Thread(
+            target=lambda: opened.append(serial_console.SerialConsole(FakePort(), lambda: None, shown)), daemon=True
+        )
+
+        opener.start()
+        opener.join(5)
+
+        self.assertFalse(opener.is_alive())
+        self.addCleanup(opened[0].kill)
+        self.assertEqual(shown, self.read_from(opened[0], len(shown)))
 
     # A probe unplugged mid-scenario: the steps must see the console end
     # rather than wait out their timeout on a pipe nobody will write.

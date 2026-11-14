@@ -19,7 +19,6 @@ class SerialConsole:
         self._reset = reset
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
-        os.write(self._write_end, shown)
         self.stdin = _ConsoleInput(port)
         # A serial console carries one stream; errors arrive on stdout with the rest.
         self.stderr = None
@@ -27,7 +26,7 @@ class SerialConsole:
         self.pid = None
         self.returncode = None
         self._ended = threading.Event()
-        self._copier = threading.Thread(target=self._copy_output, daemon=True)
+        self._copier = threading.Thread(target=self._copy_output, args=(shown,), daemon=True)
         self._copier.start()
 
     def poll(self):
@@ -50,17 +49,23 @@ class SerialConsole:
     # The steps read stdout with os.read, which needs a real file descriptor,
     # so the output is copied into a pipe. Closing the pipe as the console ends
     # gives the reader its end of file, and a port that fails ends the console
-    # as a kill does, so the reader is not left waiting on it.
-    def _copy_output(self):
+    # as a kill does, so the reader is not left waiting on it. What the board
+    # had shown already goes into the pipe from here too: a pipe that is full
+    # makes its writer wait for a reader, and there is none until the console
+    # has been handed over.
+    def _copy_output(self, shown):
         try:
+            self._write_all(shown)
             while not self._ended.is_set():
-                data = self._port.read()
-                if data:
-                    os.write(self._write_end, data)
+                self._write_all(self._port.read())
         finally:
             os.close(self._write_end)
             self._port.close()
             self.returncode = 0
+
+    def _write_all(self, data):
+        while data:
+            data = data[os.write(self._write_end, data):]
 
 
 # Text written as the steps write a local target's stdin.
