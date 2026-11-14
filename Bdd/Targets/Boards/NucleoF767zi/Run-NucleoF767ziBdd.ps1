@@ -41,7 +41,7 @@ filter.
 
 -SustainedRun runs no scenario. It sends the number of messages given over UDP
 and then as many over TCP, and passes if the collector recorded every one of
-them once, in order and unchanged. Runner/sustained_run.py is what does it.
+them once, in order and as it was sent. Runner/sustained_run.py is what does it.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
@@ -243,7 +243,8 @@ try
     # sustained run reads the files moved aside too, so none may be left from
     # before, and a scenario reads only the newest, so a record left nearly
     # full would be moved aside under it with the message it is waiting for.
-    Remove-Item -Path 'Bdd\output\received*.jsonl' -ErrorAction SilentlyContinue
+    # Finding none is no error, and one that cannot be removed ends the run.
+    Remove-Item -Path 'Bdd\output\received*.jsonl'
     $collector = Start-Process -FilePath 'Bdd\otel\bin\otelcol-contrib.exe' `
         -ArgumentList "--config=$env:OTELCOL_CONFIG" `
         -RedirectStandardOutput 'Bdd\output\otelcol-nucleo-f767zi.out' `

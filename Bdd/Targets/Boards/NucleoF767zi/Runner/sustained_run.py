@@ -1,6 +1,6 @@
 """A sustained run against the NUCLEO-F767ZI: many messages over UDP, then as
 many over TCP, and a check that the collector recorded every one of them once,
-in order and unchanged.
+in order and as it was sent.
 
 Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and writes
 the image, starts the collector, and names the board's serial port and the
@@ -20,7 +20,7 @@ import subprocess
 import sys
 import time
 
-from nucleo_f767zi import check_image_is_of_commit, open_board, output_to_prompt
+from nucleo_f767zi import board_address_in, check_image_is_of_commit, open_board, output_to_prompt
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
@@ -29,10 +29,32 @@ _RECORD_WAIT_SECONDS = 60
 _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_tcp.jsonl"}
 
 _SEQUENCE_ID = re.compile(r'sequenceId="(\d+)"')
-# What differs from one message to the next, and nothing else may.
-_VARIES = re.compile(r'(sequenceId|sysUpTime)="\d+"')
 _OCTET_COUNTED = re.compile(r"^(\d+) (.*)$", re.DOTALL)
 _FAULTS_SHOWN = 10
+_BUILD_DIR = os.path.join("build", "nucleo-f767zi-lwip")
+
+# The message the target sends for `send 1`, as Bdd/Targets/Common has it, in
+# the parts between what is not the same in every message: the board's address,
+# which is its HOSTNAME, the two numbers that count up, and the library's
+# version.
+_SENT = (
+    "<134>1 - ",
+    ' SolidSyslogBddTarget - example [meta sequenceId="',
+    '" sysUpTime="',
+    '" language="en-GB"][timeQuality tzKnown="0" isSynced="0"][origin software="SolidSyslogBddTarget" swVersion="',
+    '" enterpriseId="32473" ip="192.0.2.1"] ﻿Hello from SolidSyslog',
+)
+_COUNT = r"\d+"
+_VERSION = r"\d+\.\d+\.\d+"
+
+
+# What a message sent by the board at hostname has to match, whole.
+def message_as_sent(hostname):
+    between = (re.escape(hostname), _COUNT, _COUNT, _VERSION)
+    pattern = re.escape(_SENT[0])
+    for varying, literal in zip(between, _SENT[1:]):
+        pattern += varying + re.escape(literal)
+    return re.compile(pattern)
 
 
 # The messages in lines, which are the collector's file exporter's: each is one
@@ -51,12 +73,11 @@ def messages_in(lines):
 
 # What is wrong with messages as the record of count messages sent one after
 # another, the first with sequenceId first: nothing, for every message there
-# once, in order, and the same as the first but for what counts up. Over TCP a
+# once, in order, and matching sent, which is message_as_sent's. Over TCP a
 # message arrives behind its octet count, which has to be its length.
-def faults_in(messages, first, count):
+def faults_in(messages, first, count, sent):
     faults = []
     ids = []
-    pattern = None
     for message in messages:
         counted = _OCTET_COUNTED.match(message)
         if counted:
@@ -65,11 +86,8 @@ def faults_in(messages, first, count):
                 faults.append(f"an octet count of {counted.group(1)} on a message of another length: {message!r}")
         sequence_id = _SEQUENCE_ID.search(message)
         ids.append(int(sequence_id.group(1)) if sequence_id else None)
-        shape = _VARIES.sub(r'\1="N"', message)
-        if pattern is None:
-            pattern = shape
-        elif shape != pattern:
-            faults.append(f"a message unlike the first: {message!r}")
+        if not sent.fullmatch(message):
+            faults.append(f"a message that is not the one sent: {message!r}")
     expected = list(range(first, first + count))
     if ids != expected:
         arrived = set(ids)
@@ -121,6 +139,9 @@ def main(count):
     console = open_board(os.environ["NUCLEO_F767ZI_SERIAL_PORT"], os.environ.get("STM32_PROGRAMMER_CLI", "STM32_Programmer_CLI"))
     try:
         check_image_is_of_commit(output_to_prompt(console, _BOOT_TIMEOUT_SECONDS), commit)
+        build_dir = os.environ.get("NUCLEO_F767ZI_BUILD_DIR") or _BUILD_DIR
+        with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
+            sent = message_as_sent(board_address_in(cache.read()))
         _send(console, count)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
@@ -128,7 +149,7 @@ def main(count):
         failed = False
         for transport, first in (("udp", 1), ("tcp", count + 1)):
             messages = _messages_once_arrived(_RECORDS[transport], count)
-            faults = faults_in(messages, first, count)
+            faults = faults_in(messages, first, count, sent)
             failed = failed or bool(faults)
             print(f"Sustained run, {transport.upper()}: {count} sent, {len(messages)} received, {len(faults)} faults")
             for fault in faults[:_FAULTS_SHOWN]:
