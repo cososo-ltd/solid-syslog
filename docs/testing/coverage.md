@@ -22,9 +22,12 @@ The MC/DC column counts conditions, not decisions. A decision such as
 `a && b` has two conditions, and a condition is covered when the tests include
 a pair of runs in which it alone changed and the decision's outcome changed
 with it, which is modified condition/decision coverage as DO-178C and
-ISO 26262 define it. Branch coverage is satisfied once each decision has gone
-both ways; MC/DC asks that each condition has been shown to matter on its
-own. The MC/DC report lists every decision with its conditions and the test
+ISO 26262 define it. A condition the short-circuit left unevaluated in one of
+the pair may differ too, since its value could not have reached the outcome;
+that is the masking form of MC/DC, which llvm-cov reports and DO-178C accepts.
+Branch coverage is satisfied once each condition has gone both ways, so a
+short-circuited condition leaves a branch uncovered; MC/DC asks more, that
+each condition has been shown to matter on its own. The MC/DC report lists every decision with its conditions and the test
 vectors the run produced, and names the pair each condition lacks.
 
 The conditions that remain uncovered will not be covered on this host. The

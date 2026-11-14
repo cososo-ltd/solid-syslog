@@ -96,7 +96,7 @@ measurement as a table per pack and applies the gate:
 
 ```bash
 scripts/coverage_summary.py build/coverage/coverage.filtered.info \
-  --llvm-json build/coverage/coverage.llvm.json --threshold 90
+  --llvm-json build/coverage/coverage.llvm.json
 ```
 
 The CI gate is 99% on lines, 99% on branches and 99% on MC/DC, over all packs
