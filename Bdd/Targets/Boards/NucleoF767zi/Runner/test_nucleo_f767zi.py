@@ -154,6 +154,7 @@ class ProbeTest(unittest.TestCase):
         self.asked = 0
         self.reports = []
         self.answers_from_attempt = 1
+        self.waits = []
 
     def ask_probe(self):
         self.asked += 1
@@ -162,7 +163,7 @@ class ProbeTest(unittest.TestCase):
         return 1, "Error: No STM32 target found"
 
     def reset(self):
-        return nucleo_f767zi.reset_through_probe(self.ask_probe, 3, self.reports.append)
+        return nucleo_f767zi.reset_through_probe(self.ask_probe, 3, self.reports.append, self.waits.append)
 
     def test_a_probe_that_resets_the_board_is_asked_once_and_what_it_said_is_returned(self):
         self.assertEqual("MCU Reset", self.reset())
@@ -185,6 +186,18 @@ class ProbeTest(unittest.TestCase):
             self.reset()
 
         self.assertEqual(3, self.asked)
+
+    def test_a_probe_that_fails_is_given_a_second_before_it_is_asked_again(self):
+        self.answers_from_attempt = 3
+
+        self.reset()
+
+        self.assertEqual([1, 1], self.waits)
+
+    def test_a_probe_that_resets_the_board_is_not_waited_for(self):
+        self.reset()
+
+        self.assertEqual([], self.waits)
 
 
 class ConsoleAfterResetTest(unittest.TestCase):

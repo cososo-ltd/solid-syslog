@@ -18,6 +18,9 @@ PROMPT = b"SolidSyslog> "
 _READ_WAIT_SECONDS = 0.05
 _PROBE_TIMEOUT_SECONDS = 30
 _PROBE_ATTEMPTS = 3
+# Three attempts one after another have all failed inside a fifth of a second,
+# and a reset asked for a second later was done.
+_PROBE_RECOVERY_SECONDS = 1
 _QUIET_SECONDS = 0.5
 # A boot prints for a few seconds and then waits at its prompt.
 _NEVER_QUIET_SECONDS = 30
@@ -53,7 +56,7 @@ def open_board(port_name, programmer):
         return done.returncode, " | ".join(line.strip() for line in said if line.strip())
 
     def reset():
-        return reset_through_probe(ask_probe, _PROBE_ATTEMPTS, report)
+        return reset_through_probe(ask_probe, _PROBE_ATTEMPTS, report, time.sleep)
 
     port = _ArrivedBytes(serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS))
     record_path = os.environ.get("NUCLEO_F767ZI_CONSOLE_RECORD")
@@ -116,8 +119,9 @@ def recorded_reset(reset, record):
 # Has the probe reset the board, and returns what it said, for a report of a
 # reset that did not take. The probe has been seen to fail once in some
 # thousands of resets, so it is asked again, and each failure is reported, with
-# what it said, rather than passed over.
-def reset_through_probe(ask_probe, attempts, report):
+# what it said, rather than passed over. What fails it outlasts an attempt, so
+# wait is given the seconds to let pass before the next.
+def reset_through_probe(ask_probe, attempts, report, wait):
     code = None
     attempt = 0
     while (code != 0) and (attempt < attempts):
@@ -125,6 +129,7 @@ def reset_through_probe(ask_probe, attempts, report):
         code, said = ask_probe()
         if (code != 0) and (attempt < attempts):
             report(f"NUCLEO-F767ZI: the probe did not reset the board at attempt {attempt}, and is asked again. It said: {said}")
+            wait(_PROBE_RECOVERY_SECONDS)
     if code != 0:
         raise RuntimeError(f"The probe did not reset the board in any of {attempts} attempts. It last said: {said}")
     return said

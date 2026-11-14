@@ -237,7 +237,9 @@ about a thousand resets and its cause is not known, so a line beginning
 `NUCLEO-F767ZI: the board showed no banner` goes in the run's record. So does
 one beginning `NUCLEO-F767ZI: the probe did not reset the board`: the
 programmer itself has failed a reset once in some thousands, and it too is
-asked again, up to three times, with what it said.
+asked again, up to three times and a second apart, with what it said. The
+second is there because its failures come together: three attempts one after
+another have all failed within a fifth of a second.
 
 A target that stops says why before it does. A kernel assertion, a task that
 overran its stack, a kernel heap with nothing left, an lwIP assertion and a
