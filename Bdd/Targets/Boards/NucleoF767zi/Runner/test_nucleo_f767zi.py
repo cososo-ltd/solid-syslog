@@ -228,5 +228,42 @@ class BoardAddressTest(unittest.TestCase):
             nucleo_f767zi.board_address_in("CMAKE_BUILD_TYPE:STRING=Debug\n")
 
 
+# The record is taken at the port, before the pipe and the threads a run reads
+# the console through, so it says what the board sent whatever became of it.
+class RecordedPortTest(unittest.TestCase):
+    def setUp(self):
+        self.port = FakePort()
+        self.record = []
+        self.recorded = nucleo_f767zi.RecordedPort(self.port, self.record.append)
+
+    def test_what_arrives_is_passed_on_and_recorded(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        self.assertEqual(b"SolidSyslog> ", self.recorded.read())
+        self.assertEqual(["from the board: b'SolidSyslog> '"], self.record)
+
+    def test_a_read_that_brings_nothing_is_not_recorded(self):
+        self.assertEqual(b"", self.recorded.read())
+        self.assertEqual([], self.record)
+
+    def test_what_is_written_reaches_the_port_and_is_recorded(self):
+        self.recorded.write(b"send 1")
+
+        self.assertEqual(b"send 1", self.port.written)
+        self.assertEqual(["to the board: b'send 1'"], self.record)
+
+    def test_closing_closes_the_port_and_is_recorded(self):
+        self.recorded.close()
+
+        self.assertTrue(self.port.closed)
+        self.assertEqual(["port closed"], self.record)
+
+    def test_a_reset_is_recorded_with_what_the_probe_said(self):
+        reset = nucleo_f767zi.recorded_reset(lambda: "MCU Reset", self.record.append)
+
+        self.assertEqual("MCU Reset", reset())
+        self.assertEqual(["reset asked of the probe", "reset done, the probe said: MCU Reset"], self.record)
+
+
 if __name__ == "__main__":
     unittest.main()

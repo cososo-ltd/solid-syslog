@@ -70,8 +70,8 @@ $mount = '/workspaces/solid-syslog'
 # would send a later run of another target to this board, and the serial port
 # would stand in for the board's own after it has moved.
 $runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR',
-    'STM32_PROGRAMMER_CLI', 'ORACLE_FORMAT', 'RECEIVED_LOG', 'VXWORKS64_COLLECTOR_PORT', 'OTELCOL_CONFIG',
-    'OTELCOL_TCP_PORTS')
+    'NUCLEO_F767ZI_CONSOLE_RECORD', 'STM32_PROGRAMMER_CLI', 'ORACLE_FORMAT', 'RECEIVED_LOG',
+    'VXWORKS64_COLLECTOR_PORT', 'OTELCOL_CONFIG', 'OTELCOL_TCP_PORTS')
 
 # STM32CubeCLT's installer puts the programmer on PATH; a shell opened before
 # the install, or one that does not take the machine's PATH, finds it here.
@@ -229,6 +229,10 @@ try
     $env:OTELCOL_TCP_PORTS = "$collectorPort"
 
     New-Item -ItemType Directory -Force -Path 'Bdd\output' | Out-Null
+    # Everything that crosses the serial port, and each reset, with its time:
+    # what the board sent, whatever the run then made of it.
+    $env:NUCLEO_F767ZI_CONSOLE_RECORD = Join-Path $repositoryRoot 'Bdd\output\nucleo-f767zi-console.log'
+    Remove-Item -LiteralPath $env:NUCLEO_F767ZI_CONSOLE_RECORD -ErrorAction SilentlyContinue
     $collector = Start-Process -FilePath 'Bdd\otel\bin\otelcol-contrib.exe' `
         -ArgumentList "--config=$env:OTELCOL_CONFIG" `
         -RedirectStandardOutput 'Bdd\output\otelcol-nucleo-f767zi.out' `

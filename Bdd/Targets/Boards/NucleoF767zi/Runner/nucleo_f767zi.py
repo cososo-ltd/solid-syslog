@@ -56,7 +56,61 @@ def open_board(port_name, programmer):
         return reset_through_probe(ask_probe, _PROBE_ATTEMPTS, report)
 
     port = _ArrivedBytes(serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS))
+    record_path = os.environ.get("NUCLEO_F767ZI_CONSOLE_RECORD")
+    if record_path:
+        record = _timed_lines_in(record_path)
+        record(f"port {port_name} opened")
+        port = RecordedPort(port, record)
+        reset = recorded_reset(reset, record)
     return console_after_reset(port, reset, report)
+
+
+# Appends each line to the file at path as it is given, with the time of day,
+# so the record holds whatever was known when a run stopped.
+def _timed_lines_in(path):
+    lock = threading.Lock()
+
+    def record(line):
+        now = time.time()
+        stamp = time.strftime("%H:%M:%S", time.localtime(now)) + f".{int(now * 1000) % 1000:03d}"
+        with lock, open(path, "a", encoding="utf-8") as lines:
+            lines.write(f"{stamp} {line}{chr(10)}")
+
+    return record
+
+
+# A port that records what crosses it. The record is taken here, before the
+# pipe and the threads a run reads the console through, so it says what the
+# board sent whatever became of it afterwards.
+class RecordedPort:
+    def __init__(self, port, record):
+        self._port = port
+        self._record = record
+
+    def read(self):
+        data = self._port.read()
+        if data:
+            self._record(f"from the board: {data!r}")
+        return data
+
+    def write(self, data):
+        self._record(f"to the board: {data!r}")
+        self._port.write(data)
+
+    def close(self):
+        self._record("port closed")
+        self._port.close()
+
+
+# reset, with when it was asked for and what the probe said of it recorded.
+def recorded_reset(reset, record):
+    def recorded():
+        record("reset asked of the probe")
+        said = reset()
+        record(f"reset done, the probe said: {said}")
+        return said
+
+    return recorded
 
 
 # Has the probe reset the board, and returns what it said, for a report of a
