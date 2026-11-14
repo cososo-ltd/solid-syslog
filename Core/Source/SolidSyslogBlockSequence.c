@@ -452,7 +452,10 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
         /* A failed device is not called again. */
         if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
         {
-            *readBlockChanged = BlockSequence_DiscardOldestBlock(blockSequence) || *readBlockChanged;
+            if (BlockSequence_DiscardOldestBlock(blockSequence))
+            {
+                *readBlockChanged = true;
+            }
         }
     }
     else

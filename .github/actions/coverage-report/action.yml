@@ -1,18 +1,20 @@
-# The coverage measurement, shared by ci.yml's unit-linux-gcc-coverage lane and
-# the documentation bundle workflow, which measures the released commit for the
-# bundle it attaches. One definition, so the figure a release ships is produced
-# the way the gate on main produced it.
+# The coverage measurement, shared by ci.yml's unit-linux-clang-coverage lane
+# and the documentation bundle workflow, which measures the released commit for
+# the bundle it attaches. One definition, so the figure a release ships is
+# produced the way the gate on main produced it.
 #
-# Runs inside the cpputest-freertos container, which the calling job declares,
-# after it has checked the tree out. Leaves the genhtml report in
-# build/coverage/coverage_report/ with the tracefile beside it, so one artifact
-# carries both the pages and the figures the gate judged.
+# Runs inside the cpputest-clang container, which the calling job declares,
+# after it has checked the tree out. Leaves genhtml's report in
+# build/coverage/report/coverage-report/ with the tracefile and llvm-cov's
+# summary inside it, and llvm-cov's own report in
+# build/coverage/report/mcdc-report/, so one artifact carries the pages and the
+# figures the gate judged.
 name: Coverage report
-description: Build the coverage preset, run every test executable, apply the gate and leave the report with its tracefile
+description: Build the coverage preset, run every test executable, apply the gate and leave the reports with the files it judged
 
 inputs:
   threshold:
-    description: Minimum percent for lines and for branches, each over all packs
+    description: Minimum percent for lines, for branches and for MC/DC, each over all packs
     default: "99"
 
 runs:
@@ -28,7 +30,8 @@ runs:
 
     # One script both writes the per-pack table to the step summary and
     # applies the gate, so the figure shown is the figure judged. A
-    # tracefile with no branch data fails rather than skipping the check.
+    # tracefile with no branch data, or a summary with no MC/DC conditions,
+    # fails rather than skipping the check.
     # The script's FAIL lines go to stderr, merged here so the summary shows
     # the verdict next to the table. `shell: bash` already runs with
     # pipefail, so the script's exit status survives the tee.
@@ -40,25 +43,26 @@ runs:
       run: |
         {
           echo '## Coverage'
-          python3 scripts/coverage_summary.py build/coverage/coverage.filtered.info --threshold "$THRESHOLD"
+          python3 scripts/coverage_summary.py build/coverage/coverage.filtered.info \
+            --llvm-json build/coverage/coverage.llvm.json --threshold "$THRESHOLD"
         } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
     # Kept even when the gate fails, which is exactly when the report is wanted.
-    # A build that failed before the tracefile existed has nothing to copy, and
+    # A build that failed before the files existed has nothing to copy, and
     # says so rather than adding a second red step over the one that matters.
-    # But a gate that passed read that very file, so its absence then is a
+    # But a gate that passed read those very files, so their absence then is a
     # fault of its own, and the artifact must not go out without the figures
     # the Coverage page is filled from.
-    - name: Put the tracefile beside the report
+    - name: Put the tracefile and summary beside the report
       if: success() || failure()
       shell: bash
       env:
         GATE_OUTCOME: ${{ steps.gate.outcome }}
       run: |
-        if [ -f build/coverage/coverage.filtered.info ]; then
-          cp build/coverage/coverage.filtered.info build/coverage/coverage_report/
+        if [ -f build/coverage/coverage.filtered.info ] && [ -f build/coverage/coverage.llvm.json ]; then
+          cp build/coverage/coverage.filtered.info build/coverage/coverage.llvm.json build/coverage/report/coverage-report/
         elif [ "$GATE_OUTCOME" = "success" ]; then
-          echo "::error::The gate passed but the tracefile it read is missing" >&2
+          echo "::error::The gate passed but the files it read are missing" >&2
           exit 1
         else
           echo "No tracefile: the build did not get as far as capturing coverage"

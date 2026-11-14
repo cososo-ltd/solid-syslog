@@ -80,6 +80,38 @@ class WithAReport(unittest.TestCase):
         self.assertNotIn("<!-- coverage-table -->", self.out)
 
 
+LLVM_JSON = (
+    '{"data": [{"files": ['
+    '{"filename": "/work/Core/Source/SolidSyslog.c", "summary": {"mcdc": {"count": 4, "covered": 3}}},'
+    '{"filename": "/work/Platform/Posix/Source/SolidSyslogPosixClock.c", "summary": {"mcdc": {"count": 2, "covered": 2}}}'
+    "]}]}"
+)
+
+
+class WithAnMcdcSummary(unittest.TestCase):
+    def setUp(self):
+        self.docs = tempfile.TemporaryDirectory()
+        report = os.path.join(self.docs.name, "testing", "coverage-report")
+        os.makedirs(report)
+        os.makedirs(os.path.join(self.docs.name, "testing", "mcdc-report"))
+        with open(os.path.join(report, "coverage.filtered.info"), "w", encoding="utf-8") as handle:
+            handle.write(TRACEFILE)
+        with open(os.path.join(report, "coverage.llvm.json"), "w", encoding="utf-8") as handle:
+            handle.write(LLVM_JSON)
+        with mock.patch.dict(os.environ, BRANCH_BUILD, clear=True):
+            self.out = h.on_page_markdown(PAGE, page_of("testing/coverage.md"), {"docs_dir": self.docs.name}, None)
+
+    def tearDown(self):
+        self.docs.cleanup()
+
+    def test_each_row_carries_its_mcdc_conditions(self):
+        self.assertIn("| [Core](coverage-report/Core/Source/index.html) | 9 / 10 | 90.0% | 3 / 4 | 75.0% | 3 / 4 | 75.0% |", self.out)
+        self.assertIn("| [**Total**](coverage-report/index.html) | 14 / 15 | 93.3% | 4 / 6 | 66.6% | 5 / 6 | 83.3% |", self.out)
+
+    def test_links_the_mcdc_report_beneath_the_table(self):
+        self.assertIn("| 5 / 6 | 83.3% |\n\nEach decision's conditions and the test vectors that exercised them are in the [MC/DC report](mcdc-report/index.html).", self.out)
+
+
 class Provenance(unittest.TestCase):
     def test_a_release_build_names_the_release_alone(self):
         self.assertEqual(h.provenance({**BRANCH_BUILD, "SOLIDSYSLOG_DOCS_RELEASE": "0.4.0"}), "Measured for release 0.4.0.")
@@ -105,6 +137,7 @@ class WithoutAReport(unittest.TestCase):
 
     def test_links_to_nothing_the_strict_build_could_miss(self):
         self.assertNotIn("coverage-report/", self.out)
+        self.assertNotIn("mcdc-report/", self.out)
         self.assertNotIn("Measured", self.out)
         self.assertNotIn("<!-- coverage-table -->", self.out)
 

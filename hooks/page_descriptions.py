@@ -276,9 +276,9 @@ DESCRIPTIONS = {
         "each suite and scenario ran."
     ),
     "testing/coverage.md": (
-        "Line and branch coverage of SolidSyslog as measured by CI for the build "
-        "that produced this site, per pack, with the full genhtml report to drill "
-        "into file by file."
+        "Line, branch and MC/DC coverage of SolidSyslog as measured by CI for the "
+        "build that produced this site, per pack, with reports to drill into file "
+        "by file and decision by decision."
     ),
     # Maintaining
     "builds.md": (

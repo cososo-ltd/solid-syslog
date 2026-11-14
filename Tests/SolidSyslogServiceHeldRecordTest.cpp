@@ -731,3 +731,45 @@ TEST(SolidSyslogServiceHaltOrdering, TheThresholdCallbackFiresBeforeOnHalt)
     CHECK(thresholdOrder > 0);
     CHECK(haltOrder > thresholdOrder);
 }
+
+/* A record held from one pass and refused on the next, by a store whose
+ * policy halts: the refusal is where that pass stops. */
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogServiceHeldRecordRefusedLater, ServiceHeldRecordBase)
+{
+    struct SolidSyslogStore* store = nullptr;
+
+    void setup() override
+    {
+        setupPipeline();
+        store = StoreFake_Create();
+        StoreFake_SetTransient(true);
+        SolidSyslogConfig config = {};
+        config.Buffer            = circularBuffer;
+        config.Sender            = fakeSender;
+        config.Store             = store;
+        config.GetDiscardPolicy  = AnswersHalt;
+        solidSyslog = SolidSyslog_Create(&config);
+    }
+
+    void teardown() override
+    {
+        teardownPipeline();
+        StoreFake_Destroy();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogServiceHeldRecordRefusedLater, TheRefusalOfAHeldRecordEndsThePassWithNothingReportedAfterIt)
+{
+    SolidSyslogBuffer_Write(circularBuffer, "first", 5);
+    ServiceWhileTheSenderIsDown(); /* a transient store and a sender down: held */
+    StoreFake_SetTransient(false);
+    StoreFake_FailNextWrite(); /* refused, under Halt */
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_HALTED, SolidSyslog_Service(solidSyslog));
+
+    LONGS_EQUAL(0, StoreFake_WriteCallCount(store)); /* no report reaches the store after the halt */
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+}

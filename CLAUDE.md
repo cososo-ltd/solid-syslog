@@ -408,7 +408,7 @@ Refactoring must follow SOLID and DRY principles:
 - **Dependency Inversion** — depend on abstractions, not concretions
 - **DRY** — every piece of knowledge has a single, authoritative representation
 
-The target is 100% line and branch coverage. The CI gate is 99% on lines and on branches — if either drops below that, the build fails.
+The target is 100% line, branch and MC/DC coverage. The CI gate is 99% on each — if any drops below that, the build fails.
 If 100% is proving difficult to achieve, the first response should be to reconsider the design, not lower the bar.
 In practice, following TDD strictly means 100% is the natural outcome. Exceptions exist but are rare; if you find
 yourself needing one, discuss the design first.
@@ -456,7 +456,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `debug` | Standard debug build — primary development preset |
 | `clang-debug` | Clang build — portability check against GCC |
 | `sanitize` | ASan + UBSan — CI's job, not part of the pre-push budget |
-| `coverage` | lcov/genhtml — 100% line and branch is the target; CI gates at 99% |
+| `coverage` | Clang source-based coverage with MC/DC, reported by llvm-cov and genhtml — 100% is the target; CI gates at 99% on lines, branches and MC/DC |
 | `tidy` | clang-tidy — all warnings treated as errors |
 | `cppcheck` | cppcheck static analysis |
 | `iwyu` | include-what-you-use — advisory, not a pre-push gate |

@@ -108,10 +108,16 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL)
         add_link_options(-fsanitize=address,undefined)
     endif()
 
-    option(COVERAGE "Enable code coverage instrumentation" OFF)
+    # Source-based coverage with MC/DC is Clang's instrument; llvm-cov reads it.
+    # The `coverage` preset selects Clang, so a GCC configure that asks for it
+    # is a mistake to stop rather than a build to measure differently.
+    option(COVERAGE "Enable source-based coverage instrumentation, with MC/DC (Clang)" OFF)
     if(COVERAGE)
-        add_compile_options(--coverage)
-        add_link_options(--coverage)
+        if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            message(FATAL_ERROR "COVERAGE needs Clang (found ${CMAKE_C_COMPILER_ID}): use the coverage preset")
+        endif()
+        add_compile_options(-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc)
+        add_link_options(-fprofile-instr-generate)
     endif()
 
     option(ENABLE_CLANG_TIDY "Run clang-tidy on all source files during build" OFF)

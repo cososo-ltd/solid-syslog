@@ -572,3 +572,24 @@ TEST(BlockSequenceRotation, TheFirstFailureIsTheOneKept)
 
     LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_SIZE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
 }
+
+/* Disposing of the drained read block during a rotation fails the device, so
+ * the eviction the ceiling calls for is not attempted on it. */
+TEST(BlockSequenceRotation, ADisposeFailureDuringRotationStopsTheEvictionAfterIt)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* blocks 0 and 1: at the ceiling */
+    NoteRecordInWriteBlock();
+    SolidSyslogBlockSequence_SetReadCursor(sequence, SIMULATED_RECORD_SIZE); /* block 0 is drained */
+    fakeDevice.failNextDispose = true;
+    calls.clear();
+
+    ForceRotation(); /* acquires block 2, then disposing of block 0 fails */
+
+    CHECK_TRUE(SolidSyslogBlockSequence_DeviceFailed(sequence));
+    CHECK_FALSE(SolidSyslogBlockSequence_EvictedUnsent(sequence));
+    LONGS_EQUAL(
+        1,
+        std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) { return call.type == CallType::Dispose; })
+    );
+}

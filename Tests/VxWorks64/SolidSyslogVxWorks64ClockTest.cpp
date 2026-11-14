@@ -10,10 +10,17 @@ using namespace CososoTesting;
 #include "VxWorks64ClockFake.h"
 
 // Asserts the clock signalled "no usable timestamp" by zeroing every field.
-#define CHECK_TIMESTAMP_ZEROED(timestamp)                       \
-    {                                                           \
-        const struct SolidSyslogTimestamp zeroed = {};          \
-        MEMCMP_EQUAL(&zeroed, &(timestamp), sizeof(timestamp)); \
+// Field by field: the struct has padding, which assignment need not zero.
+#define CHECK_TIMESTAMP_ZEROED(timestamp)             \
+    {                                                 \
+        LONGS_EQUAL(0, (timestamp).Year);             \
+        LONGS_EQUAL(0, (timestamp).Month);            \
+        LONGS_EQUAL(0, (timestamp).Day);              \
+        LONGS_EQUAL(0, (timestamp).Hour);             \
+        LONGS_EQUAL(0, (timestamp).Minute);           \
+        LONGS_EQUAL(0, (timestamp).Second);           \
+        LONGS_EQUAL(0, (timestamp).Microsecond);      \
+        LONGS_EQUAL(0, (timestamp).UtcOffsetMinutes); \
     }
 
 // clang-format off
