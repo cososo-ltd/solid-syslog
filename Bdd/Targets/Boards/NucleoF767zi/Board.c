@@ -41,6 +41,20 @@ enum
 
     /* 8 MHz in, divided to 2 MHz, multiplied to a 432 MHz VCO, halved to a
      * 216 MHz system clock. Q gives the 48 MHz the USB, RNG and SDMMC want. */
+    /* A character leaves in under 100 microseconds, a few thousand turns of
+     * the loop that waits for it; this is long enough to be sure it has not. */
+    FAULT_WAIT_LOOPS = 1000000,
+
+    /* Where the core's stacked registers hold the two a fault report gives,
+     * and where each figure goes in the report's text. */
+    STACKED_LR = 5,
+    STACKED_PC = 6,
+    FAULT_PC_AT = 5,
+    FAULT_LR_AT = 19,
+    FAULT_CFSR_AT = 35,
+    HEX_DIGITS = 8,
+    BITS_PER_HEX_DIGIT = 4,
+
     PLL_M = 4,
     PLL_N = 216,
     PLL_Q = 9
@@ -63,6 +77,14 @@ static inline uint32_t Board_TickTimerClockHz(void);
 static inline void Board_ConfigureConsole(void);
 static inline uint16_t Board_LedPin(enum BoardLed led);
 static inline void Board_ConsoleRingPut(uint8_t received);
+static void Board_FaultWrite(const char* text);
+static inline void Board_FaultWaitFor(uint32_t flag);
+static inline void Board_PutHex(char* eightDigits, uint32_t value);
+
+/* Reached from HardFault_Handler's assembler, and by nothing else. */
+void Board_ReportHardFault(const uint32_t* stacked);
+/* The name ST's vector table carries. */
+void HardFault_Handler(void);
 
 void Board_Init(void)
 {
@@ -199,6 +221,73 @@ void Board_Halt(bool withRedLed)
     for (;;)
     {
     }
+}
+
+void Board_Fault(const char* what, const char* where)
+{
+    __disable_irq();
+    Board_FaultWrite("\r\n[board] fault: ");
+    Board_FaultWrite(what);
+    Board_FaultWrite(" ");
+    Board_FaultWrite(where);
+    Board_FaultWrite("\r\n");
+    Board_Halt(true);
+}
+
+/* The HAL's transmit is not used: the fault may have interrupted one, and
+ * the HAL would refuse a second. */
+static void Board_FaultWrite(const char* text)
+{
+    for (const char* next = text; *next != '\0'; next++)
+    {
+        Board_FaultWaitFor(USART_ISR_TXE);
+        USART3->TDR = (uint8_t) *next;
+    }
+    Board_FaultWaitFor(USART_ISR_TC);
+}
+
+/* Bounded, because a fault before the console was opened finds a transmitter
+ * that never empties, and the halt and its LED still have to be reached. */
+static inline void Board_FaultWaitFor(uint32_t flag)
+{
+    for (uint32_t i = 0U; ((USART3->ISR & flag) == 0U) && (i < (uint32_t) FAULT_WAIT_LOOPS); i++)
+    {
+    }
+}
+
+/* Called by HardFault_Handler with the registers the core stacked as it took
+ * the fault, of which the sixth and seventh are the link register and the
+ * address of the instruction that faulted. */
+void Board_ReportHardFault(const uint32_t* stacked)
+{
+    char where[] = "pc=0x00000000 lr=0x00000000 cfsr=0x00000000";
+    Board_PutHex(&where[FAULT_PC_AT], stacked[STACKED_PC]);
+    Board_PutHex(&where[FAULT_LR_AT], stacked[STACKED_LR]);
+    Board_PutHex(&where[FAULT_CFSR_AT], SCB->CFSR);
+    Board_Fault("hard fault", where);
+}
+
+static inline void Board_PutHex(char* eightDigits, uint32_t value)
+{
+    static const char DIGITS[] = "0123456789abcdef";
+    for (uint32_t i = 0U; i < (uint32_t) HEX_DIGITS; i++)
+    {
+        uint32_t shift = ((uint32_t) HEX_DIGITS - 1U - i) * (uint32_t) BITS_PER_HEX_DIGIT;
+        eightDigits[i] = DIGITS[(value >> shift) & 0xFU];
+    }
+}
+
+/* The core stacks the registers on whichever stack was in use, which bit 2 of
+ * the link register names. No fault but this one is enabled, so a memory,
+ * bus or usage fault arrives here as well. The name is the one ST's vector
+ * table carries. */
+__attribute__((naked)) void HardFault_Handler(void)
+{
+    __asm volatile("tst lr, #4\n"
+                   "ite eq\n"
+                   "mrseq r0, msp\n"
+                   "mrsne r0, psp\n"
+                   "b Board_ReportHardFault\n");
 }
 
 void Board_LedToggle(enum BoardLed led)

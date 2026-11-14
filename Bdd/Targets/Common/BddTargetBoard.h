@@ -30,4 +30,10 @@ char BddTargetBoard_ConsoleRead(void);
  * a way to. Does not return. */
 void BddTargetBoard_Exit(int status);
 
+/* Says on the console what stopped the target, and where, then stops it. It
+ * is what a kernel's or a stack's trap calls when it cannot go on, so it may
+ * be called from anywhere - an interrupt, a critical section, before the
+ * scheduler runs - and takes no lock. Does not return. */
+void BddTargetBoard_Fault(const char* what, const char* where);
+
 #endif /* BDD_TARGET_BOARD_H */

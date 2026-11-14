@@ -59,3 +59,8 @@ void BddTargetBoard_Exit(int status)
     Board_ConsoleWrite(text, strlen(text));
     Board_Halt(failed);
 }
+
+void BddTargetBoard_Fault(const char* what, const char* where)
+{
+    Board_Fault(what, where);
+}

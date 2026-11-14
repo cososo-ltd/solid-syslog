@@ -25,7 +25,7 @@ say what it supplies to the code.
 | Clock, NVIC and disk facts | `BddTargetBoardConfig.h` | 216 MHz, four priority bits, a disk geometry nothing reads yet |
 | Network addresses | `BddTargetBoardAddresses.h.in` | Written into the build tree by the configure, from cache variables |
 | Clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. The millisecond count is TIM6, so SysTick is the kernel's |
-| Console and exit | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt |
+| Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Disk | `BddTargetBoardDisk.c` | None fitted: it never becomes ready |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
 
@@ -238,6 +238,17 @@ about a thousand resets and its cause is not known, so a line beginning
 one beginning `NUCLEO-F767ZI: the probe did not reset the board`: the
 programmer itself has failed a reset once in some thousands, and it too is
 asked again, up to three times, with what it said.
+
+A target that stops says why before it does. A kernel assertion, a task that
+overran its stack, a kernel heap with nothing left, an lwIP assertion and a
+hard fault each end in one line beginning `[board] fault:`, with the file and
+line, the task, or the address of the instruction, and then a halt with the
+red LED lit. A step that times out waiting for the prompt sends the target an
+empty line and reports what it showed in answer, so a target that had stopped
+is told from one whose prompt did not arrive. The run also keeps
+`Bdd/output/nucleo-f767zi-console.log`: every byte that crossed the serial
+port in either direction and every reset, each with its time, taken at the
+port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
 [does not have yet](#what-the-board-does-not-have-yet) and what any target

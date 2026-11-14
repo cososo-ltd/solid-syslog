@@ -229,18 +229,13 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 
 void vApplicationMallocFailedHook(void)
 {
-    for (;;)
-    {
-    }
+    BddTargetBoard_Fault("kernel heap", "exhausted");
 }
 
 void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
 {
     (void) task;
-    (void) taskName;
-    for (;;)
-    {
-    }
+    BddTargetBoard_Fault("stack overflow in task", taskName);
 }
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)

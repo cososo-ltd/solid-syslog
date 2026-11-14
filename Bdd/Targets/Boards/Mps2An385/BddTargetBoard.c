@@ -10,8 +10,14 @@
 #include "CmsdkUart.h"
 
 #include <stdint.h>
+#include <string.h>
 
 #define CMSDK_UART0_BASE_ADDRESS UINT32_C(0x40004000)
+
+enum
+{
+    FAULT_EXIT_STATUS = 3
+};
 
 static uint32_t MmioRead32(uintptr_t address);
 static void MmioWrite32(uintptr_t address, uint32_t value);
@@ -45,6 +51,20 @@ void BddTargetBoard_ConsoleWrite(const char* text, size_t length)
 char BddTargetBoard_ConsoleRead(void)
 {
     return CmsdkUart_GetChar();
+}
+
+/* The emulated transmitter is never busy, so the write does not sleep, and
+ * can be made from wherever the fault was. The run then ends with a status of
+ * its own, which no other exit gives. */
+void BddTargetBoard_Fault(const char* what, const char* where)
+{
+    static const char START[] = "\r\n[board] fault: ";
+    CmsdkUart_Write(START, strlen(START));
+    CmsdkUart_Write(what, strlen(what));
+    CmsdkUart_Write(" ", 1U);
+    CmsdkUart_Write(where, strlen(where));
+    CmsdkUart_Write("\r\n", 2U);
+    BddTargetBoard_Exit(FAULT_EXIT_STATUS);
 }
 
 void BddTargetBoard_Exit(int status)
