@@ -5,6 +5,9 @@
  * stands. What is here is the glue either side of it:
  *   - transmit copies the pbuf chain into one buffer and waits for the DMA to
  *     send it;
+ *   - the PHY is put in its mode and reset before the MAC is, because the
+ *     MAC's reset needs the PHY's clock and the PHY's straps do not always
+ *     leave it giving one;
  *   - one task receives and watches the link. The Ethernet interrupt wakes it
  *     for a frame, which it copies into a pbuf for netif->input, and between
  *     frames it asks the PHY how the link stands, starts or stops the MAC to
@@ -101,8 +104,10 @@ static enum EthernetPhyLink BddTargetBoardNetif_Link = ETHERNET_PHY_LINK_DOWN;
 void ETH_IRQHandler(void);
 
 static void BddTargetBoardNetif_ConfigurePins(void);
+static void BddTargetBoardNetif_RestartPhy(void);
 static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf* p);
 static void BddTargetBoardNetif_Task(void* parameters);
+static bool BddTargetBoardNetif_WritePhy(void* context, uint8_t registerNumber, uint16_t value);
 static void BddTargetBoardNetif_ReceiveFrames(void);
 static void BddTargetBoardNetif_DeliverFrame(void);
 static void BddTargetBoardNetif_ReleaseFrame(void);
@@ -167,6 +172,23 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth) // NOLINT(readability-identifier-n
     BddTargetBoardNetif_ConfigurePins();
     HAL_NVIC_SetPriority(ETH_IRQn, (uint32_t) BOARD_NETIF_INTERRUPT_PRIORITY, 0U);
     HAL_NVIC_EnableIRQ(ETH_IRQn);
+    BddTargetBoardNetif_RestartPhy();
+}
+
+/* The PHY's mode is a strap it reads from pins as it leaves reset, and after
+ * a reset through the debug probe it has been seen to take any of several.
+ * One of them powers it down, and then it gives the MAC no reference clock,
+ * without which the MAC's own reset, which HAL_ETH_Init does next, never
+ * completes. So the PHY is put in its mode here, between the clocks and pins
+ * the management bus needs and that reset. The bus runs on the MAC's bus
+ * clock alone, and needs its divider set first, as after HAL_ETH_Init. */
+static void BddTargetBoardNetif_RestartPhy(void)
+{
+    HAL_ETH_SetMDIOClockRange(&BddTargetBoardNetif_Ethernet);
+    if (!EthernetPhy_Restart(BddTargetBoardNetif_WritePhy, BddTargetBoardNetif_ReadPhy, NULL))
+    {
+        BddTargetBoardNetif_Report("ethernet", "the PHY did not restart");
+    }
 }
 
 /* RMII, as the board's README.md has it in its pin plan. */
@@ -253,6 +275,17 @@ static void BddTargetBoardNetif_Task(void* parameters)
             BddTargetBoardNetif_FollowLink();
         }
     }
+}
+
+static bool BddTargetBoardNetif_WritePhy(void* context, uint8_t registerNumber, uint16_t value)
+{
+    (void) context;
+    return HAL_ETH_WritePHYRegister(
+               &BddTargetBoardNetif_Ethernet,
+               (uint32_t) BOARD_NETIF_PHY_ADDRESS,
+               registerNumber,
+               value
+           ) == HAL_OK;
 }
 
 /* HAL_ETH_ReadData also rebuilds the descriptors of the frames taken so far,

@@ -55,6 +55,7 @@ fault-finding tips.
 | CMSIS-RTOS2 (lwIP Sockets API), wolfSSL | `behave-cmsis-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 | VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
+| FreeRTOS (lwIP Raw API) on the NUCLEO-F767ZI | `behave` natively on the development machine, driving the board over its serial port and resetting it through its debug probe (`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via
 `subprocess.run`. Both services share the workspace mount, so `Bdd/output/received.log`
@@ -71,7 +72,7 @@ through the QEMU UART (`-serial stdio`).
 | `ghcr.io/cososo-ltd/behave` | GHCR image - Debian trixie + Python + Behave ([source](https://github.com/cososo-ltd/BehaveDocker)) |
 | `Bdd/output/` | Shared directory - syslog-ng writes here, Behave reads |
 | `Bdd/features/` | Gherkin feature files and step definitions |
-| `Bdd/junit/stack-hwm.txt` | Written by a FreeRTOS QEMU run: the least stack the logging task and the Service task had left, in bytes, in each scenario that ends by quitting the target, then the least of each over the run. A scenario that shuts the target down or kills it to stand in for a power cut gives no figure. The run prints the same lines as it ends |
+| `Bdd/junit/stack-hwm.txt` | Written by a FreeRTOS run, under QEMU or on a board: the least stack the logging task and the Service task had left, in bytes, in each scenario that ends by quitting the target, then the least of each over the run. A scenario that shuts the target down or kills it to stand in for a power cut gives no figure. The run prints the same lines as it ends |
 | `Bdd/Targets/Linux/main.c` | Linux BDD target: PosixMessageQueueBuffer + service pthread + SwitchingSender, or under `--buffer passthrough` a PassthroughBuffer with no service thread, the logger serviced on the thread that logs after each record. Accepts `--facility`, `--severity`, `--transport`, `--buffer`, `--app-name`, store-config flags; refuses a file store under passthrough, since nothing the application logs would reach it |
 | `Bdd/Targets/CMakeLists.txt` | Builds the BDD target binary, linked against the SolidSyslog library |
 
@@ -137,13 +138,13 @@ etc.) without rewriting feature tags.
 | --- | --- |
 | `@udp` | Needs UDP transport |
 | `@tcp` | Needs TCP transport (RFC 6587 framing) |
-| `@tls` | Needs TLS transport (RFC 5425, server-auth). Excluded on VxWorks 6.4, which carries no TLS. |
+| `@tls` | Needs TLS transport (RFC 5425, server-auth). Excluded on VxWorks 6.4, which carries no TLS, and on the NUCLEO-F767ZI, where it has not been run yet. |
 | `@mtls` | Needs mutual TLS (client cert + key) |
 | `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - a file-backed block store, a switching sender, a buffer to fill, or a record Service holds through an outage. Every target binary carries a buffered wiring; the one runner that excludes it is `behave-linux-passthrough`, which runs everything else over the passthrough wiring. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
 | `@passthrough` | Asserts what only the passthrough wiring does: a record the sender could not take is lost, and the logger's report of it lands once the sender recovers. Run on `behave-linux-passthrough` alone; every other runner excludes it. |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), and VxWorks 6.4 over `SolidSyslogVxWorks64File`. |
-| `@host_store` | Needs the target's store on the host's filesystem, where a step can spoil the store's path before the target starts, or corrupt a stored record between runs. Run on Linux and Windows; excluded on the QEMU targets and VxWorks 6.4, whose store media the harness cannot reach. |
-| `@host_buffer` | Needs a buffer a step can fill from the prompt in one burst while the sender is down, so the discard policy on the buffer, and on the record Service holds, shows at the collector. Run on Linux (message queue, ten records) and Windows (ring); excluded on the QEMU targets and VxWorks 6.4, whose buffers the harness does not fill. |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target but the NUCLEO-F767ZI, which has no storage fitted - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), and VxWorks 6.4 over `SolidSyslogVxWorks64File`. |
+| `@host_store` | Needs the target's store on the host's filesystem, where a step can spoil the store's path before the target starts, or corrupt a stored record between runs. Run on Linux and Windows; excluded on the QEMU targets and VxWorks 6.4, whose store media the harness cannot reach, and on the NUCLEO-F767ZI, which has no store. |
+| `@host_buffer` | Needs a buffer a step can fill from the prompt in one burst while the sender is down, so the discard policy on the buffer, and on the record Service holds, shows at the collector. Run on Linux (message queue, ten records) and Windows (ring); excluded on the QEMU targets, VxWorks 6.4 and the NUCLEO-F767ZI, whose buffers the harness does not fill. |
 | `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux, Windows and VxWorks 6.4, whose harness sets the target's clock at startup; excluded on the FreeRTOS and CMSIS-RTOS2 targets, which model a no-RTC product per RFC 5424 section 6.2.3.1. |
 | `@no_rtc` | Scenario asserts the no-RTC product behaviour over the wire (`tzKnown="0"`, `isSynced="0"`). Run on the FreeRTOS and CMSIS-RTOS2 targets; excluded on Linux, Windows and VxWorks 6.4. The complementary pair of `@rtc`. |
 | `@requires_message_size_1500` | Scenario requires `SOLIDSYSLOG_MAX_MESSAGE_SIZE` to be at least 1500 bytes - used by the UDP path-MTU clipping feature, which has to drive an oversized payload through `EMSGSIZE`. The library default is below that by design, so the Linux and Windows targets are built against the tunable override that supplies it (`tunable-override-debug` / `msvc-tunable-override`); the QEMU targets run at the default, so the gate skips the feature there. |
@@ -159,10 +160,12 @@ Rollout markers are also used (temporary; remove once the scenario passes):
 | `@windows_wip` | Skip on Windows only - should work but not yet verified. Currently on one scenario in `udp_mtu.feature`. |
 | `@freertoswip` | Skip on the QEMU targets only - scenario currently fails or errors on them and is gated until the relevant capability lands. Each tagged scenario is a follow-up tied to a specific gap; the tag is removed scenario-by-scenario as the gap closes. Not currently in use on any scenario. |
 | `@vxworks64wip` | Skip on the VxWorks 6.4 target only - the scenario needs a capability that target does not have yet, and loses the tag when the story that adds it lands. |
+| `@nucleof767ziwip` | Skip on the NUCLEO-F767ZI only - the scenario needs a capability the board does not have yet, and loses the tag when the story that adds it lands. Not currently in use on any scenario. |
 
 Which runner excludes which tags is set on each Behave service's `command` in
 `ci/docker-compose.bdd.yml`, on the Windows step in `.github/workflows/ci.yml`, and
-in `Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`. Read
+in the two run scripts, `Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1` and
+`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1`. Read
 the filters there rather than from a copy here: a runner is added or a tag retired by
 editing those files, and a table restating them is wrong the moment one changes.
 
@@ -173,7 +176,7 @@ Step definitions read the active oracle from `ORACLE_FORMAT`:
 | Oracle | `ORACLE_FORMAT` | `RECEIVED_LOG` default | Runs on |
 | --- | --- | --- | --- |
 | syslog-ng (key=value text) | `syslog-ng` | `Bdd/output/received.log` | Linux container |
-| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native, and the VxWorks 6.4 run from the development machine |
+| OTel Collector Contrib (JSON Lines) | `otel-jsonl` | `Bdd/output/received.jsonl` | Windows native, and the VxWorks 6.4 and NUCLEO-F767ZI runs from the development machine |
 
 `parse_oracle_line` dispatches to the right parser; both produce the same flat field dict
 (`PRIORITY`, `TIMESTAMP`, `HOSTNAME`, `APP_NAME`, `PROCID`, `STRUCTURED_DATA`, ...) so the

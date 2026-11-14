@@ -5,9 +5,10 @@ Ethernet, and an ST-LINK that gives flash, reset, debug and a serial port over
 one USB cable. The `nucleo-f767zi-*` presets select it, the BDD target ones with
 `SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`.
 
-CI builds firmware for this board and never runs it. Running it is done by
-hand, on a development machine with the board attached, and recorded against
-the [target checklist](#target-checklist) below.
+CI builds firmware for this board and never runs it. Running it is done on a
+development machine with the board attached, and recorded against the
+[target checklist](#target-checklist) below. For the BDD target that is
+[one command](#running-the-bdd-scenarios).
 
 Everything a target needs from the board is in this directory, behind the
 board seam. [`../Board.cmake`](../Board.cmake) says what a board supplies to the
@@ -24,7 +25,7 @@ say what it supplies to the code.
 | Clock, NVIC and disk facts | `BddTargetBoardConfig.h` | 216 MHz, four priority bits, a disk geometry nothing reads yet |
 | Network addresses | `BddTargetBoardAddresses.h.in` | Written into the build tree by the configure, from cache variables |
 | Clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. The millisecond count is TIM6, so SysTick is the kernel's |
-| Console and exit | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt |
+| Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Disk | `BddTargetBoardDisk.c` | None fitted: it never becomes ready |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
 
@@ -87,8 +88,14 @@ and a run on the board uses an image built for the network under test.
 The collector does not have to be on the board's own network: one that is not
 is reached through the gateway.
 
-The on-board PHY negotiates its link, and the target follows it. Each change is
-a line on the console, so a pulled cable can be told from a fault:
+The on-board PHY negotiates its link, and the target follows it. The target
+puts the PHY in that mode itself as it boots, and resets it into the mode
+before it resets the MAC. The PHY takes its mode from strap pins as it leaves
+reset, and after a reset through the debug probe about one boot in twenty has
+it in some other: most have negotiation off, where it would never report a
+negotiated link, and one powers it down, where it gives the MAC no clock and
+the MAC does not start. Each change of the link is a line on the console, so a
+pulled cable can be told from a fault:
 
 ```text
 [board] link down
@@ -128,6 +135,8 @@ Nothing here needs an IDE.
 | A serial terminal | Any | The console |
 | `gh` | GitHub CLI | Fetching the image CI built |
 | A syslog collector | The OpenTelemetry Collector under `Bdd/otel/` | Receiving what the board sends |
+| Python, with `Bdd/requirements.txt` and `pyserial` | `pip install -r Bdd/requirements.txt pyserial` | Running the BDD scenarios |
+| Docker | Any | Building the image the BDD run writes to the board |
 
 STM32CubeCLT is ST's command-line toolset and carries the first three, so it
 is the one install. On Windows its installer puts them on `PATH` and offers
@@ -193,6 +202,64 @@ VXWORKS64_COLLECTOR_PORT=5514 Bdd/otel/bin/otelcol-contrib --config Bdd/otel/con
 It writes what it receives to `Bdd/output/received_udp.jsonl` and
 `Bdd/output/received_tcp.jsonl`, each message as a record with the fields its
 RFC 5424 parser took from it.
+
+## Running the BDD scenarios
+
+With the board attached by USB and cabled to the test network, from Windows
+PowerShell at the root of the repository:
+
+```powershell
+.\Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
+```
+
+That builds the image from the commit checked out, in the cross image CI uses,
+writes it to the board, starts the collector, and runs Behave over the
+scenarios the board can run. `-Netmask` and `-Gateway` set the other two
+[network](#network) settings, and each of the four can be left in an
+environment variable instead, which the script's help names. `-SkipBuild`
+writes the image already built, and `-Paths` runs only the features given.
+
+Behave reaches the target as it reaches one under QEMU, with two differences.
+Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
+unless `-SerialPort` names it. And a scenario starts the target by resetting
+the board through the ST-LINK's debug probe, where under QEMU it starts the
+emulator.
+
+Before the first scenario the run reads the banner and stops unless it names
+the commit checked out, so a run cannot pass against an image of anything else.
+The build marks an image `-dirty` when a tracked file has changes its commit
+does not hold, so the script refuses to start from such a tree.
+
+A board that shows no banner within five seconds of a reset is reset again, up
+to three times, and the run says so on its output with what the board did show
+and what the probe reported. A board silent after a reset has been seen once in
+about a thousand resets and its cause is not known, so a line beginning
+`NUCLEO-F767ZI: the board showed no banner` goes in the run's record. So does
+one beginning `NUCLEO-F767ZI: the probe did not reset the board`: the
+programmer itself has failed a reset once in some thousands, and it too is
+asked again, up to three times and a second apart, with what it said. The
+second is there because its failures come together: three attempts one after
+another have all failed within a fifth of a second.
+
+A target that stops says why before it does. A kernel assertion, a task that
+overran its stack, a kernel heap with nothing left, an lwIP assertion and a
+hard fault each end in one line beginning `[board] fault:`, with the file and
+line, the task, or the address of the instruction, and then a halt with the
+red LED lit. A step that times out waiting for the prompt sends the target an
+empty line and reports what it showed in answer, so a target that had stopped
+is told from one whose prompt did not arrive. The run also keeps
+`Bdd/output/nucleo-f767zi-console.log`: every byte that crossed the serial
+port in either direction and every reset, each with its time, taken at the
+port and so before anything in the run could lose it.
+
+The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
+[does not have yet](#what-the-board-does-not-have-yet) and what any target
+without a real-time clock leaves out. The script holds the tag filter.
+
+Where a scenario kills the target to stand in for a power cut, the board is
+reset through the probe. That restarts the processor and loses what was in RAM.
+It is not a loss of power at the storage media, which keep their supply
+throughout, so it says nothing about a write that power would have cut short.
 
 ## Attach gdb
 
@@ -305,24 +372,22 @@ artifact came from.
 
 ### The FreeRTOS + lwIP Raw BDD target
 
-The board is cabled to the test network, and the collector is running on it.
+The board is cabled to the test network. Steps 2 to 4 are one run of
+[`Run-NucleoF767ziBdd.ps1`](#running-the-bdd-scenarios), which stops at the
+first of them that fails.
 
-1. The `build-nucleo-freertos-lwipraw` lane passed on the commit.
-2. The image is built from the commit under review, with the test network's
-   addresses, and `STM32_Programmer_CLI` writes it and its verify passes.
-3. After a reset the console shows the banner, and the commit in it is the
-   commit under review. A commit that ends `-dirty` was built from a tree with
-   changes that commit does not hold, and fails this step.
-4. The console reports `[board] link up`, with the speed and duplex the test
-   network gives, and then shows the `SolidSyslog>` prompt.
-5. `send 1` puts one record in `received_udp.jsonl`. The collector has parsed
-   it: its `hostname` is the board's address and its `appname` is
-   `SolidSyslogBddTarget`.
-6. `set transport tcp` and `send 1` put one such record in
-   `received_tcp.jsonl`.
-7. With the collector stopped, `send 1` is reported on the console as a failed
-   delivery. Once the collector is started again that message arrives with no
-   further command, the console reports the delivery restored, and another
-   `send 1` arrives too.
-8. `set store file` answers `set: invalid`, and a `send 1` after it still
-   arrives.
+1. The `build-nucleo-freertos-lwipraw` and `tools-nucleo-f767zi-runner` lanes
+   passed on the commit.
+2. The script builds the image from the commit under review, with the test
+   network's addresses, and `STM32_Programmer_CLI` writes it and its verify
+   passes.
+3. The run starts its first scenario, which it does only once the banner the
+   board shows after a reset names the commit under review.
+4. Every scenario the tag filter selects passes. The record gives the counts
+   Behave ends with: the scenarios passed, failed, and skipped by the filter.
+5. By hand, at the console: `set store file` answers `set: invalid`, and a
+   `send 1` after it still arrives at the collector.
+
+A scenario that fails is recorded with what was found: fixed in the pull
+request, or raised as an issue and the scenario tagged `@nucleof767ziwip`
+until it is closed.

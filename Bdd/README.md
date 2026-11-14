@@ -13,6 +13,11 @@ same feature files run on every target — the active runner is selected by the
 | `freertos` | `freertos-cross` | `qemu-system-arm` | `syslog-ng-freertos` |
 | `vxworks64` | the VxWorks 6.4 runner, on a build machine | QEMU (Malta) on that machine, its console over TCP | `otelcol-contrib` on the development machine |
 
+`BDD_BOARD` puts a target on a board where it otherwise runs under an emulator.
+`BDD_BOARD=nucleo-f767zi` beside `BDD_TARGET=freertos` drives the image on a
+NUCLEO-F767ZI over its serial port, against `otelcol-contrib` on the
+development machine.
+
 `environment.py` resolves each target's binary from these builds. Build the preset
 for your target, or set `EXAMPLE_BINARY` to a path of your own.
 
@@ -29,7 +34,7 @@ Authoritative reference: [`docs/bdd.md`](../docs/bdd.md#feature-tags). Quick rec
 | `@udp` / `@tcp` / `@tls` / `@mtls` | Transport-specific scenario; CI jobs filter by these. |
 | `@buffered` | Needs a buffered wiring (CircularBuffer / PosixMessageQueueBuffer / service thread) beyond single-task PassthroughBuffer. Excluded only by `behave-linux-passthrough`. |
 | `@passthrough` | Asserts what only the passthrough wiring does. Run by `behave-linux-passthrough` alone. |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Run on every target. |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability (write blocks, replay, threshold callbacks). Run on every target but the NUCLEO-F767ZI, which has no storage fitted. |
 | `@requires_message_size_1500` | Needs `SOLIDSYSLOG_MAX_MESSAGE_SIZE >= 1500` — only the UDP path-MTU clipping feature. The authoritative entry names the runners that supply it. |
 | `@windows_wip` | Skipped on the Windows runner (typically OS-specific behaviour the OTel oracle doesn't model). |
 | `@freertoswip` | Skipped on the FreeRTOS-on-QEMU runner. Per-scenario follow-up tag for capability gaps; removed scenario-by-scenario as each gap closes. The early bring-up reasons (hardcoded `TEST_*` values, missing SD wiring, getopt-only args) have all been closed out by S08.03 + S08.04 slices. Not currently in use on any scenario. |
@@ -110,6 +115,13 @@ oracle on the shared loopback.
 Run `Bdd\Targets\VxWorks64\Run-VxWorks64Bdd.ps1` on the development machine.
 What it needs, and what it does, is in
 [its README](Targets/VxWorks64/README.md#running-the-bdd-scenarios).
+
+### NUCLEO-F767ZI (a board on the development machine)
+
+Run `Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1` on the
+development machine, with the board attached. What it needs, and what it does,
+is in
+[the board's README](Targets/Boards/NucleoF767zi/README.md#running-the-bdd-scenarios).
 
 ## Running in CI
 

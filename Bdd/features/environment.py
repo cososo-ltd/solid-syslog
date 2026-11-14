@@ -16,7 +16,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "steps"))
 from solidsyslog_tunables import SOLIDSYSLOG_MAX_MESSAGE_SIZE  # noqa: E402
 from wait_budgets import CONDITION_TIMEOUT_SECONDS  # noqa: E402
-from target_driver import prepare_vxworks64_target, reset_vxworks64_store  # noqa: E402
+from target_driver import (  # noqa: E402
+    NUCLEO_F767ZI,
+    prepare_nucleo_f767zi_board,
+    prepare_vxworks64_target,
+    reset_vxworks64_store,
+)
 from stack_marks import StackMarks, stack_marks_in  # noqa: E402
 
 logger = logging.getLogger("behave.environment")
@@ -181,6 +186,17 @@ def before_all(context):
     # that logs. Every spawn passes it on, and a step that must know which
     # wiring it is running over reads it from here.
     context.buffer_wiring = os.environ.get("BDD_BUFFER", "queue").lower()
+    # BDD_BOARD puts the target on a board rather than under an emulator: the
+    # steps then reach it over the board's serial port and start it by a reset.
+    context.board = os.environ.get("BDD_BOARD", "").lower()
+    if context.board not in ("", NUCLEO_F767ZI):
+        raise ValueError(f"Unsupported BDD_BOARD={context.board!r}. Expected {NUCLEO_F767ZI!r} or none.")
+    # The image on the board is the FreeRTOS target's, and a run of another
+    # target that found BDD_BOARD left set would reset a board it does not use.
+    if context.board and (context.target != "freertos"):
+        raise ValueError(f"BDD_BOARD={context.board!r} goes with BDD_TARGET=freertos, not {context.target!r}.")
+    if context.board == NUCLEO_F767ZI:
+        context.board_address = prepare_nucleo_f767zi_board()
     if context.target == "vxworks64":
         prepare_vxworks64_target()
 

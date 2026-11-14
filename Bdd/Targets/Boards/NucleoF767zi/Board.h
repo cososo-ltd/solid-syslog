@@ -36,6 +36,13 @@ uint32_t Board_Milliseconds(void);
  * Does not return. */
 void Board_Halt(bool withRedLed);
 
+/* Says on the console what stopped the part, and where, as one line that
+ * starts "[board] fault:", then halts with the red LED lit. It turns
+ * interrupts off and writes the transmitter itself, so it can be called from
+ * anywhere, a fault handler included. A hard fault ends here too, with the
+ * address it happened at. Does not return. */
+void Board_Fault(const char* what, const char* where);
+
 void Board_LedToggle(enum BoardLed led);
 
 #endif

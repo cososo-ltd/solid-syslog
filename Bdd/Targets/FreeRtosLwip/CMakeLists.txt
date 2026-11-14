@@ -111,6 +111,7 @@ target_compile_definitions(solid_syslog_freertos_lwip_upstream PRIVATE ${BDD_BOA
 
 target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, lwipopts.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetBoard.h, which FreeRTOSConfig.h's assertion calls
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${BDD_BOARD_SYSTEM_INCLUDES}                      # the board vendor's headers
     ${LWIP_SHARED_DIR}                                 # arch/cc.h

@@ -6,12 +6,14 @@
  * <stdint.h> when we do not redefine them - newlib on arm-none-eabi provides
  * those, so we let lwIP's defaults stand.
  *
- * DIAG is a no-op and ASSERT spins, matching how a deployed target would
- * trap. LWIP_RAND is a tiny self-contained xorshift, defined in each target's
+ * DIAG is a no-op. ASSERT says on the console what lwIP found, and stops the
+ * target. LWIP_RAND is a tiny self-contained xorshift, defined in each target's
  * main.c, so TCP ISN selection has a definition to link against without
  * dragging in newlib's rand() / a real entropy source. */
 #ifndef LWIP_ARCH_CC_H
 #define LWIP_ARCH_CC_H
+
+#include "../../BddTargetBoard.h"
 
 // NOLINTBEGIN(bugprone-macro-parentheses) -- lwIP API requires these to be #defines
 #define LWIP_PLATFORM_DIAG(x) \
@@ -19,13 +21,10 @@
     {                         \
         (void) 0;             \
     } while (0)
-#define LWIP_PLATFORM_ASSERT(x) \
-    do                          \
-    {                           \
-        (void) (x);             \
-        for (;;)                \
-        {                       \
-        }                       \
+#define LWIP_PLATFORM_ASSERT(x)                      \
+    do                                               \
+    {                                                \
+        BddTargetBoard_Fault("lwIP assertion", (x)); \
     } while (0)
 // NOLINTEND(bugprone-macro-parentheses)
 

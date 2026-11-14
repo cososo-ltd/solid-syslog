@@ -797,6 +797,19 @@ jobs:
       - name: Test the job service
         run: python3 -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 
+  # What lets Behave drive the NUCLEO-F767ZI: its console over a serial port,
+  # and what a run reads from the banner and the build. The tests use a port of
+  # their own, so they need neither the board nor pyserial.
+  tools-nucleo-f767zi-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the board runner
+        run: python3 -m unittest discover -s Bdd/Targets/Boards/NucleoF767zi/Runner -p 'test_*.py'
+
   analyze-markdown:
     runs-on: ubuntu-latest
     steps:
@@ -2589,7 +2602,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -317,13 +317,24 @@ def parse_otel_jsonl_line(line):
     if isinstance(sd, dict):
         fields["STRUCTURED_DATA"] = _render_otel_structured_data(sd)
 
-    # timeUnixNano → ISO 8601 string compatible with datetime.fromisoformat
+    # timeUnixNano -> ISO 8601 string compatible with datetime.fromisoformat.
+    # The receiver gives a record whose TIMESTAMP is NILVALUE no time of its
+    # own, only the time it was observed. syslog-ng gives such a record its
+    # time of receipt, so for a target with no clock the observed time is the
+    # same field from either oracle. A target with a clock gets no such
+    # stand-in: a record of its with no timestamp is a fault to be seen.
     time_ns = log.get("timeUnixNano")
+    if (not int(time_ns or 0)) and _target_has_no_clock():
+        time_ns = log.get("observedTimeUnixNano")
     if time_ns is not None:
         seconds = int(time_ns) / 1e9
         fields["TIMESTAMP"] = datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
 
     return fields
+
+
+def _target_has_no_clock():
+    return os.environ.get("BDD_TARGET", "linux").lower() == "freertos"
 
 
 def parse_oracle_line(line, oracle_format):
@@ -435,7 +446,8 @@ def wait_for_prompt(process, timeout=120):
         if remaining <= 0:
             raise TimeoutError(
                 f"Timed out waiting for prompt after {timeout}s. "
-                f"Output so far: {output.decode(errors='replace')}"
+                f"Output so far: {output.decode(errors='replace')} "
+                f"Sent an empty line, the target then showed: {_answer_to_an_empty_line(process)!r}"
             )
         try:
             data = process._solidsyslog_byte_queue.get(timeout=min(remaining, 0.5))
@@ -447,6 +459,32 @@ def wait_for_prompt(process, timeout=120):
         if output.endswith(b"SolidSyslog> "):
             return output.decode()
     return output.decode()
+
+
+def _answer_to_an_empty_line(process, wait_seconds=3):
+    """What a target that has gone quiet shows when it is sent an empty line.
+
+    A target that is still reading its console answers with its prompt, and one
+    that has stopped answers with nothing, which is what tells a prompt that
+    was lost on the way from a target that never gave one. Only for the report
+    of a timeout: the target is ended straight after.
+    """
+    try:
+        process.stdin.write(chr(10))
+        process.stdin.flush()
+    except (OSError, ValueError) as error:
+        return f"nothing, for the line could not be sent ({error})"
+    answer = b""
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        try:
+            data = process._solidsyslog_byte_queue.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        if data is None:
+            break
+        answer += data
+    return answer.decode(errors="replace")
 
 
 def send_command(process, command):
@@ -1131,9 +1169,12 @@ def step_check_system_hostname(context):
     hostname → dynamic IP → NILVALUE; each runner emits the highest-
     preference value it can supply. Linux/Windows: gethostname() (rung 3,
     "hostname"). FreeRTOS reference: the configured static IPv4 (rung 2)
-    because no FQDN, no integrator hostname, no DHCP. VxWorks 6.4: the name
-    the target sets for itself (rung 3)."""
-    if context.target == "freertos":
+    because no FQDN, no integrator hostname, no DHCP - on a board, the
+    address its image was built with. VxWorks 6.4: the name the target sets
+    for itself (rung 3)."""
+    if getattr(context, "board", ""):
+        expected = context.board_address
+    elif context.target == "freertos":
         expected = EXAMPLE_FREERTOS_STATIC_IP
     elif context.target == "vxworks64":
         expected = VXWORKS64_HOSTNAME

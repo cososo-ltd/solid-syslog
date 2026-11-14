@@ -1,6 +1,7 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#include "BddTargetBoard.h"
 #include "BddTargetBoardConfig.h"
 
 /* FreeRTOS kernel configuration with lwIP
@@ -79,15 +80,16 @@
 #define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 
-#define configASSERT(x) \
-    do                  \
-    {                   \
-        if (!(x))       \
-        {               \
-            for (;;)    \
-            {           \
-            }           \
-        }               \
+/* An assertion that fails says where on the console, and stops the target. */
+#define BDD_TARGET_TEXT_OF_(x) #x
+#define BDD_TARGET_TEXT_OF(x) BDD_TARGET_TEXT_OF_(x)
+#define configASSERT(x)                                                                          \
+    do                                                                                           \
+    {                                                                                            \
+        if (!(x))                                                                                \
+        {                                                                                        \
+            BddTargetBoard_Fault("kernel assertion", __FILE__ ":" BDD_TARGET_TEXT_OF(__LINE__)); \
+        }                                                                                        \
     } while (0)
 
 #endif /* FREERTOS_CONFIG_H */
