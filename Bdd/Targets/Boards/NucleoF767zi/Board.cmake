@@ -160,6 +160,11 @@ set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Board.c
     ${BDD_BOARD_DIR}/BddTargetBoard.c
     ${BDD_BOARD_DIR}/BddTargetBoardClock.c
+    ${BDD_BOARD_DIR}/BoardRtc.c
+    # What the board's clock is made of, from the targets' common code: no
+    # target lists them, because only a board with a clock wants them.
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
     ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
 )
 
