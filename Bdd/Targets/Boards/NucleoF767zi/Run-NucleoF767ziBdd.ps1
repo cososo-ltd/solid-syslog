@@ -64,6 +64,14 @@ $healthUri = 'http://127.0.0.1:13133/'
 $preset = 'nucleo-f767zi-lwip'
 $buildDirectory = "build/$preset"
 $image = "$buildDirectory/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf"
+# Where the build's container sees this tree, which is how its cache names files.
+$mount = '/workspaces/solid-syslog'
+# What the run sets for the steps, put back as it ends: left behind, BDD_BOARD
+# would send a later run of another target to this board, and the serial port
+# would stand in for the board's own after it has moved.
+$runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR',
+    'STM32_PROGRAMMER_CLI', 'ORACLE_FORMAT', 'RECEIVED_LOG', 'VXWORKS64_COLLECTOR_PORT', 'OTELCOL_CONFIG',
+    'OTELCOL_TCP_PORTS')
 
 # STM32CubeCLT's installer puts the programmer on PATH; a shell opened before
 # the install, or one that does not take the machine's PATH, finds it here.
@@ -122,7 +130,7 @@ function Build-Image
     $ErrorActionPreference = 'Continue'
     & docker run --rm --user root `
         -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e 'GIT_CONFIG_VALUE_0=*' `
-        -v "${repositoryRoot}:/workspaces/solid-syslog" -w /workspaces/solid-syslog $crossImage `
+        -v "${repositoryRoot}:$mount" -w $mount $crossImage `
         sh -c "$configure && cmake --build --preset $preset --target SolidSyslogBddTargetLwip"
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0)
@@ -141,7 +149,11 @@ if (Get-Command docker -ErrorAction SilentlyContinue)
     {
     foreach ($protocol in @('udp', 'tcp'))
         {
+        # Docker may be installed and not running, which is no holder of the
+        # port; under 'Stop' what it says of that on stderr would end the run.
+        $ErrorActionPreference = 'Continue'
         $holders = @(docker ps --filter "publish=$collectorPort/$protocol" --format '{{.Names}}' 2>$null)
+        $ErrorActionPreference = 'Stop'
         if ($holders.Count -gt 0)
             {
             throw "$($protocol.ToUpper()) $collectorPort is published by $($holders -join ', '); stop it for the run: docker stop $($holders -join ' ')"
@@ -152,6 +164,11 @@ if (Get-Command docker -ErrorAction SilentlyContinue)
 Push-Location $repositoryRoot
 $collector = $null
 $exitCode = 1
+$environmentBefore = @{}
+foreach ($name in $runEnvironment)
+    {
+    $environmentBefore[$name] = [Environment]::GetEnvironmentVariable($name)
+    }
 try
     {
     if (@(& git status --porcelain --untracked-files=no).Count -gt 0)
@@ -177,15 +194,25 @@ try
         }
 
     # The steps size their payloads from the target's build-time tunables. The
-    # target is built with the library's default message size, so the module is
-    # written from it rather than from whichever host configuration last
-    # generated it.
+    # configure writes the module they read, and so does every other preset's,
+    # so it is written again here by the configure's rule from this build: the
+    # library's default, unless the tunables file the build was given sets it.
     $defaults = Get-Content -Raw -LiteralPath 'Core\Interface\SolidSyslogTunablesDefaults.h'
-    if ($defaults -notmatch '#define SOLIDSYSLOG_MAX_MESSAGE_SIZE (\d+)U')
+    if ($defaults -notmatch '#define\s+SOLIDSYSLOG_MAX_MESSAGE_SIZE\s+(\d+)')
         {
         throw 'SOLIDSYSLOG_MAX_MESSAGE_SIZE was not found in SolidSyslogTunablesDefaults.h'
         }
-    (Get-Content -Raw -LiteralPath 'Bdd\features\steps\solidsyslog_tunables.py.in').Replace('@SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE@', $Matches[1]) |
+    $maxMessageSize = $Matches[1]
+    $cache = Get-Content -Raw -LiteralPath "$buildDirectory/CMakeCache.txt"
+    if ($cache -match '(?m)^SOLIDSYSLOG_USER_TUNABLES_FILE:\w+=(\S+)')
+        {
+        $userTunables = Get-Content -Raw -LiteralPath $Matches[1].Replace("$mount/", '')
+        if ($userTunables -match '#define\s+SOLIDSYSLOG_MAX_MESSAGE_SIZE\s+(\d+)')
+            {
+            $maxMessageSize = $Matches[1]
+            }
+        }
+    (Get-Content -Raw -LiteralPath 'Bdd\features\steps\solidsyslog_tunables.py.in').Replace('@SOLIDSYSLOG_BDD_MAX_MESSAGE_SIZE@', $maxMessageSize) |
         Set-Content -NoNewline -Encoding utf8 -LiteralPath 'Bdd\features\steps\solidsyslog_tunables.py'
 
     $env:BDD_TARGET = 'freertos'
@@ -240,6 +267,10 @@ finally
     if ($collector)
         {
         Get-Process -Name 'otelcol-contrib' -ErrorAction SilentlyContinue | Stop-Process -Force
+        }
+    foreach ($name in $runEnvironment)
+        {
+        [Environment]::SetEnvironmentVariable($name, $environmentBefore[$name])
         }
     Pop-Location
     }
