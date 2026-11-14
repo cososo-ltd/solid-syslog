@@ -149,6 +149,44 @@ class ResetTest(unittest.TestCase):
         self.assertEqual(3, self.resets)
 
 
+class ProbeTest(unittest.TestCase):
+    def setUp(self):
+        self.asked = 0
+        self.reports = []
+        self.answers_from_attempt = 1
+
+    def ask_probe(self):
+        self.asked += 1
+        if self.asked >= self.answers_from_attempt:
+            return 0, "MCU Reset"
+        return 1, "Error: No STM32 target found"
+
+    def reset(self):
+        return nucleo_f767zi.reset_through_probe(self.ask_probe, 3, self.reports.append)
+
+    def test_a_probe_that_resets_the_board_is_asked_once_and_what_it_said_is_returned(self):
+        self.assertEqual("MCU Reset", self.reset())
+
+        self.assertEqual(1, self.asked)
+        self.assertEqual([], self.reports)
+
+    def test_a_probe_that_fails_is_asked_again_and_reported_with_what_it_said(self):
+        self.answers_from_attempt = 2
+
+        self.assertEqual("MCU Reset", self.reset())
+
+        self.assertEqual(1, len(self.reports))
+        self.assertRegex(self.reports[0], "probe did not reset.*attempt 1.*No STM32 target found")
+
+    def test_a_probe_that_never_resets_the_board_is_refused_with_what_it_last_said(self):
+        self.answers_from_attempt = 99
+
+        with self.assertRaisesRegex(RuntimeError, "3 attempts.*No STM32 target found"):
+            self.reset()
+
+        self.assertEqual(3, self.asked)
+
+
 class ConsoleAfterResetTest(unittest.TestCase):
     def setUp(self):
         self.port = FakePort()

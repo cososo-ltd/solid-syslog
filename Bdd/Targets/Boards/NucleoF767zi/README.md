@@ -234,7 +234,10 @@ A board that shows no banner within five seconds of a reset is reset again, up
 to three times, and the run says so on its output with what the board did show
 and what the probe reported. A board silent after a reset has been seen once in
 about a thousand resets and its cause is not known, so a line beginning
-`NUCLEO-F767ZI: the board showed no banner` goes in the run's record.
+`NUCLEO-F767ZI: the board showed no banner` goes in the run's record. So does
+one beginning `NUCLEO-F767ZI: the probe did not reset the board`: the
+programmer itself has failed a reset once in some thousands, and it too is
+asked again, up to three times, with what it said.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
 [does not have yet](#what-the-board-does-not-have-yet) and what any target

@@ -16,7 +16,8 @@ CONSOLE_BAUD = 115200
 PROMPT = b"SolidSyslog> "
 # How long a read of the port waits for a byte before it gives none.
 _READ_WAIT_SECONDS = 0.05
-_RESET_TIMEOUT_SECONDS = 30
+_PROBE_TIMEOUT_SECONDS = 30
+_PROBE_ATTEMPTS = 3
 _QUIET_SECONDS = 0.5
 # A boot prints for a few seconds and then waits at its prompt.
 _NEVER_QUIET_SECONDS = 30
@@ -36,17 +37,43 @@ def open_board(port_name, programmer):
     # Imported here so that only a run against the board needs pyserial.
     import serial
 
-    # Returns what the probe said, for a report of a reset that did not take.
-    def reset():
-        done = subprocess.run(
-            [programmer, "-c", "port=SWD", "-hardRst"],
-            check=True, capture_output=True, timeout=_RESET_TIMEOUT_SECONDS,
-        )
+    def report(said):
+        print(said, file=sys.__stderr__, flush=True)
+
+    # The probe's exit code, none where it gave no answer, and what it said.
+    def ask_probe():
+        try:
+            done = subprocess.run(
+                [programmer, "-c", "port=SWD", "-hardRst"],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=_PROBE_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            return None, f"nothing within {_PROBE_TIMEOUT_SECONDS} seconds"
         said = done.stdout.decode(errors="replace").splitlines()
-        return " | ".join(line.strip() for line in said if line.strip())
+        return done.returncode, " | ".join(line.strip() for line in said if line.strip())
+
+    def reset():
+        return reset_through_probe(ask_probe, _PROBE_ATTEMPTS, report)
 
     port = _ArrivedBytes(serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS))
-    return console_after_reset(port, reset, lambda report: print(report, file=sys.__stderr__, flush=True))
+    return console_after_reset(port, reset, report)
+
+
+# Has the probe reset the board, and returns what it said, for a report of a
+# reset that did not take. The probe has been seen to fail once in some
+# thousands of resets, so it is asked again, and each failure is reported, with
+# what it said, rather than passed over.
+def reset_through_probe(ask_probe, attempts, report):
+    code = None
+    attempt = 0
+    while (code != 0) and (attempt < attempts):
+        attempt += 1
+        code, said = ask_probe()
+        if (code != 0) and (attempt < attempts):
+            report(f"NUCLEO-F767ZI: the probe did not reset the board at attempt {attempt}, and is asked again. It said: {said}")
+    if code != 0:
+        raise RuntimeError(f"The probe did not reset the board in any of {attempts} attempts. It last said: {said}")
+    return said
 
 
 # The console of a board fresh from reset, on a port just opened. A board that
