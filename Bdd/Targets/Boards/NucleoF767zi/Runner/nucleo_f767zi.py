@@ -101,8 +101,10 @@ class RecordedPort:
         self._port.write(data)
 
     def close(self):
-        self._record("port closed")
-        self._port.close()
+        try:
+            self._record("port closed")
+        finally:
+            self._port.close()
 
 
 # reset, with when it was asked for and what the probe said of it recorded.

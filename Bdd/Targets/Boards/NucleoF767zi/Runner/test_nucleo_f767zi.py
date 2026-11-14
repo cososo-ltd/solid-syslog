@@ -271,6 +271,17 @@ class RecordedPortTest(unittest.TestCase):
         self.assertTrue(self.port.closed)
         self.assertEqual(["port closed"], self.record)
 
+    def test_a_record_that_cannot_be_written_does_not_keep_the_port_open(self):
+        def fails(line):
+            raise OSError("the record has gone")
+
+        recorded = nucleo_f767zi.RecordedPort(self.port, fails)
+
+        with self.assertRaises(OSError):
+            recorded.close()
+
+        self.assertTrue(self.port.closed)
+
     def test_a_reset_is_recorded_with_what_the_probe_said(self):
         reset = nucleo_f767zi.recorded_reset(lambda: "MCU Reset", self.record.append)
 

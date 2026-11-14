@@ -22,6 +22,7 @@ class FakePort:
         self.written = b""
         self.closed = False
         self.fails = False
+        self.fails_to_close = False
 
     def read(self):
         if self.fails:
@@ -36,6 +37,8 @@ class FakePort:
 
     def close(self):
         self.closed = True
+        if self.fails_to_close:
+            raise OSError("the port would not close")
 
 
 class SerialConsoleTest(unittest.TestCase):
@@ -68,6 +71,15 @@ class SerialConsoleTest(unittest.TestCase):
 
     def test_a_board_that_is_running_has_no_return_code(self):
         self.assertIsNone(self.console.poll())
+
+    def test_a_port_that_fails_to_close_still_ends_the_console(self):
+        self.addCleanup(setattr, threading, "excepthook", threading.excepthook)
+        threading.excepthook = lambda args: None
+        self.port.fails_to_close = True
+
+        self.console.kill()
+
+        self.assertEqual(0, self.console.poll())
 
     def test_waiting_on_a_board_that_is_running_times_out(self):
         with self.assertRaises(subprocess.TimeoutExpired):

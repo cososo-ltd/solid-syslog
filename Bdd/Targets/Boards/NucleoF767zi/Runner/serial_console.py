@@ -65,9 +65,11 @@ class SerialConsole:
             while not self._ended.is_set():
                 self._write_all(self._port.read())
         finally:
-            os.close(self._write_end)
-            self._port.close()
-            self.returncode = 0
+            try:
+                os.close(self._write_end)
+                self._port.close()
+            finally:
+                self.returncode = 0
 
     def _write_all(self, data):
         while data:
