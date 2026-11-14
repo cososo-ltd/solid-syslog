@@ -9,6 +9,8 @@ import os
 import subprocess
 import threading
 
+_DISCARDED_AT_A_TIME = 4096
+
 
 class SerialConsole:
     # port is the open serial port: read gives the bytes that have arrived, or
@@ -34,9 +36,13 @@ class SerialConsole:
 
     # The steps kill a target to end it, and to stand in for a power cut. On
     # the board both are a reset, which is not a loss of power at the media.
+    # Output still unread is discarded on the way: the copy may be waiting on
+    # a full pipe for a reader, and would otherwise never see that it has ended.
     def kill(self):
         if not self._ended.is_set():
             self._ended.set()
+            while os.read(self.stdout.fileno(), _DISCARDED_AT_A_TIME):
+                pass
             self._copier.join()
             self._reset()
 

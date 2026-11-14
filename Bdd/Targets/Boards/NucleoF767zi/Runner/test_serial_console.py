@@ -115,6 +115,19 @@ class SerialConsoleTest(unittest.TestCase):
         self.addCleanup(opened[0].kill)
         self.assertEqual(shown, self.read_from(opened[0], len(shown)))
 
+    # The steps stop reading at the prompt, so a board that goes on talking
+    # fills the pipe, and the kill must not wait for a reader that is not coming.
+    def test_a_board_whose_output_nobody_reads_can_still_be_killed(self):
+        self.port.arrived.put(b"x" * 1000000)
+        killer = threading.Thread(target=self.console.kill, daemon=True)
+
+        killer.start()
+        killer.join(5)
+
+        self.assertFalse(killer.is_alive())
+        self.assertEqual(["reset"], self.resets)
+        self.assertTrue(self.port.closed)
+
     # A probe unplugged mid-scenario: the steps must see the console end
     # rather than wait out their timeout on a pipe nobody will write.
     def test_a_port_that_fails_ends_stdout_and_frees_the_port(self):
