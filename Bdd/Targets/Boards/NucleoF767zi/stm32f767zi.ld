@@ -5,8 +5,15 @@
  *                                where the part boots from with BOOT0 low.
  *   DTCM:  0x20000000, 128 KiB - left unused. It is the fastest RAM on the
  *                                part and is kept free for whoever needs it.
- *   SRAM:  0x20020000, 384 KiB - SRAM1 and SRAM2, which are contiguous. Data,
- *                                bss, the newlib heap and the stack.
+ *   SRAM:  0x20020000, 384 KiB - SRAM1 and SRAM2, which are contiguous. Its
+ *                                first 16 KiB is ETHDMA below; the rest holds
+ *                                data, bss, the newlib heap and the stack.
+ *
+ * ETHDMA is what the Ethernet DMA reads and writes: its descriptors and the
+ * frame buffers. Board.c gives the region to the MPU as memory the data cache
+ * leaves alone, and an MPU region is a power of two long and starts on a
+ * multiple of its length, which is why it is cut from the bottom of SRAM.
+ * Board.c states the same length, and the two are kept in step by hand.
  *
  * The symbol names are the ones ST's startup_stm32f767xx.s reads.
  */
@@ -17,8 +24,11 @@ MEMORY
 {
     FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 2048K
     DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
-    SRAM  (rwx) : ORIGIN = 0x20020000, LENGTH = 384K
+    ETHDMA (rw) : ORIGIN = 0x20020000, LENGTH = 16K
+    SRAM  (rwx) : ORIGIN = 0x20024000, LENGTH = 368K
 }
+
+_ethernet_dma_start = ORIGIN(ETHDMA);
 
 _estack = ORIGIN(SRAM) + LENGTH(SRAM);
 
@@ -77,6 +87,14 @@ SECTIONS
         KEEP(*(.fini_array))
         PROVIDE(__fini_array_end = .);
     } > FLASH
+
+    /* Not loaded and not cleared at startup: the Ethernet driver writes every
+     * descriptor before the DMA is given it, and a buffer is read only after
+     * a frame has been written to it. */
+    .ethernet_dma (NOLOAD) :
+    {
+        *(.ethernet_dma*)
+    } > ETHDMA
 
     .data :
     {

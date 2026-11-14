@@ -39,6 +39,10 @@ on a capability, and loses the tag as the story that adds it lands.
 -Paths runs only the features given, as behave takes them, under the same tag
 filter.
 
+-SustainedRun runs no scenario. It sends the number of messages given over UDP
+and then as many over TCP, and passes if the collector recorded every one of
+them once, in order and unchanged. Runner/sustained_run.py is what does it.
+
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
 .\Run-NucleoF767ziBdd.ps1 -SkipBuild -Paths Bdd/features/prival.feature
@@ -51,7 +55,8 @@ param(
     [string] $Gateway = $env:NUCLEO_F767ZI_GATEWAY,
     [string] $SerialPort = $env:NUCLEO_F767ZI_SERIAL_PORT,
     [switch] $SkipBuild,
-    [string[]] $Paths = @('Bdd/features')
+    [string[]] $Paths = @('Bdd/features'),
+    [int] $SustainedRun = 0
 )
 
 Set-StrictMode -Version Latest
@@ -233,6 +238,12 @@ try
     # what the board sent, whatever the run then made of it.
     $env:NUCLEO_F767ZI_CONSOLE_RECORD = Join-Path $repositoryRoot 'Bdd\output\nucleo-f767zi-console.log'
     Remove-Item -LiteralPath $env:NUCLEO_F767ZI_CONSOLE_RECORD -ErrorAction SilentlyContinue
+    # Every run starts with nothing recorded. The collector moves a record
+    # aside when it reaches ten megabytes, which one sustained run fills: a
+    # sustained run reads the files moved aside too, so none may be left from
+    # before, and a scenario reads only the newest, so a record left nearly
+    # full would be moved aside under it with the message it is waiting for.
+    Remove-Item -Path 'Bdd\output\received*.jsonl' -ErrorAction SilentlyContinue
     $collector = Start-Process -FilePath 'Bdd\otel\bin\otelcol-contrib.exe' `
         -ArgumentList "--config=$env:OTELCOL_CONFIG" `
         -RedirectStandardOutput 'Bdd\output\otelcol-nucleo-f767zi.out' `
@@ -259,10 +270,20 @@ try
 
     # Behave reports progress on stderr too.
     $ErrorActionPreference = 'Continue'
-    & python -m behave --tags=$tags @Paths
+    if ($SustainedRun -gt 0)
+        {
+        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun
+        }
+    else
+        {
+        & python -m behave --tags=$tags @Paths
+        }
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
-    Write-Host "Commit under test: $(& git rev-parse HEAD)"
+    if ($SustainedRun -le 0)
+        {
+        Write-Host "Commit under test: $(& git rev-parse HEAD)"
+        }
     }
 finally
     {

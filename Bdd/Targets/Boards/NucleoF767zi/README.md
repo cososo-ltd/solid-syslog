@@ -21,10 +21,10 @@ say what it supplies to the code.
 |---|---|---|
 | Toolchain | `cmake/arm-none-eabi-cortex-m7.cmake` | `arm-none-eabi-gcc` for a Cortex-M7 with the hard-float ABI |
 | Startup and vectors | - | ST's `startup_stm32f767xx.s` and `system_stm32f7xx.c`, compiled from the pinned tree as they stand |
-| Linker script | `stm32f767zi.ld` | 2 MiB of flash at `0x08000000`, 384 KiB of RAM at `0x20020000` |
+| Linker script | `stm32f767zi.ld` | 2 MiB of flash at `0x08000000`, 384 KiB of RAM at `0x20020000`, the first 16 KiB of it for the Ethernet DMA |
 | Clock, NVIC and disk facts | `BddTargetBoardConfig.h` | 216 MHz, four priority bits, a disk geometry nothing reads yet |
 | Network addresses | `BddTargetBoardAddresses.h.in` | Written into the build tree by the configure, from cache variables |
-| Clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. The millisecond count is TIM6, so SysTick is the kernel's |
+| Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Disk | `BddTargetBoardDisk.c` | None fitted: it never becomes ready |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
@@ -106,8 +106,8 @@ A send while the link is down fails, and the library reports it as it reports
 any failed delivery.
 
 The interface copies every frame, in both directions, between lwIP's memory and
-buffers of its own that the Ethernet DMA reads and writes. The part's data
-cache is left off, and nothing in the interface maintains it.
+buffers of its own that the Ethernet DMA reads and writes. Those buffers are
+kept out of the data cache, as [Caches](#caches) has it.
 
 Jumpers JP6 and JP7 carry two of the RMII signals to the PHY, and both must be
 fitted.
@@ -115,6 +115,32 @@ fitted.
 The MAC's reset completes only while the PHY supplies its 50 MHz reference
 clock. If it does not complete, the console says
 `[board] ethernet the MAC did not start` and the interface stays without a link.
+
+## Caches
+
+Every image on the board runs with the Cortex-M7's instruction cache and data
+cache on, the bring-up image included. The board support turns them on before
+anything else.
+
+The Ethernet DMA reads and writes memory without the processor, so what the
+data cache holds of that memory can be out of date, and what it has not yet
+written back the DMA never sees. The DMA's descriptors and frame buffers are
+therefore kept in 16 KiB at the bottom of RAM that the board support gives to
+the memory protection unit as a region the data cache does not hold. The
+linker script names the region and the interface places its descriptors and
+buffers there.
+
+The other way to keep that memory coherent is to leave it cached and clean or
+invalidate the cache around each transfer. A region was chosen over that for
+two reasons. ST's Ethernet driver, which is compiled as it stands, reads and
+writes the descriptors itself and maintains no cache, so the descriptors need
+the region whatever is done for the buffers. And with the buffers beside them
+there is one mechanism, set once at start-up, and no call that every transfer
+has to remember. What it costs is that the one copy each frame takes is to or
+from memory that is not cached.
+
+With the caches on and that region not set, no message from the board reaches
+the collector, over UDP or over TCP.
 
 ## What the board does not have yet
 
@@ -218,6 +244,12 @@ scenarios the board can run. `-Netmask` and `-Gateway` set the other two
 [network](#network) settings, and each of the four can be left in an
 environment variable instead, which the script's help names. `-SkipBuild`
 writes the image already built, and `-Paths` runs only the features given.
+
+`-SustainedRun <count>` runs no scenario. It sends that many messages over UDP
+and then as many over TCP, one at a time, and passes if the collector recorded
+every one of them once, in order, and the same as the first but for its
+sequence number and up-time. It ends with a line for each transport giving the
+messages sent, received and at fault.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
@@ -387,6 +419,9 @@ first of them that fails.
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
 5. By hand, at the console: `set store file` answers `set: invalid`, and a
    `send 1` after it still arrives at the collector.
+6. The script run again with `-SkipBuild -SustainedRun 10000` passes. The
+   record gives its two lines: the messages sent, received and at fault over
+   UDP and over TCP.
 
 A scenario that fails is recorded with what was found: fixed in the pull
 request, or raised as an issue and the scenario tagged `@nucleof767ziwip`
