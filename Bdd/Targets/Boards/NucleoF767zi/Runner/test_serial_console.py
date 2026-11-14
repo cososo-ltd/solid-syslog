@@ -20,15 +20,15 @@ class FakePort:
         self.arrived = queue.Queue()
         self.written = b""
         self.closed = False
+        self.fails = False
 
     def read(self):
+        if self.fails:
+            raise OSError("the port has gone")
         try:
             return self.arrived.get(timeout=0.01)
         except queue.Empty:
             return b""
-
-    def has_arrived(self):
-        return not self.arrived.empty()
 
     def write(self, data):
         self.written += data
@@ -43,6 +43,12 @@ class SerialConsoleTest(unittest.TestCase):
         self.resets = []
         self.console = serial_console.SerialConsole(self.port, lambda: self.resets.append("reset"))
         self.addCleanup(self.console.kill)
+
+    def read_from(self, console, count):
+        read = b""
+        while len(read) < count:
+            read += os.read(console.stdout.fileno(), count - len(read))
+        return read
 
     def test_what_the_board_sends_can_be_read_from_stdout(self):
         self.port.arrived.put(b"SolidSyslog> ")
@@ -82,6 +88,23 @@ class SerialConsoleTest(unittest.TestCase):
         self.console.kill()
 
         self.assertEqual(b"", os.read(self.console.stdout.fileno(), 1))
+        self.assertTrue(self.port.closed)
+
+    def test_what_the_board_had_shown_already_is_read_first(self):
+        port = FakePort()
+        port.arrived.put(b"link up")
+        console = serial_console.SerialConsole(port, lambda: None, b"banner, ")
+        self.addCleanup(console.kill)
+
+        self.assertEqual(b"banner, link up", self.read_from(console, 15))
+
+    # A probe unplugged mid-scenario: the steps must see the console end
+    # rather than wait out their timeout on a pipe nobody will write.
+    def test_a_port_that_fails_ends_stdout_and_frees_the_port(self):
+        self.port.fails = True
+
+        self.assertEqual(b"", os.read(self.console.stdout.fileno(), 1))
+        self.assertEqual(0, self.console.wait(timeout=5))
         self.assertTrue(self.port.closed)
 
     def test_a_killed_board_can_be_waited_on(self):

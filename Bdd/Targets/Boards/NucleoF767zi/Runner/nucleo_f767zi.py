@@ -18,10 +18,13 @@ PROMPT = b"SolidSyslog> "
 _READ_WAIT_SECONDS = 0.05
 _RESET_TIMEOUT_SECONDS = 30
 _QUIET_SECONDS = 0.5
+# A boot prints for a few seconds and then waits at its prompt.
+_NEVER_QUIET_SECONDS = 30
 # The banner follows a reset at once; this is far longer than it has ever taken.
 _BANNER_WAIT_SECONDS = 5
 _RESET_ATTEMPTS = 3
 
+_BANNER_STARTS = b"SolidSyslog BDD target"
 _BANNER_COMMIT = re.compile(r"NUCLEO-F767ZI, commit (\S+)")
 _CACHED_ADDRESS = re.compile(r"^SOLIDSYSLOG_BDD_BOARD_IP:\w+=(\S+)$", re.MULTILINE)
 
@@ -43,49 +46,66 @@ def open_board(port_name, programmer):
         return " | ".join(line.strip() for line in said if line.strip())
 
     port = _ArrivedBytes(serial.Serial(port_name, CONSOLE_BAUD, timeout=_READ_WAIT_SECONDS))
-    discard_until_quiet(port, _QUIET_SECONDS)
-    reset_until_board_speaks(
-        port, reset, _BANNER_WAIT_SECONDS, _RESET_ATTEMPTS,
-        lambda report: print(report, file=sys.__stderr__, flush=True),
-    )
-    return SerialConsole(port, reset)
+    return console_after_reset(port, reset, lambda report: print(report, file=sys.__stderr__, flush=True))
 
 
-# Resets the board, and again if it shows nothing: the banner is the first
-# thing a reset draws, so a board silent for wait_seconds after one has not
-# started. Once in about a thousand resets through the probe the board has
-# stayed silent, for a reason not yet found, so each time is reported, with
-# what the probe said of the reset, rather than passed over. What the board
-# shows is left on the port for the console.
-def reset_until_board_speaks(port, reset, wait_seconds, attempts, report):
-    spoke = False
-    attempt = 0
-    while (not spoke) and (attempt < attempts):
-        attempt += 1
-        said = reset()
-        deadline = time.monotonic() + wait_seconds
-        while (not port.has_arrived()) and (time.monotonic() < deadline):
-            time.sleep(0.01)
-        spoke = port.has_arrived()
-        if (not spoke) and (attempt < attempts):
-            report(
-                f"NUCLEO-F767ZI: the board showed nothing within {wait_seconds} seconds of reset {attempt},"
-                f" and is reset again. The probe said: {said}"
-            )
-    if not spoke:
-        raise RuntimeError(f"The board showed nothing after any of {attempts} resets. The probe last said: {said}")
+# The console of a board fresh from reset, on a port just opened. A board that
+# does not start leaves the port closed, for the next to open it.
+def console_after_reset(port, reset, report):
+    try:
+        discard_until_quiet(port, _QUIET_SECONDS, _NEVER_QUIET_SECONDS)
+        shown = reset_until_banner(port, reset, _BANNER_WAIT_SECONDS, _RESET_ATTEMPTS, report)
+    except BaseException:
+        port.close()
+        raise
+    return SerialConsole(port, reset, shown)
 
 
 # The ST-LINK keeps what the board printed while the port was closed - the
 # whole of a boot, after the reset that ended the last scenario - and hands it
-# over once the port is open. Read as this boot's, its prompt would be taken
-# for a board that is ready while the board is still starting, so it is
-# discarded, until nothing has arrived for quiet_seconds.
-def discard_until_quiet(port, quiet_seconds):
-    quiet_since = time.monotonic()
+# over once the port is open. Its banner would be taken for the one the next
+# reset draws, so it is discarded, until nothing has arrived for quiet_seconds.
+# A board still printing after give_up_seconds is not one a run can read.
+def discard_until_quiet(port, quiet_seconds, give_up_seconds):
+    started = time.monotonic()
+    quiet_since = started
     while (time.monotonic() - quiet_since) < quiet_seconds:
         if port.read():
             quiet_since = time.monotonic()
+        if (time.monotonic() - started) > give_up_seconds:
+            raise RuntimeError(f"The board has not been quiet for {quiet_seconds} seconds in {give_up_seconds}")
+
+
+# Resets the board, and again if it shows no banner: the banner is the first
+# thing a reset draws, so a board without one wait_seconds after a reset has
+# not started. Once in about a thousand resets through the probe the board has
+# stayed silent, for a reason not yet found, so each time is reported, with
+# what the probe said of the reset, rather than passed over. Returns what the
+# board showed from the banner on. What came before it is the boot before
+# this one, still printing as the reset was asked for, and is discarded: its
+# prompt would be taken for a board that is ready while the board is starting.
+def reset_until_banner(port, reset, wait_seconds, attempts, report):
+    banner_at = -1
+    attempt = 0
+    while (banner_at < 0) and (attempt < attempts):
+        attempt += 1
+        said = reset()
+        shown = bytearray()
+        deadline = time.monotonic() + wait_seconds
+        while (banner_at < 0) and (time.monotonic() < deadline):
+            shown.extend(port.read())
+            banner_at = shown.find(_BANNER_STARTS)
+        if (banner_at < 0) and (attempt < attempts):
+            report(
+                f"NUCLEO-F767ZI: the board showed no banner within {wait_seconds} seconds of reset {attempt},"
+                f" and is reset again. It showed {bytes(shown)!r}. The probe said: {said}"
+            )
+    if banner_at < 0:
+        raise RuntimeError(
+            f"The board showed no banner after any of {attempts} resets. It last showed {bytes(shown)!r}."
+            f" The probe last said: {said}"
+        )
+    return bytes(shown[banner_at:])
 
 
 # The port as SerialConsole reads it: what has arrived, without waiting for more.
@@ -95,9 +115,6 @@ class _ArrivedBytes:
 
     def read(self):
         return self._port.read(self._port.in_waiting or 1)
-
-    def has_arrived(self):
-        return self._port.in_waiting > 0
 
     def write(self, data):
         self._port.write(data)

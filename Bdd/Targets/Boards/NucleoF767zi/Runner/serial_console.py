@@ -13,11 +13,13 @@ import threading
 class SerialConsole:
     # port is the open serial port: read gives the bytes that have arrived, or
     # none once a short wait has passed without any. reset restarts the board.
-    def __init__(self, port, reset):
+    # shown is what the board has shown already, which stdout gives first.
+    def __init__(self, port, reset, shown=b""):
         self._port = port
         self._reset = reset
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
+        os.write(self._write_end, shown)
         self.stdin = _ConsoleInput(port)
         # A serial console carries one stream; errors arrive on stdout with the rest.
         self.stderr = None
@@ -47,15 +49,18 @@ class SerialConsole:
 
     # The steps read stdout with os.read, which needs a real file descriptor,
     # so the output is copied into a pipe. Closing the pipe as the console ends
-    # gives the reader its end of file.
+    # gives the reader its end of file, and a port that fails ends the console
+    # as a kill does, so the reader is not left waiting on it.
     def _copy_output(self):
-        while not self._ended.is_set():
-            data = self._port.read()
-            if data:
-                os.write(self._write_end, data)
-        os.close(self._write_end)
-        self._port.close()
-        self.returncode = 0
+        try:
+            while not self._ended.is_set():
+                data = self._port.read()
+                if data:
+                    os.write(self._write_end, data)
+        finally:
+            os.close(self._write_end)
+            self._port.close()
+            self.returncode = 0
 
 
 # Text written as the steps write a local target's stdin.
