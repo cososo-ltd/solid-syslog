@@ -56,7 +56,7 @@
         {
             "name": "coverage",
             "displayName": "Coverage",
-            "inherits": "debug",
+            "inherits": "clang-debug",
             "cacheVariables": {
                 "COVERAGE": "ON"
             }

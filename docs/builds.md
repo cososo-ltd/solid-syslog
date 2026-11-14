@@ -74,27 +74,34 @@ cmake --build --preset sanitize --target junit
 
 ## Coverage - `coverage`
 
-Generates an HTML coverage report for the library source.
+Builds with Clang's source-based instrumentation, runs every test executable
+registered with `junit`, and reports lines, branches and MC/DC over the library
+source with llvm-cov. Needs Clang and the LLVM tools, so run it in the
+`cpputest-clang` image; the GCC images have neither.
 
 ```bash
 cmake --preset coverage
 cmake --build --preset coverage --target coverage
 ```
 
-Open `build/coverage/coverage_report/index.html` to view results. The report
-covers every test executable registered with `junit`, not only the main one,
-so a pack tested from its own executable counts. CI publishes the same report
-as measured on `main` at [Coverage](testing/coverage.md), so what the gate saw
-can be read without building it. `scripts/coverage_summary.py` prints the
-same tracefile as a table per pack and applies the gate:
+Open `build/coverage/report/coverage-report/index.html` for the genhtml report,
+which lists each file with its line and branch counts, and
+`build/coverage/report/mcdc-report/index.html` for llvm-cov's own, which shows
+each decision's conditions and the test vectors that exercised them. The report
+covers every test executable registered with `junit`, not only the main one, so
+a pack tested from its own executable counts. CI publishes the same reports as
+measured on `main` at [Coverage](testing/coverage.md), so what the gate saw can
+be read without building it. `scripts/coverage_summary.py` prints the same
+measurement as a table per pack and applies the gate:
 
 ```bash
-scripts/coverage_summary.py build/coverage/coverage.filtered.info --threshold 90
+scripts/coverage_summary.py build/coverage/coverage.filtered.info \
+  --llvm-json build/coverage/coverage.llvm.json --threshold 90
 ```
 
-The CI gate is 99% on lines and 99% on branches, over all packs together. A
-tracefile with no branch data fails the gate rather than skipping it. The
-target is 100%.
+The CI gate is 99% on lines, 99% on branches and 99% on MC/DC, over all packs
+together. A tracefile with no branch data, or a summary with no MC/DC
+conditions, fails the gate rather than skipping it. The target is 100%.
 
 ## Static analysis - `tidy`
 

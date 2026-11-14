@@ -34,7 +34,25 @@ TRACEFILE = textwrap.dedent(
 )
 
 
+LLVM_JSON = textwrap.dedent(
+    """\
+    {"data": [{"files": [
+      {"filename": "/work/Core/Source/SolidSyslog.c", "summary": {"mcdc": {"count": 8, "covered": 7}}},
+      {"filename": "/work/Core/Source/SolidSyslogError.c", "summary": {"mcdc": {"count": 2, "covered": 2}}},
+      {"filename": "/work/Platform/Posix/Source/SolidSyslogPosixClock.c", "summary": {"mcdc": {"count": 0, "covered": 0}}}
+    ]}]}
+    """
+)
+
+
 class Aggregation(unittest.TestCase):
+    def test_adds_each_packs_mcdc_conditions_from_the_llvm_summary(self):
+        packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
+        coverage_summary.add_mcdc(packs, io.StringIO(LLVM_JSON))
+        self.assertEqual(packs["Core"], coverage_summary.Counts(20, 19, 6, 5, 10, 9))
+        self.assertEqual(packs["Posix"], coverage_summary.Counts(5, 5, 2, 1, 0, 0))
+
+
     def test_groups_core_and_each_pack(self):
         packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
         self.assertEqual(sorted(packs), ["Core", "Posix"])
@@ -79,7 +97,26 @@ class Gate(unittest.TestCase):
         self.assertTrue(any("no line data" in f for f in found))
 
 
-class Table(unittest.TestCase):
+class GateOnMcdc(unittest.TestCase):
+    def test_names_the_mcdc_rate_that_falls_short(self):
+        found = coverage_summary.failures(coverage_summary.Counts(100, 95, 100, 95, 100, 89), 90)
+        self.assertEqual(found, ["MC/DC coverage 89.0% is below 90%"])
+
+    def test_without_mcdc_data_the_gate_is_lines_and_branches_alone(self):
+        self.assertEqual(coverage_summary.failures(coverage_summary.Counts(100, 95, 100, 95), 90), [])
+
+
+class TableWithMcdc(unittest.TestCase):
+    def test_markdown_adds_the_mcdc_columns_when_conditions_were_counted(self):
+        packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
+        coverage_summary.add_mcdc(packs, io.StringIO(LLVM_JSON))
+        rows = coverage_summary.markdown(packs).splitlines()
+        self.assertEqual(rows[0], "| Pack | Lines | | Branches | | MC/DC | |")
+        self.assertIn("| Core | 19 / 20 | 95.0% | 5 / 6 | 83.3% | 9 / 10 | 90.0% |", rows)
+        self.assertIn("| Posix | 5 / 5 | 100.0% | 1 / 2 | 50.0% | 0 / 0 | - |", rows)
+        self.assertEqual(rows[-1], "| **Total** | 24 / 25 | 96.0% | 6 / 8 | 75.0% | 9 / 10 | 90.0% |")
+
+
     def test_markdown_renders_each_name_cell_through_the_label(self):
         packs = coverage_summary.aggregate(io.StringIO(TRACEFILE))
         rows = coverage_summary.markdown(packs, label=lambda name: f"<{name}>").splitlines()
@@ -120,6 +157,25 @@ class Main(unittest.TestCase):
         status, out, _ = self.run_main(TRACEFILE)
         self.assertEqual(status, 1)
         self.assertTrue(out.endswith("|\n\n"))
+
+    def test_the_llvm_summary_gates_mcdc_too(self):
+        with tempfile.TemporaryDirectory() as directory:
+            summary = os.path.join(directory, "coverage.llvm.json")
+            with open(summary, "w", encoding="utf-8") as handle:
+                handle.write(LLVM_JSON)
+            status, out, err = self.run_main(TRACEFILE, "--threshold", "75", "--llvm-json", summary)
+        self.assertEqual(status, 0)
+        self.assertIn("| **Total** | 24 / 25 | 96.0% | 6 / 8 | 75.0% | 9 / 10 | 90.0% |", out)
+        self.assertEqual(err, "")
+
+    def test_an_llvm_summary_with_no_conditions_is_a_failure_not_a_skip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            summary = os.path.join(directory, "coverage.llvm.json")
+            with open(summary, "w", encoding="utf-8") as handle:
+                handle.write('{"data": [{"files": []}]}')
+            status, _, err = self.run_main(TRACEFILE, "--threshold", "75", "--llvm-json", summary)
+        self.assertEqual(status, 1)
+        self.assertIn("FAIL: no MC/DC data in the llvm-cov summary", err)
 
     def test_default_threshold_is_ninety_nine(self):
         status, _, err = self.run_main(TRACEFILE)

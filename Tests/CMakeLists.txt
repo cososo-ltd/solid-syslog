@@ -322,6 +322,14 @@ endif()
 # Standard CppUTest console output via ctest -V
 add_test(NAME ${PROJECT_NAME}Tests COMMAND ${PROJECT_NAME}Tests)
 
+# A coverage build has every run leave its raw profile here, where the
+# `coverage` target below merges them. Empty otherwise, and run_junit.cmake
+# then leaves the environment alone.
+set(SOLIDSYSLOG_PROFRAW_DIR "")
+if(COVERAGE)
+    set(SOLIDSYSLOG_PROFRAW_DIR ${CMAKE_BINARY_DIR}/profraw)
+endif()
+
 # JUnit XML output for CI and the VS Code test explorer.
 # Uses a cmake script so test failures (non-zero exit) don't abort the target.
 add_custom_target(junit
@@ -329,6 +337,7 @@ add_custom_target(junit
         -DEXECUTABLE=$<TARGET_FILE:${PROJECT_NAME}Tests>
         -DPACKAGE=${PROJECT_NAME}Tests
         -DDIR=${CMAKE_BINARY_DIR}
+        -DPROFRAW_DIR=${SOLIDSYSLOG_PROFRAW_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
     DEPENDS ${PROJECT_NAME}Tests
     COMMENT "Running tests with JUnit XML output"
@@ -352,6 +361,7 @@ function(register_junit_test test_target)
             -DEXECUTABLE=$<TARGET_FILE:${test_target}>
             -DPACKAGE=${test_target}
             -DDIR=${junit_dir}
+            -DPROFRAW_DIR=${SOLIDSYSLOG_PROFRAW_DIR}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
         COMMENT "Running ${test_target} with JUnit XML output"
         VERBATIM
@@ -406,58 +416,68 @@ if(unregistered_tests)
         "any other to its pack's register_junit_test list in Tests/CMakeLists.txt.")
 endif()
 
-# Code coverage report using lcov/genhtml.
+# Coverage report: llvm-cov over the raw profiles the `junit` run leaves, with
+# MC/DC, and genhtml over the lcov tracefile llvm-cov exports.
 # Requires the coverage preset: cmake --preset coverage && cmake --build --preset coverage --target coverage
-# lcov 2 and genhtml must be installed (available in both container images).
 #
 # The report measures what `junit` runs - every registered test executable -
 # so a pack whose tests live in their own executable counts the same as one
-# tested from SolidSyslogTests. The counters are zeroed before the suite runs,
+# tested from SolidSyslogTests. The profiles are cleared before the suite runs,
 # so a second `--target coverage` in the same tree measures that run alone.
+#
+# Tests/Coverage/llvm_cov.cmake does the llvm-cov work and says what it leaves
+# where. report/coverage-report/ is genhtml's, dressed as part of the
+# documentation site (Tests/Coverage/prolog.html says how), and
+# report/mcdc-report/ is llvm-cov's own, which is where each decision's test
+# vectors are shown. hooks/coverage_report.py links both.
 if(COVERAGE)
-    find_program(LCOV_EXECUTABLE lcov)
-    find_program(GENHTML_EXECUTABLE genhtml)
+    find_program(LLVM_PROFDATA_EXECUTABLE llvm-profdata REQUIRED)
+    find_program(LLVM_COV_EXECUTABLE llvm-cov REQUIRED)
+    find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
 
-    if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-        add_custom_target(coverage-zero
-            COMMAND ${LCOV_EXECUTABLE} --zerocounters --directory ${CMAKE_BINARY_DIR}
-            COMMENT "Zeroing coverage counters"
-        )
-        add_dependencies(junit coverage-zero)
+    add_custom_target(coverage-zero
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${SOLIDSYSLOG_PROFRAW_DIR}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${SOLIDSYSLOG_PROFRAW_DIR}
+        COMMENT "Clearing the raw coverage profiles"
+    )
+    add_dependencies(junit coverage-zero)
 
-        add_custom_target(coverage
-            # Only the production sources are captured. Test sources are not
-            # measured, and lcov 2 checks every file it captures for
-            # consistency, which GCC's records of CppUTest's TEST bodies fail.
-            COMMAND ${LCOV_EXECUTABLE} --capture --directory ${CMAKE_BINARY_DIR}
-                --include "${CMAKE_SOURCE_DIR}/Core/Source/*"
-                --include "${CMAKE_SOURCE_DIR}/Platform/*/Source/*"
-                --output-file ${CMAKE_BINARY_DIR}/coverage.filtered.info
-                --rc branch_coverage=1
-            # --prefix pins the report's layout to the source tree, so a pack's
-            # pages are at Platform/<Pack>/Source/ and Core's at Core/Source/,
-            # which is where hooks/coverage_report.py links. Without it genhtml
-            # strips whatever prefix the tracefile happens to share. The prolog,
-            # epilog and stylesheet dress the report as part of the
-            # documentation site; Tests/Coverage/prolog.html says how.
-            COMMAND ${GENHTML_EXECUTABLE} ${CMAKE_BINARY_DIR}/coverage.filtered.info
-                --output-directory ${CMAKE_BINARY_DIR}/coverage_report
-                --branch-coverage
-                --prefix ${CMAKE_SOURCE_DIR}
-                --title SolidSyslog
-                --header-title "SolidSyslog coverage report"
-                --html-prolog ${CMAKE_SOURCE_DIR}/Tests/Coverage/prolog.html
-                --html-epilog ${CMAKE_SOURCE_DIR}/Tests/Coverage/epilog.html
-            COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_SOURCE_DIR}/Tests/Coverage/solidsyslog.css
-                ${CMAKE_SOURCE_DIR}/docs/assets/images/solidsyslog-cube.svg
-                ${CMAKE_BINARY_DIR}/coverage_report/
-            DEPENDS junit
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            COMMENT "Generating coverage report in build/coverage/coverage_report/"
-            VERBATIM
-        )
-    else()
-        message(STATUS "lcov/genhtml not found — 'coverage' target unavailable (requires updated base image)")
-    endif()
+    # Every executable `junit` runs, so a function's counts are read from the
+    # binary that holds it.
+    get_property(coverage_tests GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TESTS)
+    set(coverage_objects $<TARGET_FILE:${PROJECT_NAME}Tests>)
+    foreach(coverage_test IN LISTS coverage_tests)
+        list(APPEND coverage_objects $<TARGET_FILE:${coverage_test}>)
+    endforeach()
+
+    add_custom_target(coverage
+        COMMAND ${CMAKE_COMMAND}
+            -DLLVM_PROFDATA=${LLVM_PROFDATA_EXECUTABLE}
+            -DLLVM_COV=${LLVM_COV_EXECUTABLE}
+            -DPROFRAW_DIR=${SOLIDSYSLOG_PROFRAW_DIR}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DOUTPUT_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/Coverage/llvm_cov.cmake
+            ${coverage_objects}
+        # --prefix pins the report's layout to the source tree, so a pack's
+        # pages are at Platform/<Pack>/Source/ and Core's at Core/Source/,
+        # which is where hooks/coverage_report.py links. Without it genhtml
+        # strips whatever prefix the tracefile happens to share.
+        COMMAND ${GENHTML_EXECUTABLE} ${CMAKE_BINARY_DIR}/coverage.filtered.info
+            --output-directory ${CMAKE_BINARY_DIR}/report/coverage-report
+            --branch-coverage
+            --prefix ${CMAKE_SOURCE_DIR}
+            --title SolidSyslog
+            --header-title "SolidSyslog coverage report"
+            --html-prolog ${CMAKE_SOURCE_DIR}/Tests/Coverage/prolog.html
+            --html-epilog ${CMAKE_SOURCE_DIR}/Tests/Coverage/epilog.html
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_SOURCE_DIR}/Tests/Coverage/solidsyslog.css
+            ${CMAKE_SOURCE_DIR}/docs/assets/images/solidsyslog-cube.svg
+            ${CMAKE_BINARY_DIR}/report/coverage-report/
+        DEPENDS junit
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating the coverage reports in build/coverage/report/"
+        VERBATIM
+    )
 endif()

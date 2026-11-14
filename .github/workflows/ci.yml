@@ -575,13 +575,13 @@ jobs:
           # tested that commit (docs-bundle.yml).
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
-  unit-linux-gcc-coverage:
+  unit-linux-clang-coverage:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:879e29d63dd60253a46a03f43b0db8a8fcac24365cfdf5af06f3cce338b69888 # sha-54d57c6
+      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:fdecd47f49c0ac93bc84c8a67456927f747e3175163e7de95c0647f1861e1f98 # sha-3eacf4a
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -599,17 +599,18 @@ jobs:
       - name: Measure coverage and enforce the gate
         uses: ./.github/actions/coverage-report
 
-      # The report is published: docs-build stages this artifact under the
+      # The reports are published: docs-build stages this artifact under the
       # site's Testing pages, where hooks/coverage_report.py fills the Coverage
-      # page's table from the tracefile. success()||failure() keeps it uploaded
-      # even when the threshold gate above fails, which is exactly when you want
-      # to read it.
+      # page's table from the tracefile and llvm-cov summary beside the genhtml
+      # report, and links llvm-cov's own report for the MC/DC detail.
+      # success()||failure() keeps it uploaded even when the threshold gate
+      # above fails, which is exactly when you want to read it.
       - name: Upload coverage report artifact
         if: success() || failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: coverage-report-linux-gcc
-          path: build/coverage/coverage_report/
+          name: coverage-report-linux-clang
+          path: build/coverage/report/
           retention-days: 7
 
   analyze-tidy:
@@ -845,7 +846,7 @@ jobs:
       - unit-linux-gcc-tunables
       - unit-linux-clang
       - unit-linux-gcc-sanitize
-      - unit-linux-gcc-coverage
+      - unit-linux-clang-coverage
       - unit-windows-msvc
       - build-linux-wolfssl
       - integration-linux-openssl
@@ -928,20 +929,21 @@ jobs:
           VERSION=$(python3 -c "import json; print(json.load(open('.release-please-manifest.json'))['.'])")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # The coverage lane's genhtml report and tracefile, staged where
-      # hooks/coverage_report.py and the Coverage page expect them. The
-      # directory is git-ignored; MkDocs copies it into the site and the offline
-      # bundle untouched.
+      # The coverage lane's reports, genhtml's with the tracefile and llvm-cov
+      # summary inside it and llvm-cov's own beside it, staged where
+      # hooks/coverage_report.py and the Coverage page expect them. Both
+      # directories are git-ignored; MkDocs copies them into the site and the
+      # offline bundle untouched.
       # The coverage lane uploads its report on failure too, so a gate that
       # failed still shows its figures here; only a lane that never got as far
       # as a report leaves nothing, and then the Coverage page says so. A lane
       # that succeeded has the artifact, so a missing one is then a fault.
       - name: Stage the coverage report for the Testing pages
-        continue-on-error: ${{ needs.unit-linux-gcc-coverage.result != 'success' }}
+        continue-on-error: ${{ needs.unit-linux-clang-coverage.result != 'success' }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: coverage-report-linux-gcc
-          path: docs/testing/coverage-report/
+          name: coverage-report-linux-clang
+          path: docs/testing/
 
       # Every lane's JUnit results and version record, one directory per
       # artifact, which is the layout scripts/junit_report_pages.py reads: the
@@ -2602,7 +2604,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-gcc-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read
