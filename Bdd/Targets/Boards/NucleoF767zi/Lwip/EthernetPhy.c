@@ -8,12 +8,20 @@ enum
     /* What this end advertises, and what the far end does. */
     REGISTER_ADVERTISED = 4,
     REGISTER_PARTNER = 5,
+    /* The LAN8742A's own: the mode it took from its straps, which a reset
+     * through the control register takes up again from here. */
+    REGISTER_MODES = 18,
 
-    CONTROL_NEGOTIATION_RESTART = 0x0200,
     CONTROL_NEGOTIATION_ENABLE = 0x1000,
     /* Set while the PHY resets itself, and in the all-ones a bus reads when
      * no PHY drives it. */
     CONTROL_RESET = 0x8000,
+
+    /* Every speed and duplex up to 100 Mbit/s, negotiated. */
+    MODE_NEGOTIATE_EVERYTHING = 0x00E0,
+
+    /* A reset has ended within a few reads; this is far more than it takes. */
+    RESET_READS_AT_MOST = 1000,
 
     STATUS_LINK_UP = 0x0004,
     STATUS_NEGOTIATION_COMPLETE = 0x0020,
@@ -26,29 +34,40 @@ enum
     ABILITY_100_FULL = 0x0100
 };
 
+static inline bool EthernetPhy_IsResetting(uint16_t control);
 static inline bool EthernetPhy_IsNegotiating(uint16_t control);
 static inline bool EthernetPhy_LinkHasSettled(uint16_t status);
 static inline enum EthernetPhyLink EthernetPhy_BestCommon(uint16_t common);
 
-/* What is advertised goes in first, so the negotiation the second write
- * starts is the only one, and offers all of it. A write on the management bus
- * is not acknowledged, so the control register is read back to learn whether
- * the PHY took it. */
-bool EthernetPhy_StartNegotiation(EthernetPhyWriteFunction write, EthernetPhyReadFunction read, void* context)
+/* The mode is written before the reset that takes it up. A write on the
+ * management bus is not acknowledged, so the control register is read back, to
+ * learn both that the reset has ended and that the PHY came out of it
+ * negotiating. */
+bool EthernetPhy_Restart(EthernetPhyWriteFunction write, EthernetPhyReadFunction read, void* context)
 {
-    uint16_t everything = (uint16_t) SELECTOR_IEEE_802_3 | (uint16_t) ABILITY_10_HALF | (uint16_t) ABILITY_10_FULL |
-                          (uint16_t) ABILITY_100_HALF | (uint16_t) ABILITY_100_FULL;
-    uint16_t negotiate = (uint16_t) CONTROL_NEGOTIATION_ENABLE | (uint16_t) CONTROL_NEGOTIATION_RESTART;
-    uint16_t control = 0U;
-    bool wasStarted = write(context, (uint8_t) REGISTER_ADVERTISED, everything);
-    wasStarted = write(context, (uint8_t) REGISTER_CONTROL, negotiate) && wasStarted;
-    wasStarted = read(context, (uint8_t) REGISTER_CONTROL, &control) && wasStarted;
-    return wasStarted && EthernetPhy_IsNegotiating(control);
+    uint16_t modes = 0U;
+    uint16_t control = (uint16_t) CONTROL_RESET;
+    bool wasRestarted = read(context, (uint8_t) REGISTER_MODES, &modes);
+    if (wasRestarted)
+    {
+        wasRestarted = write(context, (uint8_t) REGISTER_MODES, modes | (uint16_t) MODE_NEGOTIATE_EVERYTHING);
+        wasRestarted = write(context, (uint8_t) REGISTER_CONTROL, (uint16_t) CONTROL_RESET) && wasRestarted;
+    }
+    for (uint16_t i = 0U; wasRestarted && EthernetPhy_IsResetting(control) && (i < (uint16_t) RESET_READS_AT_MOST); i++)
+    {
+        wasRestarted = read(context, (uint8_t) REGISTER_CONTROL, &control);
+    }
+    return wasRestarted && EthernetPhy_IsNegotiating(control);
+}
+
+static inline bool EthernetPhy_IsResetting(uint16_t control)
+{
+    return (control & (uint16_t) CONTROL_RESET) != 0U;
 }
 
 static inline bool EthernetPhy_IsNegotiating(uint16_t control)
 {
-    return ((control & (uint16_t) CONTROL_NEGOTIATION_ENABLE) != 0U) && ((control & (uint16_t) CONTROL_RESET) == 0U);
+    return ((control & (uint16_t) CONTROL_NEGOTIATION_ENABLE) != 0U) && !EthernetPhy_IsResetting(control);
 }
 
 enum EthernetPhyLink EthernetPhy_ReadLink(EthernetPhyReadFunction read, void* context)

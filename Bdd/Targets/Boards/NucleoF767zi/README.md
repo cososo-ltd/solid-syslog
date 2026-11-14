@@ -89,10 +89,13 @@ The collector does not have to be on the board's own network: one that is not
 is reached through the gateway.
 
 The on-board PHY negotiates its link, and the target follows it. The target
-starts that negotiation itself as it boots. The PHY takes its mode at reset
-from strap pins, and after a reset through the debug probe it sometimes comes
-up with negotiation off, where it would never report a negotiated link. Each change is
-a line on the console, so a pulled cable can be told from a fault:
+puts the PHY in that mode itself as it boots, and resets it into the mode
+before it resets the MAC. The PHY takes its mode from strap pins as it leaves
+reset, and after a reset through the debug probe about one boot in twenty has
+it in some other: most have negotiation off, where it would never report a
+negotiated link, and one powers it down, where it gives the MAC no clock and
+the MAC does not start. Each change of the link is a line on the console, so a
+pulled cable can be told from a fault:
 
 ```text
 [board] link down

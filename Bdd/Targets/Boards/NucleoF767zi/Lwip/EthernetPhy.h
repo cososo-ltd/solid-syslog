@@ -30,14 +30,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * which is not whether a PHY was there to take it. */
     typedef bool (*EthernetPhyWriteFunction)(void* context, uint8_t registerNumber, uint16_t value);
 
-    /* Has the PHY advertise every speed and duplex it has up to 100 Mbit/s,
-     * and negotiate afresh. A PHY takes its mode at reset from its strap pins,
-     * and one that came up with negotiation off never completes it, which
-     * EthernetPhy_ReadLink reads as a link that is down; this puts it in the
-     * mode ReadLink expects whatever the straps gave. False when the PHY does
-     * not read back as negotiating, which is also what an absent PHY and a
-     * failed access give. */
-    bool EthernetPhy_StartNegotiation(EthernetPhyWriteFunction write, EthernetPhyReadFunction read, void* context);
+    /* Puts the PHY in the mode that negotiates every speed and duplex it has
+     * up to 100 Mbit/s, and resets it into that mode. A PHY takes its mode
+     * from strap pins as it leaves reset, and what it took is not relied on:
+     * one mode has negotiation off, which EthernetPhy_ReadLink reads as a link
+     * that is down, and one has the PHY powered down, with no reference clock
+     * for the MAC. So this comes before the MAC is reset. False when the PHY
+     * does not come out of its reset negotiating, which is also what an
+     * absent PHY and a failed access give. */
+    bool EthernetPhy_Restart(EthernetPhyWriteFunction write, EthernetPhyReadFunction read, void* context);
 
     /* The link as it stands now: down, or the best speed and duplex both ends
      * advertised. A link still negotiating is down, and so is a PHY that
