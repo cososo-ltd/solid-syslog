@@ -446,7 +446,8 @@ def wait_for_prompt(process, timeout=120):
         if remaining <= 0:
             raise TimeoutError(
                 f"Timed out waiting for prompt after {timeout}s. "
-                f"Output so far: {output.decode(errors='replace')}"
+                f"Output so far: {output.decode(errors='replace')} "
+                f"Sent an empty line, the target then showed: {_answer_to_an_empty_line(process)!r}"
             )
         try:
             data = process._solidsyslog_byte_queue.get(timeout=min(remaining, 0.5))
@@ -458,6 +459,32 @@ def wait_for_prompt(process, timeout=120):
         if output.endswith(b"SolidSyslog> "):
             return output.decode()
     return output.decode()
+
+
+def _answer_to_an_empty_line(process, wait_seconds=3):
+    """What a target that has gone quiet shows when it is sent an empty line.
+
+    A target that is still reading its console answers with its prompt, and one
+    that has stopped answers with nothing, which is what tells a prompt that
+    was lost on the way from a target that never gave one. Only for the report
+    of a timeout: the target is ended straight after.
+    """
+    try:
+        process.stdin.write(chr(10))
+        process.stdin.flush()
+    except (OSError, ValueError) as error:
+        return f"nothing, for the line could not be sent ({error})"
+    answer = b""
+    deadline = time.monotonic() + wait_seconds
+    while time.monotonic() < deadline:
+        try:
+            data = process._solidsyslog_byte_queue.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        if data is None:
+            break
+        answer += data
+    return answer.decode(errors="replace")
 
 
 def send_command(process, command):
