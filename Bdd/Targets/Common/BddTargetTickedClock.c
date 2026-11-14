@@ -11,14 +11,13 @@ enum
 };
 
 static uint32_t TickedClock_NoCounter(void);
-static inline void TickedClock_Start(uint32_t secondsSinceEpoch, uint32_t counterAtItsStart);
 static inline uint32_t TickedClock_MicrosecondsSince(uint32_t counterAtStart, uint32_t counterNow);
 
 static BddTargetTickedClockCounterFunction clockCounter = TickedClock_NoCounter;
 static uint32_t clockCountsPerMicrosecond = 1U;
 
 /* The second under way and the count it started at, written together by
- * TickedClock_Start. The sequence counts those writes, so a reading that
+ * BddTargetTickedClock_Set. The sequence counts those writes, so a reading that
  * finds it moved knows the two may not belong together and reads again. */
 static volatile uint32_t clockSequence;
 static volatile bool clockIsSet;
@@ -39,24 +38,24 @@ static uint32_t TickedClock_NoCounter(void)
     return 0U;
 }
 
+/* A tick is the time being set to the start of a second. */
 void BddTargetTickedClock_Tick(uint32_t secondsSinceEpoch)
 {
-    TickedClock_Start(secondsSinceEpoch, clockCounter());
+    BddTargetTickedClock_Set(secondsSinceEpoch, 0U);
 }
 
-static inline void TickedClock_Start(uint32_t secondsSinceEpoch, uint32_t counterAtItsStart)
+/* The counter wraps, and so does the subtraction: this is the count the
+ * counter stood at, or would have, when the second started. The two
+ * parameters are one time, whole seconds and then the fraction, in the order
+ * a timeval keeps them. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+void BddTargetTickedClock_Set(uint32_t secondsSinceEpoch, uint32_t microseconds)
 {
+    uint32_t counterAtItsStart = clockCounter() - (microseconds * clockCountsPerMicrosecond);
     clockSequence++;
     clockSeconds = secondsSinceEpoch;
     clockCounterAtSecond = counterAtItsStart;
     clockIsSet = true;
-}
-
-/* The counter wraps, and so does the subtraction: this is the count the
- * counter stood at, or would have, when the second started. */
-void BddTargetTickedClock_Set(uint32_t secondsSinceEpoch, uint32_t microseconds)
-{
-    TickedClock_Start(secondsSinceEpoch, clockCounter() - (microseconds * clockCountsPerMicrosecond));
 }
 
 bool BddTargetTickedClock_IsSet(void)
