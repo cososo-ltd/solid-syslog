@@ -14,9 +14,9 @@
  *     match, tells lwIP and says so on the console.
  *
  * Every frame is copied, in both directions, between lwIP's memory and
- * buffers the DMA owns. Those buffers and the DMA's descriptors are static and
- * aligned to the cache line, and the data cache is left off: the board support
- * does not turn it on, and nothing here maintains it.
+ * buffers the DMA owns. Those buffers and the DMA's descriptors are static,
+ * and are placed in the memory the board support keeps out of the data cache,
+ * so nothing here maintains the cache and nothing has to.
  *
  * Not host-TDD'd, beyond the link decoding in EthernetPhy: this file exists
  * only in the cross build, and what it does is drive the part. The target
@@ -76,17 +76,18 @@ enum
     BOARD_NETIF_REPORT_BYTES = 64
 };
 
-#define BOARD_NETIF_DMA_ALIGNED __attribute__((aligned(BOARD_NETIF_BUFFER_ALIGNMENT)))
+/* In the linker script's uncached region, and aligned as the DMA wants. */
+#define BOARD_NETIF_DMA_MEMORY __attribute__((section(".ethernet_dma"), aligned(BOARD_NETIF_BUFFER_ALIGNMENT)))
 
 static uint8_t BddTargetBoardNetif_Mac[ETHARP_HWADDR_LEN] = {BDD_TARGET_BOARD_MAC_OCTETS};
 
 static ETH_HandleTypeDef BddTargetBoardNetif_Ethernet;
-static ETH_DMADescTypeDef BddTargetBoardNetif_RxDescriptors[ETH_RX_DESC_CNT] BOARD_NETIF_DMA_ALIGNED;
-static ETH_DMADescTypeDef BddTargetBoardNetif_TxDescriptors[ETH_TX_DESC_CNT] BOARD_NETIF_DMA_ALIGNED;
+static ETH_DMADescTypeDef BddTargetBoardNetif_RxDescriptors[ETH_RX_DESC_CNT] BOARD_NETIF_DMA_MEMORY;
+static ETH_DMADescTypeDef BddTargetBoardNetif_TxDescriptors[ETH_TX_DESC_CNT] BOARD_NETIF_DMA_MEMORY;
 
-static uint8_t BddTargetBoardNetif_TxBuffer[BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_ALIGNED;
+static uint8_t BddTargetBoardNetif_TxBuffer[BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_MEMORY;
 static uint8_t BddTargetBoardNetif_RxBuffers[BOARD_NETIF_RX_BUFFER_COUNT]
-                                            [BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_ALIGNED;
+                                            [BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_MEMORY;
 static bool BddTargetBoardNetif_RxBufferInUse[BOARD_NETIF_RX_BUFFER_COUNT];
 
 /* The frame HAL_ETH_ReadData is handing over, as its link callback saw it:
