@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.4.0...v0.5.0) (2026-11-14)
+
+
+### Features
+
+* S48.01 every CI run records the compiler and upstream versions each pack was tested against ([#1197](https://github.com/cososo-ltd/solid-syslog/issues/1197)) ([e80ffa0](https://github.com/cososo-ltd/solid-syslog/commit/e80ffa0044732951dfced6621130f6093f76942e))
+* S48.03 a rebuilt image reaches solid-syslog as a tested pull request without a hand-edited digest ([#1200](https://github.com/cososo-ltd/solid-syslog/issues/1200)) ([73ab01b](https://github.com/cososo-ltd/solid-syslog/commit/73ab01b6140f80382068bfcf314bb2359c0c8cee))
+* S50.01 the NUCLEO-F767ZI is brought up and CI builds its firmware ([#1223](https://github.com/cososo-ltd/solid-syslog/issues/1223)) ([9890920](https://github.com/cososo-ltd/solid-syslog/commit/98909204df14f38de2b2d7d47797b299ba306552))
+* S50.03 the lwIP Raw target sends UDP and TCP from the NUCLEO-F767ZI ([#1232](https://github.com/cososo-ltd/solid-syslog/issues/1232)) ([e7197ac](https://github.com/cososo-ltd/solid-syslog/commit/e7197acbd2c6170b5e6750cdfbe7199425a840f8))
+* the logger holds delivery back until the device says its destination is known ([#1235](https://github.com/cososo-ltd/solid-syslog/issues/1235)) ([beeed5a](https://github.com/cososo-ltd/solid-syslog/commit/beeed5aa78947214a3c52c44f30b215705332cff))
+
+
+### Bug Fixes
+
+* the contiguity step waits for a report the store drains behind the last client record ([#1185](https://github.com/cososo-ltd/solid-syslog/issues/1185)) ([66226f9](https://github.com/cososo-ltd/solid-syslog/commit/66226f91e42521cae3feea98ea0ff3d9b585204e))
+
 ## [0.4.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.3.0...v0.4.0) (2026-11-09)
 
 The 0.4.0 release adds self-reporting. The library writes a
