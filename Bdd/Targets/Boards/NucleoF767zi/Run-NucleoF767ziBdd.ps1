@@ -238,12 +238,12 @@ try
     # what the board sent, whatever the run then made of it.
     $env:NUCLEO_F767ZI_CONSOLE_RECORD = Join-Path $repositoryRoot 'Bdd\output\nucleo-f767zi-console.log'
     Remove-Item -LiteralPath $env:NUCLEO_F767ZI_CONSOLE_RECORD -ErrorAction SilentlyContinue
-    if ($SustainedRun -gt 0)
-        {
-        # A sustained run reads the whole of what the collector records, with
-        # the files it moves aside as they grow, so none is left from before.
-        Remove-Item -Path 'Bdd\output\received_udp*.jsonl', 'Bdd\output\received_tcp*.jsonl' -ErrorAction SilentlyContinue
-        }
+    # Every run starts with nothing recorded. The collector moves a record
+    # aside when it reaches ten megabytes, which one sustained run fills: a
+    # sustained run reads the files moved aside too, so none may be left from
+    # before, and a scenario reads only the newest, so a record left nearly
+    # full would be moved aside under it with the message it is waiting for.
+    Remove-Item -Path 'Bdd\output\received*.jsonl' -ErrorAction SilentlyContinue
     $collector = Start-Process -FilePath 'Bdd\otel\bin\otelcol-contrib.exe' `
         -ArgumentList "--config=$env:OTELCOL_CONFIG" `
         -RedirectStandardOutput 'Bdd\output\otelcol-nucleo-f767zi.out' `
