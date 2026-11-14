@@ -206,10 +206,10 @@ RFC 5424 parser took from it.
 ## Running the BDD scenarios
 
 With the board attached by USB and cabled to the test network, from Windows
-PowerShell:
+PowerShell at the root of the repository:
 
 ```powershell
-.\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
 ```
 
 That builds the image from the commit checked out, in the cross image CI uses,
