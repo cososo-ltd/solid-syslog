@@ -159,6 +159,7 @@ set(BDD_BOARD_DEFINITIONS
 set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Board.c
     ${BDD_BOARD_DIR}/BddTargetBoard.c
+    ${BDD_BOARD_DIR}/BddTargetBoardClock.c
     ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
 )
 

@@ -6,6 +6,7 @@
 #include "BddTargetFreeRtosPipeline.h"
 
 #include "BddTargetBoard.h"
+#include "BddTargetBoardClock.h"
 #include "BddTargetOsPrimitives.h"
 
 #include "BddTargetBlockFiles.h"
@@ -150,14 +151,17 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
     g_config = config;
 }
 
-/* No RTC and no time-sync on these reference targets - RFC 5424 section 6.2.3.1
- * mandates NILVALUE TIMESTAMP, and the timeQuality SD reports tzKnown=0,
- * isSynced=0. SolidSyslogConfig.Clock=NULL drops through to the library's
- * NilClock. */
+/* The time is the board's to know. While it does not - and a board with no
+ * clock never does - RFC 5424 section 6.2.3.1 mandates NILVALUE TIMESTAMP,
+ * which is what the board's zeroed timestamp becomes, and the timeQuality SD
+ * reports tzKnown=0, isSynced=0. Once it does, it was told the time in UTC by
+ * the harness, from the clock of the machine the harness runs on (section
+ * 7.1). How closely is not measured, so syncAccuracy is left out. */
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
-    timeQuality->TzKnown = false;
-    timeQuality->IsSynced = false;
+    bool knowsTheTime = BddTargetBoardClock_IsSet();
+    timeQuality->TzKnown = knowsTheTime;
+    timeQuality->IsSynced = knowsTheTime;
     timeQuality->SyncAccuracyMicroseconds = SOLIDSYSLOG_SYNC_ACCURACY_OMIT;
 }
 
@@ -237,6 +241,12 @@ static bool OnSet(const char* name, const char* value)
     {
         BddTargetSwitchConfig_SetByName(value);
         return true;
+    }
+    if (strcmp(name, "time") == 0)
+    {
+        /* Seconds since the epoch, in UTC. Refused by a board with no clock. */
+        unsigned long seconds = 0U;
+        return BddTargetMessageSettings_TryParseNumber(value, &seconds) && BddTargetBoardClock_Set((uint32_t) seconds);
     }
     if (strcmp(name, "store") == 0)
     {
@@ -497,7 +507,7 @@ void BddTargetFreeRtosPipeline_InteractiveTask(void* argument)
     solidSyslogConfig = (struct SolidSyslogConfig) {
         .Buffer = buffer,
         .Sender = sender,
-        .Clock = NULL,
+        .Clock = BddTargetBoardClock_GetTimestamp,
         .GetHostname = g_config->GetHostname,
         .GetAppName = BddTargetMessageSettings_GetAppName,
         /* PROCID - RFC 5424 section 6.2.6 NILVALUE: no process model on these targets. */
