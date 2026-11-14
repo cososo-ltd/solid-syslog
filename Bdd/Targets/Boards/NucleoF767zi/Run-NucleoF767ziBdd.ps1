@@ -268,9 +268,13 @@ finally
     {
     # By name: an outage scenario replaces the collector started above. No
     # collector was running at the start, so every one now is this run's.
+    # Stopping one returns before it has gone, and a run started straight
+    # after would find it and refuse to start, so each is waited for.
     if ($collector)
         {
-        Get-Process -Name 'otelcol-contrib' -ErrorAction SilentlyContinue | Stop-Process -Force
+        $stopped = @(Get-Process -Name 'otelcol-contrib' -ErrorAction SilentlyContinue)
+        $stopped | Stop-Process -Force
+        $stopped | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
         }
     foreach ($name in $runEnvironment)
         {
