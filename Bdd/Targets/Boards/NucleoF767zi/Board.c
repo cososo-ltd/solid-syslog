@@ -55,10 +55,17 @@ enum
     HEX_DIGITS = 8,
     BITS_PER_HEX_DIGIT = 4,
 
+    /* The MPU's first region, and the only one used. */
+    ETHERNET_DMA_REGION = MPU_REGION_NUMBER0,
+
     PLL_M = 4,
     PLL_N = 216,
     PLL_Q = 9
 };
+
+/* Where the linker script puts the memory the Ethernet DMA reads and writes. */
+// NOLINTNEXTLINE(readability-identifier-naming,bugprone-reserved-identifier) -- the linker script's name
+extern uint8_t _ethernet_dma_start[];
 
 static UART_HandleTypeDef console;
 
@@ -69,6 +76,7 @@ static volatile uint8_t consoleRing[CONSOLE_RING_SIZE];
 static volatile uint32_t consoleRingHead;
 static volatile uint32_t consoleRingTail;
 
+static inline void Board_KeepEthernetDmaMemoryUncached(void);
 static inline void Board_ConfigureLeds(void);
 static inline void Board_ConfigureClock(void);
 static inline bool Board_StartPll(void);
@@ -88,10 +96,40 @@ void HardFault_Handler(void);
 
 void Board_Init(void)
 {
+    /* Before the data cache is on, so the DMA's memory is never cached. */
+    Board_KeepEthernetDmaMemoryUncached();
+    SCB_EnableICache();
+    SCB_EnableDCache();
     HAL_Init();
     Board_ConfigureLeds();
     Board_ConfigureClock();
     Board_ConfigureConsole();
+}
+
+/* The Ethernet DMA reads and writes its descriptors and frame buffers behind
+ * the processor's back, and ST's driver reads and writes them with no cache
+ * maintenance. So the memory they are in, the linker script's ETHDMA, is made
+ * a region the data cache does not hold: what the processor reads there is
+ * what the DMA wrote, and what it writes is there when the DMA reads. The
+ * region's length is ETHDMA's, stated again here. Every other address keeps
+ * the default memory map. */
+static inline void Board_KeepEthernetDmaMemoryUncached(void)
+{
+    MPU_Region_InitTypeDef region = {0};
+    HAL_MPU_Disable();
+    region.Enable = MPU_REGION_ENABLE;
+    region.Number = ETHERNET_DMA_REGION;
+    region.BaseAddress = (uint32_t) _ethernet_dma_start;
+    region.Size = MPU_REGION_SIZE_16KB;
+    region.AccessPermission = MPU_REGION_FULL_ACCESS;
+    region.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+    /* Normal memory, neither cached nor write-buffered. */
+    region.TypeExtField = MPU_TEX_LEVEL1;
+    region.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+    region.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+    region.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+    HAL_MPU_ConfigRegion(&region);
+    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 }
 
 static inline void Board_ConfigureLeds(void)

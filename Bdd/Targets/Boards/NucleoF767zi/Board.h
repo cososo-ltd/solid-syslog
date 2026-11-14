@@ -16,8 +16,9 @@ enum BoardLed
     BOARD_LED_RED
 };
 
-/* Brings the part to 216 MHz from the ST-LINK's 8 MHz clock and opens the
- * console at 115200 8N1. Does not return if the clock will not start: the red
+/* Turns the instruction and data caches on, brings the part to 216 MHz from
+ * the ST-LINK's 8 MHz clock and opens the console at 115200 8N1. The memory
+ * the Ethernet DMA uses is kept out of the data cache. Does not return if the clock will not start: the red
  * LED is lit and the part stays on its internal oscillator, with no console. */
 void Board_Init(void);
 
