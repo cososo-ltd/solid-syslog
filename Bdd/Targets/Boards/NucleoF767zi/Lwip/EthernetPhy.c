@@ -20,8 +20,9 @@ enum
     /* Every speed and duplex up to 100 Mbit/s, negotiated. */
     MODE_NEGOTIATE_EVERYTHING = 0x00E0,
 
-    /* A reset has ended within a few reads; this is far more than it takes. */
-    RESET_READS_AT_MOST = 1000,
+    /* A reset may take half a second. A read is 64 bit times on a bus clocked
+     * at 2.5 MHz at most, so at most 19532 of them fit in that. */
+    RESET_READS_AT_MOST = 20000,
 
     STATUS_LINK_UP = 0x0004,
     STATUS_NEGOTIATION_COMPLETE = 0x0020,

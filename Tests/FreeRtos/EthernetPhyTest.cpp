@@ -266,6 +266,15 @@ TEST(EthernetPhy, RestartingWaitsForTheResetToEnd)
     LONGS_EQUAL(0, readsWhileResetting);
 }
 
+// A reset may take half a second, which is 19532 reads at the fastest clock
+// the management bus allows.
+TEST(EthernetPhy, RestartingWaitsOutTheLongestResetThePhyIsAllowed)
+{
+    readsWhileResetting = 19999;
+
+    CHECK_TRUE(EthernetPhy_Restart(WriteRegister, ReadRegister, nullptr));
+}
+
 TEST(EthernetPhy, RestartingFailsWhenTheResetNeverEnds)
 {
     readsWhileResetting = 100000;
