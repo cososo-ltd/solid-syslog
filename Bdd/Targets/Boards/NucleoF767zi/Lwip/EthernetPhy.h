@@ -22,19 +22,22 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         ETHERNET_PHY_LINK_100_FULL
     };
 
-    /* Reads one clause-22 register. False when the PHY did not answer. */
+    /* Reads one clause-22 register. False when the access did not complete,
+     * which is not whether a PHY was there to take it. */
     typedef bool (*EthernetPhyReadFunction)(void* context, uint8_t registerNumber, uint16_t* value);
 
-    /* Writes one clause-22 register. False when the PHY did not answer. */
+    /* Writes one clause-22 register. False when the access did not complete,
+     * which is not whether a PHY was there to take it. */
     typedef bool (*EthernetPhyWriteFunction)(void* context, uint8_t registerNumber, uint16_t value);
 
     /* Has the PHY advertise every speed and duplex it has up to 100 Mbit/s,
      * and negotiate afresh. A PHY takes its mode at reset from its strap pins,
      * and one that came up with negotiation off never completes it, which
      * EthernetPhy_ReadLink reads as a link that is down; this puts it in the
-     * mode ReadLink expects whatever the straps gave. False when the PHY did
-     * not answer. */
-    bool EthernetPhy_StartNegotiation(EthernetPhyWriteFunction write, void* context);
+     * mode ReadLink expects whatever the straps gave. False when the PHY does
+     * not read back as negotiating, which is also what an absent PHY and a
+     * failed access give. */
+    bool EthernetPhy_StartNegotiation(EthernetPhyWriteFunction write, EthernetPhyReadFunction read, void* context);
 
     /* The link as it stands now: down, or the best speed and duplex both ends
      * advertised. A link still negotiating is down, and so is a PHY that

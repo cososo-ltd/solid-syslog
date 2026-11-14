@@ -247,9 +247,9 @@ static void BddTargetBoardNetif_Task(void* parameters)
     /* The PHY does not always come out of a reset negotiating: its mode is a
      * strap it reads from pins it shares with the MAC. Started here, on the
      * task that does every other access to the PHY. */
-    if (!EthernetPhy_StartNegotiation(BddTargetBoardNetif_WritePhy, NULL))
+    if (!EthernetPhy_StartNegotiation(BddTargetBoardNetif_WritePhy, BddTargetBoardNetif_ReadPhy, NULL))
     {
-        BddTargetBoardNetif_Report("ethernet", "the PHY did not answer");
+        BddTargetBoardNetif_Report("ethernet", "the PHY did not start negotiating");
     }
     BddTargetBoardNetif_Report("link", EthernetPhy_LinkText(BddTargetBoardNetif_Link));
     for (;;)

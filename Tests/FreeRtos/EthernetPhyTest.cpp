@@ -17,6 +17,8 @@ enum
 
     CONTROL_NEGOTIATION_RESTART = 0x0200,
     CONTROL_NEGOTIATION_ENABLE = 0x1000,
+    CONTROL_FORCED_100_FULL = 0x2100,
+    NO_PHY_ON_THE_BUS = 0xFFFF,
 
     STATUS_LINK_UP = 0x0004,
     STATUS_NEGOTIATED = 0x0020,
@@ -50,6 +52,7 @@ static bool ReadRegister(void* context, uint8_t registerNumber, uint16_t* value)
 }
 
 static bool writesFail;
+static bool writesAreLost;
 static int writeCount;
 static uint8_t lastRegisterWritten;
 
@@ -57,7 +60,10 @@ static bool WriteRegister(void* context, uint8_t registerNumber, uint16_t value)
 {
     contextSeen = context;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) -- the code under test writes registers 0 and 4
-    registers[registerNumber] = value;
+    if (!writesAreLost)
+    {
+        registers[registerNumber] = value;
+    }
     writeCount++;
     lastRegisterWritten = registerNumber;
     return !writesFail;
@@ -79,6 +85,7 @@ TEST_GROUP(EthernetPhy)
         readsFail = false;
         contextSeen = nullptr;
         writesFail = false;
+        writesAreLost = false;
         writeCount = 0;
         lastRegisterWritten = 0;
     }
@@ -198,21 +205,21 @@ TEST(EthernetPhy, EachLinkHasItsOwnText)
 
 TEST(EthernetPhy, StartingNegotiationAdvertisesEverySpeedAndDuplex)
 {
-    CHECK_TRUE(EthernetPhy_StartNegotiation(WriteRegister, nullptr));
+    CHECK_TRUE(EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr));
 
     LONGS_EQUAL(IEEE_802_3_SELECTOR | ABLE_EVERYTHING, registers[ADVERTISED_REGISTER]);
 }
 
 TEST(EthernetPhy, StartingNegotiationEnablesItAndRestartsIt)
 {
-    EthernetPhy_StartNegotiation(WriteRegister, nullptr);
+    EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr);
 
     LONGS_EQUAL(CONTROL_NEGOTIATION_ENABLE | CONTROL_NEGOTIATION_RESTART, registers[CONTROL_REGISTER]);
 }
 
 TEST(EthernetPhy, WhatIsAdvertisedIsSetBeforeNegotiationRestarts)
 {
-    EthernetPhy_StartNegotiation(WriteRegister, nullptr);
+    EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr);
 
     LONGS_EQUAL(2, writeCount);
     LONGS_EQUAL(CONTROL_REGISTER, lastRegisterWritten);
@@ -222,14 +229,39 @@ TEST(EthernetPhy, StartingNegotiationFailsWhenThePhyDoesNotAnswer)
 {
     writesFail = true;
 
-    CHECK_FALSE(EthernetPhy_StartNegotiation(WriteRegister, nullptr));
+    CHECK_FALSE(EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr));
+}
+
+// A write on the management bus is not acknowledged, so only reading the
+// control register back says whether the PHY took it.
+TEST(EthernetPhy, StartingNegotiationFailsWhenThePhyIsStillForcedToAMode)
+{
+    registers[CONTROL_REGISTER] = CONTROL_FORCED_100_FULL;
+    writesAreLost = true;
+
+    CHECK_FALSE(EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr));
+}
+
+TEST(EthernetPhy, StartingNegotiationFailsWhenNoPhyDrivesTheBus)
+{
+    registers[CONTROL_REGISTER] = NO_PHY_ON_THE_BUS;
+    writesAreLost = true;
+
+    CHECK_FALSE(EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr));
+}
+
+TEST(EthernetPhy, StartingNegotiationFailsWhenTheControlRegisterCannotBeReadBack)
+{
+    readsFail = true;
+
+    CHECK_FALSE(EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, nullptr));
 }
 
 TEST(EthernetPhy, StartingNegotiationHandsTheCallersContextToTheWrite)
 {
     int context = 0;
 
-    EthernetPhy_StartNegotiation(WriteRegister, &context);
+    EthernetPhy_StartNegotiation(WriteRegister, ReadRegister, &context);
 
     POINTERS_EQUAL(&context, contextSeen);
 }
