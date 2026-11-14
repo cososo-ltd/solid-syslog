@@ -317,17 +317,24 @@ def parse_otel_jsonl_line(line):
     if isinstance(sd, dict):
         fields["STRUCTURED_DATA"] = _render_otel_structured_data(sd)
 
-    # timeUnixNano → ISO 8601 string compatible with datetime.fromisoformat.
+    # timeUnixNano -> ISO 8601 string compatible with datetime.fromisoformat.
     # The receiver gives a record whose TIMESTAMP is NILVALUE no time of its
     # own, only the time it was observed. syslog-ng gives such a record its
-    # time of receipt, so the observed time is the same field from either
-    # oracle for a target with no clock.
-    time_ns = log.get("timeUnixNano") or log.get("observedTimeUnixNano")
+    # time of receipt, so for a target with no clock the observed time is the
+    # same field from either oracle. A target with a clock gets no such
+    # stand-in: a record of its with no timestamp is a fault to be seen.
+    time_ns = log.get("timeUnixNano")
+    if (not int(time_ns or 0)) and _target_has_no_clock():
+        time_ns = log.get("observedTimeUnixNano")
     if time_ns is not None:
         seconds = int(time_ns) / 1e9
         fields["TIMESTAMP"] = datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
 
     return fields
+
+
+def _target_has_no_clock():
+    return os.environ.get("BDD_TARGET", "linux").lower() == "freertos"
 
 
 def parse_oracle_line(line, oracle_format):
