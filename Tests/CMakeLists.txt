@@ -331,13 +331,19 @@ if(COVERAGE)
 endif()
 
 # JUnit XML output for CI and the VS Code test explorer.
-# Uses a cmake script so test failures (non-zero exit) don't abort the target.
+# Each run records a failure under junit-failures/ instead of aborting, so every
+# executable runs and the XML of all of them is written; the check added after
+# the last enrolment below fails the target naming each failed executable.
+set(SOLIDSYSLOG_JUNIT_FAILURES_DIR ${CMAKE_BINARY_DIR}/junit-failures)
 add_custom_target(junit
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
     COMMAND ${CMAKE_COMMAND}
         -DEXECUTABLE=$<TARGET_FILE:${PROJECT_NAME}Tests>
         -DPACKAGE=${PROJECT_NAME}Tests
         -DDIR=${CMAKE_BINARY_DIR}
         -DPROFRAW_DIR=${SOLIDSYSLOG_PROFRAW_DIR}
+        -DFAILURES_DIR=${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
     DEPENDS ${PROJECT_NAME}Tests
     COMMENT "Running tests with JUnit XML output"
@@ -362,6 +368,7 @@ function(register_junit_test test_target)
             -DPACKAGE=${test_target}
             -DDIR=${junit_dir}
             -DPROFRAW_DIR=${SOLIDSYSLOG_PROFRAW_DIR}
+            -DFAILURES_DIR=${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/run_junit.cmake
         COMMENT "Running ${test_target} with JUnit XML output"
         VERBATIM
@@ -382,6 +389,16 @@ get_property(junit_test_targets GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TEST_TARGETS)
 foreach(junit_test_target IN LISTS junit_test_targets)
     register_junit_test(${junit_test_target})
 endforeach()
+
+# POST_BUILD steps run in the order added, so this one runs after every
+# enrolled executable has.
+add_custom_command(TARGET junit POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+        -DFAILURES_DIR=${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/check_junit.cmake
+    COMMENT "Checking every executable passed"
+    VERBATIM
+)
 
 # CI builds only --target junit; fail the configure if a test executable is not
 # registered with it. SolidSyslogTests is junit's own command, and CI runs
@@ -436,7 +453,7 @@ if(COVERAGE)
     find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
 
     add_custom_target(coverage-zero
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${SOLIDSYSLOG_PROFRAW_DIR}
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${SOLIDSYSLOG_PROFRAW_DIR}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${SOLIDSYSLOG_PROFRAW_DIR}
         COMMENT "Clearing the raw coverage profiles"
     )
