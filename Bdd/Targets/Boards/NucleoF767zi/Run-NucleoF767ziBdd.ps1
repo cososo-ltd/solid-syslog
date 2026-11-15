@@ -1,10 +1,14 @@
 <#
 .SYNOPSIS
-Builds the FreeRTOS + lwIP Raw BDD target for the commit under test, writes it
-to the NUCLEO-F767ZI attached to this machine, and runs the BDD scenarios
-against the board.
+Builds one of the board's BDD targets for the commit under test, writes it to
+the NUCLEO-F767ZI attached to this machine, and runs the BDD scenarios against
+the board.
 
 .DESCRIPTION
+-Target chooses the image: lwip, the FreeRTOS + lwIP Raw target, which is the
+default, or cmsis, the CMSIS-RTOS2 + lwIP Sockets target. Everything below is
+the same for both.
+
 Behave runs here, natively. Each scenario starts the target by resetting the
 board through the ST-LINK's debug probe, and drives it over the ST-LINK's
 virtual COM port. Before the first scenario the run checks that the banner the
@@ -50,10 +54,13 @@ goes by way of a store of files on the board's disk, which the run wipes first.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Run-NucleoF767ziBdd.ps1 -Target cmsis -BoardAddress <board address> -CollectorAddress <this machine's address>
 .\Run-NucleoF767ziBdd.ps1 -SkipBuild -Paths Bdd/features/prival.feature
 #>
 [CmdletBinding()]
 param(
+    [ValidateSet('lwip', 'cmsis')]
+    [string] $Target = 'lwip',
     [string] $BoardAddress = $env:NUCLEO_F767ZI_BOARD_ADDRESS,
     [string] $CollectorAddress = $env:NUCLEO_F767ZI_COLLECTOR_ADDRESS,
     [string] $Netmask = $env:NUCLEO_F767ZI_NETMASK,
@@ -72,9 +79,16 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $tags = '(@udp or @tcp) and not @tls and not @no_rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
-$preset = 'nucleo-f767zi-lwip'
+# Each image the board runs: its preset, the directory its target is built in
+# under the build tree, and the name of the target, which is the image's too.
+$images = @{
+    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip' }
+    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis' }
+}
+$preset = $images[$Target].Preset
+$buildTarget = $images[$Target].Name
 $buildDirectory = "build/$preset"
-$image = "$buildDirectory/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf"
+$image = "$buildDirectory/$($images[$Target].Directory)/$buildTarget.elf"
 # Where the build's container sees this tree, which is how its cache names files.
 $mount = '/workspaces/solid-syslog'
 # What the run sets for the steps, put back as it ends: left behind, BDD_BOARD
@@ -142,7 +156,7 @@ function Build-Image
     & docker run --rm --user root `
         -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e 'GIT_CONFIG_VALUE_0=*' `
         -v "${repositoryRoot}:$mount" -w $mount $crossImage `
-        sh -c "$configure && cmake --build --preset $preset --target SolidSyslogBddTargetLwip"
+        sh -c "$configure && cmake --build --preset $preset --target $buildTarget"
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0)
         {
