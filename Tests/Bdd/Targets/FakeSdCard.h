@@ -8,7 +8,7 @@
 #include <vector>
 
 /* An SD card in SPI mode, and the bus it is on, for the tests of the card
- * driver. It defines the BddTargetSdCardBus_* functions the driver calls.
+ * driver. It defines the BddTargetBoardSdCardBus_* functions the driver calls.
  *
  * It behaves as a version 2 high capacity card would until a test changes one
  * of the members below, and it holds whatever is written to it. A command

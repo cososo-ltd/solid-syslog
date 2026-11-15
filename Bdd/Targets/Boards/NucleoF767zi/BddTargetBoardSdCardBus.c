@@ -1,11 +1,11 @@
 /* The NUCLEO-F767ZI's MicroSD card bus behind the board seam - see
- * BddTargetSdCardBus.h. The card is on SPI4, over ST's HAL, on the CN9 Zio
+ * BddTargetBoardSdCardBus.h. The card is on SPI4, over ST's HAL, on the CN9 Zio
  * connector; README.md beside this file holds the pin plan.
  *
  * A W25Q128 flash shares the bus, with a select of its own. Nothing here
  * talks to it, and its select is held high so that it stays off the bus. */
 
-#include "BddTargetSdCardBus.h"
+#include "BddTargetBoardSdCardBus.h"
 
 #include "Board.h"
 
@@ -40,20 +40,20 @@ enum
 static SPI_HandleTypeDef spi;
 static bool taken;
 
-static inline void BddTargetSdCardBus_TakePins(void);
-static inline void BddTargetSdCardBus_SetRate(uint32_t prescaler);
+static inline void BddTargetBoardSdCardBus_TakePins(void);
+static inline void BddTargetBoardSdCardBus_SetRate(uint32_t prescaler);
 
-void BddTargetSdCardBus_UseStartRate(void)
+void BddTargetBoardSdCardBus_UseStartRate(void)
 {
     if (!taken)
     {
-        BddTargetSdCardBus_TakePins();
+        BddTargetBoardSdCardBus_TakePins();
         taken = true;
     }
-    BddTargetSdCardBus_SetRate(START_RATE_PRESCALER);
+    BddTargetBoardSdCardBus_SetRate(START_RATE_PRESCALER);
 }
 
-static inline void BddTargetSdCardBus_TakePins(void)
+static inline void BddTargetBoardSdCardBus_TakePins(void)
 {
     GPIO_InitTypeDef pins = {0};
     __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -80,7 +80,7 @@ static inline void BddTargetSdCardBus_TakePins(void)
     HAL_GPIO_Init(GPIOE, &pins);
 }
 
-static inline void BddTargetSdCardBus_SetRate(uint32_t prescaler)
+static inline void BddTargetBoardSdCardBus_SetRate(uint32_t prescaler)
 {
     spi.Instance = SPI4;
     spi.Init.Mode = SPI_MODE_MASTER;
@@ -101,22 +101,22 @@ static inline void BddTargetSdCardBus_SetRate(uint32_t prescaler)
     (void) HAL_SPI_Init(&spi);
 }
 
-void BddTargetSdCardBus_UseRunRate(void)
+void BddTargetBoardSdCardBus_UseRunRate(void)
 {
-    BddTargetSdCardBus_SetRate(RUN_RATE_PRESCALER);
+    BddTargetBoardSdCardBus_SetRate(RUN_RATE_PRESCALER);
 }
 
-void BddTargetSdCardBus_Select(void)
+void BddTargetBoardSdCardBus_Select(void)
 {
     HAL_GPIO_WritePin(GPIOE, PIN_CARD_SELECT, GPIO_PIN_RESET);
 }
 
-void BddTargetSdCardBus_Deselect(void)
+void BddTargetBoardSdCardBus_Deselect(void)
 {
     HAL_GPIO_WritePin(GPIOE, PIN_CARD_SELECT, GPIO_PIN_SET);
 }
 
-uint8_t BddTargetSdCardBus_Exchange(uint8_t out)
+uint8_t BddTargetBoardSdCardBus_Exchange(uint8_t out)
 {
     uint8_t in = IDLE_LINE;
     if (HAL_SPI_TransmitReceive(&spi, &out, &in, 1U, EXCHANGE_TIMEOUT_MILLISECONDS) != HAL_OK)
@@ -126,7 +126,7 @@ uint8_t BddTargetSdCardBus_Exchange(uint8_t out)
     return in;
 }
 
-uint32_t BddTargetSdCardBus_Milliseconds(void)
+uint32_t BddTargetBoardSdCardBus_Milliseconds(void)
 {
     return Board_Milliseconds();
 }

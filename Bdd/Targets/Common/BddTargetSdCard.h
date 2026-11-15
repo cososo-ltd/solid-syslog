@@ -9,7 +9,7 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* An SD card in SPI mode, as sectors of 512 bytes, over the bus the board
-     * supplies (BddTargetSdCardBus.h). One card.
+     * supplies (BddTargetBoardSdCardBus.h). One card.
      *
      * It follows the SD Physical Layer Simplified Specification and is narrow
      * on purpose: a version 2 card, standard or high capacity, read and

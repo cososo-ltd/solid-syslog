@@ -2,7 +2,7 @@
  *
  * It is the first BDD_TARGET_BOARD_DISK_SECTOR_COUNT sectors of a MicroSD
  * card on SPI4, driven by BddTargetSdCard.c over the bus in
- * BddTargetSdCardBus.c. With no card fitted the disk never becomes ready, a
+ * BddTargetBoardSdCardBus.c. With no card fitted the disk never becomes ready, a
  * mount over it fails, and the target stays on the store it started with.
  *
  * What goes wrong is said on the console, once for each thing that goes

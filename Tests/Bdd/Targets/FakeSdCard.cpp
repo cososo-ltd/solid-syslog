@@ -1,6 +1,6 @@
 #include "FakeSdCard.h"
 
-#include "BddTargetSdCardBus.h"
+#include "BddTargetBoardSdCardBus.h"
 
 #include <map>
 
@@ -486,22 +486,22 @@ size_t Exchanges()
 
 extern "C"
 {
-    void BddTargetSdCardBus_UseStartRate(void)
+    void BddTargetBoardSdCardBus_UseStartRate(void)
     {
         state.rates.emplace_back("start");
     }
 
-    void BddTargetSdCardBus_UseRunRate(void)
+    void BddTargetBoardSdCardBus_UseRunRate(void)
     {
         state.rates.emplace_back("run");
     }
 
-    void BddTargetSdCardBus_Select(void)
+    void BddTargetBoardSdCardBus_Select(void)
     {
         state.selected = true;
     }
 
-    void BddTargetSdCardBus_Deselect(void)
+    void BddTargetBoardSdCardBus_Deselect(void)
     {
         /* A card stops what it was sending when its select rises. */
         state.selected = false;
@@ -510,7 +510,7 @@ extern "C"
         state.incoming.clear();
     }
 
-    uint8_t BddTargetSdCardBus_Exchange(uint8_t out)
+    uint8_t BddTargetBoardSdCardBus_Exchange(uint8_t out)
     {
         state.exchanges++;
         uint8_t in = IDLE_LINE;
@@ -531,7 +531,7 @@ extern "C"
 
     /* Each reading is a millisecond after the last, so a wait the driver
      * times comes to its end however little else happens. */
-    uint32_t BddTargetSdCardBus_Milliseconds(void)
+    uint32_t BddTargetBoardSdCardBus_Milliseconds(void)
     {
         return state.milliseconds++;
     }

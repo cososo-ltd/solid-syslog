@@ -168,7 +168,7 @@ set(BDD_BOARD_PROJECT_SOURCES
     # The disk is a MicroSD card: the card driver from the targets' common
     # code, over the board's SPI4.
     ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
-    ${BDD_BOARD_DIR}/BddTargetSdCardBus.c
+    ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
 

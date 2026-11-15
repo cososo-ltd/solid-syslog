@@ -22,19 +22,21 @@ say what it supplies to the code.
 | Toolchain | `cmake/arm-none-eabi-cortex-m7.cmake` | `arm-none-eabi-gcc` for a Cortex-M7 with the hard-float ABI |
 | Startup and vectors | - | ST's `startup_stm32f767xx.s` and `system_stm32f7xx.c`, compiled from the pinned tree as they stand |
 | Linker script | `stm32f767zi.ld` | 2 MiB of flash at `0x08000000`, 384 KiB of RAM at `0x20020000`, the first 16 KiB of it for the Ethernet DMA |
-| Clock, NVIC and disk facts | `BddTargetBoardConfig.h` | 216 MHz, four priority bits, a disk geometry nothing reads yet |
+| Clock, NVIC and disk facts | `BddTargetBoardConfig.h` | 216 MHz, four priority bits, a disk of 8 MiB |
 | Network addresses | `BddTargetBoardAddresses.h.in` | Written into the build tree by the configure, from cache variables |
 | Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
-| Disk | `BddTargetBoardDisk.c` | None fitted: it never becomes ready |
+| Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
 
 `Bringup/` is not part of the seam. It is an image of its own, with no
 SolidSyslog, no kernel and no network stack in it, built straight on `Board.c`:
 a banner on the serial port, each line received echoed back, and the green LED
 blinking. It is what tells a fault in the board or the toolchain from one in
-anything built on them.
+anything built on them. Its `probe` command does the same for the
+[storage breakouts](#storage-breakouts-spi4): it asks each whether it is
+there, with no driver under it.
 
 ST's HAL driver and CMSIS device files are not in the repository. The cross
 image pins them, and the build reads them from `STM32F7_HAL_DRIVER_PATH` and
@@ -181,10 +183,44 @@ firmware, run on the board since it was powered, left on another source.
 
 The bring-up image does not start the clock.
 
+## Disk
+
+The board's disk is a MicroSD card in a breakout on SPI4, wired as the
+[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts FatFs on
+it, formatting it first if it finds no filesystem, and puts the target on a
+store of files there. The disk is the first 8 MiB of the card, whatever the
+card's size, which is the size of the disk the same target has under QEMU. A
+card smaller than that is refused.
+
+The card is driven in SPI mode, a sector at a time, by a driver of this
+repository's own in the targets' common code, which is unit-tested on the host
+against a fake card. It drives a version 2 card, of standard or high capacity,
+and refuses a version 1 card and an MMC. The one card it has been run on is a
+SanDisk Ultra 8 GB microSDHC, so the standard capacity path has been run
+against the fake only.
+
+The card is started at 211 kHz and then run at 3.375 MHz. The breakout is on a
+breadboard, at the end of jumper wires, and the rate is a cautious one for
+that. The card's CRC checking is turned on, so a command or a sector damaged
+on the wires is refused by whichever end receives it, and the target says so.
+SPI4's slowest rate is its bus clock divided by 256, and a card has to be
+started at no more than 400 kHz, so the board runs that bus at 54 MHz where
+the part would allow 108.
+
+The card keeps what it holds through a reset and with the power off, where the
+disk under QEMU is a file the harness removes. `set store wipe` at the console
+leaves the card with no filesystem on it, so that the next `set store file`
+formats it. It is refused once the store is on the disk.
+
+Whatever goes wrong with the card is a line on the console beginning
+`[board] disk:`, with the sector where there is one and the reason: no answer,
+timed out, bad data, and so on. A card that is not there, or a wire that has
+come out of the breadboard, is `[board] disk: the card did not start: no
+answer`, and `set store file` then answers `set: invalid` and leaves the target
+on the store it started with.
+
 ## What the board does not have yet
 
-- No storage is fitted. `set store file` is refused and the target stays on the
-  store it started with, which holds nothing.
 - TLS is linked, because the target is the same code as on QEMU, and has not
   been run. The board's hardware random number generator is not wired in.
 
@@ -244,14 +280,24 @@ no parity, 1 stop bit, no flow control. On Windows the port is the one Device
 Manager lists as *STMicroelectronics STLink Virtual COM Port*.
 
 The bring-up image does not echo characters as they are typed. It answers a
-whole line, ended by CR or LF, with `echo:` and the line.
+whole line, ended by CR or LF, with `echo:` and the line. After the line
+`probe` it also says what each storage breakout answered:
+
+```text
+probe: card CMD0 01 CMD8 01 000001AA - answered
+probe: flash JEDEC id EF4018 - answered
+```
+
+A card answers its first command with `01`, and a flash its identity with
+three bytes that are not all ones. A breakout that is not there, or not wired,
+reads as `FF` throughout.
 
 The BDD target echoes each character and shows a `SolidSyslog>` prompt once
 the network has been given its chance to come up, a few seconds after reset.
 `send 1` sends one message, `set transport tcp` and `set transport udp` choose
 how, and `set shutdown 1` ends the run: the console says `exit: ok` and the part
-halts until it is reset. A run that ends in failure says `exit: failed` and
-lights LD3, the red LED.
+halts until it is reset. A run that ends in failure says `exit: failed` and its
+exit status, and lights LD3, the red LED.
 
 ## Collector
 
@@ -290,13 +336,19 @@ every one of them once, in order, and as the target sends it: only its
 time, its sequence number, its up-time and the library's version are not held
 to a value, and the time on a message has to be no earlier than on the one
 before it. It ends with a line for each transport giving the messages sent,
-received and at fault.
+received and at fault. With `-FileStore` as well, every message goes by way of
+a store of files on the [disk](#disk), which the run wipes first.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
 unless `-SerialPort` names it. And a scenario starts the target by resetting
 the board through the ST-LINK's debug probe, where under QEMU it starts the
-emulator.
+emulator. A target that ends is read from its console too: the line
+`exit: ok`, or `exit: failed` and a status, is its exit.
+
+Before a scenario tagged `@store` the run resets the board and has it
+[wipe its disk](#disk), so the scenario lays its store down on a card with no
+filesystem, as under QEMU it does on a disk image that has just been made.
 
 Before the first scenario the run reads the banner and stops unless it names
 the commit checked out, so a run cannot pass against an image of anything else.
@@ -403,20 +455,36 @@ different SPI.
 
 ### Storage breakouts, SPI4
 
-Both breakouts share SPI4, on the CN9 Zio connector, with a chip select each.
-None of these pins is shared with Ethernet, the ST-LINK or an LED.
+Two breakouts share SPI4, on the CN9 Zio connector, with a chip select each:
+an Adafruit 4682 MicroSD breakout, which is the [disk](#disk), and an Adafruit
+5643 W25Q128 flash, which nothing but the bring-up image's `probe` talks to
+yet. None of these pins is shared with Ethernet, the ST-LINK or an LED.
 
-| Signal | Pin | Zio | CN9 pin |
-|---|---|---|---|
-| SCK | PE2 | D56 | 14 |
-| MISO | PE5 | D58 | 18 |
-| MOSI | PE6 | D59 | 20 |
-| MicroSD chip select | PE4 | D57 | 16 |
-| W25Q128 chip select | PE3 | D60 | 22 |
+| Signal | Pin | Zio | Connector pin | MicroSD pad | W25Q128 pad |
+|---|---|---|---|---|---|
+| 3V3 | - | - | CN8 pin 7 | `3V` | `VIN` |
+| GND | - | - | CN9 pin 12 | `GND` | `GND` |
+| SCK | PE2 | D56 | CN9 pin 14 | `CLK` | `SCK` |
+| MicroSD chip select | PE4 | D57 | CN9 pin 16 | `CS` (`D3`) | - |
+| MISO | PE5 | D58 | CN9 pin 18 | `SO` (`D0`) | `MISO` |
+| MOSI | PE6 | D59 | CN9 pin 20 | `SI` (`CMD`) | `MOSI` |
+| W25Q128 chip select | PE3 | D60 | CN9 pin 22 | - | `CS` |
+
+The six CN9 pins are next to one another in the connector's inner column, the
+one nearer the processor, from the sixth socket counting from the CN8 end.
+
+The MicroSD breakout runs at 3.3 V only and has no regulator. CN8 pin 9, the
+socket beside the 3V3 one, is 5 V, and 5 V on the breakout's `3V` pad damages
+the card. The W25Q128 breakout's `3V3` pad is the output of its own regulator
+and is left unconnected, as are the MicroSD breakout's `D1`, `DAT2` and `DET`.
 
 PE2 also comes out on CN10 pin 25. Only one of the two is to be wired.
 
-Both breakouts take 3V3 and GND from CN8.
+The firmware holds whichever chip select it is not using high. Each breakout
+also pulls its own select up, so a breakout is off the bus from power-up.
+
+A device that has stopped answering is, on a breadboard, first a wire that has
+come out. The bring-up image's `probe` says which of the two still answers.
 
 ## Target checklist
 
@@ -447,10 +515,15 @@ artifact came from.
    its USB socket are lit throughout and are not part of this step.
 6. `arm-none-eabi-gdb` attaches through `ST-LINK_gdbserver` and a backtrace
    shows the part inside `main`.
+7. Where the pull request changes the bring-up image or the
+   [storage breakouts](#storage-breakouts-spi4): the line `probe` is answered
+   with a card that answered `01` to CMD0 and `01 000001AA` to CMD8, and a
+   flash that answered its JEDEC id.
 
 ### The FreeRTOS + lwIP Raw BDD target
 
-The board is cabled to the test network. Steps 2 to 4 are one run of
+The board is cabled to the test network, with a MicroSD card in its breakout.
+Steps 2 to 4 are one run of
 [`Run-NucleoF767ziBdd.ps1`](#running-the-bdd-scenarios), which stops at the
 first of them that fails.
 
@@ -463,11 +536,11 @@ first of them that fails.
    board shows after a reset names the commit under review.
 4. Every scenario the tag filter selects passes. The record gives the counts
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
-5. By hand, at the console: `set store file` answers `set: invalid`, and a
-   `send 1` after it still arrives at the collector.
-6. The script run again with `-SkipBuild -SustainedRun 10000` passes. The
-   record gives its two lines: the messages sent, received and at fault over
-   UDP and over TCP.
+5. By hand, at the console: `set store file` answers `set store=file`, and a
+   `send 1` after it arrives at the collector.
+6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and again
+   with `-FileStore` added. The record gives the two lines of each: the
+   messages sent, received and at fault over UDP and over TCP.
 7. By hand, where the pull request changes the [clock](#clock): the USB cable
    is taken out and put back, and a `send 1` at the console arrives at the
    collector with `-` for its TIMESTAMP and `tzKnown="0"`. After
