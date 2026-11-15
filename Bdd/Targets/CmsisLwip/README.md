@@ -104,3 +104,13 @@ docker compose -f ci/docker-compose.bdd.yml \
 
 The lane runs the same tag filter as the two existing QEMU lanes, so it exercises
 UDP, TCP, TLS and mutual TLS, and the `@store` suite that rides the `@tcp` tag.
+
+## On the NUCLEO-F767ZI
+
+The `nucleo-f767zi-cmsis-lwip` preset builds this target for ST's
+NUCLEO-F767ZI, over Mbed TLS. Nothing in this directory changes for it: the
+board supplies its own half of the seam, and the kernel configuration takes the
+core clock and the interrupt priority bits from the board. CI builds the image
+and never runs it. The board's
+[README](../Boards/NucleoF767zi/README.md) has the build, the run and the
+target checklist it is accepted by.

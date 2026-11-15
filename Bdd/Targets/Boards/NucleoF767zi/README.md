@@ -29,6 +29,7 @@ say what it supplies to the code.
 | Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
 | Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
+| CMSIS device header | `BddTargetCmsisDevice.h` | ST's own, which the CMSIS-RTOS2 wrapper reads the core from |
 
 `Bringup/` is not part of the seam. It is an image of its own, with no
 SolidSyslog, no kernel and no network stack in it, built straight on `Board.c`:
@@ -74,6 +75,28 @@ It lands at
 The `build-nucleo-freertos-lwipraw` CI lane builds it on every pull request,
 without the four addresses, and uploads it as the
 `solid-syslog-nucleo-f767zi-freertos-lwip` artifact.
+
+The CMSIS-RTOS2 + lwIP Sockets BDD target, which is
+[`../../CmsisLwip/`](../../CmsisLwip/README.md) built for this board, takes the
+same four addresses:
+
+```bash
+cmake --preset nucleo-f767zi-cmsis-lwip \
+    -DSOLIDSYSLOG_BDD_BOARD_IP=<board address> \
+    -DSOLIDSYSLOG_BDD_BOARD_NETMASK=<netmask> \
+    -DSOLIDSYSLOG_BDD_BOARD_GATEWAY=<gateway address> \
+    -DSOLIDSYSLOG_BDD_BOARD_ORACLE=<collector address>
+cmake --build --preset nucleo-f767zi-cmsis-lwip --target SolidSyslogBddTargetCmsis
+```
+
+It lands at
+`build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
+The `build-nucleo-cmsisrtos-lwipsocket` lane builds it and uploads it as the
+`solid-syslog-nucleo-f767zi-cmsis-lwip` artifact. It is built over Mbed TLS;
+the wolfSSL build of the same target is not built for this board.
+
+The two are images of one board, and what the rest of this page says of the
+BDD target is true of both unless it names one.
 
 ## Network
 
@@ -186,13 +209,16 @@ The bring-up image does not start the clock.
 ## Disk
 
 The board's disk is a MicroSD card in a breakout on SPI4, wired as the
-[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts FatFs on
-it, formatting it first if it finds no filesystem, and puts the target on a
-store of files there. The disk is the first 8 MiB of the card, whatever the
+[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts the
+target's filesystem on it, formatting it first if it finds none, and puts the
+target on a store of files there. That filesystem is FatFs under the lwIP Raw
+target and LittleFS under the CMSIS-RTOS2 one, which keeps the card as a
+sector disk and emulates an erase by writing, as it does under QEMU. The disk is the first 8 MiB of the card, whatever the
 card's size, which is the size of the disk the same target has under QEMU. A
 card smaller than that is refused.
 
-A card that has been used anywhere else is wiped first, with `set store wipe`.
+A card that has been used anywhere else is wiped first, with `set store wipe`,
+and so is one the other image last used.
 A card as it is sold, or as a computer formats it, has a partition table in
 its first sector, naming a filesystem that reaches beyond those 8 MiB. FatFs
 finds the table and follows it, so the mount either fails or succeeds on a
@@ -230,7 +256,9 @@ the part would allow 108.
 The card keeps what it holds through a reset and with the power off, where the
 disk under QEMU is a file the harness removes. `set store wipe` at the console
 leaves the card with no filesystem on it, so that the next `set store file`
-formats it. It is refused once the store is on the disk.
+formats it. It writes zeros over the card's first 8 KiB, which holds what
+either filesystem is found by: the first sector for FatFs, and for LittleFS
+the two blocks it keeps its superblock in. It is refused once the store is on the disk.
 
 Whatever goes wrong with the card is a line on the console beginning
 `[board] disk:`, with the sector where there is one and the reason: no answer,
@@ -276,11 +304,14 @@ gh run download <run-id> --name solid-syslog-nucleo-f767zi-bringup --dir nucleo
 STM32_Programmer_CLI -c port=SWD -w nucleo/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf -v -rst
 ```
 
-The BDD target is the one built for the network under test:
+A BDD target is the one built for the network under test:
 
 ```bash
 STM32_Programmer_CLI -c port=SWD -w build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf -v -rst
 ```
+
+The CMSIS-RTOS2 one is written the same way, from where
+[its build](#build) leaves it.
 
 An ELF carries its own load address. The `.bin` does not, and goes at the
 start of flash: `-w <file>.bin 0x08000000`.
@@ -345,7 +376,8 @@ PowerShell at the root of the repository:
 
 That builds the image from the commit checked out, in the cross image CI uses,
 writes it to the board, starts the collector, and runs Behave over the
-scenarios the board can run. `-Netmask` and `-Gateway` set the other two
+scenarios the board can run. The image is the FreeRTOS + lwIP Raw target
+unless `-Target cmsis` asks for the CMSIS-RTOS2 + lwIP Sockets one. `-Netmask` and `-Gateway` set the other two
 [network](#network) settings, and each of the four can be left in an
 environment variable instead, which the script's help names. `-SkipBuild`
 writes the image already built, and `-Paths` runs only the features given.
@@ -550,15 +582,24 @@ artifact came from.
    with a card that answered `01` to CMD0 and `01 000001AA` to CMD8, and a
    flash that answered its JEDEC id.
 
-### The FreeRTOS + lwIP Raw BDD target
+### The BDD targets
+
+One list, run once for each image the pull request can have changed. A change
+to the board's own code, to the run script or to what the targets share is a
+change to both.
+
+| Image | Lane | Script argument |
+|---|---|---|
+| FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip`, which is the default |
+| CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` |
 
 The board is cabled to the test network, with a MicroSD card in its breakout.
 Steps 2 to 4 are one run of
 [`Run-NucleoF767ziBdd.ps1`](#running-the-bdd-scenarios), which stops at the
 first of them that fails.
 
-1. The `build-nucleo-freertos-lwipraw` and `tools-nucleo-f767zi-runner` lanes
-   passed on the commit.
+1. The image's lane and the `tools-nucleo-f767zi-runner` lane passed on the
+   commit.
 2. The script builds the image from the commit under review, with the test
    network's addresses, and `STM32_Programmer_CLI` writes it and its verify
    passes.
