@@ -10,9 +10,11 @@ set(BDD_TARGET_TEST_SOURCES
     BddTargetLanguageTest.cpp
     BddTargetLineAssemblerTest.cpp
     BddTargetMessageSettingsTest.cpp
+    BddTargetSdCardTest.cpp
     BddTargetStoreSettingsTest.cpp
     BddTargetTickedClockTest.cpp
     BddTargetTlsConfigTest.cpp
+    FakeSdCard.cpp
     main.cpp
 )
 
@@ -27,6 +29,7 @@ set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLanguage.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
