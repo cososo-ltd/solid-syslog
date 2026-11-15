@@ -347,7 +347,11 @@ time, its sequence number, its up-time and the library's version are not held
 to a value, and the time on a message has to be no earlier than on the one
 before it. It ends with a line for each transport giving the messages sent,
 received and at fault. With `-FileStore` as well, every message goes by way of
-a store of files on the [disk](#disk), which the run wipes first.
+a store of files on the [disk](#disk), which the run wipes first. Each message
+is then written to the card before it is sent, which takes longer than the
+console takes to answer, so the run asks for twenty a second: asked for faster
+than the card takes them, messages fill the target's buffer and it discards,
+which is the library's doing and not a loss.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
@@ -549,8 +553,9 @@ first of them that fails.
 5. By hand, at the console: `set store file` answers `set store=file`, and a
    `send 1` after it arrives at the collector.
 6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and again
-   with `-FileStore` added. The record gives the two lines of each: the
-   messages sent, received and at fault over UDP and over TCP.
+   with `-SkipBuild -SustainedRun 2000 -FileStore`. The record gives the two
+   lines of each: the messages sent, received and at fault over UDP and over
+   TCP.
 7. By hand, where the pull request changes the [clock](#clock): the USB cable
    is taken out and put back, and a `send 1` at the console arrives at the
    collector with `-` for its TIMESTAMP and `tzKnown="0"`. After
