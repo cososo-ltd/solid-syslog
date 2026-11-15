@@ -36,7 +36,9 @@ because both would write Bdd/output/received.jsonl.
 
 The tag filter is this board's list of what it cannot do yet: TLS (@tls), which
 has not been run on it. The board's disk is a MicroSD card, which the run wipes
-before each scenario that uses a store (@store). The board
+before each scenario that uses a store (@store). The cmsis image is not given
+the card and has no store yet, so its filter leaves those scenarios out and it
+refuses -FileStore. The board
 has a real-time clock, and the run tells it the time before the first scenario,
 so it runs the scenarios of a target that knows the time (@rtc) and not those
 of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
@@ -80,11 +82,20 @@ $tags = '(@udp or @tcp) and not @tls and not @no_rtc and not @wip and not @freer
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 # Each image the board runs: its preset, the directory its target is built in
-# under the build tree, and the name of the target, which is the image's too.
+# under the build tree, the name of the target, which is the image's too, and
+# whether the board gives it a disk to keep a store on.
 $images = @{
-    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip' }
-    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis' }
+    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; HasStore = $true }
+    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; HasStore = $false }
 }
+if (-not $images[$Target].HasStore)
+    {
+    if ($FileStore)
+        {
+        throw "The $Target image has no store on this board, so -FileStore has nothing to run."
+        }
+    $tags += ' and not @store'
+    }
 $preset = $images[$Target].Preset
 $buildTarget = $images[$Target].Name
 $buildDirectory = "build/$preset"

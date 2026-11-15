@@ -27,7 +27,7 @@ say what it supplies to the code.
 | Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
-| Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code |
+| Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c`, `BddTargetBoardNoDisk.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code. `BddTargetBoardNoDisk.c` is the disk of a target the board [has none for yet](#what-the-board-does-not-have-yet) |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
 | CMSIS device header | `BddTargetCmsisDevice.h` | ST's own, which the CMSIS-RTOS2 wrapper reads the core from |
 
@@ -209,16 +209,17 @@ The bring-up image does not start the clock.
 ## Disk
 
 The board's disk is a MicroSD card in a breakout on SPI4, wired as the
-[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts the
-target's filesystem on it, formatting it first if it finds none, and puts the
-target on a store of files there. That filesystem is FatFs under the lwIP Raw
-target and LittleFS under the CMSIS-RTOS2 one, which keeps the card as a
-sector disk and emulates an erase by writing, as it does under QEMU. The disk is the first 8 MiB of the card, whatever the
+[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts FatFs on
+it, formatting it first if it finds no filesystem, and puts the target on a
+store of files there. The disk is the first 8 MiB of the card, whatever the
 card's size, which is the size of the disk the same target has under QEMU. A
 card smaller than that is refused.
 
-A card that has been used anywhere else is wiped first, with `set store wipe`,
-and so is one the other image last used.
+The card is the FreeRTOS + lwIP Raw target's disk. The CMSIS-RTOS2 target is
+[not given it](#what-the-board-does-not-have-yet), and the rest of this section
+is about the first.
+
+A card that has been used anywhere else is wiped first, with `set store wipe`.
 A card as it is sold, or as a computer formats it, has a partition table in
 its first sector, naming a filesystem that reaches beyond those 8 MiB. FatFs
 finds the table and follows it, so the mount either fails or succeeds on a
@@ -256,9 +257,7 @@ the part would allow 108.
 The card keeps what it holds through a reset and with the power off, where the
 disk under QEMU is a file the harness removes. `set store wipe` at the console
 leaves the card with no filesystem on it, so that the next `set store file`
-formats it. It writes zeros over the card's first 8 KiB, which holds what
-either filesystem is found by: the first sector for FatFs, and for LittleFS
-the two blocks it keeps its superblock in. It is refused once the store is on the disk.
+formats it. It is refused once the store is on the disk.
 
 Whatever goes wrong with the card is a line on the console beginning
 `[board] disk:`, with the sector where there is one and the reason: no answer,
@@ -271,6 +270,12 @@ on the store it started with.
 
 - TLS is linked, because the target is the same code as on QEMU, and has not
   been run. The board's hardware random number generator is not wired in.
+- The CMSIS-RTOS2 target has no store. Its filesystem is LittleFS, which
+  belongs on the W25Q128 flash, and that has no driver yet. Until it has, the
+  board gives this target a disk that never becomes ready: `set store file`
+  says `[solidsyslog] littlefs mount failed`, answers `set: invalid` and
+  leaves the target on the store it started with, and `set store wipe`
+  answers `set: invalid` too.
 
 ## Tools on the development machine
 
@@ -393,7 +398,8 @@ a store of files on the [disk](#disk), which the run wipes first. Each message
 is then written to the card before it is sent, which takes longer than the
 console takes to answer, so the run asks for twenty a second: asked for faster
 than the card takes them, messages fill the target's buffer and it discards,
-which is the library's doing and not a loss.
+which is the library's doing and not a loss. The script refuses `-FileStore`
+for an image with no store.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
@@ -437,7 +443,8 @@ port in either direction and every reset, each with its time, taken at the
 port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
-[does not have yet](#what-the-board-does-not-have-yet). The board has been told
+[does not have yet](#what-the-board-does-not-have-yet), which for the
+CMSIS-RTOS2 image takes out the ones tagged `@store`. The board has been told
 the time by then, so it runs the scenarios tagged `@rtc` and not those tagged
 `@no_rtc`. The script holds the tag filter.
 
@@ -588,10 +595,13 @@ One list, run once for each image the pull request can have changed. A change
 to the board's own code, to the run script or to what the targets share is a
 change to both.
 
-| Image | Lane | Script argument |
-|---|---|---|
-| FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip`, which is the default |
-| CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` |
+| Image | Lane | Script argument | Store |
+|---|---|---|---|
+| FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip`, which is the default | FatFs on the MicroSD card |
+| CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | None yet |
+
+Steps 5 and 6 each have a form for an image with a store and one for an image
+without.
 
 The board is cabled to the test network, with a MicroSD card in its breakout.
 Steps 2 to 4 are one run of
@@ -609,11 +619,12 @@ first of them that fails.
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
 5. By hand, at the console: `set store wipe` answers `set store=wipe`,
    `set store file` answers `set store=file`, and a `send 1` after them
-   arrives at the collector.
-6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and again
-   with `-SkipBuild -SustainedRun 2000 -FileStore`. The record gives the two
-   lines of each: the messages sent, received and at fault over UDP and over
-   TCP.
+   arrives at the collector. On an image with no store, `set store file`
+   answers `set: invalid`, and a `send 1` after it arrives at the collector.
+6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and, on
+   an image with a store, again with `-SkipBuild -SustainedRun 2000
+   -FileStore`. The record gives the two lines of each: the messages sent,
+   received and at fault over UDP and over TCP.
 7. By hand, where the pull request changes the [clock](#clock): the USB cable
    is taken out and put back, and a `send 1` at the console arrives at the
    collector with `-` for its TIMESTAMP and `tzKnown="0"`. After

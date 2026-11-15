@@ -165,12 +165,23 @@ set(BDD_BOARD_PROJECT_SOURCES
     # target lists them, because only a board with a clock wants them.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
-    # The disk is a MicroSD card: the card driver from the targets' common
-    # code, over the board's SPI4.
-    ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
-    ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
+
+# The disk is a MicroSD card: the card driver from the targets' common code,
+# over the board's SPI4. The CMSIS-RTOS2 target is not given it. Its
+# filesystem is LittleFS, which belongs on the board's flash, and until that
+# has a driver the target has a disk that never becomes ready, and so no store.
+if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
+    list(APPEND BDD_BOARD_PROJECT_SOURCES
+        ${BDD_BOARD_DIR}/BddTargetBoardNoDisk.c
+    )
+else()
+    list(APPEND BDD_BOARD_PROJECT_SOURCES
+        ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
+        ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
+    )
+endif()
 
 set(BDD_BOARD_INCLUDES
     ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h, Board.h, stm32f7xx_hal_conf.h
