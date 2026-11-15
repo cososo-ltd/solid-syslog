@@ -142,10 +142,11 @@ if(GIT_EXECUTABLE)
 endif()
 
 # Only the file that prints the banner reads the commit, so only it is rebuilt
-# when the commit moves. The bring-up image names its own.
+# when the commit moves. The bring-up image names its own. The banner names the
+# target too, because every target built from a commit carries that commit.
 set(BDD_BOARD_BUILD_COMMIT_DEFINITION BDD_TARGET_BOARD_BUILD_COMMIT="${BDD_BOARD_BUILD_COMMIT}")
 set_source_files_properties(${BDD_BOARD_DIR}/BddTargetBoard.c PROPERTIES
-    COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION}")
+    COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION};BDD_TARGET_BOARD_IMAGE=\"${SOLIDSYSLOG_BDD_TARGET}\"")
 
 # --- What the board supplies ---------------------------------------------------
 

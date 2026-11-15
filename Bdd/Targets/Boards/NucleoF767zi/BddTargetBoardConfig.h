@@ -27,7 +27,8 @@
 
 /* The disk, as BddTargetBoardDisk.h presents it: the first 8 MiB of the
  * MicroSD card, which is the size the QEMU machine's disk is, so a filesystem
- * is laid out the same on both. */
+ * is laid out the same on both. A target the board gives no disk - see
+ * Board.cmake - is told the same geometry, and never reads or writes it. */
 #define BDD_TARGET_BOARD_DISK_SECTOR_SIZE 512
 #define BDD_TARGET_BOARD_DISK_SECTOR_COUNT 16384
 

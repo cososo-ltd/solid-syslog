@@ -2126,7 +2126,7 @@ jobs:
       # when it cannot ask git.
       - name: Assert the image's banner names the commit built
         run: |
-          grep --text --quiet "BDD target on NUCLEO-F767ZI, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
+          grep --text --quiet "BDD target on NUCLEO-F767ZI, image FREERTOS_LWIP, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
 
       - name: Upload the NUCLEO-F767ZI FreeRTOS+lwIP BDD target ELF
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -2174,7 +2174,7 @@ jobs:
       # when it cannot ask git.
       - name: Assert the image's banner names the commit built
         run: |
-          grep --text --quiet "BDD target on NUCLEO-F767ZI, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+          grep --text --quiet "BDD target on NUCLEO-F767ZI, image CMSIS_LWIP, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
 
       - name: Upload the NUCLEO-F767ZI CMSIS-RTOS2+lwIP BDD target ELF
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

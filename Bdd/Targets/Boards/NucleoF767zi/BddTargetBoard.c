@@ -20,14 +20,21 @@
 #define BDD_TARGET_BOARD_BUILD_COMMIT "unknown"
 #endif
 
+/* Which of the targets the board runs this image is: the build's
+ * SOLIDSYSLOG_BDD_TARGET. Every image built from a commit names that commit,
+ * so the banner names the image as well. */
+#ifndef BDD_TARGET_BOARD_IMAGE
+#define BDD_TARGET_BOARD_IMAGE "unknown"
+#endif
+
 enum
 {
     CONSOLE_POLL_MILLISECONDS = 1,
     EXIT_TEXT_BYTES = 32
 };
 
-static const char BANNER[] =
-    "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, commit " BDD_TARGET_BOARD_BUILD_COMMIT "\r\n";
+static const char BANNER[] = "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, image " BDD_TARGET_BOARD_IMAGE
+                             ", commit " BDD_TARGET_BOARD_BUILD_COMMIT "\r\n";
 static const char EXIT_OK[] = "\r\nexit: ok\r\n";
 static const char EXIT_FAILED_FORMAT[] = "\r\nexit: failed %d\r\n";
 

@@ -5,15 +5,15 @@ the NUCLEO-F767ZI attached to this machine, and runs the BDD scenarios against
 the board.
 
 .DESCRIPTION
--Target chooses the image: lwip, the FreeRTOS + lwIP Raw target, which is the
-default, or cmsis, the CMSIS-RTOS2 + lwIP Sockets target. Everything below is
+-Target chooses the image, and has to be given: lwip, the FreeRTOS + lwIP Raw
+target, or cmsis, the CMSIS-RTOS2 + lwIP Sockets target. Everything below is
 the same for both.
 
 Behave runs here, natively. Each scenario starts the target by resetting the
 board through the ST-LINK's debug probe, and drives it over the ST-LINK's
 virtual COM port. Before the first scenario the run checks that the banner the
-board shows names the commit checked out here, so a run cannot pass against an
-image of something else.
+board shows names the image asked for and the commit checked out here, so a
+run cannot pass against an image of something else.
 
 The image is built in the cross image CI builds it in, read from
 .github/workflows/ci.yml, so Docker has to be running. The board's addresses
@@ -55,14 +55,15 @@ last. Runner/sustained_run.py is what does it. With -FileStore every message
 goes by way of a store of files on the board's disk, which the run wipes first.
 
 .EXAMPLE
-.\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
 .\Run-NucleoF767ziBdd.ps1 -Target cmsis -BoardAddress <board address> -CollectorAddress <this machine's address>
-.\Run-NucleoF767ziBdd.ps1 -SkipBuild -Paths Bdd/features/prival.feature
+.\Run-NucleoF767ziBdd.ps1 -Target lwip -SkipBuild -Paths Bdd/features/prival.feature
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $true)]
     [ValidateSet('lwip', 'cmsis')]
-    [string] $Target = 'lwip',
+    [string] $Target,
     [string] $BoardAddress = $env:NUCLEO_F767ZI_BOARD_ADDRESS,
     [string] $CollectorAddress = $env:NUCLEO_F767ZI_COLLECTOR_ADDRESS,
     [string] $Netmask = $env:NUCLEO_F767ZI_NETMASK,
@@ -82,11 +83,12 @@ $tags = '(@udp or @tcp) and not @tls and not @no_rtc and not @wip and not @freer
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 # Each image the board runs: its preset, the directory its target is built in
-# under the build tree, the name of the target, which is the image's too, and
-# whether the board gives it a disk to keep a store on.
+# under the build tree, the name of the target, which is the image's too, what
+# its banner calls it, which is the preset's SOLIDSYSLOG_BDD_TARGET, and whether
+# the board gives it a disk to keep a store on.
 $images = @{
-    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; HasStore = $true }
-    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; HasStore = $false }
+    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; HasStore = $true }
+    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; HasStore = $false }
 }
 if (-not $images[$Target].HasStore)
     {
@@ -105,7 +107,7 @@ $mount = '/workspaces/solid-syslog'
 # What the run sets for the steps, put back as it ends: left behind, BDD_BOARD
 # would send a later run of another target to this board, and the serial port
 # would stand in for the board's own after it has moved.
-$runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR',
+$runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR', 'NUCLEO_F767ZI_IMAGE',
     'NUCLEO_F767ZI_CONSOLE_RECORD', 'STM32_PROGRAMMER_CLI', 'ORACLE_FORMAT', 'RECEIVED_LOG',
     'VXWORKS64_COLLECTOR_PORT', 'OTELCOL_CONFIG', 'OTELCOL_TCP_PORTS')
 
@@ -255,6 +257,7 @@ try
     $env:BDD_BOARD = 'nucleo-f767zi'
     $env:NUCLEO_F767ZI_SERIAL_PORT = $SerialPort
     $env:NUCLEO_F767ZI_BUILD_DIR = $buildDirectory
+    $env:NUCLEO_F767ZI_IMAGE = $images[$Target].Banner
     $env:STM32_PROGRAMMER_CLI = $programmer
     $env:ORACLE_FORMAT = 'otel-jsonl'
     $env:RECEIVED_LOG = 'Bdd/output/received.jsonl'

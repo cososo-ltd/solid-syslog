@@ -29,7 +29,7 @@ _BANNER_WAIT_SECONDS = 5
 _RESET_ATTEMPTS = 3
 
 _BANNER_STARTS = b"SolidSyslog BDD target"
-_BANNER_COMMIT = re.compile(r"NUCLEO-F767ZI, commit (\S+)")
+_BANNER = re.compile(r"NUCLEO-F767ZI, image (\S+), commit (\S+)")
 _CACHED_ADDRESS = re.compile(r"^SOLIDSYSLOG_BDD_BOARD_IP:\w+=(\S+)$", re.MULTILINE)
 
 
@@ -270,16 +270,37 @@ def use_the_file_store(console, timeout_seconds):
         raise RuntimeError(f"The board did not take the file store: {answer!r}")
 
 
+# What a run is told through the environment. Each image the board runs has a
+# name and a build directory of its own, so neither has a value to fall back to.
+def image_under_test():
+    return _named_by_the_run("NUCLEO_F767ZI_IMAGE", "the image under test, as its build names it: SOLIDSYSLOG_BDD_TARGET")
+
+
+def build_directory():
+    return _named_by_the_run("NUCLEO_F767ZI_BUILD_DIR", "the directory the image under test was built in")
+
+
+def _named_by_the_run(variable, meaning):
+    value = os.environ.get(variable)
+    if not value:
+        raise RuntimeError(f"{variable} is not set to {meaning}")
+    return value
+
+
 # Raises unless the banner in output, which is what the board showed from its
-# reset to its prompt, names commit. The build writes the first ten digits, and
-# "-dirty" after them for a tree with changes the commit does not hold.
-def check_image_is_of_commit(output, commit):
-    banner = _BANNER_COMMIT.search(output)
+# reset to its prompt, names image and commit. Every image built from a commit
+# names that commit, so the image is checked too. The build writes the first
+# ten digits of the commit, and "-dirty" after them for a tree with changes the
+# commit does not hold.
+def check_image(output, image, commit):
+    banner = _BANNER.search(output)
     if not banner:
         raise RuntimeError(f"The board showed no banner after its reset: {output!r}")
-    if banner.group(1) != commit[:10]:
+    if banner.group(1) != image:
+        raise RuntimeError(f"The image on the board is {banner.group(1)}, and the image under test is {image}")
+    if banner.group(2) != commit[:10]:
         raise RuntimeError(
-            f"The image on the board is of commit {banner.group(1)}, and the commit under test is {commit[:10]}"
+            f"The image on the board is of commit {banner.group(2)}, and the commit under test is {commit[:10]}"
         )
 
 

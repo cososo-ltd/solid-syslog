@@ -376,13 +376,14 @@ With the board attached by USB and cabled to the test network, from Windows
 PowerShell at the root of the repository:
 
 ```powershell
-.\Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
 ```
 
 That builds the image from the commit checked out, in the cross image CI uses,
 writes it to the board, starts the collector, and runs Behave over the
-scenarios the board can run. The image is the FreeRTOS + lwIP Raw target
-unless `-Target cmsis` asks for the CMSIS-RTOS2 + lwIP Sockets one. `-Netmask` and `-Gateway` set the other two
+scenarios the board can run. `-Target` names the image and has to be given:
+`lwip` for the FreeRTOS + lwIP Raw target, `cmsis` for the CMSIS-RTOS2 + lwIP
+Sockets one. `-Netmask` and `-Gateway` set the other two
 [network](#network) settings, and each of the four can be left in an
 environment variable instead, which the script's help names. `-SkipBuild`
 writes the image already built, and `-Paths` runs only the features given.
@@ -413,7 +414,9 @@ Before a scenario tagged `@store` the run resets the board and has it
 filesystem, as under QEMU it does on a disk image that has just been made.
 
 Before the first scenario the run reads the banner and stops unless it names
-the commit checked out, so a run cannot pass against an image of anything else.
+the image asked for and the commit checked out, so a run cannot pass against
+an image of anything else. Both images are built from one commit, which is why
+the banner names the image too, as the build's `SOLIDSYSLOG_BDD_TARGET`.
 It then tells the board this machine's time, once, and the board's
 [clock](#clock) keeps it through the reset that starts each scenario. A
 sustained run does the same before its first message.
@@ -597,7 +600,7 @@ change to both.
 
 | Image | Lane | Script argument | Store |
 |---|---|---|---|
-| FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip`, which is the default | FatFs on the MicroSD card |
+| FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip` | FatFs on the MicroSD card |
 | CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | None yet |
 
 Steps 5 and 6 each have a form for an image with a store and one for an image
@@ -614,7 +617,7 @@ first of them that fails.
    network's addresses, and `STM32_Programmer_CLI` writes it and its verify
    passes.
 3. The run starts its first scenario, which it does only once the banner the
-   board shows after a reset names the commit under review.
+   board shows after a reset names the image and the commit under review.
 4. Every scenario the tag filter selects passes. The record gives the counts
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
 5. By hand, at the console: `set store wipe` answers `set store=wipe`,
