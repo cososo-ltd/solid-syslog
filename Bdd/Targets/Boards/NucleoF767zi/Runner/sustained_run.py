@@ -23,7 +23,9 @@ import time
 
 from nucleo_f767zi import (
     board_address_in,
-    check_image_is_of_commit,
+    build_directory,
+    check_image,
+    image_under_test,
     open_board,
     output_to_prompt,
     tell_the_time,
@@ -47,7 +49,6 @@ _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_
 _SEQUENCE_ID = re.compile(r'sequenceId="(\d+)"')
 _OCTET_COUNTED = re.compile(r"^(\d+) (.*)$", re.DOTALL)
 _FAULTS_SHOWN = 10
-_BUILD_DIR = os.path.join("build", "nucleo-f767zi-lwip")
 
 # The message the target sends for `send 1`, as Bdd/Targets/Common has it, in
 # the parts between what is not the same in every message: the board's address,
@@ -175,9 +176,8 @@ def main(count, store):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     console = open_board(os.environ["NUCLEO_F767ZI_SERIAL_PORT"], os.environ.get("STM32_PROGRAMMER_CLI", "STM32_Programmer_CLI"))
     try:
-        check_image_is_of_commit(output_to_prompt(console, _BOOT_TIMEOUT_SECONDS), commit)
-        build_dir = os.environ.get("NUCLEO_F767ZI_BUILD_DIR") or _BUILD_DIR
-        with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
+        check_image(output_to_prompt(console, _BOOT_TIMEOUT_SECONDS), image_under_test(), commit)
+        with open(os.path.join(build_directory(), "CMakeCache.txt"), encoding="utf-8") as cache:
             sent = message_as_sent(board_address_in(cache.read()))
         tell_the_time(console, _ANSWER_TIMEOUT_SECONDS)
         interval_seconds = 0

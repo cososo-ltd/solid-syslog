@@ -49,6 +49,7 @@ set_property(
 
 set(BDD_KERNEL_UPSTREAM_INCLUDES
     ${BDD_KERNEL_DIR}                                      # FreeRTOSConfig.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common                 # BddTargetBoard.h, which FreeRTOSConfig.h's assertion calls
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                                   # portmacro.h
     ${CMSIS_PATH}/CMSIS/RTOS2/Include                      # cmsis_os2.h, os_tick.h

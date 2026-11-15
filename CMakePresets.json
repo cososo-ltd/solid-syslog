@@ -206,6 +206,16 @@
             }
         },
         {
+            "name": "nucleo-f767zi-cmsis-lwip",
+            "displayName": "CMSIS-RTOS2+lwIP cross BDD target (ARM Cortex-M7, NUCLEO-F767ZI)",
+            "inherits": "nucleo-f767zi-lwip",
+            "cacheVariables": {
+                "SOLIDSYSLOG_BDD_TARGET": "CMSIS_LWIP",
+                "SOLIDSYSLOG_PLATFORMS": "CmsisRtos;LwipSocket;MbedTls;LittleFs;StdAtomic",
+                "SOLIDSYSLOG_USER_TUNABLES_FILE": "${sourceDir}/Bdd/Targets/CmsisLwip/solidsyslog_user_tunables.h"
+            }
+        },
+        {
             "name": "nucleo-f767zi-bringup",
             "displayName": "NUCLEO-F767ZI bring-up firmware (ARM Cortex-M7), no SolidSyslog in it",
             "binaryDir": "${sourceDir}/build/${presetName}",
@@ -238,6 +248,7 @@
         { "name": "cmsis-cross-lwip",  "configurePreset": "cmsis-cross-lwip" },
         { "name": "cmsis-cross-lwip-wolfssl", "configurePreset": "cmsis-cross-lwip-wolfssl" },
         { "name": "nucleo-f767zi-lwip", "configurePreset": "nucleo-f767zi-lwip" },
+        { "name": "nucleo-f767zi-cmsis-lwip", "configurePreset": "nucleo-f767zi-cmsis-lwip" },
         { "name": "nucleo-f767zi-bringup", "configurePreset": "nucleo-f767zi-bringup" }
     ],
     "testPresets": [

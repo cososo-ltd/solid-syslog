@@ -13,10 +13,10 @@ if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
         "Configure with a nucleo-f767zi-* preset.")
 endif()
 
-# The board supplies an lwIP netif and nothing else a target could run on: no
-# FreeRTOS-Plus-TCP interface and no CMSIS device header. A target it has no
-# half for would configure and then fail somewhere in its build.
-set(bdd_board_targets FREERTOS_LWIP NUCLEO_F767ZI_BRINGUP)
+# The board supplies an lwIP netif and a CMSIS device header, and no
+# FreeRTOS-Plus-TCP interface. A target it has no half for would configure and
+# then fail somewhere in its build.
+set(bdd_board_targets FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
 if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets)
     string(REPLACE ";" ", " bdd_board_target_list "${bdd_board_targets}")
     message(FATAL_ERROR
@@ -142,10 +142,11 @@ if(GIT_EXECUTABLE)
 endif()
 
 # Only the file that prints the banner reads the commit, so only it is rebuilt
-# when the commit moves. The bring-up image names its own.
+# when the commit moves. The bring-up image names its own. The banner names the
+# target too, because every target built from a commit carries that commit.
 set(BDD_BOARD_BUILD_COMMIT_DEFINITION BDD_TARGET_BOARD_BUILD_COMMIT="${BDD_BOARD_BUILD_COMMIT}")
 set_source_files_properties(${BDD_BOARD_DIR}/BddTargetBoard.c PROPERTIES
-    COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION}")
+    COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION};BDD_TARGET_BOARD_IMAGE=\"${SOLIDSYSLOG_BDD_TARGET}\"")
 
 # --- What the board supplies ---------------------------------------------------
 
@@ -165,15 +166,26 @@ set(BDD_BOARD_PROJECT_SOURCES
     # target lists them, because only a board with a clock wants them.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
-    # The disk is a MicroSD card: the card driver from the targets' common
-    # code, over the board's SPI4.
-    ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
-    ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
 
+# The disk is a MicroSD card: the card driver from the targets' common code,
+# over the board's SPI4. The CMSIS-RTOS2 target is not given it. Its
+# filesystem is LittleFS, which belongs on the board's flash, and until that
+# has a driver the target has a disk that never becomes ready, and so no store.
+if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
+    list(APPEND BDD_BOARD_PROJECT_SOURCES
+        ${BDD_BOARD_DIR}/BddTargetBoardNoDisk.c
+    )
+else()
+    list(APPEND BDD_BOARD_PROJECT_SOURCES
+        ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
+        ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
+    )
+endif()
+
 set(BDD_BOARD_INCLUDES
-    ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, Board.h, stm32f7xx_hal_conf.h
+    ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h, Board.h, stm32f7xx_hal_conf.h
     ${BDD_BOARD_GENERATED_DIR}                        # BddTargetBoardAddresses.h
 )
 

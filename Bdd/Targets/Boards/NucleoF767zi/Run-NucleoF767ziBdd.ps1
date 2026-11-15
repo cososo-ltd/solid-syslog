@@ -1,15 +1,19 @@
 <#
 .SYNOPSIS
-Builds the FreeRTOS + lwIP Raw BDD target for the commit under test, writes it
-to the NUCLEO-F767ZI attached to this machine, and runs the BDD scenarios
-against the board.
+Builds one of the board's BDD targets for the commit under test, writes it to
+the NUCLEO-F767ZI attached to this machine, and runs the BDD scenarios against
+the board.
 
 .DESCRIPTION
+-Target chooses the image, and has to be given: lwip, the FreeRTOS + lwIP Raw
+target, or cmsis, the CMSIS-RTOS2 + lwIP Sockets target. Everything below is
+the same for both.
+
 Behave runs here, natively. Each scenario starts the target by resetting the
 board through the ST-LINK's debug probe, and drives it over the ST-LINK's
 virtual COM port. Before the first scenario the run checks that the banner the
-board shows names the commit checked out here, so a run cannot pass against an
-image of something else.
+board shows names the image asked for and the commit checked out here, so a
+run cannot pass against an image of something else.
 
 The image is built in the cross image CI builds it in, read from
 .github/workflows/ci.yml, so Docker has to be running. The board's addresses
@@ -32,7 +36,9 @@ because both would write Bdd/output/received.jsonl.
 
 The tag filter is this board's list of what it cannot do yet: TLS (@tls), which
 has not been run on it. The board's disk is a MicroSD card, which the run wipes
-before each scenario that uses a store (@store). The board
+before each scenario that uses a store (@store). The cmsis image is not given
+the card and has no store yet, so its filter leaves those scenarios out and it
+refuses -FileStore. The board
 has a real-time clock, and the run tells it the time before the first scenario,
 so it runs the scenarios of a target that knows the time (@rtc) and not those
 of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
@@ -49,11 +55,15 @@ last. Runner/sustained_run.py is what does it. With -FileStore every message
 goes by way of a store of files on the board's disk, which the run wipes first.
 
 .EXAMPLE
-.\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
-.\Run-NucleoF767ziBdd.ps1 -SkipBuild -Paths Bdd/features/prival.feature
+.\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Run-NucleoF767ziBdd.ps1 -Target cmsis -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Run-NucleoF767ziBdd.ps1 -Target lwip -SkipBuild -Paths Bdd/features/prival.feature
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('lwip', 'cmsis')]
+    [string] $Target,
     [string] $BoardAddress = $env:NUCLEO_F767ZI_BOARD_ADDRESS,
     [string] $CollectorAddress = $env:NUCLEO_F767ZI_COLLECTOR_ADDRESS,
     [string] $Netmask = $env:NUCLEO_F767ZI_NETMASK,
@@ -72,15 +82,32 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $tags = '(@udp or @tcp) and not @tls and not @no_rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
-$preset = 'nucleo-f767zi-lwip'
+# Each image the board runs: its preset, the directory its target is built in
+# under the build tree, the name of the target, which is the image's too, what
+# its banner calls it, which is the preset's SOLIDSYSLOG_BDD_TARGET, and whether
+# the board gives it a disk to keep a store on.
+$images = @{
+    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; HasStore = $true }
+    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; HasStore = $false }
+}
+if (-not $images[$Target].HasStore)
+    {
+    if ($FileStore)
+        {
+        throw "The $Target image has no store on this board, so -FileStore has nothing to run."
+        }
+    $tags += ' and not @store'
+    }
+$preset = $images[$Target].Preset
+$buildTarget = $images[$Target].Name
 $buildDirectory = "build/$preset"
-$image = "$buildDirectory/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf"
+$image = "$buildDirectory/$($images[$Target].Directory)/$buildTarget.elf"
 # Where the build's container sees this tree, which is how its cache names files.
 $mount = '/workspaces/solid-syslog'
 # What the run sets for the steps, put back as it ends: left behind, BDD_BOARD
 # would send a later run of another target to this board, and the serial port
 # would stand in for the board's own after it has moved.
-$runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR',
+$runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR', 'NUCLEO_F767ZI_IMAGE',
     'NUCLEO_F767ZI_CONSOLE_RECORD', 'STM32_PROGRAMMER_CLI', 'ORACLE_FORMAT', 'RECEIVED_LOG',
     'VXWORKS64_COLLECTOR_PORT', 'OTELCOL_CONFIG', 'OTELCOL_TCP_PORTS')
 
@@ -142,7 +169,7 @@ function Build-Image
     & docker run --rm --user root `
         -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e 'GIT_CONFIG_VALUE_0=*' `
         -v "${repositoryRoot}:$mount" -w $mount $crossImage `
-        sh -c "$configure && cmake --build --preset $preset --target SolidSyslogBddTargetLwip"
+        sh -c "$configure && cmake --build --preset $preset --target $buildTarget"
     $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0)
         {
@@ -230,6 +257,7 @@ try
     $env:BDD_BOARD = 'nucleo-f767zi'
     $env:NUCLEO_F767ZI_SERIAL_PORT = $SerialPort
     $env:NUCLEO_F767ZI_BUILD_DIR = $buildDirectory
+    $env:NUCLEO_F767ZI_IMAGE = $images[$Target].Banner
     $env:STM32_PROGRAMMER_CLI = $programmer
     $env:ORACLE_FORMAT = 'otel-jsonl'
     $env:RECEIVED_LOG = 'Bdd/output/received.jsonl'

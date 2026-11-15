@@ -70,6 +70,8 @@ add_library(solid_syslog_cmsis_lwip_upstream OBJECT
     # stays in the executable under the strict bar; this sits under the
     # relaxations.
     ${BDD_BOARD_LWIP_UPSTREAM_SOURCES}
+    # The board vendor's own sources, where it has a vendor layer.
+    ${BDD_BOARD_UPSTREAM_SOURCES}
     # LittleFS upstream, under the same relaxations: lfs.c raises well over a
     # hundred diagnostics against this project's -Werror set, which is not
     # upstream's problem and not ours to pin a version over.
@@ -96,10 +98,13 @@ target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
     -Wno-pedantic
 )
 
+target_compile_definitions(solid_syslog_cmsis_lwip_upstream PRIVATE ${BDD_BOARD_DEFINITIONS})
+
 target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # lwipopts.h
     ${BDD_KERNEL_UPSTREAM_INCLUDES}                   # FreeRTOSConfig.h, kernel, CMSIS-RTOS2
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
+    ${BDD_BOARD_SYSTEM_INCLUDES}                      # the board vendor's headers
     ${LWIP_SHARED_DIR}                                 # arch/cc.h
     ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${LWIP_DIR}/src/include
@@ -215,7 +220,10 @@ else()
 
     foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
         if(TARGET ${_mbedtls_upstream_target})
-            target_compile_options(${_mbedtls_upstream_target} PRIVATE -w)
+            # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
+            # bignum multiply is inline assembler that wants every low register,
+            # and an unoptimised build otherwise keeps one back as frame pointer.
+            target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
             target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
                 MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
             )
@@ -371,6 +379,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
 target_include_directories(SolidSyslogBddTargetCmsis SYSTEM PRIVATE
     ${LITTLEFS_PATH}
     ${BDD_TLS_SYSTEM_INCLUDES}
+    ${BDD_BOARD_SYSTEM_INCLUDES}                      # the board vendor's headers
 )
 
 target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
@@ -388,6 +397,7 @@ target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
 string(TIMESTAMP SOLIDSYSLOG_BDD_BUILD_EPOCH "%s" UTC)
 
 target_compile_definitions(SolidSyslogBddTargetCmsis PRIVATE
+    ${BDD_BOARD_DEFINITIONS}
     ${BDD_TLS_DEFINITIONS}
     BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )

@@ -27,8 +27,9 @@ say what it supplies to the code.
 | Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
-| Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code |
+| Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c`, `BddTargetBoardNoDisk.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code. `BddTargetBoardNoDisk.c` is the disk of a target the board [has none for yet](#what-the-board-does-not-have-yet) |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
+| CMSIS device header | `BddTargetCmsisDevice.h` | ST's own, which the CMSIS-RTOS2 wrapper reads the core from |
 
 `Bringup/` is not part of the seam. It is an image of its own, with no
 SolidSyslog, no kernel and no network stack in it, built straight on `Board.c`:
@@ -74,6 +75,28 @@ It lands at
 The `build-nucleo-freertos-lwipraw` CI lane builds it on every pull request,
 without the four addresses, and uploads it as the
 `solid-syslog-nucleo-f767zi-freertos-lwip` artifact.
+
+The CMSIS-RTOS2 + lwIP Sockets BDD target, which is
+[`../../CmsisLwip/`](../../CmsisLwip/README.md) built for this board, takes the
+same four addresses:
+
+```bash
+cmake --preset nucleo-f767zi-cmsis-lwip \
+    -DSOLIDSYSLOG_BDD_BOARD_IP=<board address> \
+    -DSOLIDSYSLOG_BDD_BOARD_NETMASK=<netmask> \
+    -DSOLIDSYSLOG_BDD_BOARD_GATEWAY=<gateway address> \
+    -DSOLIDSYSLOG_BDD_BOARD_ORACLE=<collector address>
+cmake --build --preset nucleo-f767zi-cmsis-lwip --target SolidSyslogBddTargetCmsis
+```
+
+It lands at
+`build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
+The `build-nucleo-cmsisrtos-lwipsocket` lane builds it and uploads it as the
+`solid-syslog-nucleo-f767zi-cmsis-lwip` artifact. It is built over Mbed TLS;
+the wolfSSL build of the same target is not built for this board.
+
+The two are images of one board, and what the rest of this page says of the
+BDD target is true of both unless it names one.
 
 ## Network
 
@@ -192,6 +215,10 @@ store of files there. The disk is the first 8 MiB of the card, whatever the
 card's size, which is the size of the disk the same target has under QEMU. A
 card smaller than that is refused.
 
+The card is the FreeRTOS + lwIP Raw target's disk. The CMSIS-RTOS2 target is
+[not given it](#what-the-board-does-not-have-yet), and the rest of this section
+is about the first.
+
 A card that has been used anywhere else is wiped first, with `set store wipe`.
 A card as it is sold, or as a computer formats it, has a partition table in
 its first sector, naming a filesystem that reaches beyond those 8 MiB. FatFs
@@ -243,6 +270,12 @@ on the store it started with.
 
 - TLS is linked, because the target is the same code as on QEMU, and has not
   been run. The board's hardware random number generator is not wired in.
+- The CMSIS-RTOS2 target has no store. Its filesystem is LittleFS, which
+  belongs on the W25Q128 flash, and that has no driver yet. Until it has, the
+  board gives this target a disk that never becomes ready: `set store file`
+  says `[solidsyslog] littlefs mount failed`, answers `set: invalid` and
+  leaves the target on the store it started with, and `set store wipe`
+  answers `set: invalid` too.
 
 ## Tools on the development machine
 
@@ -276,11 +309,14 @@ gh run download <run-id> --name solid-syslog-nucleo-f767zi-bringup --dir nucleo
 STM32_Programmer_CLI -c port=SWD -w nucleo/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf -v -rst
 ```
 
-The BDD target is the one built for the network under test:
+A BDD target is the one built for the network under test:
 
 ```bash
 STM32_Programmer_CLI -c port=SWD -w build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf -v -rst
 ```
+
+The CMSIS-RTOS2 one is written the same way, from where
+[its build](#build) leaves it.
 
 An ELF carries its own load address. The `.bin` does not, and goes at the
 start of flash: `-w <file>.bin 0x08000000`.
@@ -340,12 +376,14 @@ With the board attached by USB and cabled to the test network, from Windows
 PowerShell at the root of the repository:
 
 ```powershell
-.\Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Bdd\Targets\Boards\NucleoF767zi\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
 ```
 
 That builds the image from the commit checked out, in the cross image CI uses,
 writes it to the board, starts the collector, and runs Behave over the
-scenarios the board can run. `-Netmask` and `-Gateway` set the other two
+scenarios the board can run. `-Target` names the image and has to be given:
+`lwip` for the FreeRTOS + lwIP Raw target, `cmsis` for the CMSIS-RTOS2 + lwIP
+Sockets one. `-Netmask` and `-Gateway` set the other two
 [network](#network) settings, and each of the four can be left in an
 environment variable instead, which the script's help names. `-SkipBuild`
 writes the image already built, and `-Paths` runs only the features given.
@@ -361,7 +399,8 @@ a store of files on the [disk](#disk), which the run wipes first. Each message
 is then written to the card before it is sent, which takes longer than the
 console takes to answer, so the run asks for twenty a second: asked for faster
 than the card takes them, messages fill the target's buffer and it discards,
-which is the library's doing and not a loss.
+which is the library's doing and not a loss. The script refuses `-FileStore`
+for an image with no store.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
@@ -375,7 +414,9 @@ Before a scenario tagged `@store` the run resets the board and has it
 filesystem, as under QEMU it does on a disk image that has just been made.
 
 Before the first scenario the run reads the banner and stops unless it names
-the commit checked out, so a run cannot pass against an image of anything else.
+the image asked for and the commit checked out, so a run cannot pass against
+an image of anything else. Both images are built from one commit, which is why
+the banner names the image too, as the build's `SOLIDSYSLOG_BDD_TARGET`.
 It then tells the board this machine's time, once, and the board's
 [clock](#clock) keeps it through the reset that starts each scenario. A
 sustained run does the same before its first message.
@@ -405,7 +446,8 @@ port in either direction and every reset, each with its time, taken at the
 port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
-[does not have yet](#what-the-board-does-not-have-yet). The board has been told
+[does not have yet](#what-the-board-does-not-have-yet), which for the
+CMSIS-RTOS2 image takes out the ones tagged `@store`. The board has been told
 the time by then, so it runs the scenarios tagged `@rtc` and not those tagged
 `@no_rtc`. The script holds the tag filter.
 
@@ -550,29 +592,42 @@ artifact came from.
    with a card that answered `01` to CMD0 and `01 000001AA` to CMD8, and a
    flash that answered its JEDEC id.
 
-### The FreeRTOS + lwIP Raw BDD target
+### The BDD targets
+
+One list, run once for each image the pull request can have changed. A change
+to the board's own code, to the run script or to what the targets share is a
+change to both.
+
+| Image | Lane | Script argument | Store |
+|---|---|---|---|
+| FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip` | FatFs on the MicroSD card |
+| CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | None yet |
+
+Steps 5 and 6 each have a form for an image with a store and one for an image
+without.
 
 The board is cabled to the test network, with a MicroSD card in its breakout.
 Steps 2 to 4 are one run of
 [`Run-NucleoF767ziBdd.ps1`](#running-the-bdd-scenarios), which stops at the
 first of them that fails.
 
-1. The `build-nucleo-freertos-lwipraw` and `tools-nucleo-f767zi-runner` lanes
-   passed on the commit.
+1. The image's lane and the `tools-nucleo-f767zi-runner` lane passed on the
+   commit.
 2. The script builds the image from the commit under review, with the test
    network's addresses, and `STM32_Programmer_CLI` writes it and its verify
    passes.
 3. The run starts its first scenario, which it does only once the banner the
-   board shows after a reset names the commit under review.
+   board shows after a reset names the image and the commit under review.
 4. Every scenario the tag filter selects passes. The record gives the counts
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
 5. By hand, at the console: `set store wipe` answers `set store=wipe`,
    `set store file` answers `set store=file`, and a `send 1` after them
-   arrives at the collector.
-6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and again
-   with `-SkipBuild -SustainedRun 2000 -FileStore`. The record gives the two
-   lines of each: the messages sent, received and at fault over UDP and over
-   TCP.
+   arrives at the collector. On an image with no store, `set store file`
+   answers `set: invalid`, and a `send 1` after it arrives at the collector.
+6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and, on
+   an image with a store, again with `-SkipBuild -SustainedRun 2000
+   -FileStore`. The record gives the two lines of each: the messages sent,
+   received and at fault over UDP and over TCP.
 7. By hand, where the pull request changes the [clock](#clock): the USB cable
    is taken out and put back, and a `send 1` at the console arrives at the
    collector with `-` for its TIMESTAMP and `tzKnown="0"`. After

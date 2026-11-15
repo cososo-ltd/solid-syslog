@@ -15,27 +15,61 @@ import serial_console  # noqa: E402
 from test_serial_console import FakePort  # noqa: E402
 
 
-BANNER = "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, commit 0123456789\r\n[board] link up\r\nSolidSyslog> "
+BANNER = (
+    "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, image CMSIS_LWIP, commit 0123456789\r\n"
+    "[board] link up\r\nSolidSyslog> "
+)
+COMMIT = "0123456789abcdef0123456789abcdef01234567"
 
 
 class BannerTest(unittest.TestCase):
-    def test_an_image_built_from_the_commit_under_test_is_accepted(self):
-        nucleo_f767zi.check_image_is_of_commit(BANNER, "0123456789abcdef0123456789abcdef01234567")
+    def test_the_image_under_test_built_from_the_commit_under_test_is_accepted(self):
+        nucleo_f767zi.check_image(BANNER, "CMSIS_LWIP", COMMIT)
 
     def test_an_image_built_from_another_commit_is_refused(self):
         with self.assertRaisesRegex(RuntimeError, "0123456789.*fedcba9876"):
-            nucleo_f767zi.check_image_is_of_commit(BANNER, "fedcba9876543210fedcba9876543210fedcba98")
+            nucleo_f767zi.check_image(BANNER, "CMSIS_LWIP", "fedcba9876543210fedcba9876543210fedcba98")
 
     # The build marks a tree with changes its commit does not hold.
     def test_an_image_built_from_a_changed_tree_is_refused(self):
         dirty = BANNER.replace("0123456789", "0123456789-dirty")
 
         with self.assertRaisesRegex(RuntimeError, "0123456789-dirty"):
-            nucleo_f767zi.check_image_is_of_commit(dirty, "0123456789abcdef0123456789abcdef01234567")
+            nucleo_f767zi.check_image(dirty, "CMSIS_LWIP", COMMIT)
+
+    # Two images are built from one commit, and a run is of one of them.
+    def test_another_image_built_from_the_commit_under_test_is_refused(self):
+        with self.assertRaisesRegex(RuntimeError, "CMSIS_LWIP.*FREERTOS_LWIP"):
+            nucleo_f767zi.check_image(BANNER, "FREERTOS_LWIP", COMMIT)
 
     def test_a_board_that_shows_no_banner_is_refused(self):
         with self.assertRaisesRegex(RuntimeError, "no banner"):
-            nucleo_f767zi.check_image_is_of_commit("SolidSyslog> ", "0123456789abcdef0123456789abcdef01234567")
+            nucleo_f767zi.check_image("SolidSyslog> ", "CMSIS_LWIP", COMMIT)
+
+
+class RunSettingsTest(unittest.TestCase):
+    def test_the_image_under_test_is_the_one_the_run_names(self):
+        with unittest.mock.patch.dict(os.environ, {"NUCLEO_F767ZI_IMAGE": "CMSIS_LWIP"}):
+            self.assertEqual("CMSIS_LWIP", nucleo_f767zi.image_under_test())
+
+    def test_a_run_that_names_no_image_is_refused(self):
+        with unittest.mock.patch.dict(os.environ):
+            os.environ.pop("NUCLEO_F767ZI_IMAGE", None)
+
+            with self.assertRaisesRegex(RuntimeError, "NUCLEO_F767ZI_IMAGE"):
+                nucleo_f767zi.image_under_test()
+
+    def test_the_build_directory_is_the_one_the_run_names(self):
+        with unittest.mock.patch.dict(os.environ, {"NUCLEO_F767ZI_BUILD_DIR": "build/somewhere"}):
+            self.assertEqual("build/somewhere", nucleo_f767zi.build_directory())
+
+    # Each image has a build directory of its own, so none is assumed.
+    def test_a_run_that_names_no_build_directory_is_refused(self):
+        with unittest.mock.patch.dict(os.environ):
+            os.environ.pop("NUCLEO_F767ZI_BUILD_DIR", None)
+
+            with self.assertRaisesRegex(RuntimeError, "NUCLEO_F767ZI_BUILD_DIR"):
+                nucleo_f767zi.build_directory()
 
 
 class OutputToPromptTest(unittest.TestCase):
