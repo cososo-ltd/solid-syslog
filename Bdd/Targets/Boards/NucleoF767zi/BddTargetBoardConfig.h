@@ -25,9 +25,9 @@
 /* The NVIC implements the top four bits of each 8-bit priority field. */
 #define BDD_TARGET_BOARD_NVIC_PRIO_BITS 4
 
-/* The disk, as BddTargetBoardDisk.h presents it. No media is fitted, and the
- * board's disk never becomes ready, so this geometry is only what the
- * filesystem glue needs to compile. */
+/* The disk, as BddTargetBoardDisk.h presents it: the first 8 MiB of the
+ * MicroSD card, which is the size the QEMU machine's disk is, so a filesystem
+ * is laid out the same on both. */
 #define BDD_TARGET_BOARD_DISK_SECTOR_SIZE 512
 #define BDD_TARGET_BOARD_DISK_SECTOR_COUNT 16384
 

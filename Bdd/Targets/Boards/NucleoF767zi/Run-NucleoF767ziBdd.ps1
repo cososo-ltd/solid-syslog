@@ -30,8 +30,9 @@ inbound UDP and TCP on the collector port allowed from the board's network.
 Nothing else may hold that port, and no other collector may be running,
 because both would write Bdd/output/received.jsonl.
 
-The tag filter is this board's list of what it cannot do yet: a store (@store),
-for want of storage, and TLS (@tls), which has not been run on it. The board
+The tag filter is this board's list of what it cannot do yet: TLS (@tls), which
+has not been run on it. The board's disk is a MicroSD card, which the run wipes
+before each scenario that uses a store (@store). The board
 has a real-time clock, and the run tells it the time before the first scenario,
 so it runs the scenarios of a target that knows the time (@rtc) and not those
 of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
@@ -44,7 +45,8 @@ filter.
 -SustainedRun runs no scenario. It sends the number of messages given over UDP
 and then as many over TCP, and passes if the collector recorded every one of
 them once, in order and as it was sent, with a time on it no earlier than the
-last. Runner/sustained_run.py is what does it.
+last. Runner/sustained_run.py is what does it. With -FileStore every message
+goes by way of a store of files on the board's disk, which the run wipes first.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -BoardAddress <board address> -CollectorAddress <this machine's address>
@@ -59,14 +61,15 @@ param(
     [string] $SerialPort = $env:NUCLEO_F767ZI_SERIAL_PORT,
     [switch] $SkipBuild,
     [string[]] $Paths = @('Bdd/features'),
-    [int] $SustainedRun = 0
+    [int] $SustainedRun = 0,
+    [switch] $FileStore
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
-$tags = '(@udp or @tcp) and not @tls and not @store and not @no_rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
+$tags = '(@udp or @tcp) and not @tls and not @no_rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 $preset = 'nucleo-f767zi-lwip'
@@ -276,7 +279,8 @@ try
     $ErrorActionPreference = 'Continue'
     if ($SustainedRun -gt 0)
         {
-        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun
+        $store = if ($FileStore) { 'file' } else { 'null' }
+        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun $store
         }
     else
         {

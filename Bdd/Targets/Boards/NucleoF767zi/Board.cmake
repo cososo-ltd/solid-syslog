@@ -165,7 +165,11 @@ set(BDD_BOARD_PROJECT_SOURCES
     # target lists them, because only a board with a clock wants them.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
+    # The disk is a MicroSD card: the card driver from the targets' common
+    # code, over the board's SPI4.
     ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
+    ${BDD_BOARD_DIR}/BddTargetSdCardBus.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
 
 set(BDD_BOARD_INCLUDES
@@ -196,6 +200,8 @@ set(BDD_BOARD_UPSTREAM_SOURCES
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_pwr_ex.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_rcc.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_rcc_ex.c
+    ${bdd_board_hal_source_dir}/stm32f7xx_hal_spi.c
+    ${bdd_board_hal_source_dir}/stm32f7xx_hal_spi_ex.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_uart.c
     ${bdd_board_hal_source_dir}/stm32f7xx_hal_uart_ex.c
     ${STM32F7_CMSIS_DEVICE_PATH}/Source/Templates/system_stm32f7xx.c

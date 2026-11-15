@@ -249,6 +249,27 @@ def tell_the_time(console, timeout_seconds, now=time.time, wait=time.sleep):
         raise RuntimeError(f"The board did not take the time: {answer!r}")
 
 
+# Leaves the disk of the board, waiting at its prompt, with no filesystem on
+# it, so that the store a scenario asks for is laid down afresh. The disk is a
+# card that keeps what it holds through every reset, so without this a scenario
+# would start with the records the one before it left. A board that refuses
+# raises: its card did not answer, or did not take the write.
+def wipe_the_disk(console, timeout_seconds):
+    console.stdin.write("set store wipe\n")
+    answer = output_to_prompt(console, timeout_seconds)
+    if "set: invalid" in answer:
+        raise RuntimeError(f"The board did not wipe its disk: {answer!r}")
+
+
+# Puts the target, waiting at its prompt, on a store of files on the disk. A
+# board that refuses raises: its disk would not mount.
+def use_the_file_store(console, timeout_seconds):
+    console.stdin.write("set store file\n")
+    answer = output_to_prompt(console, timeout_seconds)
+    if "set: invalid" in answer:
+        raise RuntimeError(f"The board did not take the file store: {answer!r}")
+
+
 # Raises unless the banner in output, which is what the board showed from its
 # reset to its prompt, names commit. The build writes the first ten digits, and
 # "-dirty" after them for a tree with changes the commit does not hold.

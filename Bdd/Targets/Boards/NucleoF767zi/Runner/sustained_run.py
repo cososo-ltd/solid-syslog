@@ -4,7 +4,8 @@ in order and as it was sent, with a time on it no earlier than the last.
 
 Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and writes
 the image, starts the collector, and names the board's serial port and the
-programmer in the environment, as it does for Behave.
+programmer in the environment, as it does for Behave. With -FileStore every
+message goes by way of a store of files on the board's disk, wiped first.
 
 Each message is one `send 1` at the console, answered before the next is
 asked for. A `send` of many would log them faster than the target sends them,
@@ -20,7 +21,15 @@ import subprocess
 import sys
 import time
 
-from nucleo_f767zi import board_address_in, check_image_is_of_commit, open_board, output_to_prompt, tell_the_time
+from nucleo_f767zi import (
+    board_address_in,
+    check_image_is_of_commit,
+    open_board,
+    output_to_prompt,
+    tell_the_time,
+    use_the_file_store,
+    wipe_the_disk,
+)
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
@@ -154,7 +163,7 @@ def _messages_once_arrived(path, count):
     return messages
 
 
-def main(count):
+def main(count, store):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     console = open_board(os.environ["NUCLEO_F767ZI_SERIAL_PORT"], os.environ.get("STM32_PROGRAMMER_CLI", "STM32_Programmer_CLI"))
     try:
@@ -163,6 +172,9 @@ def main(count):
         with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
             sent = message_as_sent(board_address_in(cache.read()))
         tell_the_time(console, _ANSWER_TIMEOUT_SECONDS)
+        if store == "file":
+            wipe_the_disk(console, _ANSWER_TIMEOUT_SECONDS)
+            use_the_file_store(console, _ANSWER_TIMEOUT_SECONDS)
         _send(console, count)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
@@ -184,4 +196,4 @@ def main(count):
 
 
 if __name__ == "__main__":
-    sys.exit(main(int(sys.argv[1])))
+    sys.exit(main(int(sys.argv[1]), sys.argv[2] if len(sys.argv) > 2 else "null"))

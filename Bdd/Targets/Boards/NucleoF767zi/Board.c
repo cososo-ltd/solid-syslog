@@ -180,9 +180,11 @@ static inline bool Board_SwitchToPll(void)
     clocks.ClockType = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
     clocks.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
     clocks.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    /* APB1 is limited to 54 MHz and APB2 to 108 MHz. */
+    /* APB1 is limited to 54 MHz. APB2 could run at 108 MHz and is held to 54
+     * as well: it clocks SPI4, whose slowest rate is the bus divided by 256,
+     * and the SD card on it has to be started at no more than 400 kHz. */
     clocks.APB1CLKDivider = RCC_HCLK_DIV4;
-    clocks.APB2CLKDivider = RCC_HCLK_DIV2;
+    clocks.APB2CLKDivider = RCC_HCLK_DIV4;
     return HAL_RCC_ClockConfig(&clocks, FLASH_LATENCY_7) == HAL_OK;
 }
 

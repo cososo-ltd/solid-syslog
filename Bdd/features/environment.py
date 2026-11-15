@@ -21,6 +21,7 @@ from target_driver import (  # noqa: E402
     prepare_nucleo_f767zi_board,
     prepare_vxworks64_target,
     reset_vxworks64_store,
+    wipe_nucleo_f767zi_disk,
 )
 from stack_marks import StackMarks, stack_marks_in  # noqa: E402
 
@@ -248,6 +249,8 @@ def before_scenario(context, scenario):
         pass
     if context.target == "vxworks64" and "store" in scenario.effective_tags:
         reset_vxworks64_store()
+    if context.board == NUCLEO_F767ZI and "store" in scenario.effective_tags:
+        wipe_nucleo_f767zi_disk()
 
 
 def after_step(context, step):
