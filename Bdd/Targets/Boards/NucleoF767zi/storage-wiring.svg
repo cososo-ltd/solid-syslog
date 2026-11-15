@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 668" role="img" font-family="Consolas, 'DejaVu Sans Mono', monospace"
+     aria-label="Wiring from CN8 and CN9 of the NUCLEO-F767ZI to the MicroSD breakout and the W25Q128 breakout. Power, ground, clock, MISO and MOSI are shared; each breakout has its own chip select.">
+  <title>NUCLEO-F767ZI storage breakouts on SPI4</title>
+  <rect x="0" y="0" width="900" height="668" fill="#ffffff"/>
+
+  <g fill="#5a6875" font-size="11.5">
+    <text x="162" y="22" text-anchor="middle">Ethernet end</text>
+    <text x="162" y="658" text-anchor="middle">ST-LINK USB end</text>
+    <text x="206" y="44">board edge</text>
+    <text x="118" y="44" text-anchor="end">processor side</text>
+    <text x="196" y="64">29</text>
+    <text x="196" y="400">1 (A0)</text>
+    <text x="128" y="64" text-anchor="end">30</text>
+    <text x="128" y="400" text-anchor="end">2</text>
+    <text x="196" y="464">15 VIN</text>
+    <text x="196" y="632">1 NC</text>
+    <text x="410" y="606" text-anchor="middle">a dot is a shared breadboard row</text>
+  </g>
+
+  <!-- CN9: 2 x 15 sockets, pins 29 and 30 at the top, 1 and 2 at the bottom -->
+  <rect x="136" y="46" width="52" height="364" fill="none" stroke="#17212b" stroke-width="1.5"/>
+  <g stroke="#aab4bd" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 24" fill="none">
+    <line x1="150" y1="60" x2="150" y2="397"/>
+    <line x1="174" y1="60" x2="174" y2="397"/>
+    <!-- CN8: 2 x 8 sockets, pins 15 and 16 at the top, 1 and 2 at the bottom -->
+    <line x1="150" y1="460" x2="150" y2="629"/>
+    <line x1="174" y1="460" x2="174" y2="629"/>
+  </g>
+  <rect x="136" y="446" width="52" height="196" fill="none" stroke="#17212b" stroke-width="1.5"/>
+  <g fill="#17212b" font-size="13" font-weight="bold">
+    <text x="162" y="428" text-anchor="middle">CN9</text>
+    <text x="112" y="550" text-anchor="end">CN8</text>
+  </g>
+
+  <!-- wires -->
+  <g fill="none" stroke-width="3" stroke-linejoin="round">
+    <polyline stroke="#d5571c" points="150,156 320,156 320,544 600,544"/>
+    <polyline stroke="#7a4bc9" points="150,180 350,180 350,520 600,520"/>
+    <polyline stroke="#7a4bc9" points="350,186 600,186"/>
+    <polyline stroke="#1f6fc4" points="150,204 380,204 380,496 600,496"/>
+    <polyline stroke="#1f6fc4" points="380,204 380,162 600,162"/>
+    <polyline stroke="#1f8f55" points="150,228 410,228 410,210 600,210"/>
+    <polyline stroke="#b77a00" points="150,252 440,252 440,472 600,472"/>
+    <polyline stroke="#b77a00" points="440,252 440,138 600,138"/>
+    <polyline stroke="#17212b" points="150,276 470,276 470,448 600,448"/>
+    <polyline stroke="#17212b" points="470,276 470,114 600,114"/>
+    <polyline stroke="#d32f2f" points="174,556 500,556 500,400 600,400"/>
+    <polyline stroke="#d32f2f" points="500,400 500,90 600,90"/>
+  </g>
+
+  <!-- shared breadboard rows -->
+  <circle cx="350" cy="186" r="4.5" fill="#7a4bc9"/>
+  <circle cx="380" cy="204" r="4.5" fill="#1f6fc4"/>
+  <circle cx="440" cy="252" r="4.5" fill="#b77a00"/>
+  <circle cx="470" cy="276" r="4.5" fill="#17212b"/>
+  <circle cx="500" cy="400" r="4.5" fill="#d32f2f"/>
+
+  <!-- the sockets used -->
+  <circle cx="150" cy="156" r="7" fill="#d5571c"/>
+  <circle cx="150" cy="180" r="7" fill="#7a4bc9"/>
+  <circle cx="150" cy="204" r="7" fill="#1f6fc4"/>
+  <circle cx="150" cy="228" r="7" fill="#1f8f55"/>
+  <circle cx="150" cy="252" r="7" fill="#b77a00"/>
+  <circle cx="150" cy="276" r="7" fill="#17212b"/>
+  <circle cx="174" cy="556" r="7" fill="#d32f2f"/>
+
+  <!-- the 5 V socket, beside the 3V3 one -->
+  <circle cx="174" cy="532" r="9" fill="none" stroke="#c62828" stroke-width="2.5"/>
+  <line x1="167" y1="525" x2="181" y2="539" stroke="#c62828" stroke-width="2.5"/>
+  <text x="196" y="536" fill="#c62828" font-size="12" font-weight="bold">9  5V - never</text>
+
+  <g fill="#17212b" font-size="12">
+    <text x="196" y="574">7  3V3</text>
+    <text x="128" y="160" text-anchor="end">22  PE3  flash CS</text>
+    <text x="128" y="184" text-anchor="end">20  PE6  MOSI</text>
+    <text x="128" y="208" text-anchor="end">18  PE5  MISO</text>
+    <text x="128" y="232" text-anchor="end">16  PE4  SD CS</text>
+    <text x="128" y="256" text-anchor="end">14  PE2  SCK</text>
+    <text x="128" y="280" text-anchor="end">12  GND</text>
+  </g>
+
+  <!-- MicroSD breakout -->
+  <rect x="600" y="62" width="250" height="244" fill="#f5f7f8" stroke="#17212b" stroke-width="1.5"/>
+  <text x="725" y="56" text-anchor="middle" fill="#17212b" font-size="13" font-weight="bold">Adafruit 4682 MicroSD</text>
+  <g fill="#17212b" font-size="12">
+    <text x="612" y="94">3V</text>
+    <text x="612" y="118">GND</text>
+    <text x="612" y="142">CLK</text>
+    <text x="612" y="166">SO  (D0)</text>
+    <text x="612" y="190">SI  (CMD)</text>
+    <text x="612" y="214">CS  (D3)</text>
+  </g>
+  <g fill="#5a6875" font-size="11.5">
+    <text x="612" y="246">D1, DAT2, DET</text>
+    <text x="612" y="264">not connected</text>
+    <text x="838" y="296" text-anchor="end">go by label, not position</text>
+  </g>
+
+  <!-- W25Q128 breakout -->
+  <rect x="600" y="372" width="250" height="200" fill="#f5f7f8" stroke="#17212b" stroke-width="1.5"/>
+  <text x="725" y="366" text-anchor="middle" fill="#17212b" font-size="13" font-weight="bold">Adafruit 5643 W25Q128</text>
+  <g fill="#17212b" font-size="12">
+    <text x="612" y="404">VIN</text>
+    <text x="612" y="452">GND</text>
+    <text x="612" y="476">SCK</text>
+    <text x="612" y="500">MISO</text>
+    <text x="612" y="524">MOSI</text>
+    <text x="612" y="548">CS</text>
+  </g>
+  <text x="612" y="428" fill="#5a6875" font-size="11.5">3V3 - an output, leave empty</text>
+</svg>

@@ -484,6 +484,12 @@ an Adafruit 4682 MicroSD breakout, which is the [disk](#disk), and an Adafruit
 5643 W25Q128 flash, which nothing but the bring-up image's `probe` talks to
 yet. None of these pins is shared with Ethernet, the ST-LINK or an LED.
 
+![The seven wires from CN8 and CN9 to the two breakouts on a breadboard](storage-wiring.svg)
+
+The drawing has the board as it lies with the ST-LINK end nearest, and CN8 and
+CN9 down its right-hand edge. Power, ground, clock, MISO and MOSI each leave
+the board once and reach both breakouts through a row of the breadboard.
+
 | Signal | Pin | Zio | Connector pin | MicroSD pad | W25Q128 pad |
 |---|---|---|---|---|---|
 | 3V3 | - | - | CN8 pin 7 | `3V` | `VIN` |
