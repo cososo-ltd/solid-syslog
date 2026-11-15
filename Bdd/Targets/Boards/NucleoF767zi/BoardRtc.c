@@ -54,6 +54,10 @@ enum
     EPOCH_WEEKDAY_FROM_MONDAY = 3
 };
 
+/* The clock counts a leap year every fourth, its year 00 among them, which is
+ * right only where the century it is counting in began with one. */
+_Static_assert(((uint32_t) CALENDAR_CENTURY % 400U) == 0U, "the clock's year 00 has to be a leap year");
+
 /* 2001-01-01T00:00:00Z and 2099-12-31T23:59:59Z. */
 static const uint32_t FIRST_SECOND_KEPT = 978307200U;
 static const uint32_t LAST_SECOND_KEPT = 4102444799U;

@@ -82,6 +82,16 @@ class TellTheTimeTest(unittest.TestCase):
 
         self.assertEqual([0.75], self.waited)
 
+    # The second told is the one the wait ended in, not the one it began in.
+    def test_the_time_is_read_again_after_the_wait(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+        readings = iter([1794657600.25, 1794657601.0])
+
+        nucleo_f767zi.tell_the_time(self.console, 5, now=lambda: next(readings), wait=self.waited.append)
+
+        self.assertEqual([0.75], self.waited)
+        self.assertEqual(b"set time 1794657601\n", self.port.written)
+
     # A wait may end a little before the second does.
     def test_the_second_told_is_the_nearest(self):
         self.port.arrived.put(b"SolidSyslog> ")

@@ -49,7 +49,7 @@ _SENT = (
 _TIME = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z"
 _COUNT = r"\d+"
 _VERSION = r"\d+\.\d+\.\d+"
-_TIME_SENT = re.compile(r"^<\d+>1 (" + _TIME + ") ")
+_TIME_SENT = re.compile(r"^(?:\d+ )?<\d+>1 (" + _TIME + ") ")
 
 
 # What a message sent by the board at hostname has to match, whole.
@@ -81,11 +81,12 @@ def messages_in(lines):
 # message arrives behind its octet count, which has to be its length. The
 # messages are sent one after another, so the time on each is no earlier than
 # on the one before: every digit of it is of fixed width, and so it is compared
-# as it is written.
-def faults_in(messages, first, count, sent):
+# as it is written. The first is held to not_before as well, which is the time
+# on the last message sent before these.
+def faults_in(messages, first, count, sent, not_before=""):
     faults = []
     ids = []
-    time_before = ""
+    time_before = not_before
     for message in messages:
         counted = _OCTET_COUNTED.match(message)
         if counted:
@@ -110,6 +111,12 @@ def faults_in(messages, first, count, sent):
             f" (the first: {missing[:_FAULTS_SHOWN]}), and the rest {_order_of(ids, expected)}"
         )
     return faults
+
+
+# The time on the last of messages to carry one, or nothing where none does.
+def last_time_in(messages):
+    times = [time_sent.group(1) for time_sent in map(_TIME_SENT.match, messages) if time_sent]
+    return times[-1] if times else ""
 
 
 def _order_of(ids, expected):
@@ -161,9 +168,11 @@ def main(count):
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
         _send(console, count)
         failed = False
+        not_before = ""
         for transport, first in (("udp", 1), ("tcp", count + 1)):
             messages = _messages_once_arrived(_RECORDS[transport], count)
-            faults = faults_in(messages, first, count, sent)
+            faults = faults_in(messages, first, count, sent, not_before)
+            not_before = last_time_in(messages) or not_before
             failed = failed or bool(faults)
             print(f"Sustained run, {transport.upper()}: {count} sent, {len(messages)} received, {len(faults)} faults")
             for fault in faults[:_FAULTS_SHOWN]:

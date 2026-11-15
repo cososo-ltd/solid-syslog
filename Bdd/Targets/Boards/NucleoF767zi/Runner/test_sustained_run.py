@@ -140,6 +140,18 @@ class FaultsTest(unittest.TestCase):
         self.assertEqual(1, len(faults))
         self.assertRegex(faults[0], "a time before that of the message before it: .*00:00.999998Z")
 
+    # The run sends over one transport and then over another, and the clock
+    # counts through the change.
+    def test_a_time_before_the_last_of_the_messages_before_is_a_fault(self):
+        first = [message(3, stamp="2026-11-14T12:00:00.999998Z")]
+        faults = sustained_run.faults_in(first, 3, 1, SENT, "2026-11-14T12:00:01.000004Z")
+        self.assertEqual(1, len(faults))
+        self.assertRegex(faults[0], "a time before that of the message before it: .*00:00.999998Z")
+
+    def test_a_time_no_earlier_than_the_last_of_the_messages_before_has_no_fault(self):
+        first = [message(3, stamp="2026-11-14T12:00:01.000004Z")]
+        self.assertEqual([], sustained_run.faults_in(first, 3, 1, SENT, "2026-11-14T12:00:01.000004Z"))
+
     def test_a_message_behind_its_octet_count_has_no_fault(self):
         self.assertEqual([], faults_in([counted(message(9)), counted(message(10))], 9, 2))
 
@@ -153,6 +165,23 @@ class FaultsTest(unittest.TestCase):
     def test_the_octet_count_is_of_octets(self):
         body = message(1)
         self.assertRegex(faults_in([f"{len(body)} {body}"], 1, 1)[0], "an octet count")
+
+
+class LastTimeTest(unittest.TestCase):
+    def test_no_messages_have_no_time(self):
+        self.assertEqual("", sustained_run.last_time_in([]))
+
+    def test_the_time_is_that_of_the_last_message(self):
+        messages = [message(1, stamp="2026-11-14T12:00:00.000001Z"), message(2, stamp="2026-11-14T12:00:00.000002Z")]
+        self.assertEqual("2026-11-14T12:00:00.000002Z", sustained_run.last_time_in(messages))
+
+    def test_the_time_is_read_behind_an_octet_count(self):
+        messages = [counted(message(1, stamp="2026-11-14T12:00:00.000001Z"))]
+        self.assertEqual("2026-11-14T12:00:00.000001Z", sustained_run.last_time_in(messages))
+
+    def test_a_message_with_no_time_is_passed_over(self):
+        messages = [message(1, stamp="2026-11-14T12:00:00.000001Z"), "<134>1 - host app - id - Hello"]
+        self.assertEqual("2026-11-14T12:00:00.000001Z", sustained_run.last_time_in(messages))
 
 
 if __name__ == "__main__":
