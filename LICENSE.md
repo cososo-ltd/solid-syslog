@@ -101,9 +101,11 @@ as licences 1 and 2 are.
 
 Cozens Software Solutions Limited has stopped maintaining SolidSyslog if it
 enters liquidation or administration, is struck off or dissolved, or announces
-that it has stopped. If no successor has agreed to take on maintenance within
-six months of that, every release published by then is relicensed under the
-Apache License, Version 2.0, so that existing users are not stranded. A
+that it has stopped. If no successor has agreed in writing, within six months
+of that, to take on maintenance on the terms
+[clause 11.1 of the commercial agreement](LICENSES/LicenseRef-COSOSO-Commercial.md#11-continuity-and-assignment)
+sets, every release published by then is relicensed under the Apache License,
+Version 2.0, so that existing users are not stranded. A
 commercial licensee holds that grant now under its agreement, to take effect on
 that day without any further act; the source is delivered as source, so no
 escrow is needed.
