@@ -336,7 +336,7 @@ endif()
 # the last enrolment below fails the target naming each failed executable.
 set(SOLIDSYSLOG_JUNIT_FAILURES_DIR ${CMAKE_BINARY_DIR}/junit-failures)
 add_custom_target(junit
-    COMMAND ${CMAKE_COMMAND} -E rm -rf ${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${SOLIDSYSLOG_JUNIT_FAILURES_DIR}
     COMMAND ${CMAKE_COMMAND}
         -DEXECUTABLE=$<TARGET_FILE:${PROJECT_NAME}Tests>
@@ -453,7 +453,7 @@ if(COVERAGE)
     find_program(GENHTML_EXECUTABLE genhtml REQUIRED)
 
     add_custom_target(coverage-zero
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${SOLIDSYSLOG_PROFRAW_DIR}
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${SOLIDSYSLOG_PROFRAW_DIR}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${SOLIDSYSLOG_PROFRAW_DIR}
         COMMENT "Clearing the raw coverage profiles"
     )
