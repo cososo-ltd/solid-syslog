@@ -233,8 +233,14 @@ static bool SdCard_WaitUntilReady(void)
 {
     uint32_t since = BddTargetBoardSdCardBus_Milliseconds();
     bool ready = BddTargetBoardSdCardBus_Exchange(IDLE_LINE) == (uint8_t) IDLE_LINE;
-    while (!ready && !SdCard_HasPassed(since, BUSY_TIMEOUT_MILLISECONDS))
+    bool expired = false;
+    while (!ready && !expired)
     {
+        /* The time is read before the card is asked, so the card is always
+         * asked once after the time allowed has passed. A task switched out
+         * for longer than that would otherwise give up on a card that
+         * finished while it was away. */
+        expired = SdCard_HasPassed(since, BUSY_TIMEOUT_MILLISECONDS);
         ready = BddTargetBoardSdCardBus_Exchange(IDLE_LINE) == (uint8_t) IDLE_LINE;
     }
     return ready;
@@ -331,20 +337,20 @@ static enum BddTargetSdCardResult SdCard_LeaveIdle(void)
     enum BddTargetSdCardResult result = BDD_TARGET_SD_CARD_OK;
     uint8_t answer = ANSWER_IDLE;
     uint32_t since = BddTargetBoardSdCardBus_Milliseconds();
-    while ((result == BDD_TARGET_SD_CARD_OK) && (answer == (uint8_t) ANSWER_IDLE))
+    bool expired = false;
+    while ((result == BDD_TARGET_SD_CARD_OK) && (answer == (uint8_t) ANSWER_IDLE) && !expired)
     {
-        if (SdCard_HasPassed(since, START_TIMEOUT_MILLISECONDS))
+        /* As in SdCard_WaitUntilReady: asked once more after the time allowed. */
+        expired = SdCard_HasPassed(since, START_TIMEOUT_MILLISECONDS);
+        result = SdCard_Command(APP_CMD, 0U, &answer);
+        if (result == BDD_TARGET_SD_CARD_OK)
         {
-            result = BDD_TARGET_SD_CARD_TIMED_OUT;
+            result = SdCard_Command(SD_SEND_OP_COND, HOST_HIGH_CAPACITY, &answer);
         }
-        else
-        {
-            result = SdCard_Command(APP_CMD, 0U, &answer);
-            if (result == BDD_TARGET_SD_CARD_OK)
-            {
-                result = SdCard_Command(SD_SEND_OP_COND, HOST_HIGH_CAPACITY, &answer);
-            }
-        }
+    }
+    if ((result == BDD_TARGET_SD_CARD_OK) && (answer == (uint8_t) ANSWER_IDLE))
+    {
+        result = BDD_TARGET_SD_CARD_TIMED_OUT;
     }
     if (result == BDD_TARGET_SD_CARD_OK)
     {
@@ -411,8 +417,11 @@ static enum BddTargetSdCardResult SdCard_ReceiveBlock(uint8_t* bytes, size_t cou
     uint8_t crc[CRC_LENGTH] = {0};
     uint32_t since = BddTargetBoardSdCardBus_Milliseconds();
     uint8_t token = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
-    while ((token == (uint8_t) IDLE_LINE) && !SdCard_HasPassed(since, READ_TIMEOUT_MILLISECONDS))
+    bool expired = false;
+    while ((token == (uint8_t) IDLE_LINE) && !expired)
     {
+        /* As in SdCard_WaitUntilReady: asked once more after the time allowed. */
+        expired = SdCard_HasPassed(since, READ_TIMEOUT_MILLISECONDS);
         token = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
     }
     if (token == (uint8_t) IDLE_LINE)

@@ -249,7 +249,7 @@ def before_scenario(context, scenario):
         pass
     if context.target == "vxworks64" and "store" in scenario.effective_tags:
         reset_vxworks64_store()
-    if context.board == NUCLEO_F767ZI and "store" in scenario.effective_tags:
+    if context.board == NUCLEO_F767ZI and "store" in scenario.effective_tags and not scenario.should_skip:
         wipe_nucleo_f767zi_disk()
 
 

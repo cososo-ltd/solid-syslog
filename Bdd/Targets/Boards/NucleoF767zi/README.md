@@ -192,6 +192,12 @@ store of files there. The disk is the first 8 MiB of the card, whatever the
 card's size, which is the size of the disk the same target has under QEMU. A
 card smaller than that is refused.
 
+A card that has been used anywhere else is wiped first, with `set store wipe`.
+A card as it is sold, or as a computer formats it, has a partition table in
+its first sector, naming a filesystem that reaches beyond those 8 MiB. FatFs
+finds the table and follows it, so the mount either fails or succeeds on a
+filesystem most of which the disk cannot reach, and in neither case formats.
+
 The card is driven in SPI mode, a sector at a time, by a driver of this
 repository's own in the targets' common code, which is unit-tested on the host
 against a fake card. It drives a version 2 card, of standard or high capacity,
@@ -205,8 +211,12 @@ clean on them: 3000 messages went through the file store at 13.5 MHz with no
 transfer repeated, and at 27 MHz the card did not come up. The card's CRC
 checking is turned on, so a command or a sector damaged on the wires is
 refused by whichever end receives it. A read or a write that fails that way is
-tried again, twice, and the target says so each time, so wires that have
-started to give trouble show before they stop a run.
+tried again, twice, and the target says on the console that it was, so wires
+that have started to give trouble show before they stop a run.
+
+A sector that still will not transfer, for that reason or any other, has the
+card started again from the beginning and is tried once more. That brings back
+a card that lost its place when a wire came out and went back.
 
 Each byte is exchanged through SPI4's data register directly. ST's HAL has a
 call for it, which times every transfer against the millisecond count, and a
@@ -224,7 +234,7 @@ formats it. It is refused once the store is on the disk.
 
 Whatever goes wrong with the card is a line on the console beginning
 `[board] disk:`, with the sector where there is one and the reason: no answer,
-timed out, bad data, and so on. A card that is not there, or a wire that has
+timed out, CRC failed, and so on. A card that is not there, or a wire that has
 come out of the breadboard, is `[board] disk: the card did not start: no
 answer`, and `set store file` then answers `set: invalid` and leaves the target
 on the store it started with.
@@ -550,8 +560,9 @@ first of them that fails.
    board shows after a reset names the commit under review.
 4. Every scenario the tag filter selects passes. The record gives the counts
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
-5. By hand, at the console: `set store file` answers `set store=file`, and a
-   `send 1` after it arrives at the collector.
+5. By hand, at the console: `set store wipe` answers `set store=wipe`,
+   `set store file` answers `set store=file`, and a `send 1` after them
+   arrives at the collector.
 6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and again
    with `-SkipBuild -SustainedRun 2000 -FileStore`. The record gives the two
    lines of each: the messages sent, received and at fault over UDP and over

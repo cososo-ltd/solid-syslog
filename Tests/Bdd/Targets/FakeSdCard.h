@@ -59,6 +59,11 @@ struct Settings
     bool staysBusyAfterWrite = false;
     /* The second byte of the status a card gives after a write. */
     uint8_t statusAfterWrite = 0x00;
+    /* How many bytes it holds its data line low for while it stores a block. */
+    int busyBytesAfterWrite = 3;
+    /* How far the count of milliseconds moves on each time it is read. A
+     * large step is a task that was switched out between two readings. */
+    uint32_t millisecondsPerReading = 1;
     std::array<uint8_t, CSD_LENGTH> csd = {};
 };
 

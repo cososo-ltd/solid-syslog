@@ -186,6 +186,11 @@ def main(count, store):
             use_the_file_store(console, _ANSWER_TIMEOUT_SECONDS)
             interval_seconds = _FILE_STORE_SEND_INTERVAL_SECONDS
         _send(console, count, interval_seconds)
+        if store == "file":
+            # The console answers `send 1` before the message has left the
+            # store, and one still there when the transport changes would go
+            # by the other transport.
+            _messages_once_arrived(_RECORDS["udp"], count)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
         _send(console, count, interval_seconds)

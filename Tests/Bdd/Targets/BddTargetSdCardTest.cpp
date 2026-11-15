@@ -17,6 +17,7 @@ enum
     ILLEGAL_COMMAND = 0x04,
     COMMAND_CRC_ERROR = 0x08,
     ALWAYS = 1000,
+    LONGER_THAN_ANY_WAIT = 5000,
     ATTEMPTS = 3,
     OUT_OF_RANGE_TOKEN = 0x08,
     DATA_REJECTED_WRITE_ERROR = 0xED,
@@ -418,6 +419,32 @@ TEST(BddTargetSdCard, TimesOutOnACardThatStaysBusyAfterAWrite)
     Started();
     FakeSdCard::settings.staysBusyAfterWrite = true;
     CHECK_RESULT(BDD_TARGET_SD_CARD_TIMED_OUT, Write(A_SECTOR, SectorOfPattern(42)));
+}
+
+/* A task switched out while it waits comes back after the time allowed, to a
+ * card that finished long before. What the card says then is what counts. */
+TEST(BddTargetSdCard, TakesTheCardAsReadyWhenItIsReadyOnceTheTimeAllowedHasPassed)
+{
+    Started();
+    FakeSdCard::settings.busyBytesAfterWrite = 1;
+    FakeSdCard::settings.millisecondsPerReading = LONGER_THAN_ANY_WAIT;
+    CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Write(A_SECTOR, SectorOfPattern(42)));
+}
+
+TEST(BddTargetSdCard, StartsACardThatIsReadyOnceTheTimeAllowedHasPassed)
+{
+    FakeSdCard::settings.startPolls = 0;
+    FakeSdCard::settings.millisecondsPerReading = LONGER_THAN_ANY_WAIT;
+    CHECK_RESULT(BDD_TARGET_SD_CARD_OK, BddTargetSdCard_Start());
+}
+
+TEST(BddTargetSdCard, TakesASectorThatHasArrivedOnceTheTimeAllowedHasPassed)
+{
+    FakeSdCard::Store(A_SECTOR, SectorOfPattern(7));
+    Started();
+    FakeSdCard::settings.millisecondsPerReading = LONGER_THAN_ANY_WAIT;
+    CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Read(A_SECTOR));
+    CHECK_SECTORS_EQUAL(SectorOfPattern(7), buffer);
 }
 
 TEST(BddTargetSdCard, AsksTheCardForItsStatusAfterAWrite)

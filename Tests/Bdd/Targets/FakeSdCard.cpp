@@ -34,9 +34,7 @@ enum
     SD_SEND_OP_COND = 41,
     APP_CMD = 55,
     READ_OCR = 58,
-    CRC_ON_OFF = 59,
-
-    BUSY_BYTES_AFTER_WRITE = 3
+    CRC_ON_OFF = 59
 };
 
 struct State
@@ -322,7 +320,7 @@ void FinishBlock()
             sector[i] = state.block[i];
         }
         state.sectors[state.blockSector] = sector;
-        state.busyBytes = BUSY_BYTES_AFTER_WRITE;
+        state.busyBytes = FakeSdCard::settings.busyBytesAfterWrite;
     }
 }
 
@@ -552,6 +550,8 @@ extern "C"
      * times comes to its end however little else happens. */
     uint32_t BddTargetBoardSdCardBus_Milliseconds(void)
     {
-        return state.milliseconds++;
+        const uint32_t now = state.milliseconds;
+        state.milliseconds += FakeSdCard::settings.millisecondsPerReading;
+        return now;
     }
 }
