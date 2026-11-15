@@ -248,6 +248,10 @@ DESCRIPTIONS = {
         "The verbatim PolyForm Noncommercial License 1.0.0 — SolidSyslog's free "
         "licence for hobby, charitable, educational and government use."
     ),
+    "licenses/cososo-commercial.md": (
+        "The standard form of the COSOSO Commercial Licence Agreement — the text "
+        "LicenseRef-COSOSO-Commercial names, for shipping SolidSyslog in a product."
+    ),
     "support.md": (
         "Where to get help with SolidSyslog — the documentation, questions and "
         "bug reports, reporting a security issue, and commercial support."

@@ -26,12 +26,14 @@ PUBLISHED = {
     "SECURITY.md": "security/policy.md",
     "LICENSE.md": "license.md",
     "SUPPORT.md": "support.md",
-    # LICENSE.md chooses between three licences and links the two verbatim
-    # texts beside it. Publishing them keeps those links live on the site
-    # instead of dead-ending a reader deciding whether they may use the
-    # library — which is the question the page exists to answer.
+    # LICENSE.md chooses between three licences and links the three texts
+    # beside it. Publishing them keeps those links live on the site instead
+    # of dead-ending a reader deciding whether they may use the library —
+    # which is the question the page exists to answer. The commercial text
+    # is also where the SBOM's licence reference for that term resolves to.
     "LICENSES/PolyForm-Internal-Use-1.0.0.md": "licenses/polyform-internal-use-1.0.0.md",
     "LICENSES/PolyForm-Noncommercial-1.0.0.md": "licenses/polyform-noncommercial-1.0.0.md",
+    "LICENSES/LicenseRef-COSOSO-Commercial.md": "licenses/cososo-commercial.md",
 }
 
 # The site's landing page, which is what `docs/` means to a reader at the root.
