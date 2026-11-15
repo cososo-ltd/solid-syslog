@@ -33,6 +33,13 @@ from nucleo_f767zi import (
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
+# A message that goes by way of the file store is written to the card before
+# it is sent, which takes longer than the console takes to answer `send 1`.
+# Asked for faster than the card takes them, messages fill the target's buffer,
+# which then discards, and that is the library's doing and not a loss. So with
+# the file store the messages are asked for at this interval, which is about
+# half the rate the card was seen to keep up with.
+_FILE_STORE_SEND_INTERVAL_SECONDS = 0.05
 # The collector writes what it has received a little after it receives it.
 _RECORD_WAIT_SECONDS = 60
 _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_tcp.jsonl"}
@@ -148,10 +155,11 @@ def _lines_of(path):
     return lines
 
 
-def _send(console, count):
+def _send(console, count, interval_seconds):
     for _ in range(count):
         console.stdin.write("send 1\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
+        time.sleep(interval_seconds)
 
 
 def _messages_once_arrived(path, count):
@@ -172,13 +180,15 @@ def main(count, store):
         with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
             sent = message_as_sent(board_address_in(cache.read()))
         tell_the_time(console, _ANSWER_TIMEOUT_SECONDS)
+        interval_seconds = 0
         if store == "file":
             wipe_the_disk(console, _ANSWER_TIMEOUT_SECONDS)
             use_the_file_store(console, _ANSWER_TIMEOUT_SECONDS)
-        _send(console, count)
+            interval_seconds = _FILE_STORE_SEND_INTERVAL_SECONDS
+        _send(console, count, interval_seconds)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
-        _send(console, count)
+        _send(console, count, interval_seconds)
         failed = False
         not_before = ""
         for transport, first in (("udp", 1), ("tcp", count + 1)):
