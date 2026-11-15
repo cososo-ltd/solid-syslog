@@ -2139,6 +2139,54 @@ jobs:
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
           compression-level: 0
 
+  # The CMSIS-RTOS2 + lwIP Sockets BDD target built for the NUCLEO-F767ZI: the
+  # same main.c and pipeline build-cmsisrtos-lwipsocket-mbedtls-littlefs builds
+  # for QEMU, over the board's own half of the seam. Built and never run, with
+  # the documentation addresses, as the lane above.
+  build-nucleo-cmsisrtos-lwipsocket:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:959e2504d0ac0e04083ce39636e49f5b7dc7b7e8c3120f1520b0c9c5fb323242 # sha-54d57c6
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure (ARM cross, Cortex-M7, CMSIS-RTOS2, lwIP Sockets)
+        run: cmake --preset nucleo-f767zi-cmsis-lwip
+
+      - name: Cross-build the CMSIS-RTOS2+lwIP BDD target for the NUCLEO-F767ZI
+        run: cmake --build --preset nucleo-f767zi-cmsis-lwip --target SolidSyslogBddTargetCmsis
+
+      - name: Assert every file the build read came from its pinned tree
+        run: python3 scripts/check_build_provenance.py --build build/nucleo-f767zi-cmsis-lwip
+
+      # The target checklist matches the image on the board to its build by
+      # the commit in its banner, and the configure falls back to "unknown"
+      # when it cannot ask git.
+      - name: Assert the image's banner names the commit built
+        run: |
+          grep --text --quiet "BDD target on NUCLEO-F767ZI, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+
+      - name: Upload the NUCLEO-F767ZI CMSIS-RTOS2+lwIP BDD target ELF
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: solid-syslog-nucleo-f767zi-cmsis-lwip
+          path: |
+            build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+            build/nucleo-f767zi-cmsis-lwip/solidsyslog-versions.json
+          if-no-files-found: error
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
+          compression-level: 0
+
   bdd-freertos-plustcp-mbedtls-plusfat-syslogng:
     needs: build-freertos-plustcp-mbedtls-plusfat
     runs-on: ubuntu-latest
@@ -2604,7 +2652,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, build-nucleo-cmsisrtos-lwipsocket, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read

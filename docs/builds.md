@@ -267,6 +267,25 @@ The ELF lands at
 See `Bdd/Targets/Boards/NucleoF767zi/README.md` for the address variables, for
 flashing it and for the target checklist.
 
+## CMSIS-RTOS2 + lwIP Sockets on the NUCLEO-F767ZI - `nucleo-f767zi-cmsis-lwip`
+
+The `cmsis-cross-lwip` target again, built for the NUCLEO-F767ZI board under
+that board's toolchain file: `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP` with
+`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`. The packs and the tunables are the same,
+and the addresses are the same cache variables as the preset above takes. CI
+builds this image in the `build-nucleo-cmsisrtos-lwipsocket` lane and never
+runs it.
+
+```bash
+cmake --preset nucleo-f767zi-cmsis-lwip
+cmake --build --preset nucleo-f767zi-cmsis-lwip --target SolidSyslogBddTargetCmsis
+```
+
+The ELF lands at
+`build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
+`Bdd/Targets/Boards/NucleoF767zi/README.md` covers it as it covers the image
+above.
+
 ## NUCLEO-F767ZI bring-up - `nucleo-f767zi-bringup`
 
 ARM cross-build for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the

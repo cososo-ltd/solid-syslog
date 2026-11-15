@@ -13,10 +13,10 @@ if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
         "Configure with a nucleo-f767zi-* preset.")
 endif()
 
-# The board supplies an lwIP netif and nothing else a target could run on: no
-# FreeRTOS-Plus-TCP interface and no CMSIS device header. A target it has no
-# half for would configure and then fail somewhere in its build.
-set(bdd_board_targets FREERTOS_LWIP NUCLEO_F767ZI_BRINGUP)
+# The board supplies an lwIP netif and a CMSIS device header, and no
+# FreeRTOS-Plus-TCP interface. A target it has no half for would configure and
+# then fail somewhere in its build.
+set(bdd_board_targets FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
 if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets)
     string(REPLACE ";" ", " bdd_board_target_list "${bdd_board_targets}")
     message(FATAL_ERROR
@@ -173,7 +173,7 @@ set(BDD_BOARD_PROJECT_SOURCES
 )
 
 set(BDD_BOARD_INCLUDES
-    ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, Board.h, stm32f7xx_hal_conf.h
+    ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h, Board.h, stm32f7xx_hal_conf.h
     ${BDD_BOARD_GENERATED_DIR}                        # BddTargetBoardAddresses.h
 )
 
