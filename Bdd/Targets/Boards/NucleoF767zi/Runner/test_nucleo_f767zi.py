@@ -57,6 +57,56 @@ class OutputToPromptTest(unittest.TestCase):
             nucleo_f767zi.output_to_prompt(self.console, 0.2)
 
 
+class TellTheTimeTest(unittest.TestCase):
+    def setUp(self):
+        self.port = FakePort()
+        self.console = serial_console.SerialConsole(self.port, lambda: None)
+        self.addCleanup(self.console.kill)
+        self.waited = []
+
+    def tell(self, now):
+        nucleo_f767zi.tell_the_time(self.console, 5, now=lambda: now, wait=self.waited.append)
+
+    def test_the_board_is_told_the_time_in_whole_seconds(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        self.tell(1794657600.0)
+
+        self.assertEqual(b"set time 1794657600\n", self.port.written)
+
+    # The board takes the second it is given as starting then.
+    def test_the_board_is_told_as_a_second_starts(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        self.tell(1794657600.25)
+
+        self.assertEqual([0.75], self.waited)
+
+    # The second told is the one the wait ended in, not the one it began in.
+    def test_the_time_is_read_again_after_the_wait(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+        readings = iter([1794657600.25, 1794657601.0])
+
+        nucleo_f767zi.tell_the_time(self.console, 5, now=lambda: next(readings), wait=self.waited.append)
+
+        self.assertEqual([0.75], self.waited)
+        self.assertEqual(b"set time 1794657601\n", self.port.written)
+
+    # A wait may end a little before the second does.
+    def test_the_second_told_is_the_nearest(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        self.tell(1794657600.999)
+
+        self.assertEqual(b"set time 1794657601\n", self.port.written)
+
+    def test_a_board_that_refuses_the_time_is_refused(self):
+        self.port.arrived.put(b"set: invalid\r\nSolidSyslog> ")
+
+        with self.assertRaisesRegex(RuntimeError, "did not take the time"):
+            self.tell(1794657600.0)
+
+
 # The ST-LINK keeps what the board printed while nobody had the port open, and
 # hands it over as the port opens.
 class DiscardTest(unittest.TestCase):

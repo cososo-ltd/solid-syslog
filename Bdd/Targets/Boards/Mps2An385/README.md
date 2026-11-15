@@ -21,6 +21,7 @@ say what it supplies to the code.
 | Clock, NVIC, network and disk facts | `BddTargetBoardConfig.h` | 25 MHz, three priority bits, the slirp addresses, an 8 MiB disk |
 | CMSIS device header | `BddTargetCmsisDevice.h` | The core's exceptions over `core_cm3.h` |
 | Console, exit and fault | `BddTargetBoard.c` | CMSDK UART0 through `CmsdkUart.c`, polled; exit through ARM semihosting, which a fault takes too, after a line saying what it was |
+| Clock of the time of day | `BddTargetBoardClock.c` | None: the machine is run as a product that cannot obtain the time, so `set time` is refused |
 | Disk | `BddTargetBoardDisk.c` | A flat image on the machine QEMU runs on, over semihosting |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over the vendored Arm controller driver in `Lwip/smsc9220/` |
 | Ethernet under FreeRTOS-Plus-TCP | `PlusTcp/BddTargetBoardPlusTcp.c` | Upstream's `MPS2_AN385` network interface, with the interrupt priority it leaves unset |

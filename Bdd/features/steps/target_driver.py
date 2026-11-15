@@ -67,6 +67,7 @@ _NUCLEO_F767ZI_RUNNER_DIR = os.path.join(
 _NUCLEO_F767ZI_BUILD_DIR = os.path.join("build", "nucleo-f767zi-lwip")
 # From reset to prompt: the network is given a few seconds to come up.
 _NUCLEO_F767ZI_BOOT_TIMEOUT_SECONDS = 60
+_NUCLEO_F767ZI_ANSWER_TIMEOUT_SECONDS = 30
 
 
 # Mapping from cmdline flag to FreeRTOS interactive `set` name. Only the
@@ -247,8 +248,9 @@ def _open_nucleo_f767zi():
 
 def prepare_nucleo_f767zi_board():
     """Checks, once per run, that the image on the board is a build of the
-    commit under test, and returns the address that build gave the board,
-    which is what it sends as its HOSTNAME."""
+    commit under test, and tells the board the time, which its real-time clock
+    keeps through the reset that starts each scenario. Returns the address the
+    build gave the board, which is what it sends as its HOSTNAME."""
     board = _import_from_nucleo_f767zi_runner("nucleo_f767zi")
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
@@ -258,6 +260,7 @@ def prepare_nucleo_f767zi_board():
         board.check_image_is_of_commit(
             board.output_to_prompt(console, _NUCLEO_F767ZI_BOOT_TIMEOUT_SECONDS), commit
         )
+        board.tell_the_time(console, _NUCLEO_F767ZI_ANSWER_TIMEOUT_SECONDS)
     finally:
         console.kill()
     build_dir = os.environ.get("NUCLEO_F767ZI_BUILD_DIR") or _NUCLEO_F767ZI_BUILD_DIR

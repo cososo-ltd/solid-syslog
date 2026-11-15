@@ -333,8 +333,9 @@ def parse_otel_jsonl_line(line):
     return fields
 
 
+# The FreeRTOS targets under an emulator have none. A board has its own.
 def _target_has_no_clock():
-    return os.environ.get("BDD_TARGET", "linux").lower() == "freertos"
+    return (os.environ.get("BDD_TARGET", "linux").lower() == "freertos") and not os.environ.get("BDD_BOARD")
 
 
 def parse_oracle_line(line, oracle_format):

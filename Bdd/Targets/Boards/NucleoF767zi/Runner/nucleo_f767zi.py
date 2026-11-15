@@ -236,6 +236,19 @@ def output_to_prompt(console, timeout_seconds):
     return bytes(shown).decode(errors="replace")
 
 
+# Tells the board, waiting at its prompt, this machine's time, which is UTC in
+# seconds since the epoch. The board's real-time clock keeps it from then on,
+# through every reset, so a run tells it once. The board takes the second it is
+# given as starting as it is given, so it is told as one starts. A board that
+# refuses the time raises: its real-time clock has not started.
+def tell_the_time(console, timeout_seconds, now=time.time, wait=time.sleep):
+    wait(1.0 - (now() % 1.0))
+    console.stdin.write(f"set time {round(now())}\n")
+    answer = output_to_prompt(console, timeout_seconds)
+    if "set: invalid" in answer:
+        raise RuntimeError(f"The board did not take the time: {answer!r}")
+
+
 # Raises unless the banner in output, which is what the board showed from its
 # reset to its prompt, names commit. The build writes the first ten digits, and
 # "-dirty" after them for a tree with changes the commit does not hold.

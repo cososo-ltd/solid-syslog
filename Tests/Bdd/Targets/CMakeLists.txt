@@ -1,6 +1,7 @@
 # Platform-agnostic tests always included.
 set(BDD_TARGET_TEST_SOURCES
     BddTargetAppNameTest.cpp
+    BddTargetCalendarTest.cpp
     BddTargetClockTest.cpp
     BddTargetCustomSdTest.cpp
     BddTargetErrorTextTest.cpp
@@ -10,12 +11,14 @@ set(BDD_TARGET_TEST_SOURCES
     BddTargetLineAssemblerTest.cpp
     BddTargetMessageSettingsTest.cpp
     BddTargetStoreSettingsTest.cpp
+    BddTargetTickedClockTest.cpp
     BddTargetTlsConfigTest.cpp
     main.cpp
 )
 
 set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetAppName.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
@@ -25,6 +28,7 @@ set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetStoreSettings.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTlsConfig.c
 )
 

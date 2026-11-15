@@ -13,13 +13,14 @@ import sustained_run  # noqa: E402
 
 HOSTNAME = "192.0.2.2"
 SENT = sustained_run.message_as_sent(HOSTNAME)
+STAMP = "2026-11-14T12:00:00.000000Z"
 
 
-def message(sequence_id, text="Hello from SolidSyslog", up_time=None, hostname=HOSTNAME, version="0.7.0"):
+def message(sequence_id, text="Hello from SolidSyslog", up_time=None, hostname=HOSTNAME, version="0.7.0", stamp=None):
     return (
-        f"<134>1 - {hostname} SolidSyslogBddTarget - example"
+        f"<134>1 {stamp or STAMP} {hostname} SolidSyslogBddTarget - example"
         f' [meta sequenceId="{sequence_id}" sysUpTime="{up_time or sequence_id * 10}" language="en-GB"]'
-        '[timeQuality tzKnown="0" isSynced="0"]'
+        '[timeQuality tzKnown="1" isSynced="1"]'
         f'[origin software="SolidSyslogBddTarget" swVersion="{version}" enterpriseId="32473" ip="192.0.2.1"]'
         f" ﻿{text}"
     )
@@ -70,6 +71,16 @@ class MessageAsSentTest(unittest.TestCase):
     def test_the_whole_message_has_to_match(self):
         self.assertFalse(SENT.fullmatch(message(1) + "!"))
 
+    def test_the_time_may_be_any(self):
+        self.assertTrue(SENT.fullmatch(message(1, stamp="2031-02-03T04:05:06.789012Z")))
+
+    # A board that has been told the time sends it; "-" is one that has not.
+    def test_a_message_with_no_time_does_not_match(self):
+        self.assertFalse(SENT.fullmatch(message(1, stamp="-")))
+
+    def test_a_message_from_a_board_not_told_the_time_does_not_match(self):
+        self.assertFalse(SENT.fullmatch(message(1).replace('tzKnown="1" isSynced="1"', 'tzKnown="0" isSynced="0"')))
+
 
 class FaultsTest(unittest.TestCase):
     def test_every_message_once_and_in_order_has_no_fault(self):
@@ -114,6 +125,33 @@ class FaultsTest(unittest.TestCase):
     def test_the_up_time_may_differ(self):
         self.assertEqual([], faults_in([message(1, up_time=5), message(2, up_time=977)], 1, 2))
 
+    def test_messages_sent_within_a_microsecond_have_no_fault(self):
+        self.assertEqual([], faults_in([message(1), message(2)], 1, 2))
+
+    def test_a_later_time_on_a_later_message_has_no_fault(self):
+        later = [message(1, stamp="2026-11-14T12:00:00.999999Z"), message(2, stamp="2026-11-14T12:00:01.000000Z")]
+        self.assertEqual([], faults_in(later, 1, 2))
+
+    # The board's clock counts on from each second its real-time clock marks,
+    # and a count carried past the mark would put a message before the last.
+    def test_a_time_before_that_of_the_message_before_is_a_fault(self):
+        back = [message(1, stamp="2026-11-14T12:00:01.000004Z"), message(2, stamp="2026-11-14T12:00:00.999998Z")]
+        faults = faults_in(back, 1, 2)
+        self.assertEqual(1, len(faults))
+        self.assertRegex(faults[0], "a time before that of the message before it: .*00:00.999998Z")
+
+    # The run sends over one transport and then over another, and the clock
+    # counts through the change.
+    def test_a_time_before_the_last_of_the_messages_before_is_a_fault(self):
+        first = [message(3, stamp="2026-11-14T12:00:00.999998Z")]
+        faults = sustained_run.faults_in(first, 3, 1, SENT, "2026-11-14T12:00:01.000004Z")
+        self.assertEqual(1, len(faults))
+        self.assertRegex(faults[0], "a time before that of the message before it: .*00:00.999998Z")
+
+    def test_a_time_no_earlier_than_the_last_of_the_messages_before_has_no_fault(self):
+        first = [message(3, stamp="2026-11-14T12:00:01.000004Z")]
+        self.assertEqual([], sustained_run.faults_in(first, 3, 1, SENT, "2026-11-14T12:00:01.000004Z"))
+
     def test_a_message_behind_its_octet_count_has_no_fault(self):
         self.assertEqual([], faults_in([counted(message(9)), counted(message(10))], 9, 2))
 
@@ -127,6 +165,23 @@ class FaultsTest(unittest.TestCase):
     def test_the_octet_count_is_of_octets(self):
         body = message(1)
         self.assertRegex(faults_in([f"{len(body)} {body}"], 1, 1)[0], "an octet count")
+
+
+class LastTimeTest(unittest.TestCase):
+    def test_no_messages_have_no_time(self):
+        self.assertEqual("", sustained_run.last_time_in([]))
+
+    def test_the_time_is_that_of_the_last_message(self):
+        messages = [message(1, stamp="2026-11-14T12:00:00.000001Z"), message(2, stamp="2026-11-14T12:00:00.000002Z")]
+        self.assertEqual("2026-11-14T12:00:00.000002Z", sustained_run.last_time_in(messages))
+
+    def test_the_time_is_read_behind_an_octet_count(self):
+        messages = [counted(message(1, stamp="2026-11-14T12:00:00.000001Z"))]
+        self.assertEqual("2026-11-14T12:00:00.000001Z", sustained_run.last_time_in(messages))
+
+    def test_a_message_with_no_time_is_passed_over(self):
+        messages = [message(1, stamp="2026-11-14T12:00:00.000001Z"), "<134>1 - host app - id - Hello"]
+        self.assertEqual("2026-11-14T12:00:00.000001Z", sustained_run.last_time_in(messages))
 
 
 if __name__ == "__main__":

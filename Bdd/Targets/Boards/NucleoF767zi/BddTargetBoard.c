@@ -8,6 +8,7 @@
 
 #include "BddTargetOsPrimitives.h"
 #include "Board.h"
+#include "BoardClock.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -30,6 +31,9 @@ void BddTargetBoard_Init(void)
 {
     Board_Init();
     Board_ConsoleWrite(BANNER, strlen(BANNER));
+    /* After the banner, which a run waits on: from cold this waits on the
+     * clock's crystal. */
+    BoardClock_Start();
 }
 
 void BddTargetBoard_ConsoleWrite(const char* text, size_t length)
