@@ -31,9 +31,11 @@ enum
 static FakeSdCard::Sector SectorOfPattern(uint8_t first)
 {
     FakeSdCard::Sector sector = {};
-    for (size_t i = 0; i < sector.size(); i++)
+    uint8_t next = first;
+    for (uint8_t& byte : sector)
     {
-        sector[i] = static_cast<uint8_t>(first + i);
+        byte = next;
+        next++;
     }
     return sector;
 }

@@ -295,7 +295,6 @@ static enum BddTargetSdCardResult SdCard_TurnCrcOn(void)
 static enum BddTargetSdCardResult SdCard_CheckInterfaceCondition(void)
 {
     uint8_t answer = IDLE_LINE;
-    uint8_t condition[INTERFACE_CONDITION_LENGTH] = {0};
     uint32_t argument = ((uint32_t) VOLTAGE_2V7_TO_3V6 << 8U) | (uint32_t) CHECK_PATTERN;
     enum BddTargetSdCardResult result = SdCard_Begin(SEND_IF_COND, argument, &answer);
     if (result == BDD_TARGET_SD_CARD_OK)
@@ -310,6 +309,7 @@ static enum BddTargetSdCardResult SdCard_CheckInterfaceCondition(void)
         }
         else
         {
+            uint8_t condition[INTERFACE_CONDITION_LENGTH] = {0};
             SdCard_Receive(condition, INTERFACE_CONDITION_LENGTH);
             bool voltageAccepted = (condition[2] & (uint8_t) VOLTAGE_ACCEPTED_MASK) == (uint8_t) VOLTAGE_2V7_TO_3V6;
             if (!voltageAccepted || (condition[3] != (uint8_t) CHECK_PATTERN))
@@ -364,7 +364,6 @@ static enum BddTargetSdCardResult SdCard_LeaveIdle(void)
 static enum BddTargetSdCardResult SdCard_ReadAddressing(void)
 {
     uint8_t answer = IDLE_LINE;
-    uint8_t ocr[OCR_LENGTH] = {0};
     enum BddTargetSdCardResult result = SdCard_Begin(READ_OCR, 0U, &answer);
     if (result == BDD_TARGET_SD_CARD_OK)
     {
@@ -372,6 +371,7 @@ static enum BddTargetSdCardResult SdCard_ReadAddressing(void)
     }
     if (result == BDD_TARGET_SD_CARD_OK)
     {
+        uint8_t ocr[OCR_LENGTH] = {0};
         SdCard_Receive(ocr, OCR_LENGTH);
         blockAddressed = (ocr[0] & (uint8_t) OCR_HIGH_CAPACITY) != 0U;
     }
@@ -414,7 +414,6 @@ static enum BddTargetSdCardResult SdCard_ReadCapacity(void)
 static enum BddTargetSdCardResult SdCard_ReceiveBlock(uint8_t* bytes, size_t count)
 {
     enum BddTargetSdCardResult result = BDD_TARGET_SD_CARD_OK;
-    uint8_t crc[CRC_LENGTH] = {0};
     uint32_t since = BddTargetBoardSdCardBus_Milliseconds();
     uint8_t token = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
     bool expired = false;
@@ -434,6 +433,7 @@ static enum BddTargetSdCardResult SdCard_ReceiveBlock(uint8_t* bytes, size_t cou
     }
     else
     {
+        uint8_t crc[CRC_LENGTH] = {0};
         SdCard_Receive(bytes, count);
         SdCard_Receive(crc, CRC_LENGTH);
         uint16_t sent = (uint16_t) (((uint16_t) crc[0] << 8U) | (uint16_t) crc[1]);
@@ -624,11 +624,10 @@ static enum BddTargetSdCardResult SdCard_SendBlock(const uint8_t* bytes, size_t 
 static enum BddTargetSdCardResult SdCard_CheckStatus(void)
 {
     uint8_t first = IDLE_LINE;
-    uint8_t second = IDLE_LINE;
     enum BddTargetSdCardResult result = SdCard_Begin(SEND_STATUS, 0U, &first);
     if (result == BDD_TARGET_SD_CARD_OK)
     {
-        second = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
+        uint8_t second = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
         result = SdCard_Judge(first, ANSWER_READY);
         if ((result == BDD_TARGET_SD_CARD_REFUSED) || ((result == BDD_TARGET_SD_CARD_OK) && (second != 0U)))
         {

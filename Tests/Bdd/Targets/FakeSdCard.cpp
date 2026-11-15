@@ -2,6 +2,7 @@
 
 #include "BddTargetBoardSdCardBus.h"
 
+#include <algorithm>
 #include <map>
 
 namespace
@@ -79,7 +80,7 @@ uint8_t Crc7(const uint8_t* bytes, size_t count)
         {
             const bool in = ((bytes[i] >> bit) & 1U) != 0U;
             const bool top = (crc & 0x40U) != 0U;
-            crc = static_cast<uint8_t>((crc << 1U) & 0x7FU);
+            crc = static_cast<uint8_t>((static_cast<unsigned>(crc) << 1U) & 0x7FU);
             if (in != top)
             {
                 crc ^= 0x09U;
@@ -283,7 +284,8 @@ void TakeCommand()
     /* A card checks the CRC of every command until it is in SPI mode, and
          * of CMD8 always; after that only when it has been told to. */
     const bool checked = state.crcOn || (index == GO_IDLE_STATE) || (index == SEND_IF_COND);
-    const uint8_t expected = static_cast<uint8_t>((Crc7(frame.data(), COMMAND_LENGTH - 1) << 1U) | 1U);
+    const auto expected =
+        static_cast<uint8_t>((static_cast<unsigned>(Crc7(frame.data(), COMMAND_LENGTH - 1)) << 1U) | 1U);
     if (checked && (frame[COMMAND_LENGTH - 1] != expected))
     {
         Answer(ANSWER_CRC_ERROR | AnswerInState());
@@ -295,8 +297,9 @@ void TakeCommand()
 void FinishBlock()
 {
     state.takingBlock = false;
-    const uint16_t sent =
-        static_cast<uint16_t>((state.block[FakeSdCard::SECTOR_SIZE] << 8U) | state.block[FakeSdCard::SECTOR_SIZE + 1]);
+    const auto sent = static_cast<uint16_t>(
+        (static_cast<unsigned>(state.block[FakeSdCard::SECTOR_SIZE]) << 8U) | state.block[FakeSdCard::SECTOR_SIZE + 1]
+    );
     uint8_t response = DATA_ACCEPTED;
     if (state.crcOn && (sent != Crc16(state.block.data(), FakeSdCard::SECTOR_SIZE)))
     {
@@ -315,10 +318,7 @@ void FinishBlock()
     if (response == DATA_ACCEPTED)
     {
         FakeSdCard::Sector sector = {};
-        for (size_t i = 0; i < sector.size(); i++)
-        {
-            sector[i] = state.block[i];
-        }
+        std::copy_n(state.block.begin(), sector.size(), sector.begin());
         state.sectors[state.blockSector] = sector;
         state.busyBytes = FakeSdCard::settings.busyBytesAfterWrite;
     }
