@@ -112,7 +112,8 @@ uint16_t Crc16(const uint8_t* bytes, size_t count)
 void Answer(uint8_t answer)
 {
     /* A card takes at least a byte to answer. */
-    state.outgoing.push_back(IDLE_LINE);
+    state.outgoing
+        .insert(state.outgoing.end(), static_cast<size_t>(FakeSdCard::settings.idleBytesBeforeAnswer), IDLE_LINE);
     state.outgoing.push_back(answer);
 }
 

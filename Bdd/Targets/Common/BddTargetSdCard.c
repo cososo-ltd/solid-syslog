@@ -24,8 +24,10 @@ enum
     COMMAND_LENGTH = 6,
     COMMAND_START = 0x40,
     COMMAND_END_BIT = 0x01,
-    /* Section 7.3.2.1: the answer comes within eight bytes, its top bit clear. */
-    ANSWER_WAIT_BYTES = 8,
+    /* Section 7.5.4, NCR: a card may send as many as eight bytes of idle line
+     * before its answer, so the answer is the ninth byte read at the latest.
+     * Section 7.3.2.1: an answer has its top bit clear. */
+    ANSWER_WAIT_BYTES = 9,
     ANSWER_NOT_YET = 0x80,
     ANSWER_READY = 0x00,
     ANSWER_IDLE = 0x01,

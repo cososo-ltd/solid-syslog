@@ -39,6 +39,9 @@ struct Settings
     uint8_t checkPattern = 0xAA;
     /* CMD0s the card lets pass with no answer, as one just powered may. */
     int goIdlesIgnored = 0;
+    /* Bytes of idle line it sends before the answer to a command. A card may
+     * send as many as eight. */
+    int idleBytesBeforeAnswer = 1;
     /* ACMD41s answered "still starting" before the one answered "ready". */
     int startPolls = 2;
     bool neverStarts = false;

@@ -8,6 +8,7 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +24,7 @@ class FakePort:
         self.closed = False
         self.fails = False
         self.fails_to_close = False
+        self.seconds_to_close = 0
 
     def read(self):
         if self.fails:
@@ -36,6 +38,7 @@ class FakePort:
         self.written += data
 
     def close(self):
+        time.sleep(self.seconds_to_close)
         self.closed = True
         if self.fails_to_close:
             raise OSError("the port would not close")
@@ -200,6 +203,43 @@ class SerialConsoleTest(unittest.TestCase):
         self.console.kill()
 
         self.assertEqual([], self.resets)
+
+    # The next target opens the same port, so a kill must not come back while
+    # the port of a board that exited is still closing.
+    def test_killing_a_board_that_exited_waits_for_the_port_to_be_freed(self):
+        self.port.seconds_to_close = 0.2
+        said = b"\r\nexit: ok\r\n"
+        self.port.arrived.put(said)
+        self.read_from(self.console, len(said))
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.console.wait(timeout=0.05)
+
+        self.console.kill()
+
+        self.assertTrue(self.port.closed)
+
+    def test_what_a_board_said_before_it_exited_can_be_read_after_a_kill(self):
+        said = b"halted\r\n\r\nexit: failed 2\r\n"
+        self.port.arrived.put(said)
+        self.console.wait(timeout=5)
+
+        self.console.kill()
+
+        self.assertEqual(said, self.read_from(self.console, len(said)))
+
+    def test_a_board_that_had_shown_its_exit_already_has_exited(self):
+        console = serial_console.SerialConsole(FakePort(), lambda: None, b"halted\r\n\r\nexit: failed 2\r\n")
+        self.addCleanup(console.kill)
+
+        self.assertEqual(2, console.wait(timeout=5))
+
+    def test_an_exit_partly_shown_already_is_still_an_exit(self):
+        port = FakePort()
+        port.arrived.put(b"led 2\r\n")
+        console = serial_console.SerialConsole(port, lambda: None, b"halted\r\n\r\nexit: fai")
+        self.addCleanup(console.kill)
+
+        self.assertEqual(2, console.wait(timeout=5))
 
 
 if __name__ == "__main__":

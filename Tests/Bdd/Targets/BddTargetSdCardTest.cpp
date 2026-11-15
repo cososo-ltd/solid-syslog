@@ -16,6 +16,7 @@ enum
     A_SECTOR = 3,
     ILLEGAL_COMMAND = 0x04,
     COMMAND_CRC_ERROR = 0x08,
+    SLOWEST_ANSWER_IDLE_BYTES = 8,
     ALWAYS = 1000,
     LONGER_THAN_ANY_WAIT = 5000,
     ATTEMPTS = 3,
@@ -25,6 +26,9 @@ enum
 };
 
 #define CHECK_RESULT(expected, actual) LONGS_EQUAL((expected), (actual))
+
+/* A macro, so a card that does not start is reported at the test's own line. */
+#define CHECK_CARD_STARTED() CHECK_RESULT(BDD_TARGET_SD_CARD_OK, BddTargetSdCard_Start())
 
 #define CHECK_SECTORS_EQUAL(expected, actual) MEMCMP_EQUAL((expected).data(), (actual).data(), FakeSdCard::SECTOR_SIZE)
 
@@ -55,11 +59,6 @@ TEST_GROUP(BddTargetSdCard)
     {
         /* The fake holds what it was sent in memory the leak check counts. */
         FakeSdCard::Reset();
-    }
-
-    static void Started()
-    {
-        CHECK_RESULT(BDD_TARGET_SD_CARD_OK, BddTargetSdCard_Start());
     }
 
     BddTargetSdCardResult Read(uint32_t sector)
@@ -108,19 +107,19 @@ TEST(BddTargetSdCard, SaysNothingAnsweredWhenThereIsNoCard)
 
 TEST(BddTargetSdCard, ClocksTheCardAwakeWithItsSelectHighBeforeTheFirstCommand)
 {
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_TRUE(FakeSdCard::ClocksBeforeFirstCommand() >= 74);
 }
 
 TEST(BddTargetSdCard, StartsTheCardAtTheStartRate)
 {
-    Started();
+    CHECK_CARD_STARTED();
     STRCMP_EQUAL("start", FakeSdCard::RateAtFirstCommand().c_str());
 }
 
 TEST(BddTargetSdCard, RunsAStartedCardAtTheRunRate)
 {
-    Started();
+    CHECK_CARD_STARTED();
     STRCMP_EQUAL("run", FakeSdCard::Rates().back().c_str());
 }
 
@@ -133,7 +132,7 @@ TEST(BddTargetSdCard, LeavesTheBusAtTheStartRateWhenTheCardDoesNotStart)
 
 TEST(BddTargetSdCard, SendsGoIdleFirstWithTheCrcTheSpecificationGivesForIt)
 {
-    Started();
+    CHECK_CARD_STARTED();
     const std::vector<uint8_t> expected = {0x40, 0x00, 0x00, 0x00, 0x00, 0x95};
     CHECK_TRUE(expected == FakeSdCard::FirstFrame());
 }
@@ -150,9 +149,21 @@ TEST(BddTargetSdCard, GivesUpOnACardThatLetsEveryGoIdlePass)
     CHECK_RESULT(BDD_TARGET_SD_CARD_NO_ANSWER, BddTargetSdCard_Start());
 }
 
+TEST(BddTargetSdCard, WaitsAsLongForAnAnswerAsACardMayTake)
+{
+    FakeSdCard::settings.idleBytesBeforeAnswer = SLOWEST_ANSWER_IDLE_BYTES;
+    CHECK_RESULT(BDD_TARGET_SD_CARD_OK, BddTargetSdCard_Start());
+}
+
+TEST(BddTargetSdCard, GivesUpOnAnAnswerThatComesLaterThanACardMayTake)
+{
+    FakeSdCard::settings.idleBytesBeforeAnswer = SLOWEST_ANSWER_IDLE_BYTES + 1;
+    CHECK_RESULT(BDD_TARGET_SD_CARD_NO_ANSWER, BddTargetSdCard_Start());
+}
+
 TEST(BddTargetSdCard, TurnsTheCardsCrcCheckingOn)
 {
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_TRUE(FakeSdCard::CrcIsOn());
 }
 
@@ -190,14 +201,14 @@ TEST(BddTargetSdCard, TimesOutOnACardThatHoldsItsDataLineLow)
 
 TEST(BddTargetSdCard, LeavesTheCardDeselected)
 {
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_FALSE(FakeSdCard::IsSelected());
 }
 
 TEST(BddTargetSdCard, ReportsTheCapacityOfAHighCapacityCard)
 {
     FakeSdCard::SetHighCapacitySectors(15523840U);
-    Started();
+    CHECK_CARD_STARTED();
     LONGS_EQUAL(15523840U, BddTargetSdCard_SectorCount());
 }
 
@@ -205,7 +216,7 @@ TEST(BddTargetSdCard, ReportsTheCapacityOfAStandardCapacityCard)
 {
     FakeSdCard::settings.highCapacity = false;
     FakeSdCard::SetStandardCapacityTwoGigabytes();
-    Started();
+    CHECK_CARD_STARTED();
     LONGS_EQUAL(4194304U, BddTargetSdCard_SectorCount());
 }
 
@@ -226,7 +237,7 @@ TEST(BddTargetSdCard, CanBeStartedAgainAfterItHasFailed)
 
 TEST(BddTargetSdCard, ForgetsTheCardWhenStopped)
 {
-    Started();
+    CHECK_CARD_STARTED();
     BddTargetSdCard_Stop();
     CHECK_FALSE(BddTargetSdCard_IsStarted());
     LONGS_EQUAL(0, BddTargetSdCard_SectorCount());
@@ -235,28 +246,28 @@ TEST(BddTargetSdCard, ForgetsTheCardWhenStopped)
 TEST(BddTargetSdCard, ReadsASector)
 {
     FakeSdCard::Store(A_SECTOR, SectorOfPattern(7));
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Read(A_SECTOR));
     CHECK_SECTORS_EQUAL(SectorOfPattern(7), buffer);
 }
 
 TEST(BddTargetSdCard, AddressesAHighCapacityCardBySector)
 {
-    Started();
+    CHECK_CARD_STARTED();
     Read(A_SECTOR);
     LONGS_EQUAL(A_SECTOR, FakeSdCard::ArgumentOf(READ_SINGLE_BLOCK));
 }
 
 TEST(BddTargetSdCard, DoesNotSetTheBlockLengthOfAHighCapacityCard)
 {
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_FALSE(FakeSdCard::Received(SET_BLOCKLEN));
 }
 
 TEST(BddTargetSdCard, SetsAStandardCapacityCardToSectorsOf512Bytes)
 {
     FakeSdCard::settings.highCapacity = false;
-    Started();
+    CHECK_CARD_STARTED();
     LONGS_EQUAL(512, FakeSdCard::ArgumentOf(SET_BLOCKLEN));
 }
 
@@ -264,7 +275,7 @@ TEST(BddTargetSdCard, AddressesAStandardCapacityCardByByte)
 {
     FakeSdCard::settings.highCapacity = false;
     FakeSdCard::Store(A_SECTOR, SectorOfPattern(9));
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Read(A_SECTOR));
     LONGS_EQUAL(A_SECTOR * 512, FakeSdCard::ArgumentOf(READ_SINGLE_BLOCK));
     CHECK_SECTORS_EQUAL(SectorOfPattern(9), buffer);
@@ -272,28 +283,28 @@ TEST(BddTargetSdCard, AddressesAStandardCapacityCardByByte)
 
 TEST(BddTargetSdCard, SaysTheCardRefusedARead)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.transferAnswer = ILLEGAL_COMMAND;
     CHECK_RESULT(BDD_TARGET_SD_CARD_REFUSED, Read(A_SECTOR));
 }
 
 TEST(BddTargetSdCard, TimesOutOnAReadTheCardSendsNothingFor)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.sendsNoData = true;
     CHECK_RESULT(BDD_TARGET_SD_CARD_TIMED_OUT, Read(A_SECTOR));
 }
 
 TEST(BddTargetSdCard, SaysTheCardRefusedAReadItSendsAnErrorTokenFor)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.readErrorToken = OUT_OF_RANGE_TOKEN;
     CHECK_RESULT(BDD_TARGET_SD_CARD_REFUSED, Read(A_SECTOR));
 }
 
 TEST(BddTargetSdCard, DoesNotAskAgainForAReadTheCardRefuses)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.transferAnswer = ILLEGAL_COMMAND;
     Read(A_SECTOR);
     LONGS_EQUAL(1, FakeSdCard::CountOf(READ_SINGLE_BLOCK));
@@ -303,7 +314,7 @@ TEST(BddTargetSdCard, DoesNotAskAgainForAReadTheCardRefuses)
 TEST(BddTargetSdCard, ReadsAgainASectorThatArrivesDamaged)
 {
     FakeSdCard::Store(A_SECTOR, SectorOfPattern(7));
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.blocksSentDamaged = ATTEMPTS - 1;
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Read(A_SECTOR));
     CHECK_SECTORS_EQUAL(SectorOfPattern(7), buffer);
@@ -311,7 +322,7 @@ TEST(BddTargetSdCard, ReadsAgainASectorThatArrivesDamaged)
 
 TEST(BddTargetSdCard, CountsTheTransfersItRepeats)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.blocksSentDamaged = ATTEMPTS - 1;
     Read(A_SECTOR);
     LONGS_EQUAL(ATTEMPTS - 1, BddTargetSdCard_Repeats());
@@ -319,7 +330,7 @@ TEST(BddTargetSdCard, CountsTheTransfersItRepeats)
 
 TEST(BddTargetSdCard, SaysTheCrcFailedWhenASectorArrivesDamagedEveryTime)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.blocksSentDamaged = ALWAYS;
     CHECK_RESULT(BDD_TARGET_SD_CARD_CRC_FAILED, Read(A_SECTOR));
     LONGS_EQUAL(ATTEMPTS, FakeSdCard::CountOf(READ_SINGLE_BLOCK));
@@ -327,7 +338,7 @@ TEST(BddTargetSdCard, SaysTheCrcFailedWhenASectorArrivesDamagedEveryTime)
 
 TEST(BddTargetSdCard, SaysTheCrcFailedWhenTheCardSaysACommandArrivedDamaged)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.transferAnswer = COMMAND_CRC_ERROR;
     CHECK_RESULT(BDD_TARGET_SD_CARD_CRC_FAILED, Read(A_SECTOR));
     LONGS_EQUAL(ATTEMPTS, FakeSdCard::CountOf(READ_SINGLE_BLOCK));
@@ -335,7 +346,7 @@ TEST(BddTargetSdCard, SaysTheCrcFailedWhenTheCardSaysACommandArrivedDamaged)
 
 TEST(BddTargetSdCard, LeavesTheCardDeselectedAfterAReadThatFails)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.sendsNoData = true;
     Read(A_SECTOR);
     CHECK_FALSE(FakeSdCard::IsSelected());
@@ -343,7 +354,7 @@ TEST(BddTargetSdCard, LeavesTheCardDeselectedAfterAReadThatFails)
 
 TEST(BddTargetSdCard, WritesASector)
 {
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Write(A_SECTOR, SectorOfPattern(42)));
     CHECK_TRUE(FakeSdCard::Holds(A_SECTOR));
     CHECK_SECTORS_EQUAL(SectorOfPattern(42), FakeSdCard::Stored(A_SECTOR));
@@ -351,7 +362,7 @@ TEST(BddTargetSdCard, WritesASector)
 
 TEST(BddTargetSdCard, ReadsBackWhatItWrote)
 {
-    Started();
+    CHECK_CARD_STARTED();
     Write(A_SECTOR, SectorOfPattern(42));
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Read(A_SECTOR));
     CHECK_SECTORS_EQUAL(SectorOfPattern(42), buffer);
@@ -360,7 +371,7 @@ TEST(BddTargetSdCard, ReadsBackWhatItWrote)
 TEST(BddTargetSdCard, WritesAStandardCapacityCardByByte)
 {
     FakeSdCard::settings.highCapacity = false;
-    Started();
+    CHECK_CARD_STARTED();
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Write(A_SECTOR, SectorOfPattern(42)));
     LONGS_EQUAL(A_SECTOR * 512, FakeSdCard::ArgumentOf(WRITE_BLOCK));
     CHECK_TRUE(FakeSdCard::Holds(A_SECTOR));
@@ -368,7 +379,7 @@ TEST(BddTargetSdCard, WritesAStandardCapacityCardByByte)
 
 TEST(BddTargetSdCard, SaysTheCardRefusedAWrite)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.transferAnswer = ILLEGAL_COMMAND;
     CHECK_RESULT(BDD_TARGET_SD_CARD_REFUSED, Write(A_SECTOR, SectorOfPattern(42)));
     CHECK_FALSE(FakeSdCard::Holds(A_SECTOR));
@@ -376,7 +387,7 @@ TEST(BddTargetSdCard, SaysTheCardRefusedAWrite)
 
 TEST(BddTargetSdCard, SendsAgainASectorTheCardSaysArrivedDamaged)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.blocksTakenAsDamaged = ATTEMPTS - 1;
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Write(A_SECTOR, SectorOfPattern(42)));
     CHECK_SECTORS_EQUAL(SectorOfPattern(42), FakeSdCard::Stored(A_SECTOR));
@@ -385,7 +396,7 @@ TEST(BddTargetSdCard, SendsAgainASectorTheCardSaysArrivedDamaged)
 
 TEST(BddTargetSdCard, SaysTheCrcFailedWhenTheCardSaysASectorArrivedDamagedEveryTime)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.blocksTakenAsDamaged = ALWAYS;
     CHECK_RESULT(BDD_TARGET_SD_CARD_CRC_FAILED, Write(A_SECTOR, SectorOfPattern(42)));
     LONGS_EQUAL(ATTEMPTS, FakeSdCard::CountOf(WRITE_BLOCK));
@@ -394,7 +405,7 @@ TEST(BddTargetSdCard, SaysTheCrcFailedWhenTheCardSaysASectorArrivedDamagedEveryT
 
 TEST(BddTargetSdCard, DoesNotSendAgainASectorTheCardCouldNotStore)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.writeResponse = DATA_REJECTED_WRITE_ERROR;
     Write(A_SECTOR, SectorOfPattern(42));
     LONGS_EQUAL(1, FakeSdCard::CountOf(WRITE_BLOCK));
@@ -402,23 +413,23 @@ TEST(BddTargetSdCard, DoesNotSendAgainASectorTheCardCouldNotStore)
 
 TEST(BddTargetSdCard, ForgetsTheTransfersItRepeatedWhenStartedAgain)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.blocksSentDamaged = 1;
     Read(A_SECTOR);
-    Started();
+    CHECK_CARD_STARTED();
     LONGS_EQUAL(0, BddTargetSdCard_Repeats());
 }
 
 TEST(BddTargetSdCard, SaysTheWriteFailedWhenTheCardDoesNotTakeTheSector)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.writeResponse = DATA_REJECTED_WRITE_ERROR;
     CHECK_RESULT(BDD_TARGET_SD_CARD_WRITE_FAILED, Write(A_SECTOR, SectorOfPattern(42)));
 }
 
 TEST(BddTargetSdCard, TimesOutOnACardThatStaysBusyAfterAWrite)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.staysBusyAfterWrite = true;
     CHECK_RESULT(BDD_TARGET_SD_CARD_TIMED_OUT, Write(A_SECTOR, SectorOfPattern(42)));
 }
@@ -427,7 +438,7 @@ TEST(BddTargetSdCard, TimesOutOnACardThatStaysBusyAfterAWrite)
  * card that finished long before. What the card says then is what counts. */
 TEST(BddTargetSdCard, TakesTheCardAsReadyWhenItIsReadyOnceTheTimeAllowedHasPassed)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.busyBytesAfterWrite = 1;
     FakeSdCard::settings.millisecondsPerReading = LONGER_THAN_ANY_WAIT;
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Write(A_SECTOR, SectorOfPattern(42)));
@@ -443,7 +454,7 @@ TEST(BddTargetSdCard, StartsACardThatIsReadyOnceTheTimeAllowedHasPassed)
 TEST(BddTargetSdCard, TakesASectorThatHasArrivedOnceTheTimeAllowedHasPassed)
 {
     FakeSdCard::Store(A_SECTOR, SectorOfPattern(7));
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.millisecondsPerReading = LONGER_THAN_ANY_WAIT;
     CHECK_RESULT(BDD_TARGET_SD_CARD_OK, Read(A_SECTOR));
     CHECK_SECTORS_EQUAL(SectorOfPattern(7), buffer);
@@ -451,21 +462,21 @@ TEST(BddTargetSdCard, TakesASectorThatHasArrivedOnceTheTimeAllowedHasPassed)
 
 TEST(BddTargetSdCard, AsksTheCardForItsStatusAfterAWrite)
 {
-    Started();
+    CHECK_CARD_STARTED();
     Write(A_SECTOR, SectorOfPattern(42));
     CHECK_TRUE(FakeSdCard::Received(SEND_STATUS));
 }
 
 TEST(BddTargetSdCard, SaysTheWriteFailedWhenTheCardsStatusSaysSo)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.statusAfterWrite = WRITE_PROTECT_VIOLATION;
     CHECK_RESULT(BDD_TARGET_SD_CARD_WRITE_FAILED, Write(A_SECTOR, SectorOfPattern(42)));
 }
 
 TEST(BddTargetSdCard, LeavesTheCardDeselectedAfterAWriteThatFails)
 {
-    Started();
+    CHECK_CARD_STARTED();
     FakeSdCard::settings.writeResponse = DATA_REJECTED_WRITE_ERROR;
     Write(A_SECTOR, SectorOfPattern(42));
     CHECK_FALSE(FakeSdCard::IsSelected());
