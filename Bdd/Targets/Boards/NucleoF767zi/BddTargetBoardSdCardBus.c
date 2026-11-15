@@ -28,11 +28,12 @@ enum
     /* SPI4 is clocked from APB2, which Board_Init runs at 54 MHz. Divided by
      * 256 that is 211 kHz, inside the 400 kHz a card may be started at. */
     START_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_256,
-    /* Divided by 16 it is 3.375 MHz. README.md says why no faster. */
-    RUN_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_16,
+    /* Divided by 8 it is 6.75 MHz. README.md says why that rate. */
+    RUN_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_8,
 
-    /* A byte takes 38 microseconds at the start rate. */
-    EXCHANGE_TIMEOUT_MILLISECONDS = 10,
+    /* A byte takes 38 microseconds at the start rate, which is some thousands
+     * of turns of the loop that waits for it. This is many times that. */
+    EXCHANGE_SPINS = 1000000,
     IDLE_LINE = 0xFF,
     CRC_POLYNOMIAL_UNUSED = 7
 };
@@ -97,8 +98,13 @@ static inline void BddTargetBoardSdCardBus_SetRate(uint32_t prescaler)
     spi.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
     spi.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
     /* A bus that will not configure exchanges nothing, which the card driver
-     * reads as a card that does not answer. */
-    (void) HAL_SPI_Init(&spi);
+     * reads as a card that does not answer. HAL_SPI_Init leaves the
+     * peripheral disabled, and sets it to say a byte has arrived when one
+     * has, not two. */
+    if (HAL_SPI_Init(&spi) == HAL_OK)
+    {
+        __HAL_SPI_ENABLE(&spi);
+    }
 }
 
 void BddTargetBoardSdCardBus_UseRunRate(void)
@@ -116,12 +122,28 @@ void BddTargetBoardSdCardBus_Deselect(void)
     HAL_GPIO_WritePin(GPIOE, PIN_CARD_SELECT, GPIO_PIN_SET);
 }
 
+/* The byte is written to the data register and read back from it here, not
+ * through the HAL's transfer call. That call times each transfer against the
+ * millisecond count, and a task switched out for longer than the time allowed
+ * comes back to a byte that has been exchanged and is told it failed. Nothing
+ * here depends on how long the task was away: the byte that arrived is still
+ * in the register when it returns. The wait is bounded by a count, so a
+ * peripheral that never delivers reads as an idle line.
+ *
+ * Both accesses are a byte wide, which is what puts one byte in the transmit
+ * FIFO and takes one from the receive FIFO. */
 uint8_t BddTargetBoardSdCardBus_Exchange(uint8_t out)
 {
     uint8_t in = IDLE_LINE;
-    if (HAL_SPI_TransmitReceive(&spi, &out, &in, 1U, EXCHANGE_TIMEOUT_MILLISECONDS) != HAL_OK)
+    uint32_t spins = EXCHANGE_SPINS;
+    *(volatile uint8_t*) &SPI4->DR = out;
+    while (((SPI4->SR & SPI_SR_RXNE) == 0U) && (spins > 0U))
     {
-        in = IDLE_LINE;
+        spins--;
+    }
+    if ((SPI4->SR & SPI_SR_RXNE) != 0U)
+    {
+        in = *(volatile uint8_t*) &SPI4->DR;
     }
     return in;
 }

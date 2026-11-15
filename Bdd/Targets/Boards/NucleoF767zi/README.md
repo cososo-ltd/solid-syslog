@@ -199,10 +199,20 @@ and refuses a version 1 card and an MMC. The one card it has been run on is a
 SanDisk Ultra 8 GB microSDHC, so the standard capacity path has been run
 against the fake only.
 
-The card is started at 211 kHz and then run at 3.375 MHz. The breakout is on a
-breadboard, at the end of jumper wires, and the rate is a cautious one for
-that. The card's CRC checking is turned on, so a command or a sector damaged
-on the wires is refused by whichever end receives it, and the target says so.
+The card is started at 211 kHz and then run at 6.75 MHz. The breakout is on a
+breadboard, at the end of jumper wires, and the rate is half the fastest found
+clean on them: 3000 messages went through the file store at 13.5 MHz with no
+transfer repeated, and at 27 MHz the card did not come up. The card's CRC
+checking is turned on, so a command or a sector damaged on the wires is
+refused by whichever end receives it. A read or a write that fails that way is
+tried again, twice, and the target says so each time, so wires that have
+started to give trouble show before they stop a run.
+
+Each byte is exchanged through SPI4's data register directly. ST's HAL has a
+call for it, which times every transfer against the millisecond count, and a
+task that is switched out for longer than the time it allows comes back to a
+byte that was exchanged and is told that it failed. Under a load of messages
+that showed as sectors failing their CRC, and a store that froze.
 SPI4's slowest rate is its bus clock divided by 256, and a card has to be
 started at no more than 400 kHz, so the board runs that bus at 54 MHz where
 the part would allow 108.
