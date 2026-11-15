@@ -2,7 +2,8 @@
  *
  * The console is USART3, which the on-board ST-LINK carries as its virtual COM
  * port. The board has nothing to report an exit status to, so a run ends by
- * saying so on the console and stopping. */
+ * saying so on the console, with the status where it is a failure, and
+ * stopping. */
 
 #include "BddTargetBoard.h"
 
@@ -11,6 +12,8 @@
 #include "BoardClock.h"
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #ifndef BDD_TARGET_BOARD_BUILD_COMMIT
@@ -19,13 +22,14 @@
 
 enum
 {
-    CONSOLE_POLL_MILLISECONDS = 1
+    CONSOLE_POLL_MILLISECONDS = 1,
+    EXIT_TEXT_BYTES = 32
 };
 
 static const char BANNER[] =
     "\r\nSolidSyslog BDD target on NUCLEO-F767ZI, commit " BDD_TARGET_BOARD_BUILD_COMMIT "\r\n";
 static const char EXIT_OK[] = "\r\nexit: ok\r\n";
-static const char EXIT_FAILED[] = "\r\nexit: failed\r\n";
+static const char EXIT_FAILED_FORMAT[] = "\r\nexit: failed %d\r\n";
 
 void BddTargetBoard_Init(void)
 {
@@ -59,8 +63,13 @@ char BddTargetBoard_ConsoleRead(void)
 void BddTargetBoard_Exit(int status)
 {
     bool failed = status != 0;
-    const char* text = failed ? EXIT_FAILED : EXIT_OK;
-    Board_ConsoleWrite(text, strlen(text));
+    char text[EXIT_TEXT_BYTES] = {0};
+    int formatted =
+        failed ? snprintf(text, sizeof(text), EXIT_FAILED_FORMAT, status) : snprintf(text, sizeof(text), "%s", EXIT_OK);
+    if ((formatted > 0) && ((size_t) formatted < sizeof(text)))
+    {
+        Board_ConsoleWrite(text, (size_t) formatted);
+    }
     Board_Halt(failed);
 }
 

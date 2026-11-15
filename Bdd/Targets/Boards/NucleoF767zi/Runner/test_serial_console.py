@@ -155,6 +155,52 @@ class SerialConsoleTest(unittest.TestCase):
         self.assertEqual(0, self.console.wait(timeout=5))
         self.assertEqual(0, self.console.poll())
 
+    def test_a_board_that_says_it_exited_has_exited(self):
+        self.port.arrived.put(b"Sent 1 message\r\n\r\nexit: ok\r\n")
+
+        self.assertEqual(0, self.console.wait(timeout=5))
+        self.assertEqual(0, self.console.poll())
+
+    def test_a_board_that_says_it_failed_exits_with_the_status_it_gives(self):
+        self.port.arrived.put(b"\r\nexit: failed 2\r\n")
+
+        self.assertEqual(2, self.console.wait(timeout=5))
+
+    def test_an_exit_that_arrives_in_pieces_is_still_an_exit(self):
+        self.port.arrived.put(b"\r\nexit: fai")
+        self.port.arrived.put(b"led 2\r\n")
+
+        self.assertEqual(2, self.console.wait(timeout=5))
+
+    # A message may say anything; only a line of the board's own is its exit.
+    def test_the_words_inside_a_line_are_not_an_exit(self):
+        self.port.arrived.put(b"said exit: ok\r\n")
+
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.console.wait(timeout=0.05)
+
+    def test_what_the_board_said_before_it_exited_can_still_be_read(self):
+        self.port.arrived.put(b"halted\r\n\r\nexit: failed 2\r\n")
+        self.console.wait(timeout=5)
+
+        self.assertEqual(b"halted\r\n\r\nexit: failed 2\r\n", self.read_from(self.console, 26))
+        self.assertEqual(b"", os.read(self.console.stdout.fileno(), 1))
+
+    def test_a_board_that_exited_frees_the_port(self):
+        self.port.arrived.put(b"\r\nexit: ok\r\n")
+        self.console.wait(timeout=5)
+
+        self.assertTrue(self.port.closed)
+
+    # It has stopped, and the next target opened resets it.
+    def test_killing_a_board_that_exited_does_not_reset_it(self):
+        self.port.arrived.put(b"\r\nexit: ok\r\n")
+        self.console.wait(timeout=5)
+
+        self.console.kill()
+
+        self.assertEqual([], self.resets)
+
 
 if __name__ == "__main__":
     unittest.main()

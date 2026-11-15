@@ -3,13 +3,21 @@
 The board's console is a serial port on the development machine, and the board
 is started by resetting it. SerialConsole wraps the two so the steps can read
 and write the console as they do a local target's pipes.
+
+A board has no exit status to hand back. A target that ends says so on its
+console, in a line of its own, and stops: "exit: ok", or "exit: failed" and
+the status. SerialConsole reads that line as a local target's exit.
 """
 
 import os
+import re
 import subprocess
 import threading
 
 _DISCARDED_AT_A_TIME = 4096
+_EXIT_LINE = re.compile(rb"\nexit: (?:ok|failed (\d+))\r?\n")
+# More than the longest such line, so one that arrives in pieces is still seen.
+_EXIT_LINE_KEPT = 64
 
 
 class SerialConsole:
@@ -38,6 +46,8 @@ class SerialConsole:
     # the board both are a reset, which is not a loss of power at the media.
     # Output still unread is discarded on the way: the copy may be waiting on
     # a full pipe for a reader, and would otherwise never see that it has ended.
+    # A board that has said it exited has stopped, and is left as it is: the
+    # next target to be opened resets it.
     def kill(self):
         if not self._ended.is_set():
             self._ended.set()
@@ -60,16 +70,24 @@ class SerialConsole:
     # makes its writer wait for a reader, and there is none until the console
     # has been handed over.
     def _copy_output(self, shown):
+        status = 0
+        latest = b""
         try:
             self._write_all(shown)
             while not self._ended.is_set():
-                self._write_all(self._port.read())
+                arrived = self._port.read()
+                self._write_all(arrived)
+                latest = (latest + arrived)[-_EXIT_LINE_KEPT:]
+                exited = _EXIT_LINE.search(latest)
+                if exited:
+                    status = int(exited.group(1) or 0)
+                    self._ended.set()
         finally:
             try:
                 os.close(self._write_end)
                 self._port.close()
             finally:
-                self.returncode = 0
+                self.returncode = status
 
     def _write_all(self, data):
         while data:
