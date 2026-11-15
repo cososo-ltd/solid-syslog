@@ -18,8 +18,9 @@ typedef void (*BoardRtcSecondFunction)(uint32_t secondsSinceEpoch);
 
 /* Starts the crystal if it is not running, which from cold takes a second or
  * two, and has onSecond called every second from then on once the clock has
- * the time. False if the crystal did not start, and then there is no clock:
- * it has no time and refuses to be set. Call once, with interrupts on, before
+ * the time. False if the crystal did not start, or the clock cannot be run
+ * from it or made to interrupt, and then there is no clock: it has no time
+ * and refuses to be set. Call once, with interrupts on, before
  * the scheduler starts. */
 bool BoardRtc_Start(BoardRtcSecondFunction onSecond);
 

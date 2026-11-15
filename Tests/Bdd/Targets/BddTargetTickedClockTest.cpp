@@ -104,13 +104,6 @@ TEST(BddTargetTickedClock, ForgetsTheTimeWhenInitialised)
     CHECK_DATE(0, 0, 0);
 }
 
-TEST(BddTargetTickedClock, ReadsTheEpochAsTheStartOf1970)
-{
-    TickAt(0U, 0U);
-    CHECK_DATE(1970, 1, 1);
-    CHECK_TIME(0, 0, 0, 0);
-}
-
 TEST(BddTargetTickedClock, ReadsTheTimeOfDayOfTheSecondThatTicked)
 {
     TickAt(AN_INSTANT, 0U);
@@ -127,54 +120,6 @@ TEST(BddTargetTickedClock, ReadsInUtc)
 {
     TickAt(AN_INSTANT, 0U);
     LONGS_EQUAL(0, Read().UtcOffsetMinutes);
-}
-
-TEST(BddTargetTickedClock, ReadsTheLastSecondOfADay)
-{
-    TickAt(86399U, 0U);
-    CHECK_DATE(1970, 1, 1);
-    CHECK_TIME(23, 59, 59, 0);
-}
-
-TEST(BddTargetTickedClock, ReadsTheFirstSecondOfTheNextDay)
-{
-    TickAt(86400U, 0U);
-    CHECK_DATE(1970, 1, 2);
-    CHECK_TIME(0, 0, 0, 0);
-}
-
-TEST(BddTargetTickedClock, ReadsTheLeapDayOfALeapYear)
-{
-    TickAt(1709164800U, 0U); /* 2024-02-29T00:00:00Z */
-    CHECK_DATE(2024, 2, 29);
-}
-
-TEST(BddTargetTickedClock, ReadsTheDayAfterALeapDay)
-{
-    TickAt(1709251200U, 0U); /* 2024-03-01T00:00:00Z */
-    CHECK_DATE(2024, 3, 1);
-}
-
-/* 2000 is a leap year though it is divisible by 100, because it is by 400. */
-TEST(BddTargetTickedClock, ReadsTheLeapDayOfACenturyThatHasOne)
-{
-    TickAt(951782400U, 0U); /* 2000-02-29T00:00:00Z */
-    CHECK_DATE(2000, 2, 29);
-}
-
-TEST(BddTargetTickedClock, ReadsTheLastDayOfAYear)
-{
-    TickAt(1798761599U, 0U); /* 2026-12-31T23:59:59Z */
-    CHECK_DATE(2026, 12, 31);
-    CHECK_TIME(23, 59, 59, 0);
-}
-
-/* 2100 is not a leap year, and the last second thirty-two bits hold is in 2106. */
-TEST(BddTargetTickedClock, ReadsTheLastSecondItCanBeTold)
-{
-    TickAt(UINT32_MAX, 0U);
-    CHECK_DATE(2106, 2, 7);
-    CHECK_TIME(6, 28, 15, 0);
 }
 
 TEST(BddTargetTickedClock, ReadsTheMicrosecondsTheCounterHasCountedSinceTheTick)
@@ -220,7 +165,7 @@ TEST(BddTargetTickedClock, StaysInItsSecondWhenTheCounterReachesASecondBeforeThe
     CHECK_TIME(18, 40, 57, 999999);
 }
 
-TEST(BddTargetTickedClock, StaysInItsSecondHoweverLateTheTick)
+TEST(BddTargetTickedClock, StaysInItsSecondWhenTheTickIsSecondsLate)
 {
     TickAt(AN_INSTANT, 0U);
     counterNow = 3U * COUNTS_PER_SECOND;

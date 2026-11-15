@@ -154,9 +154,10 @@ void BddTargetFreeRtosPipeline_SetConfig(const struct BddTargetFreeRtosPipelineC
 /* The time is the board's to know. While it does not - and a board with no
  * clock never does - RFC 5424 section 6.2.3.1 mandates NILVALUE TIMESTAMP,
  * which is what the board's zeroed timestamp becomes, and the timeQuality SD
- * reports tzKnown=0, isSynced=0. Once it does, it was told the time in UTC by
- * the harness, from the clock of the machine the harness runs on (section
- * 7.1). How closely is not measured, so syncAccuracy is left out. */
+ * reports tzKnown=0, isSynced=0. A board that does is taken to have been told
+ * it in UTC by the harness, from the clock of the machine the harness runs on
+ * (section 7.1), which is all `set time` is for: the board cannot tell who set
+ * its clock. How closely is not measured, so syncAccuracy is left out. */
 static void GetTimeQuality(struct SolidSyslogTimeQuality* timeQuality)
 {
     bool knowsTheTime = BddTargetBoardClock_IsSet();

@@ -174,8 +174,10 @@ count put it at start-up, which is good to about four milliseconds.
 
 The real-time clock holds two digits of year and is taken as set when the year
 is not zero, so `set time` takes a time from 2001 to 2099 and answers
-`set: invalid` to any other. It answers the same if the crystal did not start,
-which the target waits up to five seconds for when it is first powered.
+`set: invalid` to any other. It answers the same if the real-time clock could
+not be started. That is a crystal that did not start, which the target waits
+up to five seconds for when it is first powered, or a clock that other
+firmware, run on the board since it was powered, left on another source.
 
 The bring-up image does not start the clock.
 

@@ -27,7 +27,8 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* The free-running counter, as it stands now. It may wrap, as long as it
-       does not wrap twice inside one second. */
+       takes longer to come round than the longest a tick can be late: a
+       reading is held in its second only until the counter has. */
     typedef uint32_t (*BddTargetTickedClockCounterFunction)(void);
 
     /* Forgets the time. countsPerMicrosecond is how fast the counter counts. */

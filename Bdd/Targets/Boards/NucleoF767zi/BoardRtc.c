@@ -64,12 +64,14 @@ static BoardRtcSecondFunction rtcOnSecond;
 /* The name ST's vector table carries. */
 void RTC_Alarm_IRQHandler(void);
 
+static inline bool BoardRtc_OpenBackupDomain(void);
 static inline bool BoardRtc_StartCrystal(void);
-static inline void BoardRtc_ClockFromCrystal(void);
-static inline void BoardRtc_InterruptEverySecond(void);
+static inline bool BoardRtc_ClockFromCrystal(void);
+static inline bool BoardRtc_InterruptEverySecond(void);
 static inline void BoardRtc_Unlock(void);
 static inline void BoardRtc_Lock(void);
 static inline bool BoardRtc_WaitFor(uint32_t flag);
+static inline void BoardRtc_ClearSecondFlag(void);
 static inline uint32_t BoardRtc_Seconds(uint32_t time, uint32_t date);
 static inline uint8_t BoardRtc_FromBcd(uint32_t bcd);
 static inline uint32_t BoardRtc_ToBcd(uint32_t value);
@@ -80,17 +82,22 @@ static inline uint32_t BoardRtc_DateRegister(const struct SolidSyslogTimestamp* 
 bool BoardRtc_Start(BoardRtcSecondFunction onSecond)
 {
     rtcOnSecond = onSecond;
-    /* The clock and its crystal are in the backup domain, which is locked
-     * against writes until the power controller is told otherwise. */
+    rtcIsRunning = BoardRtc_OpenBackupDomain() && BoardRtc_StartCrystal() && BoardRtc_ClockFromCrystal() &&
+                   BoardRtc_InterruptEverySecond();
+    return rtcIsRunning;
+}
+
+/* The clock and its crystal are in the backup domain, which is locked against
+ * writes until the power controller is told otherwise, and has said that it
+ * has been. */
+static inline bool BoardRtc_OpenBackupDomain(void)
+{
     __HAL_RCC_PWR_CLK_ENABLE();
     SET_BIT(PWR->CR1, PWR_CR1_DBP);
-    rtcIsRunning = BoardRtc_StartCrystal();
-    if (rtcIsRunning)
+    for (uint32_t i = 0U; (READ_BIT(PWR->CR1, PWR_CR1_DBP) == 0U) && (i < (uint32_t) CLOCK_WAIT_LOOPS); i++)
     {
-        BoardRtc_ClockFromCrystal();
-        BoardRtc_InterruptEverySecond();
     }
-    return rtcIsRunning;
+    return READ_BIT(PWR->CR1, PWR_CR1_DBP) != 0U;
 }
 
 /* A reset leaves the crystal running, so this waits only after power-up. */
@@ -107,40 +114,50 @@ static inline bool BoardRtc_StartCrystal(void)
 
 /* The clock's source can be chosen once after the backup domain is reset, so
  * it is chosen only where none has been: a clock already running is not
- * touched. */
-static inline void BoardRtc_ClockFromCrystal(void)
+ * touched. False for a clock that something run since power-up has put on
+ * another source, which this cannot undo and does not count by. */
+static inline bool BoardRtc_ClockFromCrystal(void)
 {
     if (READ_BIT(RCC->BDCR, RCC_BDCR_RTCSEL) == 0U)
     {
         SET_BIT(RCC->BDCR, RCC_BDCR_RTCSEL_0);
     }
     SET_BIT(RCC->BDCR, RCC_BDCR_RTCEN);
+    return READ_BIT(RCC->BDCR, RCC_BDCR_RTCSEL) == RCC_BDCR_RTCSEL_0;
 }
 
 /* Alarm A with every field of its match masked matches every second, as the
  * second starts. It reaches the processor through line 17 of the external
  * interrupt controller, on a rising edge.
  *
+ * A reset leaves the alarm running, and its flag set by any second that
+ * started with nothing to answer it. The flag holds the line up, and a line
+ * already up has no edge to give, so the edge is asked for first and the flag
+ * cleared before the alarm is switched on again.
+ *
  * The calendar is read straight from its counters, not from the copies the
  * clock keeps of them, which lag the counters by a cycle or two of the
  * crystal: the interrupt reads as the second starts, and wants that second. */
-static inline void BoardRtc_InterruptEverySecond(void)
+static inline bool BoardRtc_InterruptEverySecond(void)
 {
-    BoardRtc_Unlock();
-    SET_BIT(RTC->CR, RTC_CR_BYPSHAD);
-    CLEAR_BIT(RTC->CR, RTC_CR_ALRAE | RTC_CR_ALRAIE);
-    if (BoardRtc_WaitFor(RTC_ISR_ALRAWF))
-    {
-        RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK2 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK4;
-        RTC->ALRMASSR = 0U;
-        SET_BIT(RTC->CR, RTC_CR_ALRAE | RTC_CR_ALRAIE);
-    }
-    BoardRtc_Lock();
-
     SET_BIT(EXTI->RTSR, EXTI_RTSR_TR17);
     SET_BIT(EXTI->IMR, EXTI_IMR_MR17);
     HAL_NVIC_SetPriority(RTC_Alarm_IRQn, (uint32_t) SECOND_INTERRUPT_PRIORITY, 0U);
     HAL_NVIC_EnableIRQ(RTC_Alarm_IRQn);
+
+    BoardRtc_Unlock();
+    SET_BIT(RTC->CR, RTC_CR_BYPSHAD);
+    CLEAR_BIT(RTC->CR, RTC_CR_ALRAE | RTC_CR_ALRAIE);
+    bool alarmIsSet = BoardRtc_WaitFor(RTC_ISR_ALRAWF);
+    if (alarmIsSet)
+    {
+        RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK2 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK4;
+        RTC->ALRMASSR = 0U;
+        BoardRtc_ClearSecondFlag();
+        SET_BIT(RTC->CR, RTC_CR_ALRAE | RTC_CR_ALRAIE);
+    }
+    BoardRtc_Lock();
+    return alarmIsSet;
 }
 
 static inline void BoardRtc_Unlock(void)
@@ -160,6 +177,14 @@ static inline bool BoardRtc_WaitFor(uint32_t flag)
     {
     }
     return READ_BIT(RTC->ISR, flag) != 0U;
+}
+
+/* The alarm's flag is cleared by writing it 0 with every other flag written
+ * 1, and the request to stop the clock, which shares the register, written as
+ * it stands. */
+static inline void BoardRtc_ClearSecondFlag(void)
+{
+    RTC->ISR = ~(RTC_ISR_ALRAF | RTC_ISR_INIT) | READ_BIT(RTC->ISR, RTC_ISR_INIT);
 }
 
 bool BoardRtc_HasTime(void)
@@ -247,6 +272,11 @@ static inline uint32_t BoardRtc_TimeRegister(const struct SolidSyslogTimestamp* 
            (BoardRtc_ToBcd(calendar->Second) << RTC_TR_SU_Pos);
 }
 
+static inline uint32_t BoardRtc_ToBcd(uint32_t value)
+{
+    return ((value / (uint32_t) BCD_TENS) << (uint32_t) BCD_TENS_SHIFT) | (value % (uint32_t) BCD_TENS);
+}
+
 static inline uint32_t BoardRtc_DateRegister(const struct SolidSyslogTimestamp* calendar, uint32_t secondsSinceEpoch)
 {
     uint32_t daysSinceEpoch = secondsSinceEpoch / (uint32_t) SECONDS_PER_DAY;
@@ -256,21 +286,14 @@ static inline uint32_t BoardRtc_DateRegister(const struct SolidSyslogTimestamp* 
            (BoardRtc_ToBcd(calendar->Day) << RTC_DR_DU_Pos);
 }
 
-static inline uint32_t BoardRtc_ToBcd(uint32_t value)
-{
-    return ((value / (uint32_t) BCD_TENS) << (uint32_t) BCD_TENS_SHIFT) | (value % (uint32_t) BCD_TENS);
-}
-
-/* A second has started. The alarm's flag is cleared by writing it 0 with
- * every other flag written 1, and the request to stop the clock, which shares
- * the register, written as it stands. A clock not yet set counts from the
- * start of 2000, which is no time to tell anyone. */
+/* A second has started. A clock not yet set counts from the start of 2000,
+ * which is no time to tell anyone. */
 void RTC_Alarm_IRQHandler(void)
 {
     EXTI->PR = EXTI_PR_PR17;
     if (READ_BIT(RTC->ISR, RTC_ISR_ALRAF) != 0U)
     {
-        RTC->ISR = ~(RTC_ISR_ALRAF | RTC_ISR_INIT) | READ_BIT(RTC->ISR, RTC_ISR_INIT);
+        BoardRtc_ClearSecondFlag();
         if ((rtcOnSecond != NULL) && BoardRtc_HasTime())
         {
             uint32_t seconds = 0U;
