@@ -1,0 +1,154 @@
+/* The NUCLEO-F767ZI's MicroSD card bus behind the board seam - see
+ * BddTargetBoardSdCardBus.h. The card is on SPI4, over ST's HAL, on the CN9 Zio
+ * connector; README.md beside this file holds the pin plan.
+ *
+ * A W25Q128 flash shares the bus, with a select of its own. Nothing here
+ * talks to it, and its select is held high so that it stays off the bus. */
+
+#include "BddTargetBoardSdCardBus.h"
+
+#include "Board.h"
+
+#include "stm32f7xx_hal.h"
+
+#include <stdbool.h>
+
+/* All on port E. */
+enum
+{
+    PIN_SCK = GPIO_PIN_2,
+    PIN_FLASH_SELECT = GPIO_PIN_3,
+    PIN_CARD_SELECT = GPIO_PIN_4,
+    PIN_MISO = GPIO_PIN_5,
+    PIN_MOSI = GPIO_PIN_6
+};
+
+enum
+{
+    /* SPI4 is clocked from APB2, which Board_Init runs at 54 MHz. Divided by
+     * 256 that is 211 kHz, inside the 400 kHz a card may be started at. */
+    START_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_256,
+    /* Divided by 8 it is 6.75 MHz. README.md says why that rate. */
+    RUN_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_8,
+
+    /* A byte takes 38 microseconds at the start rate, which is some thousands
+     * of turns of the loop that waits for it. This is many times that. */
+    EXCHANGE_SPINS = 1000000,
+    IDLE_LINE = 0xFF,
+    CRC_POLYNOMIAL_UNUSED = 7
+};
+
+static SPI_HandleTypeDef spi;
+static bool taken;
+
+static inline void BddTargetBoardSdCardBus_TakePins(void);
+static inline void BddTargetBoardSdCardBus_SetRate(uint32_t prescaler);
+
+void BddTargetBoardSdCardBus_UseStartRate(void)
+{
+    if (!taken)
+    {
+        BddTargetBoardSdCardBus_TakePins();
+        taken = true;
+    }
+    BddTargetBoardSdCardBus_SetRate(START_RATE_PRESCALER);
+}
+
+static inline void BddTargetBoardSdCardBus_TakePins(void)
+{
+    GPIO_InitTypeDef pins = {0};
+    __HAL_RCC_GPIOE_CLK_ENABLE();
+    __HAL_RCC_SPI4_CLK_ENABLE();
+
+    /* The levels are set before the pins are driven, so neither select is
+     * seen low as the pins become outputs. */
+    HAL_GPIO_WritePin(GPIOE, PIN_CARD_SELECT | PIN_FLASH_SELECT, GPIO_PIN_SET);
+    pins.Pin = PIN_CARD_SELECT | PIN_FLASH_SELECT;
+    pins.Mode = GPIO_MODE_OUTPUT_PP;
+    pins.Pull = GPIO_NOPULL;
+    pins.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOE, &pins);
+
+    pins.Pin = PIN_SCK | PIN_MOSI;
+    pins.Mode = GPIO_MODE_AF_PP;
+    pins.Speed = GPIO_SPEED_FREQ_MEDIUM;
+    pins.Alternate = GPIO_AF5_SPI4;
+    HAL_GPIO_Init(GPIOE, &pins);
+
+    /* Pulled up, so a bus with no card on it reads as all ones. */
+    pins.Pin = PIN_MISO;
+    pins.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(GPIOE, &pins);
+}
+
+static inline void BddTargetBoardSdCardBus_SetRate(uint32_t prescaler)
+{
+    spi.Instance = SPI4;
+    spi.Init.Mode = SPI_MODE_MASTER;
+    spi.Init.Direction = SPI_DIRECTION_2LINES;
+    spi.Init.DataSize = SPI_DATASIZE_8BIT;
+    spi.Init.CLKPolarity = SPI_POLARITY_LOW;
+    spi.Init.CLKPhase = SPI_PHASE_1EDGE;
+    spi.Init.NSS = SPI_NSS_SOFT;
+    spi.Init.BaudRatePrescaler = prescaler;
+    spi.Init.FirstBit = SPI_FIRSTBIT_MSB;
+    spi.Init.TIMode = SPI_TIMODE_DISABLE;
+    spi.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    spi.Init.CRCPolynomial = CRC_POLYNOMIAL_UNUSED;
+    spi.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+    spi.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
+    /* A bus that will not configure exchanges nothing, which the card driver
+     * reads as a card that does not answer. HAL_SPI_Init leaves the
+     * peripheral disabled, and sets it to say a byte has arrived when one
+     * has, not two. */
+    if (HAL_SPI_Init(&spi) == HAL_OK)
+    {
+        __HAL_SPI_ENABLE(&spi);
+    }
+}
+
+void BddTargetBoardSdCardBus_UseRunRate(void)
+{
+    BddTargetBoardSdCardBus_SetRate(RUN_RATE_PRESCALER);
+}
+
+void BddTargetBoardSdCardBus_Select(void)
+{
+    HAL_GPIO_WritePin(GPIOE, PIN_CARD_SELECT, GPIO_PIN_RESET);
+}
+
+void BddTargetBoardSdCardBus_Deselect(void)
+{
+    HAL_GPIO_WritePin(GPIOE, PIN_CARD_SELECT, GPIO_PIN_SET);
+}
+
+/* The byte is written to the data register and read back from it here, not
+ * through the HAL's transfer call. That call times each transfer against the
+ * millisecond count, and a task switched out for longer than the time allowed
+ * comes back to a byte that has been exchanged and is told it failed. Nothing
+ * here depends on how long the task was away: the byte that arrived is still
+ * in the register when it returns. The wait is bounded by a count, so a
+ * peripheral that never delivers reads as an idle line.
+ *
+ * Both accesses are a byte wide, which is what puts one byte in the transmit
+ * FIFO and takes one from the receive FIFO. */
+uint8_t BddTargetBoardSdCardBus_Exchange(uint8_t out)
+{
+    uint8_t in = IDLE_LINE;
+    uint32_t spins = EXCHANGE_SPINS;
+    *(volatile uint8_t*) &SPI4->DR = out;
+    while (((SPI4->SR & SPI_SR_RXNE) == 0U) && (spins > 0U))
+    {
+        spins--;
+    }
+    if ((SPI4->SR & SPI_SR_RXNE) != 0U)
+    {
+        in = *(volatile uint8_t*) &SPI4->DR;
+    }
+    return in;
+}
+
+uint32_t BddTargetBoardSdCardBus_Milliseconds(void)
+{
+    return Board_Milliseconds();
+}

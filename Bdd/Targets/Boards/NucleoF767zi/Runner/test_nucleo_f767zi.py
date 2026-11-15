@@ -107,6 +107,46 @@ class TellTheTimeTest(unittest.TestCase):
             self.tell(1794657600.0)
 
 
+class WipeTheDiskTest(unittest.TestCase):
+    def setUp(self):
+        self.port = FakePort()
+        self.console = serial_console.SerialConsole(self.port, lambda: None)
+        self.addCleanup(self.console.kill)
+
+    def test_the_board_is_asked_to_wipe_its_disk(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        nucleo_f767zi.wipe_the_disk(self.console, 5)
+
+        self.assertEqual(b"set store wipe\n", self.port.written)
+
+    def test_a_board_that_does_not_wipe_its_disk_is_refused_with_what_it_showed(self):
+        self.port.arrived.put(b"[board] disk: the card did not start: no answer\r\nset: invalid\r\nSolidSyslog> ")
+
+        with self.assertRaisesRegex(RuntimeError, "did not wipe its disk.*no answer"):
+            nucleo_f767zi.wipe_the_disk(self.console, 5)
+
+
+class UseTheFileStoreTest(unittest.TestCase):
+    def setUp(self):
+        self.port = FakePort()
+        self.console = serial_console.SerialConsole(self.port, lambda: None)
+        self.addCleanup(self.console.kill)
+
+    def test_the_board_is_asked_for_the_file_store(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        nucleo_f767zi.use_the_file_store(self.console, 5)
+
+        self.assertEqual(b"set store file\n", self.port.written)
+
+    def test_a_board_that_does_not_take_the_file_store_is_refused(self):
+        self.port.arrived.put(b"set: invalid\r\nSolidSyslog> ")
+
+        with self.assertRaisesRegex(RuntimeError, "did not take the file store"):
+            nucleo_f767zi.use_the_file_store(self.console, 5)
+
+
 # The ST-LINK keeps what the board printed while nobody had the port open, and
 # hands it over as the port opens.
 class DiscardTest(unittest.TestCase):

@@ -3,13 +3,21 @@
 The board's console is a serial port on the development machine, and the board
 is started by resetting it. SerialConsole wraps the two so the steps can read
 and write the console as they do a local target's pipes.
+
+A board has no exit status to hand back. A target that ends says so on its
+console, in a line of its own, and stops: "exit: ok", or "exit: failed" and
+the status. SerialConsole reads that line as a local target's exit.
 """
 
 import os
+import re
 import subprocess
 import threading
 
 _DISCARDED_AT_A_TIME = 4096
+_EXIT_LINE = re.compile(rb"\nexit: (?:ok|failed (\d+))\r?\n")
+# More than the longest such line, so one that arrives in pieces is still seen.
+_EXIT_LINE_KEPT = 64
 
 
 class SerialConsole:
@@ -38,12 +46,18 @@ class SerialConsole:
     # the board both are a reset, which is not a loss of power at the media.
     # Output still unread is discarded on the way: the copy may be waiting on
     # a full pipe for a reader, and would otherwise never see that it has ended.
+    # A board that has said it exited has stopped, and is left as it is: the
+    # next target to be opened resets it, and what it said can still be read.
+    # Either way the kill comes back only once the port is closed, because the
+    # next target opens the same port.
     def kill(self):
-        if not self._ended.is_set():
-            self._ended.set()
+        exited = self._ended.is_set()
+        self._ended.set()
+        if not exited:
             while os.read(self.stdout.fileno(), _DISCARDED_AT_A_TIME):
                 pass
-            self._copier.join()
+        self._copier.join()
+        if not exited:
             self._reset()
 
     def wait(self, timeout=None):
@@ -58,18 +72,28 @@ class SerialConsole:
     # as a kill does, so the reader is not left waiting on it. What the board
     # had shown already goes into the pipe from here too: a pipe that is full
     # makes its writer wait for a reader, and there is none until the console
-    # has been handed over.
+    # has been handed over. It is looked through for an exit as the rest is.
     def _copy_output(self, shown):
+        self._status = 0
+        self._latest = b""
         try:
-            self._write_all(shown)
+            self._copy(shown)
             while not self._ended.is_set():
-                self._write_all(self._port.read())
+                self._copy(self._port.read())
         finally:
             try:
                 os.close(self._write_end)
                 self._port.close()
             finally:
-                self.returncode = 0
+                self.returncode = self._status
+
+    def _copy(self, arrived):
+        self._write_all(arrived)
+        self._latest = (self._latest + arrived)[-_EXIT_LINE_KEPT:]
+        exited = _EXIT_LINE.search(self._latest)
+        if exited:
+            self._status = int(exited.group(1) or 0)
+            self._ended.set()
 
     def _write_all(self, data):
         while data:

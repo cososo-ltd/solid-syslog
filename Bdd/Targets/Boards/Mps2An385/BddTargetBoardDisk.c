@@ -199,6 +199,13 @@ static bool BddTargetBoardDisk_IsRangeValid(uint32_t sector, uint32_t count)
            (sector <= ((uint32_t) BDD_TARGET_BOARD_DISK_SECTOR_COUNT - count));
 }
 
+/* The image is a file on the machine QEMU runs on, and whoever runs QEMU
+ * removes it to start from nothing. */
+bool BddTargetBoardDisk_Wipe(void)
+{
+    return false;
+}
+
 static int SemihostingRead(int handle, void* buffer, int count)
 {
     /* SYS_READ returns the number of bytes NOT read (0 == full read). */

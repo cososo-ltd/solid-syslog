@@ -4,7 +4,8 @@ in order and as it was sent, with a time on it no earlier than the last.
 
 Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and writes
 the image, starts the collector, and names the board's serial port and the
-programmer in the environment, as it does for Behave.
+programmer in the environment, as it does for Behave. With -FileStore every
+message goes by way of a store of files on the board's disk, wiped first.
 
 Each message is one `send 1` at the console, answered before the next is
 asked for. A `send` of many would log them faster than the target sends them,
@@ -20,10 +21,25 @@ import subprocess
 import sys
 import time
 
-from nucleo_f767zi import board_address_in, check_image_is_of_commit, open_board, output_to_prompt, tell_the_time
+from nucleo_f767zi import (
+    board_address_in,
+    check_image_is_of_commit,
+    open_board,
+    output_to_prompt,
+    tell_the_time,
+    use_the_file_store,
+    wipe_the_disk,
+)
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
+# A message that goes by way of the file store is written to the card before
+# it is sent, which takes longer than the console takes to answer `send 1`.
+# Asked for faster than the card takes them, messages fill the target's buffer,
+# which then discards, and that is the library's doing and not a loss. So with
+# the file store the messages are asked for at this interval, which is about
+# half the rate the card was seen to keep up with.
+_FILE_STORE_SEND_INTERVAL_SECONDS = 0.05
 # The collector writes what it has received a little after it receives it.
 _RECORD_WAIT_SECONDS = 60
 _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_tcp.jsonl"}
@@ -139,10 +155,11 @@ def _lines_of(path):
     return lines
 
 
-def _send(console, count):
+def _send(console, count, interval_seconds):
     for _ in range(count):
         console.stdin.write("send 1\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
+        time.sleep(interval_seconds)
 
 
 def _messages_once_arrived(path, count):
@@ -154,7 +171,7 @@ def _messages_once_arrived(path, count):
     return messages
 
 
-def main(count):
+def main(count, store):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     console = open_board(os.environ["NUCLEO_F767ZI_SERIAL_PORT"], os.environ.get("STM32_PROGRAMMER_CLI", "STM32_Programmer_CLI"))
     try:
@@ -163,10 +180,20 @@ def main(count):
         with open(os.path.join(build_dir, "CMakeCache.txt"), encoding="utf-8") as cache:
             sent = message_as_sent(board_address_in(cache.read()))
         tell_the_time(console, _ANSWER_TIMEOUT_SECONDS)
-        _send(console, count)
+        interval_seconds = 0
+        if store == "file":
+            wipe_the_disk(console, _ANSWER_TIMEOUT_SECONDS)
+            use_the_file_store(console, _ANSWER_TIMEOUT_SECONDS)
+            interval_seconds = _FILE_STORE_SEND_INTERVAL_SECONDS
+        _send(console, count, interval_seconds)
+        if store == "file":
+            # The console answers `send 1` before the message has left the
+            # store, and one still there when the transport changes would go
+            # by the other transport.
+            _messages_once_arrived(_RECORDS["udp"], count)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
-        _send(console, count)
+        _send(console, count, interval_seconds)
         failed = False
         not_before = ""
         for transport, first in (("udp", 1), ("tcp", count + 1)):
@@ -184,4 +211,4 @@ def main(count):
 
 
 if __name__ == "__main__":
-    sys.exit(main(int(sys.argv[1])))
+    sys.exit(main(int(sys.argv[1]), sys.argv[2] if len(sys.argv) > 2 else "null"))

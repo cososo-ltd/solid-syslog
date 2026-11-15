@@ -268,6 +268,20 @@ def prepare_nucleo_f767zi_board():
         return board.board_address_in(cache.read())
 
 
+def wipe_nucleo_f767zi_disk():
+    """Gives the next scenario a disk with no filesystem on it. The board's
+    disk is a card, which keeps what it holds through the reset that starts
+    each scenario, as power_cycle_replay needs, so a scenario that leaves
+    records there would hand them to the next."""
+    board = _import_from_nucleo_f767zi_runner("nucleo_f767zi")
+    console = _open_nucleo_f767zi()
+    try:
+        board.output_to_prompt(console, _NUCLEO_F767ZI_BOOT_TIMEOUT_SECONDS)
+        board.wipe_the_disk(console, _NUCLEO_F767ZI_ANSWER_TIMEOUT_SECONDS)
+    finally:
+        console.kill()
+
+
 def spawn_example_process(context, extra_args=None, binary=None):
     """Spawn the example-under-test for the active target.
 

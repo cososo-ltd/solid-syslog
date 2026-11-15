@@ -18,6 +18,7 @@
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_PWR_MODULE_ENABLED
 #define HAL_RCC_MODULE_ENABLED
+#define HAL_SPI_MODULE_ENABLED
 #define HAL_UART_MODULE_ENABLED
 
 /* The board has no crystal fitted for HSE. The on-board ST-LINK supplies its
@@ -38,6 +39,7 @@
 
 #define USE_HAL_UART_REGISTER_CALLBACKS 0U
 #define USE_HAL_ETH_REGISTER_CALLBACKS 0U
+#define USE_HAL_SPI_REGISTER_CALLBACKS 0U
 
 /* How long the Ethernet driver waits for the PHY to answer on the management
  * bus, in milliseconds. An answer takes well under one. */
@@ -50,6 +52,7 @@
 #include "stm32f7xx_hal_cortex.h"
 #include "stm32f7xx_hal_flash.h"
 #include "stm32f7xx_hal_pwr.h"
+#include "stm32f7xx_hal_spi.h"
 #include "stm32f7xx_hal_uart.h"
 #include "stm32f7xx_hal_eth.h"
 

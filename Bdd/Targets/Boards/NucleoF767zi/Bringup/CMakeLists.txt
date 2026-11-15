@@ -42,6 +42,7 @@ target_include_directories(solid_syslog_nucleo_f767zi_upstream PRIVATE
 
 add_executable(SolidSyslogNucleoF767ziBringup
     main.c
+    StorageProbe.c
     ${BDD_BOARD_DIR}/Board.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
     $<TARGET_OBJECTS:solid_syslog_nucleo_f767zi_upstream>
