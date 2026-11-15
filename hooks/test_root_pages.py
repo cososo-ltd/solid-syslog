@@ -28,6 +28,14 @@ class WhatIsPublished(unittest.TestCase):
         # Five pages link it and it has no in-site equivalent.
         self.assertEqual(h.PUBLISHED["SECURITY.md"], "security/policy.md")
 
+    def test_the_commercial_licence_text_is_published_where_the_sbom_points(self):
+        # sbom/sbom.cdx.json.template and docs/security/sbom.md give this URL
+        # as the licence document for LicenseRef-COSOSO-Commercial.
+        self.assertEqual(
+            h.PUBLISHED["LICENSES/LicenseRef-COSOSO-Commercial.md"],
+            "licenses/cososo-commercial.md",
+        )
+
     def test_every_published_source_exists_at_the_root(self):
         for source in h.PUBLISHED:
             self.assertTrue(os.path.isfile(os.path.join(ROOT, source)), source)

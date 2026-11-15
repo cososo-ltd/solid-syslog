@@ -61,6 +61,12 @@ whether or not maintenance is renewed; [`SECURITY.md`](SECURITY.md#supported-ver
 the commitment. Pricing is on the
 [SolidSyslog product page](https://www.cososo.co.uk/products/solid-syslog/).
 
+The agreement has a body, which is the same for every licensee, and two
+schedules naming the licensee, the scope and the fees. The published text is
+the standard form; the schedules are confidential to the parties.
+
+- Full text: [`LICENSES/LicenseRef-COSOSO-Commercial.md`](LICENSES/LicenseRef-COSOSO-Commercial.md)
+
 Enquiries: <https://www.cososo.co.uk/#contact>
 
 ---
@@ -87,11 +93,17 @@ PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR Licens
 
 `PolyForm-Noncommercial-1.0.0` is on the SPDX License List. PolyForm Internal
 Use 1.0.0 is not currently listed by SPDX, so it is referenced as a
-`LicenseRef-` with its canonical URL given above.
+`LicenseRef-` with its canonical URL given above. `LicenseRef-COSOSO-Commercial`
+names the standard form of the commercial agreement, published beside the code
+as licences 1 and 2 are.
 
 ## Continuity
 
-If Cozens Software Solutions Limited ceases to maintain SolidSyslog and no
-successor assumes maintenance, the then-current version will be relicensed
-under a permissive open source licence (for example Apache-2.0), so that
-existing users are not stranded.
+Cozens Software Solutions Limited has stopped maintaining SolidSyslog if it
+enters liquidation or administration, is struck off or dissolved, or announces
+that it has stopped. If no successor has agreed to take on maintenance within
+six months of that, every release published by then is relicensed under the
+Apache License, Version 2.0, so that existing users are not stranded. A
+commercial licensee holds that grant now under its agreement, to take effect on
+that day without any further act; the source is delivered as source, so no
+escrow is needed.

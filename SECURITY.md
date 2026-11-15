@@ -97,9 +97,11 @@ fixes land on the **latest published release** only; there is no back-port
 commitment.
 
 A commercial licensee declares each year which releases its products ship. A
-vulnerability in SolidSyslog is fixed for every declared release, free of
-charge and whether or not maintenance is renewed, for five years from that
-release's publication or for as long as it stays declared, up to ten years.
+vulnerability in SolidSyslog is fixed, or given a documented workaround, for
+every declared release, free of charge and whether or not maintenance is
+renewed, for five years from that release's publication or for as long as it
+stays declared, up to ten years. A patch release carries the support period of
+the release it patches.
 Where moving to the latest release is not an option, the fix is issued as a
 patch release of the declared release, so a licensee is never required to take
 a feature release to receive a security fix.

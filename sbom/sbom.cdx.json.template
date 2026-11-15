@@ -62,9 +62,14 @@
           "comment": "Full text for LicenseRef-PolyForm-Internal-Use-1.0.0, which SPDX does not list. A verbatim copy also ships at LICENSES/PolyForm-Internal-Use-1.0.0.md and is covered by solidsyslog:source-tree-sha256."
         },
         {
+          "type": "license",
+          "url": "https://docs.cososo.co.uk/solid-syslog/licenses/cososo-commercial/",
+          "comment": "Standard form of LicenseRef-COSOSO-Commercial, which SPDX does not list. A verbatim copy also ships at LICENSES/LicenseRef-COSOSO-Commercial.md and is covered by solidsyslog:source-tree-sha256. The schedules naming a licensee, its scope and its fees are confidential to the parties and are not published."
+        },
+        {
           "type": "other",
           "url": "https://www.cososo.co.uk/#contact",
-          "comment": "How to obtain LicenseRef-COSOSO-Commercial. Deliberately not type=license: that type means the URL of a licence file, and the agreement text is not yet published, so there is no licence document to link. Labelling an enquiry form as a licence would resolve the identifier to something that is not one."
+          "comment": "How to obtain LicenseRef-COSOSO-Commercial."
         },
         {
           "type": "vcs",
