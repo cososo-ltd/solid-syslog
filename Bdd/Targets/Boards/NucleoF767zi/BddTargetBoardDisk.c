@@ -24,8 +24,7 @@
 
 enum
 {
-    LINE_BYTES = 128,
-    WIPED_SECTORS = (2 * 4096) / BDD_TARGET_BOARD_DISK_SECTOR_SIZE
+    LINE_BYTES = 128
 };
 
 static const char LINE_START[] = "[board] disk: ";
@@ -264,19 +263,11 @@ static enum BddTargetSdCardResult BddTargetBoardDisk_WriteSector(uint32_t sector
     return result;
 }
 
-/* A filesystem is found by what the start of the disk holds, so a disk that
- * starts with zeros has none, and the mount that finds none formats it. FAT
- * is found by the first sector alone. LittleFS keeps its superblock twice, in
- * its first two blocks, and mounts from either, so both are cleared: that is
- * WIPED_SECTORS, two blocks of 4 KiB. What the sectors after them held is
- * written over as the new filesystem is used. */
+/* A filesystem is found by what its first sector holds, so a disk whose first
+ * sector is zeros has none, and the mount that finds none formats it. What
+ * the sectors after it held is written over by that format. */
 bool BddTargetBoardDisk_Wipe(void)
 {
     static const uint8_t ZEROS[BDD_TARGET_BOARD_DISK_SECTOR_SIZE] = {0};
-    bool wiped = BddTargetBoardDisk_EnsureReady();
-    for (uint32_t sector = 0U; wiped && (sector < (uint32_t) WIPED_SECTORS); sector++)
-    {
-        wiped = BddTargetBoardDisk_Write(ZEROS, sector, 1U) == BDD_TARGET_BOARD_DISK_OK;
-    }
-    return wiped;
+    return BddTargetBoardDisk_EnsureReady() && (BddTargetBoardDisk_Write(ZEROS, 0U, 1U) == BDD_TARGET_BOARD_DISK_OK);
 }
