@@ -8,7 +8,6 @@ import queue
 import subprocess
 import sys
 import threading
-import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -24,7 +23,10 @@ class FakePort:
         self.closed = False
         self.fails = False
         self.fails_to_close = False
-        self.seconds_to_close = 0
+        # close says it has begun, and finishes once it may.
+        self.closing = threading.Event()
+        self.may_close = threading.Event()
+        self.may_close.set()
 
     def read(self):
         if self.fails:
@@ -38,7 +40,8 @@ class FakePort:
         self.written += data
 
     def close(self):
-        time.sleep(self.seconds_to_close)
+        self.closing.set()
+        self.may_close.wait()
         self.closed = True
         if self.fails_to_close:
             raise OSError("the port would not close")
@@ -207,15 +210,20 @@ class SerialConsoleTest(unittest.TestCase):
     # The next target opens the same port, so a kill must not come back while
     # the port of a board that exited is still closing.
     def test_killing_a_board_that_exited_waits_for_the_port_to_be_freed(self):
-        self.port.seconds_to_close = 0.2
-        said = b"\r\nexit: ok\r\n"
-        self.port.arrived.put(said)
-        self.read_from(self.console, len(said))
-        with self.assertRaises(subprocess.TimeoutExpired):
-            self.console.wait(timeout=0.05)
+        self.port.may_close.clear()
+        self.addCleanup(self.port.may_close.set)
+        self.port.arrived.put(b"\r\nexit: ok\r\n")
+        self.assertTrue(self.port.closing.wait(5))
+        killer = threading.Thread(target=self.console.kill, daemon=True)
 
-        self.console.kill()
+        killer.start()
+        killer.join(0.1)
+        still_killing = killer.is_alive()
+        self.port.may_close.set()
+        killer.join(5)
 
+        self.assertTrue(still_killing)
+        self.assertFalse(killer.is_alive())
         self.assertTrue(self.port.closed)
 
     def test_what_a_board_said_before_it_exited_can_be_read_after_a_kill(self):
