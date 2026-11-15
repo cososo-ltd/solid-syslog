@@ -19,15 +19,17 @@
 
 enum
 {
-    REPORT_BYTES = 96
+    REPORT_BYTES = 112
 };
 
 static bool ready;
 static enum BddTargetSdCardResult lastStartReported = BDD_TARGET_SD_CARD_OK;
+static uint32_t repeatsReported;
 
 static inline const char* BddTargetBoardDisk_Reason(enum BddTargetSdCardResult result);
 static void BddTargetBoardDisk_Report(const char* what, enum BddTargetSdCardResult result);
 static void BddTargetBoardDisk_ReportSector(const char* what, uint32_t sector, enum BddTargetSdCardResult result);
+static void BddTargetBoardDisk_ReportRepeats(const char* what, uint32_t sector);
 static bool BddTargetBoardDisk_IsRangeValid(uint32_t sector, uint32_t count);
 
 bool BddTargetBoardDisk_EnsureReady(void)
@@ -107,8 +109,8 @@ static inline const char* BddTargetBoardDisk_Reason(enum BddTargetSdCardResult r
         case BDD_TARGET_SD_CARD_TIMED_OUT:
             reason = "timed out";
             break;
-        case BDD_TARGET_SD_CARD_BAD_DATA:
-            reason = "bad data";
+        case BDD_TARGET_SD_CARD_CRC_FAILED:
+            reason = "CRC failed";
             break;
         case BDD_TARGET_SD_CARD_WRITE_FAILED:
             reason = "write failed";
@@ -139,6 +141,7 @@ enum BddTargetBoardDiskResult BddTargetBoardDisk_Read(void* buffer, uint32_t sec
         {
             enum BddTargetSdCardResult read =
                 BddTargetSdCard_Read(sector + i, &bytes[(size_t) i * (size_t) BDD_TARGET_BOARD_DISK_SECTOR_SIZE]);
+            BddTargetBoardDisk_ReportRepeats("read", sector + i);
             if (read != BDD_TARGET_SD_CARD_OK)
             {
                 BddTargetBoardDisk_ReportSector("read failed", sector + i, read);
@@ -147,6 +150,30 @@ enum BddTargetBoardDiskResult BddTargetBoardDisk_Read(void* buffer, uint32_t sec
         }
     }
     return result;
+}
+
+/* A transfer the card driver had to repeat worked in the end, and would
+ * otherwise leave no trace of the wires having damaged it. */
+static void BddTargetBoardDisk_ReportRepeats(const char* what, uint32_t sector)
+{
+    uint32_t repeats = BddTargetSdCard_Repeats();
+    if (repeats != repeatsReported)
+    {
+        char line[REPORT_BYTES];
+        int formatted = snprintf(
+            line,
+            sizeof(line),
+            "[board] disk: %s repeated after a CRC failure, sector %lu, %lu so far\n",
+            what,
+            (unsigned long) sector,
+            (unsigned long) repeats
+        );
+        if ((formatted > 0) && ((size_t) formatted < sizeof(line)))
+        {
+            (void) write(STDOUT_FILENO, line, (size_t) formatted);
+        }
+        repeatsReported = repeats;
+    }
 }
 
 /* Range-checks a span of sectors without overflow: the subtraction keeps
@@ -171,6 +198,7 @@ enum BddTargetBoardDiskResult BddTargetBoardDisk_Write(const void* buffer, uint3
         {
             enum BddTargetSdCardResult written =
                 BddTargetSdCard_Write(sector + i, &bytes[(size_t) i * (size_t) BDD_TARGET_BOARD_DISK_SECTOR_SIZE]);
+            BddTargetBoardDisk_ReportRepeats("write", sector + i);
             if (written != BDD_TARGET_SD_CARD_OK)
             {
                 BddTargetBoardDisk_ReportSector("write failed", sector + i, written);

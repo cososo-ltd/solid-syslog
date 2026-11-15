@@ -30,6 +30,7 @@ enum
     ANSWER_READY = 0x00,
     ANSWER_IDLE = 0x01,
     ANSWER_ILLEGAL_COMMAND = 0x04,
+    ANSWER_CRC_ERROR = 0x08,
 
     GO_IDLE_STATE = 0,
     SEND_IF_COND = 8,
@@ -59,6 +60,7 @@ enum
     DATA_TOKEN = 0xFE,
     DATA_RESPONSE_MASK = 0x1F,
     DATA_ACCEPTED = 0x05,
+    DATA_CRC_ERROR = 0x0B,
     CRC_LENGTH = 2,
 
     /* Section 4.6.2: a card is ready within a second of being told to start,
@@ -66,7 +68,10 @@ enum
      * within 250 ms. The last two are doubled here. */
     START_TIMEOUT_MILLISECONDS = 1000,
     READ_TIMEOUT_MILLISECONDS = 200,
-    BUSY_TIMEOUT_MILLISECONDS = 500
+    BUSY_TIMEOUT_MILLISECONDS = 500,
+
+    /* A transfer that fails its CRC is tried this many times in all. */
+    TRANSFER_ATTEMPTS = 3
 };
 
 /* Bit 30 of ACMD41's argument: the host takes high capacity cards. */
@@ -75,6 +80,7 @@ static const uint32_t HOST_HIGH_CAPACITY = 0x40000000U;
 static bool started;
 static bool blockAddressed;
 static uint32_t sectorCount;
+static uint32_t repeats;
 
 static inline void SdCard_Wake(void);
 static enum BddTargetSdCardResult SdCard_GoIdle(void);
@@ -84,6 +90,7 @@ static bool SdCard_WaitUntilReady(void);
 static inline bool SdCard_HasPassed(uint32_t since, uint32_t milliseconds);
 static inline uint8_t SdCard_Crc7(const uint8_t* bytes, size_t count);
 static inline void SdCard_End(void);
+static inline enum BddTargetSdCardResult SdCard_Judge(uint8_t answer, uint8_t wanted);
 static enum BddTargetSdCardResult SdCard_TurnCrcOn(void);
 static enum BddTargetSdCardResult SdCard_CheckInterfaceCondition(void);
 static inline void SdCard_Receive(uint8_t* bytes, size_t count);
@@ -93,7 +100,9 @@ static enum BddTargetSdCardResult SdCard_ReadCapacity(void);
 static enum BddTargetSdCardResult SdCard_ReceiveBlock(uint8_t* bytes, size_t count);
 static uint16_t SdCard_Crc16(const uint8_t* bytes, size_t count);
 static inline uint32_t SdCard_SectorsInCsd(const uint8_t* csd);
+static enum BddTargetSdCardResult SdCard_ReadOnce(uint32_t sector, uint8_t* buffer);
 static inline uint32_t SdCard_AddressOf(uint32_t sector);
+static enum BddTargetSdCardResult SdCard_WriteOnce(uint32_t sector, const uint8_t* buffer);
 static enum BddTargetSdCardResult SdCard_SendBlock(const uint8_t* bytes, size_t count);
 static enum BddTargetSdCardResult SdCard_CheckStatus(void);
 
@@ -149,9 +158,22 @@ static enum BddTargetSdCardResult SdCard_GoIdle(void)
     {
         result = SdCard_Command(GO_IDLE_STATE, 0U, &answer);
     }
-    if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_IDLE))
+    if (result == BDD_TARGET_SD_CARD_OK)
     {
-        result = BDD_TARGET_SD_CARD_REFUSED;
+        result = SdCard_Judge(answer, ANSWER_IDLE);
+    }
+    return result;
+}
+
+/* An answer that is not the one wanted is the card refusing, unless what it
+ * says is that the command failed its CRC, which is the wires. */
+static inline enum BddTargetSdCardResult SdCard_Judge(uint8_t answer, uint8_t wanted)
+{
+    enum BddTargetSdCardResult result = BDD_TARGET_SD_CARD_OK;
+    if (answer != wanted)
+    {
+        result =
+            ((answer & (uint8_t) ANSWER_CRC_ERROR) != 0U) ? BDD_TARGET_SD_CARD_CRC_FAILED : BDD_TARGET_SD_CARD_REFUSED;
     }
     return result;
 }
@@ -255,9 +277,9 @@ static enum BddTargetSdCardResult SdCard_TurnCrcOn(void)
 {
     uint8_t answer = IDLE_LINE;
     enum BddTargetSdCardResult result = SdCard_Command(CRC_ON_OFF, CRC_ON, &answer);
-    if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_IDLE))
+    if (result == BDD_TARGET_SD_CARD_OK)
     {
-        result = BDD_TARGET_SD_CARD_REFUSED;
+        result = SdCard_Judge(answer, ANSWER_IDLE);
     }
     return result;
 }
@@ -278,7 +300,7 @@ static enum BddTargetSdCardResult SdCard_CheckInterfaceCondition(void)
         }
         else if (answer != (uint8_t) ANSWER_IDLE)
         {
-            result = BDD_TARGET_SD_CARD_REFUSED;
+            result = SdCard_Judge(answer, ANSWER_IDLE);
         }
         else
         {
@@ -324,9 +346,9 @@ static enum BddTargetSdCardResult SdCard_LeaveIdle(void)
             }
         }
     }
-    if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_READY))
+    if (result == BDD_TARGET_SD_CARD_OK)
     {
-        result = BDD_TARGET_SD_CARD_REFUSED;
+        result = SdCard_Judge(answer, ANSWER_READY);
     }
     return result;
 }
@@ -338,9 +360,9 @@ static enum BddTargetSdCardResult SdCard_ReadAddressing(void)
     uint8_t answer = IDLE_LINE;
     uint8_t ocr[OCR_LENGTH] = {0};
     enum BddTargetSdCardResult result = SdCard_Begin(READ_OCR, 0U, &answer);
-    if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_READY))
+    if (result == BDD_TARGET_SD_CARD_OK)
     {
-        result = BDD_TARGET_SD_CARD_REFUSED;
+        result = SdCard_Judge(answer, ANSWER_READY);
     }
     if (result == BDD_TARGET_SD_CARD_OK)
     {
@@ -351,9 +373,9 @@ static enum BddTargetSdCardResult SdCard_ReadAddressing(void)
     if ((result == BDD_TARGET_SD_CARD_OK) && !blockAddressed)
     {
         result = SdCard_Command(SET_BLOCKLEN, BDD_TARGET_SD_CARD_SECTOR_SIZE, &answer);
-        if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_READY))
+        if (result == BDD_TARGET_SD_CARD_OK)
         {
-            result = BDD_TARGET_SD_CARD_REFUSED;
+            result = SdCard_Judge(answer, ANSWER_READY);
         }
     }
     return result;
@@ -364,9 +386,9 @@ static enum BddTargetSdCardResult SdCard_ReadCapacity(void)
     uint8_t answer = IDLE_LINE;
     uint8_t csd[CSD_LENGTH] = {0};
     enum BddTargetSdCardResult result = SdCard_Begin(SEND_CSD, 0U, &answer);
-    if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_READY))
+    if (result == BDD_TARGET_SD_CARD_OK)
     {
-        result = BDD_TARGET_SD_CARD_REFUSED;
+        result = SdCard_Judge(answer, ANSWER_READY);
     }
     if (result == BDD_TARGET_SD_CARD_OK)
     {
@@ -399,7 +421,7 @@ static enum BddTargetSdCardResult SdCard_ReceiveBlock(uint8_t* bytes, size_t cou
     }
     else if (token != (uint8_t) DATA_TOKEN)
     {
-        result = BDD_TARGET_SD_CARD_BAD_DATA;
+        result = BDD_TARGET_SD_CARD_REFUSED;
     }
     else
     {
@@ -408,7 +430,7 @@ static enum BddTargetSdCardResult SdCard_ReceiveBlock(uint8_t* bytes, size_t cou
         uint16_t sent = (uint16_t) (((uint16_t) crc[0] << 8U) | (uint16_t) crc[1]);
         if (sent != SdCard_Crc16(bytes, count))
         {
-            result = BDD_TARGET_SD_CARD_BAD_DATA;
+            result = BDD_TARGET_SD_CARD_CRC_FAILED;
         }
     }
     return result;
@@ -461,6 +483,7 @@ void BddTargetSdCard_Stop(void)
     started = false;
     blockAddressed = false;
     sectorCount = 0U;
+    repeats = 0U;
 }
 
 bool BddTargetSdCard_IsStarted(void)
@@ -473,23 +496,41 @@ uint32_t BddTargetSdCard_SectorCount(void)
     return sectorCount;
 }
 
+uint32_t BddTargetSdCard_Repeats(void)
+{
+    return repeats;
+}
+
 enum BddTargetSdCardResult BddTargetSdCard_Read(uint32_t sector, uint8_t* buffer)
 {
     enum BddTargetSdCardResult result = BDD_TARGET_SD_CARD_NOT_STARTED;
     if (started)
     {
-        uint8_t answer = IDLE_LINE;
-        result = SdCard_Begin(READ_SINGLE_BLOCK, SdCard_AddressOf(sector), &answer);
-        if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_READY))
+        result = SdCard_ReadOnce(sector, buffer);
+        for (uint32_t attempt = 1U;
+             (attempt < (uint32_t) TRANSFER_ATTEMPTS) && (result == BDD_TARGET_SD_CARD_CRC_FAILED);
+             attempt++)
         {
-            result = BDD_TARGET_SD_CARD_REFUSED;
+            repeats++;
+            result = SdCard_ReadOnce(sector, buffer);
         }
-        if (result == BDD_TARGET_SD_CARD_OK)
-        {
-            result = SdCard_ReceiveBlock(buffer, BDD_TARGET_SD_CARD_SECTOR_SIZE);
-        }
-        SdCard_End();
     }
+    return result;
+}
+
+static enum BddTargetSdCardResult SdCard_ReadOnce(uint32_t sector, uint8_t* buffer)
+{
+    uint8_t answer = IDLE_LINE;
+    enum BddTargetSdCardResult result = SdCard_Begin(READ_SINGLE_BLOCK, SdCard_AddressOf(sector), &answer);
+    if (result == BDD_TARGET_SD_CARD_OK)
+    {
+        result = SdCard_Judge(answer, ANSWER_READY);
+    }
+    if (result == BDD_TARGET_SD_CARD_OK)
+    {
+        result = SdCard_ReceiveBlock(buffer, BDD_TARGET_SD_CARD_SECTOR_SIZE);
+    }
+    SdCard_End();
     return result;
 }
 
@@ -498,26 +539,41 @@ static inline uint32_t SdCard_AddressOf(uint32_t sector)
     return blockAddressed ? sector : (sector * (uint32_t) BDD_TARGET_SD_CARD_SECTOR_SIZE);
 }
 
+/* A sector written twice holds what it was sent, so sending one again is safe
+ * whichever end the CRC failed at. */
 enum BddTargetSdCardResult BddTargetSdCard_Write(uint32_t sector, const uint8_t* buffer)
 {
     enum BddTargetSdCardResult result = BDD_TARGET_SD_CARD_NOT_STARTED;
     if (started)
     {
-        uint8_t answer = IDLE_LINE;
-        result = SdCard_Begin(WRITE_BLOCK, SdCard_AddressOf(sector), &answer);
-        if ((result == BDD_TARGET_SD_CARD_OK) && (answer != (uint8_t) ANSWER_READY))
+        result = SdCard_WriteOnce(sector, buffer);
+        for (uint32_t attempt = 1U;
+             (attempt < (uint32_t) TRANSFER_ATTEMPTS) && (result == BDD_TARGET_SD_CARD_CRC_FAILED);
+             attempt++)
         {
-            result = BDD_TARGET_SD_CARD_REFUSED;
+            repeats++;
+            result = SdCard_WriteOnce(sector, buffer);
         }
-        if (result == BDD_TARGET_SD_CARD_OK)
-        {
-            result = SdCard_SendBlock(buffer, BDD_TARGET_SD_CARD_SECTOR_SIZE);
-        }
-        SdCard_End();
-        if (result == BDD_TARGET_SD_CARD_OK)
-        {
-            result = SdCard_CheckStatus();
-        }
+    }
+    return result;
+}
+
+static enum BddTargetSdCardResult SdCard_WriteOnce(uint32_t sector, const uint8_t* buffer)
+{
+    uint8_t answer = IDLE_LINE;
+    enum BddTargetSdCardResult result = SdCard_Begin(WRITE_BLOCK, SdCard_AddressOf(sector), &answer);
+    if (result == BDD_TARGET_SD_CARD_OK)
+    {
+        result = SdCard_Judge(answer, ANSWER_READY);
+    }
+    if (result == BDD_TARGET_SD_CARD_OK)
+    {
+        result = SdCard_SendBlock(buffer, BDD_TARGET_SD_CARD_SECTOR_SIZE);
+    }
+    SdCard_End();
+    if (result == BDD_TARGET_SD_CARD_OK)
+    {
+        result = SdCard_CheckStatus();
     }
     return result;
 }
@@ -537,9 +593,18 @@ static enum BddTargetSdCardResult SdCard_SendBlock(const uint8_t* bytes, size_t 
     (void) BddTargetBoardSdCardBus_Exchange((uint8_t) (crc >> 8U));
     (void) BddTargetBoardSdCardBus_Exchange((uint8_t) crc);
     uint8_t response = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
-    if ((response & (uint8_t) DATA_RESPONSE_MASK) != (uint8_t) DATA_ACCEPTED)
+    uint8_t said = response & (uint8_t) DATA_RESPONSE_MASK;
+    if (said == (uint8_t) DATA_CRC_ERROR)
+    {
+        result = BDD_TARGET_SD_CARD_CRC_FAILED;
+    }
+    else if (said != (uint8_t) DATA_ACCEPTED)
     {
         result = BDD_TARGET_SD_CARD_WRITE_FAILED;
+    }
+    else
+    {
+        /* Taken. Whether it was stored is in the card's status. */
     }
     return result;
 }
@@ -555,7 +620,8 @@ static enum BddTargetSdCardResult SdCard_CheckStatus(void)
     if (result == BDD_TARGET_SD_CARD_OK)
     {
         second = BddTargetBoardSdCardBus_Exchange(IDLE_LINE);
-        if ((first != (uint8_t) ANSWER_READY) || (second != 0U))
+        result = SdCard_Judge(first, ANSWER_READY);
+        if ((result == BDD_TARGET_SD_CARD_REFUSED) || ((result == BDD_TARGET_SD_CARD_OK) && (second != 0U)))
         {
             result = BDD_TARGET_SD_CARD_WRITE_FAILED;
         }

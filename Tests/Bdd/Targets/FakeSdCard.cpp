@@ -140,8 +140,9 @@ void SendBlock(const uint8_t* bytes, size_t count)
         state.outgoing.push_back(bytes[i]);
     }
     uint16_t crc = Crc16(bytes, count);
-    if (FakeSdCard::settings.corruptsDataItSends)
+    if (FakeSdCard::settings.blocksSentDamaged > 0)
     {
+        FakeSdCard::settings.blocksSentDamaged--;
         crc ^= 0x0001U;
     }
     state.outgoing.push_back(static_cast<uint8_t>(crc >> 8U));
@@ -303,6 +304,11 @@ void FinishBlock()
     {
         response = DATA_CRC_ERROR;
     }
+    if (FakeSdCard::settings.blocksTakenAsDamaged > 0)
+    {
+        FakeSdCard::settings.blocksTakenAsDamaged--;
+        response = DATA_CRC_ERROR;
+    }
     if (FakeSdCard::settings.writeResponse != 0U)
     {
         response = FakeSdCard::settings.writeResponse;
@@ -423,6 +429,19 @@ const Sector& Stored(uint32_t sector)
 const std::vector<Command>& Commands()
 {
     return state.commands;
+}
+
+int CountOf(uint8_t index)
+{
+    int count = 0;
+    for (const Command& command : state.commands)
+    {
+        if (command.index == index)
+        {
+            count++;
+        }
+    }
+    return count;
 }
 
 bool Received(uint8_t index)

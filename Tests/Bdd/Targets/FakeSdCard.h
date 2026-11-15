@@ -49,7 +49,11 @@ struct Settings
     bool sendsNoData = false;
     /* Sent in place of the token that starts a block of data, when not 0. */
     uint8_t readErrorToken = 0x00;
-    bool corruptsDataItSends = false;
+    /* How many of the next blocks it sends arrive damaged, as wires that
+     * pick up noise would leave them. */
+    int blocksSentDamaged = 0;
+    /* How many of the next blocks it is sent it says arrived damaged. */
+    int blocksTakenAsDamaged = 0;
     /* Sent in place of the response a card gives to a block it took, when not 0. */
     uint8_t writeResponse = 0x00;
     bool staysBusyAfterWrite = false;
@@ -75,6 +79,7 @@ const Sector& Stored(uint32_t sector);
 /* Every command that arrived whole, in order. */
 const std::vector<Command>& Commands();
 bool Received(uint8_t index);
+int CountOf(uint8_t index);
 uint32_t ArgumentOf(uint8_t index);
 /* The six bytes of the first command, as they were on the wire. */
 const std::vector<uint8_t>& FirstFrame();
