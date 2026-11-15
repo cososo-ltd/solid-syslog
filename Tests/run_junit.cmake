@@ -1,6 +1,8 @@
 # Runs the test executable with verbose JUnit XML output.
-# The XML is written regardless of pass/fail, then the exit code is propagated
-# so cmake --build --target junit fails when tests fail.
+# The XML is written regardless of pass/fail. A failure is recorded as a marker
+# file named after the executable under FAILURES_DIR rather than failing this
+# step, so every executable on the `junit` target runs; check_junit.cmake then
+# fails the target naming each one that failed.
 #
 # PACKAGE is the executable's target name. CppUTest puts it in front of every
 # group's file name (cpputest_<Package>_<Group>.xml) and classname
@@ -22,5 +24,5 @@ execute_process(
     RESULT_VARIABLE TEST_RESULT
 )
 if(NOT TEST_RESULT EQUAL 0)
-    message(FATAL_ERROR "Tests failed")
+    file(TOUCH ${FAILURES_DIR}/${PACKAGE})
 endif()
