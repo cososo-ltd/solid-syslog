@@ -19,6 +19,8 @@ enum
     START_OF_A_PAGE = 0x042000,
     LAST_BYTE_OF_A_PAGE = 0x0420FF,
     A_SECTOR = 0x42,
+    TWO_SECTORS = 2 * FakeSpiNorFlash::SECTOR_BYTES,
+    THREE_PAGES_AND_A_LITTLE = (3 * FakeSpiNorFlash::PAGE_BYTES) + 10,
     SECTORS_IN_SIXTEEN_MEBIBYTES = 4096,
     SIXTEEN_MEBIBYTES = 16 * 1024 * 1024,
     CAPACITY_CODE_8_MEBIBYTES = 0x17,
@@ -208,7 +210,7 @@ TEST(BddTargetSpiNorFlash, ReadsTheBytesAtAnAddress)
 
 TEST(BddTargetSpiNorFlash, ReadsAcrossSectorsWithOneCommand)
 {
-    const std::vector<uint8_t> held = BytesOfPattern(3, 2 * FakeSpiNorFlash::SECTOR_SIZE);
+    const std::vector<uint8_t> held = BytesOfPattern(3, TWO_SECTORS);
     FakeSpiNorFlash::Store(LAST_BYTE_OF_A_PAGE, held);
     CHECK_FLASH_STARTED();
     CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_OK, Read(LAST_BYTE_OF_A_PAGE, held.size()));
@@ -260,7 +262,7 @@ TEST(BddTargetSpiNorFlash, ProgramsBytesAtAnAddress)
 
 TEST(BddTargetSpiNorFlash, ProgramsAWholePageWithOneCommand)
 {
-    const std::vector<uint8_t> bytes = BytesOfPattern(1, FakeSpiNorFlash::PAGE_SIZE);
+    const std::vector<uint8_t> bytes = BytesOfPattern(1, FakeSpiNorFlash::PAGE_BYTES);
     CHECK_FLASH_STARTED();
     CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_OK, Program(START_OF_A_PAGE, bytes));
     CHECK_BYTES_EQUAL(bytes, FakeSpiNorFlash::Stored(START_OF_A_PAGE, bytes.size()));
@@ -289,7 +291,7 @@ TEST(BddTargetSpiNorFlash, SplitsAProgramWhereItCrossesIntoTheNextPage)
 
 TEST(BddTargetSpiNorFlash, ProgramsASpanOfManyPages)
 {
-    const std::vector<uint8_t> bytes = BytesOfPattern(7, (3 * FakeSpiNorFlash::PAGE_SIZE) + 10);
+    const std::vector<uint8_t> bytes = BytesOfPattern(7, THREE_PAGES_AND_A_LITTLE);
     CHECK_FLASH_STARTED();
     CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_OK, Program(LAST_BYTE_OF_A_PAGE, bytes));
     CHECK_BYTES_EQUAL(bytes, FakeSpiNorFlash::Stored(LAST_BYTE_OF_A_PAGE, bytes.size()));
@@ -355,12 +357,12 @@ TEST(BddTargetSpiNorFlash, ErasesNothingBeforeItIsStarted)
 
 TEST(BddTargetSpiNorFlash, ErasesASector)
 {
-    FakeSpiNorFlash::Store(A_SECTOR * FakeSpiNorFlash::SECTOR_SIZE, BytesOfPattern(0, FakeSpiNorFlash::SECTOR_SIZE));
+    FakeSpiNorFlash::Store(A_SECTOR * FakeSpiNorFlash::SECTOR_BYTES, BytesOfPattern(0, FakeSpiNorFlash::SECTOR_BYTES));
     CHECK_FLASH_STARTED();
     CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_OK, BddTargetSpiNorFlash_EraseSector(A_SECTOR));
     CHECK_BYTES_EQUAL(
-        std::vector<uint8_t>(FakeSpiNorFlash::SECTOR_SIZE, 0xFF),
-        FakeSpiNorFlash::Stored(A_SECTOR * FakeSpiNorFlash::SECTOR_SIZE, FakeSpiNorFlash::SECTOR_SIZE)
+        std::vector<uint8_t>(FakeSpiNorFlash::SECTOR_BYTES, 0xFF),
+        FakeSpiNorFlash::Stored(A_SECTOR * FakeSpiNorFlash::SECTOR_BYTES, FakeSpiNorFlash::SECTOR_BYTES)
     );
 }
 
@@ -369,7 +371,7 @@ TEST(BddTargetSpiNorFlash, ErasesOneSectorAndNoOther)
     CHECK_FLASH_STARTED();
     CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_OK, BddTargetSpiNorFlash_EraseSector(A_SECTOR));
     LONGS_EQUAL(1, FakeSpiNorFlash::Erases().size());
-    LONGS_EQUAL(A_SECTOR * FakeSpiNorFlash::SECTOR_SIZE, FakeSpiNorFlash::Erases()[0]);
+    LONGS_EQUAL(A_SECTOR * FakeSpiNorFlash::SECTOR_BYTES, FakeSpiNorFlash::Erases()[0]);
 }
 
 TEST(BddTargetSpiNorFlash, IsNoLongerBusyWhenAnEraseReturns)
@@ -412,4 +414,29 @@ TEST(BddTargetSpiNorFlash, SaysThereIsNoAnswerWhenThePartGoesQuietDuringAnErase)
     CHECK_FLASH_STARTED();
     FakeSpiNorFlash::settings.present = false;
     CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER, BddTargetSpiNorFlash_EraseSector(A_SECTOR));
+}
+
+TEST(BddTargetSpiNorFlash, SaysThereIsNoAnswerWhenThePartGoesQuietDuringARead)
+{
+    CHECK_FLASH_STARTED();
+    FakeSpiNorFlash::settings.present = false;
+    CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER, Read(AN_ADDRESS, 4));
+}
+
+TEST(BddTargetSpiNorFlash, ReadsErasedBytesFromAPartThatAnswers)
+{
+    CHECK_FLASH_STARTED();
+    CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_OK, Read(AN_ADDRESS, 4));
+    CHECK_BYTES_EQUAL(std::vector<uint8_t>(4, 0xFF), buffer);
+}
+
+TEST(BddTargetSpiNorFlash, HasWordsForEveryResult)
+{
+    STRCMP_EQUAL("ok", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_OK));
+    STRCMP_EQUAL("not started", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_NOT_STARTED));
+    STRCMP_EQUAL("out of range", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_OUT_OF_RANGE));
+    STRCMP_EQUAL("no answer", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER));
+    STRCMP_EQUAL("not a part this drives", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_UNSUPPORTED));
+    STRCMP_EQUAL("timed out", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_TIMED_OUT));
+    STRCMP_EQUAL("would not enable writing", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_WRITE_REFUSED));
 }

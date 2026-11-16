@@ -7,8 +7,10 @@
  * fault in the driver, the bus or the part from one in a filesystem built on
  * them.
  *
- * The last sector is beyond what any target's filesystem is given, so a
- * store on the part is not disturbed. It is left erased. */
+ * On the part the board has, of 16 MiB, the last sector is beyond the 8 MiB
+ * a target's filesystem is given, so a store on the part is not disturbed. A
+ * part of 8 MiB has no such sector, and the check would write in its store.
+ * The sector is erased last, whatever was found. */
 void FlashCheck_Run(void);
 
 #endif

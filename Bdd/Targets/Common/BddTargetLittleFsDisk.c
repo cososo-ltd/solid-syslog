@@ -15,7 +15,9 @@ enum
     /* The read and program units are one sector. */
     READ_SIZE = BDD_TARGET_BOARD_DISK_SECTOR_SIZE,
     PROG_SIZE = BDD_TARGET_BOARD_DISK_SECTOR_SIZE,
-    SECTORS_PER_BLOCK = BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE / BDD_TARGET_BOARD_DISK_SECTOR_SIZE
+    SECTORS_PER_BLOCK = BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE / BDD_TARGET_BOARD_DISK_SECTOR_SIZE,
+    FIRST_SUPERBLOCK = 0,
+    SECOND_SUPERBLOCK = 1
 };
 
 static uint8_t readBuffer[BDD_TARGET_LITTLE_FS_DISK_CACHE_SIZE];
@@ -55,13 +57,13 @@ const struct lfs_config* BddTargetLittleFsDisk_Config(void)
 }
 
 /* The disk under this is the board's to put back to nothing, so the board is
- * asked. The one board that runs this has a disk the harness replaces, and
- * says no. What a board that said yes clears is its first sector, which is
- * one copy of LittleFS's superblock of two: a board whose disk outlasts the
- * target and holds a LittleFS would need the second block cleared here too. */
+ * asked first, and one whose disk the harness replaces says no. What a board
+ * that says yes has cleared is its first sector, and LittleFS keeps its
+ * superblock in a pair of blocks, so both are erased here as well. */
 bool BddTargetLittleFsDisk_Wipe(void)
 {
-    return BddTargetBoardDisk_Wipe();
+    return BddTargetBoardDisk_Wipe() && (DiskErase(&CONFIG, FIRST_SUPERBLOCK) == LFS_ERR_OK) &&
+           (DiskErase(&CONFIG, SECOND_SUPERBLOCK) == LFS_ERR_OK);
 }
 
 /* Reads and writes are whole sectors: read_size and prog_size are one sector,

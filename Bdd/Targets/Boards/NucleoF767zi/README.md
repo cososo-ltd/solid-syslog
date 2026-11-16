@@ -345,12 +345,13 @@ task that asked for either waits by asking the part for its status until it
 has finished.
 
 LittleFS is given the part with a program unit of 16 bytes, not the 256 of a
-page, and a cache of 512. Why those, and what a stored message costs the part
-in erases, is on the
-[LittleFS platform page](../../../../docs/platforms/littlefs/index.md#what-the-store-costs-the-flash-in-erases).
-With the collector reachable a message costs about two erases, and the store
-was seen to keep up with one message every 120 ms and not with one every
-50 ms.
+page, which the
+[LittleFS setup page](../../../../docs/platforms/littlefs/setup.md#what-will-catch-you-out)
+gives the reason for, and with the cache of 512 bytes it has under QEMU. What
+a stored message costs the part in erases is on the
+[LittleFS platform page](../../../../docs/platforms/littlefs/index.md#what-the-store-costs-the-flash-in-erases):
+about two with the collector reachable. The store was seen to keep up with one
+message every 120 ms and not with one every 50 ms.
 
 A part that was erasing when the board was reset goes on erasing, and answers
 nothing but its status until it has finished, so the driver waits for it before

@@ -40,9 +40,7 @@ _ANSWER_TIMEOUT_SECONDS = 30
 # `send 1`. Asked for faster than the medium takes them, messages fill the
 # target's buffer, which then discards, and that is the library's doing and not
 # a loss. So with the file store the messages are asked for at an interval,
-# which the run script gives for the image's medium. This is the card's, about
-# half the rate it was seen to keep up with.
-_FILE_STORE_SEND_INTERVAL_SECONDS = 0.05
+# which the run script gives for the image's medium.
 # The collector writes what it has received a little after it receives it.
 _RECORD_WAIT_SECONDS = 60
 _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_tcp.jsonl"}
@@ -173,7 +171,7 @@ def _messages_once_arrived(path, count):
     return messages
 
 
-def main(count, store, file_store_interval_seconds=_FILE_STORE_SEND_INTERVAL_SECONDS):
+def main(count, store, file_store_interval_seconds):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     console = open_board(os.environ["NUCLEO_F767ZI_SERIAL_PORT"], os.environ.get("STM32_PROGRAMMER_CLI", "STM32_Programmer_CLI"))
     try:
@@ -216,6 +214,6 @@ if __name__ == "__main__":
         main(
             int(sys.argv[1]),
             sys.argv[2] if len(sys.argv) > 2 else "null",
-            float(sys.argv[3]) if len(sys.argv) > 3 else _FILE_STORE_SEND_INTERVAL_SECONDS,
+            float(sys.argv[3]) if len(sys.argv) > 3 else 0,
         )
     )

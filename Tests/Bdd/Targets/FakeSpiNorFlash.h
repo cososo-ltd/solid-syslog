@@ -19,8 +19,8 @@ namespace FakeSpiNorFlash
 {
 enum
 {
-    PAGE_SIZE = 256,
-    SECTOR_SIZE = 4096,
+    PAGE_BYTES = 256,
+    SECTOR_BYTES = 4096,
     JEDEC_ID_LENGTH = 3
 };
 

@@ -32,7 +32,6 @@ static uint8_t expected[BDD_TARGET_SPI_NOR_FLASH_SECTOR_SIZE];
 static uint8_t found[BDD_TARGET_SPI_NOR_FLASH_SECTOR_SIZE];
 
 static void FlashCheck_Say(const char* format, ...) __attribute__((format(printf, 1, 2)));
-static inline const char* FlashCheck_Reason(enum BddTargetSpiNorFlashResult result);
 static bool FlashCheck_Erase(uint32_t sector);
 static bool FlashCheck_Passed(const char* what, enum BddTargetSpiNorFlashResult result);
 static bool FlashCheck_HoldsWhatIsExpected(const char* what, uint32_t sector);
@@ -51,8 +50,9 @@ void FlashCheck_Run(void)
         passed = FlashCheck_Erase(sector) &&
                  FlashCheck_Program("a program across two pages", sector, SPLIT_OFFSET, SPLIT_BYTES) &&
                  FlashCheck_Program("a program of part of a page", sector, PIECE_OFFSET, PIECE_BYTES) &&
-                 FlashCheck_Program("a second beside it", sector, PIECE_OFFSET + PIECE_BYTES, PIECE_BYTES) &&
-                 FlashCheck_Erase(sector);
+                 FlashCheck_Program("a second beside it", sector, PIECE_OFFSET + PIECE_BYTES, PIECE_BYTES);
+        /* Erased last whatever was found, so nothing of the check is left. */
+        passed = FlashCheck_Erase(sector) && passed;
     }
     FlashCheck_Say(passed ? "passed" : "failed");
 }
@@ -82,41 +82,9 @@ static bool FlashCheck_Passed(const char* what, enum BddTargetSpiNorFlashResult 
 {
     if (result != BDD_TARGET_SPI_NOR_FLASH_OK)
     {
-        FlashCheck_Say("%s: %s", what, FlashCheck_Reason(result));
+        FlashCheck_Say("%s: %s", what, BddTargetSpiNorFlash_ResultText(result));
     }
     return result == BDD_TARGET_SPI_NOR_FLASH_OK;
-}
-
-static inline const char* FlashCheck_Reason(enum BddTargetSpiNorFlashResult result)
-{
-    const char* reason = "unknown";
-    switch (result)
-    {
-        case BDD_TARGET_SPI_NOR_FLASH_OK:
-            reason = "ok";
-            break;
-        case BDD_TARGET_SPI_NOR_FLASH_NOT_STARTED:
-            reason = "not started";
-            break;
-        case BDD_TARGET_SPI_NOR_FLASH_OUT_OF_RANGE:
-            reason = "out of range";
-            break;
-        case BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER:
-            reason = "no answer";
-            break;
-        case BDD_TARGET_SPI_NOR_FLASH_UNSUPPORTED:
-            reason = "not a part this drives";
-            break;
-        case BDD_TARGET_SPI_NOR_FLASH_TIMED_OUT:
-            reason = "timed out";
-            break;
-        case BDD_TARGET_SPI_NOR_FLASH_WRITE_REFUSED:
-            reason = "would not enable writing";
-            break;
-        default:
-            break;
-    }
-    return reason;
 }
 
 static bool FlashCheck_Erase(uint32_t sector)

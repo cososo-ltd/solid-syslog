@@ -25,7 +25,7 @@ enum
     STATUS_WRITE_ENABLED = 0x02
 };
 
-using Sector = std::array<uint8_t, FakeSpiNorFlash::SECTOR_SIZE>;
+using Sector = std::array<uint8_t, FakeSpiNorFlash::SECTOR_BYTES>;
 
 struct State
 {
@@ -61,14 +61,14 @@ uint32_t Capacity()
 
 uint8_t ByteAt(uint32_t address)
 {
-    const auto found = state.sectors.find(address / FakeSpiNorFlash::SECTOR_SIZE);
+    const auto found = state.sectors.find(address / FakeSpiNorFlash::SECTOR_BYTES);
     return (found == state.sectors.end()) ? static_cast<uint8_t>(ERASED)
-                                          : found->second[address % FakeSpiNorFlash::SECTOR_SIZE];
+                                          : found->second.at(address % FakeSpiNorFlash::SECTOR_BYTES);
 }
 
 uint8_t& ByteToChangeAt(uint32_t address)
 {
-    const uint32_t sector = address / FakeSpiNorFlash::SECTOR_SIZE;
+    const uint32_t sector = address / FakeSpiNorFlash::SECTOR_BYTES;
     auto found = state.sectors.find(sector);
     if (found == state.sectors.end())
     {
@@ -76,7 +76,7 @@ uint8_t& ByteToChangeAt(uint32_t address)
         erased.fill(ERASED);
         found = state.sectors.emplace(sector, erased).first;
     }
-    return found->second[address % FakeSpiNorFlash::SECTOR_SIZE];
+    return found->second.at(address % FakeSpiNorFlash::SECTOR_BYTES);
 }
 
 bool IsBusyNow()
@@ -144,7 +144,7 @@ uint8_t ExchangeSelected(uint8_t out)
         }
         else if (command == READ_JEDEC_ID)
         {
-            in = FakeSpiNorFlash::settings.jedecId[state.jedecSent % FakeSpiNorFlash::JEDEC_ID_LENGTH];
+            in = FakeSpiNorFlash::settings.jedecId.at(state.jedecSent % FakeSpiNorFlash::JEDEC_ID_LENGTH);
             state.jedecSent++;
         }
         else if ((command == READ_DATA) && addressArrived)
@@ -173,11 +173,11 @@ uint8_t ExchangeSelected(uint8_t out)
 void CarryOutProgram(const std::vector<uint8_t>& frame)
 {
     const uint32_t address = AddressIn(frame);
-    const uint32_t page = address - (address % FakeSpiNorFlash::PAGE_SIZE);
+    const uint32_t page = address - (address % FakeSpiNorFlash::PAGE_BYTES);
     const size_t length = frame.size() - (ADDRESS_LENGTH + 1U);
     for (size_t i = 0; i < length; i++)
     {
-        const uint32_t offset = static_cast<uint32_t>((address - page + i) % FakeSpiNorFlash::PAGE_SIZE);
+        const auto offset = static_cast<uint32_t>((address - page + i) % FakeSpiNorFlash::PAGE_BYTES);
         ByteToChangeAt(page + offset) &= frame[ADDRESS_LENGTH + 1U + i];
     }
     state.programs.push_back({address, length});
@@ -186,7 +186,7 @@ void CarryOutProgram(const std::vector<uint8_t>& frame)
 void CarryOutErase(const std::vector<uint8_t>& frame)
 {
     const uint32_t address = AddressIn(frame);
-    state.sectors.erase(address / FakeSpiNorFlash::SECTOR_SIZE);
+    state.sectors.erase(address / FakeSpiNorFlash::SECTOR_BYTES);
     state.erases.push_back(address);
 }
 

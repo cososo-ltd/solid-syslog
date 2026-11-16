@@ -60,6 +60,38 @@ static enum BddTargetSpiNorFlashResult SpiNorFlash_ProgramInPage(uint32_t addres
 static enum BddTargetSpiNorFlashResult SpiNorFlash_EnableWriting(void);
 static enum BddTargetSpiNorFlashResult SpiNorFlash_CheckSector(uint32_t sector);
 
+const char* BddTargetSpiNorFlash_ResultText(enum BddTargetSpiNorFlashResult result)
+{
+    const char* text = "ok";
+    switch (result)
+    {
+        case BDD_TARGET_SPI_NOR_FLASH_OK:
+            break;
+        case BDD_TARGET_SPI_NOR_FLASH_NOT_STARTED:
+            text = "not started";
+            break;
+        case BDD_TARGET_SPI_NOR_FLASH_OUT_OF_RANGE:
+            text = "out of range";
+            break;
+        case BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER:
+            text = "no answer";
+            break;
+        case BDD_TARGET_SPI_NOR_FLASH_UNSUPPORTED:
+            text = "not a part this drives";
+            break;
+        case BDD_TARGET_SPI_NOR_FLASH_TIMED_OUT:
+            text = "timed out";
+            break;
+        case BDD_TARGET_SPI_NOR_FLASH_WRITE_REFUSED:
+            text = "would not enable writing";
+            break;
+        default:
+            text = "unknown";
+            break;
+    }
+    return text;
+}
+
 enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Start(void)
 {
     BddTargetSpiNorFlash_Stop();
@@ -194,6 +226,12 @@ enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Read(uint32_t address, uint
             buffer[i] = BddTargetBoardFlashBus_Exchange(READ_FILL);
         }
         BddTargetBoardFlashBus_Deselect();
+        /* Erased bytes and a line nothing drives both read as all ones, so
+         * the bytes cannot say whether the part sent them. Its status can. */
+        if (SpiNorFlash_Status() == (uint8_t) IDLE_LINE)
+        {
+            result = BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER;
+        }
     }
     return result;
 }

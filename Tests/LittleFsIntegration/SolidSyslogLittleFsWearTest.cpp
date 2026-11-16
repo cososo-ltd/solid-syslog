@@ -3,18 +3,7 @@
 
 #include "CppUTest/TestHarness.h"
 
-extern "C"
-{
-#include "LittleFsDisk.h"
-#include "SolidSyslogBlockDevice.h"
-#include "SolidSyslogBlockStore.h"
-#include "SolidSyslogFile.h"
-#include "SolidSyslogFileBlockDevice.h"
-#include "SolidSyslogLittleFsFile.h"
-#include "SolidSyslogStore.h"
-#include "SolidSyslogStoreDefinition.h"
-#include "lfs.h"
-}
+#include "LittleFsStoreStack.h"
 
 /* What the store costs a flash part, in erases, which are what wear one out.
  * The platform page tells an integrator how the size of a store file sets
@@ -27,7 +16,7 @@ extern "C"
  * first.
  *
  * The counts take in what LittleFS spends on its own metadata as well, which
- * it compacts every so many commits, so most are held between bounds. */
+ * it compacts every so many commits, so each is held between bounds. */
 
 enum
 {
@@ -40,43 +29,7 @@ enum
     BLOCKS_OF_RECORDS = 4
 };
 
-namespace
-{
-struct WearStack
-{
-    LittleFsDisk disk = {};
-    lfs_config config = {};
-    lfs_t filesystem = {};
-    unsigned char fileCache[LITTLEFS_DISK_CACHE_SIZE] = {};
-    SolidSyslogFile* file = nullptr;
-    SolidSyslogBlockDevice* device = nullptr;
-    SolidSyslogStore* store = nullptr;
-
-    void Start(size_t storeFileBytes)
-    {
-        LittleFsDisk_Init(&disk);
-        LittleFsDisk_Configure(&disk, &config);
-        LONGS_EQUAL(LFS_ERR_OK, lfs_format(&filesystem, &config));
-        LONGS_EQUAL(LFS_ERR_OK, lfs_mount(&filesystem, &config));
-        file = SolidSyslogLittleFsFile_Create(&filesystem, fileCache, sizeof(fileCache));
-        device = SolidSyslogFileBlockDevice_Create(file, "/STORE", storeFileBytes);
-        SolidSyslogBlockStoreConfig storeConfig = {};
-        storeConfig.BlockDevice = device;
-        storeConfig.MaxBlocks = 32;
-        store = SolidSyslogBlockStore_Create(&storeConfig);
-    }
-
-    void Stop()
-    {
-        SolidSyslogBlockStore_Destroy(store);
-        SolidSyslogFileBlockDevice_Destroy(device);
-        SolidSyslogLittleFsFile_Destroy(file);
-        (void) lfs_unmount(&filesystem);
-    }
-};
-} // namespace
-
-static WearStack stack;
+static LittleFsStoreStack stack;
 
 static unsigned Erases()
 {
@@ -116,12 +69,32 @@ static unsigned Send(unsigned count)
         (std::to_string(erases) + " erases for " + std::to_string(count) + " records").c_str() \
     )
 
+/* One operation cost `blocks` erases, or one more where LittleFS compacted its
+ * metadata under it. */
+#define CHECK_ERASES(blocks, erases)                                                                       \
+    CHECK_TEXT(                                                                                            \
+        ((erases) >= static_cast<unsigned>(blocks)) && ((erases) <= (static_cast<unsigned>(blocks) + 1U)), \
+        (std::to_string(erases) + " erases").c_str()                                                       \
+    )
+
 // clang-format off
 TEST_GROUP(SolidSyslogLittleFsWear)
 {
+    void setup() override
+    {
+        stack = LittleFsStoreStack();
+        stack.storeMaxBlocks = 32;
+    }
+
     void teardown() override
     {
-        stack.Stop();
+        stack.Unmount();
+    }
+
+    static void StartWithStoreBlocksOf(size_t bytes)
+    {
+        stack.storeBlockBytes = bytes;
+        stack.FormatAndMount();
     }
 };
 
@@ -129,7 +102,7 @@ TEST_GROUP(SolidSyslogLittleFsWear)
 
 TEST(SolidSyslogLittleFsWear, AnAppendCostsAboutOneErase)
 {
-    stack.Start(FOUR_BLOCK_FILE_BYTES);
+    StartWithStoreBlocksOf(FOUR_BLOCK_FILE_BYTES);
     const unsigned before = Erases();
 
     Append(RECORDS, RECORD_BYTES);
@@ -139,7 +112,7 @@ TEST(SolidSyslogLittleFsWear, AnAppendCostsAboutOneErase)
 
 TEST(SolidSyslogLittleFsWear, AMarkInAFileOfOneBlockCostsAboutOneErase)
 {
-    stack.Start(ONE_BLOCK_FILE_BYTES);
+    StartWithStoreBlocksOf(ONE_BLOCK_FILE_BYTES);
     Append(RECORDS, RECORD_BYTES);
     const unsigned before = Erases();
 
@@ -150,18 +123,18 @@ TEST(SolidSyslogLittleFsWear, AMarkInAFileOfOneBlockCostsAboutOneErase)
 
 TEST(SolidSyslogLittleFsWear, AMarkAtTheStartOfAFileErasesABlockForEveryBlockOfTheFile)
 {
-    stack.Start(FOUR_BLOCK_FILE_BYTES);
+    StartWithStoreBlocksOf(FOUR_BLOCK_FILE_BYTES);
     Append(RECORDS, RECORD_BYTES);
     const unsigned before = Erases();
 
     LONGS_EQUAL(1, Send(1));
 
-    LONGS_EQUAL(BLOCKS_OF_RECORDS, Erases() - before);
+    CHECK_ERASES(BLOCKS_OF_RECORDS, Erases() - before);
 }
 
 TEST(SolidSyslogLittleFsWear, AMarkAtTheEndOfAFileErasesOneBlock)
 {
-    stack.Start(FOUR_BLOCK_FILE_BYTES);
+    StartWithStoreBlocksOf(FOUR_BLOCK_FILE_BYTES);
     Append(RECORDS - 1, RECORD_BYTES);
     LONGS_EQUAL(RECORDS - 1, Send(RECORDS - 1));
     Append(1, RECORD_BYTES);
@@ -169,12 +142,12 @@ TEST(SolidSyslogLittleFsWear, AMarkAtTheEndOfAFileErasesOneBlock)
 
     LONGS_EQUAL(1, Send(1));
 
-    LONGS_EQUAL(1, Erases() - before);
+    CHECK_ERASES(1U, Erases() - before);
 }
 
 TEST(SolidSyslogLittleFsWear, ARecordStoredAndSentAtOnceCostsAboutTwoErases)
 {
-    stack.Start(FOUR_BLOCK_FILE_BYTES);
+    StartWithStoreBlocksOf(FOUR_BLOCK_FILE_BYTES);
     const unsigned before = Erases();
 
     for (unsigned i = 0; i < static_cast<unsigned>(RECORDS); i++)

@@ -8,9 +8,11 @@
  *
  * README.md in the directory above holds the pin plan. */
 
-/* Takes the SPI4 pins, which the flash check may have had, with both chip
- * selects high. Then probes the MicroSD card and the W25Q128, one line of
- * console output each. */
+/* Takes the SPI4 pins and leaves both chip selects high. */
+void StorageProbe_Init(void);
+
+/* Takes the pins again, which the flash check may have had since, and probes
+ * the MicroSD card, then the W25Q128, one line of console output each. */
 void StorageProbe_Run(void);
 
 #endif

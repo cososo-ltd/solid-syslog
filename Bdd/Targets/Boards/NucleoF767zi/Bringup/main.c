@@ -42,6 +42,7 @@ static inline bool IsCommand(const char* command);
 int main(void)
 {
     Board_Init();
+    StorageProbe_Init();
     BddTargetLineAssembler_Reset(&line);
     WriteText(BANNER);
     for (;;)

@@ -42,6 +42,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         BDD_TARGET_SPI_NOR_FLASH_WRITE_REFUSED
     };
 
+    /* A few words for a result, for a line on a console. */
+    const char* BddTargetSpiNorFlash_ResultText(enum BddTargetSpiNorFlashResult result);
+
     /* Waits for the part to finish whatever a reset interrupted, and
      * identifies it. It can be called again after it has failed. */
     enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Start(void);
@@ -58,7 +61,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* Reads `count` bytes from `address` on, which may be any bytes of the
      * part. The part sends no check with them, so bytes damaged on the wires
-     * are not known to be. */
+     * are not known to be. A part that has stopped answering is: it is asked
+     * for its status once the bytes are in. */
     enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Read(uint32_t address, uint8_t* buffer, size_t count);
 
     /* Programs `count` bytes from `address` on, which may be any bytes of the
