@@ -677,6 +677,11 @@ PE2 also comes out on CN10 pin 25. Only one of the two is to be wired.
 The firmware holds whichever chip select it is not using high. Each breakout
 also pulls its own select up, so a breakout is off the bus from power-up.
 
+A high select keeps a card off the bus only once the card is in SPI mode,
+which its first command puts it in. Until then it takes MOSI for its own
+command line whatever its select is doing. So an image that uses the flash
+sends the card that one command before it sends the flash anything.
+
 A device that has stopped answering is, on a breadboard, first a wire that has
 come out. The bring-up image's `probe` says which of the two still answers,
 and its `flash` whether the flash still erases and programs.
