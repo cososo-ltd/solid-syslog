@@ -13,10 +13,9 @@
  * received frames to netif->input. It may block, so it runs on a task, after
  * the scheduler has started.
  *
- * The link is the board's: a board whose link cannot drop brings the netif up
- * with NETIF_FLAG_LINK_UP set, and one with a cable to pull raises and lowers
- * it as the link comes and goes. The target sets the interface up and leaves
- * the link alone. */
+ * The board owns the link state: a board whose link cannot drop sets
+ * NETIF_FLAG_LINK_UP here, and one whose link can raises and lowers it as the
+ * link changes. The target sets the interface up and leaves the link alone. */
 err_t BddTargetBoardNetif_Init(struct netif* netif);
 
 #endif /* BDD_TARGET_BOARD_NETIF_H */

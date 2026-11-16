@@ -1,7 +1,7 @@
-/* The MPS2-AN385 behind the board seam's clock - see BddTargetBoardClock.h.
+/* The QEMU mps2-an385 machine's clock - see BddTargetBoardClock.h.
  *
- * The machine is run as a product with no clock of the time of day, so there
- * is none to set and none to read. */
+ * The machine is run as a product with no time-of-day clock, so there is none
+ * to set or read. */
 
 #include "BddTargetBoardClock.h"
 

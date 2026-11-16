@@ -6,9 +6,8 @@
 
 #include <stdint.h>
 
-/* Seconds since the Unix epoch as a date and a time of day in UTC, and back.
-   For a target whose clock counts one and whose hardware or whose library
-   wants the other. Thirty-two bits of seconds, so 1970 to early 2106. */
+/* Converts seconds since the Unix epoch to a date and time of day in UTC, and
+   back. The seconds are 32 bits, so the range is 1970 to early 2106. */
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
@@ -17,8 +16,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void BddTargetCalendar_FromEpoch(uint32_t secondsSinceEpoch, struct SolidSyslogTimestamp* timestamp);
 
     /* The date and the time of day are taken as UTC whatever the offset says,
-       and the microseconds are dropped. A date outside what thirty-two bits of
-       seconds reach has no answer worth having, and is not looked for. */
+       and the microseconds are dropped. A date outside the 32-bit range is not
+       checked for. */
     uint32_t BddTargetCalendar_ToEpoch(const struct SolidSyslogTimestamp* timestamp);
 
 SOLIDSYSLOG_EXTERN_C_END

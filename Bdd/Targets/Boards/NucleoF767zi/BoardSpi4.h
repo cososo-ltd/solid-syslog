@@ -7,9 +7,8 @@
  * MicroSD card and a W25Q128 flash, with a chip select each. README.md beside
  * this file holds the pin plan.
  *
- * SPI mode 0, most significant bit first. The bus has one user at a time: an
- * image drives the card or the flash, and the select of the other is held
- * high so that it stays off the bus. */
+ * SPI mode 0, most significant bit first. An image drives the card or the
+ * flash, and the other's select is held high to keep it off the bus. */
 
 enum BoardSpi4Device
 {
@@ -19,14 +18,14 @@ enum BoardSpi4Device
 
 enum BoardSpi4Rate
 {
-    /* 211 kHz, inside the 400 kHz a card may be started at. */
+    /* 211 kHz, within the 400 kHz limit for starting a card. */
     BOARD_SPI4_RATE_START,
-    /* 6.75 MHz. README.md says why that rate. */
+    /* 6.75 MHz. README.md explains the choice. */
     BOARD_SPI4_RATE_RUN
 };
 
-/* Takes the pins, with both selects high, and clocks the bus at `rate`. It
- * can be called again, and takes the pins back from whatever had them. */
+/* Configures the pins, with both selects high, and clocks the bus at `rate`.
+ * It can be called again, and reclaims the pins from whatever had them. */
 void BoardSpi4_Take(enum BoardSpi4Rate rate);
 
 /* Changes the rate of a bus that has been taken. */

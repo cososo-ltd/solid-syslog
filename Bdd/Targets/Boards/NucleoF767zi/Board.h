@@ -18,8 +18,9 @@ enum BoardLed
 
 /* Turns the instruction and data caches on, brings the part to 216 MHz from
  * the ST-LINK's 8 MHz clock and opens the console at 115200 8N1. The memory
- * the Ethernet DMA uses is kept out of the data cache. Does not return if the clock will not start: the red
- * LED is lit and the part stays on its internal oscillator, with no console. */
+ * the Ethernet DMA uses is kept out of the data cache. Does not return if the
+ * clock will not start: the red LED is lit and the part stays on its internal
+ * oscillator, with no console. */
 void Board_Init(void);
 
 void Board_ConsoleWrite(const char* text, size_t length);
@@ -29,19 +30,19 @@ void Board_ConsoleWrite(const char* text, size_t length);
  * most; one that arrives with that many unread is dropped. */
 bool Board_ConsoleTryRead(char* received);
 
-/* Milliseconds since Board_Init, wrapping at 2^32. Counted by a timer of the
- * board's own, so SysTick is free for a kernel. */
+/* Milliseconds since Board_Init, wrapping at 2^32. Not counted on SysTick,
+ * which is left for a kernel. */
 uint32_t Board_Milliseconds(void);
 
 /* Stops the part with interrupts off, lighting the red LED first if asked.
  * Does not return. */
 void Board_Halt(bool withRedLed);
 
-/* Says on the console what stopped the part, and where, as one line that
- * starts "[board] fault:", then halts with the red LED lit. It turns
- * interrupts off and writes the transmitter itself, so it can be called from
- * anywhere, a fault handler included. A hard fault ends here too, with the
- * address it happened at. Does not return. */
+/* Writes one console line starting "[board] fault:" with what stopped the
+ * part and where, then halts with the red LED lit. It turns interrupts off
+ * and writes to the transmitter directly, so it can be called from anywhere,
+ * including a fault handler. A hard fault ends here too, with the address it
+ * happened at. Does not return. */
 void Board_Fault(const char* what, const char* where);
 
 void Board_LedToggle(enum BoardLed led);

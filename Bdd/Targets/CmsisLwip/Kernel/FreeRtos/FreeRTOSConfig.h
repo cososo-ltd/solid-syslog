@@ -92,9 +92,8 @@
 #define configUSE_OS2_EVENTFLAGS_FROM_ISR 0
 #define configUSE_OS2_TIMER 0
 
-/* The interrupt priorities, which follow from the board, and the assertion,
- * which ends in the board's fault line, are the same for every target on this
- * kernel. */
+/* The interrupt priorities and the assertion handler, shared by every target
+ * on this kernel. */
 #include "BddTargetFreeRtosKernelConfig.h"
 
 /* Alias FreeRTOS port handlers to the standard CMSIS names so the vector

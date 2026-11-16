@@ -90,7 +90,7 @@ import sys
 UPSTREAM_SUBTREES = {
     "SOLIDSYSLOG_FREERTOS_KERNEL_PATH": (
         "include",
-        # One port per board: the mps2-an385's and the NUCLEO-F767ZI's.
+        # One port per board: the mps2-an385 and the NUCLEO-F767ZI.
         "portable/GCC/ARM_CM3",
         "portable/GCC/ARM_CM7/r0p1",
         "portable/MemMang",
@@ -111,7 +111,7 @@ UPSTREAM_SUBTREES = {
     "SOLIDSYSLOG_LITTLEFS_PATH": ("*.c", "*.h"),
     "SOLIDSYSLOG_WOLFSSL_SOURCE_DIR": ("wolfssl", "src", "wolfcrypt/src"),
     "SOLIDSYSLOG_STM32F7_HAL_DRIVER_PATH": ("Inc", "Src"),
-    # The system file and the startup code are ST's templates, used as they are.
+    # The system file and the startup code are ST's templates, used unmodified.
     "SOLIDSYSLOG_STM32F7_CMSIS_DEVICE_PATH": ("Include", "Source/Templates"),
 }
 
@@ -219,10 +219,10 @@ def configure_inputs(build):
 
 
 def assembler_sources(build):
-    """The assembler sources that were compiled, from the compile database.
-    The compiler writes no dependency file for one, so nothing else names it.
-    The database lists what the configure defined, so a source counts only
-    when the object its command writes is there."""
+    """Returns the assembler sources that were compiled, from the compile
+    database. The compiler writes no dependency file for an assembler source,
+    so nothing else names it. The database lists everything the configure
+    defined, so a source counts only if its object file exists."""
     database = build / COMPILE_DATABASE
     if not database.exists():
         return []
@@ -236,9 +236,9 @@ def assembler_sources(build):
 
 
 def assembler_object(entry):
-    """The object an entry's command writes, relative to the entry's directory
-    unless the command gave it in full. CMake names it in `output` from 3.20
-    and in the command line always."""
+    """Returns the object an entry's command writes, relative to the entry's
+    directory unless the command gives an absolute path. CMake names it in
+    `output` from 3.20, and always in the command line."""
     if "output" in entry:
         return entry["output"]
     arguments = entry.get("arguments") or shlex.split(entry.get("command", ""))

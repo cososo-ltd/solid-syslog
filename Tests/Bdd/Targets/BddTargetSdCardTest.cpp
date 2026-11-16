@@ -434,8 +434,8 @@ TEST(BddTargetSdCard, TimesOutOnACardThatStaysBusyAfterAWrite)
     CHECK_RESULT(BDD_TARGET_SD_CARD_TIMED_OUT, Write(A_SECTOR, SectorOfPattern(42)));
 }
 
-/* A task switched out while it waits comes back after the time allowed, to a
- * card that finished long before. What the card says then is what counts. */
+/* A task switched out while it waits can come back after the time allowed to
+ * a card that finished long before, so the card is asked once more. */
 TEST(BddTargetSdCard, TakesTheCardAsReadyWhenItIsReadyOnceTheTimeAllowedHasPassed)
 {
     CHECK_CARD_STARTED();

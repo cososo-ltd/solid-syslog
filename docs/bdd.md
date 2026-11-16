@@ -171,6 +171,38 @@ in the two run scripts, `Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1` and
 the filters there rather than from a copy here: a runner is added or a tag retired by
 editing those files, and a table restating them is wrong the moment one changes.
 
+## What has been run on hardware
+
+The cross BDD targets run under QEMU in CI. They have also been run on one
+board, ST's NUCLEO-F767ZI (STM32F767ZI, Cortex-M7), from a development machine.
+CI builds the board's images and runs none of them. Each run is made by hand
+against the target checklist in `Bdd/Targets/Boards/NucleoF767zi/README.md` and
+recorded on the pull request.
+
+| Target on the board | Network | Store |
+|---|---|---|
+| FreeRTOS (lwIP Raw API) | The on-board Ethernet MAC and PHY, over ST's HAL driver | FatFs on a MicroSD card, over SPI |
+| CMSIS-RTOS2 (lwIP Sockets API) | The same | LittleFS on a W25Q128 NOR flash, over SPI |
+| FreeRTOS (FreeRTOS-Plus-TCP) | The same, under the network interface FreeRTOS-Plus-TCP ships for the STM32 MACs | FreeRTOS-Plus-FAT on the MicroSD card |
+
+On each of the three:
+
+- The UDP, TCP and store scenarios pass, and the `@rtc` scenarios against the
+  board's real-time clock. [Feature tags](#feature-tags) lists what is excluded.
+- 10,000 messages over UDP and 10,000 over TCP arrive once each and in order,
+  and 2,000 over each do so through the file store.
+- With the network cable removed and replaced, the target reports the link
+  down and up, and a message sent afterwards arrives.
+
+Not run on the board:
+
+- TLS. It is linked, and the board's hardware random number generator is not
+  wired in.
+- Loss of power during a write. The scenarios that stand in for a power cut
+  shut the target down cleanly and reset it, and the media stay powered.
+- Flash or card wear over a product's life. The runs are minutes long, on one
+  card and one flash part.
+
 ## Two oracles, one step file
 
 Step definitions read the active oracle from `ORACLE_FORMAT`:

@@ -21,8 +21,8 @@ enum
     START_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_256,
     RUN_RATE_PRESCALER = SPI_BAUDRATEPRESCALER_8,
 
-    /* A byte takes 38 microseconds at the start rate, which is some thousands
-     * of turns of the loop that waits for it. This is many times that. */
+    /* A byte takes 38 microseconds at the start rate, a few thousand turns of
+     * the loop that waits for it. This is many times that. */
     EXCHANGE_SPINS = 1000000,
     IDLE_LINE = 0xFF,
     CRC_POLYNOMIAL_UNUSED = 7
@@ -83,9 +83,9 @@ void BoardSpi4_SetRate(enum BoardSpi4Rate rate)
     spi.Init.CRCPolynomial = CRC_POLYNOMIAL_UNUSED;
     spi.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
     spi.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
-    /* A bus that will not configure exchanges nothing, which a driver reads
-     * as a device that does not answer. HAL_SPI_Init leaves the peripheral
-     * disabled, and sets it to say a byte has arrived when one has, not two. */
+    /* A bus that will not configure exchanges nothing, which a driver sees as
+     * a device that does not answer. HAL_SPI_Init leaves the peripheral
+     * disabled, with RXNE set by one received byte and not two. */
     if (HAL_SPI_Init(&spi) == HAL_OK)
     {
         __HAL_SPI_ENABLE(&spi);
@@ -107,16 +107,15 @@ void BoardSpi4_Deselect(enum BoardSpi4Device device)
     HAL_GPIO_WritePin(GPIOE, BoardSpi4_SelectPin(device), GPIO_PIN_SET);
 }
 
-/* The byte is written to the data register and read back from it here, not
- * through the HAL's transfer call. That call times each transfer against the
- * millisecond count, and a task switched out for longer than the time allowed
- * comes back to a byte that has been exchanged and is told it failed. Nothing
- * here depends on how long the task was away: the byte that arrived is still
- * in the register when it returns. The wait is bounded by a count, so a
+/* The byte is exchanged through the data register directly, not through the
+ * HAL's transfer call. That call times each transfer against the millisecond
+ * count, so a task switched out for longer than the timeout is told that a
+ * byte which was exchanged had failed. Here the byte that arrived is still in
+ * the register when the task returns. The wait is bounded by a count, so a
  * peripheral that never delivers reads as an idle line.
  *
- * Both accesses are a byte wide, which is what puts one byte in the transmit
- * FIFO and takes one from the receive FIFO. */
+ * Both accesses are a byte wide, so that one byte goes into the transmit FIFO
+ * and one comes out of the receive FIFO. */
 uint8_t BoardSpi4_Exchange(uint8_t out)
 {
     uint8_t in = IDLE_LINE;

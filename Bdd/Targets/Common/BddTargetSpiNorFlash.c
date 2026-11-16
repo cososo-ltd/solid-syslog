@@ -12,7 +12,7 @@ enum
 {
     /* A line with nothing driving it. */
     IDLE_LINE = 0xFF,
-    /* What is clocked out to read. The part does not look at it. */
+    /* Clocked out during a read. The part ignores it. */
     READ_FILL = 0x00,
 
     PAGE_PROGRAM = 0x02,
@@ -31,12 +31,12 @@ enum
     JEDEC_TYPE = 1,
     JEDEC_CAPACITY = 2,
     MAKER_WINBOND = 0xEF,
-    /* The W25Q parts that take these commands in plain SPI as they are
-     * supplied. The maker's other families do not all erase by this sector
-     * or with this command. */
+    /* The W25Q family, which takes these commands in plain SPI as supplied.
+     * Winbond's other families do not all erase by this sector size or with
+     * this command. */
     TYPE_W25Q = 0x40,
-    /* 64 KiB, the smallest of the family, to 16 MiB, the largest that three
-     * bytes of address reach the end of. */
+    /* 64 KiB, the smallest of the family, to 16 MiB, the largest a
+     * three-byte address reaches. */
     SMALLEST_CAPACITY_CODE = 0x10,
     LARGEST_CAPACITY_CODE = 0x18,
 
@@ -102,8 +102,8 @@ enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Start(void)
 {
     BddTargetSpiNorFlash_Stop();
     BddTargetBoardFlashBus_Take();
-    /* A part that was erasing when the processor was reset goes on erasing,
-     * and until it has finished it answers nothing but its status. */
+    /* A part that was erasing when the processor was reset carries on, and
+     * until it finishes it answers only a status read. */
     enum BddTargetSpiNorFlashResult result = SpiNorFlash_WaitUntilReady(ERASE_TIMEOUT_MILLISECONDS);
     if (result == BDD_TARGET_SPI_NOR_FLASH_OK)
     {
@@ -121,10 +121,10 @@ static enum BddTargetSpiNorFlashResult SpiNorFlash_WaitUntilReady(uint32_t milli
     bool expired = false;
     while (SpiNorFlash_IsBusy(status) && !expired)
     {
-        /* The time is read before the part is asked, so the part is always
-         * asked once after the time allowed has passed. A task switched out
-         * for longer than that would otherwise give up on a part that
-         * finished while it was away. */
+        /* The time is read before the status, so the status is always read
+         * once after the timeout has passed. Otherwise a task switched out
+         * for longer than the timeout would give up on a part that finished
+         * while it was away. */
         expired = SpiNorFlash_HasPassed(since, milliseconds);
         status = SpiNorFlash_Status();
     }
@@ -152,14 +152,14 @@ static inline uint8_t SpiNorFlash_Status(void)
     return status;
 }
 
-/* A status of all ones is a line nothing drives, not a part at work: no part
- * is busy with every one of its protection bits set as well. */
+/* A status of all ones is an undriven line and not a busy part: no part is
+ * busy with every protection bit set as well. */
 static inline bool SpiNorFlash_IsBusy(uint8_t status)
 {
     return (status != (uint8_t) IDLE_LINE) && ((status & (uint8_t) STATUS_BUSY) != 0U);
 }
 
-/* Unsigned, so it holds across the count wrapping. */
+/* Unsigned arithmetic, so it holds when the count wraps. */
 static inline bool SpiNorFlash_HasPassed(uint32_t since, uint32_t milliseconds)
 {
     return (BddTargetBoardFlashBus_Milliseconds() - since) >= milliseconds;
@@ -192,8 +192,8 @@ static enum BddTargetSpiNorFlashResult SpiNorFlash_Identify(void)
     return result;
 }
 
-/* A line nothing drives reads as all ones, and one held low as all zeros.
- * Neither is a maker. */
+/* An undriven line reads as all ones, and one held low as all zeros.
+ * Neither is a manufacturer's code. */
 static inline bool SpiNorFlash_IsNoAnswer(const uint8_t* id)
 {
     return (id[JEDEC_MAKER] == (uint8_t) IDLE_LINE) || (id[JEDEC_MAKER] == 0U);
@@ -233,8 +233,8 @@ enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Read(uint32_t address, uint
             buffer[i] = BddTargetBoardFlashBus_Exchange(READ_FILL);
         }
         BddTargetBoardFlashBus_Deselect();
-        /* Erased bytes and a line nothing drives both read as all ones, so
-         * the bytes cannot say whether the part sent them. Its status can. */
+        /* Erased bytes and an undriven line both read as all ones, so the
+         * data cannot show whether the part sent it. The status can. */
         if (SpiNorFlash_Status() == (uint8_t) IDLE_LINE)
         {
             result = BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER;
@@ -293,8 +293,8 @@ enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_Program(uint32_t address, c
     return result;
 }
 
-/* A program that reached the end of its page would go on from the page's
- * start, so one is never sent more than this. */
+/* A program that runs past the end of its page wraps to the page's start,
+ * so no more than this is sent in one command. */
 static inline size_t SpiNorFlash_BytesLeftInPage(uint32_t address)
 {
     return (size_t) BDD_TARGET_SPI_NOR_FLASH_PAGE_SIZE -
@@ -318,9 +318,9 @@ static enum BddTargetSpiNorFlashResult SpiNorFlash_ProgramInPage(uint32_t addres
     return result;
 }
 
-/* A part that is still busy when the time allowed has passed takes nothing
- * but a request for its status, and would let a read pass with nothing sent
- * back. So it is forgotten: the start that brings it back waits for it. */
+/* A part still busy after the timeout answers only a status read, and a
+ * data read would appear to succeed with nothing sent back. So it is stopped;
+ * the Start that brings it back waits for it. */
 static enum BddTargetSpiNorFlashResult SpiNorFlash_WaitForTheWrite(uint32_t milliseconds)
 {
     enum BddTargetSpiNorFlashResult result = SpiNorFlash_WaitUntilReady(milliseconds);
@@ -331,9 +331,9 @@ static enum BddTargetSpiNorFlashResult SpiNorFlash_WaitForTheWrite(uint32_t mill
     return result;
 }
 
-/* The part takes a program or an erase only straight after it has been told
- * to enable writing, and says in its status whether it has. One that has not
- * would let the command that follows pass with nothing done and nothing said. */
+/* The part accepts a program or an erase only immediately after a write
+ * enable, and its status shows whether the enable took. If it did not, the
+ * part would ignore the next command without reporting it. */
 static enum BddTargetSpiNorFlashResult SpiNorFlash_EnableWriting(void)
 {
     enum BddTargetSpiNorFlashResult result = BDD_TARGET_SPI_NOR_FLASH_OK;

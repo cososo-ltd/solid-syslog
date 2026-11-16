@@ -798,9 +798,9 @@ jobs:
       - name: Test the job service
         run: python3 -m unittest discover -s Bdd/Targets/VxWorks64/Runner -p 'test_*.py'
 
-  # What lets Behave drive the NUCLEO-F767ZI: its console over a serial port,
-  # and what a run reads from the banner and the build. The tests use a port of
-  # their own, so they need neither the board nor pyserial.
+  # Unit tests for the code Behave drives the NUCLEO-F767ZI with: the serial
+  # console, and the checks of the banner and the build. The tests use a fake
+  # port, so they need neither the board nor pyserial.
   tools-nucleo-f767zi-runner:
     runs-on: ubuntu-latest
     steps:
@@ -2039,10 +2039,10 @@ jobs:
           path: Bdd/features/steps/solidsyslog_tunables.py
           retention-days: 1
 
-  # Firmware for the NUCLEO-F767ZI, which CI builds and never runs: nothing
-  # here reaches the board. The image is flashed by hand and the run recorded
-  # against the target checklist in Bdd/Targets/Boards/NucleoF767zi/README.md,
-  # so the artifact is kept long enough for that.
+  # Firmware for the NUCLEO-F767ZI. CI builds it and never runs it. The image
+  # is flashed by hand and the run recorded against the target checklist in
+  # Bdd/Targets/Boards/NucleoF767zi/README.md, so the artifact is kept long
+  # enough for that.
   build-nucleo-bringup:
     runs-on: ubuntu-latest
     permissions:
@@ -2069,8 +2069,8 @@ jobs:
       - name: Assert every file the build read came from its pinned tree
         run: python3 scripts/check_build_provenance.py --build build/nucleo-f767zi-bringup
 
-      # The target checklist matches the image on the board to this build by
-      # the commit in its banner, and the configure falls back to "unknown"
+      # The target checklist matches the image on the board to its build by
+      # the commit in the banner, and the configure falls back to "unknown"
       # when it cannot ask git.
       - name: Assert the image's banner names the commit built
         run: |
@@ -2089,12 +2089,12 @@ jobs:
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
           compression-level: 0
 
-  # The FreeRTOS + lwIP Raw BDD target built for the NUCLEO-F767ZI: the same
-  # main.c and pipeline build-freertos-lwipraw-mbedtls-fatfs builds for QEMU,
-  # over the board's own half of the seam. Built and never run, as above. The
-  # addresses in this image are the documentation ones the configure defaults
-  # to, so it reaches nothing: a checklist run builds its own with the test
-  # network's. What the lane proves is that the commit still builds.
+  # The FreeRTOS + lwIP Raw BDD target for the NUCLEO-F767ZI: the main.c and
+  # pipeline that build-freertos-lwipraw-mbedtls-fatfs builds for QEMU, over
+  # this board's side of the board seam. Built and never run, as above. The
+  # image has the documentation addresses the configure defaults to; a
+  # checklist run builds its own with the test network's. The lane shows only
+  # that the commit still builds.
   build-nucleo-freertos-lwipraw:
     runs-on: ubuntu-latest
     permissions:
@@ -2121,9 +2121,6 @@ jobs:
       - name: Assert every file the build read came from its pinned tree
         run: python3 scripts/check_build_provenance.py --build build/nucleo-f767zi-lwip
 
-      # The target checklist matches the image on the board to its build by
-      # the commit in its banner, and the configure falls back to "unknown"
-      # when it cannot ask git.
       - name: Assert the image's banner names the commit built
         run: |
           grep --text --quiet "BDD target on NUCLEO-F767ZI, image FREERTOS_LWIP, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf
@@ -2139,10 +2136,9 @@ jobs:
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
           compression-level: 0
 
-  # The CMSIS-RTOS2 + lwIP Sockets BDD target built for the NUCLEO-F767ZI: the
-  # same main.c and pipeline build-cmsisrtos-lwipsocket-mbedtls-littlefs builds
-  # for QEMU, over the board's own half of the seam. Built and never run, with
-  # the documentation addresses, as the lane above.
+  # The CMSIS-RTOS2 + lwIP Sockets BDD target for the NUCLEO-F767ZI, built
+  # from the code of build-cmsisrtos-lwipsocket-mbedtls-littlefs on the same
+  # terms as the lane above.
   build-nucleo-cmsisrtos-lwipsocket:
     runs-on: ubuntu-latest
     permissions:
@@ -2169,9 +2165,6 @@ jobs:
       - name: Assert every file the build read came from its pinned tree
         run: python3 scripts/check_build_provenance.py --build build/nucleo-f767zi-cmsis-lwip
 
-      # The target checklist matches the image on the board to its build by
-      # the commit in its banner, and the configure falls back to "unknown"
-      # when it cannot ask git.
       - name: Assert the image's banner names the commit built
         run: |
           grep --text --quiet "BDD target on NUCLEO-F767ZI, image CMSIS_LWIP, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
@@ -2187,11 +2180,10 @@ jobs:
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 7 }}
           compression-level: 0
 
-  # The FreeRTOS-Plus-TCP BDD target built for the NUCLEO-F767ZI: the same
-  # main.c and pipeline build-freertos-plustcp-mbedtls-plusfat builds for QEMU,
-  # over the board's own half of the seam, which is upstream's network
-  # interface for the STM32 MACs. Built and never run, with the documentation
-  # addresses, as the lanes above.
+  # The FreeRTOS-Plus-TCP BDD target for the NUCLEO-F767ZI, built from the
+  # code of build-freertos-plustcp-mbedtls-plusfat on the same terms as the
+  # lanes above. The board's network interface is upstream's for the STM32
+  # MACs.
   build-nucleo-freertos-plustcp:
     runs-on: ubuntu-latest
     permissions:
@@ -2218,9 +2210,6 @@ jobs:
       - name: Assert every file the build read came from its pinned tree
         run: python3 scripts/check_build_provenance.py --build build/nucleo-f767zi-plustcp
 
-      # The target checklist matches the image on the board to its build by
-      # the commit in its banner, and the configure falls back to "unknown"
-      # when it cannot ask git.
       - name: Assert the image's banner names the commit built
         run: |
           grep --text --quiet "BDD target on NUCLEO-F767ZI, image FREERTOS_PLUSTCP, commit $(git rev-parse --short=10 HEAD)"             build/nucleo-f767zi-plustcp/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf

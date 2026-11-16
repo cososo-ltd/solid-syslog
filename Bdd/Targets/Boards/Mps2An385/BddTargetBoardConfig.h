@@ -4,9 +4,8 @@
 /* Facts about the board that a target's configuration headers need at compile
  * time, as macros because the kernel configuration reads them in the
  * preprocessor. Every board directory under Bdd/Targets/Boards/ has a header
- * of this name defining the same macros, and each states its fact once, so the
- * kernel configuration and the CMSIS device header take it from here rather
- * than from each other.
+ * of this name defining the same macros, so the kernel configuration and the
+ * CMSIS device header both take each fact from here.
  *
  * This one is the QEMU mps2-an385 machine, a Cortex-M3. */
 
@@ -16,11 +15,10 @@
 /* The NVIC implements the top three bits of each 8-bit priority field. */
 #define BDD_TARGET_BOARD_NVIC_PRIO_BITS 3
 
-/* The network the board sits on, each address as the octets a stack's own
- * initialiser takes. QEMU's user-mode network, slirp, has no DHCP server the
- * targets rely on, so the address is the one slirp would have handed out. Its
- * gateway is routed to the machine QEMU runs on, and its DNS forwarder sits
- * beside it. */
+/* The board's network, each address as the octets a stack's initialiser
+ * takes. The targets do not rely on DHCP from QEMU's user-mode network, slirp,
+ * so the address is the one slirp would have handed out. Its gateway routes to
+ * the QEMU host, and its DNS forwarder is at the next address. */
 #define BDD_TARGET_BOARD_IP_OCTETS 10U, 0U, 2U, 15U
 #define BDD_TARGET_BOARD_NETMASK_OCTETS 255U, 255U, 255U, 0U
 #define BDD_TARGET_BOARD_GATEWAY_OCTETS 10U, 0U, 2U, 2U
@@ -29,10 +27,10 @@
 /* A locally administered unicast hardware address. */
 #define BDD_TARGET_BOARD_MAC_OCTETS 0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U
 
-/* Where the syslog oracle is reached from the board: the slirp gateway, since
- * the oracle listens on the machine QEMU runs on. The same address twice, as
- * the octets and as the text a resolver takes, because C offers no way to
- * derive one from the other. */
+/* The syslog oracle's address as the board sees it: the slirp gateway, since
+ * the oracle listens on the QEMU host. It is given twice, as octets and as the
+ * text a resolver takes, because the preprocessor cannot derive one from the
+ * other. */
 #define BDD_TARGET_BOARD_ORACLE_OCTETS 10U, 0U, 2U, 2U
 #define BDD_TARGET_BOARD_ORACLE_ADDRESS "10.0.2.2"
 

@@ -78,7 +78,7 @@ static struct SolidSyslogSender* switchingSender = NULL;
  * network goes down and back up. */
 static BaseType_t interactiveTaskCreated = pdFALSE;
 
-/* How the network stood at the last event the stack gave. */
+/* The network's state at the stack's last event. */
 static bool networkIsUp = false;
 
 /* This target spawns its threads through the kernel API rather than the OS seam
@@ -178,11 +178,11 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
     }
 }
 
-/* One line on the console for each change of the network, so a pulled cable
+/* One console line for each change in the network's state, so a pulled cable
  * can be told from a fault. The stack repeats its down event each time it
- * retries an interface that is still down, so only a change is said. Written
- * whole, straight to the console's lock: stdio belongs to the interactive
- * thread, and this runs on the IP task. */
+ * retries an interface that is still down, so only a change is reported. The
+ * line is written whole under the console lock and not through stdio, which
+ * belongs to the interactive thread; this runs on the IP task. */
 static void ReportNetworkChange(bool isUp)
 {
     static const char LINK_UP[] = "[board] link up\n";

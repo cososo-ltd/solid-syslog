@@ -247,83 +247,33 @@ cmake --preset cmsis-cross-lwip-wolfssl
 cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
 ```
 
-## FreeRTOS + lwIP on the NUCLEO-F767ZI - `nucleo-f767zi-lwip`
+## NUCLEO-F767ZI - `nucleo-f767zi-*`
 
-The `freertos-cross-lwip` target again, built for the NUCLEO-F767ZI board
-(STM32F767ZI, Cortex-M7 with the hard-float ABI) under that board's toolchain
-file: `SOLIDSYSLOG_BDD_TARGET=FREERTOS_LWIP` with
-`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`. The packs and the tunables are the same.
-The board's addresses are cache variables, and the configure defaults them to
-ones that reach nothing. CI builds this image in the
-`build-nucleo-freertos-lwipraw` lane and never runs it.
+ARM cross-builds for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
+hard-float ABI), under that board's toolchain file. Three are the cross BDD
+targets above built with `SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`, with the same
+packs and tunables. The fourth is the bring-up firmware, which carries no
+SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and the image does not link the
+library.
+
+| Preset | Builds | Build target | ELF |
+|---|---|---|---|
+| `nucleo-f767zi-lwip` | The `freertos-cross-lwip` target | `SolidSyslogBddTargetLwip` | `build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf` |
+| `nucleo-f767zi-cmsis-lwip` | The `cmsis-cross-lwip` target | `SolidSyslogBddTargetCmsis` | `build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf` |
+| `nucleo-f767zi-plustcp` | The `freertos-cross` target | `SolidSyslogBddTarget` | `build/nucleo-f767zi-plustcp/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf` |
+| `nucleo-f767zi-bringup` | The bring-up firmware | `SolidSyslogNucleoF767ziBringup` | `build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf`, with a raw `.bin` beside it |
 
 ```bash
 cmake --preset nucleo-f767zi-lwip
 cmake --build --preset nucleo-f767zi-lwip --target SolidSyslogBddTargetLwip
 ```
 
-The ELF lands at
-`build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf`.
-See `Bdd/Targets/Boards/NucleoF767zi/README.md` for the address variables, for
-flashing it and for the target checklist.
-
-## CMSIS-RTOS2 + lwIP Sockets on the NUCLEO-F767ZI - `nucleo-f767zi-cmsis-lwip`
-
-The `cmsis-cross-lwip` target again, built for the NUCLEO-F767ZI board under
-that board's toolchain file: `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP` with
-`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`. The packs and the tunables are the same,
-and the addresses are the same cache variables as the preset above takes. CI
-builds this image in the `build-nucleo-cmsisrtos-lwipsocket` lane and never
-runs it.
-
-```bash
-cmake --preset nucleo-f767zi-cmsis-lwip
-cmake --build --preset nucleo-f767zi-cmsis-lwip --target SolidSyslogBddTargetCmsis
-```
-
-The ELF lands at
-`build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf`.
-`Bdd/Targets/Boards/NucleoF767zi/README.md` covers it as it covers the image
-above.
-
-## FreeRTOS-Plus-TCP on the NUCLEO-F767ZI - `nucleo-f767zi-plustcp`
-
-The `freertos-cross` target again, built for the NUCLEO-F767ZI board under
-that board's toolchain file: `SOLIDSYSLOG_BDD_TARGET=FREERTOS_PLUSTCP` with
-`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`, the packs
-`FreeRtos;PlusTcp;MbedTls;PlusFat;StdAtomic` and the `Bdd/Targets/FreeRtos/`
-tunables. The addresses are the same cache variables as the two presets above
-take. CI builds this image in the `build-nucleo-freertos-plustcp` lane and
-never runs it.
-
-```bash
-cmake --preset nucleo-f767zi-plustcp
-cmake --build --preset nucleo-f767zi-plustcp --target SolidSyslogBddTarget
-```
-
-The ELF lands at
-`build/nucleo-f767zi-plustcp/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf`.
-`Bdd/Targets/Boards/NucleoF767zi/README.md` covers it as it covers the two
-images above.
-
-## NUCLEO-F767ZI bring-up - `nucleo-f767zi-bringup`
-
-ARM cross-build for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
-hard-float ABI), under its own toolchain file. It builds the bring-up firmware,
-which carries no SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and the image
-does not link the library. ST's HAL driver and CMSIS device files come from
-`STM32F7_HAL_DRIVER_PATH` and `STM32F7_CMSIS_DEVICE_PATH`, which the cross image
-exports.
-
-```bash
-cmake --preset nucleo-f767zi-bringup
-cmake --build --preset nucleo-f767zi-bringup --target SolidSyslogNucleoF767ziBringup
-```
-
-The ELF lands at
-`build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf`,
-with a raw `.bin` beside it. See `Bdd/Targets/Boards/NucleoF767zi/README.md` for
-flashing it and for the target checklist.
+ST's HAL driver and CMSIS device files come from `STM32F7_HAL_DRIVER_PATH` and
+`STM32F7_CMSIS_DEVICE_PATH`, which the cross image exports. The board's network
+addresses are cache variables, and default to ones that reach nothing. CI
+builds each image in its `build-nucleo-*` lane and never runs it.
+`Bdd/Targets/Boards/NucleoF767zi/README.md` covers the address variables,
+flashing and the target checklist.
 
 ## Tunable overrides - `tunable-override-debug` / `msvc-tunable-override`
 

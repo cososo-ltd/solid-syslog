@@ -1,12 +1,12 @@
-"""The console of a board on a serial port, as the BDD steps drive a process.
+"""A board's serial console, presented to the BDD steps as a process.
 
 The board's console is a serial port on the development machine, and the board
-is started by resetting it. SerialConsole wraps the two so the steps can read
+is started by resetting it. SerialConsole wraps both so that the steps can read
 and write the console as they do a local target's pipes.
 
-A board has no exit status to hand back. A target that ends says so on its
-console, in a line of its own, and stops: "exit: ok", or "exit: failed" and
-the status. SerialConsole reads that line as a local target's exit.
+A board has no exit status. A target that ends prints "exit: ok", or
+"exit: failed" and the status, on a line of its own and then halts.
+SerialConsole reports that line as the exit of a local target.
 """
 
 import os
@@ -16,23 +16,22 @@ import threading
 
 _DISCARDED_AT_A_TIME = 4096
 _EXIT_LINE = re.compile(rb"\nexit: (?:ok|failed (\d+))\r?\n")
-# More than the longest such line, so one that arrives in pieces is still seen.
+# Longer than any exit line, so that one split across reads is still found.
 _EXIT_LINE_KEPT = 64
 
 
 class SerialConsole:
-    # port is the open serial port: read gives the bytes that have arrived, or
-    # none once a short wait has passed without any. reset restarts the board.
-    # shown is what the board has shown already, which stdout gives first.
+    # port is the open serial port, whose read returns the bytes that have
+    # arrived, or none after a short timeout. reset restarts the board. shown
+    # is output already read from the board, which stdout delivers first.
     def __init__(self, port, reset, shown=b""):
         self._port = port
         self._reset = reset
         read_end, self._write_end = os.pipe()
         self.stdout = os.fdopen(read_end, "rb", buffering=0)
         self.stdin = _ConsoleInput(port)
-        # A serial console carries one stream; errors arrive on stdout with the rest.
+        # A serial console is a single stream, so errors arrive on stdout.
         self.stderr = None
-        # The target is a board, so there is no local process.
         self.pid = None
         self.returncode = None
         self._ended = threading.Event()
@@ -42,14 +41,14 @@ class SerialConsole:
     def poll(self):
         return self.returncode
 
-    # The steps kill a target to end it, and to stand in for a power cut. On
-    # the board both are a reset, which is not a loss of power at the media.
-    # Output still unread is discarded on the way: the copy may be waiting on
-    # a full pipe for a reader, and would otherwise never see that it has ended.
-    # A board that has said it exited has stopped, and is left as it is: the
-    # next target to be opened resets it, and what it said can still be read.
-    # Either way the kill comes back only once the port is closed, because the
-    # next target opens the same port.
+    # The steps kill a target to end it and to simulate a power cut. On the
+    # board both are a reset, which is not a loss of power at the media.
+    # Unread output is discarded first, because the copier may be blocked on a
+    # full pipe and would not otherwise notice that the console has ended. A
+    # board that has reported its exit has already halted and is not reset, so
+    # its output can still be read; the next target to open resets it. In
+    # both cases kill returns only once the port is closed, because the next
+    # target opens the same port.
     def kill(self):
         exited = self._ended.is_set()
         self._ended.set()
@@ -67,12 +66,12 @@ class SerialConsole:
         return self.returncode
 
     # The steps read stdout with os.read, which needs a real file descriptor,
-    # so the output is copied into a pipe. Closing the pipe as the console ends
-    # gives the reader its end of file, and a port that fails ends the console
-    # as a kill does, so the reader is not left waiting on it. What the board
-    # had shown already goes into the pipe from here too: a pipe that is full
-    # makes its writer wait for a reader, and there is none until the console
-    # has been handed over. It is looked through for an exit as the rest is.
+    # so the output is copied into a pipe. Closing the pipe when the console
+    # ends gives the reader end of file, and a port failure ends the console
+    # as a kill does, so the reader is never left waiting. The output already
+    # read is written from this thread as well, because a write to a full pipe
+    # blocks and nothing reads it until the console has been handed over. It
+    # is scanned for an exit line like the rest.
     def _copy_output(self, shown):
         self._status = 0
         self._latest = b""
@@ -100,7 +99,7 @@ class SerialConsole:
             data = data[os.write(self._write_end, data):]
 
 
-# Text written as the steps write a local target's stdin.
+# Accepts text as a local target's stdin does.
 class _ConsoleInput:
     def __init__(self, port):
         self._port = port

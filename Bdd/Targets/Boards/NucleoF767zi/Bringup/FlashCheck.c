@@ -17,13 +17,13 @@ enum
     LINE_BYTES = 128,
     ERASED = 0xFF,
 
-    /* Far enough into the sector's first page that the bytes run on into its
-     * second, so the driver has to split them. */
+    /* Starts in the sector's first page and runs into its second, so the
+     * driver has to split the program. */
     SPLIT_OFFSET = 200,
     SPLIT_BYTES = 300,
 
-    /* Two programs side by side in one page, further into the sector: what a
-     * filesystem that programs less than a page at a time does. */
+    /* Two adjacent programs within one page, as a filesystem that programs
+     * less than a page at a time makes. */
     PIECE_OFFSET = 1024,
     PIECE_BYTES = 16
 };
@@ -51,13 +51,14 @@ void FlashCheck_Run(void)
                  FlashCheck_Program("a program across two pages", sector, SPLIT_OFFSET, SPLIT_BYTES) &&
                  FlashCheck_Program("a program of part of a page", sector, PIECE_OFFSET, PIECE_BYTES) &&
                  FlashCheck_Program("a second beside it", sector, PIECE_OFFSET + PIECE_BYTES, PIECE_BYTES);
-        /* Erased last whatever was found, so nothing of the check is left. */
+        /* Erased again whatever the result, so the check leaves nothing
+         * behind. */
         passed = FlashCheck_Erase(sector) && passed;
     }
     FlashCheck_Say(passed ? "passed" : "failed");
 }
 
-/* One line, whole, in one write. */
+/* One line in one write. */
 static void FlashCheck_Say(const char* format, ...)
 {
     static const char LINE_START[] = "flash: ";
@@ -68,7 +69,7 @@ static void FlashCheck_Say(const char* format, ...)
     va_start(arguments, format);
     int formatted = vsnprintf(&text[length], sizeof(text) - length, format, arguments);
     va_end(arguments);
-    /* Room is kept for the line's end: a line too long for it is not said. */
+    /* A line that leaves no room for its line ending is dropped. */
     if ((formatted > 0) && (((size_t) formatted + length) < (sizeof(text) - 2U)))
     {
         length += (size_t) formatted;
@@ -101,8 +102,8 @@ static bool FlashCheck_Erase(uint32_t sector)
     return passed;
 }
 
-/* The whole sector is read back, so a program or an erase that reached bytes
- * it was not sent to is found as well as one that missed its own. */
+/* The whole sector is read back, so a program or an erase that touched bytes
+ * outside its range is caught as well as one that missed its own. */
 static bool FlashCheck_HoldsWhatIsExpected(const char* what, uint32_t sector)
 {
     uint32_t address = sector * (uint32_t) BDD_TARGET_SPI_NOR_FLASH_SECTOR_SIZE;
@@ -149,7 +150,7 @@ static bool FlashCheck_Program(const char* what, uint32_t sector, size_t offset,
     return passed;
 }
 
-/* No two neighbours alike. */
+/* No two adjacent bytes are equal. */
 static inline void FlashCheck_FillPattern(uint8_t* bytes, size_t count)
 {
     for (size_t i = 0U; i < count; i++)

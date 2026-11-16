@@ -56,11 +56,10 @@ struct BddTargetFreeRtosPipelineConfig
     /* Create / destroy the platform SolidSyslogFile adapter for the store. */
     struct SolidSyslogFile* (*CreateStoreFile)(void);
     void (*DestroyStoreFile)(struct SolidSyslogFile* file);
-    /* Leaves the store's medium with no filesystem on it, so that the next
-     * mount formats it. It is for a medium that keeps what it holds from one
-     * run of the target to the next, and is only called with nothing mounted.
-     * False where the medium is put back to nothing some other way, and where
-     * it will not take the change. */
+    /* Leaves the store's medium with no filesystem on it, so the next mount
+     * formats it. For a medium that keeps its contents from one run of the
+     * target to the next; only called with nothing mounted. Returns false if
+     * the medium is cleared some other way, or the change fails. */
     bool (*WipeStore)(void);
 };
 

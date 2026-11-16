@@ -23,8 +23,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Unmount the Plus-FAT volume if mounted; no-op otherwise. */
     void BddTargetPlusFatMount_Unmount(void);
 
-    /* Leaves the board's disk with no filesystem on it - see
-     * BddTargetBoardDisk_Wipe, which this is. */
+    /* Calls BddTargetBoardDisk_Wipe. */
     bool BddTargetPlusFatMount_Wipe(void);
 
     /* Create / destroy the Plus-FAT SolidSyslogFile adapter (forward-declared to

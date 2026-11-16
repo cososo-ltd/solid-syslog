@@ -1,8 +1,7 @@
 /* The part's real-time clock - see BoardRtc.h.
  *
- * Not host-TDD'd: this file exists only in the cross build, and what it does
- * is write the part's registers. The target checklist in README.md is what
- * proves it, on the board. The calendar arithmetic is BddTargetCalendar's,
+ * Cross build only, so not host-tested: the target checklist in README.md
+ * covers it on the board. The calendar arithmetic is BddTargetCalendar's,
  * which is tested on the host. */
 
 #include "BoardRtc.h"
@@ -16,33 +15,33 @@
 
 enum
 {
-    /* The crystal is given this long to start. Cold, it takes a second or two. */
+    /* From cold the crystal takes a second or two to start. */
     CRYSTAL_START_MILLISECONDS = 5000,
 
-    /* The clock leaves reset dividing 32768 Hz by 128 and then by 256, which
-     * is one second, and is left so. Its sub-second register counts the 256
-     * down, from this to zero. */
+    /* The clock's reset prescalers divide 32768 Hz by 128 and then by 256,
+     * giving one second, and are left as they are. The sub-second register
+     * counts the 256 down, from 255 to zero. */
     SUBSECONDS_PER_SECOND = 256,
     SUBSECOND_AT_SECOND_START = SUBSECONDS_PER_SECOND - 1,
     MICROSECONDS_PER_SECOND = 1000000,
 
-    /* What the clock's registers are unlocked with, and locked with again. */
+    /* The keys that unlock the clock's registers, and the value that locks
+     * them again. */
     WRITE_KEY_FIRST = 0xCA,
     WRITE_KEY_SECOND = 0x53,
     WRITE_LOCK = 0xFF,
 
     /* The clock answers a request within a few cycles of its 32768 Hz, some
-     * tens of microseconds. This many turns of a loop is far longer, and is
-     * counted, not timed, so it works with interrupts off. */
+     * tens of microseconds. This loop count is far longer, and being a count
+     * and not a timeout it works with interrupts off. */
     CLOCK_WAIT_LOOPS = 1000000,
 
-    /* Above the ceiling the kernel sets for interrupts that call it, so a
-     * critical section in the kernel does not hold a second's start back. The
-     * handler calls nothing in the kernel. */
+    /* Above the kernel's interrupt ceiling, so a kernel critical section does
+     * not delay the second's interrupt. The handler makes no kernel call. */
     SECOND_INTERRUPT_PRIORITY = 4,
 
-    /* The clock keeps two digits of year. 2000 is left out because the clock
-     * tells a year of 00 from having been set at all. */
+    /* The clock keeps two digits of year. 2000 is excluded because a year of
+     * 00 is how the clock shows it has never been set. */
     CALENDAR_CENTURY = 2000,
     BCD_TENS = 10,
     BCD_TENS_SHIFT = 4,
@@ -54,8 +53,8 @@ enum
     EPOCH_WEEKDAY_FROM_MONDAY = 3
 };
 
-/* The clock counts a leap year every fourth, its year 00 among them, which is
- * right only where the century it is counting in began with one. */
+/* The clock treats every fourth year as a leap year, year 00 included, which
+ * is right only in a century that begins with one. */
 _Static_assert(((uint32_t) CALENDAR_CENTURY % 400U) == 0U, "the clock's year 00 has to be a leap year");
 
 /* 2001-01-01T00:00:00Z and 2099-12-31T23:59:59Z. */
@@ -65,7 +64,7 @@ static const uint32_t LAST_SECOND_KEPT = 4102444799U;
 static bool rtcIsRunning;
 static BoardRtcSecondFunction rtcOnSecond;
 
-/* The name ST's vector table carries. */
+/* The name in ST's vector table. */
 void RTC_Alarm_IRQHandler(void);
 
 static inline bool BoardRtc_OpenBackupDomain(void);
@@ -91,9 +90,8 @@ bool BoardRtc_Start(BoardRtcSecondFunction onSecond)
     return rtcIsRunning;
 }
 
-/* The clock and its crystal are in the backup domain, which is locked against
- * writes until the power controller is told otherwise, and has said that it
- * has been. */
+/* The clock and its crystal are in the backup domain, which is write-protected
+ * until the power controller's DBP bit is set and reads back as set. */
 static inline bool BoardRtc_OpenBackupDomain(void)
 {
     __HAL_RCC_PWR_CLK_ENABLE();
@@ -116,10 +114,10 @@ static inline bool BoardRtc_StartCrystal(void)
     return READ_BIT(RCC->BDCR, RCC_BDCR_LSERDY) != 0U;
 }
 
-/* The clock's source can be chosen once after the backup domain is reset, so
- * it is chosen only where none has been: a clock already running is not
- * touched. False for a clock that something run since power-up has put on
- * another source, which this cannot undo and does not count by. */
+/* The clock's source can be chosen only once after the backup domain is
+ * reset, so it is chosen only if none has been, and a running clock is left
+ * alone. False if other firmware run since power-up has put the clock on
+ * another source, which cannot be undone here. */
 static inline bool BoardRtc_ClockFromCrystal(void)
 {
     if (READ_BIT(RCC->BDCR, RCC_BDCR_RTCSEL) == 0U)
@@ -134,14 +132,14 @@ static inline bool BoardRtc_ClockFromCrystal(void)
  * second starts. It reaches the processor through line 17 of the external
  * interrupt controller, on a rising edge.
  *
- * A reset leaves the alarm running, and its flag set by any second that
- * started with nothing to answer it. The flag holds the line up, and a line
- * already up has no edge to give, so the edge is asked for first and the flag
+ * A reset leaves the alarm running, with its flag set by any second that
+ * started while nothing was handling it. The flag holds the line high, and a
+ * line already high gives no edge, so the edge is enabled first and the flag
  * cleared before the alarm is switched on again.
  *
- * The calendar is read straight from its counters, not from the copies the
- * clock keeps of them, which lag the counters by a cycle or two of the
- * crystal: the interrupt reads as the second starts, and wants that second. */
+ * The calendar is read directly from its counters, not from the shadow
+ * registers, which lag the counters by a cycle or two of the crystal: the
+ * interrupt reads as the second starts, and needs that second. */
 static inline bool BoardRtc_InterruptEverySecond(void)
 {
     SET_BIT(EXTI->RTSR, EXTI_RTSR_TR17);
@@ -183,9 +181,8 @@ static inline bool BoardRtc_WaitFor(uint32_t flag)
     return READ_BIT(RTC->ISR, flag) != 0U;
 }
 
-/* The alarm's flag is cleared by writing it 0 with every other flag written
- * 1, and the request to stop the clock, which shares the register, written as
- * it stands. */
+/* The alarm's flag is cleared by writing it 0, with every other flag written
+ * 1 and the INIT request, which shares the register, written as it stands. */
 static inline void BoardRtc_ClearSecondFlag(void)
 {
     RTC->ISR = ~(RTC_ISR_ALRAF | RTC_ISR_INIT) | READ_BIT(RTC->ISR, RTC_ISR_INIT);
@@ -197,8 +194,8 @@ bool BoardRtc_HasTime(void)
 }
 
 /* The counters are read while they count, so they are read until two readings
- * agree, and again if the sub-second count went up between its two readings:
- * it counts down, so that is a second starting part way through. */
+ * agree, and again if the sub-second count rose between its two readings: it
+ * counts down, so a rise means a second started part way through. */
 void BoardRtc_Read(uint32_t* secondsSinceEpoch, uint32_t* microseconds)
 {
     uint32_t subsecondBefore = 0U;
@@ -240,8 +237,8 @@ static inline uint8_t BoardRtc_FromBcd(uint32_t bcd)
     return (uint8_t) (((bcd >> (uint32_t) BCD_TENS_SHIFT) * (uint32_t) BCD_TENS) + (bcd & (uint32_t) BCD_UNITS_MASK));
 }
 
-/* The calendar is written with the clock stopped, which is asked for and
- * waited on, and the clock starts again on the second written. */
+/* The calendar is written with the clock stopped, and the clock starts again
+ * on the second written. */
 bool BoardRtc_Set(uint32_t secondsSinceEpoch)
 {
     bool taken = false;
@@ -250,8 +247,8 @@ bool BoardRtc_Set(uint32_t secondsSinceEpoch)
         struct SolidSyslogTimestamp calendar = {0};
         BddTargetCalendar_FromEpoch(secondsSinceEpoch, &calendar);
         BoardRtc_Unlock();
-        /* Written whole, so that no flag is cleared: a flag in this register
-         * is cleared by writing it 0 and left alone by writing it 1. */
+        /* All ones, so that no flag is cleared: a flag in this register is
+         * cleared by writing it 0 and left alone by writing it 1. */
         RTC->ISR = ~0U;
         if (BoardRtc_WaitFor(RTC_ISR_INITF))
         {
@@ -291,7 +288,7 @@ static inline uint32_t BoardRtc_DateRegister(const struct SolidSyslogTimestamp* 
 }
 
 /* A second has started. A clock not yet set counts from the start of 2000,
- * which is no time to tell anyone. */
+ * which is not reported. */
 void RTC_Alarm_IRQHandler(void)
 {
     EXTI->PR = EXTI_PR_PR17;

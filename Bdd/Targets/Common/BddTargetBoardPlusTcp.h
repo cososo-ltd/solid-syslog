@@ -11,10 +11,9 @@
  * directory.
  *
  * Fills the descriptor for the board's one controller and returns it. The
- * controller's interrupt is the board's to place too: by the time it is
- * enabled it is at a priority from which its handler may call the kernel.
- * Call before FreeRTOS_IPInit_Multi; the descriptor has to outlive the IP
- * stack. */
+ * board also sets the controller's interrupt priority, before enabling it, to
+ * one from which its handler may call the kernel. Call before
+ * FreeRTOS_IPInit_Multi; the descriptor has to outlive the IP stack. */
 NetworkInterface_t* BddTargetBoardPlusTcp_FillInterface(NetworkInterface_t* networkInterface);
 
 #endif /* BDD_TARGET_BOARD_PLUS_TCP_H */

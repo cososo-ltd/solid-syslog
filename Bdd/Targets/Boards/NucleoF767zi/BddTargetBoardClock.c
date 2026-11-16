@@ -1,13 +1,13 @@
 /* ST's NUCLEO-F767ZI behind the board seam's clock - see BddTargetBoardClock.h.
  *
- * The part's real-time clock keeps the time, in whole seconds, and interrupts
+ * The part's real-time clock keeps the time in whole seconds and interrupts
  * as each one starts. The time is read from BddTargetTickedClock, which takes
- * the second from that interrupt and measures how far into it a reading is on
- * the core's cycle counter. So a reading is good to a microsecond, costs a
- * few instructions, and leaves the real-time clock to its interrupt.
+ * the second from that interrupt and the fraction from the core's cycle
+ * counter. A reading is good to a microsecond, costs a few instructions and
+ * does not touch the real-time clock.
  *
- * Not host-TDD'd: this file exists only in the cross build. The target
- * checklist in README.md is what proves it, on the board. */
+ * Cross build only, so not host-tested: the target checklist in README.md
+ * covers it on the board. */
 
 #include "BddTargetBoardClock.h"
 
@@ -22,14 +22,14 @@ enum
     MICROSECONDS_PER_SECOND = 1000000
 };
 
-/* What the cycle counter's registers are unlocked with on this core. */
+/* The key that unlocks the cycle counter's registers on this core. */
 static const uint32_t CYCLE_COUNTER_UNLOCK = 0xC5ACCE55U;
 
 static inline void BoardClock_StartCycleCounter(void);
 static uint32_t BoardClock_CycleCount(void);
 
-/* The software clock is told the time with interrupts off, here and in
- * BddTargetBoardClock_Set, so that the second's interrupt cannot land between
+/* The software clock is set with interrupts off, here and in
+ * BddTargetBoardClock_Set, so that the second's interrupt cannot fall between
  * the real-time clock being read or written and the count being taken. */
 void BoardClock_Start(void)
 {
@@ -50,10 +50,10 @@ void BoardClock_Start(void)
     }
 }
 
-/* The counter is part of the core's debug unit, and counts whether or not a
- * debugger is attached once the unit is switched on. It counts the core's
- * clock, 216 to the microsecond, and wraps every twenty seconds, which the
- * software clock allows for. */
+/* The counter is part of the core's debug unit and, once that is enabled,
+ * counts with or without a debugger attached. It counts the core's clock,
+ * 216 to the microsecond, and wraps every twenty seconds, which the software
+ * clock allows for. */
 static inline void BoardClock_StartCycleCounter(void)
 {
     SET_BIT(CoreDebug->DEMCR, CoreDebug_DEMCR_TRCENA_Msk);

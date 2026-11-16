@@ -54,9 +54,9 @@ struct State
     size_t exchanges = 0;
     uint32_t milliseconds = 0;
     std::vector<uint8_t> incoming;
-    /* What the card has still to send, from outgoingSent on. A vector and
-         * not a deque, which holds memory even when empty and so would show
-         * as a leak in every test. */
+    /* What the card has still to send, from outgoingSent on. A vector,
+     * because a deque holds memory when empty and would show as a leak in
+     * every test. */
     std::vector<uint8_t> outgoing;
     size_t outgoingSent = 0;
     std::vector<uint8_t> block;
@@ -69,8 +69,8 @@ struct State
 
 State state;
 
-/* Worked from the specification's polynomials a bit at a time, and so
-     * independently of the tables or shortcuts a driver might use. */
+/* Computed a bit at a time from the specification's polynomials, so it
+ * shares no table or shortcut with the driver. */
 uint8_t Crc7(const uint8_t* bytes, size_t count)
 {
     uint8_t crc = 0;
@@ -547,8 +547,8 @@ extern "C"
         return in;
     }
 
-    /* Each reading is a millisecond after the last, so a wait the driver
-     * times comes to its end however little else happens. */
+    /* Each reading moves the time on, so a timed wait in the driver always
+     * ends. */
     uint32_t BddTargetBoardSdCardBus_Milliseconds(void)
     {
         const uint32_t now = state.milliseconds;

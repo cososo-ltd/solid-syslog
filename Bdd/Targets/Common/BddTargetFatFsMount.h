@@ -23,8 +23,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Unmount volume 0 if mounted; no-op otherwise. */
     void BddTargetFatFsMount_Unmount(void);
 
-    /* Leaves the board's disk with no filesystem on it - see
-     * BddTargetBoardDisk_Wipe, which this is. */
+    /* Calls BddTargetBoardDisk_Wipe. */
     bool BddTargetFatFsMount_Wipe(void);
 
     /* Create / destroy the ChaN-FatFs SolidSyslogFile adapter (forward-declared

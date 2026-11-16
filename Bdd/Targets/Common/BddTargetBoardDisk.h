@@ -13,11 +13,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* The board's sector disk. Part of the board seam - see BddTargetBoard.h -
      * and defined in the board's directory.
      *
-     * Each filesystem a target may run on sectors has its media glue in this
+     * The media glue for each filesystem that runs on sectors is in this
      * directory - the ChaN-FatFs disk_* functions (diskio.c), the
      * FreeRTOS-Plus-FAT FF_Disk_t driver (BddTargetPlusFatDisk.c) and the
      * LittleFS block device for a board with no flash (BddTargetLittleFsDisk.c)
-     * - and all three sit on the first four calls below, so a board supplies
+     * - and all three use the first four calls below, so a board supplies
      * its sectors once.
      *
      * The geometry is the board's, as BDD_TARGET_BOARD_DISK_SECTOR_SIZE and
@@ -44,11 +44,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     enum BddTargetBoardDiskResult BddTargetBoardDisk_Read(void* buffer, uint32_t sector, uint32_t count);
     enum BddTargetBoardDiskResult BddTargetBoardDisk_Write(const void* buffer, uint32_t sector, uint32_t count);
 
-    /* Leaves the disk with no filesystem on it, so that the next mount
-     * formats it. It is for a disk that keeps what it holds from one run of
-     * the target to the next, and is asked for before anything is mounted.
-     * False from a board whose disk is put back to nothing some other way,
-     * and from one whose disk will not take the write. */
+    /* Leaves the disk with no filesystem on it, so the next mount formats
+     * it. For a disk that keeps its contents from one run of the target to
+     * the next; call before anything is mounted. Returns false if the
+     * board's disk is cleared some other way, or the write fails. */
     bool BddTargetBoardDisk_Wipe(void);
 
 SOLIDSYSLOG_EXTERN_C_END

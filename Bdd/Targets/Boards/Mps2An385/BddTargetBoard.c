@@ -53,9 +53,9 @@ char BddTargetBoard_ConsoleRead(void)
     return CmsdkUart_GetChar();
 }
 
-/* The emulated transmitter is never busy, so the write does not sleep, and
- * can be made from wherever the fault was. The run then ends with a status of
- * its own, which no other exit gives. */
+/* The emulated transmitter is never busy, so the write does not sleep and is
+ * safe wherever the fault occurred. The run then ends with an exit status no
+ * other exit uses. */
 void BddTargetBoard_Fault(const char* what, const char* where)
 {
     static const char START[] = "\r\n[board] fault: ";

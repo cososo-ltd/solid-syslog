@@ -30,14 +30,14 @@ class BannerTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "0123456789.*fedcba9876"):
             nucleo_f767zi.check_image(BANNER, "CMSIS_LWIP", "fedcba9876543210fedcba9876543210fedcba98")
 
-    # The build marks a tree with changes its commit does not hold.
+    # The build marks a tree with uncommitted changes.
     def test_an_image_built_from_a_changed_tree_is_refused(self):
         dirty = BANNER.replace("0123456789", "0123456789-dirty")
 
         with self.assertRaisesRegex(RuntimeError, "0123456789-dirty"):
             nucleo_f767zi.check_image(dirty, "CMSIS_LWIP", COMMIT)
 
-    # Two images are built from one commit, and a run is of one of them.
+    # Several images are built from one commit, and a run tests one of them.
     def test_another_image_built_from_the_commit_under_test_is_refused(self):
         with self.assertRaisesRegex(RuntimeError, "CMSIS_LWIP.*FREERTOS_LWIP"):
             nucleo_f767zi.check_image(BANNER, "FREERTOS_LWIP", COMMIT)
@@ -63,7 +63,7 @@ class RunSettingsTest(unittest.TestCase):
         with unittest.mock.patch.dict(os.environ, {"NUCLEO_F767ZI_BUILD_DIR": "build/somewhere"}):
             self.assertEqual("build/somewhere", nucleo_f767zi.build_directory())
 
-    # Each image has a build directory of its own, so none is assumed.
+    # Each image has its own build directory, so there is no default.
     def test_a_run_that_names_no_build_directory_is_refused(self):
         with unittest.mock.patch.dict(os.environ):
             os.environ.pop("NUCLEO_F767ZI_BUILD_DIR", None)
@@ -108,7 +108,7 @@ class TellTheTimeTest(unittest.TestCase):
 
         self.assertEqual(b"set time 1794657600\n", self.port.written)
 
-    # The board takes the second it is given as starting then.
+    # The board treats the second it is given as just beginning.
     def test_the_board_is_told_as_a_second_starts(self):
         self.port.arrived.put(b"SolidSyslog> ")
 
@@ -181,8 +181,8 @@ class UseTheFileStoreTest(unittest.TestCase):
             nucleo_f767zi.use_the_file_store(self.console, 5)
 
 
-# The ST-LINK keeps what the board printed while nobody had the port open, and
-# hands it over as the port opens.
+# The ST-LINK buffers what the board printed while the port was closed, and
+# delivers it when the port opens.
 class DiscardTest(unittest.TestCase):
     def test_what_the_port_held_before_the_reset_is_discarded(self):
         port = FakePort()
@@ -209,8 +209,8 @@ class DiscardTest(unittest.TestCase):
             nucleo_f767zi.discard_until_quiet(port, 0.05, 0.2)
 
 
-# The banner is the first thing a reset draws, so a board that has not shown
-# one soon after a reset has not started.
+# The banner is the first thing a boot prints, so a board that shows none
+# soon after a reset has not started.
 class ResetTest(unittest.TestCase):
     def setUp(self):
         self.port = FakePort()
@@ -240,8 +240,8 @@ class ResetTest(unittest.TestCase):
 
         self.assertEqual(b"SolidSyslog BDD target on NUCLEO\r\n[board] link down\r\n", self.reset_until_banner())
 
-    # The boot before this one can still be printing as the reset is asked
-    # for, and its prompt would be taken for this boot's.
+    # The previous boot can still be printing when the reset is requested,
+    # and its prompt would be mistaken for this boot's.
     def test_what_the_boot_before_showed_ahead_of_the_banner_is_discarded(self):
         self.shown_at_a_reset = [b"[board] link up\r\nSolidSyslog> ", b"\r\nSolidSyslog BDD target on NUCLEO"]
 
@@ -344,7 +344,7 @@ class ConsoleAfterResetTest(unittest.TestCase):
 
         self.assertEqual(self.shown_at_reset, os.read(console.stdout.fileno(), len(self.shown_at_reset)))
 
-    # A port left open is one no later scenario can open.
+    # A port left open cannot be opened by a later scenario.
     def test_a_board_that_does_not_start_leaves_the_port_closed(self):
         self.shown_at_reset = b""
 
@@ -365,8 +365,8 @@ class BoardAddressTest(unittest.TestCase):
             nucleo_f767zi.board_address_in("CMAKE_BUILD_TYPE:STRING=Debug\n")
 
 
-# The record is taken at the port, before the pipe and the threads a run reads
-# the console through, so it says what the board sent whatever became of it.
+# The record is taken at the port, ahead of the pipe and threads the run reads
+# through.
 class RecordedPortTest(unittest.TestCase):
     def setUp(self):
         self.port = FakePort()

@@ -56,10 +56,10 @@ const struct lfs_config* BddTargetLittleFsDisk_Config(void)
     return &CONFIG;
 }
 
-/* The disk under this is the board's to put back to nothing, so the board is
- * asked first, and one whose disk the harness replaces says no. What a board
- * that says yes has cleared is its first sector, and LittleFS keeps its
- * superblock in a pair of blocks, so both are erased here as well. */
+/* The board wipes its own disk first, and returns false if the harness
+ * replaces the disk instead. A board's wipe clears the first sector, and
+ * LittleFS keeps its superblock in a pair of blocks, so both are erased here
+ * as well. */
 bool BddTargetLittleFsDisk_Wipe(void)
 {
     return BddTargetBoardDisk_Wipe() && (DiskErase(&CONFIG, FIRST_SUPERBLOCK) == LFS_ERR_OK) &&
@@ -121,7 +121,7 @@ static int DiskErase(const struct lfs_config* c, lfs_block_t block)
 }
 
 /* BddTargetBoardDisk_Write returns with the sectors written, so there is
- * nothing held back here to flush. */
+ * nothing to flush. */
 static int DiskSync(const struct lfs_config* c)
 {
     (void) c;

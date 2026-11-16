@@ -582,8 +582,8 @@ endif()
 # value differs from the second by its OS, not its network, which the former
 # SOLIDSYSLOG_BDD_FREERTOS_NET could not express.
 #
-# NUCLEO_F767ZI_BRINGUP is the odd one out: firmware for the NUCLEO-F767ZI that
-# carries no SolidSyslog, there to prove the board and its toolchain.
+# NUCLEO_F767ZI_BRINGUP is the exception: firmware for the NUCLEO-F767ZI that
+# carries no SolidSyslog, and proves the board and its toolchain.
 set(SOLIDSYSLOG_BDD_TARGETS FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
 if(SOLIDSYSLOG_IS_TOP_LEVEL)
     set(SOLIDSYSLOG_BDD_TARGET "FREERTOS_PLUSTCP" CACHE STRING
@@ -664,11 +664,11 @@ endif()
 # which belongs to the board (see Bdd/Targets/Boards/Board.cmake); they
 # only enter the build when a cross preset is active. SOLIDSYSLOG_BDD_TARGET
 # picks which one: FREERTOS_PLUSTCP builds the full FreeRTOS-Plus-TCP BDD
-# target; FREERTOS_LWIP the FreeRtosLwip one (S28.09) — LAN9118 netif +
-# NO_SYS=0 lwIP + LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one
-# (S40.01), which hosts the packs E40, E36 and E35 add; NUCLEO_F767ZI_BRINGUP
-# the NUCLEO-F767ZI bring-up firmware, which needs that board's own toolchain
-# file (Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake).
+# target; FREERTOS_LWIP the FreeRtosLwip one - LAN9118 netif + NO_SYS=0 lwIP +
+# LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one;
+# NUCLEO_F767ZI_BRINGUP the NUCLEO-F767ZI bring-up firmware, which needs that
+# board's own toolchain file
+# (Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake).
 #
 # The top-level gate matters most here: an integrator cross-compiling for
 # Cortex-M sets exactly these two variables in their own toolchain file, and

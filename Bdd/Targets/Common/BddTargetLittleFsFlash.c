@@ -1,16 +1,12 @@
 /* LittleFS block device over a SPI NOR flash - see BddTargetLittleFsDisk.h.
  *
- * A filesystem block is one of the part's sectors, so LittleFS's erase is the
- * part's own, and its programs reach the part as they are: they clear bits
- * and set none, which is what LittleFS is written for.
+ * The filesystem uses the first BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT sectors
+ * of the part, whatever the part's size.
  *
- * The filesystem is given the first BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT
- * sectors of the part, whatever the part's size.
- *
- * What goes wrong is said on the console, so that a part that has stopped
- * answering is told from a store that has a fault of its own. LittleFS calls
- * these from whichever thread is using the store, so nothing here goes
- * through stdio, which belongs to the thread at the console. */
+ * Failures are reported on the console, so a part that has stopped answering
+ * can be told from a fault in the store. LittleFS calls these functions from
+ * whichever thread is using the store, so nothing here uses stdio, which
+ * belongs to the console thread. */
 
 #include "BddTargetLittleFsDisk.h"
 
@@ -29,10 +25,10 @@ _Static_assert(
 
 enum
 {
-    /* The part reads from any byte, for any length. */
+    /* The part reads any length from any address. */
     READ_SIZE = 1,
     /* The part programs any part of a page. LittleFS ends every commit on a
-     * multiple of this, so a small one lets a metadata block take many
+     * multiple of this, so a small value lets a metadata block take many
      * commits before it has to be compacted and erased. */
     PROG_SIZE = 16,
     FIRST_SUPERBLOCK = 0,
@@ -46,8 +42,8 @@ static uint8_t readBuffer[BDD_TARGET_LITTLE_FS_DISK_CACHE_SIZE];
 static uint8_t progBuffer[BDD_TARGET_LITTLE_FS_DISK_CACHE_SIZE];
 static uint8_t lookaheadBuffer[BDD_TARGET_LITTLE_FS_DISK_LOOKAHEAD_SIZE];
 
-/* What starting the part last came to, so that a mount tried again and again
- * over a part that is not there says so once. */
+/* The result of the last Start, so a mount retried over a missing part
+ * reports the failure once. */
 static enum BddTargetSpiNorFlashResult startFailureSaid = BDD_TARGET_SPI_NOR_FLASH_OK;
 static bool tooSmallSaid;
 
@@ -84,9 +80,9 @@ const struct lfs_config* BddTargetLittleFsDisk_Config(void)
     return &CONFIG;
 }
 
-/* LittleFS finds a filesystem by the pair of blocks its superblock is kept
- * in, so with both erased it finds none, and the mount that finds none
- * formats. What the blocks after them held is erased as each is next used. */
+/* LittleFS finds a filesystem by its pair of superblocks, so with both
+ * erased the next mount finds none and formats. The blocks after them are
+ * erased as each is next used. */
 bool BddTargetLittleFsDisk_Wipe(void)
 {
     return LittleFsFlash_EnsureReady() && (FlashErase(&CONFIG, FIRST_SUPERBLOCK) == LFS_ERR_OK) &&
@@ -124,8 +120,8 @@ static bool LittleFsFlash_EnsureReady(void)
     return BddTargetSpiNorFlash_IsStarted();
 }
 
-/* One line, whole, in one write, which the console lock keeps from mixing
- * with what another thread is saying. */
+/* One whole line in one write, which the console lock keeps from
+ * interleaving with another thread's output. */
 static void LittleFsFlash_Say(const char* format, ...)
 {
     char line[LINE_BYTES];
@@ -135,7 +131,7 @@ static void LittleFsFlash_Say(const char* format, ...)
     va_start(arguments, format);
     int formatted = vsnprintf(&line[length], sizeof(line) - length, format, arguments);
     va_end(arguments);
-    /* Room is kept for the newline: a line too long for it is not said. */
+    /* Leaves room for the newline; a line too long for it is dropped. */
     if ((formatted > 0) && (((size_t) formatted + length) < (sizeof(line) - 1U)))
     {
         length += (size_t) formatted;
@@ -164,8 +160,8 @@ static inline uint32_t LittleFsFlash_AddressOf(lfs_block_t block, lfs_off_t off)
     return (uint32_t) ((block * (lfs_block_t) BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE) + off);
 }
 
-/* A part that has failed is forgotten, so that the next thing asked of it
- * starts it again: a start waits out whatever the part was left doing. */
+/* A part that has failed is stopped, so the next operation starts it again;
+ * a Start waits for whatever the part was left doing. */
 static int LittleFsFlash_Judge(const char* what, lfs_block_t block, enum BddTargetSpiNorFlashResult result)
 {
     if (result != BDD_TARGET_SPI_NOR_FLASH_OK)
@@ -207,8 +203,8 @@ static int FlashErase(const struct lfs_config* c, lfs_block_t block)
     return result;
 }
 
-/* The driver returns from a program or an erase once the part has finished
- * it, so there is nothing held back here to flush. */
+/* The driver returns from a program or an erase only once the part has
+ * finished, so there is nothing to flush. */
 static int FlashSync(const struct lfs_config* c)
 {
     (void) c;

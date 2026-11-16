@@ -12,9 +12,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * BddTargetBoard.h - and defined in the directory of a board that has a
      * flash.
      *
-     * SPI mode 0, most significant bit first. The part's select is the
-     * board's to drive: a command begins when it falls, and a program or an
-     * erase is carried out when it rises. */
+     * SPI mode 0, most significant bit first. The board drives the part's
+     * select: a command begins when it falls, and a program or an erase
+     * starts when it rises. */
 
     /* Takes the bus, at the rate the board runs the part at. Idempotent. */
     void BddTargetBoardFlashBus_Take(void);
@@ -26,7 +26,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * no part on it reads 0xFF. */
     uint8_t BddTargetBoardFlashBus_Exchange(uint8_t out);
 
-    /* A count of milliseconds, wrapping at 2^32, to time the part's work by. */
+    /* Milliseconds, wrapping at 2^32, for timing the part. */
     uint32_t BddTargetBoardFlashBus_Milliseconds(void);
 
 SOLIDSYSLOG_EXTERN_C_END

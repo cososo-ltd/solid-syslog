@@ -53,8 +53,8 @@
 #include <stdint.h>
 #include <string.h>
 
-/* IP4_ADDR counts its arguments before it expands them, so the four octets
- * the board states as one macro have to arrive through one more expansion. */
+/* IP4_ADDR counts its arguments before expanding them, so the board's
+ * four-octet macro has to pass through one more expansion. */
 #define SET_IP4_ADDRESS(address, octets) IP4_ADDR((address), octets)
 
 /* lwIP netif descriptor - must outlive the tcpip thread. */

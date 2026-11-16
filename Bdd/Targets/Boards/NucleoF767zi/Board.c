@@ -1,8 +1,7 @@
 /* Board support for the NUCLEO-F767ZI over ST's HAL.
  *
- * Not host-TDD'd: this file exists only in the cross build, and what it does
- * is write the part's registers. The target checklist in README.md is what
- * proves it, on the board. */
+ * Cross build only, so not host-tested: the target checklist in README.md
+ * covers it on the board. */
 
 #include "Board.h"
 
@@ -29,24 +28,22 @@ enum
     CONSOLE_RING_MASK = CONSOLE_RING_SIZE - 1,
 
     /* Above the millisecond tick, which the HAL leaves at the lowest
-     * priority, 15. The handler calls nothing in a kernel, so where this sits
-     * against a kernel's own ceiling does not matter. */
+     * priority, 15. The handler makes no kernel call, so the kernel's
+     * interrupt ceiling does not constrain it. */
     CONSOLE_INTERRUPT_PRIORITY = 6,
 
-    /* The millisecond count comes from TIM6, a basic timer nothing else on the
-     * board wants, counting microseconds up to one millisecond. SysTick is
-     * left alone for a kernel to take. */
+    /* The millisecond count is TIM6, which nothing else on the board uses,
+     * counting microseconds up to one millisecond. SysTick is left for a
+     * kernel. */
     TICK_TIMER_HZ = 1000000,
     TICK_TIMER_PERIOD = 1000,
 
-    /* 8 MHz in, divided to 2 MHz, multiplied to a 432 MHz VCO, halved to a
-     * 216 MHz system clock. Q gives the 48 MHz the USB, RNG and SDMMC want. */
     /* A character leaves in under 100 microseconds, a few thousand turns of
-     * the loop that waits for it; this is long enough to be sure it has not. */
+     * the loop that waits for it. */
     FAULT_WAIT_LOOPS = 1000000,
 
-    /* Where the core's stacked registers hold the two a fault report gives,
-     * and where each figure goes in the report's text. */
+    /* Indices of LR and PC in the frame the core stacks, and the offset of
+     * each figure in the fault report's text. */
     STACKED_LR = 5,
     STACKED_PC = 6,
     FAULT_PC_AT = 5,
@@ -59,6 +56,8 @@ enum
     ETHERNET_DMA_REGION = MPU_REGION_NUMBER0,
     HIGHEST_BIT_OF_A_WORD = 31,
 
+    /* 8 MHz in, divided to 2 MHz, multiplied to a 432 MHz VCO, halved to a
+     * 216 MHz system clock. Q gives the 48 MHz the USB, RNG and SDMMC want. */
     PLL_M = 4,
     PLL_N = 216,
     PLL_Q = 9
@@ -72,9 +71,9 @@ extern uint8_t _ethernet_dma_end[];
 
 static UART_HandleTypeDef console;
 
-/* Written by the receive interrupt and read by Board_ConsoleTryRead. The
- * interrupt alone moves the head and the reader alone moves the tail, and
- * each is one aligned word, so neither side needs the other held off. */
+/* Written by the receive interrupt and read by Board_ConsoleTryRead. Only the
+ * interrupt moves the head and only the reader moves the tail, and each is
+ * one aligned word, so no lock is needed. */
 static volatile uint8_t consoleRing[CONSOLE_RING_SIZE];
 static volatile uint32_t consoleRingHead;
 static volatile uint32_t consoleRingTail;
@@ -92,9 +91,8 @@ static void Board_FaultWrite(const char* text);
 static inline void Board_FaultWaitFor(uint32_t flag);
 static inline void Board_PutHex(char* eightDigits, uint32_t value);
 
-/* Reached from HardFault_Handler's assembler, and by nothing else. */
+/* Called only from HardFault_Handler's assembler. */
 void Board_ReportHardFault(const uint32_t* stacked);
-/* The name ST's vector table carries. */
 void HardFault_Handler(void);
 
 void Board_Init(void)
@@ -109,12 +107,10 @@ void Board_Init(void)
     Board_ConfigureConsole();
 }
 
-/* The Ethernet DMA reads and writes its descriptors and frame buffers behind
- * the processor's back, and ST's driver reads and writes them with no cache
- * maintenance. So the memory they are in, the linker script's ETHDMA, is made
- * a region the data cache does not hold: what the processor reads there is
- * what the DMA wrote, and what it writes is there when the DMA reads. The
- * region's length is ETHDMA's, which the linker script holds to a power of
+/* The Ethernet DMA reads and writes its descriptors and frame buffers without
+ * the processor's knowledge, and ST's driver does no cache maintenance on
+ * them. So the linker script's ETHDMA region, which holds them, is made
+ * non-cacheable. The linker script holds the region's length to a power of
  * two; the MPU takes a length as that power less one. Every other address
  * keeps the default memory map. */
 static inline void Board_KeepEthernetDmaMemoryUncached(void)
@@ -215,8 +211,8 @@ static inline void Board_ConfigureConsole(void)
     console.Init.OverSampling = UART_OVERSAMPLING_16;
     console.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
     /* With overrun detection on, a byte arriving before the interrupt had
-     * taken the last would stop the receiver until the flag was cleared; off,
-     * the newer byte simply replaces the older. */
+     * taken the last would stop the receiver until the flag was cleared. With
+     * it off, the newer byte replaces the older. */
     console.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
     console.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
     if (HAL_UART_Init(&console) != HAL_OK)
@@ -291,8 +287,8 @@ static void Board_FaultWrite(const char* text)
     Board_FaultWaitFor(USART_ISR_TC);
 }
 
-/* Bounded, because a fault before the console was opened finds a transmitter
- * that never empties, and the halt and its LED still have to be reached. */
+/* Bounded: before the console is opened the transmitter never empties, and
+ * the halt and its LED still have to be reached. */
 static inline void Board_FaultWaitFor(uint32_t flag)
 {
     for (uint32_t i = 0U; ((USART3->ISR & flag) == 0U) && (i < (uint32_t) FAULT_WAIT_LOOPS); i++)
@@ -301,8 +297,7 @@ static inline void Board_FaultWaitFor(uint32_t flag)
 }
 
 /* Called by HardFault_Handler with the registers the core stacked as it took
- * the fault, of which the sixth and seventh are the link register and the
- * address of the instruction that faulted. */
+ * the fault. */
 void Board_ReportHardFault(const uint32_t* stacked)
 {
     char where[] = "pc=0x00000000 lr=0x00000000 cfsr=0x00000000";
@@ -323,9 +318,9 @@ static inline void Board_PutHex(char* eightDigits, uint32_t value)
 }
 
 /* The core stacks the registers on whichever stack was in use, which bit 2 of
- * the link register names. No fault but this one is enabled, so a memory,
- * bus or usage fault arrives here as well. The name is the one ST's vector
- * table carries. */
+ * the link register names. No other fault is enabled, so a memory, bus or
+ * usage fault arrives here as well. The handler names in this file are the
+ * ones in ST's vector table. */
 __attribute__((naked)) void HardFault_Handler(void)
 {
     __asm volatile("tst lr, #4\n"
@@ -394,7 +389,7 @@ static inline uint32_t Board_TickTimerClockHz(void)
     return timerClock;
 }
 
-/* The millisecond tick. The name is the one ST's vector table carries. */
+/* The millisecond tick. */
 void TIM6_DAC_IRQHandler(void)
 {
     TIM6->SR = 0U;
@@ -402,7 +397,7 @@ void TIM6_DAC_IRQHandler(void)
 }
 
 /* The console's receive interrupt. Reading the data register clears the
- * request. The name is the one ST's vector table carries. */
+ * request. */
 void USART3_IRQHandler(void)
 {
     if (__HAL_UART_GET_FLAG(&console, UART_FLAG_RXNE) != 0U)

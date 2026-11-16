@@ -1,26 +1,26 @@
 /* lwIP netif for the NUCLEO-F767ZI's Ethernet MAC and its on-board LAN8742A
  * PHY, over RMII - see BddTargetBoardNetif.h.
  *
- * The MAC and its DMA are driven through ST's HAL Ethernet driver as it
- * stands. What is here is the glue either side of it:
+ * The MAC and its DMA are driven through ST's HAL Ethernet driver, unmodified.
+ * This file is the glue either side of it:
  *   - transmit copies the pbuf chain into one buffer and waits for the DMA to
  *     send it;
  *   - one task receives and watches the link. The Ethernet interrupt wakes it
- *     for a frame, which it copies into a pbuf for netif->input, and between
- *     frames it asks the PHY how the link stands, starts or stops the MAC to
- *     match, tells lwIP and says so on the console.
+ *     for a frame, which it copies into a pbuf for netif->input. Between
+ *     frames it reads the link from the PHY, starts or stops the MAC to
+ *     match, tells lwIP and reports the change on the console.
  *
  * The MAC's clock, pins and interrupt, and the PHY's restart before the MAC's
- * reset, are the board's under any stack: BoardEthernet.c has them.
+ * reset, are in BoardEthernet.c, shared by every stack.
  *
  * Every frame is copied, in both directions, between lwIP's memory and
  * buffers the DMA owns. Those buffers and the DMA's descriptors are static,
- * and are placed in the memory the board support keeps out of the data cache,
- * so nothing here maintains the cache and nothing has to.
+ * in the memory the board support keeps out of the data cache, so no cache
+ * maintenance is needed here.
  *
- * Not host-TDD'd, beyond the link decoding in EthernetPhy: this file exists
- * only in the cross build, and what it does is drive the part. The target
- * checklist in the board's README.md is what proves it, on the board. */
+ * Cross build only, so not host-tested beyond the link decoding in
+ * EthernetPhy: the target checklist in the board's README.md covers it on
+ * the board. */
 
 #include "BddTargetBoardNetif.h"
 
@@ -54,14 +54,14 @@ enum
     BOARD_NETIF_BUFFER_ALIGNMENT = 32,
 
     /* The HAL takes a buffer for each descriptor it rebuilds before the frame
-     * just read has given its own back, so the pool is larger than the ring. */
+     * just read has released its own, so the pool is larger than the ring. */
     BOARD_NETIF_RX_BUFFER_COUNT = 2 * ETH_RX_DESC_CNT,
 
     BOARD_NETIF_TASK_STACK_WORDS = configMINIMAL_STACK_SIZE * 8,
     BOARD_NETIF_TASK_PRIORITY = configMAX_PRIORITIES - 2,
 
-    /* How long the task waits for a frame before it looks anyway, and how
-     * often it asks the PHY about the link. */
+    /* How long the task waits for a frame before it checks anyway, and how
+     * often it reads the link from the PHY. */
     BOARD_NETIF_RX_WAIT_MILLISECONDS = 100,
     BOARD_NETIF_LINK_POLL_MILLISECONDS = 250,
 
@@ -70,7 +70,7 @@ enum
     BOARD_NETIF_REPORT_BYTES = 64
 };
 
-/* In the linker script's uncached region, and aligned as the DMA wants. */
+/* In the linker script's uncached region, aligned as the DMA requires. */
 #define BOARD_NETIF_DMA_MEMORY __attribute__((section(".ethernet_dma"), aligned(BOARD_NETIF_BUFFER_ALIGNMENT)))
 
 static uint8_t BddTargetBoardNetif_Mac[ETHARP_HWADDR_LEN] = {BDD_TARGET_BOARD_MAC_OCTETS};
@@ -84,8 +84,8 @@ static uint8_t BddTargetBoardNetif_RxBuffers[BOARD_NETIF_RX_BUFFER_COUNT]
                                             [BOARD_NETIF_BUFFER_BYTES] BOARD_NETIF_DMA_MEMORY;
 static bool BddTargetBoardNetif_RxBufferInUse[BOARD_NETIF_RX_BUFFER_COUNT];
 
-/* The frame HAL_ETH_ReadData is handing over, as its link callback saw it:
- * the buffers it came in, and its length. Only the task touches these. */
+/* The frame HAL_ETH_ReadData is returning, as its link callback recorded it:
+ * its buffers and its length. Only the task touches these. */
 static uint8_t* BddTargetBoardNetif_FrameBuffers[ETH_RX_DESC_CNT];
 static uint32_t BddTargetBoardNetif_FrameBufferCount;
 static uint32_t BddTargetBoardNetif_FrameLength;
@@ -95,7 +95,7 @@ static struct netif* BddTargetBoardNetif_Netif = NULL;
 static TaskHandle_t BddTargetBoardNetif_TaskHandle = NULL;
 static enum EthernetPhyLink BddTargetBoardNetif_Link = ETHERNET_PHY_LINK_DOWN;
 
-/* The name ST's vector table carries. */
+/* The name in ST's vector table. */
 void ETH_IRQHandler(void);
 
 static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf* p);
@@ -135,8 +135,8 @@ err_t BddTargetBoardNetif_Init(struct netif* netif)
      * stays, with no link. */
     if (HAL_ETH_Init(&BddTargetBoardNetif_Ethernet) == HAL_OK)
     {
-        /* The HAL leaves the management clock at the divider the part resets
-         * to, which at this core clock runs the bus faster than a PHY answers. */
+        /* The HAL leaves the management clock divider at its reset value,
+         * which at this core clock runs the bus faster than a PHY answers. */
         HAL_ETH_SetMDIOClockRange(&BddTargetBoardNetif_Ethernet);
         (void) xTaskCreate(
             BddTargetBoardNetif_Task,
@@ -154,8 +154,8 @@ err_t BddTargetBoardNetif_Init(struct netif* netif)
     return ERR_OK;
 }
 
-/* lwIP calls this holding its core lock, which is also what the task holds to
- * start and stop the MAC, so a frame is never handed to a MAC in mid-change. */
+/* lwIP calls this holding its core lock, which the task also holds to start
+ * and stop the MAC, so a frame is never given to a MAC that is changing. */
 static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf* p)
 {
     (void) netif;
@@ -173,8 +173,8 @@ static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf
         packet.CRCPadCtrl = ETH_CRC_PAD_INSERT;
         packet.Length = buffer.len;
         packet.TxBuffer = &buffer;
-        /* The polled transmit returns with the frame sent and holds nothing
-         * against the descriptor, so there is nothing to release after it. */
+        /* The polled transmit returns with the frame sent, so there is
+         * nothing to release afterwards. */
         HAL_StatusTypeDef sent = HAL_ETH_Transmit(
             &BddTargetBoardNetif_Ethernet,
             &packet,
@@ -216,7 +216,7 @@ static void BddTargetBoardNetif_Task(void* parameters)
 
 /* HAL_ETH_ReadData also rebuilds the descriptors of the frames taken so far,
  * so it is called until it has nothing, not only while frames are expected.
- * It answers HAL_ERROR, harmlessly, while the MAC is stopped. */
+ * While the MAC is stopped it returns HAL_ERROR, which is harmless. */
 static void BddTargetBoardNetif_ReceiveFrames(void)
 {
     void* frame = NULL;
@@ -227,10 +227,10 @@ static void BddTargetBoardNetif_ReceiveFrames(void)
     }
 }
 
-/* The HAL asks for a buffer for each receive descriptor it builds. Answering
- * NULL makes it try again on the next HAL_ETH_ReadData; it has to be written,
- * because the HAL passes in whatever the descriptor before was given. The name
- * and the parameter are ST's. */
+/* The HAL asks for a buffer for each receive descriptor it builds. Returning
+ * NULL makes it try again on the next HAL_ETH_ReadData. The NULL has to be
+ * written explicitly, because the HAL passes in whatever the previous
+ * descriptor was given. */
 void HAL_ETH_RxAllocateCallback(uint8_t** buff) // NOLINT(readability-identifier-naming) -- ST's name
 {
     *buff = NULL;
@@ -245,9 +245,9 @@ void HAL_ETH_RxAllocateCallback(uint8_t** buff) // NOLINT(readability-identifier
     }
 }
 
-/* The HAL hands over each buffer of the frame it is reading, in order. *pStart
- * is what HAL_ETH_ReadData returns, and only has to be non-NULL: the frame is
- * kept here. The name and the parameters are ST's. */
+/* The HAL passes each buffer of the frame it is reading, in order. *pStart is
+ * what HAL_ETH_ReadData returns, and only has to be non-NULL: the frame is
+ * recorded here. */
 // NOLINTNEXTLINE(readability-identifier-naming) -- ST's name
 void HAL_ETH_RxLinkCallback(void** pStart, void** pEnd, uint8_t* buff, uint16_t Length)
 {
@@ -314,8 +314,8 @@ static void BddTargetBoardNetif_FollowLink(void)
     }
 }
 
-/* A change of speed or duplex with no drop between goes through a stop too:
- * the MAC takes its configuration only while stopped. */
+/* A change of speed or duplex with no link drop also goes through a stop: the
+ * MAC takes its configuration only while stopped. */
 static void BddTargetBoardNetif_ApplyLink(enum EthernetPhyLink link)
 {
     LOCK_TCPIP_CORE();
@@ -342,8 +342,8 @@ static void BddTargetBoardNetif_StartMac(enum EthernetPhyLink link)
     (void) HAL_ETH_Start_IT(&BddTargetBoardNetif_Ethernet);
 }
 
-/* One line, formatted here and written whole: stdio belongs to the target's
- * interactive thread, and the console lock in _write keeps one write together. */
+/* Written with one write() and not stdio, which belongs to the target's
+ * interactive thread; the console lock in _write keeps the line whole. */
 static void BddTargetBoardNetif_Report(const char* what, const char* detail)
 {
     char line[BOARD_NETIF_REPORT_BYTES];
@@ -359,8 +359,7 @@ void ETH_IRQHandler(void)
     HAL_ETH_IRQHandler(&BddTargetBoardNetif_Ethernet);
 }
 
-/* From the interrupt, when a frame has arrived. The name and the parameter
- * are ST's. */
+/* From the interrupt, when a frame has arrived. */
 void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef* heth) // NOLINT(readability-identifier-naming) -- ST's name
 {
     (void) heth;
@@ -369,9 +368,9 @@ void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef* heth) // NOLINT(readability-ident
     portYIELD_FROM_ISR(higherPriorityTaskWoken);
 }
 
-/* From the interrupt, among other things when a frame found no descriptor
- * free. Waking the task has it read what is waiting, which rebuilds them. The
- * name and the parameter are ST's. */
+/* From the interrupt on an error, such as a frame that found no descriptor
+ * free. Waking the task makes it read what is waiting, which rebuilds the
+ * descriptors. */
 void HAL_ETH_ErrorCallback(ETH_HandleTypeDef* heth) // NOLINT(readability-identifier-naming) -- ST's name
 {
     HAL_ETH_RxCpltCallback(heth);

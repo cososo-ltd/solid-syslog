@@ -4,9 +4,9 @@
 /* The CMSIS device header for QEMU mps2-an385, a Cortex-M3. CMSIS-FreeRTOS
  * includes it through CMSIS_device_header, which the CMSIS-RTOS2 target's
  * kernel half defines for the wrapper's source; outside a CMSIS-Pack RTE build
- * the wrapper refuses to compile without one. It reads only the core, so
- * nothing here goes beyond the core's exceptions. Every board supplies a
- * header of this name; on real hardware it wraps the vendor's device header. */
+ * the wrapper refuses to compile without one. The wrapper uses only the core,
+ * so only the core's exceptions are declared here. Every board supplies a
+ * header of this name. */
 
 #include "BddTargetBoardConfig.h"
 

@@ -146,8 +146,8 @@ set(MBEDTLS_USER_CONFIG_HEADER
 foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
     if(TARGET ${_mbedtls_upstream_target})
         # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
-        # bignum multiply is inline assembler that wants every low register,
-        # and an unoptimised build otherwise keeps one back as frame pointer.
+        # bignum multiply is inline assembler that needs every low register,
+        # and an unoptimised build otherwise reserves one as frame pointer.
         target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
         target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
             MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}

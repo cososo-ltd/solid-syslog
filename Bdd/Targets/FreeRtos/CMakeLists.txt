@@ -101,7 +101,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IP.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv4.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv6.c
-    # Fixed buffers or ones from the heap: the board's interface decides.
+    # Fixed buffers or heap buffers, as the board's interface requires.
     ${PLUS_TCP_BUF_DIR}/BufferAllocation_${BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION}.c
     # The board's NetworkInterface + controller driver.
     ${PLUS_TCP_NIF_SOURCES}
@@ -152,8 +152,9 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -Wno-cpp
 )
 
-# Whether the board's interface copies frames is read by FreeRTOSIPConfig.h, so
-# it goes to everything that reads that header: here, and the executable.
+# FreeRTOSIPConfig.h reads whether the board's interface copies frames, so the
+# definition goes to everything that includes that header: this library and
+# the executable.
 set(BDD_PLUSTCP_ZERO_COPY_DEFINITION BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY=${BDD_BOARD_PLUSTCP_ZERO_COPY})
 
 target_compile_definitions(solid_syslog_freertos_upstream PRIVATE
@@ -161,7 +162,7 @@ target_compile_definitions(solid_syslog_freertos_upstream PRIVATE
     ${BDD_PLUSTCP_ZERO_COPY_DEFINITION}
 )
 
-# What the board's interface alone needs defined goes to its sources alone.
+# Definitions for the board's interface go to its sources only.
 if(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS)
     set_source_files_properties(${PLUS_TCP_NIF_SOURCES} PROPERTIES
         COMPILE_DEFINITIONS "${BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS}")
@@ -203,8 +204,8 @@ set(MBEDTLS_USER_CONFIG_HEADER
 foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
     if(TARGET ${_mbedtls_upstream_target})
         # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
-        # bignum multiply is inline assembler that wants every low register,
-        # and an unoptimised build otherwise keeps one back as frame pointer.
+        # bignum multiply is inline assembler that needs every low register,
+        # and an unoptimised build otherwise reserves one as frame pointer.
         target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
         target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
             MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}

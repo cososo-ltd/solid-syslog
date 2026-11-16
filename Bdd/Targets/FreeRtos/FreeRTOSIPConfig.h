@@ -27,19 +27,19 @@
 #define ipconfigUSE_LLMNR 0
 #define ipconfigUSE_NBNS 0
 #define ipconfigUSE_NETWORK_EVENT_HOOK 1
-/* A network interface that watches its link tells the stack when it drops, and
- * the stack tells the event hook, which says so on the console. */
+/* A network interface that monitors its link tells the stack when it drops,
+ * and the stack calls the event hook, which reports it on the console. */
 #define ipconfigSUPPORT_NETWORK_DOWN_EVENT 1
-/* How often such an interface asks its PHY whether a link that was up still
- * is, in milliseconds. The stack's own choice is fifteen seconds, and until
- * the interface has asked, a pulled cable is a link that is up. */
+/* How often such an interface polls its PHY while the link is up, in
+ * milliseconds. The stack's default is fifteen seconds, and a pulled cable
+ * goes unnoticed until the next poll. */
 #define ipconfigPHY_LS_HIGH_CHECK_TIME_MS 500
 
-/* Whether the board's network interface hands the stack's buffers to the
- * controller as they are, or copies each frame. It is the interface's to say:
- * one written for either will not build, or will not work, under the other.
- * The build passes it, from the board's Board.cmake, where it sits beside the
- * buffer scheme that has to agree with it. */
+/* Whether the board's network interface passes the stack's buffers to the
+ * controller, or copies each frame. The interface decides: one written for
+ * either will not build, or will not work, under the other. The build passes
+ * it from the board's Board.cmake, which sets it with the buffer scheme that
+ * has to agree with it. */
 #define ipconfigZERO_COPY_TX_DRIVER BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY
 #define ipconfigZERO_COPY_RX_DRIVER BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY
 

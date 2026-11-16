@@ -169,7 +169,6 @@ uint8_t ExchangeSelected(uint8_t out)
     return in;
 }
 
-/* A program that reaches the end of its page goes on from the page's start. */
 void CarryOutProgram(const std::vector<uint8_t>& frame)
 {
     const uint32_t address = AddressIn(frame);
@@ -351,8 +350,8 @@ extern "C"
         return in;
     }
 
-    /* Each reading is later than the last, so a wait the driver times comes
-     * to its end however little else happens. */
+    /* Each reading moves the time on, so a timed wait in the driver always
+     * ends. */
     uint32_t BddTargetBoardFlashBus_Milliseconds(void)
     {
         const uint32_t now = state.milliseconds;

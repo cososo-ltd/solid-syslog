@@ -16,9 +16,9 @@ static inline uint32_t TickedClock_MicrosecondsSince(uint32_t counterAtStart, ui
 static BddTargetTickedClockCounterFunction clockCounter = TickedClock_NoCounter;
 static uint32_t clockCountsPerMicrosecond = 1U;
 
-/* The second under way and the count it started at, written together by
- * BddTargetTickedClock_Set. The sequence counts those writes, so a reading that
- * finds it moved knows the two may not belong together and reads again. */
+/* The current second and the count it started at, written together by
+ * BddTargetTickedClock_Set. The sequence counts those writes, so a reading
+ * that sees it change reads again. */
 static volatile uint32_t clockSequence;
 static volatile bool clockIsSet;
 static volatile uint32_t clockSeconds;
@@ -32,22 +32,20 @@ void BddTargetTickedClock_Initialise(BddTargetTickedClockCounterFunction counter
     clockIsSet = false;
 }
 
-/* A target that wires no counter still has a clock, in whole seconds. */
+/* With no counter the clock still works, in whole seconds. */
 static uint32_t TickedClock_NoCounter(void)
 {
     return 0U;
 }
 
-/* A tick is the time being set to the start of a second. */
 void BddTargetTickedClock_Tick(uint32_t secondsSinceEpoch)
 {
     BddTargetTickedClock_Set(secondsSinceEpoch, 0U);
 }
 
-/* The counter wraps, and so does the subtraction: this is the count the
- * counter stood at, or would have, when the second started. The two
- * parameters are one time, whole seconds and then the fraction, in the order
- * a timeval keeps them. */
+/* The subtraction wraps as the counter does, giving the count at which the
+ * second started. The two parameters are one time, seconds then fraction, in
+ * the order a timeval keeps them. */
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void BddTargetTickedClock_Set(uint32_t secondsSinceEpoch, uint32_t microseconds)
 {
@@ -86,7 +84,7 @@ void BddTargetTickedClock_GetTimestamp(struct SolidSyslogTimestamp* timestamp)
 }
 
 /* Held at the last microsecond of the second when the counter has counted a
- * second's worth and the tick that starts the next has not arrived. */
+ * second's worth and the next tick has not arrived. */
 static inline uint32_t TickedClock_MicrosecondsSince(uint32_t counterAtStart, uint32_t counterNow)
 {
     uint32_t microseconds = (counterNow - counterAtStart) / clockCountsPerMicrosecond;

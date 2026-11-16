@@ -6,7 +6,7 @@
  * <stdint.h> when we do not redefine them - newlib on arm-none-eabi provides
  * those, so we let lwIP's defaults stand.
  *
- * DIAG is a no-op. ASSERT says on the console what lwIP found, and stops the
+ * DIAG is a no-op. ASSERT reports on the console what lwIP found and stops the
  * target. LWIP_RAND is a tiny self-contained xorshift, defined in each target's
  * main.c, so TCP ISN selection has a definition to link against without
  * dragging in newlib's rand() / a real entropy source. */

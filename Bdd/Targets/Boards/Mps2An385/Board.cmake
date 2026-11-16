@@ -3,8 +3,8 @@
 
 set(BDD_BOARD_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-# Any arm toolchain file passes the top-level gate, and one for another core
-# would compile this without complaint into an image the machine cannot run.
+# Any arm toolchain file passes the top-level check, and one for another core
+# would build an image the machine cannot run.
 if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m3")
     message(FATAL_ERROR
         "The mps2-an385 board needs its own toolchain file, "
@@ -25,8 +25,8 @@ set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/CmsdkUart.c
 )
 
-# The machine's one medium is a flat image on the machine QEMU runs on. It is
-# the sector disk, and LittleFS is given a block device over those sectors.
+# The machine's only medium is a flat image on the QEMU host. It is the
+# sector disk, and LittleFS gets a block device over those sectors.
 set(BDD_BOARD_DISK_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
 )
@@ -46,7 +46,7 @@ set(BDD_BOARD_DEFINITIONS)
 set(BDD_BOARD_UPSTREAM_SOURCES)
 
 # The LAN9118 under lwIP: our netif over the vendored Arm controller driver
-# (Apache-2.0), which sits under the relaxations as third-party source.
+# (Apache-2.0), compiled under the relaxed warnings as third-party source.
 set(BDD_BOARD_LWIP_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Lwip/BddTargetBoardNetif.c
 )

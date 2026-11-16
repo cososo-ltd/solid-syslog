@@ -1,32 +1,31 @@
 <#
 .SYNOPSIS
-Builds one of the board's BDD targets for the commit under test, writes it to
+Builds one of the board's BDD targets at the commit under test, flashes it to
 the NUCLEO-F767ZI attached to this machine, and runs the BDD scenarios against
 the board.
 
 .DESCRIPTION
--Target chooses the image, and has to be given: lwip, the FreeRTOS + lwIP Raw
-target, cmsis, the CMSIS-RTOS2 + lwIP Sockets target, or plustcp, the
-FreeRTOS-Plus-TCP target. Everything below is the same for all three.
+-Target is mandatory and selects the image: lwip (FreeRTOS + lwIP Raw), cmsis
+(CMSIS-RTOS2 + lwIP Sockets) or plustcp (FreeRTOS-Plus-TCP). Everything below
+applies to all three.
 
-Behave runs here, natively. Each scenario starts the target by resetting the
-board through the ST-LINK's debug probe, and drives it over the ST-LINK's
-virtual COM port. Before the first scenario the run checks that the banner the
-board shows names the image asked for and the commit checked out here, so a
-run cannot pass against an image of something else.
+Behave runs natively on this machine. Each scenario starts the target by
+resetting the board through the ST-LINK's debug probe, and drives it over the
+ST-LINK's virtual COM port. Before the first scenario the run checks that the
+board's banner names the image requested and the commit checked out here, so a
+run cannot pass against a different image.
 
-The image is built in the cross image CI builds it in, read from
-.github/workflows/ci.yml, so Docker has to be running. The board's addresses
-are facts about the network it is cabled to and are not in the repository: give
-them here, or in the environment variables the parameters default to. The tree
-must hold no change to a tracked file, because the build marks such an image
+The image is built in the cross image CI uses, read from
+.github/workflows/ci.yml, so Docker must be running. The board's addresses
+depend on the network it is cabled to and are not in the repository: give them
+here, or in the environment variables the parameters default to. Tracked files
+must have no uncommitted changes, because the build marks such an image
 "-dirty" and the run refuses it.
 
-The oracle is the OpenTelemetry Collector the Windows runner uses, started here
-for the run with Bdd/otel/config.vxworks64.yaml, which listens on every
-interface for UDP and TCP on the collector port below. A scenario that stops
-the collector to make an outage starts it again from the same config, which the
-steps are told below.
+The oracle is the OpenTelemetry Collector the Windows runner uses, started for
+the run with Bdd/otel/config.vxworks64.yaml. It listens on every interface for
+UDP and TCP on the collector port. A scenario that stops the collector to
+simulate an outage restarts it from the same config.
 
 Needs STM32CubeCLT, Python with Bdd/requirements.txt and pyserial installed,
 Bdd/otel/bin/otelcol-contrib.exe (Bdd/otel/Install-OtelCollector.ps1), and
@@ -34,27 +33,25 @@ inbound UDP and TCP on the collector port allowed from the board's network.
 Nothing else may hold that port, and no other collector may be running,
 because both would write Bdd/output/received.jsonl.
 
-The tag filter is this board's list of what it cannot do yet: TLS (@tls), which
-has not been run on it. Each image keeps its store on a medium that outlasts a
-reset - a MicroSD card under lwip and plustcp, a W25Q128 flash under cmsis -
-which the run wipes before each scenario that uses a store (@store). The board
-has a real-time clock, and the run tells it the time before the first scenario,
-so it runs the scenarios of a target that knows the time (@rtc) and not those
-of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
-waiting on a capability, and loses the tag as the story that adds it lands.
+The tag filter excludes TLS (@tls), which has not been run on the board. Each
+image keeps its store on a medium that survives a reset (a MicroSD card under
+lwip and plustcp, a W25Q128 flash under cmsis), so the run wipes it before each
+scenario that uses a store (@store). The board has a real-time clock, which the
+run sets before the first scenario, so the @rtc scenarios run and the @no_rtc
+scenarios do not. A scenario tagged @nucleof767ziwip is waiting on a capability
+the board does not have yet.
 
--SkipBuild reuses the image already built, and still writes it to the board.
--Paths runs only the features given, as behave takes them, under the same tag
+-SkipBuild reuses the image already built, and still flashes it.
+-Paths runs only the features given, in behave's syntax, under the same tag
 filter.
 
--SustainedRun runs no scenario. It sends the number of messages given over UDP
-and then as many over TCP, and passes if the collector recorded every one of
-them once, in order and as it was sent, with a time on it no earlier than the
-last. Runner/sustained_run.py is what does it. With -FileStore every message
-goes by way of a store of files on the image's medium, which the run wipes
-first, and is asked for no faster than that medium was seen to keep up with.
--FileStoreInterval gives the seconds between them in place of the image's own,
-which is how a medium's pace is found.
+-SustainedRun runs no scenarios. It sends the given number of messages over
+UDP and then as many over TCP, and passes if the collector recorded each one
+exactly once, in order, as sent, and with a timestamp no earlier than the
+previous one. Runner/sustained_run.py does the work. With -FileStore every
+message goes through the file store on the image's medium, which is wiped
+first, at a rate the medium is known to sustain. -FileStoreInterval overrides
+the image's interval, in seconds, and is how a medium's rate is found.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
@@ -86,12 +83,12 @@ $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $tags = '(@udp or @tcp) and not @tls and not @no_rtc and not @wip and not @freertoswip and not @nucleof767ziwip and not @host_store and not @host_buffer and not @passthrough'
 $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
-# Each image the board runs: its preset, the directory its target is built in
-# under the build tree, the name of the target, which is the image's too, what
-# its banner calls it, which is the preset's SOLIDSYSLOG_BDD_TARGET, and the
-# seconds a sustained run leaves between messages that go by way of its file
-# store, which is about twice what its medium was seen to take over one: the
-# card takes a write of a sector, and the flash an erase or two.
+# For each image: its preset, the target's directory under the build tree, the
+# target name (also the image's file name), the name in its banner (the
+# preset's SOLIDSYSLOG_BDD_TARGET), and the seconds a sustained run leaves
+# between file-store messages. The interval is about twice what the medium
+# was measured to take per message: a sector write on the card, and one or two
+# erases on the flash.
 $images = @{
     lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; FileStoreInterval = '0.05' }
     cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; FileStoreInterval = '0.25' }
@@ -101,17 +98,18 @@ $preset = $images[$Target].Preset
 $buildTarget = $images[$Target].Name
 $buildDirectory = "build/$preset"
 $image = "$buildDirectory/$($images[$Target].Directory)/$buildTarget.elf"
-# Where the build's container sees this tree, which is how its cache names files.
+# The tree's path inside the build container, which the CMake cache records.
 $mount = '/workspaces/solid-syslog'
-# What the run sets for the steps, put back as it ends: left behind, BDD_BOARD
-# would send a later run of another target to this board, and the serial port
-# would stand in for the board's own after it has moved.
+# Environment the run sets for the steps, restored when it ends. Left set,
+# BDD_BOARD would send a later run of another target to this board, and the
+# serial port would override detection after the board has moved ports.
 $runEnvironment = @('BDD_TARGET', 'BDD_BOARD', 'NUCLEO_F767ZI_SERIAL_PORT', 'NUCLEO_F767ZI_BUILD_DIR', 'NUCLEO_F767ZI_IMAGE',
     'NUCLEO_F767ZI_CONSOLE_RECORD', 'STM32_PROGRAMMER_CLI', 'ORACLE_FORMAT', 'RECEIVED_LOG',
     'VXWORKS64_COLLECTOR_PORT', 'OTELCOL_CONFIG', 'OTELCOL_TCP_PORTS')
 
-# STM32CubeCLT's installer puts the programmer on PATH; a shell opened before
-# the install, or one that does not take the machine's PATH, finds it here.
+# STM32CubeCLT's installer puts the programmer on PATH. A shell opened before
+# the install, or one that does not inherit the machine's PATH, needs the
+# fallback.
 function Find-Programmer
     {
     $onPath = Get-Command 'STM32_Programmer_CLI' -ErrorAction SilentlyContinue
@@ -160,8 +158,8 @@ function Build-Image
         {
         $configure += " -DSOLIDSYSLOG_BDD_BOARD_GATEWAY=$Gateway"
         }
-    # As root, and with every directory trusted, as the CI lane runs it: the
-    # tree is this machine's, and the build asks git which commit it is. A
+    # Runs as root with every directory trusted, as the CI lane does: the tree
+    # belongs to this machine's user, and the build asks git for the commit. A
     # native command's stderr is fatal under 'Stop' when output is redirected,
     # so each is judged by its exit code alone.
     $ErrorActionPreference = 'Continue'
@@ -181,13 +179,13 @@ if (Get-Process -Name 'otelcol-contrib' -ErrorAction SilentlyContinue)
     throw 'An OpenTelemetry Collector is already running; stop it first, because both would write Bdd/output/received.jsonl.'
     }
 # A container's published port is held inside the container host, where a
-# probe from here cannot always see it, so ask Docker directly.
+# probe from here cannot always see it, so Docker is asked directly.
 if (Get-Command docker -ErrorAction SilentlyContinue)
     {
     foreach ($protocol in @('udp', 'tcp'))
         {
-        # Docker may be installed and not running, which is no holder of the
-        # port; under 'Stop' what it says of that on stderr would end the run.
+        # Docker may be installed but not running, in which case nothing of
+        # its holds the port; under 'Stop' its stderr would end the run.
         $ErrorActionPreference = 'Continue'
         $holders = @(docker ps --filter "publish=$collectorPort/$protocol" --format '{{.Names}}' 2>$null)
         $ErrorActionPreference = 'Stop'
@@ -230,10 +228,10 @@ try
         throw "Writing the image to the board failed with exit code $LASTEXITCODE."
         }
 
-    # The steps size their payloads from the target's build-time tunables. The
-    # configure writes the module they read, and so does every other preset's,
-    # so it is written again here by the configure's rule from this build: the
-    # library's default, unless the tunables file the build was given sets it.
+    # The steps size their payloads from the target's build-time tunables.
+    # Every preset's configure overwrites the module they read, so it is
+    # regenerated here for this build by the same rule: the library's default,
+    # unless the build's user tunables file sets the value.
     $defaults = Get-Content -Raw -LiteralPath 'Core\Interface\SolidSyslogTunablesDefaults.h'
     if ($defaults -notmatch '#define\s+SOLIDSYSLOG_MAX_MESSAGE_SIZE\s+(\d+)')
         {
@@ -260,23 +258,22 @@ try
     $env:STM32_PROGRAMMER_CLI = $programmer
     $env:ORACLE_FORMAT = 'otel-jsonl'
     $env:RECEIVED_LOG = 'Bdd/output/received.jsonl'
-    # The collector config takes its port from this variable, whichever target
-    # the run is against.
+    # The collector config reads its port from this variable for every target.
     $env:VXWORKS64_COLLECTOR_PORT = "$collectorPort"
     $env:OTELCOL_CONFIG = 'Bdd\otel\config.vxworks64.yaml'
     $env:OTELCOL_TCP_PORTS = "$collectorPort"
 
     New-Item -ItemType Directory -Force -Path 'Bdd\output' | Out-Null
-    # Everything that crosses the serial port, and each reset, with its time:
-    # what the board sent, whatever the run then made of it.
+    # A timestamped record of everything that crosses the serial port, and of
+    # each reset.
     $env:NUCLEO_F767ZI_CONSOLE_RECORD = Join-Path $repositoryRoot 'Bdd\output\nucleo-f767zi-console.log'
     Remove-Item -LiteralPath $env:NUCLEO_F767ZI_CONSOLE_RECORD -ErrorAction SilentlyContinue
-    # Every run starts with nothing recorded. The collector moves a record
-    # aside when it reaches ten megabytes, which one sustained run fills: a
-    # sustained run reads the files moved aside too, so none may be left from
-    # before, and a scenario reads only the newest, so a record left nearly
-    # full would be moved aside under it with the message it is waiting for.
-    # Finding none is no error, and one that cannot be removed ends the run.
+    # Every run starts with no records. The collector rotates a record file at
+    # ten megabytes, which one sustained run fills. A sustained run reads the
+    # rotated files too, so none may be left from an earlier run. A scenario
+    # reads only the newest file, so one left nearly full could be rotated
+    # away with the message the scenario is waiting for. Finding none is not
+    # an error; one that cannot be removed ends the run.
     Remove-Item -Path 'Bdd\output\received*.jsonl'
     $collector = Start-Process -FilePath 'Bdd\otel\bin\otelcol-contrib.exe' `
         -ArgumentList "--config=$env:OTELCOL_CONFIG" `
@@ -323,10 +320,11 @@ try
     }
 finally
     {
-    # By name: an outage scenario replaces the collector started above. No
-    # collector was running at the start, so every one now is this run's.
-    # Stopping one returns before it has gone, and a run started straight
-    # after would find it and refuse to start, so each is waited for.
+    # Collectors are stopped by name, because an outage scenario replaces the
+    # one started above. None was running at the start, so any running now
+    # belongs to this run. Stop-Process returns before the process has gone,
+    # and a run started straight afterwards would find it and refuse to start,
+    # so each is waited for.
     if ($collector)
         {
         $stopped = @(Get-Process -Name 'otelcol-contrib' -ErrorAction SilentlyContinue)

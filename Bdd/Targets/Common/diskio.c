@@ -103,8 +103,8 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void* buff)
     switch (cmd)
     {
         case CTRL_SYNC:
-            /* BddTargetBoardDisk_Write returns with the sectors written -
-             * nothing is held back here to flush. */
+            /* BddTargetBoardDisk_Write returns with the sectors written, so
+             * there is nothing to flush. */
             return RES_OK;
         case GET_SECTOR_COUNT:
             *(LBA_t*) buff = (LBA_t) BDD_TARGET_BOARD_DISK_SECTOR_COUNT;

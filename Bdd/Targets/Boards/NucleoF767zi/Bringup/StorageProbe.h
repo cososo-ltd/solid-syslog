@@ -1,18 +1,18 @@
 #ifndef STORAGE_PROBE_H
 #define STORAGE_PROBE_H
 
-/* Asks the two storage breakouts on SPI4 whether they are there, and says on
- * the console what each answered. It tells a fault in the wiring from one in
- * a driver built on it, so it uses no driver: the bus is driven a bit at a
- * time on the pins, slowly, and nothing is written to either device.
+/* Checks that the two storage breakouts on SPI4 answer, and reports on the
+ * console what each returned. Its purpose is to separate a wiring fault from
+ * a driver fault, so it uses no driver: it bit-bangs the bus slowly on the
+ * pins, and writes nothing to either device.
  *
  * README.md in the directory above holds the pin plan. */
 
 /* Takes the SPI4 pins and leaves both chip selects high. */
 void StorageProbe_Init(void);
 
-/* Takes the pins again, which the flash check may have had since, and probes
- * the MicroSD card, then the W25Q128, one line of console output each. */
+/* Takes the pins again, in case the flash check has had them since, and
+ * probes the MicroSD card, then the W25Q128, one console line each. */
 void StorageProbe_Run(void);
 
 #endif

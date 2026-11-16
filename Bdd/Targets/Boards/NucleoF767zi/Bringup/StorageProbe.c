@@ -24,8 +24,8 @@ enum
 enum
 {
     /* Half a clock period, as turns of an empty loop. It puts the clock in
-     * the low hundreds of kHz, inside the 100 to 400 kHz a card is to be
-     * started at; the probe has no need of an exact rate. */
+     * the low hundreds of kHz, within the 100 to 400 kHz for starting a card;
+     * the probe does not need an exact rate. */
     HALF_PERIOD_LOOPS = 150,
 
     IDLE_BYTE = 0xFF,
@@ -196,7 +196,7 @@ static uint8_t StorageProbe_CardCommand(const uint8_t* command)
     return response;
 }
 
-/* A card lets go of its data line only after eight more clocks. */
+/* A card releases its data line only after eight more clocks. */
 static inline void StorageProbe_Deselect(uint16_t pin)
 {
     HAL_GPIO_WritePin(GPIOE, pin, GPIO_PIN_SET);
