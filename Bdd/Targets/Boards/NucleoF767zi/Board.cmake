@@ -220,14 +220,21 @@ set(BDD_BOARD_UPSTREAM_SOURCES
     ${STM32F7_CMSIS_DEVICE_PATH}/Source/Templates/gcc/startup_stm32f767xx.s
 )
 
+# What the Ethernet MAC needs from the board under any network stack: its
+# clock, pins and interrupt, and the PHY restarted before the MAC is. It reads
+# the kernel's configuration, so it is built with a stack's interface and not
+# with the board's own sources, which the bring-up image takes with no kernel.
+set(bdd_board_ethernet_sources
+    ${BDD_BOARD_DIR}/BoardEthernet.c
+    ${BDD_BOARD_DIR}/EthernetPhy.c
+)
+
 # The Ethernet MAC under lwIP: our netif over ST's HAL Ethernet driver, which
 # is in the list above with the rest of the HAL, and our reading of the PHY's
 # link. No FreeRTOS-Plus-TCP interface is written, so those names are not set.
 set(BDD_BOARD_LWIP_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Lwip/BddTargetBoardNetif.c
-    ${BDD_BOARD_DIR}/Lwip/EthernetPhy.c
+    ${bdd_board_ethernet_sources}
 )
 set(BDD_BOARD_LWIP_UPSTREAM_SOURCES)
-set(BDD_BOARD_LWIP_INCLUDES
-    ${BDD_BOARD_DIR}/Lwip                             # EthernetPhy.h
-)
+set(BDD_BOARD_LWIP_INCLUDES)

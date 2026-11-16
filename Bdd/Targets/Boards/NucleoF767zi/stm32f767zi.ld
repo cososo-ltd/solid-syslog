@@ -6,7 +6,7 @@
  *   DTCM:  0x20000000, 128 KiB - left unused. It is the fastest RAM on the
  *                                part and is kept free for whoever needs it.
  *   SRAM:  0x20020000, 384 KiB - SRAM1 and SRAM2, which are contiguous. Its
- *                                first 16 KiB is ETHDMA below; the rest holds
+ *                                first 32 KiB is ETHDMA below; the rest holds
  *                                data, bss, the newlib heap and the stack.
  *
  * ETHDMA is what the Ethernet DMA reads and writes: its descriptors and the
@@ -24,8 +24,8 @@ MEMORY
 {
     FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 2048K
     DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
-    ETHDMA (rw) : ORIGIN = 0x20020000, LENGTH = 16K
-    SRAM  (rwx) : ORIGIN = 0x20024000, LENGTH = 368K
+    ETHDMA (rw) : ORIGIN = 0x20020000, LENGTH = 32K
+    SRAM  (rwx) : ORIGIN = 0x20028000, LENGTH = 352K
 }
 
 _ethernet_dma_start = ORIGIN(ETHDMA);
@@ -90,10 +90,15 @@ SECTIONS
 
     /* Not loaded and not cleared at startup: the Ethernet driver writes every
      * descriptor before the DMA is given it, and a buffer is read only after
-     * a frame has been written to it. */
+     * a frame has been written to it. The last three are the names
+     * FreeRTOS-Plus-TCP's network interface for this MAC gives its descriptors
+     * and its network buffers, every one of which the DMA may be handed. */
     .ethernet_dma (NOLOAD) :
     {
         *(.ethernet_dma*)
+        *(.TxDescripSection)
+        *(.RxDescripSection)
+        *(.EthBuffersSection)
     } > ETHDMA
 
     .data :

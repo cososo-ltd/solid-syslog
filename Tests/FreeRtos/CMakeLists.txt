@@ -265,7 +265,7 @@ solidsyslog_add_test(CmsdkUartTest)
 add_executable(EthernetPhyTest
     EthernetPhyTest.cpp
     main.cpp
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/NucleoF767zi/Lwip/EthernetPhy.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/NucleoF767zi/EthernetPhy.c
 )
 
 target_link_libraries(EthernetPhyTest PRIVATE
@@ -274,7 +274,7 @@ target_link_libraries(EthernetPhyTest PRIVATE
 )
 
 target_include_directories(EthernetPhyTest PRIVATE
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/NucleoF767zi/Lwip
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/NucleoF767zi
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h (via EthernetPhy.h)
     ${CMAKE_SOURCE_DIR}/Tests/Support
 )

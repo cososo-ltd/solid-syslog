@@ -120,7 +120,7 @@ static inline void Board_KeepEthernetDmaMemoryUncached(void)
     region.Enable = MPU_REGION_ENABLE;
     region.Number = ETHERNET_DMA_REGION;
     region.BaseAddress = (uint32_t) _ethernet_dma_start;
-    region.Size = MPU_REGION_SIZE_16KB;
+    region.Size = MPU_REGION_SIZE_32KB;
     region.AccessPermission = MPU_REGION_FULL_ACCESS;
     region.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
     /* Normal memory, neither cached nor write-buffered. */
