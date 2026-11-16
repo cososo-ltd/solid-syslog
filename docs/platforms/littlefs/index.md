@@ -116,3 +116,33 @@ The store rewrites the same records in rotation, which on raw flash concentrates
 erase cycles. LittleFS spreads them itself, which is the main reason to choose it
 here over a FAT filesystem on the same part. `block_cycles` in your
 `struct lfs_config` decides how eagerly, and has no usable default, so set it.
+
+### What the store costs the flash in erases
+
+Erases are what wear a flash part out, and an erase is the slowest thing a
+part does, so they are the cost worth counting. LittleFS never programs a block again once a
+commit refers to it: it writes a changed block to a fresh one, which it erases
+first. The store makes two kinds of write to a file, and each is such a change.
+
+- A record appended copies the file's last block, which is about one erase.
+- A record marked as sent is one byte written in place, wherever the record is
+  in its file. LittleFS copies the block that byte is in and every block of the
+  file after it, so the mark costs an erase for each block from the record to
+  the end of the file.
+
+A record that is stored and sent at once, as every record is while the
+collector can be reached, therefore costs about two erases whatever the size
+of the file, because its mark falls in the file's last block. A backlog is
+different. Its oldest record is at the start of its file, so marking it
+rewrites the whole file, and each record after it rewrites a little less.
+Draining a backlog costs about one erase a record where a store block fits in
+one filesystem block, and more with every further block it spans.
+
+The integration suite that tests durability counts the erases its emulated
+device carries out, and holds the store to each of those figures.
+
+How long a part lasts follows by arithmetic. Its rated erase cycles, times the
+blocks you give the filesystem, divided by the erases a record costs, is the
+most records it will ever store, and that is with wear spread perfectly.
+[Setup](setup.md#what-will-catch-you-out) says which of your choices move
+these figures.

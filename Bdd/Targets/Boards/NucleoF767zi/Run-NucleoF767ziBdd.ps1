@@ -53,6 +53,8 @@ them once, in order and as it was sent, with a time on it no earlier than the
 last. Runner/sustained_run.py is what does it. With -FileStore every message
 goes by way of a store of files on the image's medium, which the run wipes
 first, and is asked for no faster than that medium was seen to keep up with.
+-FileStoreInterval gives the seconds between them in place of the image's own,
+which is how a medium's pace is found.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
@@ -73,7 +75,8 @@ param(
     [switch] $SkipBuild,
     [string[]] $Paths = @('Bdd/features'),
     [int] $SustainedRun = 0,
-    [switch] $FileStore
+    [switch] $FileStore,
+    [string] $FileStoreInterval = ''
 )
 
 Set-StrictMode -Version Latest
@@ -304,7 +307,8 @@ try
     if ($SustainedRun -gt 0)
         {
         $store = if ($FileStore) { 'file' } else { 'null' }
-        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun $store $images[$Target].FileStoreInterval
+        $interval = if ($FileStoreInterval) { $FileStoreInterval } else { $images[$Target].FileStoreInterval }
+        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun $store $interval
         }
     else
         {
