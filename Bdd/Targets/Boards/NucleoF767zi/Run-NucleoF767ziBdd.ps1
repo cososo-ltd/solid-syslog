@@ -6,8 +6,8 @@ the board.
 
 .DESCRIPTION
 -Target chooses the image, and has to be given: lwip, the FreeRTOS + lwIP Raw
-target, or cmsis, the CMSIS-RTOS2 + lwIP Sockets target. Everything below is
-the same for both.
+target, cmsis, the CMSIS-RTOS2 + lwIP Sockets target, or plustcp, the
+FreeRTOS-Plus-TCP target. Everything below is the same for all three.
 
 Behave runs here, natively. Each scenario starts the target by resetting the
 board through the ST-LINK's debug probe, and drives it over the ST-LINK's
@@ -36,9 +36,9 @@ because both would write Bdd/output/received.jsonl.
 
 The tag filter is this board's list of what it cannot do yet: TLS (@tls), which
 has not been run on it. The board's disk is a MicroSD card, which the run wipes
-before each scenario that uses a store (@store). The cmsis image is not given
-the card and has no store yet, so its filter leaves those scenarios out and it
-refuses -FileStore. The board
+before each scenario that uses a store (@store). The cmsis and plustcp images
+are not given the card and have no store yet, so their filter leaves those
+scenarios out and they refuse -FileStore. The board
 has a real-time clock, and the run tells it the time before the first scenario,
 so it runs the scenarios of a target that knows the time (@rtc) and not those
 of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
@@ -57,12 +57,13 @@ goes by way of a store of files on the board's disk, which the run wipes first.
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
 .\Run-NucleoF767ziBdd.ps1 -Target cmsis -BoardAddress <board address> -CollectorAddress <this machine's address>
+.\Run-NucleoF767ziBdd.ps1 -Target plustcp -BoardAddress <board address> -CollectorAddress <this machine's address>
 .\Run-NucleoF767ziBdd.ps1 -Target lwip -SkipBuild -Paths Bdd/features/prival.feature
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('lwip', 'cmsis')]
+    [ValidateSet('lwip', 'cmsis', 'plustcp')]
     [string] $Target,
     [string] $BoardAddress = $env:NUCLEO_F767ZI_BOARD_ADDRESS,
     [string] $CollectorAddress = $env:NUCLEO_F767ZI_COLLECTOR_ADDRESS,
@@ -89,6 +90,7 @@ $healthUri = 'http://127.0.0.1:13133/'
 $images = @{
     lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; HasStore = $true }
     cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; HasStore = $false }
+    plustcp = @{ Preset = 'nucleo-f767zi-plustcp'; Directory = 'Bdd/Targets/FreeRtos'; Name = 'SolidSyslogBddTarget'; Banner = 'FREERTOS_PLUSTCP'; HasStore = $false }
 }
 if (-not $images[$Target].HasStore)
     {
