@@ -57,6 +57,7 @@ struct ProbeText
     size_t Length;
 };
 
+static inline void StorageProbe_TakePins(void);
 static inline void StorageProbe_ProbeCard(void);
 static inline void StorageProbe_WakeCard(void);
 static inline uint8_t StorageProbe_CardGoIdle(void);
@@ -70,7 +71,14 @@ static void ProbeText_Append(struct ProbeText* text, const char* more);
 static void ProbeText_AppendHex(struct ProbeText* text, const uint8_t* bytes, size_t count);
 static inline void ProbeText_Write(const struct ProbeText* text);
 
-void StorageProbe_Init(void)
+void StorageProbe_Run(void)
+{
+    StorageProbe_TakePins();
+    StorageProbe_ProbeCard();
+    StorageProbe_ProbeFlash();
+}
+
+static inline void StorageProbe_TakePins(void)
 {
     GPIO_InitTypeDef pins = {0};
     __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -91,12 +99,6 @@ void StorageProbe_Init(void)
     pins.Mode = GPIO_MODE_INPUT;
     pins.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOE, &pins);
-}
-
-void StorageProbe_Run(void)
-{
-    StorageProbe_ProbeCard();
-    StorageProbe_ProbeFlash();
 }
 
 static inline void StorageProbe_ProbeCard(void)
