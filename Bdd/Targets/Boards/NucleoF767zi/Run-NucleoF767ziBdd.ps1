@@ -35,10 +35,9 @@ Nothing else may hold that port, and no other collector may be running,
 because both would write Bdd/output/received.jsonl.
 
 The tag filter is this board's list of what it cannot do yet: TLS (@tls), which
-has not been run on it. The board's disk is a MicroSD card, which the run wipes
-before each scenario that uses a store (@store). The cmsis image is not given
-the card and has no store yet, so its filter leaves those scenarios out and it
-refuses -FileStore. The board
+has not been run on it. Each image keeps its store on a medium that outlasts a
+reset - a MicroSD card under lwip and plustcp, a W25Q128 flash under cmsis -
+which the run wipes before each scenario that uses a store (@store). The board
 has a real-time clock, and the run tells it the time before the first scenario,
 so it runs the scenarios of a target that knows the time (@rtc) and not those
 of one that does not (@no_rtc). Anything tagged @nucleof767ziwip is a scenario
@@ -52,7 +51,10 @@ filter.
 and then as many over TCP, and passes if the collector recorded every one of
 them once, in order and as it was sent, with a time on it no earlier than the
 last. Runner/sustained_run.py is what does it. With -FileStore every message
-goes by way of a store of files on the board's disk, which the run wipes first.
+goes by way of a store of files on the image's medium, which the run wipes
+first, and is asked for no faster than that medium was seen to keep up with.
+-FileStoreInterval gives the seconds between them in place of the image's own,
+which is how a medium's pace is found.
 
 .EXAMPLE
 .\Run-NucleoF767ziBdd.ps1 -Target lwip -BoardAddress <board address> -CollectorAddress <this machine's address>
@@ -73,7 +75,8 @@ param(
     [switch] $SkipBuild,
     [string[]] $Paths = @('Bdd/features'),
     [int] $SustainedRun = 0,
-    [switch] $FileStore
+    [switch] $FileStore,
+    [string] $FileStoreInterval = ''
 )
 
 Set-StrictMode -Version Latest
@@ -85,21 +88,15 @@ $collectorPort = 5514
 $healthUri = 'http://127.0.0.1:13133/'
 # Each image the board runs: its preset, the directory its target is built in
 # under the build tree, the name of the target, which is the image's too, what
-# its banner calls it, which is the preset's SOLIDSYSLOG_BDD_TARGET, and whether
-# the board gives it a disk to keep a store on.
+# its banner calls it, which is the preset's SOLIDSYSLOG_BDD_TARGET, and the
+# seconds a sustained run leaves between messages that go by way of its file
+# store, which is about twice what its medium was seen to take over one: the
+# card takes a write of a sector, and the flash an erase or two.
 $images = @{
-    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; HasStore = $true }
-    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; HasStore = $false }
-    plustcp = @{ Preset = 'nucleo-f767zi-plustcp'; Directory = 'Bdd/Targets/FreeRtos'; Name = 'SolidSyslogBddTarget'; Banner = 'FREERTOS_PLUSTCP'; HasStore = $true }
+    lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; FileStoreInterval = '0.05' }
+    cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; FileStoreInterval = '0.25' }
+    plustcp = @{ Preset = 'nucleo-f767zi-plustcp'; Directory = 'Bdd/Targets/FreeRtos'; Name = 'SolidSyslogBddTarget'; Banner = 'FREERTOS_PLUSTCP'; FileStoreInterval = '0.05' }
 }
-if (-not $images[$Target].HasStore)
-    {
-    if ($FileStore)
-        {
-        throw "The $Target image has no store on this board, so -FileStore has nothing to run."
-        }
-    $tags += ' and not @store'
-    }
 $preset = $images[$Target].Preset
 $buildTarget = $images[$Target].Name
 $buildDirectory = "build/$preset"
@@ -310,7 +307,8 @@ try
     if ($SustainedRun -gt 0)
         {
         $store = if ($FileStore) { 'file' } else { 'null' }
-        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun $store
+        $interval = if ($FileStoreInterval) { $FileStoreInterval } else { $images[$Target].FileStoreInterval }
+        & python (Join-Path $PSScriptRoot 'Runner\sustained_run.py') $SustainedRun $store $interval
         }
     else
         {

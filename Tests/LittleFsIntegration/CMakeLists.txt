@@ -42,6 +42,7 @@ add_executable(LittleFsIntegrationTests
     LittleFsDisk.c
     LittleFsDiskTest.cpp
     SolidSyslogLittleFsDurabilityTest.cpp
+    SolidSyslogLittleFsWearTest.cpp
 )
 
 # The adapter arrives through its own umbrella rather than as a list of source

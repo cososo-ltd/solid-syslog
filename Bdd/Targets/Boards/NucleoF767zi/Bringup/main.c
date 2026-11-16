@@ -4,10 +4,12 @@
  * the ST-LINK virtual COM port, each line received echoed back, and the green
  * LED blinking so a board with nothing attached to its serial port still
  * shows it is running. The line "probe" is echoed like any other, and then
- * the two storage breakouts are asked whether they are there. */
+ * the two storage breakouts are asked whether they are there. The line
+ * "flash" has the W25Q128 erased, programmed and read back. */
 
 #include "BddTargetLineAssembler.h"
 #include "Board.h"
+#include "FlashCheck.h"
 #include "StorageProbe.h"
 
 #include <stdbool.h>
@@ -27,6 +29,7 @@ static const char BANNER[] = "\r\nSolidSyslog NUCLEO-F767ZI bring-up, commit " B
 static const char ECHO_PREFIX[] = "echo: ";
 static const char LINE_END[] = "\r\n";
 static const char PROBE_COMMAND[] = "probe";
+static const char FLASH_COMMAND[] = "flash";
 
 static struct BddTargetLineAssembler line;
 static uint32_t lastToggle;
@@ -34,7 +37,7 @@ static uint32_t lastToggle;
 static inline void WriteText(const char* text);
 static inline void BlinkWhenDue(void);
 static inline void EchoWhenLineArrives(void);
-static inline bool IsProbeCommand(void);
+static inline bool IsCommand(const char* command);
 
 int main(void)
 {
@@ -72,14 +75,22 @@ static inline void EchoWhenLineArrives(void)
         WriteText(ECHO_PREFIX);
         Board_ConsoleWrite(line.Text, line.Length);
         WriteText(LINE_END);
-        if (IsProbeCommand())
+        if (IsCommand(PROBE_COMMAND))
         {
             StorageProbe_Run();
+        }
+        else if (IsCommand(FLASH_COMMAND))
+        {
+            FlashCheck_Run();
+        }
+        else
+        {
+            /* A line to echo and no more. */
         }
     }
 }
 
-static inline bool IsProbeCommand(void)
+static inline bool IsCommand(const char* command)
 {
-    return (line.Length == (sizeof(PROBE_COMMAND) - 1U)) && (memcmp(line.Text, PROBE_COMMAND, line.Length) == 0);
+    return (line.Length == strlen(command)) && (memcmp(line.Text, command, line.Length) == 0);
 }

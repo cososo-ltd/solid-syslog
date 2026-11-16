@@ -268,9 +268,9 @@ def prepare_nucleo_f767zi_board():
 
 def wipe_nucleo_f767zi_disk():
     """Gives the next scenario a disk with no filesystem on it. The board's
-    disk is a card, which keeps what it holds through the reset that starts
-    each scenario, as power_cycle_replay needs, so a scenario that leaves
-    records there would hand them to the next."""
+    disk is a card or a flash part, which keeps what it holds through the reset
+    that starts each scenario, as power_cycle_replay needs, so a scenario that
+    leaves records there would hand them to the next."""
     board = _import_from_nucleo_f767zi_runner("nucleo_f767zi")
     console = _open_nucleo_f767zi()
     try:

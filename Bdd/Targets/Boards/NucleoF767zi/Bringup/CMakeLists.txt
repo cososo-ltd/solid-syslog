@@ -42,9 +42,13 @@ target_include_directories(solid_syslog_nucleo_f767zi_upstream PRIVATE
 
 add_executable(SolidSyslogNucleoF767ziBringup
     main.c
+    FlashCheck.c
     StorageProbe.c
     ${BDD_BOARD_DIR}/Board.c
+    ${BDD_BOARD_DIR}/BoardSpi4.c
+    ${BDD_BOARD_DIR}/BddTargetBoardFlashBus.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSpiNorFlash.c
     $<TARGET_OBJECTS:solid_syslog_nucleo_f767zi_upstream>
 )
 
@@ -59,7 +63,7 @@ set_source_files_properties(main.c PROPERTIES
 
 target_include_directories(SolidSyslogNucleoF767ziBringup PRIVATE
     ${BDD_BOARD_DIR}                                  # Board.h, stm32f7xx_hal_conf.h
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetLineAssembler.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetLineAssembler.h, BddTargetSpiNorFlash.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h, which that header reads
 )
 target_include_directories(SolidSyslogNucleoF767ziBringup SYSTEM PRIVATE

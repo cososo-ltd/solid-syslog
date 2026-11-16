@@ -153,3 +153,42 @@ TEST(LittleFsDisk, RealLittleFsFormatsAndMountsOnIt)
     LONGS_EQUAL(LFS_ERR_OK, lfs_unmount(&filesystem));
     CHECK_TRUE(LittleFsDisk_WriteCount(&disk) > 0U);
 }
+
+TEST(LittleFsDisk, HasCarriedOutNoErasesAtFirst)
+{
+    LONGS_EQUAL(0, LittleFsDisk_EraseCount(&disk));
+}
+
+TEST(LittleFsDisk, CountsEachEraseItCarriesOut)
+{
+    (void) config.erase(&config, 0);
+    (void) config.erase(&config, 1);
+
+    LONGS_EQUAL(2, LittleFsDisk_EraseCount(&disk));
+}
+
+TEST(LittleFsDisk, DoesNotCountAProgramAsAnErase)
+{
+    ProgramOneUnit(0xA5);
+
+    LONGS_EQUAL(0, LittleFsDisk_EraseCount(&disk));
+}
+
+TEST(LittleFsDisk, DoesNotCountAnEraseTheCutStopped)
+{
+    LittleFsDisk_CutAfter(&disk, 1, LITTLEFS_DISK_CUT_TORN);
+
+    (void) config.erase(&config, 0);
+
+    LONGS_EQUAL(0, LittleFsDisk_EraseCount(&disk));
+}
+
+TEST(LittleFsDisk, KeepsItsCountOfErasesThroughAPowerCut)
+{
+    (void) config.erase(&config, 0);
+    LittleFsDisk_CutAfter(&disk, 1, LITTLEFS_DISK_CUT_CLEAN);
+    (void) config.erase(&config, 1);
+    LittleFsDisk_PowerOn(&disk);
+
+    LONGS_EQUAL(1, LittleFsDisk_EraseCount(&disk));
+}

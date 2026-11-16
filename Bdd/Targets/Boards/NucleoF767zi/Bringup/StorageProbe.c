@@ -95,6 +95,7 @@ void StorageProbe_Init(void)
 
 void StorageProbe_Run(void)
 {
+    StorageProbe_Init();
     StorageProbe_ProbeCard();
     StorageProbe_ProbeFlash();
 }

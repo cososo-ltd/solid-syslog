@@ -34,6 +34,20 @@
 #
 # A board that has no vendor layer leaves the last three empty.
 #
+# and, for the medium under each kind of filesystem a target may keep its store
+# in, the sources a target of that kind adds to its executable:
+#
+#   BDD_BOARD_DISK_PROJECT_SOURCES      - the sector disk, which defines the
+#                                         BddTargetBoardDisk_* functions, for a
+#                                         filesystem that is kept in sectors
+#   BDD_BOARD_LITTLEFS_PROJECT_SOURCES  - the LittleFS block device, which
+#                                         defines BddTargetLittleFsDisk_Config
+#                                         and BddTargetLittleFsDisk_Wipe, over
+#                                         whichever medium the board has for it
+#
+# A target takes one of the two, so the board never needs to know which
+# targets there are.
+#
 # and, for the Ethernet controller under each network stack a target may run:
 #
 #   BDD_BOARD_LWIP_PROJECT_SOURCES      - the netif that defines

@@ -7,6 +7,7 @@
 
 #include "BddTargetFatFsMount.h"
 
+#include "BddTargetBoardDisk.h"
 #include "SolidSyslogFatFsFile.h"
 
 #include "ff.h" /* f_mount / f_mkfs - eager mount-or-format on the `set store file` rebuild trigger. */
@@ -58,6 +59,11 @@ void BddTargetFatFsMount_Unmount(void)
         (void) f_unmount("");
         fatfsMounted = false;
     }
+}
+
+bool BddTargetFatFsMount_Wipe(void)
+{
+    return BddTargetBoardDisk_Wipe();
 }
 
 struct SolidSyslogFile* BddTargetFatFsMount_CreateFile(void)

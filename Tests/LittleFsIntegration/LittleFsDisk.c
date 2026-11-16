@@ -16,6 +16,7 @@ void LittleFsDisk_Init(struct LittleFsDisk* disk)
 {
     memset(disk->Storage, 0xFF, sizeof(disk->Storage));
     disk->WriteCount = 0U;
+    disk->EraseCount = 0U;
     disk->CutAfter = 0U;
     disk->CutKind = LITTLEFS_DISK_CUT_CLEAN;
     disk->PowerLost = false;
@@ -65,6 +66,11 @@ void LittleFsDisk_PowerOn(struct LittleFsDisk* disk)
 unsigned LittleFsDisk_WriteCount(const struct LittleFsDisk* disk)
 {
     return disk->WriteCount;
+}
+
+unsigned LittleFsDisk_EraseCount(const struct LittleFsDisk* disk)
+{
+    return disk->EraseCount;
 }
 
 static struct LittleFsDisk* DiskFromConfig(const struct lfs_config* c)
@@ -146,6 +152,7 @@ static int DiskErase(const struct lfs_config* c, lfs_block_t block)
     else
     {
         memset(target, 0xFF, LITTLEFS_DISK_BLOCK_SIZE);
+        disk->EraseCount++;
     }
     return result;
 }

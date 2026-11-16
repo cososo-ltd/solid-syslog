@@ -47,7 +47,7 @@ struct BddTargetFreeRtosPipelineConfig
      * The Plus-TCP target wires the FreeRTOS-Plus-FAT shim (BddTargetPlusFatMount);
      * the lwIP target wires the ChaN-FatFs shim (BddTargetFatFsMount). The
      * pipeline drives the store machinery (BlockStore / FileBlockDevice /
-     * security policy) FS-vendor-agnostically through these four hooks. */
+     * security policy) FS-vendor-agnostically through these five hooks. */
     /* Mount + format-on-first-use; idempotent; false on unrecoverable failure
      * (the rebuild path then leaves the target on its current store). */
     bool (*MountStore)(void);
@@ -56,6 +56,12 @@ struct BddTargetFreeRtosPipelineConfig
     /* Create / destroy the platform SolidSyslogFile adapter for the store. */
     struct SolidSyslogFile* (*CreateStoreFile)(void);
     void (*DestroyStoreFile)(struct SolidSyslogFile* file);
+    /* Leaves the store's medium with no filesystem on it, so that the next
+     * mount formats it. It is for a medium that keeps what it holds from one
+     * run of the target to the next, and is only called with nothing mounted.
+     * False where the medium is put back to nothing some other way, and where
+     * it will not take the change. */
+    bool (*WipeStore)(void);
 };
 
 /* Install the platform seam. Call once from main() before the tasks run. */

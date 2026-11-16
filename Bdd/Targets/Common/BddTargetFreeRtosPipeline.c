@@ -7,7 +7,6 @@
 
 #include "BddTargetBoard.h"
 #include "BddTargetBoardClock.h"
-#include "BddTargetBoardDisk.h"
 #include "BddTargetOsPrimitives.h"
 
 #include "BddTargetBlockFiles.h"
@@ -265,10 +264,10 @@ static bool OnSet(const char* name, const char* value)
         }
         if (strcmp(value, "wipe") == 0)
         {
-            /* Leaves the board's disk with no filesystem, for a harness whose
-             * disk outlives the target. Refused once the store is on it, and
-             * by a board whose disk the harness replaces itself. */
-            return !currentStoreIsFile && BddTargetBoardDisk_Wipe();
+            /* Leaves the store's medium with no filesystem, for a harness
+             * whose medium outlives the target. Refused once the store is on
+             * it, and where the harness replaces the medium itself. */
+            return !currentStoreIsFile && g_config->WipeStore();
         }
         return false;
     }

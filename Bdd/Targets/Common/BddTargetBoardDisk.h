@@ -10,16 +10,15 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* The board's one disk, as sectors. Part of the board seam - see
-     * BddTargetBoard.h - and defined in the board's directory.
+    /* The board's sector disk. Part of the board seam - see BddTargetBoard.h -
+     * and defined in the board's directory.
      *
-     * Each filesystem a target may run has its media glue in this directory -
-     * the ChaN-FatFs disk_* functions (diskio.c), the FreeRTOS-Plus-FAT
-     * FF_Disk_t driver (BddTargetPlusFatDisk.c) and the LittleFS block device
-     * (BddTargetLittleFsDisk.c) - and all three sit on the first four calls
-     * below, so a board supplies its media once. A board may give a target
-     * a disk that never becomes ready, where it has no media for that target's
-     * filesystem: every call below then fails, and a mount over it does too.
+     * Each filesystem a target may run on sectors has its media glue in this
+     * directory - the ChaN-FatFs disk_* functions (diskio.c), the
+     * FreeRTOS-Plus-FAT FF_Disk_t driver (BddTargetPlusFatDisk.c) and the
+     * LittleFS block device for a board with no flash (BddTargetLittleFsDisk.c)
+     * - and all three sit on the first four calls below, so a board supplies
+     * its sectors once.
      *
      * The geometry is the board's, as BDD_TARGET_BOARD_DISK_SECTOR_SIZE and
      * BDD_TARGET_BOARD_DISK_SECTOR_COUNT in its BddTargetBoardConfig.h. */

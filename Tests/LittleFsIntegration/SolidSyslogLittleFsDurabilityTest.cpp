@@ -5,18 +5,7 @@
 
 #include "CppUTest/TestHarness.h"
 
-extern "C"
-{
-#include "LittleFsDisk.h"
-#include "SolidSyslogBlockDevice.h"
-#include "SolidSyslogBlockStore.h"
-#include "SolidSyslogFile.h"
-#include "SolidSyslogFileBlockDevice.h"
-#include "SolidSyslogLittleFsFile.h"
-#include "SolidSyslogStore.h"
-#include "SolidSyslogStoreDefinition.h"
-#include "lfs.h"
-}
+#include "LittleFsStoreStack.h"
 
 /* The claim under test is the File contract's: a true return from Write means
  * the bytes are on the media, and the BlockStore treats that as surviving a
@@ -24,89 +13,8 @@ extern "C"
  * fake; only real LittleFS over a device that can lose power proves the bytes
  * are still there afterwards. */
 
-static const char* const STORE_PREFIX = "/STORE";
-static const size_t STORE_BLOCK_BYTES = 1024;
-static const size_t STORE_MAX_BLOCKS = 8;
-
 namespace
 {
-
-/* The whole stack over one emulated flash part. Mount and Unmount bracket the
- * library state, so a test can throw all of it away and come back to the same
- * bytes - which is what a reboot does. */
-struct Stack
-{
-    LittleFsDisk disk = {};
-    lfs_config config = {};
-    lfs_t filesystem = {};
-    unsigned char fileCache[LITTLEFS_DISK_CACHE_SIZE] = {};
-    SolidSyslogFile* file = nullptr;
-    SolidSyslogBlockDevice* device = nullptr;
-    SolidSyslogStore* store = nullptr;
-
-    void FormatAndMount()
-    {
-        LittleFsDisk_Init(&disk);
-        LittleFsDisk_Configure(&disk, &config);
-        LONGS_EQUAL(LFS_ERR_OK, lfs_format(&filesystem, &config));
-        Mount();
-    }
-
-    void Mount()
-    {
-        LONGS_EQUAL(LFS_ERR_OK, lfs_mount(&filesystem, &config));
-        file = SolidSyslogLittleFsFile_Create(&filesystem, fileCache, sizeof(fileCache));
-        device = SolidSyslogFileBlockDevice_Create(file, STORE_PREFIX, STORE_BLOCK_BYTES);
-        SolidSyslogBlockStoreConfig storeConfig = {};
-        storeConfig.BlockDevice = device;
-        storeConfig.MaxBlocks = STORE_MAX_BLOCKS;
-        store = SolidSyslogBlockStore_Create(&storeConfig);
-    }
-
-    /* Release every handle the library holds, as losing power would. The
-     * storage is untouched. */
-    void Unmount()
-    {
-        SolidSyslogBlockStore_Destroy(store);
-        SolidSyslogFileBlockDevice_Destroy(device);
-        SolidSyslogLittleFsFile_Destroy(file);
-        store = nullptr;
-        device = nullptr;
-        file = nullptr;
-        (void) lfs_unmount(&filesystem);
-    }
-
-    /* A reboot: the library state and the lfs_t go, the bytes stay. The
-     * unmount and fresh mount are what actually discard LittleFS's in-RAM
-     * state; zeroing the struct as well is belt-and-braces that no test
-     * distinguishes, kept because it says what a reboot is. */
-    void Reboot()
-    {
-        Unmount();
-        std::memset(&filesystem, 0, sizeof(filesystem));
-        LittleFsDisk_PowerOn(&disk);
-        Mount();
-    }
-
-    [[nodiscard]] bool Write(const std::string& record) const
-    {
-        return SolidSyslogStore_Write(store, record.data(), record.size()) == SOLIDSYSLOG_STORE_WRITE_KEPT;
-    }
-
-    [[nodiscard]] std::vector<std::string> DrainUnsent() const
-    {
-        std::vector<std::string> records;
-        char buffer[256] = {};
-        size_t bytesRead = 0U;
-        while (SolidSyslogStore_ReadNextUnsent(store, buffer, sizeof(buffer), &bytesRead) && (bytesRead > 0))
-        {
-            records.emplace_back(buffer, bytesRead);
-            SolidSyslogStore_MarkSent(store);
-            bytesRead = 0;
-        }
-        return records;
-    }
-};
 
 bool Contains(const std::vector<std::string>& records, const std::string& wanted)
 {
@@ -119,14 +27,14 @@ bool Contains(const std::vector<std::string>& records, const std::string& wanted
 
 } // namespace
 
-static Stack stack;
+static LittleFsStoreStack stack;
 
 // clang-format off
 TEST_GROUP(SolidSyslogLittleFsDurability)
 {
     void setup() override
     {
-        stack = Stack();
+        stack = LittleFsStoreStack();
         stack.FormatAndMount();
     }
 

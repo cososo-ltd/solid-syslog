@@ -251,9 +251,10 @@ def tell_the_time(console, timeout_seconds, now=time.time, wait=time.sleep):
 
 # Leaves the disk of the board, waiting at its prompt, with no filesystem on
 # it, so that the store a scenario asks for is laid down afresh. The disk is a
-# card that keeps what it holds through every reset, so without this a scenario
-# would start with the records the one before it left. A board that refuses
-# raises: its card did not answer, or did not take the write.
+# card or a flash part, which keeps what it holds through every reset, so
+# without this a scenario would start with the records the one before it left.
+# A board that refuses raises: its medium did not answer, or did not take the
+# change.
 def wipe_the_disk(console, timeout_seconds):
     console.stdin.write("set store wipe\n")
     answer = output_to_prompt(console, timeout_seconds)

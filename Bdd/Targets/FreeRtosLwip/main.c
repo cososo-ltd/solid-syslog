@@ -88,6 +88,7 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
     .UnmountStore = BddTargetFatFsMount_Unmount,
     .CreateStoreFile = BddTargetFatFsMount_CreateFile,
     .DestroyStoreFile = BddTargetFatFsMount_DestroyFile,
+    .WipeStore = BddTargetFatFsMount_Wipe,
 };
 
 /* lwIP randomness source (declared by arch/cc.h's LWIP_RAND). sys_now() comes

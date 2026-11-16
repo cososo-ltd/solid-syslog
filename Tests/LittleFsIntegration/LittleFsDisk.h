@@ -19,7 +19,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
  * Nth program or erase; when it fires, that operation either does nothing (a
  * clean cut) or writes half its buffer and fails (a torn one), and every
  * operation after it fails too, because the power is off. LittleFsDisk_PowerOn
- * ends the outage, leaving the storage exactly as the cut left it. */
+ * ends the outage, leaving the storage exactly as the cut left it.
+ *
+ * It also counts the erases it carries out, which is what wears a flash part,
+ * so that a test can say what an operation of the store costs one. */
 
     enum LittleFsDiskGeometry
     {
@@ -47,6 +50,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         uint8_t ProgBuffer[LITTLEFS_DISK_CACHE_SIZE];
         uint8_t LookaheadBuffer[LITTLEFS_DISK_LOOKAHEAD_SIZE];
         unsigned WriteCount; /* programs + erases attempted since power on */
+        unsigned EraseCount; /* erases carried out since Init */
         unsigned CutAfter; /* 0 = no cut armed */
         enum LittleFsDiskCut CutKind;
         bool PowerLost;
@@ -70,6 +74,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     void LittleFsDisk_PowerOn(struct LittleFsDisk * disk);
 
     unsigned LittleFsDisk_WriteCount(const struct LittleFsDisk* disk);
+
+    /* Erases carried out whole since LittleFsDisk_Init. One a cut stopped is
+ * not counted, and a power cut does not clear the count. */
+    unsigned LittleFsDisk_EraseCount(const struct LittleFsDisk* disk);
 
 SOLIDSYSLOG_EXTERN_C_END
 

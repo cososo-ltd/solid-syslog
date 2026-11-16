@@ -32,13 +32,13 @@ bool BddTargetLittleFsMount_Mount(void)
     int result = lfs_mount(&filesystem, config);
     if (result == LFS_ERR_CORRUPT)
     {
-        /* No filesystem on the image - lay one down and mount again. Behave
-         * removes the image between scenarios, so this is the usual path
+        /* No filesystem on the device - lay one down and mount again. Behave
+         * removes or wipes it between scenarios, so this is the usual path
          * rather than the exception.
          *
          * Only LFS_ERR_CORRUPT triggers it, which is LittleFS's verdict that
          * there is nothing valid here. Formatting on any failure would let a
-         * media error wipe an image that still holds records - the FatFs
+         * media error wipe a device that still holds records - the FatFs
          * sibling narrows to FR_NO_FILESYSTEM for the same reason. */
         result = lfs_format(&filesystem, config);
         if (result == LFS_ERR_OK)
@@ -62,6 +62,11 @@ void BddTargetLittleFsMount_Unmount(void)
         (void) lfs_unmount(&filesystem);
         mounted = false;
     }
+}
+
+bool BddTargetLittleFsMount_Wipe(void)
+{
+    return BddTargetLittleFsDisk_Wipe();
 }
 
 struct SolidSyslogFile* BddTargetLittleFsMount_CreateFile(void)

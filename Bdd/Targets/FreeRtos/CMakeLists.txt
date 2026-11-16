@@ -280,6 +280,7 @@ set(BAKED_PEM_HEADERS
 add_executable(SolidSyslogBddTarget
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
+    ${BDD_BOARD_DISK_PROJECT_SOURCES}                 # the sector disk under FreeRTOS-Plus-FAT
     ${BDD_BOARD_PLUSTCP_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c

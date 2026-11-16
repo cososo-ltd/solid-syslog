@@ -320,9 +320,9 @@ add_executable(SolidSyslogBddTargetCmsis
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipSocket (Address/Datagram/TcpStream/
     # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
-    # HMAC/AES-GCM policies), LittleFs (file adapter). BddTargetLittleFsDisk.c
-    # is this target's block device over the board's disk.
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsDisk.c
+    # HMAC/AES-GCM policies), LittleFs (file adapter). The block device under
+    # LittleFS is the board's, over whichever medium it has for it.
+    ${BDD_BOARD_LITTLEFS_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c

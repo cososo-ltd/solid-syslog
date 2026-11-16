@@ -5,6 +5,7 @@
 
 #include "BddTargetPlusFatMount.h"
 
+#include "BddTargetBoardDisk.h"
 #include "BddTargetPlusFatDisk.h"
 #include "SolidSyslogPlusFatFile.h"
 
@@ -16,6 +17,11 @@ bool BddTargetPlusFatMount_Mount(void)
 void BddTargetPlusFatMount_Unmount(void)
 {
     BddTargetPlusFatDisk_Unmount();
+}
+
+bool BddTargetPlusFatMount_Wipe(void)
+{
+    return BddTargetBoardDisk_Wipe();
 }
 
 struct SolidSyslogFile* BddTargetPlusFatMount_CreateFile(void)

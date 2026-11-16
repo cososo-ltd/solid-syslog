@@ -102,6 +102,7 @@ static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
     .UnmountStore = BddTargetPlusFatMount_Unmount,
     .CreateStoreFile = BddTargetPlusFatMount_CreateFile,
     .DestroyStoreFile = BddTargetPlusFatMount_DestroyFile,
+    .WipeStore = BddTargetPlusFatMount_Wipe,
 };
 
 int main(void)

@@ -167,22 +167,26 @@ set(BDD_BOARD_PROJECT_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
 )
 
-# The disk is a MicroSD card: the card driver from the targets' common code,
-# over the board's SPI4. One target is not given it, and has a disk that never
-# becomes ready, and so no store: the CMSIS-RTOS2 target's filesystem is
-# LittleFS, which belongs on the board's flash, and that has no driver yet.
-set(bdd_board_targets_without_a_disk CMSIS_LWIP)
-if(SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets_without_a_disk)
-    list(APPEND BDD_BOARD_PROJECT_SOURCES
-        ${BDD_BOARD_DIR}/BddTargetBoardNoDisk.c
-    )
-else()
-    list(APPEND BDD_BOARD_PROJECT_SOURCES
-        ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
-        ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
-        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
-    )
-endif()
+# The board has two media, on one SPI bus with a chip select each, and an
+# image drives one of them.
+#
+# The sector disk is a MicroSD card: the card driver from the targets' common
+# code, over the board's SPI4.
+set(BDD_BOARD_DISK_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
+    ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
+    ${BDD_BOARD_DIR}/BoardSpi4.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
+)
+
+# LittleFS is given the W25Q128 flash: the block device and the flash driver
+# from the targets' common code, over the same SPI4.
+set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/BddTargetBoardFlashBus.c
+    ${BDD_BOARD_DIR}/BoardSpi4.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsFlash.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSpiNorFlash.c
+)
 
 set(BDD_BOARD_INCLUDES
     ${BDD_BOARD_DIR}                                  # BddTargetBoardConfig.h, BddTargetCmsisDevice.h, Board.h, stm32f7xx_hal_conf.h

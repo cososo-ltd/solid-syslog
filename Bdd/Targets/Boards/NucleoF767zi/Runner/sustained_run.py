@@ -5,7 +5,7 @@ in order and as it was sent, with a time on it no earlier than the last.
 Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and writes
 the image, starts the collector, and names the board's serial port and the
 programmer in the environment, as it does for Behave. With -FileStore every
-message goes by way of a store of files on the board's disk, wiped first.
+message goes by way of a store of files on the image's medium, wiped first.
 
 Each message is one `send 1` at the console, answered before the next is
 asked for. A `send` of many would log them faster than the target sends them,
@@ -35,13 +35,12 @@ from nucleo_f767zi import (
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
-# A message that goes by way of the file store is written to the card before
-# it is sent, which takes longer than the console takes to answer `send 1`.
-# Asked for faster than the card takes them, messages fill the target's buffer,
-# which then discards, and that is the library's doing and not a loss. So with
-# the file store the messages are asked for at this interval, which is about
-# half the rate the card was seen to keep up with.
-_FILE_STORE_SEND_INTERVAL_SECONDS = 0.05
+# A message that goes by way of the file store is written to the medium
+# before it is sent, which takes longer than the console takes to answer
+# `send 1`. Asked for faster than the medium takes them, messages fill the
+# target's buffer, which then discards, and that is the library's doing and not
+# a loss. So with the file store the messages are asked for at an interval,
+# which the run script gives for the image's medium.
 # The collector writes what it has received a little after it receives it.
 _RECORD_WAIT_SECONDS = 60
 _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_tcp.jsonl"}
@@ -172,7 +171,7 @@ def _messages_once_arrived(path, count):
     return messages
 
 
-def main(count, store):
+def main(count, store, file_store_interval_seconds):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     console = open_board(os.environ["NUCLEO_F767ZI_SERIAL_PORT"], os.environ.get("STM32_PROGRAMMER_CLI", "STM32_Programmer_CLI"))
     try:
@@ -184,7 +183,7 @@ def main(count, store):
         if store == "file":
             wipe_the_disk(console, _ANSWER_TIMEOUT_SECONDS)
             use_the_file_store(console, _ANSWER_TIMEOUT_SECONDS)
-            interval_seconds = _FILE_STORE_SEND_INTERVAL_SECONDS
+            interval_seconds = file_store_interval_seconds
         _send(console, count, interval_seconds)
         if store == "file":
             # The console answers `send 1` before the message has left the
@@ -210,5 +209,19 @@ def main(count, store):
     return 1 if failed else 0
 
 
+# The count, the store and the interval, from the command line as the run
+# script gives it: <count> [null|file [<seconds between file-store messages>]].
+# A file store with no interval raises, since at none the target's buffer
+# would discard, and no medium's pace is a good guess at another's.
+def arguments_in(argv):
+    count = int(argv[1])
+    store = argv[2] if len(argv) > 2 else "null"
+    if store != "file":
+        return count, store, 0
+    if len(argv) <= 3:
+        raise ValueError("A file-store run needs the seconds between messages: the run script has each medium's")
+    return count, store, float(argv[3])
+
+
 if __name__ == "__main__":
-    sys.exit(main(int(sys.argv[1]), sys.argv[2] if len(sys.argv) > 2 else "null"))
+    sys.exit(main(*arguments_in(sys.argv)))
