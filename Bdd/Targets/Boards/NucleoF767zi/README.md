@@ -245,22 +245,32 @@ The bring-up image does not start the clock.
 ## Disk
 
 The board's disk is a MicroSD card in a breakout on SPI4, wired as the
-[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts FatFs on
-it, formatting it first if it finds no filesystem, and puts the target on a
-store of files there. The disk is the first 8 MiB of the card, whatever the
-card's size, which is the size of the disk the same target has under QEMU. A
-card smaller than that is refused.
+[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts the
+target's filesystem on it, formatting it first if it finds none, and puts the
+target on a store of files there. The disk is the first 8 MiB of the card,
+whatever the card's size, which is the size of the disk the same target has
+under QEMU. A card smaller than that is refused.
 
-The card is the FreeRTOS + lwIP Raw target's disk. The CMSIS-RTOS2 and
-FreeRTOS-Plus-TCP targets are
-[not given it](#what-the-board-does-not-have-yet), and the rest of this section
-is about the first.
+The card is the disk of two targets, each with the filesystem it has under
+QEMU: FatFs under the FreeRTOS + lwIP Raw target, and FreeRTOS-Plus-FAT under
+the FreeRTOS-Plus-TCP target. One card serves both, since the board holds one
+image at a time. The CMSIS-RTOS2 target is
+[not given it](#what-the-board-does-not-have-yet).
 
 A card that has been used anywhere else is wiped first, with `set store wipe`.
 A card as it is sold, or as a computer formats it, has a partition table in
 its first sector, naming a filesystem that reaches beyond those 8 MiB. FatFs
 finds the table and follows it, so the mount either fails or succeeds on a
 filesystem most of which the disk cannot reach, and in neither case formats.
+FreeRTOS-Plus-FAT has not been tried on such a card.
+
+A card the other image has used is wiped too. The two format the disk
+differently, FatFs with no partition table and FreeRTOS-Plus-FAT with one, and
+neither formats over a filesystem it can mount: FreeRTOS-Plus-FAT mounted the
+filesystem FatFs had left, and took up the store it found there. The run wipes
+the card before every scenario that uses a store, and before a sustained run
+by way of the file store, so only a store asked for by hand at the console
+meets what the other image left.
 
 The card is driven in SPI mode, a sector at a time, by a driver of this
 repository's own in the targets' common code, which is unit-tested on the host
@@ -313,11 +323,6 @@ on the store it started with.
   says `[solidsyslog] littlefs mount failed`, answers `set: invalid` and
   leaves the target on the store it started with, and `set store wipe`
   answers `set: invalid` too.
-- The FreeRTOS-Plus-TCP target has no store either. Its filesystem is
-  FreeRTOS-Plus-FAT, which has not been run on the MicroSD card, so the board
-  gives it the same disk that never becomes ready: `set store file` and
-  `set store wipe` each answer `set: invalid`, and the target stays on the
-  store it started with.
 
 ## Tools on the development machine
 
@@ -490,14 +495,17 @@ port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
 [does not have yet](#what-the-board-does-not-have-yet), which for the
-CMSIS-RTOS2 and FreeRTOS-Plus-TCP images takes out the ones tagged `@store`. The board has been told
+CMSIS-RTOS2 image takes out the ones tagged `@store`. The board has been told
 the time by then, so it runs the scenarios tagged `@rtc` and not those tagged
 `@no_rtc`. The script holds the tag filter.
 
-Where a scenario kills the target to stand in for a power cut, the board is
-reset through the probe. That restarts the processor and loses what was in RAM.
-It is not a loss of power at the storage media, which keep their supply
-throughout, so it says nothing about a write that power would have cut short.
+Where a scenario kills the target to stand in for a power cut, the run asks the
+target to shut down, as it does under QEMU: the target closes the store's files
+and unmounts the disk before it exits, and the reset through the probe that
+starts the next target finds them so. What the scenario shows is that a store
+one run of the target laid down is read by the next. It is not a loss of power:
+the files are closed and the storage media keep their supply throughout, so it
+says nothing about a write that power would have cut short.
 
 ## Attach gdb
 
@@ -645,7 +653,7 @@ change to all of them.
 |---|---|---|---|
 | FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip` | FatFs on the MicroSD card |
 | CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | None yet |
-| FreeRTOS-Plus-TCP | `build-nucleo-freertos-plustcp` | `-Target plustcp` | None yet |
+| FreeRTOS-Plus-TCP | `build-nucleo-freertos-plustcp` | `-Target plustcp` | FreeRTOS-Plus-FAT on the MicroSD card |
 
 Steps 5 and 6 each have a form for an image with a store and one for an image
 without.
