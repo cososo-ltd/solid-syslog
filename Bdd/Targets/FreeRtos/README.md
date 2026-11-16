@@ -109,6 +109,18 @@ build/freertos-cross/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf
 The QEMU command, the GDB attach and how the image boots belong to the board:
 see [`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md).
 
+## On the NUCLEO-F767ZI
+
+The `nucleo-f767zi-plustcp` preset builds this target for ST's NUCLEO-F767ZI.
+Nothing in this directory changes for it: the board supplies its own half of
+the seam, the kernel configuration takes the core clock and the interrupt
+priority bits from the board, and the stack's configuration takes from the
+board whether its network interface copies frames. The interface there is the
+one FreeRTOS-Plus-TCP ships for the STM32 MACs. The board gives the target no
+disk yet, so it has no store. CI builds the image and never runs it. The
+board's [README](../Boards/NucleoF767zi/README.md) has the build, the run and
+the target checklist it is accepted by.
+
 ## How it works
 
 `main()` brings the board up, which readies the console for polled `_read` /
@@ -117,7 +129,9 @@ tasks write that one console, so `_write` holds a console lock, and stdio
 belongs to the interactive task: the Service task's reports and markers leave
 in one `write()` each, so the host sees every prompt and every report whole.
 It then brings up FreeRTOS-Plus-TCP with a static IPv4 address on the board's
-network, and starts the scheduler. On link-up the IP-task event hook spawns
+network, and starts the scheduler. The IP-task event hook says each change of
+the network on the console, as `[board] link up` or `[board] link down`. On
+the first link-up it spawns
 the interactive task (running `BddTargetInteractive_Run`) and the Service task
 (draining the `SolidSyslogCircularBuffer` and pushing through the
 `SolidSyslogSwitchingSender`'s active inner — UDP by default; TCP, TLS, or

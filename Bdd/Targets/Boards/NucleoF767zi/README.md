@@ -21,14 +21,16 @@ say what it supplies to the code.
 |---|---|---|
 | Toolchain | `cmake/arm-none-eabi-cortex-m7.cmake` | `arm-none-eabi-gcc` for a Cortex-M7 with the hard-float ABI |
 | Startup and vectors | - | ST's `startup_stm32f767xx.s` and `system_stm32f7xx.c`, compiled from the pinned tree as they stand |
-| Linker script | `stm32f767zi.ld` | 2 MiB of flash at `0x08000000`, 384 KiB of RAM at `0x20020000`, the first 16 KiB of it for the Ethernet DMA |
+| Linker script | `stm32f767zi.ld` | 2 MiB of flash at `0x08000000`, 384 KiB of RAM at `0x20020000`, the first 32 KiB of it for the Ethernet DMA |
 | Clock, NVIC and disk facts | `BddTargetBoardConfig.h` | 216 MHz, four priority bits, a disk of 8 MiB |
 | Network addresses | `BddTargetBoardAddresses.h.in` | Written into the build tree by the configure, from cache variables |
 | Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
 | Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c`, `BddTargetBoardNoDisk.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code. `BddTargetBoardNoDisk.c` is the disk of a target the board [has none for yet](#what-the-board-does-not-have-yet) |
-| Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c`, `Lwip/EthernetPhy.c` | A netif over ST's HAL Ethernet driver, and the PHY's link read from its standard registers |
+| Ethernet, under any stack | `BoardEthernet.c`, `EthernetPhy.c` | The MAC's clock, pins and interrupt, and the PHY restarted before the MAC is, which ST's HAL Ethernet driver asks the board for as it starts. The PHY's link is read from its standard registers |
+| Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over ST's HAL Ethernet driver |
+| Ethernet under FreeRTOS-Plus-TCP | `PlusTcp/BddTargetBoardPlusTcp.c` | Names the network interface FreeRTOS-Plus-TCP ships for the STM32 MACs, which runs over the same driver |
 | CMSIS device header | `BddTargetCmsisDevice.h` | ST's own, which the CMSIS-RTOS2 wrapper reads the core from |
 
 `Bringup/` is not part of the seam. It is an image of its own, with no
@@ -95,8 +97,26 @@ The `build-nucleo-cmsisrtos-lwipsocket` lane builds it and uploads it as the
 `solid-syslog-nucleo-f767zi-cmsis-lwip` artifact. It is built over Mbed TLS;
 the wolfSSL build of the same target is not built for this board.
 
-The two are images of one board, and what the rest of this page says of the
-BDD target is true of both unless it names one.
+The FreeRTOS-Plus-TCP BDD target, which is
+[`../../FreeRtos/`](../../FreeRtos/README.md) built for this board, takes them
+too:
+
+```bash
+cmake --preset nucleo-f767zi-plustcp \
+    -DSOLIDSYSLOG_BDD_BOARD_IP=<board address> \
+    -DSOLIDSYSLOG_BDD_BOARD_NETMASK=<netmask> \
+    -DSOLIDSYSLOG_BDD_BOARD_GATEWAY=<gateway address> \
+    -DSOLIDSYSLOG_BDD_BOARD_ORACLE=<collector address>
+cmake --build --preset nucleo-f767zi-plustcp --target SolidSyslogBddTarget
+```
+
+It lands at
+`build/nucleo-f767zi-plustcp/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf`.
+The `build-nucleo-freertos-plustcp` lane builds it and uploads it as the
+`solid-syslog-nucleo-f767zi-plustcp` artifact.
+
+The three are images of one board, and what the rest of this page says of the
+BDD target is true of each unless it names one.
 
 ## Network
 
@@ -128,19 +148,30 @@ pulled cable can be told from a fault:
 [board] link up, 100 Mbit/s full duplex
 ```
 
+The two lwIP images say the speed and duplex, and say `link down` as they
+boot. The FreeRTOS-Plus-TCP image says `[board] link up` and
+`[board] link down` alone, when its stack tells it the network has changed,
+and nothing until the network first comes up. It starts its prompt then, so
+booted with no cable it shows its banner and no prompt until one is fitted.
+
 A send while the link is down fails, and the library reports it as it reports
 any failed delivery.
 
-The interface copies every frame, in both directions, between lwIP's memory and
-buffers of its own that the Ethernet DMA reads and writes. Those buffers are
-kept out of the data cache, as [Caches](#caches) has it.
+Under lwIP the interface copies every frame, in both directions, between
+lwIP's memory and buffers of its own that the Ethernet DMA reads and writes.
+Under FreeRTOS-Plus-TCP the interface is the one that stack ships for the
+STM32 MACs, and it copies nothing: the DMA is handed the stack's own buffers,
+of which there are sixteen. Either way the buffers are kept out of the data
+cache, as [Caches](#caches) has it.
 
 Jumpers JP6 and JP7 carry two of the RMII signals to the PHY, and both must be
 fitted.
 
 The MAC's reset completes only while the PHY supplies its 50 MHz reference
-clock. If it does not complete, the console says
+clock. If it does not complete under lwIP, the console says
 `[board] ethernet the MAC did not start` and the interface stays without a link.
+Under FreeRTOS-Plus-TCP the stack starts the interface again until it does
+start, and says nothing meanwhile.
 
 ## Caches
 
@@ -151,10 +182,10 @@ anything else.
 The Ethernet DMA reads and writes memory without the processor, so what the
 data cache holds of that memory can be out of date, and what it has not yet
 written back the DMA never sees. The DMA's descriptors and frame buffers are
-therefore kept in 16 KiB at the bottom of RAM that the board support gives to
+therefore kept in 32 KiB at the bottom of RAM that the board support gives to
 the memory protection unit as a region the data cache does not hold. The
-linker script names the region and the interface places its descriptors and
-buffers there.
+linker script names the region and each interface places its descriptors and
+buffers there. FreeRTOS-Plus-TCP's sixteen buffers are what sets its size.
 
 The other way to keep that memory coherent is to leave it cached and clean or
 invalidate the cache around each transfer. A region was chosen over that for
@@ -162,8 +193,8 @@ two reasons. ST's Ethernet driver, which is compiled as it stands, reads and
 writes the descriptors itself and maintains no cache, so the descriptors need
 the region whatever is done for the buffers. And with the buffers beside them
 there is one mechanism, set once at start-up, and no call that every transfer
-has to remember. What it costs is that the one copy each frame takes is to or
-from memory that is not cached.
+has to remember. What it costs is that a frame is copied, or under
+FreeRTOS-Plus-TCP built and read, in memory that is not cached.
 
 With the caches on and that region not set, no message from the board reaches
 the collector, over UDP or over TCP.
@@ -215,7 +246,8 @@ store of files there. The disk is the first 8 MiB of the card, whatever the
 card's size, which is the size of the disk the same target has under QEMU. A
 card smaller than that is refused.
 
-The card is the FreeRTOS + lwIP Raw target's disk. The CMSIS-RTOS2 target is
+The card is the FreeRTOS + lwIP Raw target's disk. The CMSIS-RTOS2 and
+FreeRTOS-Plus-TCP targets are
 [not given it](#what-the-board-does-not-have-yet), and the rest of this section
 is about the first.
 
@@ -276,6 +308,11 @@ on the store it started with.
   says `[solidsyslog] littlefs mount failed`, answers `set: invalid` and
   leaves the target on the store it started with, and `set store wipe`
   answers `set: invalid` too.
+- The FreeRTOS-Plus-TCP target has no store either. Its filesystem is
+  FreeRTOS-Plus-FAT, which has not been run on the MicroSD card, so the board
+  gives it the same disk that never becomes ready: `set store file` and
+  `set store wipe` each answer `set: invalid`, and the target stays on the
+  store it started with.
 
 ## Tools on the development machine
 
@@ -383,7 +420,7 @@ That builds the image from the commit checked out, in the cross image CI uses,
 writes it to the board, starts the collector, and runs Behave over the
 scenarios the board can run. `-Target` names the image and has to be given:
 `lwip` for the FreeRTOS + lwIP Raw target, `cmsis` for the CMSIS-RTOS2 + lwIP
-Sockets one. `-Netmask` and `-Gateway` set the other two
+Sockets one, `plustcp` for the FreeRTOS-Plus-TCP one. `-Netmask` and `-Gateway` set the other two
 [network](#network) settings, and each of the four can be left in an
 environment variable instead, which the script's help names. `-SkipBuild`
 writes the image already built, and `-Paths` runs only the features given.
@@ -415,7 +452,7 @@ filesystem, as under QEMU it does on a disk image that has just been made.
 
 Before the first scenario the run reads the banner and stops unless it names
 the image asked for and the commit checked out, so a run cannot pass against
-an image of anything else. Both images are built from one commit, which is why
+an image of anything else. Every image is built from one commit, which is why
 the banner names the image too, as the build's `SOLIDSYSLOG_BDD_TARGET`.
 It then tells the board this machine's time, once, and the board's
 [clock](#clock) keeps it through the reset that starts each scenario. A
@@ -435,8 +472,9 @@ second is there because its failures come together: three attempts one after
 another have all failed within a fifth of a second.
 
 A target that stops says why before it does. A kernel assertion, a task that
-overran its stack, a kernel heap with nothing left, an lwIP assertion and a
-hard fault each end in one line beginning `[board] fault:`, with the file and
+overran its stack, a kernel heap with nothing left, an lwIP assertion, a
+FreeRTOS-Plus-TCP stack that will not start and a hard fault each end in one
+line beginning `[board] fault:`, with the file and
 line, the task, or the address of the instruction, and then a halt with the
 red LED lit. A step that times out waiting for the prompt sends the target an
 empty line and reports what it showed in answer, so a target that had stopped
@@ -447,7 +485,7 @@ port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
 [does not have yet](#what-the-board-does-not-have-yet), which for the
-CMSIS-RTOS2 image takes out the ones tagged `@store`. The board has been told
+CMSIS-RTOS2 and FreeRTOS-Plus-TCP images takes out the ones tagged `@store`. The board has been told
 the time by then, so it runs the scenarios tagged `@rtc` and not those tagged
 `@no_rtc`. The script holds the tag filter.
 
@@ -596,12 +634,13 @@ artifact came from.
 
 One list, run once for each image the pull request can have changed. A change
 to the board's own code, to the run script or to what the targets share is a
-change to both.
+change to all of them.
 
 | Image | Lane | Script argument | Store |
 |---|---|---|---|
 | FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip` | FatFs on the MicroSD card |
 | CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | None yet |
+| FreeRTOS-Plus-TCP | `build-nucleo-freertos-plustcp` | `-Target plustcp` | None yet |
 
 Steps 5 and 6 each have a form for an image with a store and one for an image
 without.
@@ -633,6 +672,10 @@ first of them that fails.
    collector with `-` for its TIMESTAMP and `tzKnown="0"`. After
    `set time <seconds>` a second arrives with that time and `tzKnown="1"`, and
    after the board's reset button is pressed, a third does too.
+8. By hand, where the pull request changes the board's Ethernet set-up or a
+   network interface: the network cable is taken out and the console shows
+   `[board] link down`; put back, the console shows `[board] link up`, and a
+   `send 1` after it arrives at the collector.
 
 A scenario that fails is recorded with what was found: fixed in the pull
 request, or raised as an issue and the scenario tagged `@nucleof767ziwip`

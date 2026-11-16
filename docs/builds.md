@@ -286,6 +286,26 @@ The ELF lands at
 `Bdd/Targets/Boards/NucleoF767zi/README.md` covers it as it covers the image
 above.
 
+## FreeRTOS-Plus-TCP on the NUCLEO-F767ZI - `nucleo-f767zi-plustcp`
+
+The `freertos-cross` target again, built for the NUCLEO-F767ZI board under
+that board's toolchain file: `SOLIDSYSLOG_BDD_TARGET=FREERTOS_PLUSTCP` with
+`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`, the packs
+`FreeRtos;PlusTcp;MbedTls;PlusFat;StdAtomic` and the `Bdd/Targets/FreeRtos/`
+tunables. The addresses are the same cache variables as the two presets above
+take. CI builds this image in the `build-nucleo-freertos-plustcp` lane and
+never runs it.
+
+```bash
+cmake --preset nucleo-f767zi-plustcp
+cmake --build --preset nucleo-f767zi-plustcp --target SolidSyslogBddTarget
+```
+
+The ELF lands at
+`build/nucleo-f767zi-plustcp/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf`.
+`Bdd/Targets/Boards/NucleoF767zi/README.md` covers it as it covers the two
+images above.
+
 ## NUCLEO-F767ZI bring-up - `nucleo-f767zi-bringup`
 
 ARM cross-build for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
