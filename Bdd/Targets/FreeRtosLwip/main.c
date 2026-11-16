@@ -3,9 +3,9 @@
  * The platform-independent pipeline - SolidSyslog lifecycle, FatFs-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
- * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
+ * (shared between the targets). This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
- * marshal (S28.06), the board's netif (BddTargetBoardNetif.h), the
+ * marshal, the board's netif (BddTargetBoardNetif.h), the
  * static-IP bring-up + oracle ARP warm-up, the LwipRaw sender wiring (UDP +
  * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
  * RFC 5424 HOSTNAME read from the netif.
@@ -230,8 +230,8 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif so a future
-     * DHCP slice satisfies the same rung without touching this callback. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif, so an
+     * address from DHCP would satisfy the same rung with no change here. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;
     SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));

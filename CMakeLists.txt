@@ -575,12 +575,11 @@ elseif(NOT SOLIDSYSLOG_ALLOCATION_STRATEGY STREQUAL "static")
 endif()
 
 # Which ELF a cross preset builds. Maintainer tooling, not a consumer knob: BDD
-# targets are top-level-only, and it selects no platform — the packs each target
+# targets are top-level-only, and it selects no platform - the packs each target
 # links are named in SOLIDSYSLOG_PLATFORMS like every other platform.
 #
-# Named for the target rather than the network stack since S40.01: the third
-# value differs from the second by its OS, not its network, which the former
-# SOLIDSYSLOG_BDD_FREERTOS_NET could not express.
+# The values name the target and not its network stack, because the third
+# differs from the second by its OS and not its network.
 #
 # NUCLEO_F767ZI_BRINGUP is the exception: firmware for the NUCLEO-F767ZI that
 # carries no SolidSyslog, and proves the board and its toolchain.

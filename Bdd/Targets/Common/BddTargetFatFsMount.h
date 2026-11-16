@@ -9,10 +9,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* ChaN-FatFs implementation of the shared pipeline's FS-mount seam
      * (struct BddTargetFreeRtosPipelineConfig). Owns the single-volume FATFS
-     * registry object + mounted flag and wraps the ff_* lifecycle so the
-     * pipeline stays FS-vendor-agnostic. Wired by the lwIP target's main.c;
-     * the FreeRTOS-Plus-TCP target uses the FreeRTOS-Plus-FAT sibling
-     * (BddTargetPlusFatMount). */
+     * registry object + mounted flag and wraps the ff_* lifecycle, so the
+     * pipeline names no filesystem. */
 
     /* Mount volume 0, formatting on first use if the disk image has no FAT
      * yet. Idempotent - repeated calls short-circuit on the mounted flag.

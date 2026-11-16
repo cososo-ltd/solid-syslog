@@ -13,13 +13,10 @@
  * Everything platform-independent lives in this component: the SolidSyslog
  * lifecycle, the file-backed store + security-policy machinery (crc16 /
  * hmac-sha256 / aes-256-gcm / null), the SD set, the interactive `set` handler,
- * the CircularBuffer + Service drain task, and the console glue. Every QEMU BDD
- * target drives this; their main.c files keep only the network backend and the
- * FS-mount seam behind the config below - the network adapter wiring (PlusTcp vs
- * LwipRaw), the IP-stack bring-up, and the filesystem vendor (FreeRTOS-Plus-FAT
- * vs ChaN-FatFs) that genuinely differ. See SolidSyslog S29.03 (network seam)
- * and S29.05 (FS-mount seam). The OS calls themselves go through
- * BddTargetOsPrimitives.h, so nothing here names a kernel. */
+ * the CircularBuffer + Service drain task, and the console glue. Each target's
+ * main.c keeps only what differs, behind the config below: the network adapter
+ * wiring, the IP-stack bring-up and the filesystem mount. The OS calls go
+ * through BddTargetOsPrimitives.h, so nothing here names a kernel. */
 
 /* Forward declaration - the FS-mount seam traffics in SolidSyslogFile handles
  * without the pipeline header pulling SolidSyslogFile.h. */

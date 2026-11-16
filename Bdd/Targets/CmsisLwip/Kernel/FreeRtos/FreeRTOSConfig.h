@@ -15,10 +15,7 @@
  *
  * The lwIP FreeRTOS sys_arch needs recursive mutexes (the
  * LWIP_TCPIP_CORE_LOCKING mutex) and counting semaphores, and the CMSIS mutex
- * control blocks this target supplies need static allocation.
- *
- * Everything below the CMSIS-RTOS2 block is the proven networking config for
- * these targets, shared in substance with the sibling lwIP target. */
+ * control blocks this target supplies need static allocation. */
 
 #define configUSE_PREEMPTION 1
 #define configUSE_IDLE_HOOK 0

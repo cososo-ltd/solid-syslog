@@ -1,12 +1,9 @@
 /* CMSIS-RTOS2 + lwIP (Sockets API, NO_SYS=0) SolidSyslog BDD target.
  *
- * This is the CmsisLwip target, and with S35.03 it links the stack it is named
- * for - see README.md.
- *
  * The platform-independent pipeline - SolidSyslog lifecycle, LittleFS-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
- * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
+ * (shared between the targets). This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread, the
  * board's netif (BddTargetBoardNetif.h), the static-IP bring-up +
  * oracle ARP warm-up, the LwipSocket sender wiring (UDP + octet-framed TCP +
@@ -213,8 +210,8 @@ static bool OracleNextHopIsResolved(void)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif so a future
-     * DHCP slice satisfies the same rung without touching this callback. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif, so an
+     * address from DHCP would satisfy the same rung with no change here. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;
     SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));

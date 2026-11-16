@@ -1,15 +1,11 @@
 #ifndef FREERTOS_IP_CONFIG_H
 #define FREERTOS_IP_CONFIG_H
 
-/* FreeRTOS-Plus-TCP configuration for the BDD target. UDP +
- * TCP, IPv4 static address, no DHCP / LLMNR / NBNS / IPv6. UDP was brought
- * up in S08.03; S08.09 enables TCP for the SolidSyslogPlusTcpTcpStream
- * adapter so the SwitchingSender's TCP branch can land its frames on the
- * syslog-ng oracle alongside the existing UDP scenarios. S08.08 enables
- * DNS (ipconfigUSE_DNS) so SolidSyslogPlusTcpResolver can wrap
- * FreeRTOS_getaddrinfo and resolve hostnames via the DNS server the board
- * names; the cache is enabled to avoid re-querying for back-to-back
- * Resolve calls during scenario steps. */
+/* FreeRTOS-Plus-TCP configuration for the BDD target: UDP and TCP, a static
+ * IPv4 address, no DHCP / LLMNR / NBNS / IPv6. DNS (ipconfigUSE_DNS) is on so
+ * that SolidSyslogPlusTcpResolver can wrap FreeRTOS_getaddrinfo and resolve
+ * hostnames through the DNS server the board names. The DNS cache is on to
+ * avoid a query for each of the back-to-back Resolve calls a scenario makes. */
 
 #define ipconfigBYTE_ORDER pdFREERTOS_LITTLE_ENDIAN
 

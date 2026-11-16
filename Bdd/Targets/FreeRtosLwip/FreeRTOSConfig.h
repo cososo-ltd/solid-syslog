@@ -9,13 +9,11 @@
  * netif RX task at configMAX_PRIORITIES - 2, and the SolidSyslog interactive /
  * service tasks at tskIDLE_PRIORITY + 1.
  *
- * S28.09 grew this from the S28.07 link-probe config: the lwIP FreeRTOS
- * sys_arch needs recursive mutexes (the LWIP_TCPIP_CORE_LOCKING mutex) and
- * counting semaphores, and SolidSyslogFreeRtosMutex needs static allocation -
- * so this now mirrors Bdd/Targets/FreeRtos/FreeRTOSConfig.h (the proven
- * networking config for this machine) rather than the lean probe variant. The
- * FreeRTOS software-timer service is left ON for parity even though lwIP runs
- * its timeouts on the tcpip thread, not FreeRTOS timers. */
+ * The lwIP FreeRTOS sys_arch needs recursive mutexes (the
+ * LWIP_TCPIP_CORE_LOCKING mutex) and counting semaphores, and
+ * SolidSyslogFreeRtosMutex needs static allocation. The FreeRTOS
+ * software-timer service is left on, although lwIP runs its timeouts on the
+ * tcpip thread and not on FreeRTOS timers. */
 
 #define configUSE_PREEMPTION 1
 #define configUSE_IDLE_HOOK 0

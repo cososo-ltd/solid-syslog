@@ -1,103 +1,18 @@
 # CMSIS-RTOS2 + lwIP BDD target
 
-`SolidSyslogBddTargetCmsis` is a runnable BDD target, and the home of the
-three platform packs E40, E36 and E35 added.
+`SolidSyslogBddTargetCmsis` is the BDD target for the `CmsisRtos`, `LwipSocket`
+and `LittleFs` packs, with `MbedTls` for TLS. Its own code calls CMSIS-RTOS2
+and not the kernel beneath it, and the lwIP Sockets API and not the Raw one,
+so `main.c` has no marshal.
 
-It exists so each of those packs could be swapped in one at a time against a
-lane that was already green, which is what made a failure attributable to the
-one thing that changed. The two existing QEMU targets keep their own lanes and
-their own coverage; nothing is displaced.
+`SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP` selects it and the `cmsis-cross-lwip`
+preset builds it. The `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` CI
+lane runs it under QEMU against its own syslog-ng oracle, with the tag filter
+of the other QEMU lanes: UDP, TCP, TLS, mutual TLS and the `@store` scenarios.
 
-It is selected by `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP` (see the top-level
-`CMakeLists.txt`), built by the `cmsis-cross-lwip` preset, and run on QEMU by the
-`bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` CI lane against its own syslog-ng oracle.
-
-## What it links
-
-All three swaps are done, so the target now runs the stack it is named for:
-`CmsisRtos`, `LittleFs` and `LwipSocket`, with `MbedTls` for TLS. Its own code
-calls CMSIS-RTOS2 rather than the kernel beneath it, and the lwIP Sockets API
-rather than the Raw one, so there is no marshal seam in `main.c`.
-
-| Story | Swap |
-|---|---|
-| S40.04 | OS pack `FreeRtos` -> `CmsisRtos`, over a CMSIS-RTOS2 layer on the same kernel |
-| S36.03 | File pack `FatFs` -> `LittleFs`, over the same disk |
-| S35.03 | Network pack `LwipRaw` -> `LwipSocket`, with `LWIP_SOCKET=1` |
-
-Each swap changed one variable against a lane that was already green, so a
-failure belonged to the pack that had just changed.
-
-## The wolfSSL build
-
-The `cmsis-cross-lwip-wolfssl` preset builds this same target over `WolfSsl` in
-place of `MbedTls`, and the `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` lane runs it. wolfSSL
-is not a prebuilt library here: its sources are compiled into the image from
-the tree at `WOLFSSL_SOURCE_DIR`, under [`wolfssl/user_settings.h`](wolfssl/user_settings.h),
-which is how an embedded integrator builds it. That file says what each setting
-is for.
-
-What the target supplies around it:
-
-- **Memory.** One static region of 128 KiB, in
-  `BddTargetTlsSender_WolfSsl_InnerStream.c`, over wolfSSL's default buckets.
-  Its heap hint is the stream's `Heap` and wolfSSL's global hint. The mutexes
-  wolfSSL's CMSIS-RTOS2 port creates still come from the kernel heap.
-- **Stack.** The handshake runs on the service thread and peaks near 22 KiB,
-  so this build gives that thread 32 KiB where the Mbed TLS build has 8 KiB.
-- **Seed.** Demo-only, as the Mbed TLS build's is, and announced at boot.
-- **Clock.** The build instant advanced by uptime, so certificate validity is
-  enforced with no RTC.
-- **Credentials.** The same baked PEMs, handed to wolfSSL as buffers.
-
-The lane runs the other QEMU lanes' tag filter.
-
-```bash
-cmake --preset cmsis-cross-lwip-wolfssl
-cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
-docker compose -f ci/docker-compose.bdd.yml \
-  up --abort-on-container-exit --exit-code-from behave-cmsis-lwip-wolfssl \
-  behave-cmsis-lwip-wolfssl syslog-ng-cmsis-lwip-wolfssl
-```
-
-## Where the kernel lives
-
-Everything tied to the particular kernel underneath - its sources, its
-`FreeRTOSConfig.h` and the CMSIS-RTOS2 wrapper - is in
-[`Kernel/FreeRtos/`](Kernel/FreeRtos/), or named from there: the kernel's
-application hooks, and the part of its configuration that follows from the
-board, are files in [`../Common/`](../Common/) that the other FreeRTOS targets
-share. A second kernel is a sibling directory supplying the same
-`Kernel.cmake`, configuration and hooks, and a one-line change to which
-`Kernel.cmake` the target includes.
-
-Two things outside that directory still call the kernel directly, because they
-sit beneath the wrapper and no CMSIS-RTOS2 port of them exists: lwIP's
-`sys_arch` and the board's netif. They are what a genuinely different kernel
-would cost.
-
-## What it shares
-
-Nothing here is a copy of the sibling target's runtime code. lwIP's
-`arch/cc.h` lives in [`../Common/lwip/`](../Common/lwip/) and every shared
-`BddTarget*` source in [`../Common/`](../Common/), compiled by both targets.
-The startup, the linker script, the console, the disk and the netif belong to
-the board, behind the board seam: see
-[`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md)
-for the one CI runs on.
-
-What is genuinely this target's own is its `CMakeLists.txt`, its `main.c`, its
-`Kernel/` directory, and the configuration headers the swaps above change:
-`lwipopts.h`, `mbedtls_user_config.h` and `solidsyslog_user_tunables.h`.
-
-## Running it
-
-```bash
-cmake --preset cmsis-cross-lwip
-cmake --build --preset cmsis-cross-lwip --target SolidSyslogBddTargetCmsis
-```
-
-Under Behave against the oracle, from the repository root:
+[`docs/builds.md`](../../../docs/builds.md) has the build commands, and
+[`Bdd/README.md`](../../README.md#running-in-ci) the compose pair that runs
+Behave against each build:
 
 ```bash
 docker compose -f ci/docker-compose.bdd.yml \
@@ -105,8 +20,55 @@ docker compose -f ci/docker-compose.bdd.yml \
   behave-cmsis-lwip syslog-ng-cmsis-lwip
 ```
 
-The lane runs the same tag filter as the two existing QEMU lanes, so it exercises
-UDP, TCP, TLS and mutual TLS, and the `@store` suite that rides the `@tcp` tag.
+## The wolfSSL build
+
+The `cmsis-cross-lwip-wolfssl` preset builds this target over `WolfSsl` in
+place of `MbedTls`, and the
+`bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` lane runs it, on the
+`behave-cmsis-lwip-wolfssl` and `syslog-ng-cmsis-lwip-wolfssl` pair. wolfSSL is
+not a prebuilt library here. Its sources are compiled into the image from the
+tree at `WOLFSSL_SOURCE_DIR`, under
+[`wolfssl/user_settings.h`](wolfssl/user_settings.h), as an embedded integrator
+would build it. That file says what each setting is for.
+
+What the target supplies around it:
+
+- Memory: one static region of 128 KiB, in
+  `BddTargetTlsSender_WolfSsl_InnerStream.c`, over wolfSSL's default buckets.
+  Its heap hint is the stream's `Heap` and wolfSSL's global hint. The mutexes
+  wolfSSL's CMSIS-RTOS2 port creates still come from the kernel heap.
+- Stack: the handshake runs on the service thread and peaks near 22 KiB, so
+  this build gives that thread 32 KiB where the Mbed TLS build has 8 KiB.
+- Seed: for test use only, as the Mbed TLS build's is, and announced at boot.
+- Clock: the build time advanced by uptime, so certificate validity is
+  enforced with no RTC.
+- Credentials: the same built-in PEMs, handed to wolfSSL as buffers.
+
+## Where the kernel lives
+
+Everything tied to the kernel underneath is in
+[`Kernel/FreeRtos/`](Kernel/FreeRtos/), or named from there: its sources, its
+`FreeRTOSConfig.h` and the CMSIS-RTOS2 wrapper. The kernel's application hooks,
+and the part of its configuration that follows from the board, are files in
+[`../Common/`](../Common/) that the other FreeRTOS targets share. A second
+kernel would be a sibling directory supplying the same `Kernel.cmake`,
+configuration and hooks, and a one-line change to which `Kernel.cmake` the
+target includes.
+
+lwIP's `sys_arch` and the board's netif still call the kernel directly. They
+sit beneath the wrapper, and no CMSIS-RTOS2 port of them exists.
+
+## What it shares
+
+lwIP's `arch/cc.h` is in [`../Common/lwip/`](../Common/lwip/) and every shared
+`BddTarget*` source in [`../Common/`](../Common/). The startup, the linker
+script, the console, the disk and the netif belong to the board, behind the
+board seam: see [`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md) for
+the one CI runs on.
+
+The target's own files are its `CMakeLists.txt`, its `main.c`, its `Kernel/`
+directory and its configuration headers: `lwipopts.h`,
+`mbedtls_user_config.h` and `solidsyslog_user_tunables.h`.
 
 ## On the NUCLEO-F767ZI
 
@@ -114,6 +76,5 @@ The `nucleo-f767zi-cmsis-lwip` preset builds this target for ST's
 NUCLEO-F767ZI, over Mbed TLS. Nothing in this directory changes for it: the
 board supplies its own half of the seam, and the kernel configuration takes the
 core clock and the interrupt priority bits from the board. CI builds the image
-and never runs it. The board's
-[README](../Boards/NucleoF767zi/README.md) has the build, the run and the
-target checklist it is accepted by.
+and never runs it. The board's [README](../Boards/NucleoF767zi/README.md) has
+the build, the run and the target checklist.

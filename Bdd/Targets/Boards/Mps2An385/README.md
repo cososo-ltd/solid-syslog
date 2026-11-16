@@ -6,10 +6,10 @@ machine, a Cortex-M3 with CMSDK UARTs and a LAN9118 Ethernet controller. The
 `cmsis-cross-lwip-wolfssl` presets select it with
 `SOLIDSYSLOG_BDD_BOARD=Mps2An385`.
 
-Everything a target needs from the machine is in this directory, behind the
-board seam. [`../Board.cmake`](../Board.cmake) says what a board supplies to the
-build, and the `BddTargetBoard*.h` headers in [`../../Common/`](../../Common/)
-say what it supplies to the code.
+This directory is the machine's side of the board seam.
+[`../Board.cmake`](../Board.cmake) states what a board supplies to the build,
+and the `BddTargetBoard*.h` headers in [`../../Common/`](../../Common/) state
+what it supplies to the code.
 
 ## What is here
 
@@ -29,9 +29,9 @@ say what it supplies to the code.
 ## Console
 
 `CmsdkUart.c` is a polled driver for CMSDK UART0 at `0x40004000`, which QEMU
-surfaces over `-serial stdio`. It sleeps for a millisecond between polls of a
-busy transmitter or an empty receiver, so the other threads run while the
-console waits. [`CMSDK_UART.md`](CMSDK_UART.md) is the driver's contract, and
+presents on `-serial stdio`. It sleeps between polls of a busy transmitter or
+an empty receiver, so other threads run while the console waits.
+[`CMSDK_UART.md`](CMSDK_UART.md) is the driver's contract, and
 `Tests/FreeRtos/CmsdkUartTest.cpp` tests it on the host against a fake register
 block.
 
@@ -43,8 +43,8 @@ around each scenario. A missing or short image is created as a sparse 8 MiB
 file, which reads as zeros, so the filesystem above formats on first use. The
 image survives a QEMU restart, which is what the power-cycle scenarios rely on.
 
-A production port has real media under its filesystem. This is BDD-target
-glue, not a reference driver.
+This is glue for the BDD targets and not a reference driver: a product has
+real media under its filesystem.
 
 ## Network
 
@@ -54,9 +54,9 @@ listens, and `10.0.2.3` is slirp's DNS forwarder.
 
 Under lwIP the controller driver is Arm's, vendored from FreeRTOS-Plus-TCP's
 `MPS2_AN385` network interface (Apache-2.0; copyright and licence headers
-preserved). It sits in `Lwip/smsc9220/` with a `DisableFormat` `.clang-format`
-so the format check leaves third-party source alone. The snapshot carries
-three known defects that are benign on QEMU and would matter on silicon:
+preserved). It is in `Lwip/smsc9220/`, with a `DisableFormat` `.clang-format`
+so that the format check leaves third-party source alone. The snapshot has
+three known defects that are harmless on QEMU and would matter on silicon:
 [`Lwip/smsc9220/KNOWN-LIMITATIONS.md`](Lwip/smsc9220/KNOWN-LIMITATIONS.md) has
 the provenance and the detail.
 
