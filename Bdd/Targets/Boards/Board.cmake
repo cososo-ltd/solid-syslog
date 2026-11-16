@@ -50,6 +50,18 @@
 #                                         source/portable/NetworkInterface
 #   BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES - include directories for those,
 #                                         relative to the same place
+#   BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS - compile definitions that
+#                                         interface needs, and nothing else
+#                                         in the image does
+#   BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION - which of Plus-TCP's two buffer
+#                                         schemes that interface is written
+#                                         for: 1, fixed buffers the
+#                                         interface places, or 2, buffers
+#                                         from the kernel's heap
+#
+# and, in its BddTargetBoardConfig.h, whether that interface hands the stack's
+# buffers to the controller as they are or copies them:
+# BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY.
 #
 # The toolchain file is the board's too, since it fixes the core for every
 # object in the image. It is named by the preset, not from here: CMake reads
