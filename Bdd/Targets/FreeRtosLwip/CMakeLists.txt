@@ -222,6 +222,7 @@ set(BAKED_PEM_HEADERS
 add_executable(SolidSyslogBddTargetLwip
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
+    ${BDD_BOARD_DISK_PROJECT_SOURCES}                 # the sector disk under FatFs
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
     ${BDD_BOARD_LWIP_PROJECT_SOURCES}

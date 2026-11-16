@@ -22,8 +22,17 @@ set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Startup.c
     ${BDD_BOARD_DIR}/BddTargetBoard.c
     ${BDD_BOARD_DIR}/BddTargetBoardClock.c
-    ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
     ${BDD_BOARD_DIR}/CmsdkUart.c
+)
+
+# The machine's one medium is a flat image on the machine QEMU runs on. It is
+# the sector disk, and LittleFS is given a block device over those sectors.
+set(BDD_BOARD_DISK_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
+)
+set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
+    ${BDD_BOARD_DISK_PROJECT_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsDisk.c
 )
 
 set(BDD_BOARD_INCLUDES

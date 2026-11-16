@@ -21,6 +21,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Unmount if mounted; no-op otherwise. */
     void BddTargetLittleFsMount_Unmount(void);
 
+    /* Leaves the block device with no filesystem on it - see
+     * BddTargetLittleFsDisk_Wipe, which this is. */
+    bool BddTargetLittleFsMount_Wipe(void);
+
     /* Create / destroy the LittleFS SolidSyslogFile adapter (forward-declared
      * to keep lfs.h out of the seam's public surface). */
     struct SolidSyslogFile* BddTargetLittleFsMount_CreateFile(void);

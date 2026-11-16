@@ -1,4 +1,5 @@
-/* LittleFS block device over the board's disk - see BddTargetLittleFsDisk.h. */
+/* LittleFS block device over the board's sector disk - see
+ * BddTargetLittleFsDisk.h. */
 
 #include "BddTargetLittleFsDisk.h"
 
@@ -11,6 +12,9 @@
 
 enum
 {
+    /* The read and program units are one sector. */
+    READ_SIZE = BDD_TARGET_BOARD_DISK_SECTOR_SIZE,
+    PROG_SIZE = BDD_TARGET_BOARD_DISK_SECTOR_SIZE,
     SECTORS_PER_BLOCK = BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE / BDD_TARGET_BOARD_DISK_SECTOR_SIZE
 };
 
@@ -33,8 +37,8 @@ static const struct lfs_config CONFIG = {
     .prog = DiskProg,
     .erase = DiskErase,
     .sync = DiskSync,
-    .read_size = BDD_TARGET_LITTLE_FS_DISK_READ_SIZE,
-    .prog_size = BDD_TARGET_LITTLE_FS_DISK_PROG_SIZE,
+    .read_size = READ_SIZE,
+    .prog_size = PROG_SIZE,
     .block_size = BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE,
     .block_count = BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT,
     .block_cycles = 500,
@@ -48,6 +52,13 @@ static const struct lfs_config CONFIG = {
 const struct lfs_config* BddTargetLittleFsDisk_Config(void)
 {
     return &CONFIG;
+}
+
+/* The disk under this is the board's to put back to nothing: it is asked,
+ * and a board whose disk the harness replaces says no. */
+bool BddTargetLittleFsDisk_Wipe(void)
+{
+    return BddTargetBoardDisk_Wipe();
 }
 
 /* Reads and writes are whole sectors: read_size and prog_size are one sector,
