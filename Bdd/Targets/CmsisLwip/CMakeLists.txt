@@ -7,7 +7,7 @@
 # Its own code speaks CMSIS-RTOS2, not the kernel underneath: the OS pack is
 # CmsisRtos, and everything kernel-specific - the kernel sources, its config
 # header, its application hooks and the RTOS2 wrapper - sits in
-# Kernel/FreeRtos/. A second kernel is a sibling directory there and a one-line
+# Kernel/FreeRtos/ or is named from its Kernel.cmake. A second kernel is a sibling directory there and a one-line
 # change to the include below. What still calls the kernel directly is the lwIP
 # port layer and the Ethernet driver, which sit beneath the wrapper.
 #

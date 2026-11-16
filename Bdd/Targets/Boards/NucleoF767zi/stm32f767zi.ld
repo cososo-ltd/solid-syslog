@@ -13,7 +13,8 @@
  * frame buffers. Board.c gives the region to the MPU as memory the data cache
  * leaves alone, and an MPU region is a power of two long and starts on a
  * multiple of its length, which is why it is cut from the bottom of SRAM.
- * Board.c states the same length, and the two are kept in step by hand.
+ * Board.c takes the region from the two symbols below, and the assertions
+ * under them hold its length to what the MPU can take.
  *
  * The symbol names are the ones ST's startup_stm32f767xx.s reads.
  */
@@ -29,6 +30,10 @@ MEMORY
 }
 
 _ethernet_dma_start = ORIGIN(ETHDMA);
+_ethernet_dma_end = ORIGIN(ETHDMA) + LENGTH(ETHDMA);
+
+ASSERT((LENGTH(ETHDMA) & (LENGTH(ETHDMA) - 1)) == 0, "ETHDMA has to be a power of two long: it is an MPU region")
+ASSERT((ORIGIN(ETHDMA) % LENGTH(ETHDMA)) == 0, "ETHDMA has to start on a multiple of its length: it is an MPU region")
 
 _estack = ORIGIN(SRAM) + LENGTH(SRAM);
 

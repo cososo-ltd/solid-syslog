@@ -10,8 +10,9 @@
  * BoardEthernet.c defines HAL_ETH_MspInit, which ST's HAL Ethernet driver
  * calls from HAL_ETH_Init: the MAC's clock, its RMII pins, its interrupt at a
  * priority from which the handler may call the kernel, and the PHY put in its
- * negotiating mode and reset before the MAC is. So whichever stack's
- * interface calls HAL_ETH_Init gets a MAC with a PHY that is clocking it.
+ * negotiating mode and reset before the MAC is. The HAL calls it the first
+ * time a MAC is initialised and not again: a HAL_ETH_Init repeated for a MAC
+ * that did not start repeats the MAC's reset, and not the PHY's restart.
  *
  * The two functions below reach the PHY's registers over the MAC's management
  * bus, in the shape EthernetPhy.h takes them. context is the

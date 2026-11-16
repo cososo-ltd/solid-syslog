@@ -57,6 +57,7 @@ enum
 
     /* The MPU's first region, and the only one used. */
     ETHERNET_DMA_REGION = MPU_REGION_NUMBER0,
+    HIGHEST_BIT_OF_A_WORD = 31,
 
     PLL_M = 4,
     PLL_N = 216,
@@ -66,6 +67,8 @@ enum
 /* Where the linker script puts the memory the Ethernet DMA reads and writes. */
 // NOLINTNEXTLINE(readability-identifier-naming,bugprone-reserved-identifier) -- the linker script's name
 extern uint8_t _ethernet_dma_start[];
+// NOLINTNEXTLINE(readability-identifier-naming,bugprone-reserved-identifier) -- the linker script's name
+extern uint8_t _ethernet_dma_end[];
 
 static UART_HandleTypeDef console;
 
@@ -111,8 +114,9 @@ void Board_Init(void)
  * maintenance. So the memory they are in, the linker script's ETHDMA, is made
  * a region the data cache does not hold: what the processor reads there is
  * what the DMA wrote, and what it writes is there when the DMA reads. The
- * region's length is ETHDMA's, stated again here. Every other address keeps
- * the default memory map. */
+ * region's length is ETHDMA's, which the linker script holds to a power of
+ * two; the MPU takes a length as that power less one. Every other address
+ * keeps the default memory map. */
 static inline void Board_KeepEthernetDmaMemoryUncached(void)
 {
     MPU_Region_InitTypeDef region = {0};
@@ -120,7 +124,8 @@ static inline void Board_KeepEthernetDmaMemoryUncached(void)
     region.Enable = MPU_REGION_ENABLE;
     region.Number = ETHERNET_DMA_REGION;
     region.BaseAddress = (uint32_t) _ethernet_dma_start;
-    region.Size = MPU_REGION_SIZE_32KB;
+    uint32_t length = (uint32_t) (_ethernet_dma_end - _ethernet_dma_start);
+    region.Size = (uint8_t) (HIGHEST_BIT_OF_A_WORD - (uint32_t) __builtin_clz(length) - 1U);
     region.AccessPermission = MPU_REGION_FULL_ACCESS;
     region.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
     /* Normal memory, neither cached nor write-buffered. */

@@ -63,4 +63,5 @@ set(BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES
 )
 set(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS)
 # That interface copies each frame, and takes its buffers from the heap.
+set(BDD_BOARD_PLUSTCP_ZERO_COPY 0)
 set(BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION 2)

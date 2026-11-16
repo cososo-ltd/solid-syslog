@@ -259,5 +259,7 @@ set(BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES
 # The interface chooses its register names by the family, and asks for it by
 # this name before it has read the header of ST's that defines it.
 set(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS STM32F7)
-# It hands the stack's buffers to the DMA, so they are fixed ones it places.
+# It hands the stack's buffers to the DMA, in both directions, and will not
+# build otherwise, so they are fixed ones it places.
+set(BDD_BOARD_PLUSTCP_ZERO_COPY 1)
 set(BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION 1)

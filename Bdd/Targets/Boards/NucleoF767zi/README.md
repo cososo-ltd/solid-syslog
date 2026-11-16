@@ -153,9 +153,12 @@ boot. The FreeRTOS-Plus-TCP image says `[board] link up` and
 `[board] link down` alone, when its stack tells it the network has changed,
 and nothing until the network first comes up. It starts its prompt then, so
 booted with no cable it shows its banner and no prompt until one is fitted.
+The lwIP images ask the PHY for the link four times a second, and the
+FreeRTOS-Plus-TCP image twice a second while the link is up.
 
-A send while the link is down fails, and the library reports it as it reports
-any failed delivery.
+Under lwIP a send while the link is down fails, and the library reports it as
+it reports any failed delivery. What a send does on the FreeRTOS-Plus-TCP
+image while its link is down has not been run.
 
 Under lwIP the interface copies every frame, in both directions, between
 lwIP's memory and buffers of its own that the Ethernet DMA reads and writes.
@@ -170,8 +173,10 @@ fitted.
 The MAC's reset completes only while the PHY supplies its 50 MHz reference
 clock. If it does not complete under lwIP, the console says
 `[board] ethernet the MAC did not start` and the interface stays without a link.
-Under FreeRTOS-Plus-TCP the stack starts the interface again until it does
-start, and says nothing meanwhile.
+Under FreeRTOS-Plus-TCP the stack tries the MAC's reset again at intervals
+and says nothing meanwhile. The PHY is restarted once, before the first of
+those, and not before the rest, so a MAC that the PHY's restart did not bring
+a clock to stays down until the board is reset.
 
 ## Caches
 

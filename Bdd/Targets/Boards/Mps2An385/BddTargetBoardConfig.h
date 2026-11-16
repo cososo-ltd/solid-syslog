@@ -36,10 +36,6 @@
 #define BDD_TARGET_BOARD_ORACLE_OCTETS 10U, 0U, 2U, 2U
 #define BDD_TARGET_BOARD_ORACLE_ADDRESS "10.0.2.2"
 
-/* Upstream's FreeRTOS-Plus-TCP interface for this machine copies every frame
- * between the stack's buffers and the controller. */
-#define BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY 0
-
 /* The disk, as BddTargetBoardDisk.h presents it: 16384 sectors of 512 B, which
  * is 8 MiB. Large enough for the store-and-forward, capacity and power-cycle
  * scenarios that exercise multi-block files, and clear of the ~4085-cluster

@@ -152,10 +152,20 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -Wno-cpp
 )
 
+# Whether the board's interface copies frames is read by FreeRTOSIPConfig.h, so
+# it goes to everything that reads that header: here, and the executable.
+set(BDD_PLUSTCP_ZERO_COPY_DEFINITION BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY=${BDD_BOARD_PLUSTCP_ZERO_COPY})
+
 target_compile_definitions(solid_syslog_freertos_upstream PRIVATE
     ${BDD_BOARD_DEFINITIONS}
-    ${BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS}
+    ${BDD_PLUSTCP_ZERO_COPY_DEFINITION}
 )
+
+# What the board's interface alone needs defined goes to its sources alone.
+if(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS)
+    set_source_files_properties(${PLUS_TCP_NIF_SOURCES} PROPERTIES
+        COMPILE_DEFINITIONS "${BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS}")
+endif()
 
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
@@ -366,6 +376,7 @@ string(TIMESTAMP SOLIDSYSLOG_BDD_BUILD_EPOCH "%s" UTC)
 
 target_compile_definitions(SolidSyslogBddTarget PRIVATE
     ${BDD_BOARD_DEFINITIONS}
+    ${BDD_PLUSTCP_ZERO_COPY_DEFINITION}
     MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
     BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )

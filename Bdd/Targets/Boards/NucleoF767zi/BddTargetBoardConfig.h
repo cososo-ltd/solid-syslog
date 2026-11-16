@@ -27,11 +27,6 @@
 /* The NVIC implements the top four bits of each 8-bit priority field. */
 #define BDD_TARGET_BOARD_NVIC_PRIO_BITS 4
 
-/* Upstream's FreeRTOS-Plus-TCP interface for this MAC hands the stack's own
- * buffers to the Ethernet DMA, in both directions, and will not build
- * otherwise. */
-#define BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY 1
-
 /* The disk, as BddTargetBoardDisk.h presents it: the first 8 MiB of the
  * MicroSD card, which is the size the QEMU machine's disk is, so a filesystem
  * is laid out the same on both. A target the board gives no disk - see
