@@ -27,6 +27,9 @@
 #define ipconfigUSE_LLMNR 0
 #define ipconfigUSE_NBNS 0
 #define ipconfigUSE_NETWORK_EVENT_HOOK 1
+/* A network interface that watches its link tells the stack when it drops, and
+ * the stack tells the event hook, which says so on the console. */
+#define ipconfigSUPPORT_NETWORK_DOWN_EVENT 1
 
 #define ipconfigDRIVER_INCLUDED_RX_IP_CHECKSUM 0
 #define ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM 0
