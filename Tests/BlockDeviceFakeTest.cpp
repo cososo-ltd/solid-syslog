@@ -92,6 +92,11 @@ TEST(BlockDeviceFake, GetBlockSizeIsTheConfiguredSize)
     LONGS_EQUAL(64, SolidSyslogBlockDevice_GetBlockSize(device));
 }
 
+TEST(BlockDeviceFake, GetBlockCountIsOneHundred)
+{
+    LONGS_EQUAL(100, SolidSyslogBlockDevice_GetBlockCount(device));
+}
+
 TEST(BlockDeviceFake, AcquireOfAPresentBlockEmptiesIt)
 {
     SolidSyslogBlockDevice_Acquire(device, 3);

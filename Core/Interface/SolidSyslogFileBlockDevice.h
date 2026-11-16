@@ -15,7 +15,8 @@
  *  Acquire opens (creating if needed) and truncates a block for fresh writes;
  *  Append writes at end-of-file, WriteAt/Read seek to an explicit offset, and
  *  Dispose deletes the block's file. GetBlockSize reports the configured
- *  per-block capacity that a BlockStore reads once at construction. */
+ *  per-block capacity and GetBlockCount the 100 blocks, both of which a
+ *  BlockStore reads once at construction. */
 #ifndef SOLIDSYSLOGFILEBLOCKDEVICE_H
 #define SOLIDSYSLOGFILEBLOCKDEVICE_H
 

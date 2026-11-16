@@ -18,8 +18,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * @p blockSize says. */
     struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t blockSize);
 
-    /* Media operations since Create: every vtable call but GetBlockSize, which
-     * reads a constant. Bounds the work a single store call may do. */
+    /* Media operations since Create: every vtable call but GetBlockSize and
+     * GetBlockCount, which read constants. Bounds the work a single store call
+     * may do. */
     size_t BlockDeviceFake_OperationCount(void);
 
     /* One write the device accepted. Appended says whether it was an Append

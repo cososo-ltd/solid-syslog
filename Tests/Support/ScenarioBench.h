@@ -198,8 +198,8 @@ class ScenarioBench
     };
 
     /* The device the store is given: the bench's own, counting the operations
-     * asked of it, whatever stands behind it. GetBlockSize is a property, not
-     * an operation, and is not counted. */
+     * asked of it, whatever stands behind it. GetBlockSize and GetBlockCount
+     * are properties, not operations, and are not counted. */
     struct CountingBlockDevice
     {
         struct SolidSyslogBlockDevice Base;
@@ -293,6 +293,7 @@ class ScenarioBench
     );
     static bool CountingSize(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size);
     static size_t CountingGetBlockSize(struct SolidSyslogBlockDevice* base);
+    static size_t CountingGetBlockCount(struct SolidSyslogBlockDevice* base);
     static CountingStore* CountingStoreFrom(struct SolidSyslogStore* base);
     static enum SolidSyslogStoreWriteResult CountingWrite(struct SolidSyslogStore* base, const void* data, size_t size);
     static bool CountingReadNextUnsent(struct SolidSyslogStore* base, void* data, size_t maxSize, size_t* bytesRead);

@@ -287,6 +287,12 @@ static size_t GetBlockSize(struct SolidSyslogBlockDevice* base)
     return blockSize;
 }
 
+static size_t GetBlockCount(struct SolidSyslogBlockDevice* base)
+{
+    (void) base;
+    return BLOCKDEVICEFAKE_BLOCKS;
+}
+
 struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t size)
 {
     memset(blocks, 0, sizeof(blocks));
@@ -307,6 +313,7 @@ struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t size)
     device.WriteAt = WriteAt;
     device.Size = Size;
     device.GetBlockSize = GetBlockSize;
+    device.GetBlockCount = GetBlockCount;
     return &device;
 }
 

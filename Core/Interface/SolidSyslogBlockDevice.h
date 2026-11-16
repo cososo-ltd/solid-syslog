@@ -4,7 +4,7 @@
 
 /** @file
  *  The block-device role: block-indexed storage (Acquire / Dispose / Exists /
- *  Read / Append / WriteAt / Size / GetBlockSize) beneath a BlockStore. These
+ *  Read / Append / WriteAt / Size / GetBlockSize / GetBlockCount) beneath a BlockStore. These
  *  calls dispatch to the injected device's vtable, so behaviour is that
  *  device's. */
 #ifndef SOLIDSYSLOGBLOCKDEVICE_H
@@ -78,6 +78,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  source of truth; a BlockStore reads this at construction rather than taking a separately
      *  configured size. Fixed for the device's lifetime. */
     size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice * device);
+
+    /** How many blocks the device has: every @p blockIndex it takes is below this.
+     *  Fixed for the device's lifetime. */
+    size_t SolidSyslogBlockDevice_GetBlockCount(struct SolidSyslogBlockDevice * device);
 
 SOLIDSYSLOG_EXTERN_C_END
 

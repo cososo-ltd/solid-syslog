@@ -4,8 +4,8 @@
 
 /** @file
  *  The BlockDevice vtable (Acquire / Dispose / Exists / Read / Append / WriteAt /
- *  Size / GetBlockSize) - the contract an implementor fills in (the BlockDevice
- *  extension point). */
+ *  Size / GetBlockSize / GetBlockCount) - the contract an implementor fills in
+ *  (the BlockDevice extension point). */
 #ifndef SOLIDSYSLOGBLOCKDEVICEDEFINITION_H
 #define SOLIDSYSLOGBLOCKDEVICEDEFINITION_H
 
@@ -44,6 +44,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         bool (*Size)(struct SolidSyslogBlockDevice* base, size_t blockIndex, size_t* size);
         /** Fixed per-block capacity; read once at BlockStore construction. */
         size_t (*GetBlockSize)(struct SolidSyslogBlockDevice* base);
+        /** How many blocks the device has; read once at BlockStore construction. */
+        size_t (*GetBlockCount)(struct SolidSyslogBlockDevice* base);
     };
 
 SOLIDSYSLOG_EXTERN_C_END

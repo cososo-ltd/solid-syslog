@@ -152,6 +152,7 @@ ScenarioBench::ScenarioBench(const ScenarioBenchOptions& benchOptions)
     countingDevice.Base.WriteAt = CountingWriteAt;
     countingDevice.Base.Size = CountingSize;
     countingDevice.Base.GetBlockSize = CountingGetBlockSize;
+    countingDevice.Base.GetBlockCount = CountingGetBlockCount;
     if (options.FileBacked)
     {
         fileDevice = SolidSyslogFileBlockDevice_Create(file, "scenario", options.BlockSize);
@@ -614,6 +615,11 @@ bool ScenarioBench::CountingSize(struct SolidSyslogBlockDevice* base, size_t blo
 size_t ScenarioBench::CountingGetBlockSize(struct SolidSyslogBlockDevice* base)
 {
     return SolidSyslogBlockDevice_GetBlockSize(CountingDeviceFrom(base)->Device);
+}
+
+size_t ScenarioBench::CountingGetBlockCount(struct SolidSyslogBlockDevice* base)
+{
+    return SolidSyslogBlockDevice_GetBlockCount(CountingDeviceFrom(base)->Device);
 }
 
 /* Base is the first member, so the logger's store is the counting store. */
