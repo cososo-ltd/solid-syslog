@@ -168,12 +168,10 @@ set(BDD_BOARD_PROJECT_SOURCES
 )
 
 # The disk is a MicroSD card: the card driver from the targets' common code,
-# over the board's SPI4. Two targets are not given it, and have a disk that
-# never becomes ready, and so no store. The CMSIS-RTOS2 target's filesystem is
+# over the board's SPI4. One target is not given it, and has a disk that never
+# becomes ready, and so no store: the CMSIS-RTOS2 target's filesystem is
 # LittleFS, which belongs on the board's flash, and that has no driver yet.
-# The FreeRTOS-Plus-TCP target's is FreeRTOS-Plus-FAT, which has not been run
-# on the card.
-set(bdd_board_targets_without_a_disk CMSIS_LWIP FREERTOS_PLUSTCP)
+set(bdd_board_targets_without_a_disk CMSIS_LWIP)
 if(SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets_without_a_disk)
     list(APPEND BDD_BOARD_PROJECT_SOURCES
         ${BDD_BOARD_DIR}/BddTargetBoardNoDisk.c

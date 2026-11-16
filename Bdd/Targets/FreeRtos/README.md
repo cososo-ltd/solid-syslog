@@ -116,8 +116,9 @@ Nothing in this directory changes for it: the board supplies its own half of
 the seam, the kernel configuration takes the core clock and the interrupt
 priority bits from the board, and the stack's configuration takes from the
 board whether its network interface copies frames. The interface there is the
-one FreeRTOS-Plus-TCP ships for the STM32 MACs. The board gives the target no
-disk yet, so it has no store. CI builds the image and never runs it. The
+one FreeRTOS-Plus-TCP ships for the STM32 MACs. The disk there is a MicroSD
+card, so the store is FreeRTOS-Plus-FAT on real media. CI builds the image and
+never runs it. The
 board's [README](../Boards/NucleoF767zi/README.md) has the build, the run and
 the target checklist it is accepted by.
 
