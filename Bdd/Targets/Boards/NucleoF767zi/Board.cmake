@@ -13,10 +13,9 @@ if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
         "Configure with a nucleo-f767zi-* preset.")
 endif()
 
-# The board supplies an lwIP netif and a CMSIS device header, and no
-# FreeRTOS-Plus-TCP interface. A target it has no half for would configure and
-# then fail somewhere in its build.
-set(bdd_board_targets FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
+# The board has a half for each of these. A target it had none for would
+# configure and then fail somewhere in its build.
+set(bdd_board_targets FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
 if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets)
     string(REPLACE ";" ", " bdd_board_target_list "${bdd_board_targets}")
     message(FATAL_ERROR
@@ -169,10 +168,13 @@ set(BDD_BOARD_PROJECT_SOURCES
 )
 
 # The disk is a MicroSD card: the card driver from the targets' common code,
-# over the board's SPI4. The CMSIS-RTOS2 target is not given it. Its
-# filesystem is LittleFS, which belongs on the board's flash, and until that
-# has a driver the target has a disk that never becomes ready, and so no store.
-if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
+# over the board's SPI4. Two targets are not given it, and have a disk that
+# never becomes ready, and so no store. The CMSIS-RTOS2 target's filesystem is
+# LittleFS, which belongs on the board's flash, and that has no driver yet.
+# The FreeRTOS-Plus-TCP target's is FreeRTOS-Plus-FAT, which has not been run
+# on the card.
+set(bdd_board_targets_without_a_disk CMSIS_LWIP FREERTOS_PLUSTCP)
+if(SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets_without_a_disk)
     list(APPEND BDD_BOARD_PROJECT_SOURCES
         ${BDD_BOARD_DIR}/BddTargetBoardNoDisk.c
     )
@@ -220,14 +222,44 @@ set(BDD_BOARD_UPSTREAM_SOURCES
     ${STM32F7_CMSIS_DEVICE_PATH}/Source/Templates/gcc/startup_stm32f767xx.s
 )
 
+# What the Ethernet MAC needs from the board under any network stack: its
+# clock, pins and interrupt, and the PHY restarted before the MAC is. It reads
+# the kernel's configuration, so it is built with a stack's interface and not
+# with the board's own sources, which the bring-up image takes with no kernel.
+set(bdd_board_ethernet_sources
+    ${BDD_BOARD_DIR}/BoardEthernet.c
+    ${BDD_BOARD_DIR}/EthernetPhy.c
+)
+
 # The Ethernet MAC under lwIP: our netif over ST's HAL Ethernet driver, which
 # is in the list above with the rest of the HAL, and our reading of the PHY's
-# link. No FreeRTOS-Plus-TCP interface is written, so those names are not set.
+# link.
 set(BDD_BOARD_LWIP_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Lwip/BddTargetBoardNetif.c
-    ${BDD_BOARD_DIR}/Lwip/EthernetPhy.c
+    ${bdd_board_ethernet_sources}
 )
 set(BDD_BOARD_LWIP_UPSTREAM_SOURCES)
-set(BDD_BOARD_LWIP_INCLUDES
-    ${BDD_BOARD_DIR}/Lwip                             # EthernetPhy.h
+set(BDD_BOARD_LWIP_INCLUDES)
+
+# The Ethernet MAC under FreeRTOS-Plus-TCP: upstream's own network interface
+# for the STM32 MACs and the PHY handling it shares with its other interfaces,
+# over the same HAL Ethernet driver, and our file that names its descriptor.
+# The copy of ST's driver upstream carries beside its interface is not built.
+set(BDD_BOARD_PLUSTCP_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/PlusTcp/BddTargetBoardPlusTcp.c
+    ${bdd_board_ethernet_sources}
 )
+set(BDD_BOARD_PLUSTCP_UPSTREAM_SOURCES
+    STM32/NetworkInterface.c
+    Common/phyHandling.c
+)
+set(BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES
+    include                                           # phyHandling.h
+)
+# The interface chooses its register names by the family, and asks for it by
+# this name before it has read the header of ST's that defines it.
+set(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS STM32F7)
+# It hands the stack's buffers to the DMA, in both directions, and will not
+# build otherwise, so they are fixed ones it places.
+set(BDD_BOARD_PLUSTCP_ZERO_COPY 1)
+set(BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION 1)

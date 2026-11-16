@@ -5,13 +5,13 @@
  * stands. What is here is the glue either side of it:
  *   - transmit copies the pbuf chain into one buffer and waits for the DMA to
  *     send it;
- *   - the PHY is put in its mode and reset before the MAC is, because the
- *     MAC's reset needs the PHY's clock and the PHY's straps do not always
- *     leave it giving one;
  *   - one task receives and watches the link. The Ethernet interrupt wakes it
  *     for a frame, which it copies into a pbuf for netif->input, and between
  *     frames it asks the PHY how the link stands, starts or stops the MAC to
  *     match, tells lwIP and says so on the console.
+ *
+ * The MAC's clock, pins and interrupt, and the PHY's restart before the MAC's
+ * reset, are the board's under any stack: BoardEthernet.c has them.
  *
  * Every frame is copied, in both directions, between lwIP's memory and
  * buffers the DMA owns. Those buffers and the DMA's descriptors are static,
@@ -25,6 +25,7 @@
 #include "BddTargetBoardNetif.h"
 
 #include "BddTargetBoardConfig.h"
+#include "BoardEthernet.h"
 #include "EthernetPhy.h"
 
 #include "lwip/etharp.h"
@@ -45,9 +46,6 @@
 
 enum
 {
-    /* The on-board PHY is strapped to address 0. */
-    BOARD_NETIF_PHY_ADDRESS = 0,
-
     BOARD_NETIF_MTU = 1500,
 
     /* One buffer holds any frame the MAC accepts, so a frame never spans two
@@ -58,10 +56,6 @@ enum
     /* The HAL takes a buffer for each descriptor it rebuilds before the frame
      * just read has given its own back, so the pool is larger than the ring. */
     BOARD_NETIF_RX_BUFFER_COUNT = 2 * ETH_RX_DESC_CNT,
-
-    /* The interrupt gives a task notification, so it has to sit at or below
-     * the ceiling the kernel sets for interrupts that call it. */
-    BOARD_NETIF_INTERRUPT_PRIORITY = configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY,
 
     BOARD_NETIF_TASK_STACK_WORDS = configMINIMAL_STACK_SIZE * 8,
     BOARD_NETIF_TASK_PRIORITY = configMAX_PRIORITIES - 2,
@@ -104,16 +98,12 @@ static enum EthernetPhyLink BddTargetBoardNetif_Link = ETHERNET_PHY_LINK_DOWN;
 /* The name ST's vector table carries. */
 void ETH_IRQHandler(void);
 
-static void BddTargetBoardNetif_ConfigurePins(void);
-static void BddTargetBoardNetif_RestartPhy(void);
 static err_t BddTargetBoardNetif_LowLevelOutput(struct netif* netif, struct pbuf* p);
 static void BddTargetBoardNetif_Task(void* parameters);
-static bool BddTargetBoardNetif_WritePhy(void* context, uint8_t registerNumber, uint16_t value);
 static void BddTargetBoardNetif_ReceiveFrames(void);
 static void BddTargetBoardNetif_DeliverFrame(void);
 static void BddTargetBoardNetif_ReleaseFrame(void);
 static void BddTargetBoardNetif_FollowLink(void);
-static bool BddTargetBoardNetif_ReadPhy(void* context, uint8_t registerNumber, uint16_t* value);
 static void BddTargetBoardNetif_ApplyLink(enum EthernetPhyLink link);
 static void BddTargetBoardNetif_StartMac(enum EthernetPhyLink link);
 static void BddTargetBoardNetif_Report(const char* what, const char* detail);
@@ -162,60 +152,6 @@ err_t BddTargetBoardNetif_Init(struct netif* netif)
         BddTargetBoardNetif_Report("ethernet", "the MAC did not start");
     }
     return ERR_OK;
-}
-
-/* The HAL calls this from HAL_ETH_Init for the clocks, pins and interrupt,
- * which are the board's. The name and the parameter are ST's. */
-void HAL_ETH_MspInit(ETH_HandleTypeDef* heth) // NOLINT(readability-identifier-naming) -- ST's name
-{
-    (void) heth;
-    __HAL_RCC_ETH_CLK_ENABLE();
-    BddTargetBoardNetif_ConfigurePins();
-    HAL_NVIC_SetPriority(ETH_IRQn, (uint32_t) BOARD_NETIF_INTERRUPT_PRIORITY, 0U);
-    HAL_NVIC_EnableIRQ(ETH_IRQn);
-    BddTargetBoardNetif_RestartPhy();
-}
-
-/* The PHY's mode is a strap it reads from pins as it leaves reset, and after
- * a reset through the debug probe it has been seen to take any of several.
- * One of them powers it down, and then it gives the MAC no reference clock,
- * without which the MAC's own reset, which HAL_ETH_Init does next, never
- * completes. So the PHY is put in its mode here, between the clocks and pins
- * the management bus needs and that reset. The bus runs on the MAC's bus
- * clock alone, and needs its divider set first, as after HAL_ETH_Init. */
-static void BddTargetBoardNetif_RestartPhy(void)
-{
-    HAL_ETH_SetMDIOClockRange(&BddTargetBoardNetif_Ethernet);
-    if (!EthernetPhy_Restart(BddTargetBoardNetif_WritePhy, BddTargetBoardNetif_ReadPhy, NULL))
-    {
-        BddTargetBoardNetif_Report("ethernet", "the PHY did not restart");
-    }
-}
-
-/* RMII, as the board's README.md has it in its pin plan. */
-static void BddTargetBoardNetif_ConfigurePins(void)
-{
-    GPIO_InitTypeDef pins = {0};
-    pins.Mode = GPIO_MODE_AF_PP;
-    pins.Pull = GPIO_NOPULL;
-    pins.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    pins.Alternate = GPIO_AF11_ETH;
-
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    pins.Pin = GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_7; /* REF_CLK, MDIO, CRS_DV */
-    HAL_GPIO_Init(GPIOA, &pins);
-
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    pins.Pin = GPIO_PIN_13; /* TXD1 */
-    HAL_GPIO_Init(GPIOB, &pins);
-
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    pins.Pin = GPIO_PIN_1 | GPIO_PIN_4 | GPIO_PIN_5; /* MDC, RXD0, RXD1 */
-    HAL_GPIO_Init(GPIOC, &pins);
-
-    __HAL_RCC_GPIOG_CLK_ENABLE();
-    pins.Pin = GPIO_PIN_11 | GPIO_PIN_13; /* TX_EN, TXD0 */
-    HAL_GPIO_Init(GPIOG, &pins);
 }
 
 /* lwIP calls this holding its core lock, which is also what the task holds to
@@ -276,17 +212,6 @@ static void BddTargetBoardNetif_Task(void* parameters)
             BddTargetBoardNetif_FollowLink();
         }
     }
-}
-
-static bool BddTargetBoardNetif_WritePhy(void* context, uint8_t registerNumber, uint16_t value)
-{
-    (void) context;
-    return HAL_ETH_WritePHYRegister(
-               &BddTargetBoardNetif_Ethernet,
-               (uint32_t) BOARD_NETIF_PHY_ADDRESS,
-               registerNumber,
-               value
-           ) == HAL_OK;
 }
 
 /* HAL_ETH_ReadData also rebuilds the descriptors of the frames taken so far,
@@ -380,27 +305,13 @@ static void BddTargetBoardNetif_ReleaseFrame(void)
 
 static void BddTargetBoardNetif_FollowLink(void)
 {
-    enum EthernetPhyLink link = EthernetPhy_ReadLink(BddTargetBoardNetif_ReadPhy, NULL);
+    enum EthernetPhyLink link = EthernetPhy_ReadLink(BoardEthernet_ReadPhy, &BddTargetBoardNetif_Ethernet);
     if (link != BddTargetBoardNetif_Link)
     {
         BddTargetBoardNetif_ApplyLink(link);
         BddTargetBoardNetif_Link = link;
         BddTargetBoardNetif_Report("link", EthernetPhy_LinkText(link));
     }
-}
-
-static bool BddTargetBoardNetif_ReadPhy(void* context, uint8_t registerNumber, uint16_t* value)
-{
-    (void) context;
-    uint32_t read = 0U;
-    bool wasRead = HAL_ETH_ReadPHYRegister(
-                       &BddTargetBoardNetif_Ethernet,
-                       (uint32_t) BOARD_NETIF_PHY_ADDRESS,
-                       registerNumber,
-                       &read
-                   ) == HAL_OK;
-    *value = (uint16_t) read;
-    return wasRead;
 }
 
 /* A change of speed or duplex with no drop between goes through a stop too:

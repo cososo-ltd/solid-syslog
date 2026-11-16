@@ -1,7 +1,7 @@
-/* The kernel's own callbacks, which no OS abstraction can cover: FreeRTOS
- * calls these by name, and one of them takes a FreeRTOS type in its signature.
- * They live beside the kernel config rather than in main.c so that everything
- * tied to this particular kernel sits in one directory - see Kernel.cmake. */
+/* The FreeRTOS kernel's own callbacks, which no OS abstraction can cover: the
+ * kernel calls these by name, and one of them takes a kernel type in its
+ * signature. Every target that runs on this kernel ends them the same way, in
+ * the board's fault line, so they are written once here. */
 
 #include "BddTargetBoard.h"
 

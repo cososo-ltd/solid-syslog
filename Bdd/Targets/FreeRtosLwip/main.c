@@ -227,17 +227,6 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
     UNLOCK_TCPIP_CORE();
 }
 
-void vApplicationMallocFailedHook(void)
-{
-    BddTargetBoard_Fault("kernel heap", "exhausted");
-}
-
-void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
-{
-    (void) task;
-    BddTargetBoard_Fault("stack overflow in task", taskName);
-}
-
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
     /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif so a future

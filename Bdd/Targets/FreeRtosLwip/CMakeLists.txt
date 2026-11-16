@@ -223,6 +223,7 @@ add_executable(SolidSyslogBddTargetLwip
     main.c
     ${BDD_BOARD_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
     ${BDD_BOARD_LWIP_PROJECT_SOURCES}
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/

@@ -47,6 +47,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 
 /* Static IPv4 wiring on the board's network - see BddTargetBoardConfig.h. No
  * DHCP server is required. */
@@ -77,6 +78,9 @@ static struct SolidSyslogSender* switchingSender = NULL;
  * network goes down and back up. */
 static BaseType_t interactiveTaskCreated = pdFALSE;
 
+/* How the network stood at the last event the stack gave. */
+static bool networkIsUp = false;
+
 /* This target spawns its threads through the kernel API rather than the OS seam
  * in BddTargetOsPrimitives.h, because the rollback below needs the handle that
  * seam deliberately does not hand back. FreeRTOS-Plus-TCP pins it to this kernel
@@ -84,6 +88,7 @@ static BaseType_t interactiveTaskCreated = pdFALSE;
  * byte sizes back into the stack words xTaskCreate wants. */
 #define BDD_TARGET_STACK_WORDS(bytes) ((configSTACK_DEPTH_TYPE) ((bytes) / sizeof(StackType_t)))
 
+static void ReportNetworkChange(bool isUp);
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
@@ -117,9 +122,7 @@ int main(void)
 
     if (FreeRTOS_IPInit_Multi() != pdPASS)
     {
-        for (;;)
-        {
-        }
+        BddTargetBoard_Fault("FreeRTOS-Plus-TCP", "did not start");
     }
 
     /* The console lock has to exist before the IP task's event hook spawns the
@@ -137,6 +140,7 @@ int main(void)
 void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, struct xNetworkEndPoint* pxEndPoint)
 {
     (void) pxEndPoint;
+    ReportNetworkChange(eNetworkEvent == eNetworkUp);
     if ((eNetworkEvent == eNetworkUp) && (interactiveTaskCreated == pdFALSE))
     {
         TaskHandle_t interactiveTask = NULL;
@@ -173,19 +177,20 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
     }
 }
 
-void vApplicationMallocFailedHook(void)
+/* One line on the console for each change of the network, so a pulled cable
+ * can be told from a fault. The stack repeats its down event each time it
+ * retries an interface that is still down, so only a change is said. Written
+ * whole, straight to the console's lock: stdio belongs to the interactive
+ * thread, and this runs on the IP task. */
+static void ReportNetworkChange(bool isUp)
 {
-    for (;;)
+    static const char LINK_UP[] = "[board] link up\n";
+    static const char LINK_DOWN[] = "[board] link down\n";
+    if (isUp != networkIsUp)
     {
-    }
-}
-
-void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
-{
-    (void) task;
-    (void) taskName;
-    for (;;)
-    {
+        const char* line = isUp ? LINK_UP : LINK_DOWN;
+        networkIsUp = isUp;
+        (void) write(STDOUT_FILENO, line, strlen(line));
     }
 }
 

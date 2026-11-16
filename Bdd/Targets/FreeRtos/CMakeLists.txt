@@ -46,7 +46,7 @@ list(TRANSFORM BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES PREPEND "${PLUS_TCP_NIF_ROOT}
 
 # --- Upstream OBJECT library --------------------------------------------------
 #
-# Compiles all kernel + Plus-TCP + the board's Ethernet driver sources with the relaxed
+# Compiles all kernel + Plus-TCP + the board's Ethernet driver and vendor sources with the relaxed
 # warning set. Marked PRIVATE on this library; the executable consumes the
 # objects via $<TARGET_OBJECTS:...> so the relaxations don't leak.
 
@@ -101,9 +101,12 @@ add_library(solid_syslog_freertos_upstream OBJECT
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IP.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv4.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv6.c
-    ${PLUS_TCP_BUF_DIR}/BufferAllocation_2.c
+    # Fixed buffers or ones from the heap: the board's interface decides.
+    ${PLUS_TCP_BUF_DIR}/BufferAllocation_${BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION}.c
     # The board's NetworkInterface + controller driver.
     ${PLUS_TCP_NIF_SOURCES}
+    # The board vendor's own sources.
+    ${BDD_BOARD_UPSTREAM_SOURCES}
     # FreeRTOS-Plus-FAT upstream core (SHA 9ca465c). Like the FreeRTOS kernel
     # and Plus-TCP sources, these trip the relaxed warnings (sign-conversion,
     # shadow, type narrowing), so they live in this OBJECT lib. The integrator
@@ -149,9 +152,26 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -Wno-cpp
 )
 
+# Whether the board's interface copies frames is read by FreeRTOSIPConfig.h, so
+# it goes to everything that reads that header: here, and the executable.
+set(BDD_PLUSTCP_ZERO_COPY_DEFINITION BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY=${BDD_BOARD_PLUSTCP_ZERO_COPY})
+
+target_compile_definitions(solid_syslog_freertos_upstream PRIVATE
+    ${BDD_BOARD_DEFINITIONS}
+    ${BDD_PLUSTCP_ZERO_COPY_DEFINITION}
+)
+
+# What the board's interface alone needs defined goes to its sources alone.
+if(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS)
+    set_source_files_properties(${PLUS_TCP_NIF_SOURCES} PROPERTIES
+        COMPILE_DEFINITIONS "${BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS}")
+endif()
+
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetBoard.h, which FreeRTOSConfig.h's assertion calls
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
+    ${BDD_BOARD_SYSTEM_INCLUDES}                      # the board vendor's headers
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${PLUS_TCP_SRC_DIR}/include
@@ -182,7 +202,10 @@ set(MBEDTLS_USER_CONFIG_HEADER
 
 foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
     if(TARGET ${_mbedtls_upstream_target})
-        target_compile_options(${_mbedtls_upstream_target} PRIVATE -w)
+        # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
+        # bignum multiply is inline assembler that wants every low register,
+        # and an unoptimised build otherwise keeps one back as frame pointer.
+        target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
         target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
             MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
         )
@@ -259,6 +282,7 @@ add_executable(SolidSyslogBddTarget
     ${BDD_BOARD_PROJECT_SOURCES}
     ${BDD_BOARD_PLUSTCP_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
     # MbedTls,PlusFat} pack umbrellas linked below (S30.02 dogfood) — their
     # target_sources(INTERFACE) compile here against this target's config.
@@ -316,6 +340,9 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
                                                       # so the Plus-FAT core and our adapter/driver share one
                                                       # config across all translation units.
 )
+target_include_directories(SolidSyslogBddTarget SYSTEM PRIVATE
+    ${BDD_BOARD_SYSTEM_INCLUDES}                      # the board vendor's headers
+)
 
 # BddTargetPlusFatDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
 # FF_ERR_* macros, whose error codes carry the 0x80000000 FF_ERRFLAG bit and so
@@ -348,6 +375,8 @@ target_link_libraries(SolidSyslogBddTarget PRIVATE
 string(TIMESTAMP SOLIDSYSLOG_BDD_BUILD_EPOCH "%s" UTC)
 
 target_compile_definitions(SolidSyslogBddTarget PRIVATE
+    ${BDD_BOARD_DEFINITIONS}
+    ${BDD_PLUSTCP_ZERO_COPY_DEFINITION}
     MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
     BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )

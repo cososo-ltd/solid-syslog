@@ -57,6 +57,7 @@ fault-finding tips.
 | VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 | FreeRTOS (lwIP Raw API) on the NUCLEO-F767ZI | `behave` natively on the development machine, driving the board over its serial port and resetting it through its debug probe (`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1 -Target lwip`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 | CMSIS-RTOS2 (lwIP Sockets API) on the NUCLEO-F767ZI | The same, with `-Target cmsis` | The same |
+| FreeRTOS (FreeRTOS-Plus-TCP) on the NUCLEO-F767ZI | The same, with `-Target plustcp` | The same |
 
 The Linux BDD target binary is built in the `gcc` container but executed by Behave via
 `subprocess.run`. Both services share the workspace mount, so `Bdd/output/received.log`

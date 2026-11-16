@@ -1,7 +1,6 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-#include "BddTargetBoard.h"
 #include "BddTargetBoardConfig.h"
 
 /* FreeRTOS kernel configuration with lwIP
@@ -63,15 +62,10 @@
 #define INCLUDE_xTimerPendFunctionCall 1
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
 
-/* The NVIC priority bits the board implements - see BddTargetBoardConfig.h.
- * The kernel's own interrupts run at the least urgent priority the board has,
- * which is every implemented bit set. An interrupt that calls the kernel runs
- * at 5 or less urgent. */
-#define configPRIO_BITS BDD_TARGET_BOARD_NVIC_PRIO_BITS
-#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY ((1 << configPRIO_BITS) - 1)
-#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
-#define configKERNEL_INTERRUPT_PRIORITY (configLIBRARY_LOWEST_INTERRUPT_PRIORITY << (8 - configPRIO_BITS))
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << (8 - configPRIO_BITS))
+/* The interrupt priorities, which follow from the board, and the assertion,
+ * which ends in the board's fault line, are the same for every target on this
+ * kernel. */
+#include "BddTargetFreeRtosKernelConfig.h"
 
 /* Alias FreeRTOS port handlers to the standard CMSIS names so the vector
  * table in Startup.c references SVC_Handler / PendSV_Handler / SysTick_Handler
@@ -79,17 +73,5 @@
 #define vPortSVCHandler SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
-
-/* An assertion that fails says where on the console, and stops the target. */
-#define BDD_TARGET_TEXT_OF_(x) #x
-#define BDD_TARGET_TEXT_OF(x) BDD_TARGET_TEXT_OF_(x)
-#define configASSERT(x)                                                                          \
-    do                                                                                           \
-    {                                                                                            \
-        if (!(x))                                                                                \
-        {                                                                                        \
-            BddTargetBoard_Fault("kernel assertion", __FILE__ ":" BDD_TARGET_TEXT_OF(__LINE__)); \
-        }                                                                                        \
-    } while (0)
 
 #endif /* FREERTOS_CONFIG_H */

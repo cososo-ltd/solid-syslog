@@ -6,14 +6,15 @@
  *   DTCM:  0x20000000, 128 KiB - left unused. It is the fastest RAM on the
  *                                part and is kept free for whoever needs it.
  *   SRAM:  0x20020000, 384 KiB - SRAM1 and SRAM2, which are contiguous. Its
- *                                first 16 KiB is ETHDMA below; the rest holds
+ *                                first 32 KiB is ETHDMA below; the rest holds
  *                                data, bss, the newlib heap and the stack.
  *
  * ETHDMA is what the Ethernet DMA reads and writes: its descriptors and the
  * frame buffers. Board.c gives the region to the MPU as memory the data cache
  * leaves alone, and an MPU region is a power of two long and starts on a
  * multiple of its length, which is why it is cut from the bottom of SRAM.
- * Board.c states the same length, and the two are kept in step by hand.
+ * Board.c takes the region from the two symbols below, and the assertions
+ * under them hold its length to what the MPU can take.
  *
  * The symbol names are the ones ST's startup_stm32f767xx.s reads.
  */
@@ -24,11 +25,15 @@ MEMORY
 {
     FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 2048K
     DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
-    ETHDMA (rw) : ORIGIN = 0x20020000, LENGTH = 16K
-    SRAM  (rwx) : ORIGIN = 0x20024000, LENGTH = 368K
+    ETHDMA (rw) : ORIGIN = 0x20020000, LENGTH = 32K
+    SRAM  (rwx) : ORIGIN = 0x20028000, LENGTH = 352K
 }
 
 _ethernet_dma_start = ORIGIN(ETHDMA);
+_ethernet_dma_end = ORIGIN(ETHDMA) + LENGTH(ETHDMA);
+
+ASSERT((LENGTH(ETHDMA) & (LENGTH(ETHDMA) - 1)) == 0, "ETHDMA has to be a power of two long: it is an MPU region")
+ASSERT((ORIGIN(ETHDMA) % LENGTH(ETHDMA)) == 0, "ETHDMA has to start on a multiple of its length: it is an MPU region")
 
 _estack = ORIGIN(SRAM) + LENGTH(SRAM);
 
@@ -90,10 +95,15 @@ SECTIONS
 
     /* Not loaded and not cleared at startup: the Ethernet driver writes every
      * descriptor before the DMA is given it, and a buffer is read only after
-     * a frame has been written to it. */
+     * a frame has been written to it. The last three are the names
+     * FreeRTOS-Plus-TCP's network interface for this MAC gives its descriptors
+     * and its network buffers, every one of which the DMA may be handed. */
     .ethernet_dma (NOLOAD) :
     {
         *(.ethernet_dma*)
+        *(.TxDescripSection)
+        *(.RxDescripSection)
+        *(.EthBuffersSection)
     } > ETHDMA
 
     .data :

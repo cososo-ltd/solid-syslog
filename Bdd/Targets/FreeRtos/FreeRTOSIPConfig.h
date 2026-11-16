@@ -27,6 +27,21 @@
 #define ipconfigUSE_LLMNR 0
 #define ipconfigUSE_NBNS 0
 #define ipconfigUSE_NETWORK_EVENT_HOOK 1
+/* A network interface that watches its link tells the stack when it drops, and
+ * the stack tells the event hook, which says so on the console. */
+#define ipconfigSUPPORT_NETWORK_DOWN_EVENT 1
+/* How often such an interface asks its PHY whether a link that was up still
+ * is, in milliseconds. The stack's own choice is fifteen seconds, and until
+ * the interface has asked, a pulled cable is a link that is up. */
+#define ipconfigPHY_LS_HIGH_CHECK_TIME_MS 500
+
+/* Whether the board's network interface hands the stack's buffers to the
+ * controller as they are, or copies each frame. It is the interface's to say:
+ * one written for either will not build, or will not work, under the other.
+ * The build passes it, from the board's Board.cmake, where it sits beside the
+ * buffer scheme that has to agree with it. */
+#define ipconfigZERO_COPY_TX_DRIVER BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY
+#define ipconfigZERO_COPY_RX_DRIVER BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY
 
 #define ipconfigDRIVER_INCLUDED_RX_IP_CHECKSUM 0
 #define ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM 0

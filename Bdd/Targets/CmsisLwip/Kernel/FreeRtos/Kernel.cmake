@@ -3,7 +3,9 @@
 #
 # Everything here is what a kernel swap would replace, and nothing outside this
 # directory names FreeRTOS except the lwIP port layer and the Ethernet driver,
-# which sit beneath the wrapper. A second kernel is a sibling directory
+# which sit beneath the wrapper, and two files in Bdd/Targets/Common that this
+# kernel's configuration and hooks are shared with the other FreeRTOS targets
+# through. A second kernel is a sibling directory
 # supplying the same three names below, and a one-line change to which
 # Kernel.cmake the target includes.
 #
@@ -57,6 +59,7 @@ set(BDD_KERNEL_UPSTREAM_INCLUDES
     ${CMSIS_FREERTOS_PATH}/CMSIS/RTOS2/FreeRTOS/Include    # freertos_os2.h, freertos_mpool.h
 )
 
+# The kernel's hooks are the ones every target on this kernel shares.
 set(BDD_KERNEL_PROJECT_SOURCES
-    ${BDD_KERNEL_DIR}/KernelHooks.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
 )

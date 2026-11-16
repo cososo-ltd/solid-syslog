@@ -61,3 +61,7 @@ set(BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES
     MPS2_AN385                                        # NetworkInterface.h consumed locally
     MPS2_AN385/ether_lan9118                          # SMM_MPS2.h, smsc9220_*.h
 )
+set(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS)
+# That interface copies each frame, and takes its buffers from the heap.
+set(BDD_BOARD_PLUSTCP_ZERO_COPY 0)
+set(BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION 2)

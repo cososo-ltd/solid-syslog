@@ -14,7 +14,9 @@
  * initialiser takes: BDD_TARGET_BOARD_IP_OCTETS, _NETMASK_OCTETS,
  * _GATEWAY_OCTETS, _MAC_OCTETS, and where the syslog oracle is reached, as
  * BDD_TARGET_BOARD_ORACLE_OCTETS and as the text a resolver takes,
- * BDD_TARGET_BOARD_ORACLE_ADDRESS. They belong to the network the board is
+ * BDD_TARGET_BOARD_ORACLE_ADDRESS. BDD_TARGET_BOARD_DNS_OCTETS is the gateway
+ * again: no name server is named for the board, and no target on it resolves
+ * a name. They belong to the network the board is
  * plugged into, so the configure writes them - see Board.cmake. */
 #include "BddTargetBoardAddresses.h"
 
