@@ -54,8 +54,11 @@ const struct lfs_config* BddTargetLittleFsDisk_Config(void)
     return &CONFIG;
 }
 
-/* The disk under this is the board's to put back to nothing: it is asked,
- * and a board whose disk the harness replaces says no. */
+/* The disk under this is the board's to put back to nothing, so the board is
+ * asked. The one board that runs this has a disk the harness replaces, and
+ * says no. What a board that said yes clears is its first sector, which is
+ * one copy of LittleFS's superblock of two: a board whose disk outlasts the
+ * target and holds a LittleFS would need the second block cleared here too. */
 bool BddTargetLittleFsDisk_Wipe(void)
 {
     return BddTargetBoardDisk_Wipe();

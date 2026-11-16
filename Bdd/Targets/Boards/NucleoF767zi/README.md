@@ -27,7 +27,9 @@ say what it supplies to the code.
 | Caches, clock, console, LEDs, millisecond count | `Board.c`, `stm32f7xx_hal_conf.h` | Over ST's HAL. Both [caches](#caches) are on. The millisecond count is TIM6, so SysTick is the kernel's |
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`; an exit is a line on the console and a halt, and so is a fault |
 | Clock of the time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The part's [real-time clock](#clock), read to the microsecond, once `set time` has set it |
-| Disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c`, `BddTargetBoardNoDisk.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code. `BddTargetBoardNoDisk.c` is the disk of a target the board [has none for yet](#what-the-board-does-not-have-yet) |
+| Sector disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the card driver in the targets' common code |
+| LittleFS block device | `BddTargetBoardFlashBus.c` | A [W25Q128 flash](#w25q128-flash) on SPI4, under the flash driver and the LittleFS block device in the targets' common code |
+| SPI4, under both | `BoardSpi4.c` | The pins, the rate and the two chip selects, over ST's HAL |
 | Ethernet, under any stack | `BoardEthernet.c`, `EthernetPhy.c` | The MAC's clock, pins and interrupt, and the PHY restarted before the MAC is, which ST's HAL Ethernet driver asks the board for as it starts. The PHY's link is read from its standard registers |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over ST's HAL Ethernet driver |
 | Ethernet under FreeRTOS-Plus-TCP | `PlusTcp/BddTargetBoardPlusTcp.c` | Names the network interface FreeRTOS-Plus-TCP ships for the STM32 MACs, which runs over the same driver |
@@ -39,7 +41,9 @@ a banner on the serial port, each line received echoed back, and the green LED
 blinking. It is what tells a fault in the board or the toolchain from one in
 anything built on them. Its `probe` command does the same for the
 [storage breakouts](#storage-breakouts-spi4): it asks each whether it is
-there, with no driver under it.
+there, with no driver under it. Its `flash` command then does it for the flash
+driver: it erases, programs and reads back the last sector of the
+[flash](#w25q128-flash), with no filesystem over it.
 
 ST's HAL driver and CMSIS device files are not in the repository. The cross
 image pins them, and the build reads them from `STM32F7_HAL_DRIVER_PATH` and
@@ -254,8 +258,8 @@ under QEMU. A card smaller than that is refused.
 The card is the disk of two targets, each with the filesystem it has under
 QEMU: FatFs under the FreeRTOS + lwIP Raw target, and FreeRTOS-Plus-FAT under
 the FreeRTOS-Plus-TCP target. One card serves both, since the board holds one
-image at a time. The CMSIS-RTOS2 target is
-[not given it](#what-the-board-does-not-have-yet).
+image at a time. The CMSIS-RTOS2 target keeps its store on the
+[flash](#w25q128-flash).
 
 A card that has been used anywhere else is wiped first, with `set store wipe`.
 A card as it is sold, or as a computer formats it, has a partition table in
@@ -313,16 +317,62 @@ come out of the breadboard, is `[board] disk: the card did not start: no
 answer`, and `set store file` then answers `set: invalid` and leaves the target
 on the store it started with.
 
+## W25Q128 flash
+
+The CMSIS-RTOS2 target's filesystem is LittleFS, and on this board it is kept
+on a W25Q128 flash in a breakout on SPI4, wired as the
+[pin plan](#storage-breakouts-spi4) has it. `set store file` mounts LittleFS
+on it, formatting it first if it finds none, and puts the target on a store of
+files there. The filesystem is the first 8 MiB of the part's 16, which is the
+size of the disk the same target has under QEMU.
+
+A filesystem block is one of the part's 4 KiB sectors, so an erase LittleFS
+asks for is the part's own, and a program reaches the part as it is: it clears
+bits and sets none. Under QEMU the same target has a disk of sectors, where an
+erase is a write of `0xFF` and a program can set bits a real part could not.
+
+The part is driven by a driver of this repository's own in the targets' common
+code, which is unit-tested on the host against a fake part that programs and
+erases as a real one does. It drives a Winbond W25Q of no more than 16 MiB,
+which it knows by the identity the part gives, and refuses any other. The one
+part it has been run on is a W25Q128JV, which identifies itself as `EF4018`.
+
+The part is run at 6.75 MHz, the rate the [card](#disk) is run at on the same
+wires. It sends no check with what it reads out, as the card does, so damage
+on the wires would not be caught here. On the part the board has, a sector
+erase was seen to take 52 to 58 ms, and a program of a page about 1 ms. The
+task that asked for either waits by asking the part for its status until it
+has finished.
+
+LittleFS is given the part with a program unit of 16 bytes, not the 256 of a
+page, and a cache of 512. Why those, and what a stored message costs the part
+in erases, is on the
+[LittleFS platform page](../../../../docs/platforms/littlefs/index.md#what-the-store-costs-the-flash-in-erases).
+With the collector reachable a message costs about two erases, and the store
+was seen to keep up with one message every 120 ms and not with one every
+50 ms.
+
+A part that was erasing when the board was reset goes on erasing, and answers
+nothing but its status until it has finished, so the driver waits for it before
+it asks the part anything.
+
+The part keeps what it holds through a reset and with the power off. `set
+store wipe` at the console erases the two blocks LittleFS keeps its superblock
+in, so that the next `set store file` finds no filesystem and formats. It is
+refused once the store is on the part.
+
+Whatever goes wrong with the part is a line on the console beginning
+`[board] flash:`, with the block where there is one and the reason: no answer,
+timed out, would not enable writing, and so on. A part that is not there, or a
+wire that has come out of the breadboard, is `[board] flash: the part did not
+start: no answer`, and `set store file` then says `[solidsyslog] littlefs
+mount failed`, answers `set: invalid` and leaves the target on the store it
+started with.
+
 ## What the board does not have yet
 
 - TLS is linked, because the target is the same code as on QEMU, and has not
   been run. The board's hardware random number generator is not wired in.
-- The CMSIS-RTOS2 target has no store. Its filesystem is LittleFS, which
-  belongs on the W25Q128 flash, and that has no driver yet. Until it has, the
-  board gives this target a disk that never becomes ready: `set store file`
-  says `[solidsyslog] littlefs mount failed`, answers `set: invalid` and
-  leaves the target on the store it started with, and `set store wipe`
-  answers `set: invalid` too.
 
 ## Tools on the development machine
 
@@ -395,6 +445,24 @@ A card answers its first command with `01`, and a flash its identity with
 three bytes that are not all ones. A breakout that is not there, or not wired,
 reads as `FF` throughout.
 
+After the line `flash` it erases the last sector of the flash, programs it
+three times and erases it again, reading the whole sector back after each, and
+says what it found and how long the part took:
+
+```text
+flash: started, 16777216 bytes, checking sector 4095
+flash: erased the sector in 54 ms, and it reads as erased
+flash: a program across two pages, 300 bytes in 1 ms, and the sector reads back
+flash: a program of part of a page, 16 bytes in 1 ms, and the sector reads back
+flash: a second beside it, 16 bytes in 0 ms, and the sector reads back
+flash: erased the sector in 56 ms, and it reads as erased
+flash: passed
+```
+
+That sector is beyond the 8 MiB the filesystem is given, so a store on the
+part is not disturbed. A step that fails says which and why, and the last line
+is `flash: failed`.
+
 The BDD target echoes each character and shows a `SolidSyslog>` prompt once
 the network has been given its chance to come up, a few seconds after reset.
 `send 1` sends one message, `set transport tcp` and `set transport udp` choose
@@ -442,12 +510,14 @@ time, its sequence number, its up-time and the library's version are not held
 to a value, and the time on a message has to be no earlier than on the one
 before it. It ends with a line for each transport giving the messages sent,
 received and at fault. With `-FileStore` as well, every message goes by way of
-a store of files on the [disk](#disk), which the run wipes first. Each message
-is then written to the card before it is sent, which takes longer than the
-console takes to answer, so the run asks for twenty a second: asked for faster
-than the card takes them, messages fill the target's buffer and it discards,
-which is the library's doing and not a loss. The script refuses `-FileStore`
-for an image with no store.
+a store of files on the image's medium, the [card](#disk) or the
+[flash](#w25q128-flash), which the run wipes first. Each message is then
+written to the medium before it is sent, which takes longer than the console
+takes to answer, so the run asks for twenty a second of an image on the card
+and four a second of the one on the flash: asked for faster than the medium
+takes them, messages fill the target's buffer and it discards, which is the
+library's doing and not a loss. `-FileStoreInterval <seconds>` asks for them at another
+pace, which is how a medium's own is found.
 
 Behave reaches the target as it reaches one under QEMU, with two differences.
 Its console is the ST-LINK's virtual COM port, found by ST's USB vendor id
@@ -456,9 +526,10 @@ the board through the ST-LINK's debug probe, where under QEMU it starts the
 emulator. A target that ends is read from its console too: the line
 `exit: ok`, or `exit: failed` and a status, is its exit.
 
-Before a scenario tagged `@store` the run resets the board and has it
-[wipe its disk](#disk), so the scenario lays its store down on a card with no
-filesystem, as under QEMU it does on a disk image that has just been made.
+Before a scenario tagged `@store` the run resets the board and has it wipe
+its medium, the [card](#disk) or the [flash](#w25q128-flash), so the scenario
+lays its store down where there is no filesystem, as under QEMU it does on a
+disk image that has just been made.
 
 Before the first scenario the run reads the banner and stops unless it names
 the image asked for and the commit checked out, so a run cannot pass against
@@ -494,14 +565,13 @@ port in either direction and every reset, each with its time, taken at the
 port and so before anything in the run could lose it.
 
 The scenarios are the ones tagged `@udp` or `@tcp`, less what the board
-[does not have yet](#what-the-board-does-not-have-yet), which for the
-CMSIS-RTOS2 image takes out the ones tagged `@store`. The board has been told
+[does not have yet](#what-the-board-does-not-have-yet). The board has been told
 the time by then, so it runs the scenarios tagged `@rtc` and not those tagged
 `@no_rtc`. The script holds the tag filter.
 
 Where a scenario kills the target to stand in for a power cut, the run asks the
 target to shut down, as it does under QEMU: the target closes the store's files
-and unmounts the disk before it exits, and the reset through the probe that
+and unmounts the filesystem before it exits, and the reset through the probe that
 starts the next target finds them so. What the scenario shows is that a store
 one run of the target laid down is read by the next. It is not a loss of power:
 the files are closed and the storage media keep their supply throughout, so it
@@ -574,8 +644,8 @@ different SPI.
 
 Two breakouts share SPI4, on the CN9 Zio connector, with a chip select each:
 an Adafruit 4682 MicroSD breakout, which is the [disk](#disk), and an Adafruit
-5643 W25Q128 flash, which nothing but the bring-up image's `probe` talks to
-yet. None of these pins is shared with Ethernet, the ST-LINK or an LED.
+5643 W25Q128 breakout, which is the [flash](#w25q128-flash). None of these
+pins is shared with Ethernet, the ST-LINK or an LED.
 
 ![The seven wires from CN8 and CN9 to the two breakouts on a breadboard](storage-wiring.svg)
 
@@ -607,7 +677,8 @@ The firmware holds whichever chip select it is not using high. Each breakout
 also pulls its own select up, so a breakout is off the bus from power-up.
 
 A device that has stopped answering is, on a breadboard, first a wire that has
-come out. The bring-up image's `probe` says which of the two still answers.
+come out. The bring-up image's `probe` says which of the two still answers,
+and its `flash` whether the flash still erases and programs.
 
 ## Target checklist
 
@@ -641,7 +712,8 @@ artifact came from.
 7. Where the pull request changes the bring-up image or the
    [storage breakouts](#storage-breakouts-spi4): the line `probe` is answered
    with a card that answered `01` to CMD0 and `01 000001AA` to CMD8, and a
-   flash that answered its JEDEC id.
+   flash that answered its JEDEC id, and the line `flash` ends in
+   `flash: passed`.
 
 ### The BDD targets
 
@@ -652,13 +724,11 @@ change to all of them.
 | Image | Lane | Script argument | Store |
 |---|---|---|---|
 | FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip` | FatFs on the MicroSD card |
-| CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | None yet |
+| CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | LittleFS on the W25Q128 flash |
 | FreeRTOS-Plus-TCP | `build-nucleo-freertos-plustcp` | `-Target plustcp` | FreeRTOS-Plus-FAT on the MicroSD card |
 
-Steps 5 and 6 each have a form for an image with a store and one for an image
-without.
-
-The board is cabled to the test network, with a MicroSD card in its breakout.
+The board is cabled to the test network, with a MicroSD card in its breakout
+and the flash breakout wired.
 Steps 2 to 4 are one run of
 [`Run-NucleoF767ziBdd.ps1`](#running-the-bdd-scenarios), which stops at the
 first of them that fails.
@@ -674,12 +744,11 @@ first of them that fails.
    Behave ends with: the scenarios passed, failed, and skipped by the filter.
 5. By hand, at the console: `set store wipe` answers `set store=wipe`,
    `set store file` answers `set store=file`, and a `send 1` after them
-   arrives at the collector. On an image with no store, `set store file`
-   answers `set: invalid`, and a `send 1` after it arrives at the collector.
-6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and, on
-   an image with a store, again with `-SkipBuild -SustainedRun 2000
-   -FileStore`. The record gives the two lines of each: the messages sent,
-   received and at fault over UDP and over TCP.
+   arrives at the collector.
+6. The script run again with `-SkipBuild -SustainedRun 10000` passes, and
+   again with `-SkipBuild -SustainedRun 2000 -FileStore`. The record gives the
+   two lines of each: the messages sent, received and at fault over UDP and
+   over TCP.
 7. By hand, where the pull request changes the [clock](#clock): the USB cable
    is taken out and put back, and a `send 1` at the console arrives at the
    collector with `-` for its TIMESTAMP and `tzKnown="0"`. After
