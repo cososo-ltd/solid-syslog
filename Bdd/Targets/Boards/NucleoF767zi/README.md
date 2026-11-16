@@ -156,9 +156,9 @@ booted with no cable it shows its banner and no prompt until one is fitted.
 The lwIP images ask the PHY for the link four times a second, and the
 FreeRTOS-Plus-TCP image twice a second while the link is up.
 
-Under lwIP a send while the link is down fails, and the library reports it as
-it reports any failed delivery. What a send does on the FreeRTOS-Plus-TCP
-image while its link is down has not been run.
+On every image a send while the link is down fails, and the library reports
+it as it reports any failed delivery. The FreeRTOS-Plus-TCP image's datagram
+reports first that the next hop is unresolved.
 
 Under lwIP the interface copies every frame, in both directions, between
 lwIP's memory and buffers of its own that the Ethernet DMA reads and writes.
