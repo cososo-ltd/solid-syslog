@@ -14,7 +14,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      * It is narrow on purpose: a Winbond W25Q of no more than 16 MiB, which
      * three bytes of address reach the end of, driven with the commands the
-     * part's datasheet gives for plain SPI. Any other part is refused. */
+     * part's datasheet gives for plain SPI. Any other part is refused, the
+     * maker's other families among them. */
 
     enum
     {
@@ -36,7 +37,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         BDD_TARGET_SPI_NOR_FLASH_NO_ANSWER,
         /* A part answered that is not one this drives. */
         BDD_TARGET_SPI_NOR_FLASH_UNSUPPORTED,
-        /* The part stayed busy. */
+        /* The part stayed busy. After a program or an erase it is no longer
+         * started, and is to be started again. */
         BDD_TARGET_SPI_NOR_FLASH_TIMED_OUT,
         /* The part would not enable writing, so nothing was programmed or erased. */
         BDD_TARGET_SPI_NOR_FLASH_WRITE_REFUSED
@@ -53,7 +55,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * is started again. */
     void BddTargetSpiNorFlash_Stop(void);
 
-    /* True from a Start that succeeded until Stop or a Start that fails. */
+    /* True from a Start that succeeded until Stop, a Start that fails, or a
+     * program or an erase that times out. */
     bool BddTargetSpiNorFlash_IsStarted(void);
 
     /* The part's size in bytes, as it identifies itself. Zero unless started. */

@@ -184,5 +184,20 @@ class LastTimeTest(unittest.TestCase):
         self.assertEqual("2026-11-14T12:00:00.000001Z", sustained_run.last_time_in(messages))
 
 
+class ArgumentsTest(unittest.TestCase):
+    def test_a_count_alone_is_a_run_with_no_store(self):
+        self.assertEqual((100, "null", 0), sustained_run.arguments_in(["sustained_run.py", "100"]))
+
+    def test_a_file_store_run_takes_its_interval(self):
+        self.assertEqual((100, "file", 0.25), sustained_run.arguments_in(["sustained_run.py", "100", "file", "0.25"]))
+
+    def test_a_run_with_no_store_is_not_paced_whatever_interval_it_is_given(self):
+        self.assertEqual((100, "null", 0), sustained_run.arguments_in(["sustained_run.py", "100", "null", "0.25"]))
+
+    def test_a_file_store_run_with_no_interval_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "needs the seconds between messages"):
+            sustained_run.arguments_in(["sustained_run.py", "100", "file"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -65,7 +65,8 @@ that record to the end -
 [what the store costs the flash](index.md#what-the-store-costs-the-flash-in-erases)
 has the figures. Where the store will drain backlogs often, keep that size to
 your `block_size` or less, and take the capacity you need from the number of
-store blocks instead.
+store blocks instead, up to the ceiling
+[`MaxBlocks`](../../api/SolidSyslogBlockStore_8h.md) has.
 
 **`prog_size` is not the page size.** LittleFS ends every commit to its
 metadata on a multiple of `prog_size`, so a metadata block takes at most

@@ -23,9 +23,11 @@ enum
     THREE_PAGES_AND_A_LITTLE = (3 * FakeSpiNorFlash::PAGE_BYTES) + 10,
     SECTORS_IN_SIXTEEN_MEBIBYTES = 4096,
     SIXTEEN_MEBIBYTES = 16 * 1024 * 1024,
+    CAPACITY_CODE_2_MEBIBYTES = 0x15,
     CAPACITY_CODE_8_MEBIBYTES = 0x17,
     CAPACITY_CODE_32_MEBIBYTES = 0x19,
     ANOTHER_MAKER = 0xC2,
+    ANOTHER_FAMILY = 0x20,
     ALWAYS = 1000000,
     LONGER_THAN_ANY_WAIT = 60000
 };
@@ -439,4 +441,44 @@ TEST(BddTargetSpiNorFlash, HasWordsForEveryResult)
     STRCMP_EQUAL("not a part this drives", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_UNSUPPORTED));
     STRCMP_EQUAL("timed out", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_TIMED_OUT));
     STRCMP_EQUAL("would not enable writing", BddTargetSpiNorFlash_ResultText(BDD_TARGET_SPI_NOR_FLASH_WRITE_REFUSED));
+}
+
+TEST(BddTargetSpiNorFlash, RefusesAPartOfTheMakersThatIsNotOfTheFamily)
+{
+    FakeSpiNorFlash::settings.jedecId = {0xEF, ANOTHER_FAMILY, CAPACITY_CODE_2_MEBIBYTES};
+    CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_UNSUPPORTED, BddTargetSpiNorFlash_Start());
+    CHECK_FALSE(BddTargetSpiNorFlash_IsStarted());
+}
+
+TEST(BddTargetSpiNorFlash, IsNotStartedAfterAProgramThePartNeverFinishes)
+{
+    CHECK_FLASH_STARTED();
+    FakeSpiNorFlash::settings.busyStatusReads = ALWAYS;
+    (void) Program(AN_ADDRESS, {0x00});
+    CHECK_FALSE(BddTargetSpiNorFlash_IsStarted());
+}
+
+TEST(BddTargetSpiNorFlash, IsNotStartedAfterAnEraseThePartNeverFinishes)
+{
+    CHECK_FLASH_STARTED();
+    FakeSpiNorFlash::settings.busyStatusReads = ALWAYS;
+    (void) BddTargetSpiNorFlash_EraseSector(A_SECTOR);
+    CHECK_FALSE(BddTargetSpiNorFlash_IsStarted());
+}
+
+TEST(BddTargetSpiNorFlash, ReadsNothingFromAPartLeftBusyByAProgramItNeverFinished)
+{
+    CHECK_FLASH_STARTED();
+    FakeSpiNorFlash::settings.busyStatusReads = ALWAYS;
+    (void) Program(AN_ADDRESS, {0x00});
+    CHECK_RESULT(BDD_TARGET_SPI_NOR_FLASH_NOT_STARTED, Read(AN_ADDRESS, 4));
+    LONGS_EQUAL(0, FakeSpiNorFlash::CountOf(READ_DATA));
+}
+
+TEST(BddTargetSpiNorFlash, StaysStartedWhenThePartWillNotEnableWriting)
+{
+    CHECK_FLASH_STARTED();
+    FakeSpiNorFlash::settings.ignoresWriteEnable = true;
+    (void) Program(AN_ADDRESS, {0x00});
+    CHECK_TRUE(BddTargetSpiNorFlash_IsStarted());
 }

@@ -360,7 +360,9 @@ it asks the part anything.
 The part keeps what it holds through a reset and with the power off. `set
 store wipe` at the console erases the two blocks LittleFS keeps its superblock
 in, so that the next `set store file` finds no filesystem and formats. It is
-refused once the store is on the part.
+refused once the store is on the part. That `set store file` shows a line of
+LittleFS's own before it answers, `error: Corrupted dir pair at {0x0, 0x1}`,
+which is its mount finding the two blocks erased.
 
 Whatever goes wrong with the part is a line on the console beginning
 `[board] flash:`, with the block where there is one and the reason: no answer,

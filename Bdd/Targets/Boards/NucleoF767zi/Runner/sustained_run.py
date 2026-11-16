@@ -209,11 +209,19 @@ def main(count, store, file_store_interval_seconds):
     return 1 if failed else 0
 
 
+# The count, the store and the interval, from the command line as the run
+# script gives it: <count> [null|file [<seconds between file-store messages>]].
+# A file store with no interval raises, since at none the target's buffer
+# would discard, and no medium's pace is a good guess at another's.
+def arguments_in(argv):
+    count = int(argv[1])
+    store = argv[2] if len(argv) > 2 else "null"
+    if store != "file":
+        return count, store, 0
+    if len(argv) <= 3:
+        raise ValueError("A file-store run needs the seconds between messages: the run script has each medium's")
+    return count, store, float(argv[3])
+
+
 if __name__ == "__main__":
-    sys.exit(
-        main(
-            int(sys.argv[1]),
-            sys.argv[2] if len(sys.argv) > 2 else "null",
-            float(sys.argv[3]) if len(sys.argv) > 3 else 0,
-        )
-    )
+    sys.exit(main(*arguments_in(sys.argv)))

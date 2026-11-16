@@ -124,7 +124,9 @@ part does, so they are the cost worth counting. LittleFS never programs a block 
 commit refers to it: it writes a changed block to a fresh one, which it erases
 first. The store makes two kinds of write to a file, and each is such a change.
 
-- A record appended copies the file's last block, which is about one erase.
+- A record appended copies the file's last block, which is about one erase
+  for a record smaller than a filesystem block. A larger record erases each
+  further block it fills.
 - A record marked as sent is one byte written in place, wherever the record is
   in its file. LittleFS copies the block that byte is in and every block of the
   file after it, so the mark costs an erase for each block from the record to

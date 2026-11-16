@@ -28,8 +28,13 @@ enum
     /* The maker, the memory type, and the capacity as a power of two. */
     JEDEC_ID_LENGTH = 3,
     JEDEC_MAKER = 0,
+    JEDEC_TYPE = 1,
     JEDEC_CAPACITY = 2,
     MAKER_WINBOND = 0xEF,
+    /* The W25Q parts that take these commands in plain SPI as they are
+     * supplied. The maker's other families do not all erase by this sector
+     * or with this command. */
+    TYPE_W25Q = 0x40,
     /* 64 KiB, the smallest of the family, to 16 MiB, the largest that three
      * bytes of address reach the end of. */
     SMALLEST_CAPACITY_CODE = 0x10,
@@ -57,6 +62,7 @@ static inline bool SpiNorFlash_IsSpanInThePart(uint32_t address, size_t count);
 static inline void SpiNorFlash_Begin(uint8_t command, uint32_t address);
 static inline size_t SpiNorFlash_BytesLeftInPage(uint32_t address);
 static enum BddTargetSpiNorFlashResult SpiNorFlash_ProgramInPage(uint32_t address, const uint8_t* bytes, size_t count);
+static enum BddTargetSpiNorFlashResult SpiNorFlash_WaitForTheWrite(uint32_t milliseconds);
 static enum BddTargetSpiNorFlashResult SpiNorFlash_EnableWriting(void);
 static enum BddTargetSpiNorFlashResult SpiNorFlash_CheckSector(uint32_t sector);
 
@@ -195,7 +201,8 @@ static inline bool SpiNorFlash_IsNoAnswer(const uint8_t* id)
 
 static inline bool SpiNorFlash_IsSupported(const uint8_t* id)
 {
-    return (id[JEDEC_MAKER] == (uint8_t) MAKER_WINBOND) && (id[JEDEC_CAPACITY] >= (uint8_t) SMALLEST_CAPACITY_CODE) &&
+    return (id[JEDEC_MAKER] == (uint8_t) MAKER_WINBOND) && (id[JEDEC_TYPE] == (uint8_t) TYPE_W25Q) &&
+           (id[JEDEC_CAPACITY] >= (uint8_t) SMALLEST_CAPACITY_CODE) &&
            (id[JEDEC_CAPACITY] <= (uint8_t) LARGEST_CAPACITY_CODE);
 }
 
@@ -306,7 +313,20 @@ static enum BddTargetSpiNorFlashResult SpiNorFlash_ProgramInPage(uint32_t addres
         }
         /* The part begins the program as its select rises. */
         BddTargetBoardFlashBus_Deselect();
-        result = SpiNorFlash_WaitUntilReady(PROGRAM_TIMEOUT_MILLISECONDS);
+        result = SpiNorFlash_WaitForTheWrite(PROGRAM_TIMEOUT_MILLISECONDS);
+    }
+    return result;
+}
+
+/* A part that is still busy when the time allowed has passed takes nothing
+ * but a request for its status, and would let a read pass with nothing sent
+ * back. So it is forgotten: the start that brings it back waits for it. */
+static enum BddTargetSpiNorFlashResult SpiNorFlash_WaitForTheWrite(uint32_t milliseconds)
+{
+    enum BddTargetSpiNorFlashResult result = SpiNorFlash_WaitUntilReady(milliseconds);
+    if (result == BDD_TARGET_SPI_NOR_FLASH_TIMED_OUT)
+    {
+        BddTargetSpiNorFlash_Stop();
     }
     return result;
 }
@@ -348,7 +368,7 @@ enum BddTargetSpiNorFlashResult BddTargetSpiNorFlash_EraseSector(uint32_t sector
         SpiNorFlash_Begin(SECTOR_ERASE, sector * (uint32_t) BDD_TARGET_SPI_NOR_FLASH_SECTOR_SIZE);
         /* The part begins the erase as its select rises. */
         BddTargetBoardFlashBus_Deselect();
-        result = SpiNorFlash_WaitUntilReady(ERASE_TIMEOUT_MILLISECONDS);
+        result = SpiNorFlash_WaitForTheWrite(ERASE_TIMEOUT_MILLISECONDS);
     }
     return result;
 }
