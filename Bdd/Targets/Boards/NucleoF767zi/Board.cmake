@@ -180,6 +180,7 @@ else()
     list(APPEND BDD_BOARD_PROJECT_SOURCES
         ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
         ${BDD_BOARD_DIR}/BddTargetBoardSdCardBus.c
+        ${BDD_BOARD_DIR}/BoardSpi4.c
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
     )
 endif()
