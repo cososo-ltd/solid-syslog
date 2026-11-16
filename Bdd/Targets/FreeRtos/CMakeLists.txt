@@ -151,6 +151,7 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
 
 target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}                       # FreeRTOSConfig.h, FreeRTOSIPConfig.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetBoard.h, which FreeRTOSConfig.h's assertion calls
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
@@ -259,6 +260,7 @@ add_executable(SolidSyslogBddTarget
     ${BDD_BOARD_PROJECT_SOURCES}
     ${BDD_BOARD_PLUSTCP_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
     # MbedTls,PlusFat} pack umbrellas linked below (S30.02 dogfood) — their
     # target_sources(INTERFACE) compile here against this target's config.

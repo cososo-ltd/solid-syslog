@@ -57,6 +57,7 @@ set(BDD_KERNEL_UPSTREAM_INCLUDES
     ${CMSIS_FREERTOS_PATH}/CMSIS/RTOS2/FreeRTOS/Include    # freertos_os2.h, freertos_mpool.h
 )
 
+# The kernel's hooks are the ones every target on this kernel shares.
 set(BDD_KERNEL_PROJECT_SOURCES
-    ${BDD_KERNEL_DIR}/KernelHooks.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
 )

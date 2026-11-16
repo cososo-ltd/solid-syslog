@@ -117,9 +117,7 @@ int main(void)
 
     if (FreeRTOS_IPInit_Multi() != pdPASS)
     {
-        for (;;)
-        {
-        }
+        BddTargetBoard_Fault("FreeRTOS-Plus-TCP", "did not start");
     }
 
     /* The console lock has to exist before the IP task's event hook spawns the
@@ -170,22 +168,6 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
                 vTaskDelete(interactiveTask);
             }
         }
-    }
-}
-
-void vApplicationMallocFailedHook(void)
-{
-    for (;;)
-    {
-    }
-}
-
-void vApplicationStackOverflowHook(TaskHandle_t task, char* taskName)
-{
-    (void) task;
-    (void) taskName;
-    for (;;)
-    {
     }
 }
 
