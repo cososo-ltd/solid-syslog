@@ -18,6 +18,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogMetaSd.h"
+#include "SolidSyslogMutexDefinition.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrival.h"
@@ -62,6 +63,7 @@ TEST_BASE(CaptureStateBase)
     struct SolidSyslogBuffer*         circularBuffer = nullptr;
     struct SolidSyslogAtomicCounter*  counter        = nullptr;
     struct SolidSyslogStructuredData* metaSd         = nullptr;
+    struct SolidSyslogMutex*          mutex          = SolidSyslogNullMutex_Get();
     struct Device device = {SOLIDSYSLOG_CAPTURE_ON};
 
     void CreateOver(struct SolidSyslogStore* store)
@@ -70,7 +72,7 @@ TEST_BASE(CaptureStateBase)
 
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
-            SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing), nullptr, nullptr);
+            mutex, bufferRing, sizeof(bufferRing), nullptr, nullptr);
         counter = CounterFake_Create();
         struct SolidSyslogMetaSdConfig metaConfig = {};
         metaConfig.Counter = counter;
@@ -137,6 +139,48 @@ TEST_GROUP_BASE(SolidSyslogCaptureStateWithAStore, CaptureStateBase)
         SolidSyslog_SetErrorHandler(nullptr, nullptr);
         DestroyLogger();
         StoreFake_Destroy();
+    }
+};
+
+/* The buffer's mutex, standing in for a Log on another task: its next Unlock,
+ * once armed, is a device that turns on and logs. The purge's Read releases
+ * the mutex before Service asks whether the record it read was logged
+ * undecided, so that Log lands between the two. */
+static CaptureStateBase* loggingMutexFixture = nullptr;
+static bool loggingMutexArmed = false;
+
+static void LoggingMutex_Lock(struct SolidSyslogMutex* self)
+{
+    (void) self;
+}
+
+static void LoggingMutex_Unlock(struct SolidSyslogMutex* self)
+{
+    (void) self;
+    if (loggingMutexArmed)
+    {
+        loggingMutexArmed = false;
+        loggingMutexFixture->device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+        loggingMutexFixture->Log("second");
+    }
+}
+
+static struct SolidSyslogMutex loggingMutex = {LoggingMutex_Lock, LoggingMutex_Unlock};
+
+TEST_GROUP_BASE(SolidSyslogCaptureStateRacingALog, CaptureStateBase)
+{
+    void setup() override
+    {
+        mutex = &loggingMutex;
+        loggingMutexFixture = this;
+        loggingMutexArmed = false;
+        CreateOver(SolidSyslogNullStore_Get());
+    }
+
+    void teardown() override
+    {
+        loggingMutexFixture = nullptr;
+        DestroyLogger();
     }
 };
 // clang-format on
@@ -257,4 +301,16 @@ TEST(SolidSyslogCaptureState, OnceServiceHasSeenOnARecordLoggedUndecidedLaterIsK
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
     STRCMP_CONTAINS("second", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogCaptureStateRacingALog, ARecordReadBeforeALogSawOnIsKeptWithIt)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log("first");
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    loggingMutexArmed = true;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
 }
