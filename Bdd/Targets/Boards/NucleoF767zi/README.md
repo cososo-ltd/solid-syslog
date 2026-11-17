@@ -294,8 +294,10 @@ target on the store it started with.
 
 ## What the board does not have yet
 
-- TLS is linked, because the target is the same code as on QEMU, but has not
-  been run. The board's hardware random number generator is not wired in.
+- TLS is linked, because the target is the same code as on QEMU, but the
+  board's hardware random number generator is not wired in.
+  [What has been run on hardware](../../../../docs/bdd.md#what-has-been-run-on-hardware)
+  says what has been run on the board and what has not.
 
 ## Tools on the development machine
 

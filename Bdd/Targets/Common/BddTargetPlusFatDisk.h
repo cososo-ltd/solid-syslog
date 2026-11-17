@@ -11,7 +11,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * (BddTargetBoardDisk.h). Modelled on Plus-FAT's own
      * portable/common/ff_ramdisk.c reference driver, but the disk outlasts the
      * run, so it mounts an existing FAT and partitions and formats only a
-     * disk that has none.
+     * disk that will not mount.
      *
      * The single FF_Disk_t volume lives in this TU. Plus-FAT allocates the
      * FF_IOManager cache itself from the FreeRTOS heap (heap_4), which is the

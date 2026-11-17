@@ -3,7 +3,7 @@
  * The part's real-time clock keeps the time in whole seconds and interrupts
  * as each one starts. The time is read from BddTargetTickedClock, which takes
  * the second from that interrupt and the fraction from the core's cycle
- * counter. A reading is good to a microsecond, costs a few instructions and
+ * counter. A reading resolves to a microsecond, costs a few instructions and
  * does not touch the real-time clock.
  *
  * Cross build only, so not host-tested: the target checklist in README.md

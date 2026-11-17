@@ -4,7 +4,7 @@
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared between the targets). This file keeps only the
- * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
+ * lwIP network backend behind the pipeline seam: the tcpip thread, the core-lock
  * marshal, the board's netif (BddTargetBoardNetif.h), the
  * static-IP bring-up + oracle ARP warm-up, the LwipRaw sender wiring (UDP +
  * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
@@ -173,7 +173,7 @@ static void NetworkBringUp(void* context)
     (void) etharp_request(&networkInterface, &oracleNextHop);
 }
 
-/* Marshalled onto the tcpip thread: report whether the next hop's MAC is in
+/* Run under the core lock: report whether the next hop's MAC is in
  * the ARP cache yet, and ask for it again if it is not. The bool* context is
  * set to the result. */
 static void OracleNextHopResolvedQuery(void* context)
@@ -230,8 +230,7 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif, so an
-     * address from DHCP would satisfy the same rung with no change here. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP), read back from the netif. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;
     SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));

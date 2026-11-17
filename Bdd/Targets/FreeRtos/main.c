@@ -218,9 +218,7 @@ uint32_t ulApplicationGetNextSequenceNumber(
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP address). Read back from the IP stack, so
-     * an address from DHCP would satisfy the same rung with no change to
-     * this callback. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP address), read back from the IP stack. */
     uint32_t ipAddress = 0U;
     char ipBuffer[16];
     (void) context;

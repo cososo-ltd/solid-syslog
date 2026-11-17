@@ -52,9 +52,9 @@ The board uses UART0, whose base address `BddTargetBoard.c` passes to
 
 #### DATA (0x000) - R/W, 8 valid bits
 
-- A write loads the transmit holding byte, and takes effect only if
-  `CTRL.TX_EN=1`. In QEMU, a write while `STATE.TXFULL` is set sets
-  `STATE.TXOVERRUN` and replaces `txbuf` with the new value.
+- A write loads the transmit holding byte and sets `STATE.TXFULL`. The byte is
+  sent only if `CTRL.TX_EN=1`. In QEMU, a write while `STATE.TXFULL` is already
+  set also sets `STATE.TXOVERRUN` and replaces `txbuf` with the new value.
 - A read returns the last received byte and clears `STATE.RXFULL`.
 
 #### STATE (0x004)
@@ -159,9 +159,9 @@ has accepted it. Reading STATE has no side effect.
 ### 2.3 TXOVERRUN
 
 `STATE.TXOVERRUN` is set when software writes DATA while `TXFULL=1`. In QEMU
-the new byte overwrites `txbuf`. The byte already pending stays in flight,
-because `uart_transmit()` is already scheduled on it, and the new one is sent
-next. An overrun in QEMU therefore loses exactly one byte. DDI 0479D does not
+the new byte replaces the one pending in `txbuf`, and the transmit already
+scheduled sends the new one. Each overrun in QEMU therefore loses the byte
+that was pending. DDI 0479D does not
 say which byte silicon loses, so assume that a byte was lost and that its
 identity is unspecified.
 
@@ -265,8 +265,8 @@ The board passes `BddTargetOsPrimitives_Sleep`, which rounds that up to one
 tick, 10 ms at the targets' `configTICK_RATE_HZ` of 100, so the task blocks
 and others run.
 
-On QEMU the transmit wait never iterates, because the chardev backend drains
-synchronously. The host fake counts the calls
+On QEMU the transmit wait does not iterate while the chardev backend accepts
+each byte as it is written. The host fake counts the calls
 (`CmsdkUartFake_SleepCallCount()`), which lets the unit tests cover the wait
 without threads.
 
@@ -276,9 +276,8 @@ without threads.
 |--------------------------------------------|-------------------|-------------------|--------|
 | BAUDDIV of 0, or below 16                  | Output works      | No output         | Divisor fixed at 16 |
 | DATA written before TX_EN is set           | Byte lost silently| Implementation-defined | `Init` sets TX_EN first |
-| Wait on TXFULL                             | Never iterates    | About 87 µs a character at 115200 | Polls before each write, sleeping |
+| Wait on TXFULL                             | Iterates only if the backend refuses a byte | About 87 µs a character at 115200 | Polls before each write, sleeping |
 | RXOVERRUN with a slow consumer             | Hidden by chardev backpressure | Bytes lost | Not checked |
-| RX poll loop without a yield               | Does not burn CPU | Burns CPU         | Sleeps between polls |
 
 ## References
 

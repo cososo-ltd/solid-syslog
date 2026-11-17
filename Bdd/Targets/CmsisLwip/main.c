@@ -210,8 +210,7 @@ static bool OracleNextHopIsResolved(void)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif, so an
-     * address from DHCP would satisfy the same rung with no change here. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP), read back from the netif. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;
     SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));

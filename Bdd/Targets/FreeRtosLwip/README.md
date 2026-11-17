@@ -21,7 +21,7 @@ docker compose -f ci/docker-compose.bdd.yml up \
 
 ## What it does
 
-`main.c` installs the `tcpip_callback` marshal with
+`main.c` installs a marshal that runs each call under lwIP's core lock with
 `SolidSyslogLwipRaw_SetMarshal`, calls `tcpip_init`, then brings the netif up
 on the tcpip thread with a static address. `lwipopts.h` sets `NO_SYS=0`: lwIP
 runs its own tcpip thread over the contrib FreeRTOS `sys_arch`.

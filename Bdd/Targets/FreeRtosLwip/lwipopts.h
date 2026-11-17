@@ -2,10 +2,10 @@
  *
  * A NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, the board's netif
  * (BddTargetBoardNetif.h) drives the wire, and the SolidSyslog LwipRaw adapters
- * reach the core through the tcpip_callback marshal. Only lwIP's Raw API is
- * used (the adapters call udp_ / tcp_ functions through the marshal), so the
- * sequential netconn / socket API stays off. The tcpip thread exists for RX
- * delivery (tcpip_input), timeouts and marshalled callbacks only.
+ * reach the core through a marshal that takes the core lock. Only lwIP's Raw
+ * API is used (the adapters call udp_ / tcp_ functions through the marshal),
+ * so the sequential netconn / socket API stays off. The tcpip thread exists
+ * for RX delivery (tcpip_input), timeouts and the netif bring-up only.
  *
  * Memory is managed in lwIP's pools, with no libc malloc, so the footprint is
  * static, as an integrator would ship it. */
