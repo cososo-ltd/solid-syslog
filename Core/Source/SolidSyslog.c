@@ -80,6 +80,7 @@ static void SolidSyslog_DoLog(
     struct SolidSyslogStructuredData** sd,
     size_t sdCount
 );
+static inline bool SolidSyslog_IsCaptureOff(struct SolidSyslog* self);
 static void SolidSyslog_FormatIntoScratch(SolidSyslogFormatterStorage* storage, size_t messageBytes, void* context);
 static void SolidSyslog_InstallScratch(struct SolidSyslog* self, struct SolidSyslogScratch* configured);
 static void SolidSyslog_InstallAppName(
@@ -207,6 +208,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->GetCaptureState = SolidSyslog_CaptureAlwaysOn;
     self->CaptureStateContext = NULL;
     self->CaptureState = SOLIDSYSLOG_CAPTURE_ON;
+    self->CaptureSeenOn = false;
     self->ReportTurnedDown = false;
     self->Halted = false;
 }
@@ -559,9 +561,11 @@ static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* s
     return dealtWith;
 }
 
+/* Asked after the Read, so a Log that saw On and then enqueued, on another
+ * task, has set the flag by the time its record is read. */
 static inline bool SolidSyslog_WasLoggedUndecided(const struct SolidSyslog* self)
 {
-    return self->CaptureState == SOLIDSYSLOG_CAPTURE_OFF;
+    return (self->CaptureState == SOLIDSYSLOG_CAPTURE_OFF) && !self->CaptureSeenOn;
 }
 
 /* A record held from the last pass is the head of the whole queue, with the
@@ -872,7 +876,7 @@ static void SolidSyslog_DoLog(
             SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE
         );
     }
-    else if (handle->GetCaptureState(handle->CaptureStateContext) == SOLIDSYSLOG_CAPTURE_OFF)
+    else if (SolidSyslog_IsCaptureOff(handle))
     {
         /* The user has opted out: the record is dropped unformatted, so it
          * consumes no sequence number and is not a loss. */
@@ -897,6 +901,15 @@ static void SolidSyslog_DoLog(
         struct LogRequest request = {handle, message, sd, safeSdCount};
         handle->Scratch->WithScratch(handle->Scratch, SolidSyslog_FormatIntoScratch, &request);
     }
+}
+
+/* Asks the device, and notes an On before the record is enqueued. */
+static inline bool SolidSyslog_IsCaptureOff(struct SolidSyslog* self)
+{
+    enum SolidSyslogCaptureState capture = self->GetCaptureState(self->CaptureStateContext);
+    self->CaptureSeenOn = self->CaptureSeenOn || (capture == SOLIDSYSLOG_CAPTURE_ON);
+
+    return capture == SOLIDSYSLOG_CAPTURE_OFF;
 }
 
 static void SolidSyslog_FormatIntoScratch(SolidSyslogFormatterStorage* storage, size_t messageBytes, void* context)
