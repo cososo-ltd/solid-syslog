@@ -14,14 +14,10 @@
 
 struct SolidSyslogBlockDevice;
 
-enum
-{
-    BLOCK_SEQUENCE_MODULUS = 100U /* block sequence numbers run 00 to 99 and wrap */
-};
-
 struct SolidSyslogBlockSequenceConfig
 {
     struct SolidSyslogBlockDevice* BlockDevice;
+    size_t DeviceBlocks; /* how many blocks the device has: block numbers run from 0 and wrap after the last */
     size_t MaxBlockSize;
     size_t MaxBlocks;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
@@ -34,6 +30,7 @@ struct SolidSyslogBlockSequenceConfig
 struct SolidSyslogBlockSequence
 {
     struct SolidSyslogBlockDevice* BlockDevice;
+    size_t DeviceBlocks; /* how many blocks the device has: block numbers run from 0 and wrap after the last */
     size_t MaxBlockSize;
     size_t MaxBlocks;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
@@ -43,9 +40,9 @@ struct SolidSyslogBlockSequence
     void* ThresholdContext;
     bool AtCapacity;
     bool ThresholdCrossed;
-    uint8_t OldestSequence;
-    uint8_t ReadSequence;
-    uint8_t WriteSequence;
+    size_t OldestSequence;
+    size_t ReadSequence;
+    size_t WriteSequence;
     size_t ReadCursor;
     size_t ReadBlockSize; /* cached once read, for a read block behind the write block */
     bool ReadBlockSizeKnown;

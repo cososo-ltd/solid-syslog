@@ -210,6 +210,7 @@ static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig
 
     struct SolidSyslogBlockSequenceConfig blockConfig = {
         .BlockDevice = config->BlockDevice,
+        .DeviceBlocks = SolidSyslogBlockDevice_GetBlockCount(config->BlockDevice),
         .MaxBlockSize = maxBlockSize,
         .MaxBlocks = config->MaxBlocks,
         .GetDiscardPolicy = config->GetDiscardPolicy,

@@ -787,6 +787,17 @@ TEST(SolidSyslogBlockStoreConfig, ADeviceOfFourBlocksIsAccepted)
     CHECK(store != SolidSyslogNullStore_Get());
 }
 
+TEST(SolidSyslogBlockStoreConfig, AStoreOnADeviceOfFourBlocksKeepsWritingPastItsLastBlock)
+{
+    CreateOnADeviceOf(4);
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+
+    for (int record = 0; record < 40; record++)
+    {
+        LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    }
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreErrors, BlockDeviceTestBase)
 {
