@@ -486,7 +486,8 @@ static inline bool SolidSyslog_PolicyHalts(struct SolidSyslog* self)
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self)
 {
     self->ReportTurnedDown = false;
-    bool drained = SolidSyslog_DrainBufferIntoStore(self);
+    enum SolidSyslogCaptureState capture = self->GetCaptureState(self->CaptureStateContext);
+    bool drained = (capture != SOLIDSYSLOG_CAPTURE_UNDECIDED) && SolidSyslog_DrainBufferIntoStore(self);
     bool storeBlocked = !self->Halted && SolidSyslog_SendOneFromStore(self);
     enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
 

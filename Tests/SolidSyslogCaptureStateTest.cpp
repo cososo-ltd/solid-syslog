@@ -85,3 +85,13 @@ TEST(SolidSyslogCaptureState, OnTheRecordIsSent)
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 }
+
+TEST(SolidSyslogCaptureState, UndecidedNothingIsOfferedToTheSender)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
