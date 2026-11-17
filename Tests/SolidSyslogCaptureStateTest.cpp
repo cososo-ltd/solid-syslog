@@ -174,3 +174,13 @@ TEST(SolidSyslogCaptureStateWithAStore, UndecidedNoReportIsMade)
 
     CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
 }
+
+TEST(SolidSyslogCaptureState, OffARecordLoggedIsNotSent)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}

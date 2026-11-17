@@ -846,6 +846,11 @@ static void SolidSyslog_DoLog(
             SOLIDSYSLOG_ERROR_LOG_NULL_MESSAGE
         );
     }
+    else if (handle->GetCaptureState(handle->CaptureStateContext) == SOLIDSYSLOG_CAPTURE_OFF)
+    {
+        /* The user has opted out: the record is dropped unformatted, so it
+         * consumes no sequence number and is not a loss. */
+    }
     else
     {
         /* Inconsistent pairing - the formatter would dereference sd[i] for
