@@ -85,11 +85,6 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->DeviceFailed = false;
     blockSequence->EvictedUnsent = false;
     blockSequence->FailedOperation = SOLIDSYSLOG_BLOCK_STORE_ERROR_MAX;
-
-    for (size_t seq = 0; seq < BLOCK_SEQUENCE_MODULUS; seq++)
-    {
-        blockSequence->BlockPresent[seq] = false;
-    }
 }
 
 /* A threshold with no callback is still raised as an event. */
@@ -107,8 +102,6 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence);
-static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
-static inline bool BlockSequence_DisposeBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 static inline uint8_t BlockSequence_NextPresentSequence(
     const struct SolidSyslogBlockSequence* blockSequence,
     uint8_t current
@@ -137,7 +130,7 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
     }
     else
     {
-        ready = BlockSequence_AcquireBlock(blockSequence, 0);
+        ready = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, 0);
 
         if (!ready)
         {
@@ -151,19 +144,6 @@ bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequenc
     }
 
     return ready;
-}
-
-/* The map follows the device: a block it acquired is present... */
-static inline bool BlockSequence_AcquireBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
-{
-    bool acquired = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, blockIndex);
-
-    if (acquired)
-    {
-        blockSequence->BlockPresent[blockIndex] = true;
-    }
-
-    return acquired;
 }
 
 static inline void BlockSequence_NoteDeviceFailure(
@@ -181,19 +161,24 @@ static inline void BlockSequence_NoteDeviceFailure(
 /* A run of absent sequence numbers: where it starts and how many it spans. */
 struct Gap
 {
-    int Start;
-    int Length;
+    size_t Start;
+    size_t Length;
 };
 
-static inline int BlockSequence_CircularPrev(int index);
-static inline int BlockSequence_CircularNext(int index);
-static int BlockSequence_ScanForBlockPresence(struct SolidSyslogBlockSequence* blockSequence);
-static void BlockSequence_LocateRunBoundaries(
-    const struct SolidSyslogBlockSequence* blockSequence,
-    int lastPresent,
-    int* oldest, // NOLINT(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints
-    int* newest
-);
+/* What one pass over the device's blocks finds. */
+struct Scan
+{
+    bool FoundAny;
+    size_t FirstPresent;
+    size_t LastPresent;
+    struct Gap LargestInner; /* the largest gap with a present block on each side of it */
+    struct Gap Current; /* the gap the pass is in, of no length while it is in none */
+};
+
+static inline size_t BlockSequence_CircularPrev(size_t index);
+static inline size_t BlockSequence_CircularNext(size_t index);
+static struct Scan BlockSequence_ScanForBlockPresence(const struct SolidSyslogBlockSequence* blockSequence);
+static inline struct Gap BlockSequence_LargestGap(const struct Scan* scan);
 
 static inline void BlockSequence_StartReadingBlock(
     struct SolidSyslogBlockSequence* blockSequence,
@@ -209,24 +194,33 @@ static inline void BlockSequence_StartReadingBlock(
  * run, counting towards the block ceiling exactly as the block it replaces
  * would have. That holds while the hole is shorter than the free gap: with
  * the store at its ceiling the free gap is two slots, and a hole of two or
- * more consecutive blocks is then read as the gap instead. */
+ * more consecutive blocks is then read as the gap instead.
+ *
+ * There is no gap when every block is present: maxBlocks is clamped to
+ * BLOCK_SEQUENCE_MODULUS - 2, so that cannot arise from the library's own
+ * rotation, and the run is then read as starting at 00. */
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence)
 {
-    int lastPresent = BlockSequence_ScanForBlockPresence(blockSequence);
-    bool foundAny = lastPresent >= 0;
+    struct Scan scan = BlockSequence_ScanForBlockPresence(blockSequence);
 
-    if (foundAny)
+    if (scan.FoundAny)
     {
-        int oldest = 0;
-        int newest = BLOCK_SEQUENCE_MODULUS - 1;
-        BlockSequence_LocateRunBoundaries(blockSequence, lastPresent, &oldest, &newest);
+        struct Gap largest = BlockSequence_LargestGap(&scan);
+        size_t oldest = 0U;
+        size_t newest = (size_t) BLOCK_SEQUENCE_MODULUS - 1U;
+
+        if (largest.Length > 0U)
+        {
+            oldest = (largest.Start + largest.Length) % BLOCK_SEQUENCE_MODULUS;
+            newest = BlockSequence_CircularPrev(largest.Start);
+        }
 
         blockSequence->OldestSequence = (uint8_t) oldest;
         BlockSequence_StartReadingBlock(blockSequence, (uint8_t) oldest);
         blockSequence->WriteSequence = (uint8_t) newest;
     }
 
-    return foundAny;
+    return scan.FoundAny;
 }
 
 /* The cursor goes to the start of the block, and a size cached for the block
@@ -238,80 +232,87 @@ static inline void BlockSequence_StartReadingBlock(struct SolidSyslogBlockSequen
     blockSequence->ReadBlockSizeKnown = false;
 }
 
-/* Fills the presence map, and says which sequence number holds the last
- * present block - or -1 when there is none. */
-static int BlockSequence_ScanForBlockPresence(struct SolidSyslogBlockSequence* blockSequence)
+static inline void BlockSequence_NotePresent(struct Scan* scan, size_t sequence);
+static inline void BlockSequence_NoteAbsent(struct Scan* scan, size_t sequence);
+
+/* Asks the device about each block once, in order, and keeps nothing but what
+ * the run's boundaries are read from. */
+static struct Scan BlockSequence_ScanForBlockPresence(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    int lastPresent = -1;
+    struct Scan scan = {false, 0U, 0U, {0U, 0U}, {0U, 0U}};
 
-    for (int seq = 0; seq < BLOCK_SEQUENCE_MODULUS; seq++)
+    for (size_t sequence = 0U; sequence < BLOCK_SEQUENCE_MODULUS; sequence++)
     {
-        blockSequence->BlockPresent[seq] = SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, (size_t) seq);
-
-        if (blockSequence->BlockPresent[seq])
+        if (SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, sequence))
         {
-            lastPresent = seq;
-        }
-    }
-
-    return lastPresent;
-}
-
-/* Walks once round the sequence space from just after a present block, so
- * every gap is met whole, and keeps the largest. Nothing changes when every
- * block is present: maxBlocks is clamped to BLOCK_SEQUENCE_MODULUS - 2, so
- * that cannot arise from the library's own rotation, and the caller's
- * defaults stand. */
-static void BlockSequence_LocateRunBoundaries(
-    const struct SolidSyslogBlockSequence* blockSequence,
-    int lastPresent,
-    int* oldest, // NOLINT(bugprone-easily-swappable-parameters) -- oldest / newest are positional run endpoints
-    int* newest
-)
-{
-    struct Gap largest = {0, 0};
-    struct Gap current = {0, 0};
-    int index = lastPresent;
-
-    for (int step = 0; step < BLOCK_SEQUENCE_MODULUS; step++)
-    {
-        index = BlockSequence_CircularNext(index);
-
-        if (blockSequence->BlockPresent[index])
-        {
-            current.Length = 0;
+            BlockSequence_NotePresent(&scan, sequence);
         }
         else
         {
-            if (current.Length == 0)
-            {
-                current.Start = index;
-            }
-
-            current.Length++;
-
-            if (current.Length > largest.Length)
-            {
-                largest = current;
-            }
+            BlockSequence_NoteAbsent(&scan, sequence);
         }
     }
 
-    if (largest.Length > 0)
+    return scan;
+}
+
+/* A present block closes the gap before it. That gap is an inner one only when
+ * a present block came before it too. */
+static inline void BlockSequence_NotePresent(struct Scan* scan, size_t sequence)
+{
+    if (!scan->FoundAny)
     {
-        *oldest = (largest.Start + largest.Length) % BLOCK_SEQUENCE_MODULUS;
-        *newest = BlockSequence_CircularPrev(largest.Start);
+        scan->FoundAny = true;
+        scan->FirstPresent = sequence;
     }
+    else if (scan->Current.Length > scan->LargestInner.Length)
+    {
+        scan->LargestInner = scan->Current;
+    }
+    else
+    {
+        /* No gap closed, or one no larger than the largest so far. */
+    }
+
+    scan->LastPresent = sequence;
+    scan->Current.Length = 0U;
 }
 
-static inline int BlockSequence_CircularNext(int index)
+static inline void BlockSequence_NoteAbsent(struct Scan* scan, size_t sequence)
 {
-    return (index + 1) % BLOCK_SEQUENCE_MODULUS;
+    if (scan->Current.Length == 0U)
+    {
+        scan->Current.Start = sequence;
+    }
+
+    scan->Current.Length++;
 }
 
-static inline int BlockSequence_CircularPrev(int index)
+/* The absent blocks after the last present one and before the first are one
+ * gap, across the wrap.
+ *
+ * Two gaps of the same length cannot be told apart: nothing on the device says
+ * which is free and which is a hole. The library's own rotation never leaves
+ * two, so a tie means blocks were removed from outside, and which gap these
+ * comparisons then settle on is not a rule anything may rely on. */
+static inline struct Gap BlockSequence_LargestGap(const struct Scan* scan)
 {
-    return (index + BLOCK_SEQUENCE_MODULUS - 1) % BLOCK_SEQUENCE_MODULUS;
+    struct Gap acrossTheWrap = {
+        BlockSequence_CircularNext(scan->LastPresent),
+        ((size_t) BLOCK_SEQUENCE_MODULUS - 1U - scan->LastPresent) + scan->FirstPresent
+    };
+
+    return (acrossTheWrap.Length >= scan->LargestInner.Length) ? acrossTheWrap : scan->LargestInner;
+}
+
+static inline size_t BlockSequence_CircularNext(size_t index)
+{
+    return (index + 1U) % BLOCK_SEQUENCE_MODULUS;
+}
+
+static inline size_t BlockSequence_CircularPrev(size_t index)
+{
+    return (index + BLOCK_SEQUENCE_MODULUS - 1U) % BLOCK_SEQUENCE_MODULUS;
 }
 
 static inline bool BlockSequence_ThresholdEnabled(const struct SolidSyslogBlockSequence* blockSequence);
@@ -482,7 +483,7 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequen
 
     if (SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, blockIndex))
     {
-        ready = BlockSequence_DisposeBlock(blockSequence, blockIndex);
+        ready = SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockIndex);
 
         if (!ready)
         {
@@ -492,7 +493,7 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequen
 
     if (ready)
     {
-        ready = BlockSequence_AcquireBlock(blockSequence, blockIndex);
+        ready = SolidSyslogBlockDevice_Acquire(blockSequence->BlockDevice, blockIndex);
 
         if (!ready)
         {
@@ -501,19 +502,6 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequen
     }
 
     return ready;
-}
-
-/* ...and one it disposed of is not. */
-static inline bool BlockSequence_DisposeBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex)
-{
-    bool disposed = SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockIndex);
-
-    if (disposed)
-    {
-        blockSequence->BlockPresent[blockIndex] = false;
-    }
-
-    return disposed;
 }
 
 static inline void BlockSequence_AdvanceWriteToNewBlock(
@@ -538,7 +526,7 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
 {
     bool readBlockChanged = false;
 
-    if (BlockSequence_DisposeBlock(blockSequence, blockSequence->OldestSequence))
+    if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
     {
         blockSequence->EvictedUnsent = true;
         blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
@@ -558,9 +546,9 @@ static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blo
     BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
 }
 
-/* Steps over a hole in the run. Terminates because the write block is always
- * present: the scan ends the run on one, and a rotation marks the one it
- * acquires. */
+/* Steps over a hole in the run, a block the device no longer has. It stops at
+ * the write block whatever the device says of it, so it goes no further than
+ * the run does. */
 static inline uint8_t BlockSequence_NextPresentSequence(
     const struct SolidSyslogBlockSequence* blockSequence,
     uint8_t current
@@ -568,7 +556,7 @@ static inline uint8_t BlockSequence_NextPresentSequence(
 {
     uint8_t next = BlockSequence_NextSequence(current);
 
-    while (!blockSequence->BlockPresent[next])
+    while ((next != blockSequence->WriteSequence) && !SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, next))
     {
         next = BlockSequence_NextSequence(next);
     }
@@ -673,7 +661,7 @@ void SolidSyslogBlockSequence_LeaveReadBlock(struct SolidSyslogBlockSequence* bl
 
 static inline bool BlockSequence_DisposeReadBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
-    bool disposed = BlockSequence_DisposeBlock(blockSequence, blockSequence->ReadSequence);
+    bool disposed = SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->ReadSequence);
 
     if (disposed)
     {

@@ -54,7 +54,6 @@ struct SolidSyslogBlockSequence
     bool DeviceFailed;
     bool EvictedUnsent; /* the latest rotation evicted a block still holding unsent records */
     enum SolidSyslogBlockStoreErrors FailedOperation;
-    bool BlockPresent[BLOCK_SEQUENCE_MODULUS]; /* a hole in the run is stepped over, never read or disposed */
 };
 
 void SolidSyslogBlockSequence_Initialise(
