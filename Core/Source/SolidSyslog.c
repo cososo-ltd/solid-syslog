@@ -56,6 +56,8 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* self);
+static inline bool SolidSyslog_WasLoggedUndecided(const struct SolidSyslog* self);
 static inline bool SolidSyslog_ReportPendingEvents(struct SolidSyslog* self);
 static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
 static inline bool SolidSyslog_ReportIfPending(struct SolidSyslog* self, size_t index);
@@ -204,6 +206,7 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->DestinationKnownContext = NULL;
     self->GetCaptureState = SolidSyslog_CaptureAlwaysOn;
     self->CaptureStateContext = NULL;
+    self->CaptureState = SOLIDSYSLOG_CAPTURE_ON;
     self->ReportTurnedDown = false;
     self->Halted = false;
 }
@@ -486,8 +489,8 @@ static inline bool SolidSyslog_PolicyHalts(struct SolidSyslog* self)
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self)
 {
     self->ReportTurnedDown = false;
-    enum SolidSyslogCaptureState capture = self->GetCaptureState(self->CaptureStateContext);
-    bool drained = (capture != SOLIDSYSLOG_CAPTURE_UNDECIDED) && SolidSyslog_DrainBufferIntoStore(self);
+    self->CaptureState = self->GetCaptureState(self->CaptureStateContext);
+    bool drained = (self->CaptureState != SOLIDSYSLOG_CAPTURE_UNDECIDED) && SolidSyslog_DrainBufferIntoStore(self);
     bool storeBlocked = !self->Halted && SolidSyslog_SendOneFromStore(self);
     enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
 
@@ -495,7 +498,7 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
     {
         status = SOLIDSYSLOG_SERVICE_HALTED;
     }
-    else if ((capture == SOLIDSYSLOG_CAPTURE_UNDECIDED) || SolidSyslog_IsBlocked(self, storeBlocked, drained))
+    else if ((self->CaptureState == SOLIDSYSLOG_CAPTURE_UNDECIDED) || SolidSyslog_IsBlocked(self, storeBlocked, drained))
     {
         status = SOLIDSYSLOG_SERVICE_BLOCKED;
     }
@@ -532,10 +535,33 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     while (dealtWith && !self->Halted && SolidSyslog_HoldNextRecord(self))
     {
         drained = true;
-        dealtWith = SolidSyslog_DealWithHeldRecord(self);
+        dealtWith = SolidSyslog_DiscardOrDealWithHeldRecord(self);
     }
 
     return drained;
+}
+
+/* A record read while the device is off was logged while it was undecided,
+ * and the user had opted out: it is discarded, and is not a loss. */
+static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* self)
+{
+    bool dealtWith = true;
+
+    if (SolidSyslog_WasLoggedUndecided(self))
+    {
+        self->HoldsRecord = false;
+    }
+    else
+    {
+        dealtWith = SolidSyslog_DealWithHeldRecord(self);
+    }
+
+    return dealtWith;
+}
+
+static inline bool SolidSyslog_WasLoggedUndecided(const struct SolidSyslog* self)
+{
+    return self->CaptureState == SOLIDSYSLOG_CAPTURE_OFF;
 }
 
 /* A record held from the last pass is the head of the whole queue, with the

@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 
+#include "SolidSyslogCaptureState.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
@@ -66,6 +67,8 @@ struct SolidSyslog
     void* DestinationKnownContext;
     SolidSyslogCaptureStateFunction GetCaptureState;
     void* CaptureStateContext;
+    /* The device's answer this pass, read once at its start. */
+    enum SolidSyslogCaptureState CaptureState;
     /* Whether the switch turned a report down this pass; each pass starts
      * without. */
     bool ReportTurnedDown;

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "CounterFake.h"
 #include "CppUTest/TestHarness.h"
 #include "ErrorHandlerFake.h"
 #include "SenderFake.h"
@@ -16,11 +17,13 @@
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogMetaSd.h"
 #include "SolidSyslogNullMutex.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogServiceStatus.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStructuredData.h"
 #include "StoreFake.h"
 #include "TestUtils.h"
 
@@ -54,9 +57,11 @@ static void RaiseBufferLoss()
  * that starts on; the sender and the store are each group's. */
 TEST_BASE(CaptureStateBase)
 {
-    struct SolidSyslog*       solidSyslog    = nullptr;
-    struct SolidSyslogSender* fakeSender     = nullptr;
-    struct SolidSyslogBuffer* circularBuffer = nullptr;
+    struct SolidSyslog*               solidSyslog    = nullptr;
+    struct SolidSyslogSender*         fakeSender     = nullptr;
+    struct SolidSyslogBuffer*         circularBuffer = nullptr;
+    struct SolidSyslogAtomicCounter*  counter        = nullptr;
+    struct SolidSyslogStructuredData* metaSd         = nullptr;
     struct Device device = {SOLIDSYSLOG_CAPTURE_ON};
 
     void CreateOver(struct SolidSyslogStore* store)
@@ -66,10 +71,16 @@ TEST_BASE(CaptureStateBase)
         fakeSender     = SenderFake_Create();
         circularBuffer = SolidSyslogCircularBuffer_Create(
             SolidSyslogNullMutex_Get(), bufferRing, sizeof(bufferRing), nullptr, nullptr);
+        counter = CounterFake_Create();
+        struct SolidSyslogMetaSdConfig metaConfig = {};
+        metaConfig.Counter = counter;
+        metaSd = SolidSyslogMetaSd_Create(&metaConfig);
         SolidSyslogConfig config = {};
         config.Buffer              = circularBuffer;
         config.Sender              = fakeSender;
         config.Store               = store;
+        config.Sd                  = &metaSd;
+        config.SdCount             = 1U;
         config.GetCaptureState     = GetCapture;
         config.CaptureStateContext = &device;
         solidSyslog = SolidSyslog_Create(&config);
@@ -78,6 +89,8 @@ TEST_BASE(CaptureStateBase)
     void DestroyLogger() const
     {
         SolidSyslog_Destroy(solidSyslog);
+        SolidSyslogMetaSd_Destroy(metaSd);
+        CounterFake_Destroy(counter);
         SolidSyslogCircularBuffer_Destroy(circularBuffer);
         SenderFake_Destroy(fakeSender);
     }
@@ -182,5 +195,39 @@ TEST(SolidSyslogCaptureState, OffARecordLoggedIsNotSent)
 
     SolidSyslog_Service(solidSyslog);
 
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+}
+
+TEST(SolidSyslogCaptureState, OffARecordLoggedConsumesNoSequenceNumber)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    Log();
+    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+
+    Log();
+
+    LONGS_EQUAL(1, CounterFake_LastHandedOut(counter));
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffARecordLoggedIsNotReportedAsALoss)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedTheRecordsHeldAreDiscarded)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log();
+    Log();
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 }
