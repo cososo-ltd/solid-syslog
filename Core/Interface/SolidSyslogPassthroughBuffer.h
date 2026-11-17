@@ -10,9 +10,10 @@
  *  setup with no store-and-forward - no ring, no mutex, no background drain. The
  *  cost is that a slow or blocking sender stalls the logging thread.
  *
- *  Because Write sends on the task that logs, the gate
- *  SolidSyslogConfig.IsDestinationKnown holds in Service does not reach it: a
- *  device that logs before it knows where its collector is queues instead.
+ *  Because Write sends on the task that logs, neither hold Service applies
+ *  reaches it: SolidSyslogConfig.IsDestinationKnown while the collector is
+ *  unknown, and SolidSyslogConfig.GetCaptureState while the device is
+ *  undecided. A device that logs before it knows either queues instead.
  *
  *  Service still makes the logger's own reports, and nothing else does, so the
  *  task that logs calls SolidSyslog_Service as well - after each Log at the
