@@ -7,10 +7,9 @@ enum
     SECONDS_PER_HOUR = 3600,
     SECONDS_PER_DAY = 86400,
 
-    /* The civil calendar and a count of days, after Howard Hinnant's
-     * civil_from_days and days_from_civil: years are taken to start on
-     * 1 March, so a leap day is the last day of its year, and the calendar
-     * repeats every 400 of them. */
+    /* After Howard Hinnant's civil_from_days and days_from_civil: years are
+     * taken to start on 1 March, so a leap day is the last day of its year,
+     * and the calendar repeats every 400 years. */
     DAYS_FROM_MARCH_0000_TO_EPOCH = 719468,
     DAYS_PER_ERA = 146097,
     YEARS_PER_ERA = 400,
@@ -62,7 +61,7 @@ static inline void Calendar_SetDate(struct SolidSyslogTimestamp* timestamp, uint
     {
         month -= (uint32_t) MONTHS_PER_YEAR;
     }
-    /* January and February belong to the calendar year after the one their
+    /* January and February fall in the calendar year after the one their
      * March-first year started in. */
     if (month <= (uint32_t) FEBRUARY)
     {
@@ -91,7 +90,7 @@ static inline uint32_t Calendar_DaysSinceEpoch(const struct SolidSyslogTimestamp
     }
     else
     {
-        /* January and February close the March-first year before. */
+        /* January and February end the previous March-first year. */
         year--;
     }
     uint32_t era = year / (uint32_t) YEARS_PER_ERA;
@@ -101,9 +100,9 @@ static inline uint32_t Calendar_DaysSinceEpoch(const struct SolidSyslogTimestamp
     return (era * (uint32_t) DAYS_PER_ERA) + dayOfEra - (uint32_t) DAYS_FROM_MARCH_0000_TO_EPOCH;
 }
 
-/* The days in a March-first year before its month, counted from March as 0:
- * the months run 31, 30, 31, 30, 31 in a pattern five long, which this
- * division walks. */
+/* The days in a March-first year before the given month, with March as 0.
+ * From March the month lengths repeat 31, 30, 31, 30, 31, which is what the
+ * division encodes. */
 static inline uint32_t Calendar_DaysBeforeMonth(uint32_t monthFromMarch)
 {
     return (((uint32_t) DAYS_PER_FIVE_MONTHS * monthFromMarch) + 2U) / 5U;

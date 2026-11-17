@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 
 namespace
 {
@@ -52,7 +53,10 @@ struct State
     std::map<uint32_t, Sector> sectors;
 };
 
-State state;
+/* Held for one test and no longer. An empty container still owns memory in
+ * some standard libraries, so state that outlived the test would show as a
+ * leak in every one. */
+std::unique_ptr<State> state;
 
 uint32_t Capacity()
 {
@@ -61,27 +65,27 @@ uint32_t Capacity()
 
 uint8_t ByteAt(uint32_t address)
 {
-    const auto found = state.sectors.find(address / FakeSpiNorFlash::SECTOR_BYTES);
-    return (found == state.sectors.end()) ? static_cast<uint8_t>(ERASED)
-                                          : found->second.at(address % FakeSpiNorFlash::SECTOR_BYTES);
+    const auto found = state->sectors.find(address / FakeSpiNorFlash::SECTOR_BYTES);
+    return (found == state->sectors.end()) ? static_cast<uint8_t>(ERASED)
+                                           : found->second.at(address % FakeSpiNorFlash::SECTOR_BYTES);
 }
 
 uint8_t& ByteToChangeAt(uint32_t address)
 {
     const uint32_t sector = address / FakeSpiNorFlash::SECTOR_BYTES;
-    auto found = state.sectors.find(sector);
-    if (found == state.sectors.end())
+    auto found = state->sectors.find(sector);
+    if (found == state->sectors.end())
     {
         Sector erased = {};
         erased.fill(ERASED);
-        found = state.sectors.emplace(sector, erased).first;
+        found = state->sectors.emplace(sector, erased).first;
     }
     return found->second.at(address % FakeSpiNorFlash::SECTOR_BYTES);
 }
 
 bool IsBusyNow()
 {
-    return FakeSpiNorFlash::settings.staysBusy || (state.busyStatusReadsLeft > 0);
+    return FakeSpiNorFlash::settings.staysBusy || (state->busyStatusReadsLeft > 0);
 }
 
 uint32_t AddressIn(const std::vector<uint8_t>& frame)
@@ -96,12 +100,12 @@ uint8_t StatusByte()
     if (IsBusyNow())
     {
         status |= STATUS_BUSY;
-        if (state.busyStatusReadsLeft > 0)
+        if (state->busyStatusReadsLeft > 0)
         {
-            state.busyStatusReadsLeft--;
+            state->busyStatusReadsLeft--;
         }
     }
-    if (state.writeEnabled)
+    if (state->writeEnabled)
     {
         status |= STATUS_WRITE_ENABLED;
     }
@@ -111,50 +115,50 @@ uint8_t StatusByte()
 /* The first byte of a command: a busy part takes only a request for status. */
 void BeginCommand(uint8_t command)
 {
-    if (!state.commandSeen)
+    if (!state->commandSeen)
     {
-        state.commandSeen = true;
-        state.takenBeforeFirstCommand = state.taken;
+        state->commandSeen = true;
+        state->takenBeforeFirstCommand = state->taken;
     }
     if (IsBusyNow() && (command != READ_STATUS))
     {
-        state.commandsWhileBusy++;
-        state.ignoringCommand = true;
+        state->commandsWhileBusy++;
+        state->ignoringCommand = true;
     }
     else
     {
-        state.commands.push_back(command);
+        state->commands.push_back(command);
     }
 }
 
 uint8_t ExchangeSelected(uint8_t out)
 {
     uint8_t in = IDLE_LINE;
-    if (state.incoming.empty())
+    if (state->incoming.empty())
     {
         BeginCommand(out);
     }
-    else if (!state.ignoringCommand)
+    else if (!state->ignoringCommand)
     {
-        const uint8_t command = state.incoming[0];
-        const bool addressArrived = state.incoming.size() > ADDRESS_LENGTH;
+        const uint8_t command = state->incoming[0];
+        const bool addressArrived = state->incoming.size() > ADDRESS_LENGTH;
         if (command == READ_STATUS)
         {
             in = StatusByte();
         }
         else if (command == READ_JEDEC_ID)
         {
-            in = FakeSpiNorFlash::settings.jedecId.at(state.jedecSent % FakeSpiNorFlash::JEDEC_ID_LENGTH);
-            state.jedecSent++;
+            in = FakeSpiNorFlash::settings.jedecId.at(state->jedecSent % FakeSpiNorFlash::JEDEC_ID_LENGTH);
+            state->jedecSent++;
         }
         else if ((command == READ_DATA) && addressArrived)
         {
-            if (state.incoming.size() == (ADDRESS_LENGTH + 1U))
+            if (state->incoming.size() == (ADDRESS_LENGTH + 1U))
             {
-                state.readAddress = AddressIn(state.incoming);
+                state->readAddress = AddressIn(state->incoming);
             }
-            in = ByteAt(state.readAddress % Capacity());
-            state.readAddress++;
+            in = ByteAt(state->readAddress % Capacity());
+            state->readAddress++;
         }
         else
         {
@@ -165,11 +169,10 @@ uint8_t ExchangeSelected(uint8_t out)
     {
         /* Busy: the line is left alone. */
     }
-    state.incoming.push_back(out);
+    state->incoming.push_back(out);
     return in;
 }
 
-/* A program that reaches the end of its page goes on from the page's start. */
 void CarryOutProgram(const std::vector<uint8_t>& frame)
 {
     const uint32_t address = AddressIn(frame);
@@ -180,24 +183,24 @@ void CarryOutProgram(const std::vector<uint8_t>& frame)
         const auto offset = static_cast<uint32_t>((address - page + i) % FakeSpiNorFlash::PAGE_BYTES);
         ByteToChangeAt(page + offset) &= frame[ADDRESS_LENGTH + 1U + i];
     }
-    state.programs.push_back({address, length});
+    state->programs.push_back({address, length});
 }
 
 void CarryOutErase(const std::vector<uint8_t>& frame)
 {
     const uint32_t address = AddressIn(frame);
-    state.sectors.erase(address / FakeSpiNorFlash::SECTOR_BYTES);
-    state.erases.push_back(address);
+    state->sectors.erase(address / FakeSpiNorFlash::SECTOR_BYTES);
+    state->erases.push_back(address);
 }
 
 /* A part does what it was told when its select rises. */
 void FinishCommand()
 {
-    const std::vector<uint8_t> frame = state.incoming;
-    state.incoming.clear();
-    const bool ignored = state.ignoringCommand;
-    state.ignoringCommand = false;
-    state.jedecSent = 0;
+    const std::vector<uint8_t> frame = state->incoming;
+    state->incoming.clear();
+    const bool ignored = state->ignoringCommand;
+    state->ignoringCommand = false;
+    state->jedecSent = 0;
     if (frame.empty() || ignored)
     {
         return;
@@ -205,13 +208,13 @@ void FinishCommand()
     const uint8_t command = frame[0];
     if (command == WRITE_ENABLE)
     {
-        state.writeEnabled = !FakeSpiNorFlash::settings.ignoresWriteEnable;
+        state->writeEnabled = !FakeSpiNorFlash::settings.ignoresWriteEnable;
     }
     else if ((command == PAGE_PROGRAM) || (command == SECTOR_ERASE))
     {
         const bool whole = (command == PAGE_PROGRAM) ? (frame.size() > (ADDRESS_LENGTH + 1U))
                                                      : (frame.size() == (ADDRESS_LENGTH + 1U));
-        if (state.writeEnabled && whole)
+        if (state->writeEnabled && whole)
         {
             if (command == PAGE_PROGRAM)
             {
@@ -221,9 +224,9 @@ void FinishCommand()
             {
                 CarryOutErase(frame);
             }
-            state.busyStatusReadsLeft = FakeSpiNorFlash::settings.busyStatusReads;
+            state->busyStatusReadsLeft = FakeSpiNorFlash::settings.busyStatusReads;
         }
-        state.writeEnabled = false;
+        state->writeEnabled = false;
     }
     else
     {
@@ -239,7 +242,12 @@ Settings settings;
 void Reset()
 {
     settings = Settings();
-    state = State();
+    state = std::make_unique<State>();
+}
+
+void Release()
+{
+    state.reset();
 }
 
 void Store(uint32_t address, const std::vector<uint8_t>& bytes)
@@ -262,27 +270,27 @@ std::vector<uint8_t> Stored(uint32_t address, size_t count)
 
 const std::vector<uint8_t>& Commands()
 {
-    return state.commands;
+    return state->commands;
 }
 
 int CountOf(uint8_t command)
 {
-    return static_cast<int>(std::count(state.commands.begin(), state.commands.end(), command));
+    return static_cast<int>(std::count(state->commands.begin(), state->commands.end(), command));
 }
 
 int CommandsWhileBusy()
 {
-    return state.commandsWhileBusy;
+    return state->commandsWhileBusy;
 }
 
 const std::vector<Program>& Programs()
 {
-    return state.programs;
+    return state->programs;
 }
 
 const std::vector<uint32_t>& Erases()
 {
-    return state.erases;
+    return state->erases;
 }
 
 bool IsBusy()
@@ -292,17 +300,17 @@ bool IsBusy()
 
 bool IsSelected()
 {
-    return state.selected;
+    return state->selected;
 }
 
 bool BusWasTakenBeforeFirstCommand()
 {
-    return state.takenBeforeFirstCommand;
+    return state->takenBeforeFirstCommand;
 }
 
 size_t Exchanges()
 {
-    return state.exchanges;
+    return state->exchanges;
 }
 } // namespace FakeSpiNorFlash
 
@@ -310,37 +318,37 @@ extern "C"
 {
     void BddTargetBoardFlashBus_Take(void)
     {
-        state.taken = true;
+        state->taken = true;
     }
 
     void BddTargetBoardFlashBus_Select(void)
     {
-        if (!state.startBusyCounted)
+        if (!state->startBusyCounted)
         {
-            state.startBusyCounted = true;
-            state.busyStatusReadsLeft = FakeSpiNorFlash::settings.busyStatusReadsAtStart;
+            state->startBusyCounted = true;
+            state->busyStatusReadsLeft = FakeSpiNorFlash::settings.busyStatusReadsAtStart;
         }
-        state.selected = true;
+        state->selected = true;
     }
 
     void BddTargetBoardFlashBus_Deselect(void)
     {
-        if (state.selected && FakeSpiNorFlash::settings.present)
+        if (state->selected && FakeSpiNorFlash::settings.present)
         {
             FinishCommand();
         }
-        state.selected = false;
+        state->selected = false;
     }
 
     uint8_t BddTargetBoardFlashBus_Exchange(uint8_t out)
     {
-        state.exchanges++;
+        state->exchanges++;
         uint8_t in = IDLE_LINE;
         if (FakeSpiNorFlash::settings.lineHeldLow)
         {
             in = LOW_LINE;
         }
-        else if (FakeSpiNorFlash::settings.present && state.selected)
+        else if (FakeSpiNorFlash::settings.present && state->selected)
         {
             in = ExchangeSelected(out);
         }
@@ -351,12 +359,12 @@ extern "C"
         return in;
     }
 
-    /* Each reading is later than the last, so a wait the driver times comes
-     * to its end however little else happens. */
+    /* Each reading moves the time on, so a timed wait in the driver always
+     * ends. */
     uint32_t BddTargetBoardFlashBus_Milliseconds(void)
     {
-        const uint32_t now = state.milliseconds;
-        state.milliseconds += FakeSpiNorFlash::settings.millisecondsPerReading;
+        const uint32_t now = state->milliseconds;
+        state->milliseconds += FakeSpiNorFlash::settings.millisecondsPerReading;
         return now;
     }
 }

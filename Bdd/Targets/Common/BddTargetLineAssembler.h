@@ -8,9 +8,8 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* Builds lines out of characters that arrive one at a time, for a target
-       whose console is a serial port rather than a stream with a line read of
-       its own. */
+    /* Builds lines from characters that arrive one at a time, for a target
+       whose console is a serial port with no line read of its own. */
 
     enum
     {
@@ -28,10 +27,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     void BddTargetLineAssembler_Reset(struct BddTargetLineAssembler * self);
 
-    /* True when `received` ended a line, which is then in Text until the next
-       character of the line after it arrives. CR and LF each end a line, and a
-       line end with nothing before it is not a line, so a CR LF pair ends one
-       line, not two. */
+    /* True when `received` ended a line, which stays in Text until the first
+       character of the next line arrives. CR and LF each end a line, and an
+       empty line is not reported, so a CR LF pair ends one line. */
     bool BddTargetLineAssembler_Accept(struct BddTargetLineAssembler * self, char received);
 
 SOLIDSYSLOG_EXTERN_C_END

@@ -90,3 +90,5 @@ endif()
 target_include_directories(BddTargetTests PRIVATE ${BDD_TARGET_TEST_INCLUDE_DIRS})
 
 target_sources(BddTargetTests PRIVATE ${BDD_TARGET_PRODUCTION_SOURCES})
+
+solidsyslog_add_test(BddTargetTests)

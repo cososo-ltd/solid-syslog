@@ -1,7 +1,6 @@
-/* The FreeRTOS kernel's own callbacks, which no OS abstraction can cover: the
- * kernel calls these by name, and one of them takes a kernel type in its
- * signature. Every target that runs on this kernel ends them the same way, in
- * the board's fault line, so they are written once here. */
+/* The FreeRTOS kernel calls these by name, and one takes a kernel type, so no
+ * OS abstraction can cover them. Every target on this kernel reports them
+ * through BddTargetBoard_Fault, so they are defined once here. */
 
 #include "BddTargetBoard.h"
 

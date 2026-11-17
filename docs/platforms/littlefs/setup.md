@@ -68,12 +68,9 @@ your `block_size` or less, and take the capacity you need from the number of
 store blocks instead, up to the ceiling
 [`MaxBlocks`](../../api/SolidSyslogBlockStore_8h.md) has.
 
-**`prog_size` is not the page size.** LittleFS ends every commit to its
-metadata on a multiple of `prog_size`, so a metadata block takes at most
-`block_size / prog_size` commits before LittleFS compacts it, which costs an
-erase. The store commits on every record. A NOR part programs less than a page
-at a time, so give `prog_size` a small value, such as 16, where your part and
-its driver allow it.
+**`prog_size` is not the page size.** A NOR part programs less than a page at
+a time, and a small `prog_size`, such as 16, costs fewer erases where your part
+and its driver allow it.
 
 **A mount is not the adapter's to make.** Keep the filesystem mounted for as long
 as any file created from it exists. The adapter cannot tell that it was

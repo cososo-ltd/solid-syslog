@@ -187,13 +187,13 @@ def before_all(context):
     # that logs. Every spawn passes it on, and a step that must know which
     # wiring it is running over reads it from here.
     context.buffer_wiring = os.environ.get("BDD_BUFFER", "queue").lower()
-    # BDD_BOARD puts the target on a board rather than under an emulator: the
-    # steps then reach it over the board's serial port and start it by a reset.
+    # BDD_BOARD runs the target on a board instead of an emulator. The steps
+    # then drive it over the board's serial port and start it with a reset.
     context.board = os.environ.get("BDD_BOARD", "").lower()
     if context.board not in ("", NUCLEO_F767ZI):
         raise ValueError(f"Unsupported BDD_BOARD={context.board!r}. Expected {NUCLEO_F767ZI!r} or none.")
-    # The image on the board is the FreeRTOS target's, and a run of another
-    # target that found BDD_BOARD left set would reset a board it does not use.
+    # The board runs the FreeRTOS target only. A run of another target with
+    # BDD_BOARD left set would otherwise reset a board it does not use.
     if context.board and (context.target != "freertos"):
         raise ValueError(f"BDD_BOARD={context.board!r} goes with BDD_TARGET=freertos, not {context.target!r}.")
     if context.board == NUCLEO_F767ZI:

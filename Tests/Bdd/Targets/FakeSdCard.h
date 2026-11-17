@@ -75,6 +75,10 @@ extern Settings settings;
 /* Back to a card just powered: default settings, nothing stored, no history. */
 void Reset();
 
+/* Gives back everything the fake holds. Nothing else may be called until the
+ * next Reset. */
+void Release();
+
 /* The CSD of a high capacity card of this many sectors, a multiple of 1024. */
 void SetHighCapacitySectors(uint32_t sectors);
 /* The CSD of a standard capacity card of 2 GiB, the largest there is. */

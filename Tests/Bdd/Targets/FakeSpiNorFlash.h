@@ -55,6 +55,10 @@ struct Program
 /* Back to a part just powered and wholly erased: default settings, no history. */
 void Reset();
 
+/* Gives back everything the fake holds. Nothing else may be called until the
+ * next Reset. */
+void Release();
+
 /* Puts bytes into the part as they are, with no erase needed first. */
 void Store(uint32_t address, const std::vector<uint8_t>& bytes);
 std::vector<uint8_t> Stored(uint32_t address, size_t count);

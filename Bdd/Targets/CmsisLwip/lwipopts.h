@@ -4,13 +4,11 @@
  * (BddTargetBoardNetif.h) drives the wire. The sequential netconn and socket
  * layers are ON, because the SolidSyslog LwipSocket adapters call the
  * lwip_-prefixed socket entry points from whichever task they run on; the
- * tcpip thread serves them, RX delivery (tcpip_input) and the timers. No
- * marshal seam - that is what this tier buys over the Raw API one, which the
- * sibling lwIP target still proves.
+ * tcpip thread serves them, RX delivery (tcpip_input) and the timers. The
+ * Sockets API needs no marshal seam.
  *
- * Memory is lwIP-pool managed (no libc malloc) so the footprint is the static,
- * embedded-realistic shape an integrator ships - not the host-test shortcut
- * (MEM_LIBC_MALLOC) in Tests/Support/LwipFakes/Interface/lwipopts.h. */
+ * Memory is managed in lwIP's pools, with no libc malloc, so the footprint is
+ * static, as an integrator would ship it. */
 #ifndef SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 #define SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 

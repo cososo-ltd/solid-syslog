@@ -14,9 +14,7 @@
  * stdio shareable, which is why the pipeline keeps the Service thread's
  * output out of stdio altogether.
  *
- * Not host-TDD'd - this file exists only in the cross build (gated by
- * CMAKE_CROSSCOMPILING + arm in the top-level CMakeLists.txt). The BDD run
- * is the integration check that proves the path end-to-end. */
+ * Cross build only, so not host-tested: the BDD run covers it. */
 
 #include "BddTargetBoard.h"
 #include "BddTargetOsPrimitives.h"

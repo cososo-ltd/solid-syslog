@@ -96,55 +96,38 @@ from the same bytes. Every record the store reported as written is still there
 and complete, for a clean cut and a torn one, and a record interrupted mid-write
 is refused rather than half-kept.
 
-Beyond that, a BDD target exercises the pack end to end under QEMU: the store
-writes records to a real LittleFS over a block device backed by a host image,
-and the syslog scenarios that cover store-and-forward, capacity and power-cycle
-replay run against it like any other filesystem. That is the pack carrying real
-traffic rather than a unit fixture.
+Beyond that, a BDD target exercises the pack end to end. In CI it runs under
+QEMU: the store writes records to a real LittleFS over a block device backed by
+a host image, and the scenarios that cover store-and-forward, capacity and
+power-cycle replay run against it. That image has no erase of its own and
+emulates one by writing the erased value, so a program there can raise bits as
+a real part could not.
 
-Both stop short of a real flash part:
-erase granularity, partial programming at the cell level, read disturb and wear
-are properties of silicon that neither an emulated device nor a host-backed disk
-image reproduces - and the BDD image, having no erase of its own, emulates one by
-writing the erased value, so a program there can raise bits as a real part could
-not. Treat both as evidence that the adapter and LittleFS honour the contract
-between them, not as qualification against your flash.
+The same target has also been run by hand on a NOR flash part, where the erase
+and the program are the part's own.
+[What has been run on hardware](../../bdd.md#what-has-been-run-on-hardware)
+says what that covered and what it did not.
 
-### Wear levelling is the filesystem's, not yours
-
-The store rewrites the same records in rotation, which on raw flash concentrates
-erase cycles. LittleFS spreads them itself, which is the main reason to choose it
-here over a FAT filesystem on the same part. `block_cycles` in your
-`struct lfs_config` decides how eagerly, and has no usable default, so set it.
+None of this is qualification against your flash. Read disturb, wear over the
+life of a part and a loss of power during a write on real silicon are not
+covered.
 
 ### What the store costs the flash in erases
 
-Erases are what wear a flash part out, and an erase is the slowest thing a
-part does, so they are the cost worth counting. LittleFS never programs a block again once a
-commit refers to it: it writes a changed block to a fresh one, which it erases
-first. The store makes two kinds of write to a file, and each is such a change.
+Flash wears with each erase, and the store writes to it on every record,
+rewriting the same records in rotation. LittleFS spreads that wear across the
+part itself, which is the main reason to choose it here over a FAT filesystem
+on the same part.
 
-- A record appended copies the file's last block, which is about one erase
-  for a record smaller than a filesystem block. A larger record erases each
-  further block it fills.
-- A record marked as sent is one byte written in place, wherever the record is
-  in its file. LittleFS copies the block that byte is in and every block of the
-  file after it, so the mark costs an erase for each block from the record to
-  the end of the file.
+As measured against the LittleFS version this pack is tested with, a record
+stored and sent at once costs about two erases. Draining a backlog costs about
+one erase a record where a store block fits in one filesystem block, and more
+where it spans several. These are measurements, not figures the pack
+guarantees, and a different LittleFS version or configuration may move them.
 
-A record that is stored and sent at once, as every record is while the
-collector can be reached, therefore costs about two erases whatever the size
-of the file, because its mark falls in the file's last block. A backlog is
-different. Its oldest record is at the start of its file, so marking it
-rewrites the whole file, and each record after it rewrites a little less.
-Draining a backlog costs about one erase a record where a store block fits in
-one filesystem block, and more with every further block it spans.
-
-The integration suite that tests durability counts the erases its emulated
-device carries out, and holds the store to each of those figures.
-
-How long a part lasts follows by arithmetic. Its rated erase cycles, times the
-blocks you give the filesystem, divided by the erases a record costs, is the
-most records it will ever store, and that is with wear spread perfectly.
-[Setup](setup.md#what-will-catch-you-out) says which of your choices move
-these figures.
+Check that at the rate you expect to log, your part stays within its rated
+erase cycles for the design life of the product. As a first estimate, a part
+takes its rated erase cycles, times the blocks you give the filesystem, divided
+by the erases a record costs, assuming the wear is spread evenly.
+[Setup](setup.md#what-will-catch-you-out) says which of your choices move the
+cost.

@@ -4,8 +4,8 @@
 # CMAKE_CROSSCOMPILING + CMAKE_SYSTEM_PROCESSOR == "arm", and selected by
 # SOLIDSYSLOG_BDD_TARGET. The directory above is the board support, which the
 # BDD targets reach through the board seam; this image takes it directly, and
-# carries no SolidSyslog, no kernel and no network stack. It is what tells a
-# fault in the board or its toolchain from one in anything built on them.
+# carries no SolidSyslog, no kernel and no network stack. It separates a fault
+# in the board or its toolchain from one in anything built on them.
 #
 # ST's HAL driver and CMSIS device files compile into an OBJECT library under
 # a relaxed warning set, as the other targets' upstream sources do; the code
@@ -36,9 +36,7 @@ target_include_directories(solid_syslog_nucleo_f767zi_upstream PRIVATE
 
 # --- Bring-up image -----------------------------------------------------------
 #
-# Project code only, under the full project warning set. ST's headers are
-# SYSTEM includes: Board.c has to read them, and their macros expand in our
-# code, but their own style is not ours to hold to our warnings.
+# Project code only, under the full project warning set.
 
 add_executable(SolidSyslogNucleoF767ziBringup
     main.c

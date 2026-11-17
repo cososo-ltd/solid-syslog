@@ -1,9 +1,8 @@
 /* ST's NUCLEO-F767ZI behind the board seam - see BddTargetBoard.h.
  *
  * The console is USART3, which the on-board ST-LINK carries as its virtual COM
- * port. The board has nothing to report an exit status to, so a run ends by
- * saying so on the console, with the status where it is a failure, and
- * stopping. */
+ * port. The board has nowhere to report an exit status, so a run ends with an
+ * exit line on the console, carrying the status if it failed, and a halt. */
 
 #include "BddTargetBoard.h"
 
@@ -20,9 +19,8 @@
 #define BDD_TARGET_BOARD_BUILD_COMMIT "unknown"
 #endif
 
-/* Which of the targets the board runs this image is: the build's
- * SOLIDSYSLOG_BDD_TARGET. Every image built from a commit names that commit,
- * so the banner names the image as well. */
+/* The build's SOLIDSYSLOG_BDD_TARGET. Every image built from a commit names
+ * that commit, so the banner names the image as well. */
 #ifndef BDD_TARGET_BOARD_IMAGE
 #define BDD_TARGET_BOARD_IMAGE "unknown"
 #endif
@@ -42,7 +40,7 @@ void BddTargetBoard_Init(void)
 {
     Board_Init();
     Board_ConsoleWrite(BANNER, strlen(BANNER));
-    /* After the banner, which a run waits on: from cold this waits on the
+    /* After the banner, which a run waits for: from cold this waits for the
      * clock's crystal. */
     BoardClock_Start();
 }
@@ -53,7 +51,7 @@ void BddTargetBoard_ConsoleWrite(const char* text, size_t length)
 }
 
 /* Bytes are received under interrupt and wait in the board's ring, so the
- * sleep between looks costs nothing but latency. */
+ * sleep between polls costs only latency. */
 char BddTargetBoard_ConsoleRead(void)
 {
     char received = '\0';
@@ -64,9 +62,8 @@ char BddTargetBoard_ConsoleRead(void)
     return received;
 }
 
-/* The red LED is lit for a failure, so a board with nothing reading its
- * console still shows it. A reset - the probe's, or the black button - starts
- * the next run. */
+/* The red LED is lit for a failure, so it shows with nothing reading the
+ * console. A reset, from the probe or the black button, starts the next run. */
 void BddTargetBoard_Exit(int status)
 {
     bool failed = status != 0;

@@ -1,7 +1,5 @@
 /* FreeRTOS-Plus-FAT implementation of the shared pipeline's FS-mount seam - see
- * BddTargetPlusFatMount.h. The Plus-FAT sibling of BddTargetFatFsMount: the
- * volume mount/unmount lives in the FF_Disk_t media driver (BddTargetPlusFatDisk);
- * the SolidSyslogFile adapter is SolidSyslogPlusFatFile. SolidSyslog S29.05. */
+ * BddTargetPlusFatMount.h. */
 
 #include "BddTargetPlusFatMount.h"
 

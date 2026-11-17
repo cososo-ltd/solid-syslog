@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import serial_console  # noqa: E402
 
 
-# A serial port as the console reads one: read gives what has arrived, or
-# nothing once a short wait has passed with none.
+# A serial port as the console uses one: read returns what has arrived, or
+# nothing after a short timeout.
 class FakePort:
     def __init__(self):
         self.arrived = queue.Queue()
@@ -91,7 +91,7 @@ class SerialConsoleTest(unittest.TestCase):
         with self.assertRaises(subprocess.TimeoutExpired):
             self.console.wait(timeout=0.05)
 
-    # A kill stands in for a power cut, which on the board is a reset.
+    # A kill simulates a power cut, which on the board is a reset.
     def test_killing_resets_the_board(self):
         self.console.kill()
 
@@ -117,8 +117,8 @@ class SerialConsoleTest(unittest.TestCase):
 
         self.assertEqual(b"banner, link up", self.read_from(console, 15))
 
-    # A pipe holds only so much before a write to it waits for a reader, and
-    # nobody can read a console that has not been handed over yet.
+    # A write to a full pipe blocks, and nothing can read a console that has
+    # not been handed over yet.
     def test_more_shown_already_than_a_pipe_holds_does_not_keep_the_console_from_opening(self):
         shown = b"x" * 1000000
         opened = []
@@ -133,8 +133,8 @@ class SerialConsoleTest(unittest.TestCase):
         self.addCleanup(opened[0].kill)
         self.assertEqual(shown, self.read_from(opened[0], len(shown)))
 
-    # The steps stop reading at the prompt, so a board that goes on talking
-    # fills the pipe, and the kill must not wait for a reader that is not coming.
+    # The steps stop reading at the prompt, so a board that keeps printing
+    # fills the pipe, and the kill must not wait for a reader.
     def test_a_board_whose_output_nobody_reads_can_still_be_killed(self):
         self.port.arrived.put(b"x" * 1000000)
         killer = threading.Thread(target=self.console.kill, daemon=True)
@@ -147,7 +147,7 @@ class SerialConsoleTest(unittest.TestCase):
         self.assertTrue(self.port.closed)
 
     # A probe unplugged mid-scenario: the steps must see the console end
-    # rather than wait out their timeout on a pipe nobody will write.
+    # instead of waiting out their timeout on a pipe nothing will write to.
     def test_a_port_that_fails_ends_stdout_and_frees_the_port(self):
         self.port.fails = True
 

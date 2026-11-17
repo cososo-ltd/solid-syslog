@@ -63,9 +63,8 @@
 #define INCLUDE_xTimerPendFunctionCall 1
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
 
-/* The interrupt priorities, which follow from the board, and the assertion,
- * which ends in the board's fault line, are the same for every target on this
- * kernel. */
+/* The interrupt priorities and the assertion handler, shared by every target
+ * on this kernel. */
 #include "BddTargetFreeRtosKernelConfig.h"
 
 /* Alias FreeRTOS port handlers to the standard CMSIS names so the vector

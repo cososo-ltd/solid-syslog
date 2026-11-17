@@ -11,13 +11,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* An SD card in SPI mode, as sectors of 512 bytes, over the bus the board
      * supplies (BddTargetBoardSdCardBus.h). One card.
      *
-     * It follows the SD Physical Layer Simplified Specification and is narrow
-     * on purpose: a version 2 card, standard or high capacity, read and
-     * written one sector at a time. A version 1 card and an MMC are refused.
+     * It follows the SD Physical Layer Simplified Specification and supports
+     * only a version 2 card, standard or high capacity, read and written one
+     * sector at a time. A version 1 card and an MMC are refused.
      *
-     * The card's CRC checking is turned on, so a command or a sector damaged
-     * on its way along the wires is refused by whichever end receives it. A
-     * read or a write that fails that way is tried again, twice. */
+     * The card's CRC checking is turned on, so a command or a sector
+     * corrupted on the bus is rejected by the end that receives it. A read or
+     * a write that fails that way is retried twice. */
 
     enum
     {
@@ -27,41 +27,39 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     enum BddTargetSdCardResult
     {
         BDD_TARGET_SD_CARD_OK = 0,
-        /* Read or Write before a Start that succeeded. */
+        /* Read or Write called before a successful Start. */
         BDD_TARGET_SD_CARD_NOT_STARTED,
         /* Nothing answered a command: no card, or no path to it. */
         BDD_TARGET_SD_CARD_NO_ANSWER,
-        /* A card answered that is not one this drives. */
+        /* A card answered, but not one this driver supports. */
         BDD_TARGET_SD_CARD_UNSUPPORTED,
         /* The card answered a command with an error, or sent an error in
-         * place of what it was asked to read. */
+         * place of the data it was asked for. */
         BDD_TARGET_SD_CARD_REFUSED,
-        /* The card stayed busy, or never sent what it had been asked for. */
+        /* The card stayed busy, or never sent the data it was asked for. */
         BDD_TARGET_SD_CARD_TIMED_OUT,
-        /* A command or a sector failed its CRC at the end that received it,
-         * on every attempt: it is being damaged on the wires. */
+        /* A command or a sector failed its CRC on every attempt. */
         BDD_TARGET_SD_CARD_CRC_FAILED,
         /* The card could not store a sector it was sent, or says the write failed. */
         BDD_TARGET_SD_CARD_WRITE_FAILED
     };
 
-    /* Brings the card from power-up to ready. It can be called again after it
-     * has failed, or to start again a card that has been changed. */
+    /* Brings the card from power-up to ready. It can be called again after a
+     * failure, or to restart a card that has been changed. */
     enum BddTargetSdCardResult BddTargetSdCard_Start(void);
 
-    /* Forgets the card, so that nothing is read or written until it is started
+    /* Forgets the card, so nothing is read or written until it is started
      * again. */
     void BddTargetSdCard_Stop(void);
 
-    /* True from a Start that succeeded until Stop or a Start that fails. */
+    /* True from a successful Start until Stop or a failed Start. */
     bool BddTargetSdCard_IsStarted(void);
 
     /* The card's capacity in sectors, as it reports it. Zero unless started. */
     uint32_t BddTargetSdCard_SectorCount(void);
 
-    /* How many times a read or a write has been tried again after a CRC
-     * failure, since the card was started. It counts trouble on the wires
-     * that the retries hid. */
+    /* The number of retries after a CRC failure since the card was started:
+     * bus errors that the retries hid. */
     uint32_t BddTargetSdCard_Repeats(void);
 
     /* `buffer` is BDD_TARGET_SD_CARD_SECTOR_SIZE bytes. */

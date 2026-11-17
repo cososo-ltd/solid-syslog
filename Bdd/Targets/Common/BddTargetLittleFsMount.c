@@ -38,8 +38,7 @@ bool BddTargetLittleFsMount_Mount(void)
          *
          * Only LFS_ERR_CORRUPT triggers it, which is LittleFS's verdict that
          * there is nothing valid here. Formatting on any failure would let a
-         * media error wipe a device that still holds records - the FatFs
-         * sibling narrows to FR_NO_FILESYSTEM for the same reason. */
+         * media error wipe a device that still holds records. */
         result = lfs_format(&filesystem, config);
         if (result == LFS_ERR_OK)
         {

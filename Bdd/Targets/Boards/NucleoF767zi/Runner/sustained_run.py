@@ -1,16 +1,16 @@
-"""A sustained run against the NUCLEO-F767ZI: many messages over UDP, then as
-many over TCP, and a check that the collector recorded every one of them once,
-in order and as it was sent, with a time on it no earlier than the last.
+"""A sustained run against the NUCLEO-F767ZI. Sends many messages over UDP,
+then as many over TCP, and checks that the collector recorded each one exactly
+once, in order, as sent, and with a timestamp no earlier than the previous one.
 
-Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and writes
-the image, starts the collector, and names the board's serial port and the
-programmer in the environment, as it does for Behave. With -FileStore every
-message goes by way of a store of files on the image's medium, wiped first.
+Run by Run-NucleoF767ziBdd.ps1 -SustainedRun <count>, which builds and flashes
+the image, starts the collector, and passes the serial port and programmer in
+the environment, as it does for Behave. With -FileStore every message goes
+through the file store on the image's medium, which is wiped first.
 
-Each message is one `send 1` at the console, answered before the next is
-asked for. A `send` of many would log them faster than the target sends them,
-and its buffer would discard what it could not hold, which is the library's
-doing and not a loss on the wire.
+Each message is a separate `send 1` at the console, answered before the next.
+A single `send` of many would log faster than the target can send, and the
+target's buffer would discard the excess. That is the library working as
+designed and would be misread as loss on the wire.
 """
 
 import glob
@@ -35,13 +35,7 @@ from nucleo_f767zi import (
 
 _BOOT_TIMEOUT_SECONDS = 60
 _ANSWER_TIMEOUT_SECONDS = 30
-# A message that goes by way of the file store is written to the medium
-# before it is sent, which takes longer than the console takes to answer
-# `send 1`. Asked for faster than the medium takes them, messages fill the
-# target's buffer, which then discards, and that is the library's doing and not
-# a loss. So with the file store the messages are asked for at an interval,
-# which the run script gives for the image's medium.
-# The collector writes what it has received a little after it receives it.
+# The collector writes its records a little after it receives them.
 _RECORD_WAIT_SECONDS = 60
 _RECORDS = {"udp": "Bdd/output/received_udp.jsonl", "tcp": "Bdd/output/received_tcp.jsonl"}
 
@@ -49,11 +43,11 @@ _SEQUENCE_ID = re.compile(r'sequenceId="(\d+)"')
 _OCTET_COUNTED = re.compile(r"^(\d+) (.*)$", re.DOTALL)
 _FAULTS_SHOWN = 10
 
-# The message the target sends for `send 1`, as Bdd/Targets/Common has it, in
-# the parts between what is not the same in every message: the board's address,
-# which is its HOSTNAME, the time, the two numbers that count up, and the
-# library's version. The run tells the board the time before it sends, so every
-# message carries one, and says that its clock is set.
+# The message the target sends for `send 1`, as Bdd/Targets/Common builds it,
+# split at the fields that vary: the timestamp, the board's address (its
+# HOSTNAME), the two counters and the library's version. The run sets the
+# board's time first, so every message carries a timestamp and reports its
+# clock as set.
 _SENT = (
     "<134>1 ",
     " ",
@@ -68,7 +62,7 @@ _VERSION = r"\d+\.\d+\.\d+"
 _TIME_SENT = re.compile(r"^(?:\d+ )?<\d+>1 (" + _TIME + ") ")
 
 
-# What a message sent by the board at hostname has to match, whole.
+# Returns the pattern a whole message from the board at hostname must match.
 def message_as_sent(hostname):
     between = (_TIME, re.escape(hostname), _COUNT, _COUNT, _VERSION)
     pattern = re.escape(_SENT[0])
@@ -77,9 +71,9 @@ def message_as_sent(hostname):
     return re.compile(pattern)
 
 
-# The messages in lines, which are the collector's file exporter's: each is one
-# JSON object holding the records of one write, and each record's body is the
-# message as it arrived.
+# Returns the messages in lines written by the collector's file exporter.
+# Each line is one JSON object holding the records of one write, and each
+# record's body is a message as it arrived.
 def messages_in(lines):
     messages = []
     for line in lines:
@@ -91,14 +85,13 @@ def messages_in(lines):
     return messages
 
 
-# What is wrong with messages as the record of count messages sent one after
-# another, the first with sequenceId first: nothing, for every message there
-# once, in order, and matching sent, which is message_as_sent's. Over TCP a
-# message arrives behind its octet count, which has to be its length. The
-# messages are sent one after another, so the time on each is no earlier than
-# on the one before: every digit of it is of fixed width, and so it is compared
-# as it is written. The first is held to not_before as well, which is the time
-# on the last message sent before these.
+# Returns the faults in messages, given that count messages were sent in turn
+# starting at sequenceId first. There are none when every message is present
+# once, in order, and matches sent (a pattern from message_as_sent). Over TCP
+# each message follows its octet count, which must equal its length. Each
+# timestamp must be no earlier than the one before; timestamps are fixed
+# width, so they are compared as strings. The first is also checked against
+# not_before, the timestamp of the last message sent before these.
 def faults_in(messages, first, count, sent, not_before=""):
     faults = []
     ids = []
@@ -129,7 +122,7 @@ def faults_in(messages, first, count, sent, not_before=""):
     return faults
 
 
-# The time on the last of messages to carry one, or nothing where none does.
+# Returns the last timestamp in messages, or "" if none carries one.
 def last_time_in(messages):
     times = [time_sent.group(1) for time_sent in map(_TIME_SENT.match, messages) if time_sent]
     return times[-1] if times else ""
@@ -145,8 +138,8 @@ def _order_of(ids, expected):
     return "in order" if arrived == sorted(arrived) else "out of order"
 
 
-# The lines of the record at path, with those of the files the exporter moved
-# aside as it grew, oldest first.
+# Returns the lines of the record at path, including the files the exporter
+# rotated out as it grew, oldest first.
 def _lines_of(path):
     lines = []
     for name in sorted(glob.glob(path[: -len(".jsonl")] + "*.jsonl"), key=os.path.getmtime):
@@ -187,8 +180,8 @@ def main(count, store, file_store_interval_seconds):
         _send(console, count, interval_seconds)
         if store == "file":
             # The console answers `send 1` before the message has left the
-            # store, and one still there when the transport changes would go
-            # by the other transport.
+            # store, and a message still stored when the transport changes
+            # would be sent over the new one.
             _messages_once_arrived(_RECORDS["udp"], count)
         console.stdin.write("set transport tcp\n")
         output_to_prompt(console, _ANSWER_TIMEOUT_SECONDS)
@@ -209,10 +202,11 @@ def main(count, store, file_store_interval_seconds):
     return 1 if failed else 0
 
 
-# The count, the store and the interval, from the command line as the run
-# script gives it: <count> [null|file [<seconds between file-store messages>]].
-# A file store with no interval raises, since at none the target's buffer
-# would discard, and no medium's pace is a good guess at another's.
+# Returns the count, the store and the interval from the command line:
+# <count> [null|file [<seconds between file-store messages>]]. A file store
+# requires an interval, because the medium is slower than the console and the
+# target's buffer would otherwise fill and discard. The rate depends on the
+# medium, so there is no default.
 def arguments_in(argv):
     count = int(argv[1])
     store = argv[2] if len(argv) > 2 else "null"

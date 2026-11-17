@@ -3,9 +3,9 @@
  * The platform-independent pipeline - SolidSyslog lifecycle, FatFs-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
- * (shared with the FreeRTOS-Plus-TCP target, S29.03). This file keeps only the
- * lwIP network backend behind the pipeline seam: the tcpip thread + tcpip_callback
- * marshal (S28.06), the board's netif (BddTargetBoardNetif.h), the
+ * (shared between the targets). This file keeps only the
+ * lwIP network backend behind the pipeline seam: the tcpip thread, the core-lock
+ * marshal, the board's netif (BddTargetBoardNetif.h), the
  * static-IP bring-up + oracle ARP warm-up, the LwipRaw sender wiring (UDP +
  * octet-framed TCP + TLS/mTLS via mbedTLS over a second LwipRaw TCP), and the
  * RFC 5424 HOSTNAME read from the netif.
@@ -49,8 +49,8 @@
 #include <stdint.h>
 #include <string.h>
 
-/* IP4_ADDR counts its arguments before it expands them, so the four octets
- * the board states as one macro have to arrive through one more expansion. */
+/* IP4_ADDR counts its arguments before expanding them, so the board's
+ * four-octet macro has to pass through one more expansion. */
 #define SET_IP4_ADDRESS(address, octets) IP4_ADDR((address), octets)
 
 /* lwIP netif descriptor - must outlive the tcpip thread. */
@@ -109,7 +109,7 @@ int main(void)
     BddTargetBoard_Init();
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
-    /* Pin every LwipRaw adapter call onto the tcpip thread. */
+    /* Run every LwipRaw adapter call under lwIP's core lock. */
     SolidSyslogLwipRaw_SetMarshal(LwipTcpipMarshal);
 
     /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the
@@ -173,7 +173,7 @@ static void NetworkBringUp(void* context)
     (void) etharp_request(&networkInterface, &oracleNextHop);
 }
 
-/* Marshalled onto the tcpip thread: report whether the next hop's MAC is in
+/* Run under the core lock: report whether the next hop's MAC is in
  * the ARP cache yet, and ask for it again if it is not. The bool* context is
  * set to the result. */
 static void OracleNextHopResolvedQuery(void* context)
@@ -230,8 +230,7 @@ static void LwipTcpipMarshal(SolidSyslogLwipRawCallback callback, void* context)
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP) - read back from the netif so a future
-     * DHCP slice satisfies the same rung without touching this callback. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP), read back from the netif. */
     const char* address = ip4addr_ntoa(netif_ip4_addr(&networkInterface));
     (void) context;
     SolidSyslogHeaderField_PrintUsAscii(field, address, strlen(address));

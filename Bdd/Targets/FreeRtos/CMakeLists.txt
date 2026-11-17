@@ -1,6 +1,6 @@
 # FreeRTOS-Plus-TCP BDD target ELF.
 #
-# Compiled cross-only — gated by the top-level CMakeLists.txt on
+# Compiled cross-only - gated by the top-level CMakeLists.txt on
 # CMAKE_CROSSCOMPILING + CMAKE_SYSTEM_PROCESSOR == "arm".
 #
 # Wires SolidSyslogUdpSender behind the SolidSyslogPlusTcpDatagram adapter
@@ -58,7 +58,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
     ${FREERTOS_KERNEL_PATH}/event_groups.c
     ${FREERTOS_PORT_DIR}/port.c
     ${FREERTOS_KERNEL_PATH}/portable/MemMang/heap_4.c
-    # Plus-TCP core (UDP-only — see FreeRTOSIPConfig.h).
+    # Plus-TCP core (UDP-only - see FreeRTOSIPConfig.h).
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_ARP.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_BitConfig.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_DHCP.c
@@ -101,7 +101,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IP.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv4.c
     ${PLUS_TCP_SRC_DIR}/FreeRTOS_UDP_IPv6.c
-    # Fixed buffers or ones from the heap: the board's interface decides.
+    # Fixed buffers or heap buffers, as the board's interface requires.
     ${PLUS_TCP_BUF_DIR}/BufferAllocation_${BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION}.c
     # The board's NetworkInterface + controller driver.
     ${PLUS_TCP_NIF_SOURCES}
@@ -111,7 +111,7 @@ add_library(solid_syslog_freertos_upstream OBJECT
     # and Plus-TCP sources, these trip the relaxed warnings (sign-conversion,
     # shadow, type narrowing), so they live in this OBJECT lib. The integrator
     # FreeRTOSFATConfig.h is found off the -I path (CMAKE_CURRENT_SOURCE_DIR
-    # below) — no source staging, see note above. The FF_Disk_t media driver
+    # below) - no source staging, see note above. The FF_Disk_t media driver
     # (BddTargetPlusFatDisk.c) is OUR code and stays in the strict executable
     # target alongside the SolidSyslogPlusFatFile adapter.
     ${PLUS_FAT_SRC_DIR}/ff_crc.c
@@ -152,8 +152,9 @@ target_compile_options(solid_syslog_freertos_upstream PRIVATE
     -Wno-cpp
 )
 
-# Whether the board's interface copies frames is read by FreeRTOSIPConfig.h, so
-# it goes to everything that reads that header: here, and the executable.
+# FreeRTOSIPConfig.h reads whether the board's interface copies frames, so the
+# definition goes to everything that includes that header: this library and
+# the executable.
 set(BDD_PLUSTCP_ZERO_COPY_DEFINITION BDD_TARGET_BOARD_PLUSTCP_ZERO_COPY=${BDD_BOARD_PLUSTCP_ZERO_COPY})
 
 target_compile_definitions(solid_syslog_freertos_upstream PRIVATE
@@ -161,7 +162,7 @@ target_compile_definitions(solid_syslog_freertos_upstream PRIVATE
     ${BDD_PLUSTCP_ZERO_COPY_DEFINITION}
 )
 
-# What the board's interface alone needs defined goes to its sources alone.
+# Definitions for the board's interface go to its sources only.
 if(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS)
     set_source_files_properties(${PLUS_TCP_NIF_SOURCES} PROPERTIES
         COMPILE_DEFINITIONS "${BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS}")
@@ -177,7 +178,7 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
     ${PLUS_TCP_SRC_DIR}/include
     ${PLUS_TCP_PORT_GCC_DIR}                          # pack_struct_*.h
     ${PLUS_TCP_NIF_INCLUDES}                          # the board's NetworkInterface and driver headers
-    ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_headers.h, ff_stdio.h, ff_ioman.h, …
+    ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_headers.h, ff_stdio.h, ff_ioman.h...
 )
 
 # --- mbedTLS upstream as a subproject ----------------------------------------
@@ -186,7 +187,7 @@ target_include_directories(solid_syslog_freertos_upstream PRIVATE
 # add_subdirectory(EXCLUDE_FROM_ALL), force-disable its programs/tests, and
 # strip our strict warning surface from the upstream targets so a future
 # mbedTLS bump doesn't break our build for diagnostic reasons. clang-tidy /
-# cppcheck are also disabled per-target — they would otherwise apply our
+# cppcheck are also disabled per-target - they would otherwise apply our
 # .clang-tidy ruleset to upstream code.
 set(ENABLE_PROGRAMS OFF CACHE BOOL "Disable mbedTLS demo programs in our build" FORCE)
 set(ENABLE_TESTING OFF CACHE BOOL "Disable mbedTLS upstream tests in our build" FORCE)
@@ -203,8 +204,8 @@ set(MBEDTLS_USER_CONFIG_HEADER
 foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
     if(TARGET ${_mbedtls_upstream_target})
         # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
-        # bignum multiply is inline assembler that wants every low register,
-        # and an unoptimised build otherwise keeps one back as frame pointer.
+        # bignum multiply is inline assembler that needs every low register,
+        # and an unoptimised build otherwise reserves one as frame pointer.
         target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
         target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
             MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
@@ -275,7 +276,7 @@ set(BAKED_PEM_HEADERS
 #
 # Project code only. Inherits the full project warning set
 # (-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror)
-# from the top-level CMakeLists.txt — no -Wno-* relaxations here.
+# from the top-level CMakeLists.txt - no -Wno-* relaxations here.
 
 add_executable(SolidSyslogBddTarget
     main.c
@@ -285,7 +286,7 @@ add_executable(SolidSyslogBddTarget
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
     # SolidSyslog platform adapters arrive via the SolidSyslog::{PlusTcp,FreeRtos,
-    # MbedTls,PlusFat} pack umbrellas linked below (S30.02 dogfood) — their
+    # MbedTls,PlusFat} pack umbrellas linked below. Their
     # target_sources(INTERFACE) compile here against this target's config.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
@@ -327,7 +328,7 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{PlusFat,FreeRtos,PlusTcp,MbedTls}/{Interface,Source} include dirs
-    # now arrive transitively from the SolidSyslog::* pack umbrellas linked below.
+    # arrive transitively from the SolidSyslog::* pack umbrellas linked below.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${FREERTOS_KERNEL_PATH}/include
@@ -337,7 +338,7 @@ target_include_directories(SolidSyslogBddTarget PRIVATE
     ${FREERTOS_PLUS_FAT_PATH}/include                 # ff_stdio.h (adapter) + ff_headers.h / ff_ioman.h /
                                                       # ff_format.h / ff_sys.h (BddTargetPlusFatDisk.c). The
                                                       # integrator FreeRTOSFATConfig.h resolves to
-                                                      # CMAKE_CURRENT_SOURCE_DIR above — same as the OBJECT lib,
+                                                      # CMAKE_CURRENT_SOURCE_DIR above - same as the OBJECT lib,
                                                       # so the Plus-FAT core and our adapter/driver share one
                                                       # config across all translation units.
 )
@@ -347,10 +348,10 @@ target_include_directories(SolidSyslogBddTarget SYSTEM PRIVATE
 
 # BddTargetPlusFatDisk.c drives the mount/format lifecycle via Plus-FAT's FF_isERR /
 # FF_ERR_* macros, whose error codes carry the 0x80000000 FF_ERRFLAG bit and so
-# are unsigned-with-high-bit — they cannot be made -Wsign-conversion clean at the
+# are unsigned-with-high-bit - they cannot be made -Wsign-conversion clean at the
 # call site. Relax only that one diagnostic for only this file; every other
 # strict warning (and the rest of our code) is unaffected. The SolidSyslogPlusFatFile
-# adapter needs no such relaxation — it uses the ff_stdio handle API, not the
+# adapter needs no such relaxation - it uses the ff_stdio handle API, not the
 # error-code macros.
 set_source_files_properties(
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetPlusFatDisk.c

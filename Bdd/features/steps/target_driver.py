@@ -58,13 +58,13 @@ _VXWORKS64_CONSOLE_BAUD = 9600
 _VXWORKS64_PROMPT = b"SolidSyslog> "
 _VXWORKS64_BUILD_TIMEOUT_SECONDS = 1800
 
-# A board is where a target runs when that is not under an emulator. BDD_BOARD
-# names it, and the target it runs is still the one BDD_TARGET names.
+# BDD_BOARD names a board for the target to run on instead of an emulator.
+# BDD_TARGET still names the target.
 NUCLEO_F767ZI = "nucleo-f767zi"
 _NUCLEO_F767ZI_RUNNER_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..", "Targets", "Boards", "NucleoF767zi", "Runner"
 )
-# From reset to prompt: the network is given a few seconds to come up.
+# From reset to prompt, which includes a few seconds for the network.
 _NUCLEO_F767ZI_BOOT_TIMEOUT_SECONDS = 60
 _NUCLEO_F767ZI_ANSWER_TIMEOUT_SECONDS = 30
 
@@ -159,8 +159,8 @@ _QEMU_BASE_ARGS = [
 
 
 def assert_binary_present(context):
-    """A local target's binary has to be built before the run; a remote one is
-    built on its own machine, and a board's is already on the board."""
+    """A local target's binary must be built before the run. A remote target
+    is built on its own machine, and a board's image is already flashed."""
     on_a_board = bool(getattr(context, "board", ""))
     if (getattr(context, "target", "linux") in _LOCAL_TARGETS) and not on_a_board:
         binary = context.example_binary
@@ -236,8 +236,8 @@ def _import_from_nucleo_f767zi_runner(module_name):
 
 
 def _open_nucleo_f767zi():
-    """Resets the board and returns its console. The run names the ST-LINK's
-    virtual COM port, and STM32_Programmer_CLI where PATH does not find it."""
+    """Resets the board and returns its console. The environment gives the
+    ST-LINK's virtual COM port, and STM32_Programmer_CLI if it is not on PATH."""
     port = os.environ.get("NUCLEO_F767ZI_SERIAL_PORT")
     if not port:
         raise RuntimeError("NUCLEO_F767ZI_SERIAL_PORT is not set to the board's serial port")
@@ -246,10 +246,10 @@ def _open_nucleo_f767zi():
 
 
 def prepare_nucleo_f767zi_board():
-    """Checks, once per run, that the image on the board is the one under
-    test, built from the commit under test, and tells the board the time, which its real-time clock
-    keeps through the reset that starts each scenario. Returns the address the
-    build gave the board, which is what it sends as its HOSTNAME."""
+    """Once per run, checks that the board holds the image under test, built
+    from the commit under test, and sets the board's time, which its real-time
+    clock keeps through the reset that starts each scenario. Returns the
+    address the board was built with, which it sends as its HOSTNAME."""
     board = _import_from_nucleo_f767zi_runner("nucleo_f767zi")
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
@@ -267,10 +267,10 @@ def prepare_nucleo_f767zi_board():
 
 
 def wipe_nucleo_f767zi_disk():
-    """Gives the next scenario a disk with no filesystem on it. The board's
-    disk is a card or a flash part, which keeps what it holds through the reset
-    that starts each scenario, as power_cycle_replay needs, so a scenario that
-    leaves records there would hand them to the next."""
+    """Removes the filesystem from the board's disk before the next scenario.
+    The disk is a card or a flash part and survives the reset that starts each
+    scenario, as power_cycle_replay needs, so a scenario's records would
+    otherwise carry over to the next."""
     board = _import_from_nucleo_f767zi_runner("nucleo_f767zi")
     console = _open_nucleo_f767zi()
     try:

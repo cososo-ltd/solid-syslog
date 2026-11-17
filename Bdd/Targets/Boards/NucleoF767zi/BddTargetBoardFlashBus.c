@@ -24,7 +24,7 @@ static const uint8_t CARD_GO_IDLE[CARD_COMMAND_LENGTH] = {0x40, 0x00, 0x00, 0x00
 
 static inline void BddTargetBoardFlashBus_PutTheCardInSpiMode(void);
 
-/* The part is run at the rate the card is, on the same wires. */
+/* The flash runs at the card's rate, on the same wires. */
 void BddTargetBoardFlashBus_Take(void)
 {
     BoardSpi4_Take(BOARD_SPI4_RATE_START);
@@ -34,14 +34,14 @@ void BddTargetBoardFlashBus_Take(void)
 
 /* The MicroSD card shares these wires, and an image that uses the flash never
  * starts it. A card that has not been started is not yet in SPI mode: it
- * takes the data-out line for its command line whatever its select is doing,
- * and could answer something in the flash's traffic that happened to read as
- * a command to it. Its first command, sent with its select low, puts it in SPI
- * mode, where a high select keeps it off the bus. What it answers is not
- * looked at: with no card fitted there is no answer, and nothing to keep off.
+ * treats MOSI as its command line whatever its select is doing, and could
+ * answer flash traffic that happened to read as a command. CMD0, sent with
+ * its select low, puts it in SPI mode, where a high select keeps it off the
+ * bus. The answer is ignored: with no card fitted there is none, and nothing
+ * to keep off the bus.
  *
- * It is sent at the rate a card is to be started at, with the flash's select
- * high throughout. */
+ * It is sent at the card's start rate, with the flash's select high
+ * throughout. */
 static inline void BddTargetBoardFlashBus_PutTheCardInSpiMode(void)
 {
     for (size_t i = 0U; i < (size_t) CARD_WAKE_BYTES; i++)
@@ -58,7 +58,7 @@ static inline void BddTargetBoardFlashBus_PutTheCardInSpiMode(void)
         (void) BoardSpi4_Exchange(IDLE_LINE);
     }
     BoardSpi4_Deselect(BOARD_SPI4_CARD);
-    /* A card lets go of its data line a byte after its select rises. */
+    /* A card releases its data line a byte after its select rises. */
     (void) BoardSpi4_Exchange(IDLE_LINE);
 }
 

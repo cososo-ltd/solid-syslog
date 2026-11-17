@@ -13,13 +13,10 @@
  * Everything platform-independent lives in this component: the SolidSyslog
  * lifecycle, the file-backed store + security-policy machinery (crc16 /
  * hmac-sha256 / aes-256-gcm / null), the SD set, the interactive `set` handler,
- * the CircularBuffer + Service drain task, and the console glue. Every QEMU BDD
- * target drives this; their main.c files keep only the network backend and the
- * FS-mount seam behind the config below - the network adapter wiring (PlusTcp vs
- * LwipRaw), the IP-stack bring-up, and the filesystem vendor (FreeRTOS-Plus-FAT
- * vs ChaN-FatFs) that genuinely differ. See SolidSyslog S29.03 (network seam)
- * and S29.05 (FS-mount seam). The OS calls themselves go through
- * BddTargetOsPrimitives.h, so nothing here names a kernel. */
+ * the CircularBuffer + Service drain task, and the console glue. Each target's
+ * main.c keeps only what differs, behind the config below: the network adapter
+ * wiring, the IP-stack bring-up and the filesystem mount. The OS calls go
+ * through BddTargetOsPrimitives.h, so nothing here names a kernel. */
 
 /* Forward declaration - the FS-mount seam traffics in SolidSyslogFile handles
  * without the pipeline header pulling SolidSyslogFile.h. */
@@ -56,11 +53,10 @@ struct BddTargetFreeRtosPipelineConfig
     /* Create / destroy the platform SolidSyslogFile adapter for the store. */
     struct SolidSyslogFile* (*CreateStoreFile)(void);
     void (*DestroyStoreFile)(struct SolidSyslogFile* file);
-    /* Leaves the store's medium with no filesystem on it, so that the next
-     * mount formats it. It is for a medium that keeps what it holds from one
-     * run of the target to the next, and is only called with nothing mounted.
-     * False where the medium is put back to nothing some other way, and where
-     * it will not take the change. */
+    /* Leaves the store's medium with no filesystem on it, so the next mount
+     * formats it. For a medium that keeps its contents from one run of the
+     * target to the next; only called with nothing mounted. Returns false if
+     * the medium is cleared some other way, or the change fails. */
     bool (*WipeStore)(void);
 };
 

@@ -15,10 +15,7 @@
  *
  * The lwIP FreeRTOS sys_arch needs recursive mutexes (the
  * LWIP_TCPIP_CORE_LOCKING mutex) and counting semaphores, and the CMSIS mutex
- * control blocks this target supplies need static allocation.
- *
- * Everything below the CMSIS-RTOS2 block is the proven networking config for
- * these targets, shared in substance with the sibling lwIP target. */
+ * control blocks this target supplies need static allocation. */
 
 #define configUSE_PREEMPTION 1
 #define configUSE_IDLE_HOOK 0
@@ -92,9 +89,8 @@
 #define configUSE_OS2_EVENTFLAGS_FROM_ISR 0
 #define configUSE_OS2_TIMER 0
 
-/* The interrupt priorities, which follow from the board, and the assertion,
- * which ends in the board's fault line, are the same for every target on this
- * kernel. */
+/* The interrupt priorities and the assertion handler, shared by every target
+ * on this kernel. */
 #include "BddTargetFreeRtosKernelConfig.h"
 
 /* Alias FreeRTOS port handlers to the standard CMSIS names so the vector

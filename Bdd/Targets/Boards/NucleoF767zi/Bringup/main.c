@@ -1,11 +1,10 @@
 /* Bring-up firmware for the NUCLEO-F767ZI, with no SolidSyslog in it.
  *
- * It proves the toolchain, the flash route and the serial port: a banner on
- * the ST-LINK virtual COM port, each line received echoed back, and the green
- * LED blinking so a board with nothing attached to its serial port still
- * shows it is running. The line "probe" is echoed like any other, and then
- * the two storage breakouts are asked whether they are there. The line
- * "flash" has the W25Q128 erased, programmed and read back. */
+ * It proves the toolchain, the flashing route and the serial port: a banner
+ * on the ST-LINK virtual COM port, each line received echoed back, and the
+ * green LED blinking so that a board with nothing on its serial port still
+ * shows it is running. The line "probe" is echoed like any other and then
+ * runs the storage probe; the line "flash" runs the flash check. */
 
 #include "BddTargetLineAssembler.h"
 #include "Board.h"

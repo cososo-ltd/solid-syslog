@@ -1,6 +1,6 @@
-# What every arm-none-eabi cross toolchain file here shares: the system, the
-# tools and where CMake may look. Each toolchain file includes this and adds
-# only its own core's architecture flags.
+# Shared by every arm-none-eabi toolchain file here: the system, the tools and
+# the search paths. Each toolchain file includes this and adds only its own
+# core's architecture flags.
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)

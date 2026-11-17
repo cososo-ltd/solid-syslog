@@ -1,9 +1,5 @@
 /* ChaN-FatFs implementation of the shared pipeline's FS-mount seam - see
- * BddTargetFatFsMount.h. Extracted from BddTargetFreeRtosPipeline.c in
- * SolidSyslog S29.05 when the two FreeRTOS targets first diverged on the
- * filesystem (FatFs on lwIP, FreeRTOS-Plus-FAT on Plus-TCP). The logic here is
- * the former in-pipeline EnsureFatFsMounted / f_unmount / SolidSyslogFatFsFile_*
- * path, lifted verbatim. */
+ * BddTargetFatFsMount.h. */
 
 #include "BddTargetFatFsMount.h"
 
@@ -29,12 +25,11 @@ bool BddTargetFatFsMount_Mount(void)
     FRESULT res = f_mount(&fatfs, "", 1); /* opt=1 -> mount immediately, surface FR_NO_FILESYSTEM here */
     if (res == FR_NO_FILESYSTEM)
     {
-        /* Fresh disk image - lay down a FAT and re-mount. FM_FAT keeps the
-         * formatter on FAT12/16; at the shared 8 MiB geometry auto cluster
-         * sizing clears the ~4085-cluster boundary, so this lands FAT16 (the
-         * geometry the FreeRTOS-Plus-FAT formatter needs on the sibling
-         * target). The work buffer is sized to FF_MAX_SS (512 B), the minimum
-         * f_mkfs accepts on a FAT12/16 volume. */
+        /* No filesystem yet - lay down a FAT and re-mount. FM_FAT keeps the
+         * formatter on FAT12/16; at the 8 MiB geometry auto cluster sizing
+         * clears the ~4085-cluster boundary, so this is FAT16. The work buffer
+         * is sized to FF_MAX_SS (512 B), the minimum f_mkfs accepts on a
+         * FAT12/16 volume. */
         static BYTE workBuffer[FF_MAX_SS];
         const MKFS_PARM opts = {.fmt = FM_FAT | FM_SFD, .n_fat = 1, .align = 1, .n_root = 0, .au_size = 0};
         res = f_mkfs("", &opts, workBuffer, sizeof(workBuffer));

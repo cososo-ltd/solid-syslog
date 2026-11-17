@@ -3,15 +3,13 @@
  * The platform-independent pipeline - SolidSyslog lifecycle, file-backed store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
- * (shared with the lwIP target, S29.03). This file keeps only the FreeRTOS-Plus-TCP
+ * (shared between the targets). This file keeps only the FreeRTOS-Plus-TCP
  * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
  * static-IP bring-up, the per-endpoint RNG /
  * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
- * the FF_Disk_t media driver on the board's disk). The lwIP target pairs lwIP with
- * ChaN-FatFs instead - together the two targets prove the SolidSyslogFile seam
- * is FS-vendor-portable (S29.05).
+ * the FF_Disk_t media driver on the board's disk).
  *
  * A static IPv4 address on the board's network, with the oracle at the address
  * the board reaches it by - see BddTargetBoardConfig.h. */
@@ -78,7 +76,7 @@ static struct SolidSyslogSender* switchingSender = NULL;
  * network goes down and back up. */
 static BaseType_t interactiveTaskCreated = pdFALSE;
 
-/* How the network stood at the last event the stack gave. */
+/* The network's state at the stack's last event. */
 static bool networkIsUp = false;
 
 /* This target spawns its threads through the kernel API rather than the OS seam
@@ -178,11 +176,11 @@ void vApplicationIPNetworkEventHook_Multi(eIPCallbackEvent_t eNetworkEvent, stru
     }
 }
 
-/* One line on the console for each change of the network, so a pulled cable
+/* One console line for each change in the network's state, so a pulled cable
  * can be told from a fault. The stack repeats its down event each time it
- * retries an interface that is still down, so only a change is said. Written
- * whole, straight to the console's lock: stdio belongs to the interactive
- * thread, and this runs on the IP task. */
+ * retries an interface that is still down, so only a change is reported. The
+ * line is written whole under the console lock and not through stdio, which
+ * belongs to the interactive thread; this runs on the IP task. */
 static void ReportNetworkChange(bool isUp)
 {
     static const char LINK_UP[] = "[board] link up\n";
@@ -220,9 +218,7 @@ uint32_t ulApplicationGetNextSequenceNumber(
 
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 {
-    /* RFC 5424 section 6.2.4 rung 2 (static IP address). Read back from the IP stack so
-     * a future DHCP / hostname slice satisfies the same rung without re-touching
-     * this callback. */
+    /* RFC 5424 section 6.2.4 rung 2 (static IP address), read back from the IP stack. */
     uint32_t ipAddress = 0U;
     char ipBuffer[16];
     (void) context;

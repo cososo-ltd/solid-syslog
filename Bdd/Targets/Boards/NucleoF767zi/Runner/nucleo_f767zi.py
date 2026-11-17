@@ -1,6 +1,6 @@
-"""The NUCLEO-F767ZI as a BDD run drives it: its console on the ST-LINK's
-virtual COM port, its reset through the ST-LINK's debug probe, and what the
-run reads from the image's banner and from the build that made the image.
+"""Drives the NUCLEO-F767ZI for a BDD run: the console on the ST-LINK's virtual
+COM port, reset through the ST-LINK's debug probe, and checks of the image's
+banner against the build that made it.
 """
 
 import os
@@ -14,17 +14,17 @@ from serial_console import SerialConsole
 
 CONSOLE_BAUD = 115200
 PROMPT = b"SolidSyslog> "
-# How long a read of the port waits for a byte before it gives none.
+# Read timeout on the port.
 _READ_WAIT_SECONDS = 0.05
 _PROBE_TIMEOUT_SECONDS = 30
 _PROBE_ATTEMPTS = 3
-# Three attempts one after another have all failed inside a fifth of a second,
-# and a reset asked for a second later was done.
+# Three immediate retries have all failed within 200 ms, where a retry a
+# second later succeeded.
 _PROBE_RECOVERY_SECONDS = 1
 _QUIET_SECONDS = 0.5
 # A boot prints for a few seconds and then waits at its prompt.
 _NEVER_QUIET_SECONDS = 30
-# The banner follows a reset at once; this is far longer than it has ever taken.
+# The banner follows a reset at once, so this is generous.
 _BANNER_WAIT_SECONDS = 5
 _RESET_ATTEMPTS = 3
 
@@ -33,9 +33,9 @@ _BANNER = re.compile(r"NUCLEO-F767ZI, image (\S+), commit (\S+)")
 _CACHED_ADDRESS = re.compile(r"^SOLIDSYSLOG_BDD_BOARD_IP:\w+=(\S+)$", re.MULTILINE)
 
 
-# Resets the board and returns its console, opened first so that the banner
-# the reset draws is on it. port_name is the ST-LINK's virtual COM port, and
-# programmer is STM32_Programmer_CLI, by path or as PATH finds it.
+# Resets the board and returns its console. The port is opened before the
+# reset so that the banner is captured. port_name is the ST-LINK's virtual COM
+# port, and programmer is STM32_Programmer_CLI, by path or by name on PATH.
 def open_board(port_name, programmer):
     # Imported here so that only a run against the board needs pyserial.
     import serial
@@ -43,7 +43,7 @@ def open_board(port_name, programmer):
     def report(said):
         print(said, file=sys.__stderr__, flush=True)
 
-    # The probe's exit code, none where it gave no answer, and what it said.
+    # Returns the probe's exit code (None on a timeout) and its output.
     def ask_probe():
         try:
             done = subprocess.run(
@@ -68,8 +68,8 @@ def open_board(port_name, programmer):
     return console_after_reset(port, reset, report)
 
 
-# Appends each line to the file at path as it is given, with the time of day,
-# so the record holds whatever was known when a run stopped.
+# Appends each line to the file at path as it arrives, with the time of day,
+# so the record is complete however the run ends.
 def _timed_lines_in(path):
     lock = threading.Lock()
 
@@ -82,9 +82,8 @@ def _timed_lines_in(path):
     return record
 
 
-# A port that records what crosses it. The record is taken here, before the
-# pipe and the threads a run reads the console through, so it says what the
-# board sent whatever became of it afterwards.
+# A port that records what crosses it. Recording at the port, ahead of the
+# pipe and threads the run reads through, shows what the board actually sent.
 class RecordedPort:
     def __init__(self, port, record):
         self._port = port
@@ -107,7 +106,7 @@ class RecordedPort:
             self._port.close()
 
 
-# reset, with when it was asked for and what the probe said of it recorded.
+# Wraps reset to record when it was requested and what the probe reported.
 def recorded_reset(reset, record):
     def recorded():
         record("reset asked of the probe")
@@ -118,11 +117,10 @@ def recorded_reset(reset, record):
     return recorded
 
 
-# Has the probe reset the board, and returns what it said, for a report of a
-# reset that did not take. The probe has been seen to fail once in some
-# thousands of resets, so it is asked again, and each failure is reported, with
-# what it said, rather than passed over. What fails it outlasts an attempt, so
-# wait is given the seconds to let pass before the next.
+# Resets the board through the probe and returns the probe's output. The
+# probe fails about once in several thousand resets, so it is retried and each
+# failure is reported with its output. The cause outlasts an immediate retry,
+# so wait is called between attempts.
 def reset_through_probe(ask_probe, attempts, report, wait):
     code = None
     attempt = 0
@@ -137,8 +135,8 @@ def reset_through_probe(ask_probe, attempts, report, wait):
     return said
 
 
-# The console of a board fresh from reset, on a port just opened. A board that
-# does not start leaves the port closed, for the next to open it.
+# Returns the console of a freshly reset board on a port just opened. If the
+# board does not start, the port is closed so that the next run can open it.
 def console_after_reset(port, reset, report):
     try:
         discard_until_quiet(port, _QUIET_SECONDS, _NEVER_QUIET_SECONDS)
@@ -149,11 +147,11 @@ def console_after_reset(port, reset, report):
     return SerialConsole(port, reset, shown)
 
 
-# The ST-LINK keeps what the board printed while the port was closed - the
-# whole of a boot, after the reset that ended the last scenario - and hands it
-# over once the port is open. Its banner would be taken for the one the next
-# reset draws, so it is discarded, until nothing has arrived for quiet_seconds.
-# A board still printing after give_up_seconds is not one a run can read.
+# The ST-LINK buffers what the board printed while the port was closed, which
+# is a whole boot after the reset that ended the last scenario, and delivers
+# it when the port opens. That banner would be mistaken for the next reset's,
+# so input is discarded until nothing has arrived for quiet_seconds. Raises if
+# the board is still printing after give_up_seconds.
 def discard_until_quiet(port, quiet_seconds, give_up_seconds):
     started = time.monotonic()
     quiet_since = started
@@ -164,14 +162,13 @@ def discard_until_quiet(port, quiet_seconds, give_up_seconds):
             raise RuntimeError(f"The board has not been quiet for {quiet_seconds} seconds in {give_up_seconds}")
 
 
-# Resets the board, and again if it shows no banner: the banner is the first
-# thing a reset draws, so a board without one wait_seconds after a reset has
-# not started. Once in about a thousand resets through the probe the board has
-# stayed silent, for a reason not yet found, so each time is reported, with
-# what the probe said of the reset, rather than passed over. Returns what the
-# board showed from the banner on. What came before it is the boot before
-# this one, still printing as the reset was asked for, and is discarded: its
-# prompt would be taken for a board that is ready while the board is starting.
+# Resets the board, and retries if no banner appears within wait_seconds. The
+# banner is the first thing a boot prints, so a board without one has not
+# started. About once in a thousand probe resets the board stays silent, for a
+# reason not yet found, so each occurrence is reported with the probe's
+# output. Returns the output from the banner onwards. Anything before the
+# banner belongs to the previous boot and is discarded, because its prompt
+# would make a board that is still starting look ready.
 def reset_until_banner(port, reset, wait_seconds, attempts, report):
     banner_at = -1
     attempt = 0
@@ -196,7 +193,7 @@ def reset_until_banner(port, reset, wait_seconds, attempts, report):
     return bytes(shown[banner_at:])
 
 
-# The port as SerialConsole reads it: what has arrived, without waiting for more.
+# Adapts the port for SerialConsole: read returns whatever has arrived.
 class _ArrivedBytes:
     def __init__(self, port):
         self._port = port
@@ -211,9 +208,9 @@ class _ArrivedBytes:
         self._port.close()
 
 
-# Everything the board shows up to its prompt, which a board fresh from a reset
-# reaches once its network has had its chance to come up. A board that has not
-# shown the prompt within timeout_seconds raises, with what it did show.
+# Returns the board's output up to its prompt. After a reset the prompt
+# appears once the network has had time to come up. Raises, with the output
+# so far, if there is no prompt within timeout_seconds.
 def output_to_prompt(console, timeout_seconds):
     shown = bytearray()
 
@@ -227,7 +224,7 @@ def output_to_prompt(console, timeout_seconds):
     reader.start()
     reader.join(timeout_seconds)
     if not shown.endswith(PROMPT):
-        # Ending the console ends its output, and the reader with it.
+        # Killing the console closes its output, which ends the reader.
         console.kill()
         reader.join()
         raise TimeoutError(
@@ -236,11 +233,11 @@ def output_to_prompt(console, timeout_seconds):
     return bytes(shown).decode(errors="replace")
 
 
-# Tells the board, waiting at its prompt, this machine's time, which is UTC in
-# seconds since the epoch. The board's real-time clock keeps it from then on,
-# through every reset, so a run tells it once. The board takes the second it is
-# given as starting as it is given, so it is told as one starts. A board that
-# refuses the time raises: its real-time clock has not started.
+# Sets the board's time from this machine's, as UTC seconds since the epoch.
+# The board's real-time clock keeps it through every reset, so a run sets it
+# once. The board treats the second it is given as just beginning, so the
+# command is sent on a second boundary. Raises if the board refuses, which
+# means its real-time clock has not started.
 def tell_the_time(console, timeout_seconds, now=time.time, wait=time.sleep):
     wait(1.0 - (now() % 1.0))
     console.stdin.write(f"set time {round(now())}\n")
@@ -249,11 +246,10 @@ def tell_the_time(console, timeout_seconds, now=time.time, wait=time.sleep):
         raise RuntimeError(f"The board did not take the time: {answer!r}")
 
 
-# Leaves the disk of the board, waiting at its prompt, with no filesystem on
-# it, so that the store a scenario asks for is laid down afresh. The disk is a
-# card or a flash part, which keeps what it holds through every reset, so
-# without this a scenario would start with the records the one before it left.
-# A board that refuses raises: its medium did not answer, or did not take the
+# Removes the filesystem from the board's disk so that the next store starts
+# empty. The disk is a card or a flash part and survives a reset, so without
+# this a scenario would inherit the previous one's records. Raises if the
+# board refuses, which means the medium did not answer or did not accept the
 # change.
 def wipe_the_disk(console, timeout_seconds):
     console.stdin.write("set store wipe\n")
@@ -262,8 +258,8 @@ def wipe_the_disk(console, timeout_seconds):
         raise RuntimeError(f"The board did not wipe its disk: {answer!r}")
 
 
-# Puts the target, waiting at its prompt, on a store of files on the disk. A
-# board that refuses raises: its disk would not mount.
+# Switches the target to the file store on the disk. Raises if the board
+# refuses, which means the disk would not mount.
 def use_the_file_store(console, timeout_seconds):
     console.stdin.write("set store file\n")
     answer = output_to_prompt(console, timeout_seconds)
@@ -271,8 +267,8 @@ def use_the_file_store(console, timeout_seconds):
         raise RuntimeError(f"The board did not take the file store: {answer!r}")
 
 
-# What a run is told through the environment. Each image the board runs has a
-# name and a build directory of its own, so neither has a value to fall back to.
+# Each image has its own name and build directory, so neither environment
+# variable has a default.
 def image_under_test():
     return _named_by_the_run("NUCLEO_F767ZI_IMAGE", "the image under test, as its build names it: SOLIDSYSLOG_BDD_TARGET")
 
@@ -288,11 +284,11 @@ def _named_by_the_run(variable, meaning):
     return value
 
 
-# Raises unless the banner in output, which is what the board showed from its
-# reset to its prompt, names image and commit. Every image built from a commit
-# names that commit, so the image is checked too. The build writes the first
-# ten digits of the commit, and "-dirty" after them for a tree with changes the
-# commit does not hold.
+# Raises unless the banner in output (the board's output from reset to
+# prompt) names image and commit. All images built from one commit carry the
+# same commit, so the image name is checked as well. The build writes the
+# first ten digits of the commit, with "-dirty" appended for a tree with
+# uncommitted changes.
 def check_image(output, image, commit):
     banner = _BANNER.search(output)
     if not banner:
@@ -305,8 +301,8 @@ def check_image(output, image, commit):
         )
 
 
-# The address the image was built to take, from the CMakeCache.txt of the build
-# that made it. The board sends it as its HOSTNAME.
+# Returns the address the image was built with, read from the build's
+# CMakeCache.txt. The board sends it as its HOSTNAME.
 def board_address_in(cache):
     address = _CACHED_ADDRESS.search(cache)
     if not address:

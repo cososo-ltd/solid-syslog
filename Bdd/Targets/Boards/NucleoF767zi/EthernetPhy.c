@@ -8,20 +8,20 @@ enum
     /* What this end advertises, and what the far end does. */
     REGISTER_ADVERTISED = 4,
     REGISTER_PARTNER = 5,
-    /* The LAN8742A's own: the mode it took from its straps, which a reset
-     * through the control register takes up again from here. */
+    /* Specific to the LAN8742A: the mode it latched from its straps, which a
+     * reset through the control register reloads from this register. */
     REGISTER_MODES = 18,
 
     CONTROL_NEGOTIATION_ENABLE = 0x1000,
-    /* Set while the PHY resets itself, and in the all-ones a bus reads when
-     * no PHY drives it. */
+    /* Set while the PHY resets, and in the all-ones a bus reads when no PHY
+     * drives it. */
     CONTROL_RESET = 0x8000,
 
     /* Every speed and duplex up to 100 Mbit/s, negotiated. */
     MODE_NEGOTIATE_EVERYTHING = 0x00E0,
 
     /* A reset may take half a second. A read is 64 bit times on a bus clocked
-     * at 2.5 MHz at most, so at most 19532 of them fit in that. */
+     * at 2.5 MHz at most, so at most 19531 of them fit in that. */
     RESET_READS_AT_MOST = 20000,
 
     STATUS_LINK_UP = 0x0004,
@@ -40,9 +40,9 @@ static inline bool EthernetPhy_IsNegotiating(uint16_t control);
 static inline bool EthernetPhy_LinkHasSettled(uint16_t status);
 static inline enum EthernetPhyLink EthernetPhy_BestCommon(uint16_t common);
 
-/* The mode is written before the reset that takes it up. A write on the
- * management bus is not acknowledged, so the control register is read back, to
- * learn both that the reset has ended and that the PHY came out of it
+/* The mode is written before the reset that loads it. A write on the
+ * management bus is not acknowledged, so the control register is read back to
+ * confirm that the reset has ended and that the PHY came out of it
  * negotiating. */
 bool EthernetPhy_Restart(EthernetPhyWriteFunction write, EthernetPhyReadFunction read, void* context)
 {
@@ -77,8 +77,8 @@ enum EthernetPhyLink EthernetPhy_ReadLink(EthernetPhyReadFunction read, void* co
     uint16_t advertised = 0U;
     uint16_t partner = 0U;
     enum EthernetPhyLink link = ETHERNET_PHY_LINK_DOWN;
-    /* Twice: the first read returns, and clears, a drop latched since the last
-     * look; the second says how the link is now. */
+    /* Twice: the first read returns and clears a drop latched since the last
+     * read; the second gives the link as it is now. */
     bool wasRead = read(context, (uint8_t) REGISTER_STATUS, &status);
     wasRead = read(context, (uint8_t) REGISTER_STATUS, &status) && wasRead;
     wasRead = read(context, (uint8_t) REGISTER_ADVERTISED, &advertised) && wasRead;
