@@ -10,6 +10,7 @@
 
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogBufferCategories.h"
+#include "SolidSyslogCaptureState.h"
 #include "SolidSyslogConfig.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogError.h"
@@ -127,6 +128,12 @@ static void SolidSyslog_InstallDestinationKnown(
     SolidSyslogDestinationKnownFunction configured,
     void* context
 );
+static enum SolidSyslogCaptureState SolidSyslog_CaptureAlwaysOn(void* context);
+static void SolidSyslog_InstallCaptureState(
+    struct SolidSyslog* self,
+    SolidSyslogCaptureStateFunction configured,
+    void* context
+);
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self);
 static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self);
 
@@ -154,6 +161,7 @@ void SolidSyslog_Initialise(
     SolidSyslog_InstallScratch(self, config->Scratch);
     SolidSyslog_InstallEventReporting(self, config->IsEventReportingOn, config->EventReportingContext);
     SolidSyslog_InstallDestinationKnown(self, config->IsDestinationKnown, config->DestinationKnownContext);
+    SolidSyslog_InstallCaptureState(self, config->GetCaptureState, config->CaptureStateContext);
 }
 
 void SolidSyslog_Cleanup(struct SolidSyslog* self)
@@ -194,6 +202,8 @@ static void SolidSyslog_ResetToDefaults(struct SolidSyslog* self)
     self->EventReportingContext = NULL;
     self->IsDestinationKnown = SolidSyslog_DestinationAlwaysKnown;
     self->DestinationKnownContext = NULL;
+    self->GetCaptureState = SolidSyslog_CaptureAlwaysOn;
+    self->CaptureStateContext = NULL;
     self->ReportTurnedDown = false;
     self->Halted = false;
 }
@@ -378,6 +388,25 @@ static void SolidSyslog_InstallDestinationKnown(
     {
         self->IsDestinationKnown = configured;
         self->DestinationKnownContext = context;
+    }
+}
+
+static enum SolidSyslogCaptureState SolidSyslog_CaptureAlwaysOn(void* context)
+{
+    (void) context;
+    return SOLIDSYSLOG_CAPTURE_ON;
+}
+
+static void SolidSyslog_InstallCaptureState(
+    struct SolidSyslog* self,
+    SolidSyslogCaptureStateFunction configured,
+    void* context
+)
+{
+    if (configured != NULL)
+    {
+        self->GetCaptureState = configured;
+        self->CaptureStateContext = context;
     }
 }
 

@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogCaptureState.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
@@ -109,6 +110,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  reaches this gate. NULL means known. */
         SolidSyslogDestinationKnownFunction IsDestinationKnown;
         void* DestinationKnownContext; /**< Passed back to IsDestinationKnown unchanged. */
+        SolidSyslogCaptureStateFunction GetCaptureState; /**< NULL means on. */
+        void* CaptureStateContext; /**< Passed back to GetCaptureState unchanged. */
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or
