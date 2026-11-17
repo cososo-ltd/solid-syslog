@@ -495,7 +495,7 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
     {
         status = SOLIDSYSLOG_SERVICE_HALTED;
     }
-    else if (SolidSyslog_IsBlocked(self, storeBlocked, drained))
+    else if ((capture == SOLIDSYSLOG_CAPTURE_UNDECIDED) || SolidSyslog_IsBlocked(self, storeBlocked, drained))
     {
         status = SOLIDSYSLOG_SERVICE_BLOCKED;
     }
