@@ -760,9 +760,6 @@ TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsReportedAsFatal)
     );
 }
 
-/* The store keeps at least two blocks, and two more stay free: a failed
- * eviction leaves one over the ceiling, and a resume needs an absent one to
- * find where the run starts. */
 TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsRefused)
 {
     CreateOnADeviceOf(3);

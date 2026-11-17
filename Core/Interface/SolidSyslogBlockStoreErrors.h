@@ -65,8 +65,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE,
         /** Raised under SOLIDSYSLOG_CAT_BAD_CONFIG: the block device has fewer
-         *  than four blocks, so Create refused it. The store keeps at least two,
-         *  and two more stay free. */
+         *  than four blocks, so Create refused it. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS,
         /** Raised under SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED: used bytes
          *  rose to the capacity threshold or past it. */

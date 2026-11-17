@@ -120,9 +120,7 @@ static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct
     return resolved;
 }
 
-/* The store keeps at least two blocks, and two more stay free: a failed
- * eviction leaves one over the ceiling, and a resume needs an absent one to
- * find where the run starts. */
+/* Two for the store to keep, and the two the block sequence leaves free. */
 static inline bool BlockStore_DeviceHasEnoughBlocks(struct SolidSyslogBlockDevice* device)
 {
     return SolidSyslogBlockDevice_GetBlockCount(device) >= (size_t) MIN_DEVICE_BLOCKS;

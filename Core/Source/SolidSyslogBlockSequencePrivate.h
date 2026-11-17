@@ -17,7 +17,7 @@ struct SolidSyslogBlockDevice;
 struct SolidSyslogBlockSequenceConfig
 {
     struct SolidSyslogBlockDevice* BlockDevice;
-    size_t DeviceBlocks; /* how many blocks the device has: block numbers run from 0 and wrap after the last */
+    size_t DeviceBlocks; /* the device's block count, where block numbers wrap */
     size_t MaxBlockSize;
     size_t MaxBlocks;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
@@ -30,7 +30,7 @@ struct SolidSyslogBlockSequenceConfig
 struct SolidSyslogBlockSequence
 {
     struct SolidSyslogBlockDevice* BlockDevice;
-    size_t DeviceBlocks; /* how many blocks the device has: block numbers run from 0 and wrap after the last */
+    size_t DeviceBlocks; /* the device's block count, where block numbers wrap */
     size_t MaxBlockSize;
     size_t MaxBlocks;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;

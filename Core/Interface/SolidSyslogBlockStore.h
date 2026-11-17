@@ -71,9 +71,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Required: Create refuses a NULL device, and one with fewer than four
          *  blocks. The block store is the sole writer. */
         struct SolidSyslogBlockDevice* BlockDevice;
-        /** Retention ceiling in blocks, clamped to no fewer than 2 and no more
-         *  than the device's block count less 2; GetDiscardPolicy governs the
-         *  overflow. An eviction that fails freezes the store with one block more
+        /** Retention ceiling in blocks, clamped to between 2 and the device's
+         *  block count less 2; GetDiscardPolicy governs the overflow. An eviction that fails freezes the store with one block more
          *  than this on the media, and the next start keeps it. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot

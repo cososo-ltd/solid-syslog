@@ -25,6 +25,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool SolidSyslogBlockDevice_Acquire(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 
     /** Release @p blockIndex, freeing its storage (file drivers delete the backing file).
+     *  May take as long as a block erase. A BlockStore can call it from Create, Write,
+     *  ReadNextUnsent and MarkSent.
      *  @retval false the block could not be released; the caller does not treat it as gone
      *          (a stale block must be Disposed before it is Acquired again for reuse). */
     bool SolidSyslogBlockDevice_Dispose(struct SolidSyslogBlockDevice * device, size_t blockIndex);
@@ -55,8 +57,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** Overwrite @p count bytes at @p offset within @p blockIndex from @p buf, in place.
-     *  Used to patch bytes already present (e.g. flip a stored record's sent flag), not to
-     *  extend the block. Contrast Append.
+     *  Used to patch bytes already present, not to extend the block. Contrast Append.
+     *  A BlockStore uses it only to mark a record sent, which clears bits and never
+     *  sets one.
      *  @retval false the bytes were not stored. */
     bool SolidSyslogBlockDevice_WriteAt(
         struct SolidSyslogBlockDevice * device,

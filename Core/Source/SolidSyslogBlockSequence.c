@@ -20,9 +20,8 @@ struct SolidSyslogBlockDevice;
 enum
 {
     MIN_MAX_BLOCKS = 2U,
-    /* The ceiling stops this many short of the device's blocks: a failed
-     * eviction leaves one block over the ceiling, and a resume still needs an
-     * absent one to find the run. */
+    /* Kept free below the device's block count: a failed eviction leaves one
+     * block over the ceiling, and a resume needs an absent one to find the run. */
     SPARE_BLOCKS = 2U
 };
 
@@ -235,8 +234,7 @@ static inline void BlockSequence_StartReadingBlock(struct SolidSyslogBlockSequen
 static inline void BlockSequence_NotePresent(struct Scan* scan, size_t sequence);
 static inline void BlockSequence_NoteAbsent(struct Scan* scan, size_t sequence);
 
-/* Asks the device about each block once, in order, and keeps nothing but what
- * the run's boundaries are read from. */
+/* One pass over the device, asking about each block once. */
 static struct Scan BlockSequence_ScanForBlockPresence(const struct SolidSyslogBlockSequence* blockSequence)
 {
     struct Scan scan = {false, 0U, 0U, {0U, 0U}, {0U, 0U}};
@@ -291,10 +289,8 @@ static inline void BlockSequence_NoteAbsent(struct Scan* scan, size_t sequence)
 /* The absent blocks after the last present one and before the first are one
  * gap, across the wrap.
  *
- * Two gaps of the same length cannot be told apart: nothing on the device says
- * which is free and which is a hole. The library's own rotation never leaves
- * two, so a tie means blocks were removed from outside, and which gap these
- * comparisons then settle on is not a rule anything may rely on. */
+ * Two gaps of the same length cannot be told apart, and the library's own
+ * rotation never leaves two, so which one a tie settles on is arbitrary. */
 static inline struct Gap BlockSequence_LargestGap(
     const struct SolidSyslogBlockSequence* blockSequence,
     const struct Scan* scan
