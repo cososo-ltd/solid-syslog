@@ -159,11 +159,9 @@ has accepted it. Reading STATE has no side effect.
 ### 2.3 TXOVERRUN
 
 `STATE.TXOVERRUN` is set when software writes DATA while `TXFULL=1`. In QEMU
-the new byte replaces the one pending in `txbuf`, and the transmit already
-scheduled sends the new one. Each overrun in QEMU therefore loses the byte
-that was pending. DDI 0479D does not
-say which byte silicon loses, so assume that a byte was lost and that its
-identity is unspecified.
+the new byte replaces the one pending in `txbuf`, so each overrun loses the
+byte that was pending. DDI 0479D does not say which byte silicon loses, so
+assume that a byte was lost and that its identity is unspecified.
 
 To clear it, write `0x4` to `STATE`. That clears `STATE.TXOVERRUN`, and the
 next update clears `INTSTATUS.TXO`. Writing INTSTATUS with bit 2 set clears

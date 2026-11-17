@@ -109,7 +109,7 @@ int main(void)
     BddTargetBoard_Init();
     BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
 
-    /* Pin every LwipRaw adapter call onto the tcpip thread. */
+    /* Run every LwipRaw adapter call under lwIP's core lock. */
     SolidSyslogLwipRaw_SetMarshal(LwipTcpipMarshal);
 
     /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the

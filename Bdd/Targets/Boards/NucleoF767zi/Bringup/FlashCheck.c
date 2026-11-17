@@ -102,8 +102,8 @@ static bool FlashCheck_Erase(uint32_t sector)
     return passed;
 }
 
-/* The whole sector is read back, so a program that touched bytes outside its
- * range is caught as well as one that missed its own. */
+/* The whole sector is read back, so a program that touched bytes elsewhere in
+ * the sector is caught as well as one that missed its own. */
 static bool FlashCheck_HoldsWhatIsExpected(const char* what, uint32_t sector)
 {
     uint32_t address = sector * (uint32_t) BDD_TARGET_SPI_NOR_FLASH_SECTOR_SIZE;
