@@ -447,6 +447,79 @@ jobs:
           # tested that commit (docs-bundle.yml).
           retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
 
+  # The one optimised build. Every other lane builds Debug, so this is where
+  # the warnings that need the optimiser's flow analysis are met under -Werror,
+  # and where the suite runs with NDEBUG defined. It also runs the install
+  # rules, which no other lane does. See docs/builds.md.
+  unit-linux-gcc-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    container:
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:db48a7166ebe5a291970aac16adcbec442ceb3c542b496e3ba629b76437cc6e2 # sha-8f95380
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure
+        run: cmake --preset release
+
+      # The whole tree and not only what junit reaches, since the install
+      # below installs from it.
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Test
+        run: cmake --build --preset release --target junit
+
+      # The library and every public header of Core. The packs install their
+      # headers through the same rule, so Core's stand for it.
+      - name: Install, and check what landed
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/solidsyslog-install"
+          cmake --install build/release --prefix "$prefix"
+          test -n "$(find "$prefix" -name libSolidSyslog.a)"
+          missing=0
+          for header in Core/Interface/*.h; do
+            if [ ! -f "$prefix/include/$(basename "$header")" ]; then
+              echo "::error::not installed: $header"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Test Report
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
+        if: success() || failure()
+        with:
+          name: Test Results (unit-linux-gcc-release)
+          path: build/release/cpputest_*.xml,build/release/vxworks64/cpputest_*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: junit-unit-linux-gcc-release
+          path: |
+            build/release/cpputest_*.xml
+            build/release/vxworks64/cpputest_*.xml
+            build/release/solidsyslog-versions.json
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
+
   # Proves the public claim that Core compiles as C99, then checks the POSIX and
   # OpenSSL packs have not drifted off it. Library only, no tests.
   # See docs/builds.md.
@@ -842,6 +915,7 @@ jobs:
       - unit-linux-gcc
       - unit-linux-gcc-tunables
       - unit-linux-clang
+      - unit-linux-gcc-release
       - unit-linux-gcc-sanitize
       - unit-linux-clang-coverage
       - unit-windows-msvc
@@ -2698,7 +2772,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, build-nucleo-cmsisrtos-lwipsocket, build-nucleo-freertos-plustcp, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, unit-linux-gcc-release, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, build-nucleo-cmsisrtos-lwipsocket, build-nucleo-freertos-plustcp, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -2757,6 +2831,11 @@ jobs:
                     "id": "junit",
                     "name": "unit-linux-clang",
                     "pattern": "**/junit-unit-linux-clang/cpputest_*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "unit-linux-gcc-release",
+                    "pattern": "**/junit-unit-linux-gcc-release/cpputest_*.xml"
                   },
                   {
                     "id": "junit",
