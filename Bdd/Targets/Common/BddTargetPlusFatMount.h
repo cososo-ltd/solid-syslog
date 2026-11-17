@@ -8,12 +8,9 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* FreeRTOS-Plus-FAT implementation of the shared pipeline's FS-mount seam
-     * (struct BddTargetFreeRtosPipelineConfig). The Plus-FAT sibling of
-     * BddTargetFatFsMount: mount/unmount delegate to the FF_Disk_t media
-     * driver (BddTargetPlusFatDisk); the SolidSyslogFile adapter is
-     * SolidSyslogPlusFatFile. Wired by the FreeRTOS-Plus-TCP target's main.c;
-     * the lwIP target uses the ChaN-FatFs sibling. Introduced in SolidSyslog
-     * S29.05. */
+     * (struct BddTargetFreeRtosPipelineConfig). Mount and unmount delegate to
+     * the FF_Disk_t media driver (BddTargetPlusFatDisk), and the
+     * SolidSyslogFile adapter is SolidSyslogPlusFatFile. */
 
     /* Mount the Plus-FAT volume, formatting on first use. Idempotent; false on
      * an unrecoverable mount/format failure so the caller can leave the target
@@ -23,8 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Unmount the Plus-FAT volume if mounted; no-op otherwise. */
     void BddTargetPlusFatMount_Unmount(void);
 
-    /* Leaves the board's disk with no filesystem on it - see
-     * BddTargetBoardDisk_Wipe, which this is. */
+    /* Calls BddTargetBoardDisk_Wipe. */
     bool BddTargetPlusFatMount_Wipe(void);
 
     /* Create / destroy the Plus-FAT SolidSyslogFile adapter (forward-declared to

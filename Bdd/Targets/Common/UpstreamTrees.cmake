@@ -12,10 +12,9 @@
 #
 #   solidsyslog_bdd_upstream(<local> <variable> <pinned path> [PROBE <file>])
 #
-# Sets <local> to the value of <variable>, failing the configure with the
-# message every target used to carry if it is empty, or if PROBE names a file
-# relative to it that does not exist. <pinned path> is where the image sets
-# it, for that message.
+# Sets <local> to the value of <variable>, failing the configure if it is
+# empty, or if PROBE names a file relative to it that does not exist.
+# <pinned path> is where the image sets it, for the failure message.
 
 file(WRITE "${CMAKE_BINARY_DIR}/SolidSyslogUpstreamTrees.txt" "")
 

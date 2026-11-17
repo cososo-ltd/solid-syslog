@@ -21,8 +21,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
  * operation after it fails too, because the power is off. LittleFsDisk_PowerOn
  * ends the outage, leaving the storage exactly as the cut left it.
  *
- * It also counts the erases it carries out, which is what wears a flash part,
- * so that a test can say what an operation of the store costs one. */
+ * It also counts the erases it carries out, so a test can say what a store
+ * operation costs a flash part. */
 
     enum LittleFsDiskGeometry
     {

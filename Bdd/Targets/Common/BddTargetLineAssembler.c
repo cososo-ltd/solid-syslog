@@ -39,8 +39,8 @@ static inline bool LineAssembler_IsLineEnd(char received)
     return (received == '\r') || (received == '\n');
 }
 
-/* A line end that follows a completed line, or nothing at all, ends no line:
- * it is the second of a CR LF pair, or a blank line. */
+/* A line end after a completed line or an empty one completes nothing: it is
+ * the second of a CR LF pair, or a blank line. */
 static inline bool LineAssembler_EndLine(struct BddTargetLineAssembler* self)
 {
     bool completed = (!self->Completed) && (self->Length > 0U);

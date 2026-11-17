@@ -39,6 +39,10 @@ store suite, with the mutex guarding a buffer shared between two threads and the
 uptime callback reached on every message formatted.
 <!-- tested-against: 11.3.0 -->
 
+The same target, on the same wrapper, has been run by hand on a Cortex-M7
+board, without TLS:
+[what has been run on hardware](../../bdd.md#what-has-been-run-on-hardware).
+
 That is one implementation. Nothing here has run on a second one, and an
 implementation is free to differ wherever the API leaves a choice open - the
 control-block size and the priority-inheritance attribute below are both such

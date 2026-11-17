@@ -65,8 +65,8 @@ if (Get-Command docker -ErrorAction SilentlyContinue)
     {
     foreach ($protocol in @('udp', 'tcp'))
         {
-        # Docker may be installed and not running, which is no holder of the
-        # port; under 'Stop' what it says of that on stderr would end the run.
+        # Docker may be installed but not running, in which case nothing of
+        # its holds the port; under 'Stop' its stderr would end the run.
         $ErrorActionPreference = 'Continue'
         $holders = @(docker ps --filter "publish=$collectorPort/$protocol" --format '{{.Names}}' 2>$null)
         $ErrorActionPreference = 'Stop'

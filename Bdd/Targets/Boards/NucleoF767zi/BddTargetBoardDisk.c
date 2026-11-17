@@ -6,12 +6,12 @@
  * ready, a mount over it fails, and the target stays on the store it started
  * with.
  *
- * The card is on a breadboard, at the end of wires that can work loose, so a
- * sector that will not transfer has the card started again and is tried once
- * more before the disk gives up on it.
+ * The card is on a breadboard, on wires that can work loose, so when a sector
+ * will not transfer the card is started again and the sector tried once more
+ * before the disk reports an error.
  *
- * What goes wrong is said on the console, so that a card that has stopped
- * answering is told from a store that has a fault of its own. */
+ * Failures are written to the console, so that a card that has stopped
+ * answering can be told apart from a fault in the store. */
 
 #include "BddTargetBoardDisk.h"
 
@@ -30,8 +30,8 @@ enum
 static const char LINE_START[] = "[board] disk: ";
 
 static bool ready;
-/* What EnsureReady last said, so that a mount that is tried again and again
- * over a card that is not there says so once. */
+/* What EnsureReady last reported, so that a mount retried over a missing card
+ * reports it once. */
 static enum BddTargetSdCardResult startFailureSaid = BDD_TARGET_SD_CARD_OK;
 static bool tooSmallSaid;
 static uint32_t repeatsSaid;
@@ -75,8 +75,8 @@ bool BddTargetBoardDisk_EnsureReady(void)
     return ready;
 }
 
-/* One line, whole, in one write, which the console lock keeps from mixing
- * with what another task is saying. */
+/* One line in one write, which the console lock keeps whole against another
+ * task's output. */
 static void BddTargetBoardDisk_Say(const char* format, ...)
 {
     char line[LINE_BYTES];
@@ -86,7 +86,7 @@ static void BddTargetBoardDisk_Say(const char* format, ...)
     va_start(arguments, format);
     int formatted = vsnprintf(&line[length], sizeof(line) - length, format, arguments);
     va_end(arguments);
-    /* Room is kept for the newline: a line too long for it is not said. */
+    /* A line that leaves no room for the newline is dropped. */
     if ((formatted > 0) && (((size_t) formatted + length) < (sizeof(line) - 1U)))
     {
         length += (size_t) formatted;
@@ -157,8 +157,7 @@ enum BddTargetBoardDiskResult BddTargetBoardDisk_Read(void* buffer, uint32_t sec
     return result;
 }
 
-/* Range-checks a span of sectors without overflow: the subtraction keeps
- * `sector + count` from wrapping past the comparison. */
+/* Written as a subtraction so that `sector + count` cannot wrap. */
 static bool BddTargetBoardDisk_IsRangeValid(uint32_t sector, uint32_t count)
 {
     return (count <= (uint32_t) BDD_TARGET_BOARD_DISK_SECTOR_COUNT) &&
@@ -185,9 +184,9 @@ static enum BddTargetSdCardResult BddTargetBoardDisk_ReadSector(uint32_t sector,
     return result;
 }
 
-/* A transfer the card driver had to repeat worked in the end, and would
- * otherwise leave no trace of the wires having damaged it. One line for the
- * transfer, with how many repeats there have been since the card was started. */
+/* A transfer the card driver had to repeat succeeded in the end, and would
+ * otherwise leave no sign that the wiring corrupted it. One line for the
+ * transfer, with the number of repeats since the card was started. */
 static void BddTargetBoardDisk_SayRepeats(const char* what, uint32_t sector)
 {
     uint32_t repeats = BddTargetSdCard_Repeats();
@@ -203,10 +202,10 @@ static void BddTargetBoardDisk_SayRepeats(const char* what, uint32_t sector)
     }
 }
 
-/* A card that has lost its place - a wire that came out and went back, a dip
- * in its supply - answers nothing it is asked until it is started again.
- * True when it has been, and the sector is worth trying once more. A card
- * that will not start leaves the disk not ready. */
+/* A card that has lost its state - a wire that came out and went back, a dip
+ * in its supply - answers nothing until it is started again. True when it
+ * has been, so the sector can be tried once more. A card that will not start
+ * leaves the disk not ready. */
 static bool BddTargetBoardDisk_StartAgain(const char* what, uint32_t sector, enum BddTargetSdCardResult result)
 {
     BddTargetBoardDisk_Say(
@@ -241,8 +240,8 @@ enum BddTargetBoardDiskResult BddTargetBoardDisk_Write(const void* buffer, uint3
     return result;
 }
 
-/* A sector written twice holds what it was sent, so writing one again after
- * the card has been started again is safe. */
+/* Writing a sector twice is harmless, so the write is safe to repeat after
+ * the card has been started again. */
 static enum BddTargetSdCardResult BddTargetBoardDisk_WriteSector(uint32_t sector, const uint8_t* bytes)
 {
     enum BddTargetSdCardResult result = BddTargetSdCard_Write(sector, bytes);
@@ -263,9 +262,9 @@ static enum BddTargetSdCardResult BddTargetBoardDisk_WriteSector(uint32_t sector
     return result;
 }
 
-/* A filesystem is found by what its first sector holds, so a disk whose first
- * sector is zeros has none, and the mount that finds none formats it. What
- * the sectors after it held is written over by that format. */
+/* A filesystem is recognised by its first sector, so zeroing that sector
+ * leaves none, and the next mount formats the disk over whatever the later
+ * sectors held. */
 bool BddTargetBoardDisk_Wipe(void)
 {
     static const uint8_t ZEROS[BDD_TARGET_BOARD_DISK_SECTOR_SIZE] = {0};

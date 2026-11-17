@@ -5,7 +5,7 @@
 set(BDD_BOARD_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # Any arm toolchain file passes the top-level gate, and one for another core
-# would compile this without complaint into an image the part cannot run.
+# would build an image the part cannot run.
 if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
     message(FATAL_ERROR
         "The NUCLEO-F767ZI board needs its own toolchain file, "
@@ -13,8 +13,8 @@ if(NOT CMAKE_C_FLAGS MATCHES "-mcpu=cortex-m7")
         "Configure with a nucleo-f767zi-* preset.")
 endif()
 
-# The board has a half for each of these. A target it had none for would
-# configure and then fail somewhere in its build.
+# The targets the board supports. Any other would configure and then fail
+# part way through its build.
 set(bdd_board_targets FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
 if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets)
     string(REPLACE ";" ", " bdd_board_target_list "${bdd_board_targets}")
@@ -34,8 +34,8 @@ solidsyslog_bdd_upstream(CMSIS_PATH SOLIDSYSLOG_CMSIS_PATH /opt/cmsis PROBE CMSI
 enable_language(ASM)
 
 # The toolchain file already gives every object these, because the float ABI
-# has to agree across the whole image. Stated again so a target that passes the
-# board's flags to its link gets the matching newlib.
+# has to agree across the whole image. Repeated here so that a target passing
+# the board's flags to its link gets the matching newlib.
 set(BDD_BOARD_ARCH_FLAGS -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard)
 
 set(BDD_BOARD_FREERTOS_PORT GCC/ARM_CM7/r0p1)
@@ -44,9 +44,9 @@ set(BDD_BOARD_LINKER_SCRIPT ${BDD_BOARD_DIR}/stm32f767zi.ld)
 
 # --- Addresses ----------------------------------------------------------------
 #
-# The board takes a static address, and where it sits is a fact about the
-# network it is plugged into, not about the board. Each is a cache variable, so
-# a build for a real network names its own:
+# The board takes a static address, which depends on the network it is plugged
+# into. Each address is a cache variable, so a build for a real network sets
+# its own:
 #
 #   cmake --preset nucleo-f767zi-lwip -DSOLIDSYSLOG_BDD_BOARD_IP=... \
 #       -DSOLIDSYSLOG_BDD_BOARD_ORACLE=...
@@ -107,7 +107,7 @@ list(JOIN bdd_board_mac_octets ", " BDD_BOARD_MAC_OCTETS)
 set(BDD_BOARD_ORACLE_ADDRESS "${SOLIDSYSLOG_BDD_BOARD_ORACLE}")
 
 # BddTargetBoardConfig.h reads the addresses from this header, written into the
-# build tree so that no address is ever in a file the repository holds.
+# build tree so that no address is ever committed.
 set(BDD_BOARD_GENERATED_DIR "${CMAKE_BINARY_DIR}/Boards/NucleoF767zi")
 configure_file(
     ${BDD_BOARD_DIR}/BddTargetBoardAddresses.h.in
@@ -118,8 +118,8 @@ configure_file(
 #
 # The commit goes into the banner, so the checklist can tell which build is on
 # the board. It is the commit checked out, which on a pull request is CI's
-# merge of the branch into main. Read at configure time, which is every time
-# in CI. A tree with a tracked file changed since that commit says so, as
+# merge of the branch into main. It is read at configure time, which in CI is
+# every build. A tree with a tracked file changed since that commit is marked
 # "-dirty", because the image is then not a build of the commit it names.
 find_package(Git QUIET)
 set(BDD_BOARD_BUILD_COMMIT "unknown")
@@ -141,8 +141,7 @@ if(GIT_EXECUTABLE)
 endif()
 
 # Only the file that prints the banner reads the commit, so only it is rebuilt
-# when the commit moves. The bring-up image names its own. The banner names the
-# target too, because every target built from a commit carries that commit.
+# when the commit changes. The bring-up image sets its own.
 set(BDD_BOARD_BUILD_COMMIT_DEFINITION BDD_TARGET_BOARD_BUILD_COMMIT="${BDD_BOARD_BUILD_COMMIT}")
 set_source_files_properties(${BDD_BOARD_DIR}/BddTargetBoard.c PROPERTIES
     COMPILE_DEFINITIONS "${BDD_BOARD_BUILD_COMMIT_DEFINITION};BDD_TARGET_BOARD_IMAGE=\"${SOLIDSYSLOG_BDD_TARGET}\"")
@@ -161,8 +160,8 @@ set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/BddTargetBoard.c
     ${BDD_BOARD_DIR}/BddTargetBoardClock.c
     ${BDD_BOARD_DIR}/BoardRtc.c
-    # What the board's clock is made of, from the targets' common code: no
-    # target lists them, because only a board with a clock wants them.
+    # The board's clock, from the targets' common code. No target lists
+    # these, because only a board with a clock needs them.
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetTickedClock.c
 )
@@ -179,7 +178,7 @@ set(BDD_BOARD_DISK_PROJECT_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
 
-# LittleFS is given the W25Q128 flash: the block device and the flash driver
+# LittleFS is on the W25Q128 flash: the block device and the flash driver
 # from the targets' common code, over the same SPI4.
 set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/BddTargetBoardFlashBus.c
@@ -193,8 +192,8 @@ set(BDD_BOARD_INCLUDES
     ${BDD_BOARD_GENERATED_DIR}                        # BddTargetBoardAddresses.h
 )
 
-# ST's headers. Board code has to read them, and their macros expand in it, but
-# their own style is not ours to hold to our warnings.
+# ST's headers, as SYSTEM includes: board code includes them and their macros
+# expand in it, but they are not held to our warnings.
 set(BDD_BOARD_SYSTEM_INCLUDES
     ${STM32F7_HAL_DRIVER_PATH}/Inc
     ${STM32F7_CMSIS_DEVICE_PATH}/Include
@@ -224,18 +223,17 @@ set(BDD_BOARD_UPSTREAM_SOURCES
     ${STM32F7_CMSIS_DEVICE_PATH}/Source/Templates/gcc/startup_stm32f767xx.s
 )
 
-# What the Ethernet MAC needs from the board under any network stack: its
-# clock, pins and interrupt, and the PHY restarted before the MAC is. It reads
-# the kernel's configuration, so it is built with a stack's interface and not
-# with the board's own sources, which the bring-up image takes with no kernel.
+# What the Ethernet MAC needs from the board under any network stack - see
+# BoardEthernet.h. It reads the kernel's configuration, so it is built with a
+# stack's interface and not with the board's own sources, which the bring-up
+# image takes with no kernel.
 set(bdd_board_ethernet_sources
     ${BDD_BOARD_DIR}/BoardEthernet.c
     ${BDD_BOARD_DIR}/EthernetPhy.c
 )
 
 # The Ethernet MAC under lwIP: our netif over ST's HAL Ethernet driver, which
-# is in the list above with the rest of the HAL, and our reading of the PHY's
-# link.
+# is in the list above with the rest of the HAL.
 set(BDD_BOARD_LWIP_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/Lwip/BddTargetBoardNetif.c
     ${bdd_board_ethernet_sources}
@@ -258,10 +256,10 @@ set(BDD_BOARD_PLUSTCP_UPSTREAM_SOURCES
 set(BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES
     include                                           # phyHandling.h
 )
-# The interface chooses its register names by the family, and asks for it by
-# this name before it has read the header of ST's that defines it.
+# The interface chooses its register names by the family, and tests this name
+# before it has included ST's header that defines it.
 set(BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS STM32F7)
-# It hands the stack's buffers to the DMA, in both directions, and will not
-# build otherwise, so they are fixed ones it places.
+# It passes the stack's buffers to the DMA in both directions and will not
+# build otherwise, so the buffers are static ones it places.
 set(BDD_BOARD_PLUSTCP_ZERO_COPY 1)
 set(BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION 1)

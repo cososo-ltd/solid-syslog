@@ -1,9 +1,8 @@
 /* HAL configuration for the NUCLEO-F767ZI board support.
  *
- * ST's HAL reads this file by name from every one of its sources; the driver
- * tree ships a template and expects the project to supply the real thing.
- * Only the modules the board support and its Ethernet interface use are
- * enabled, with the two those modules read in turn: the clock setup sets the
+ * Every HAL source includes this file by name; the driver tree ships only a
+ * template. Only the modules the board support and its Ethernet interface use
+ * are enabled, plus the two those modules depend on: the clock setup sets the
  * flash latency, and the UART handle carries DMA handles. Each module enabled
  * here has its source listed in Board.cmake, and the two lists are kept in
  * step by hand. */

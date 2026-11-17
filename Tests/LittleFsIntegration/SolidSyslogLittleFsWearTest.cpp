@@ -5,18 +5,16 @@
 
 #include "LittleFsStoreStack.h"
 
-/* What the store costs a flash part, in erases, which are what wear one out.
- * The platform page tells an integrator how the size of a store file sets
- * that cost; these hold it to what LittleFS does.
+/* What the store costs a flash part in erases. These tests pin the figures
+ * the LittleFS platform page gives an integrator.
  *
- * LittleFS never programs a block again once a commit refers to it. So an
- * append to a file copies the file's last block to a new one, and a write in
- * the middle of a file - the store's mark that a record was sent - copies the
- * block it is in and every block after it. Each block copied to is erased
- * first.
+ * LittleFS never programs a block again once a commit refers to it. An append
+ * copies the file's last block to a new one, and the store's mark that a
+ * record was sent, written in place, copies the block it is in and every
+ * block after it. Each block copied to is erased first.
  *
- * The counts take in what LittleFS spends on its own metadata as well, which
- * it compacts every so many commits, so each is held between bounds. */
+ * The counts include what LittleFS spends compacting its own metadata, so
+ * each is held between bounds. */
 
 enum
 {

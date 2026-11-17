@@ -1,17 +1,14 @@
 /* lwIP options for the FreeRTOS + lwIP BDD target.
  *
- * S28.09 flipped this from the S28.07 link-probe (NO_SYS=1, no netif) to a
- * worked NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, the board's netif
+ * A NO_SYS=0 runtime: lwIP runs its own "tcpip" thread, the board's netif
  * (BddTargetBoardNetif.h) drives the wire, and the SolidSyslog LwipRaw adapters
- * reach the core through the tcpip_callback marshal (S28.06). We still only
- * use lwIP's Raw API (the adapters call udp_ / tcp_ functions directly via the
- * marshal),
- * so the sequential netconn / socket API stays OFF - the tcpip thread exists
- * for RX delivery (tcpip_input), timeouts, and marshalled callbacks only.
+ * reach the core through a marshal that takes the core lock. Only lwIP's Raw
+ * API is used (the adapters call udp_ / tcp_ functions through the marshal),
+ * so the sequential netconn / socket API stays off. The tcpip thread exists
+ * for RX delivery (tcpip_input), timeouts and the netif bring-up only.
  *
- * Memory is lwIP-pool managed (no libc malloc) so the footprint is the static,
- * embedded-realistic shape an integrator ships - not the host-test shortcut
- * (MEM_LIBC_MALLOC) in Tests/Support/LwipFakes/Interface/lwipopts.h. */
+ * Memory is managed in lwIP's pools, with no libc malloc, so the footprint is
+ * static, as an integrator would ship it. */
 #ifndef SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 #define SOLIDSYSLOG_FREERTOS_LWIP_LWIPOPTS_H
 

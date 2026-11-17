@@ -61,7 +61,7 @@ class MessageAsSentTest(unittest.TestCase):
     def test_the_hostname_is_the_boards_address(self):
         self.assertFalse(SENT.fullmatch(message(1, hostname="192.0.2.3")))
 
-    # A dot in the address stands for itself and for nothing else.
+    # A dot in the address matches only a dot.
     def test_the_hostname_is_matched_as_written(self):
         self.assertFalse(SENT.fullmatch(message(1, hostname="192.0.2x2")))
 

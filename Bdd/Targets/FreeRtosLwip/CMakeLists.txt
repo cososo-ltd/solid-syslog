@@ -27,7 +27,7 @@ solidsyslog_bdd_upstream(FATFS_PATH SOLIDSYSLOG_FATFS_PATH /opt/fatfs)
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
 
 # Stage the upstream FatFs source pack alongside our integrator ffconf.h
-# (shared with the Plus-TCP target — Bdd/Targets/Common/ffconf.h) in the
+# (shared with the Plus-TCP target - Bdd/Targets/Common/ffconf.h) in the
 # build dir. FatFs's ff.h does `#include "ffconf.h"` and GCC's `""` lookup
 # checks the source file's own directory first, so colocating them is the
 # only way our integrator config wins over upstream's sample. Same pattern
@@ -40,7 +40,7 @@ configure_file(${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/ffconf.h ${FATFS_STAGE_DIR
 
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
 # NO_SYS=0 we consume the IPv4 core set plus the api/ set (tcpip.c, api_lib,
-# api_msg, …) — the tcpip thread, timeouts, and tcpip_callback marshal hop
+# api_msg...) - the tcpip thread, timeouts, and tcpip_callback marshal hop
 # live there. No ipv6.
 include(${LWIP_DIR}/src/Filelists.cmake)
 
@@ -68,10 +68,10 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     ${lwipcore4_SRCS}
     ${lwipapi_SRCS}
     # etharp (in core4) emits ARP frames via ethernet_output/ethbroadcast/
-    # ethzero from netif/ethernet.c — pull that one netif source in (but not
+    # ethzero from netif/ethernet.c - pull that one netif source in (but not
     # bridgeif/slipif from lwipnetif_SRCS, which this target has no use for).
     ${LWIP_DIR}/src/netif/ethernet.c
-    # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) — required
+    # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) - required
     # for NO_SYS=0.
     ${LWIP_CONTRIB_FREERTOS_DIR}/sys_arch.c
     # The board's third-party Ethernet controller driver. Our netif over it
@@ -80,7 +80,7 @@ add_library(solid_syslog_freertos_lwip_upstream OBJECT
     ${BDD_BOARD_LWIP_UPSTREAM_SOURCES}
     # The board vendor's own sources, where it has a vendor layer.
     ${BDD_BOARD_UPSTREAM_SOURCES}
-    # FatFs upstream (R0.16) + our shared integrator ffsystem.c — same
+    # FatFs upstream (R0.16) + our shared integrator ffsystem.c - same
     # relaxed-warnings treatment as the Plus-TCP target (ff.c inherits FatFs's
     # sign-conversion / typedef-via-BYTE patterns). ff.c is staged so its
     # `#include "ff.h"` / "ffconf.h" resolve to our integrator config.
@@ -129,7 +129,7 @@ target_include_directories(solid_syslog_freertos_lwip_upstream PRIVATE
 # add_subdirectory(EXCLUDE_FROM_ALL), force-disable its programs/tests, and
 # strip our strict warning surface from the upstream targets so a future
 # mbedTLS bump doesn't break our build for diagnostic reasons. clang-tidy /
-# cppcheck are also disabled per-target — they would otherwise apply our
+# cppcheck are also disabled per-target - they would otherwise apply our
 # .clang-tidy ruleset to upstream code.
 set(ENABLE_PROGRAMS OFF CACHE BOOL "Disable mbedTLS demo programs in our build" FORCE)
 set(ENABLE_TESTING OFF CACHE BOOL "Disable mbedTLS upstream tests in our build" FORCE)
@@ -146,8 +146,8 @@ set(MBEDTLS_USER_CONFIG_HEADER
 foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
     if(TARGET ${_mbedtls_upstream_target})
         # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
-        # bignum multiply is inline assembler that wants every low register,
-        # and an unoptimised build otherwise keeps one back as frame pointer.
+        # bignum multiply is inline assembler that needs every low register,
+        # and an unoptimised build otherwise reserves one as frame pointer.
         target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
         target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
             MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
@@ -217,7 +217,7 @@ set(BAKED_PEM_HEADERS
 # --- Executable ---------------------------------------------------------------
 #
 # Project code only. Inherits the full project warning set from the top-level
-# CMakeLists.txt — no -Wno-* relaxations here.
+# CMakeLists.txt - no -Wno-* relaxations here.
 
 add_executable(SolidSyslogBddTargetLwip
     main.c
@@ -227,7 +227,7 @@ add_executable(SolidSyslogBddTargetLwip
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosKernelHooks.c
     ${BDD_BOARD_LWIP_PROJECT_SOURCES}
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
-    # linked below (S30.02 dogfood): LwipRaw (Address/Datagram/TcpStream/
+    # linked below: LwipRaw (Address/Datagram/TcpStream/
     # Resolver/DnsResolver/Marshal; the unused numeric resolver dead-strips),
     # FreeRtos (Mutex +
     # SysUpTime), MbedTls (TLS Stream + HMAC/AES-GCM policies), FatFs (file
@@ -274,10 +274,10 @@ target_include_directories(SolidSyslogBddTargetLwip PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{LwipRaw,FreeRtos,MbedTls,FatFs}/{Interface,Source} include dirs
-    # now arrive transitively from the SolidSyslog::* pack umbrellas linked below.
+    # arrive transitively from the SolidSyslog::* pack umbrellas linked below.
     ${FATFS_STAGE_DIR}                                # ff.h, diskio.h + integrator ffconf.h colocated
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h...
     ${FREERTOS_KERNEL_PATH}/include
     ${FREERTOS_PORT_DIR}                              # portmacro.h
     ${LWIP_DIR}/src/include

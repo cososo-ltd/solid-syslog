@@ -8,7 +8,7 @@
 
 enum
 {
-    BDD_TARGET_MTLS_PORT = 6515 /* S03.09 mTLS source on the BDD syslog-ng */
+    BDD_TARGET_MTLS_PORT = 6515 /* The mTLS source on the BDD syslog-ng. */
 };
 
 /* Test CA / client identity for BDD. Paths are relative to the working

@@ -3,7 +3,7 @@
  * this file (after FreeRTOS.h) and FreeRTOSFATConfigDefaults.h fills in every
  * value not set here. Resolved off the -I path (ff_headers.h's `#include
  * "FreeRTOSFATConfig.h"` finds no copy beside itself), so no source staging is
- * needed - unlike ChaN-FatFs's ffconf.h. Introduced in SolidSyslog S29.05.
+ * needed.
  *
  * Mirrors the host-test config in Tests/Support/PlusFatFakes/Interface so the
  * adapter sees the same Plus-FAT layout on-target as under host TDD. The

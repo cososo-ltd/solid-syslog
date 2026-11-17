@@ -3,12 +3,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// The CMSDK UART register-offset, control-bit and status-bit values below
-// mirror the ARM CMSDK UART hardware datasheet exactly, plus the integer-
-// valued YIELD_MILLISECONDS yield interval. Grouped into an anonymous enum
-// so a future reader can grep `DATA_OFFSET` against vendor docs and land on
-// these definitions verbatim, while gaining a typed identifier over the
-// historical #define form. Mirrors the values in Tests/FreeRtos/CmsdkUartFake.c.
+// The register offsets, control bits and status bits are the ARM CMSDK UART
+// datasheet's, under its names. Tests/FreeRtos/CmsdkUartFake.c holds the same
+// values.
 enum
 {
     DATA_OFFSET = 0x000,

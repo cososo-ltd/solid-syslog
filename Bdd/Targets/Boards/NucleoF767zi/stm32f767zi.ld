@@ -3,18 +3,17 @@
  * Memory map, from the part's reference manual:
  *   FLASH: 0x08000000, 2 MiB   - the vector table sits at its start, which is
  *                                where the part boots from with BOOT0 low.
- *   DTCM:  0x20000000, 128 KiB - left unused. It is the fastest RAM on the
- *                                part and is kept free for whoever needs it.
+ *   DTCM:  0x20000000, 128 KiB - the fastest RAM on the part, left unused.
  *   SRAM:  0x20020000, 384 KiB - SRAM1 and SRAM2, which are contiguous. Its
  *                                first 32 KiB is ETHDMA below; the rest holds
  *                                data, bss, the newlib heap and the stack.
  *
- * ETHDMA is what the Ethernet DMA reads and writes: its descriptors and the
- * frame buffers. Board.c gives the region to the MPU as memory the data cache
- * leaves alone, and an MPU region is a power of two long and starts on a
- * multiple of its length, which is why it is cut from the bottom of SRAM.
- * Board.c takes the region from the two symbols below, and the assertions
- * under them hold its length to what the MPU can take.
+ * ETHDMA holds what the Ethernet DMA reads and writes: its descriptors and
+ * the frame buffers. Board.c makes it an uncached MPU region. An MPU region
+ * is a power of two long and starts on a multiple of its length, which is why
+ * it is cut from the bottom of SRAM. Board.c takes the region from the two
+ * symbols below, and the assertions under them hold its length to what the
+ * MPU can take.
  *
  * The symbol names are the ones ST's startup_stm32f767xx.s reads.
  */
@@ -95,9 +94,9 @@ SECTIONS
 
     /* Not loaded and not cleared at startup: the Ethernet driver writes every
      * descriptor before the DMA is given it, and a buffer is read only after
-     * a frame has been written to it. The last three are the names
-     * FreeRTOS-Plus-TCP's network interface for this MAC gives its descriptors
-     * and its network buffers, every one of which the DMA may be handed. */
+     * a frame has been written to it. The last three are the sections
+     * FreeRTOS-Plus-TCP's network interface for this MAC puts its descriptors
+     * and its network buffers in, any of which the DMA may be given. */
     .ethernet_dma (NOLOAD) :
     {
         *(.ethernet_dma*)

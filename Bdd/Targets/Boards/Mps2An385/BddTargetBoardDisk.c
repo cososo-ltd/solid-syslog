@@ -1,7 +1,7 @@
 /* The QEMU mps2-an385 machine's disk - see BddTargetBoardDisk.h. The machine
- * has no storage of its own, so the disk is a flat image on the machine QEMU
- * runs on, reached over ARM semihosting (BKPT 0xAB): solidsyslog-disk.img in
- * QEMU's working directory.
+ * has no storage of its own, so the disk is a flat image on the QEMU host,
+ * reached over ARM semihosting (BKPT 0xAB): solidsyslog-disk.img in QEMU's
+ * working directory.
  *
  * Behave's after_scenario removes the image so each scenario starts with no
  * filesystem. EnsureReady creates a fresh sparse file when the open fails or
@@ -199,8 +199,8 @@ static bool BddTargetBoardDisk_IsRangeValid(uint32_t sector, uint32_t count)
            (sector <= ((uint32_t) BDD_TARGET_BOARD_DISK_SECTOR_COUNT - count));
 }
 
-/* The image is a file on the machine QEMU runs on, and whoever runs QEMU
- * removes it to start from nothing. */
+/* The image is a file on the QEMU host, and the harness removes it to start
+ * with an empty disk. */
 bool BddTargetBoardDisk_Wipe(void)
 {
     return false;

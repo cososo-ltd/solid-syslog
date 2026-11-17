@@ -1,8 +1,8 @@
 # The board half of a cross BDD target.
 #
 # A target's own directory holds what its RTOS, network stack and filesystem
-# need; what belongs to the board it runs on sits in a directory beside this
-# file, one per board, and the configure names which:
+# need. What belongs to the board it runs on is in a directory beside this
+# file, one per board, chosen at configure time:
 #
 #   -DSOLIDSYSLOG_BDD_BOARD=<directory name>
 #
@@ -24,8 +24,8 @@
 #   BDD_BOARD_SYSTEM_INCLUDES  - include directories for a vendor's headers,
 #                                which the board's sources read and the
 #                                target's upstreams may; SYSTEM for project
-#                                code, so the vendor's style is not held to
-#                                the project's warnings
+#                                code, so the project's warnings do not
+#                                apply to them
 #   BDD_BOARD_DEFINITIONS      - compile definitions the vendor's headers need
 #                                wherever they are read
 #   BDD_BOARD_UPSTREAM_SOURCES - the vendor's own sources - a HAL, a system
@@ -34,21 +34,21 @@
 #
 # A board that has no vendor layer leaves the last three empty.
 #
-# and, for the medium under each kind of filesystem a target may keep its store
-# in, the sources a target of that kind adds to its executable:
+# For the store's medium, the sources a target adds to its executable, by the
+# kind of filesystem it uses:
 #
 #   BDD_BOARD_DISK_PROJECT_SOURCES      - the sector disk, which defines the
 #                                         BddTargetBoardDisk_* functions, for a
-#                                         filesystem that is kept in sectors
+#                                         filesystem that runs on sectors
 #   BDD_BOARD_LITTLEFS_PROJECT_SOURCES  - the LittleFS block device, which
 #                                         defines BddTargetLittleFsDisk_Config
 #                                         and BddTargetLittleFsDisk_Wipe, over
 #                                         whichever medium the board has for it
 #
-# A target takes one of the two, so the board never needs to know which
-# targets there are.
+# A target takes one of the two, so a board does not need to know which
+# targets exist.
 #
-# and, for the Ethernet controller under each network stack a target may run:
+# For the Ethernet controller, by network stack:
 #
 #   BDD_BOARD_LWIP_PROJECT_SOURCES      - the netif that defines
 #                                         BddTargetBoardNetif_Init
@@ -64,25 +64,23 @@
 #                                         source/portable/NetworkInterface
 #   BDD_BOARD_PLUSTCP_UPSTREAM_INCLUDES - include directories for those,
 #                                         relative to the same place
-#   BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS - compile definitions those
-#                                         sources need, and nothing else in
-#                                         the image is given
-#   BDD_BOARD_PLUSTCP_ZERO_COPY         - 1 where that interface hands the
-#                                         stack's buffers to the controller as
-#                                         they are, 0 where it copies each
-#                                         frame
+#   BDD_BOARD_PLUSTCP_UPSTREAM_DEFINITIONS - compile definitions for those
+#                                         sources only
+#   BDD_BOARD_PLUSTCP_ZERO_COPY         - 1 where that interface passes the
+#                                         stack's buffers to the controller,
+#                                         0 where it copies each frame
 #   BDD_BOARD_PLUSTCP_BUFFER_ALLOCATION - which of Plus-TCP's two buffer
 #                                         schemes that interface is written
 #                                         for: 1, fixed buffers the
 #                                         interface places, or 2, buffers
 #                                         from the kernel's heap. An
-#                                         interface that hands buffers to a
+#                                         interface that passes buffers to a
 #                                         DMA needs them placed, so the two
-#                                         are stated together
+#                                         are set together
 #
-# The toolchain file is the board's too, since it fixes the core for every
-# object in the image. It is named by the preset, not from here: CMake reads
-# it before any of this runs.
+# The toolchain file also belongs to the board, since it fixes the core for
+# every object in the image. The preset names it, because CMake reads it
+# before any of this runs.
 
 set(SOLIDSYSLOG_BDD_BOARD "" CACHE STRING
     "Which board a cross BDD target is built for: a directory name under Bdd/Targets/Boards")

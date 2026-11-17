@@ -11,11 +11,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * needs it. Part of the board seam - see BddTargetBoard.h - and defined in
      * the directory of a board that has a card.
      *
-     * SPI mode 0, most significant bit first. The card's select is the
-     * board's to drive, because a card is started with it high. */
+     * SPI mode 0, most significant bit first. The board drives the card's
+     * select, because a card is started with it high. */
 
-    /* Takes the bus, at a clock of no more than 400 kHz, which is what a card
-     * is to be started at. Idempotent. */
+    /* Takes the bus at no more than 400 kHz, the rate a card must be started
+     * at. Idempotent. */
     void BddTargetBoardSdCardBus_UseStartRate(void);
 
     /* Clocks the bus at the rate the board runs a started card at. */
@@ -28,7 +28,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * no card on it reads 0xFF. */
     uint8_t BddTargetBoardSdCardBus_Exchange(uint8_t out);
 
-    /* A count of milliseconds, wrapping at 2^32, to time the card's answers by. */
+    /* Milliseconds, wrapping at 2^32, for timing the card's answers. */
     uint32_t BddTargetBoardSdCardBus_Milliseconds(void);
 
 SOLIDSYSLOG_EXTERN_C_END

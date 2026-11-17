@@ -8,12 +8,11 @@
  * Windows host - they pull /dev/urandom for entropy, use fopen for cert
  * loading, and call BSD sockets directly. This bare-metal
  * BDD target has none of those, so we strip them and rely on the integrator
- * (main.c, slice 6b) to wire entropy, transport, and cert handles via DI.
+ * (main.c) to wire entropy, transport, and cert handles via DI.
  *
  * Anything not touched here keeps mbedTLS's default - including the cipher
- * suite set, RSA, ECC curves, SHA, AES, the PEM parser, x509 parsing, the
- * CTR-DRBG implementation, etc. Trimming further is a binary-size exercise
- * that belongs after the QEMU footprint is measured (slice 6c+).
+ * suite set, RSA, ECC curves, SHA, AES, the PEM parser, x509 parsing and the
+ * CTR-DRBG implementation.
  */
 
 #ifndef BDD_TARGET_FREERTOS_MBEDTLS_USER_CONFIG_H
@@ -27,7 +26,7 @@
 #define MBEDTLS_NO_PLATFORM_ENTROPY
 
 /* No filesystem from mbedTLS's point of view. PEMs are baked into the ELF
- * via xxd -i (slice 6b) and parsed via mbedtls_x509_crt_parse / _pk_parse_key
+ * via xxd -i and parsed via mbedtls_x509_crt_parse / _pk_parse_key
  * against the in-memory buffer, so MBEDTLS_FS_IO is unused dead code and a
  * link hazard against newlib stubs. */
 #undef MBEDTLS_FS_IO

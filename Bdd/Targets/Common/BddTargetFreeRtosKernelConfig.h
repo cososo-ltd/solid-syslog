@@ -1,11 +1,10 @@
 #ifndef BDD_TARGET_FREERTOS_KERNEL_CONFIG_H
 #define BDD_TARGET_FREERTOS_KERNEL_CONFIG_H
 
-/* The part of a FreeRTOS kernel configuration that no target chooses: what
- * follows from the board the image is for, and from the board seam. Each
- * target's FreeRTOSConfig.h includes this, so the ceiling an interrupt has to
- * sit under to call the kernel, which the boards' Ethernet set-up reads, and
- * what a failed assertion does are stated once for every target. */
+/* The FreeRTOS kernel configuration that follows from the board and the board
+ * seam, and not from the target. Each target's FreeRTOSConfig.h includes this,
+ * so the interrupt priority ceiling for kernel calls, which the boards'
+ * Ethernet set-up reads, and the assertion handler are defined once. */
 
 #include "BddTargetBoard.h"
 #include "BddTargetBoardConfig.h"
@@ -20,7 +19,8 @@
 #define configKERNEL_INTERRUPT_PRIORITY (configLIBRARY_LOWEST_INTERRUPT_PRIORITY << (8 - configPRIO_BITS))
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << (8 - configPRIO_BITS))
 
-/* An assertion that fails says where on the console, and stops the target. */
+/* A failed assertion reports its file and line on the console and stops the
+ * target. */
 #define BDD_TARGET_TEXT_OF_(x) #x
 #define BDD_TARGET_TEXT_OF(x) BDD_TARGET_TEXT_OF_(x)
 #define configASSERT(x)                                                                          \

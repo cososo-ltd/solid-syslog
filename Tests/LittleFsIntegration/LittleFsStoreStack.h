@@ -21,9 +21,8 @@ extern "C"
 #include "lfs.h"
 }
 
-/* The whole stack over one emulated flash part. Mount and Unmount bracket the
- * library state, so a test can throw all of it away and come back to the same
- * bytes - which is what a reboot does. */
+/* The whole store stack over one emulated flash part. Unmount discards the
+ * library state and Mount rebuilds it over the same bytes, as a reboot does. */
 struct LittleFsStoreStack
 {
     LittleFsDisk disk = {};
@@ -74,10 +73,9 @@ struct LittleFsStoreStack
         }
     }
 
-    /* A reboot: the library state and the lfs_t go, the bytes stay. The
-     * unmount and fresh mount are what actually discard LittleFS's in-RAM
-     * state; zeroing the struct as well is belt-and-braces that no test
-     * distinguishes, kept because it says what a reboot is. */
+    /* The library state and the lfs_t go, and the bytes stay. The unmount and
+     * mount already discard LittleFS's in-RAM state; no test depends on the
+     * struct being zeroed as well. */
     void Reboot()
     {
         Unmount();

@@ -1,9 +1,5 @@
 # CMSIS-RTOS2 + lwIP BDD target ELF.
 #
-# The fourth BDD target (S40.01 #850). It is the home for the three packs E40,
-# E36 and E35 add: each is swapped in against a lane that is already green, so a
-# failure is attributable to the one thing that changed.
-#
 # Its own code speaks CMSIS-RTOS2, not the kernel underneath: the OS pack is
 # CmsisRtos, and everything kernel-specific - the kernel sources, its config
 # header, its application hooks and the RTOS2 wrapper - sits in
@@ -27,7 +23,7 @@ include(${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Board.cmake)
 # kernels is changing this one path.
 include(${CMAKE_CURRENT_SOURCE_DIR}/Kernel/FreeRtos/Kernel.cmake)
 
-# Shared with the sibling lwIP target - see Bdd/Targets/Common/lwip/.
+# Shared between the lwIP targets - see Bdd/Targets/Common/lwip/.
 set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
 
 # The upstream trees this target wires, beyond the kernel's - see
@@ -37,7 +33,7 @@ solidsyslog_bdd_upstream(LITTLEFS_PATH SOLIDSYSLOG_LITTLEFS_PATH /opt/littlefs)
 
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
 # NO_SYS=0 we consume the IPv4 core set plus the api/ set, which already names
-# every translation unit the sockets layer needs — sockets.c, api_lib.c,
+# every translation unit the sockets layer needs - sockets.c, api_lib.c,
 # api_msg.c, netbuf.c and netdb.c alongside tcpip.c. They are compiled either
 # way; LWIP_SOCKET in lwipopts.h is what makes them more than empty, at a cost
 # of about 12 KB of text. No ipv6.
@@ -60,10 +56,10 @@ add_library(solid_syslog_cmsis_lwip_upstream OBJECT
     ${lwipcore4_SRCS}
     ${lwipapi_SRCS}
     # etharp (in core4) emits ARP frames via ethernet_output/ethbroadcast/
-    # ethzero from netif/ethernet.c — pull that one netif source in (but not
+    # ethzero from netif/ethernet.c - pull that one netif source in (but not
     # bridgeif/slipif from lwipnetif_SRCS, which this target has no use for).
     ${LWIP_DIR}/src/netif/ethernet.c
-    # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) — required
+    # lwIP FreeRTOS OS-abstraction port (sys_mutex/sem/mbox/thread) - required
     # for NO_SYS=0.
     ${LWIP_CONTRIB_FREERTOS_DIR}/sys_arch.c
     # The board's third-party Ethernet controller driver. Our netif over it
@@ -204,7 +200,7 @@ else()
     # add_subdirectory(EXCLUDE_FROM_ALL), force-disable its programs/tests, and
     # strip our strict warning surface from the upstream targets so a future
     # mbedTLS bump doesn't break our build for diagnostic reasons. clang-tidy /
-    # cppcheck are also disabled per-target — they would otherwise apply our
+    # cppcheck are also disabled per-target - they would otherwise apply our
     # .clang-tidy ruleset to upstream code.
     set(ENABLE_PROGRAMS OFF CACHE BOOL "Disable mbedTLS demo programs in our build" FORCE)
     set(ENABLE_TESTING OFF CACHE BOOL "Disable mbedTLS upstream tests in our build" FORCE)
@@ -221,8 +217,8 @@ else()
     foreach(_mbedtls_upstream_target IN ITEMS mbedtls mbedx509 mbedcrypto everest p256m)
         if(TARGET ${_mbedtls_upstream_target})
             # -fomit-frame-pointer: on a core with the DSP extension mbedTLS's
-            # bignum multiply is inline assembler that wants every low register,
-            # and an unoptimised build otherwise keeps one back as frame pointer.
+            # bignum multiply is inline assembler that needs every low register,
+            # and an unoptimised build otherwise reserves one as frame pointer.
             target_compile_options(${_mbedtls_upstream_target} PRIVATE -w -fomit-frame-pointer)
             target_compile_definitions(${_mbedtls_upstream_target} PRIVATE
                 MBEDTLS_USER_CONFIG_FILE=${MBEDTLS_USER_CONFIG_HEADER}
@@ -310,7 +306,7 @@ set(BAKED_PEM_HEADERS
 # --- Executable ---------------------------------------------------------------
 #
 # Project code only. Inherits the full project warning set from the top-level
-# CMakeLists.txt — no -Wno-* relaxations here.
+# CMakeLists.txt - no -Wno-* relaxations here.
 
 add_executable(SolidSyslogBddTargetCmsis
     main.c
@@ -318,7 +314,7 @@ add_executable(SolidSyslogBddTargetCmsis
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/Syscalls.c
     ${BDD_BOARD_LWIP_PROJECT_SOURCES}
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
-    # linked below (S30.02 dogfood): LwipSocket (Address/Datagram/TcpStream/
+    # linked below: LwipSocket (Address/Datagram/TcpStream/
     # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
     # HMAC/AES-GCM policies), LittleFs (file adapter). The block device under
     # LittleFS is the board's, over whichever medium it has for it.
@@ -364,10 +360,10 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
     # Platform/{LwipSocket,CmsisRtos,LittleFs}/{Interface,Source} and the TLS pack's include dirs
-    # now arrive transitively from the SolidSyslog::* pack umbrellas linked below.
+    # arrive transitively from the SolidSyslog::* pack umbrellas linked below.
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${BDD_TLS_INCLUDES}
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h, …
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetInteractive.h, BddTargetSwitchConfig.h...
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h (via lwip/sys.h)
 )

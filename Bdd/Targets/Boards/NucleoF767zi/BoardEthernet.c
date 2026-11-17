@@ -2,9 +2,8 @@
  * driver can start it - see BoardEthernet.h. It is the same under every
  * network stack, so it is here and not in a stack's interface.
  *
- * Not host-TDD'd: this file exists only in the cross build, and what it does
- * is drive the part. The target checklist in the board's README.md is what
- * proves it, on the board. */
+ * Cross build only, so not host-tested: the target checklist in README.md
+ * covers it on the board. */
 
 #include "BoardEthernet.h"
 
@@ -30,8 +29,7 @@ enum
 static void BoardEthernet_ConfigurePins(void);
 static void BoardEthernet_RestartPhy(ETH_HandleTypeDef* ethernet);
 
-/* The HAL calls this from HAL_ETH_Init for the clocks, pins and interrupt,
- * which are the board's. The name and the parameter are ST's. */
+/* The HAL calls this from HAL_ETH_Init for the clocks, pins and interrupt. */
 void HAL_ETH_MspInit(ETH_HandleTypeDef* heth) // NOLINT(readability-identifier-naming) -- ST's name
 {
     __HAL_RCC_ETH_CLK_ENABLE();
@@ -41,7 +39,7 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* heth) // NOLINT(readability-identifier-n
     BoardEthernet_RestartPhy(heth);
 }
 
-/* RMII, as the board's README.md has it in its pin plan. */
+/* RMII, as in the pin plan in README.md. */
 static void BoardEthernet_ConfigurePins(void)
 {
     GPIO_InitTypeDef pins = {0};
@@ -67,19 +65,18 @@ static void BoardEthernet_ConfigurePins(void)
     HAL_GPIO_Init(GPIOG, &pins);
 }
 
-/* The PHY's mode is a strap it reads from pins as it leaves reset, and after
- * a reset through the debug probe it has been seen to take any of several.
- * One of them powers it down, and then it gives the MAC no reference clock,
- * without which the MAC's own reset, which HAL_ETH_Init does next, never
- * completes. So the PHY is put in its mode here, between the clocks and pins
- * the management bus needs and that reset. The bus runs on the MAC's bus
- * clock alone, and needs its divider set first: the HAL leaves it at the one
- * the part resets to, which at this core clock runs the bus faster than a PHY
- * answers. */
+/* The PHY reads its mode from strap pins as it leaves reset, and after a
+ * reset through the debug probe it has been seen to latch the wrong one. One
+ * mode powers it down, so it gives the MAC no reference clock, and without
+ * that the MAC's own reset, which HAL_ETH_Init does next, never completes. So
+ * the PHY's mode is set here, after the clocks and pins the management bus
+ * needs and before that reset. The management bus needs only the MAC's bus
+ * clock, but its divider has to be set first: the HAL leaves it at the reset
+ * value, which at this core clock runs the bus faster than a PHY answers. */
 static void BoardEthernet_RestartPhy(ETH_HandleTypeDef* ethernet)
 {
-    /* One line, written whole: stdio belongs to the target's interactive
-     * thread, and the console lock in _write keeps one write together. */
+    /* Written with one write() and not stdio, which belongs to the target's
+     * interactive thread; the console lock in _write keeps the line whole. */
     static const char DID_NOT_RESTART[] = "[board] ethernet the PHY did not restart\n";
     HAL_ETH_SetMDIOClockRange(ethernet);
     if (!EthernetPhy_Restart(BoardEthernet_WritePhy, BoardEthernet_ReadPhy, ethernet))

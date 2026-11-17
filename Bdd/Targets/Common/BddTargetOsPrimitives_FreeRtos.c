@@ -1,7 +1,5 @@
 /* The FreeRTOS implementation of the BDD-target OS seam - see
- * BddTargetOsPrimitives.h. Selected by the two targets that speak the kernel
- * API directly; the CMSIS-RTOS2 sibling is selected by the target that speaks
- * the wrapper instead. */
+ * BddTargetOsPrimitives.h. For a target that calls the kernel API directly. */
 
 #include "BddTargetOsPrimitives.h"
 

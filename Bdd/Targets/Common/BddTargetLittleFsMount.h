@@ -8,10 +8,9 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* LittleFS implementation of the shared pipeline's FS-mount seam
-     * (struct BddTargetFreeRtosPipelineConfig), beside the ChaN-FatFs and
-     * FreeRTOS-Plus-FAT siblings. Owns the lfs_t and the mounted flag, and
-     * supplies the per-file cache the adapter requires, so the pipeline stays
-     * FS-vendor-agnostic. */
+     * (struct BddTargetFreeRtosPipelineConfig). Owns the lfs_t and the mounted
+     * flag, and supplies the per-file cache the adapter requires, so the
+     * pipeline names no filesystem. */
 
     /* Mount, formatting on first use when the image carries no filesystem.
      * Idempotent. Returns false on an unrecoverable failure so the caller can
@@ -21,8 +20,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Unmount if mounted; no-op otherwise. */
     void BddTargetLittleFsMount_Unmount(void);
 
-    /* Leaves the block device with no filesystem on it - see
-     * BddTargetLittleFsDisk_Wipe, which this is. */
+    /* Calls BddTargetLittleFsDisk_Wipe. */
     bool BddTargetLittleFsMount_Wipe(void);
 
     /* Create / destroy the LittleFS SolidSyslogFile adapter (forward-declared

@@ -1,9 +1,9 @@
 /* Linker script for the QEMU mps2-an385 (Cortex-M3) machine.
  *
  * Memory map:
- *   FLASH (boot ROM image): 0x00000000, 4 MiB — Cortex-M3 fetches initial SP
+ *   FLASH (boot ROM image): 0x00000000, 4 MiB - Cortex-M3 fetches initial SP
  *                           from address 0 and Reset_Handler from address 4.
- *   SRAM:                   0x20000000, 4 MiB — runtime data + heap + stack.
+ *   SRAM:                   0x20000000, 4 MiB - runtime data + heap + stack.
  */
 
 ENTRY(Reset_Handler)

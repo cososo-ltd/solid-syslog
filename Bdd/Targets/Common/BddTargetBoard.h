@@ -16,10 +16,10 @@
 void BddTargetBoard_Init(void);
 
 /* Writes every byte before returning. It may sleep through
- * BddTargetOsPrimitives_Sleep while the transmitter is busy, so it wants a
+ * BddTargetOsPrimitives_Sleep while the transmitter is busy, so it needs a
  * running scheduler for anything longer than the transmitter can take at
- * once. It does not serialise callers: BddTargetOsPrimitives_LockConsole is
- * what keeps one writer's bytes together. */
+ * once. It does not serialise callers; BddTargetOsPrimitives_LockConsole
+ * does. */
 void BddTargetBoard_ConsoleWrite(const char* text, size_t length);
 
 /* Returns the next byte received, sleeping through
@@ -30,9 +30,9 @@ char BddTargetBoard_ConsoleRead(void);
  * a way to. Does not return. */
 void BddTargetBoard_Exit(int status);
 
-/* Says on the console what stopped the target, and where, then stops it. It
- * is what a kernel's or a stack's trap calls when it cannot go on, so it may
- * be called from anywhere - an interrupt, a critical section, before the
+/* Reports on the console what stopped the target, and where, then stops it.
+ * A kernel or stack trap calls it when it cannot continue, so it may be
+ * called from anywhere - an interrupt, a critical section, before the
  * scheduler runs - and takes no lock. Does not return. */
 void BddTargetBoard_Fault(const char* what, const char* where);
 

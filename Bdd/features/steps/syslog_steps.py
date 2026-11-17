@@ -318,11 +318,11 @@ def parse_otel_jsonl_line(line):
         fields["STRUCTURED_DATA"] = _render_otel_structured_data(sd)
 
     # timeUnixNano -> ISO 8601 string compatible with datetime.fromisoformat.
-    # The receiver gives a record whose TIMESTAMP is NILVALUE no time of its
-    # own, only the time it was observed. syslog-ng gives such a record its
-    # time of receipt, so for a target with no clock the observed time is the
-    # same field from either oracle. A target with a clock gets no such
-    # stand-in: a record of its with no timestamp is a fault to be seen.
+    # For a record whose TIMESTAMP is NILVALUE the receiver reports only the
+    # time it was observed. syslog-ng gives such a record its time of receipt,
+    # so for a target with no clock the observed time is the equivalent field.
+    # A target with a clock gets no substitute, so that a record of its
+    # without a timestamp shows as a fault.
     time_ns = log.get("timeUnixNano")
     if (not int(time_ns or 0)) and _target_has_no_clock():
         time_ns = log.get("observedTimeUnixNano")
@@ -333,7 +333,7 @@ def parse_otel_jsonl_line(line):
     return fields
 
 
-# The FreeRTOS targets under an emulator have none. A board has its own.
+# The FreeRTOS targets have no clock under an emulator. A board has one.
 def _target_has_no_clock():
     return (os.environ.get("BDD_TARGET", "linux").lower() == "freertos") and not os.environ.get("BDD_BOARD")
 
@@ -463,12 +463,12 @@ def wait_for_prompt(process, timeout=120):
 
 
 def _answer_to_an_empty_line(process, wait_seconds=3):
-    """What a target that has gone quiet shows when it is sent an empty line.
+    """Returns what a silent target shows when it is sent an empty line.
 
-    A target that is still reading its console answers with its prompt, and one
-    that has stopped answers with nothing, which is what tells a prompt that
-    was lost on the way from a target that never gave one. Only for the report
-    of a timeout: the target is ended straight after.
+    A target that is still reading its console answers with its prompt, and
+    one that has stopped answers with nothing. That distinguishes a prompt
+    lost in transit from a target that never printed one. Used only to report
+    a timeout; the target is killed straight afterwards.
     """
     try:
         process.stdin.write(chr(10))
