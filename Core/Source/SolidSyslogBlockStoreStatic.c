@@ -24,11 +24,17 @@
 
 struct SolidSyslogStore;
 
+enum
+{
+    MIN_DEVICE_BLOCKS = 4U
+};
+
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base);
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
 static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* policy);
+static inline bool BlockStore_DeviceHasEnoughBlocks(struct SolidSyslogBlockDevice* device);
 static struct SolidSyslogStore* BlockStore_CreateInSlot(
     const struct SolidSyslogBlockStoreConfig* config,
     struct SolidSyslogSecurityPolicy* policy
@@ -86,6 +92,14 @@ static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* c
             SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
         );
     }
+    else if (!BlockStore_DeviceHasEnoughBlocks(config->BlockDevice))
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
+        );
+    }
     else
     {
         valid = true;
@@ -104,6 +118,14 @@ static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct
     }
 
     return resolved;
+}
+
+/* The store keeps at least two blocks, and two more stay free: a failed
+ * eviction leaves one over the ceiling, and a resume needs an absent one to
+ * find where the run starts. */
+static inline bool BlockStore_DeviceHasEnoughBlocks(struct SolidSyslogBlockDevice* device)
+{
+    return SolidSyslogBlockDevice_GetBlockCount(device) >= (size_t) MIN_DEVICE_BLOCKS;
 }
 
 /* Every record's trailer is reserved at SOLIDSYSLOG_MAX_INTEGRITY_SIZE, so a policy

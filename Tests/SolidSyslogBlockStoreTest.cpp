@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cstring>
 
+#include "BlockDeviceFake.h"
 #include "DiscardPolicyAnswer.h"
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockDevice.h"
@@ -565,6 +566,14 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
         store = SolidSyslogBlockStore_Create(&config);
     }
 
+    void CreateOnADeviceOf(size_t blockCount)
+    {
+        struct SolidSyslogBlockDevice* sized = BlockDeviceFake_Create(TEST_MAX_BLOCK_SIZE);
+        BlockDeviceFake_SetBlockCount(blockCount);
+        struct SolidSyslogBlockStoreConfig config = MakeConfig(sized);
+        store = SolidSyslogBlockStore_Create(&config);
+    }
+
     void CreateWithMaxBlockSize(size_t maxBlockSize)
     {
         EnsureDeviceBlockSize(maxBlockSize);
@@ -749,6 +758,33 @@ TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsReportedAsFatal)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
     );
+}
+
+/* The store keeps at least two blocks, and two more stay free: a failed
+ * eviction leaves one over the ceiling, and a resume needs an absent one to
+ * find where the run starts. */
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsRefused)
+{
+    CreateOnADeviceOf(3);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsReportedAsFatal)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateOnADeviceOf(3);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
+    );
+}
+
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfFourBlocksIsAccepted)
+{
+    CreateOnADeviceOf(4);
+    CHECK(store != SolidSyslogNullStore_Get());
 }
 
 // clang-format off
@@ -3530,6 +3566,21 @@ TEST(SolidSyslogBlockStorePool, ANullBlockDeviceLeavesEverySlotFree)
     for (auto* slot : pooled)
     {
         CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a NULL BlockDevice kept a pool slot");
+    }
+}
+
+TEST(SolidSyslogBlockStorePool, ADeviceOfTooFewBlocksLeavesEverySlotFree)
+{
+    struct SolidSyslogBlockDevice* small = BlockDeviceFake_Create(TEST_MAX_BLOCK_SIZE);
+    BlockDeviceFake_SetBlockCount(3);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(small);
+    (void) SolidSyslogBlockStore_Create(&config);
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a device of too few blocks kept a pool slot");
     }
 }
 

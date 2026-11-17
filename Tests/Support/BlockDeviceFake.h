@@ -18,6 +18,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * @p blockSize says. */
     struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t blockSize);
 
+    /* How many blocks the device answers that it has, and holds: 100 after
+     * Create, and no more than that. */
+    void BlockDeviceFake_SetBlockCount(size_t count);
+
     /* Media operations since Create: every vtable call but GetBlockSize and
      * GetBlockCount, which read constants. Bounds the work a single store call
      * may do. */

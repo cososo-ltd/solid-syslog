@@ -97,6 +97,25 @@ TEST(BlockDeviceFake, GetBlockCountIsOneHundred)
     LONGS_EQUAL(100, SolidSyslogBlockDevice_GetBlockCount(device));
 }
 
+TEST(BlockDeviceFake, GetBlockCountIsWhatItWasSetTo)
+{
+    BlockDeviceFake_SetBlockCount(8);
+    LONGS_EQUAL(8, SolidSyslogBlockDevice_GetBlockCount(device));
+}
+
+TEST(BlockDeviceFake, ABlockPastTheCountIsNotAcquired)
+{
+    BlockDeviceFake_SetBlockCount(8);
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 8));
+}
+
+TEST(BlockDeviceFake, CreateRestoresTheCount)
+{
+    BlockDeviceFake_SetBlockCount(8);
+    device = BlockDeviceFake_Create(64);
+    LONGS_EQUAL(100, SolidSyslogBlockDevice_GetBlockCount(device));
+}
+
 TEST(BlockDeviceFake, AcquireOfAPresentBlockEmptiesIt)
 {
     SolidSyslogBlockDevice_Acquire(device, 3);

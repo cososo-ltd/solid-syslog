@@ -45,6 +45,7 @@ struct Block
 static struct SolidSyslogBlockDevice device;
 static struct Block blocks[BLOCKDEVICEFAKE_BLOCKS];
 static size_t blockSize;
+static size_t blockCount;
 static size_t operationCount;
 static size_t writeCount;
 static struct BlockDeviceFakeWrite keptWrites[BLOCKDEVICEFAKE_KEPT_WRITES];
@@ -128,7 +129,7 @@ static void LogWrite(size_t blockIndex, size_t offset, size_t count, bool append
 
 static bool IsValidIndex(size_t blockIndex)
 {
-    return blockIndex < BLOCKDEVICEFAKE_BLOCKS;
+    return blockIndex < blockCount;
 }
 
 /* The block at @p blockIndex when an operation on it can go ahead, else NULL:
@@ -290,7 +291,7 @@ static size_t GetBlockSize(struct SolidSyslogBlockDevice* base)
 static size_t GetBlockCount(struct SolidSyslogBlockDevice* base)
 {
     (void) base;
-    return BLOCKDEVICEFAKE_BLOCKS;
+    return blockCount;
 }
 
 struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t size)
@@ -300,6 +301,7 @@ struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t size)
     memset(stuckBytes, 0, sizeof(stuckBytes));
     memset(failedOffsets, 0, sizeof(failedOffsets));
     blockSize = size;
+    blockCount = BLOCKDEVICEFAKE_BLOCKS;
     operationCount = 0U;
     writeCount = 0U;
     absentBehaviour = BLOCKDEVICEFAKE_ABSENT_FAILS;
@@ -315,6 +317,11 @@ struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t size)
     device.GetBlockSize = GetBlockSize;
     device.GetBlockCount = GetBlockCount;
     return &device;
+}
+
+void BlockDeviceFake_SetBlockCount(size_t count)
+{
+    blockCount = count;
 }
 
 size_t BlockDeviceFake_OperationCount(void)
