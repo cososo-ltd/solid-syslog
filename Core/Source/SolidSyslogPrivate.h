@@ -69,12 +69,10 @@ struct SolidSyslog
     void* CaptureStateContext;
     /* The device's answer this pass, read once at its start. */
     enum SolidSyslogCaptureState CaptureState;
-    /* Set once the device has answered On, by Log before it enqueues and by
-     * Service at the start of a pass, and never cleared. While it is clear
-     * every record in the buffer was logged undecided. Log writes it from the
-     * task that logs: a monotone flag, set before the buffer's mutex is taken,
-     * so a record read under that mutex was logged under a flag Service can
-     * now see. */
+    /* Set once the device has answered On, and never cleared; while it is
+     * clear, every record in the buffer was logged undecided. Log sets it from
+     * the task that logs, before it takes the buffer's mutex, so Service sees
+     * it set by the time it reads that record under the same mutex. */
     bool CaptureSeenOn;
     /* Whether the switch turned a report down this pass; each pass starts
      * without. */

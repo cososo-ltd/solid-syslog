@@ -53,6 +53,8 @@ struct LogRequest
 };
 
 static inline void SolidSyslog_AskCaptureState(struct SolidSyslog* self);
+static inline void SolidSyslog_NoteIfCaptureOn(struct SolidSyslog* self, enum SolidSyslogCaptureState capture);
+static inline bool SolidSyslog_IsCaptureDecided(const struct SolidSyslog* self);
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
@@ -493,7 +495,7 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
 {
     self->ReportTurnedDown = false;
     SolidSyslog_AskCaptureState(self);
-    bool drained = (self->CaptureState != SOLIDSYSLOG_CAPTURE_UNDECIDED) && SolidSyslog_DrainBufferIntoStore(self);
+    bool drained = SolidSyslog_IsCaptureDecided(self) && SolidSyslog_DrainBufferIntoStore(self);
     bool storeBlocked = !self->Halted && SolidSyslog_SendOneFromStore(self);
     enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
 
@@ -501,7 +503,7 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
     {
         status = SOLIDSYSLOG_SERVICE_HALTED;
     }
-    else if ((self->CaptureState == SOLIDSYSLOG_CAPTURE_UNDECIDED) || SolidSyslog_IsBlocked(self, storeBlocked, drained))
+    else if (SolidSyslog_IsBlocked(self, storeBlocked, drained))
     {
         status = SOLIDSYSLOG_SERVICE_BLOCKED;
     }
@@ -517,11 +519,25 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
     return status;
 }
 
-/* Once a pass, before anything moves; an On is noted for good. */
+/* Once a pass, before anything moves. */
 static inline void SolidSyslog_AskCaptureState(struct SolidSyslog* self)
 {
     self->CaptureState = self->GetCaptureState(self->CaptureStateContext);
-    self->CaptureSeenOn = self->CaptureSeenOn || (self->CaptureState == SOLIDSYSLOG_CAPTURE_ON);
+    SolidSyslog_NoteIfCaptureOn(self, self->CaptureState);
+}
+
+/* An On is noted for good: from then on every record in the buffer was
+ * captured legitimately, so none is ever discarded. */
+static inline void SolidSyslog_NoteIfCaptureOn(struct SolidSyslog* self, enum SolidSyslogCaptureState capture)
+{
+    self->CaptureSeenOn = self->CaptureSeenOn || (capture == SOLIDSYSLOG_CAPTURE_ON);
+}
+
+/* Undecided holds the buffer, and the reports with it: nothing is read from
+ * it until the device has decided. */
+static inline bool SolidSyslog_IsCaptureDecided(const struct SolidSyslog* self)
+{
+    return self->CaptureState != SOLIDSYSLOG_CAPTURE_UNDECIDED;
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while
@@ -551,8 +567,9 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     return drained;
 }
 
-/* A record read while the device is off was logged while it was undecided,
- * and the user had opted out: it is discarded, and is not a loss. */
+/* A record logged while the device was undecided, on a device that has since
+ * said off, was logged while the user had opted out: it is discarded, and is
+ * not a loss. */
 static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* self)
 {
     bool dealtWith = true;
@@ -569,8 +586,8 @@ static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* s
     return dealtWith;
 }
 
-/* Asked after the Read, so a Log that saw On and then enqueued, on another
- * task, has set the flag by the time its record is read. */
+/* Asked after the Read, so a Log on another task that saw On before it
+ * enqueued has made its note by the time its record is read. */
 static inline bool SolidSyslog_WasLoggedUndecided(const struct SolidSyslog* self)
 {
     return (self->CaptureState == SOLIDSYSLOG_CAPTURE_OFF) && !self->CaptureSeenOn;
@@ -826,14 +843,15 @@ static inline bool SolidSyslog_TakeNextFromStore(struct SolidSyslog* self)
            SolidSyslogStore_ReadNextUnsent(self->Store, self->Record, self->RecordCapacity, &self->RecordLength);
 }
 
-/* A record held for a failed direct send blocks the pass outright: the buffer
+/* A device still to decide whether it captures is waited on, as a sender is.
+ * A record held for a failed direct send blocks the pass outright: the buffer
  * waits behind it. A store that could not move a record blocks it only when the
  * buffer stayed idle - buffer activity out-ranks a blocked store, so a down
  * sender never demotes the loop out of "keep draining" while there is a store to
  * drain into. */
 static inline bool SolidSyslog_IsBlocked(const struct SolidSyslog* self, bool storeBlocked, bool drained)
 {
-    return self->HoldsRecord || (storeBlocked && !drained);
+    return !SolidSyslog_IsCaptureDecided(self) || self->HoldsRecord || (storeBlocked && !drained);
 }
 
 /* An event raised after the walk passed its slot - by the reports themselves,
@@ -911,11 +929,12 @@ static void SolidSyslog_DoLog(
     }
 }
 
-/* Asks the device, and notes an On before the record is enqueued. */
+/* Asks the device from the task that logs, and notes an On before the record
+ * is enqueued, so Service finds the note by the time it reads the record. */
 static inline bool SolidSyslog_IsCaptureOff(struct SolidSyslog* self)
 {
     enum SolidSyslogCaptureState capture = self->GetCaptureState(self->CaptureStateContext);
-    self->CaptureSeenOn = self->CaptureSeenOn || (capture == SOLIDSYSLOG_CAPTURE_ON);
+    SolidSyslog_NoteIfCaptureOn(self, capture);
 
     return capture == SOLIDSYSLOG_CAPTURE_OFF;
 }
