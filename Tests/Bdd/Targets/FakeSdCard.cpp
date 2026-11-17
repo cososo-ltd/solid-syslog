@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 
 namespace
 {
@@ -67,7 +68,10 @@ struct State
     std::map<uint32_t, FakeSdCard::Sector> sectors;
 };
 
-State state;
+/* Held for one test and no longer. An empty container still owns memory in
+ * some standard libraries, so state that outlived the test would show as a
+ * leak in every one. */
+std::unique_ptr<State> state;
 
 /* Worked from the specification's polynomials a bit at a time, and so
      * independently of the tables or shortcuts a driver might use. */
@@ -112,32 +116,32 @@ uint16_t Crc16(const uint8_t* bytes, size_t count)
 void Answer(uint8_t answer)
 {
     /* A card takes at least a byte to answer. */
-    state.outgoing
-        .insert(state.outgoing.end(), static_cast<size_t>(FakeSdCard::settings.idleBytesBeforeAnswer), IDLE_LINE);
-    state.outgoing.push_back(answer);
+    state->outgoing
+        .insert(state->outgoing.end(), static_cast<size_t>(FakeSdCard::settings.idleBytesBeforeAnswer), IDLE_LINE);
+    state->outgoing.push_back(answer);
 }
 
 uint8_t AnswerInState()
 {
-    return state.idle ? ANSWER_IDLE : ANSWER_READY;
+    return static_cast<uint8_t>(state->idle ? ANSWER_IDLE : ANSWER_READY);
 }
 
 void SendBlock(const uint8_t* bytes, size_t count)
 {
-    state.outgoing.push_back(IDLE_LINE);
+    state->outgoing.push_back(IDLE_LINE);
     if (FakeSdCard::settings.sendsNoData)
     {
         return;
     }
     if (FakeSdCard::settings.readErrorToken != 0U)
     {
-        state.outgoing.push_back(FakeSdCard::settings.readErrorToken);
+        state->outgoing.push_back(FakeSdCard::settings.readErrorToken);
         return;
     }
-    state.outgoing.push_back(DATA_TOKEN);
+    state->outgoing.push_back(DATA_TOKEN);
     for (size_t i = 0; i < count; i++)
     {
-        state.outgoing.push_back(bytes[i]);
+        state->outgoing.push_back(bytes[i]);
     }
     uint16_t crc = Crc16(bytes, count);
     if (FakeSdCard::settings.blocksSentDamaged > 0)
@@ -145,8 +149,8 @@ void SendBlock(const uint8_t* bytes, size_t count)
         FakeSdCard::settings.blocksSentDamaged--;
         crc ^= 0x0001U;
     }
-    state.outgoing.push_back(static_cast<uint8_t>(crc >> 8U));
-    state.outgoing.push_back(static_cast<uint8_t>(crc & 0xFFU));
+    state->outgoing.push_back(static_cast<uint8_t>(crc >> 8U));
+    state->outgoing.push_back(static_cast<uint8_t>(crc & 0xFFU));
 }
 
 uint32_t SectorAt(uint32_t address)
@@ -156,11 +160,11 @@ uint32_t SectorAt(uint32_t address)
 
 void AnswerOperatingCondition()
 {
-    const bool starting = FakeSdCard::settings.neverStarts || (state.startPollsSeen < FakeSdCard::settings.startPolls);
-    state.startPollsSeen++;
+    const bool starting = FakeSdCard::settings.neverStarts || (state->startPollsSeen < FakeSdCard::settings.startPolls);
+    state->startPollsSeen++;
     if (!starting)
     {
-        state.idle = false;
+        state->idle = false;
     }
     Answer(AnswerInState());
 }
@@ -173,20 +177,20 @@ void AnswerInterfaceCondition(uint32_t argument)
         return;
     }
     Answer(AnswerInState());
-    state.outgoing.push_back(0x00);
-    state.outgoing.push_back(0x00);
-    state.outgoing.push_back(static_cast<uint8_t>((argument >> 8U) & 0x0FU));
-    state.outgoing.push_back(FakeSdCard::settings.checkPattern);
+    state->outgoing.push_back(0x00);
+    state->outgoing.push_back(0x00);
+    state->outgoing.push_back(static_cast<uint8_t>((argument >> 8U) & 0x0FU));
+    state->outgoing.push_back(FakeSdCard::settings.checkPattern);
 }
 
 void AnswerOcr()
 {
     Answer(AnswerInState());
     /* Powered up, and high capacity or not; then the voltages it takes. */
-    state.outgoing.push_back(FakeSdCard::settings.highCapacity ? 0xC0 : 0x80);
-    state.outgoing.push_back(0xFF);
-    state.outgoing.push_back(0x80);
-    state.outgoing.push_back(0x00);
+    state->outgoing.push_back(FakeSdCard::settings.highCapacity ? 0xC0 : 0x80);
+    state->outgoing.push_back(0xFF);
+    state->outgoing.push_back(0x80);
+    state->outgoing.push_back(0x00);
 }
 
 void AnswerRead(uint32_t argument)
@@ -194,7 +198,7 @@ void AnswerRead(uint32_t argument)
     Answer(FakeSdCard::settings.transferAnswer);
     if (FakeSdCard::settings.transferAnswer == ANSWER_READY)
     {
-        const FakeSdCard::Sector& sector = state.sectors[SectorAt(argument)];
+        const FakeSdCard::Sector& sector = state->sectors[SectorAt(argument)];
         SendBlock(sector.data(), sector.size());
     }
 }
@@ -204,17 +208,17 @@ void AnswerWrite(uint32_t argument)
     Answer(FakeSdCard::settings.transferAnswer);
     if (FakeSdCard::settings.transferAnswer == ANSWER_READY)
     {
-        state.takingBlock = true;
-        state.blockTokenSeen = false;
-        state.blockSector = SectorAt(argument);
-        state.block.clear();
+        state->takingBlock = true;
+        state->blockTokenSeen = false;
+        state->blockSector = SectorAt(argument);
+        state->block.clear();
     }
 }
 
 void Obey(uint8_t index, uint32_t argument)
 {
-    const bool application = state.applicationCommandNext;
-    state.applicationCommandNext = false;
+    const bool application = state->applicationCommandNext;
+    state->applicationCommandNext = false;
     if (application && (index == SD_SEND_OP_COND))
     {
         AnswerOperatingCondition();
@@ -223,18 +227,18 @@ void Obey(uint8_t index, uint32_t argument)
     switch (index)
     {
         case GO_IDLE_STATE:
-            state.idle = true;
+            state->idle = true;
             Answer(ANSWER_IDLE);
             break;
         case CRC_ON_OFF:
-            state.crcOn = (argument & 1U) != 0U;
+            state->crcOn = (argument & 1U) != 0U;
             Answer(AnswerInState());
             break;
         case SEND_IF_COND:
             AnswerInterfaceCondition(argument);
             break;
         case APP_CMD:
-            state.applicationCommandNext = true;
+            state->applicationCommandNext = true;
             Answer(AnswerInState());
             break;
         case READ_OCR:
@@ -255,7 +259,7 @@ void Obey(uint8_t index, uint32_t argument)
             break;
         case SEND_STATUS:
             Answer(AnswerInState());
-            state.outgoing.push_back(FakeSdCard::settings.statusAfterWrite);
+            state->outgoing.push_back(FakeSdCard::settings.statusAfterWrite);
             break;
         default:
             Answer(ANSWER_ILLEGAL_COMMAND | AnswerInState());
@@ -265,26 +269,26 @@ void Obey(uint8_t index, uint32_t argument)
 
 void TakeCommand()
 {
-    const std::vector<uint8_t> frame = state.incoming;
-    state.incoming.clear();
+    const std::vector<uint8_t> frame = state->incoming;
+    state->incoming.clear();
     const uint8_t index = frame[0] & INDEX_MASK;
     const uint32_t argument = (static_cast<uint32_t>(frame[1]) << 24U) | (static_cast<uint32_t>(frame[2]) << 16U) |
                               (static_cast<uint32_t>(frame[3]) << 8U) | static_cast<uint32_t>(frame[4]);
-    if (state.commands.empty())
+    if (state->commands.empty())
     {
-        state.firstFrame = frame;
-        state.rateAtFirstCommand = state.rates.empty() ? "" : state.rates.back();
+        state->firstFrame = frame;
+        state->rateAtFirstCommand = state->rates.empty() ? "" : state->rates.back();
     }
-    state.commands.push_back({index, argument});
+    state->commands.push_back({index, argument});
 
-    if ((index == GO_IDLE_STATE) && (state.goIdlesSeen < FakeSdCard::settings.goIdlesIgnored))
+    if ((index == GO_IDLE_STATE) && (state->goIdlesSeen < FakeSdCard::settings.goIdlesIgnored))
     {
-        state.goIdlesSeen++;
+        state->goIdlesSeen++;
         return;
     }
     /* A card checks the CRC of every command until it is in SPI mode, and
          * of CMD8 always; after that only when it has been told to. */
-    const bool checked = state.crcOn || (index == GO_IDLE_STATE) || (index == SEND_IF_COND);
+    const bool checked = state->crcOn || (index == GO_IDLE_STATE) || (index == SEND_IF_COND);
     const auto expected =
         static_cast<uint8_t>((static_cast<unsigned>(Crc7(frame.data(), COMMAND_LENGTH - 1)) << 1U) | 1U);
     if (checked && (frame[COMMAND_LENGTH - 1] != expected))
@@ -297,12 +301,12 @@ void TakeCommand()
 
 void FinishBlock()
 {
-    state.takingBlock = false;
+    state->takingBlock = false;
     const auto sent = static_cast<uint16_t>(
-        (static_cast<unsigned>(state.block[FakeSdCard::SECTOR_SIZE]) << 8U) | state.block[FakeSdCard::SECTOR_SIZE + 1]
+        (static_cast<unsigned>(state->block[FakeSdCard::SECTOR_SIZE]) << 8U) | state->block[FakeSdCard::SECTOR_SIZE + 1]
     );
     uint8_t response = DATA_ACCEPTED;
-    if (state.crcOn && (sent != Crc16(state.block.data(), FakeSdCard::SECTOR_SIZE)))
+    if (state->crcOn && (sent != Crc16(state->block.data(), FakeSdCard::SECTOR_SIZE)))
     {
         response = DATA_CRC_ERROR;
     }
@@ -315,25 +319,25 @@ void FinishBlock()
     {
         response = FakeSdCard::settings.writeResponse;
     }
-    state.outgoing.push_back(response);
+    state->outgoing.push_back(response);
     if (response == DATA_ACCEPTED)
     {
         FakeSdCard::Sector sector = {};
-        std::copy_n(state.block.begin(), sector.size(), sector.begin());
-        state.sectors[state.blockSector] = sector;
-        state.busyBytes = FakeSdCard::settings.busyBytesAfterWrite;
+        std::copy_n(state->block.begin(), sector.size(), sector.begin());
+        state->sectors[state->blockSector] = sector;
+        state->busyBytes = FakeSdCard::settings.busyBytesAfterWrite;
     }
 }
 
 void TakeBlockByte(uint8_t out)
 {
-    if (!state.blockTokenSeen)
+    if (!state->blockTokenSeen)
     {
-        state.blockTokenSeen = (out == DATA_TOKEN);
+        state->blockTokenSeen = (out == DATA_TOKEN);
         return;
     }
-    state.block.push_back(out);
-    if (state.block.size() == (FakeSdCard::SECTOR_SIZE + 2U))
+    state->block.push_back(out);
+    if (state->block.size() == (FakeSdCard::SECTOR_SIZE + 2U))
     {
         FinishBlock();
     }
@@ -345,29 +349,29 @@ uint8_t ExchangeSelected(uint8_t out)
     {
         return BUSY_LINE;
     }
-    if (state.outgoingSent < state.outgoing.size())
+    if (state->outgoingSent < state->outgoing.size())
     {
-        return state.outgoing[state.outgoingSent++];
+        return state->outgoing[state->outgoingSent++];
     }
-    if (state.takingBlock)
+    if (state->takingBlock)
     {
         TakeBlockByte(out);
         return IDLE_LINE;
     }
-    if (FakeSdCard::settings.staysBusyAfterWrite && (state.busyBytes > 0))
+    if (FakeSdCard::settings.staysBusyAfterWrite && (state->busyBytes > 0))
     {
         return BUSY_LINE;
     }
-    if (state.busyBytes > 0)
+    if (state->busyBytes > 0)
     {
-        state.busyBytes--;
+        state->busyBytes--;
         return BUSY_LINE;
     }
     const bool startsCommand = (out & START_BITS_MASK) == START_BITS;
-    if (!state.incoming.empty() || startsCommand)
+    if (!state->incoming.empty() || startsCommand)
     {
-        state.incoming.push_back(out);
-        if (state.incoming.size() == COMMAND_LENGTH)
+        state->incoming.push_back(out);
+        if (state->incoming.size() == COMMAND_LENGTH)
         {
             TakeCommand();
         }
@@ -383,8 +387,13 @@ Settings settings;
 void Reset()
 {
     settings = Settings();
-    state = State();
+    state = std::make_unique<State>();
     SetHighCapacitySectors(15523840U);
+}
+
+void Release()
+{
+    state.reset();
 }
 
 void SetHighCapacitySectors(uint32_t sectors)
@@ -412,28 +421,28 @@ void SetStandardCapacityTwoGigabytes()
 
 void Store(uint32_t sector, const Sector& content)
 {
-    state.sectors[sector] = content;
+    state->sectors[sector] = content;
 }
 
 bool Holds(uint32_t sector)
 {
-    return state.sectors.count(sector) != 0U;
+    return state->sectors.count(sector) != 0U;
 }
 
 const Sector& Stored(uint32_t sector)
 {
-    return state.sectors[sector];
+    return state->sectors[sector];
 }
 
 const std::vector<Command>& Commands()
 {
-    return state.commands;
+    return state->commands;
 }
 
 int CountOf(uint8_t index)
 {
     int count = 0;
-    for (const Command& command : state.commands)
+    for (const Command& command : state->commands)
     {
         if (command.index == index)
         {
@@ -446,7 +455,7 @@ int CountOf(uint8_t index)
 bool Received(uint8_t index)
 {
     bool received = false;
-    for (const Command& command : state.commands)
+    for (const Command& command : state->commands)
     {
         received = received || (command.index == index);
     }
@@ -456,7 +465,7 @@ bool Received(uint8_t index)
 uint32_t ArgumentOf(uint8_t index)
 {
     uint32_t argument = 0;
-    for (const Command& command : state.commands)
+    for (const Command& command : state->commands)
     {
         if (command.index == index)
         {
@@ -468,37 +477,37 @@ uint32_t ArgumentOf(uint8_t index)
 
 const std::vector<uint8_t>& FirstFrame()
 {
-    return state.firstFrame;
+    return state->firstFrame;
 }
 
 int ClocksBeforeFirstCommand()
 {
-    return state.clocksBeforeFirstCommand;
+    return state->clocksBeforeFirstCommand;
 }
 
 bool IsSelected()
 {
-    return state.selected;
+    return state->selected;
 }
 
 bool CrcIsOn()
 {
-    return state.crcOn;
+    return state->crcOn;
 }
 
 const std::vector<std::string>& Rates()
 {
-    return state.rates;
+    return state->rates;
 }
 
 const std::string& RateAtFirstCommand()
 {
-    return state.rateAtFirstCommand;
+    return state->rateAtFirstCommand;
 }
 
 size_t Exchanges()
 {
-    return state.exchanges;
+    return state->exchanges;
 }
 } // namespace FakeSdCard
 
@@ -506,39 +515,39 @@ extern "C"
 {
     void BddTargetBoardSdCardBus_UseStartRate(void)
     {
-        state.rates.emplace_back("start");
+        state->rates.emplace_back("start");
     }
 
     void BddTargetBoardSdCardBus_UseRunRate(void)
     {
-        state.rates.emplace_back("run");
+        state->rates.emplace_back("run");
     }
 
     void BddTargetBoardSdCardBus_Select(void)
     {
-        state.selected = true;
+        state->selected = true;
     }
 
     void BddTargetBoardSdCardBus_Deselect(void)
     {
         /* A card stops what it was sending when its select rises. */
-        state.selected = false;
-        state.outgoing.clear();
-        state.outgoingSent = 0;
-        state.incoming.clear();
+        state->selected = false;
+        state->outgoing.clear();
+        state->outgoingSent = 0;
+        state->incoming.clear();
     }
 
     uint8_t BddTargetBoardSdCardBus_Exchange(uint8_t out)
     {
-        state.exchanges++;
+        state->exchanges++;
         uint8_t in = IDLE_LINE;
-        if (FakeSdCard::settings.present && state.selected)
+        if (FakeSdCard::settings.present && state->selected)
         {
             in = ExchangeSelected(out);
         }
-        else if (state.commands.empty())
+        else if (state->commands.empty())
         {
-            state.clocksBeforeFirstCommand += 8;
+            state->clocksBeforeFirstCommand += 8;
         }
         else
         {
@@ -551,8 +560,8 @@ extern "C"
      * times comes to its end however little else happens. */
     uint32_t BddTargetBoardSdCardBus_Milliseconds(void)
     {
-        const uint32_t now = state.milliseconds;
-        state.milliseconds += FakeSdCard::settings.millisecondsPerReading;
+        const uint32_t now = state->milliseconds;
+        state->milliseconds += FakeSdCard::settings.millisecondsPerReading;
         return now;
     }
 }
