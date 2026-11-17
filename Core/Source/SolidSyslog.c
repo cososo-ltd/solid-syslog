@@ -52,6 +52,7 @@ struct LogRequest
     size_t SdCount;
 };
 
+static inline void SolidSyslog_AskCaptureState(struct SolidSyslog* self);
 static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self);
 static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidSyslog* self);
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
@@ -491,7 +492,7 @@ static inline bool SolidSyslog_PolicyHalts(struct SolidSyslog* self)
 static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSyslog* self)
 {
     self->ReportTurnedDown = false;
-    self->CaptureState = self->GetCaptureState(self->CaptureStateContext);
+    SolidSyslog_AskCaptureState(self);
     bool drained = (self->CaptureState != SOLIDSYSLOG_CAPTURE_UNDECIDED) && SolidSyslog_DrainBufferIntoStore(self);
     bool storeBlocked = !self->Halted && SolidSyslog_SendOneFromStore(self);
     enum SolidSyslogServiceStatus status = SOLIDSYSLOG_SERVICE_IDLE;
@@ -514,6 +515,13 @@ static enum SolidSyslogServiceStatus SolidSyslog_ProcessMessages(struct SolidSys
     }
 
     return status;
+}
+
+/* Once a pass, before anything moves; an On is noted for good. */
+static inline void SolidSyslog_AskCaptureState(struct SolidSyslog* self)
+{
+    self->CaptureState = self->GetCaptureState(self->CaptureStateContext);
+    self->CaptureSeenOn = self->CaptureSeenOn || (self->CaptureState == SOLIDSYSLOG_CAPTURE_ON);
 }
 
 /* Eagerly drain the buffer so the producer-side shock absorber stays small while

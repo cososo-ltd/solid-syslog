@@ -242,3 +242,19 @@ TEST(SolidSyslogCaptureState, OffAfterOnTheDeactivationRecordIsStillSent)
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_CONTAINS("deactivated", SenderFake_LastBufferAsString(fakeSender));
 }
+
+TEST(SolidSyslogCaptureState, OnceServiceHasSeenOnARecordLoggedUndecidedLaterIsKeptWhenOff)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log("first");
+    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+    SolidSyslog_Service(solidSyslog);
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log("second");
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, TWICE);
+    STRCMP_CONTAINS("second", SenderFake_LastBufferAsString(fakeSender));
+}
