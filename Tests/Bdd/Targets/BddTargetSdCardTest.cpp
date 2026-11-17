@@ -58,7 +58,7 @@ TEST_GROUP(BddTargetSdCard)
     void teardown() override
     {
         /* The fake holds what it was sent in memory the leak check counts. */
-        FakeSdCard::Reset();
+        FakeSdCard::Release();
     }
 
     BddTargetSdCardResult Read(uint32_t sector)

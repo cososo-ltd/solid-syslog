@@ -401,8 +401,7 @@ add_custom_command(TARGET junit POST_BUILD
 )
 
 # CI builds only --target junit; fail the configure if a test executable is not
-# registered with it. SolidSyslogTests is junit's own command, and CI runs
-# BddTargetTests in a step of its own.
+# registered with it. SolidSyslogTests is junit's own command.
 function(collect_test_executables directory result)
     get_property(targets DIRECTORY ${directory} PROPERTY BUILDSYSTEM_TARGETS)
     set(executables "")
@@ -424,7 +423,7 @@ collect_test_executables(${CMAKE_CURRENT_SOURCE_DIR} unregistered_tests)
 # Compared against what register_junit_test ran, not junit's dependencies: a
 # dependency alone builds a test without running it.
 get_property(junit_tests GLOBAL PROPERTY SOLIDSYSLOG_JUNIT_TESTS)
-list(REMOVE_ITEM unregistered_tests ${PROJECT_NAME}Tests BddTargetTests ${junit_tests})
+list(REMOVE_ITEM unregistered_tests ${PROJECT_NAME}Tests ${junit_tests})
 if(unregistered_tests)
     list(JOIN unregistered_tests ", " unregistered_list)
     message(FATAL_ERROR

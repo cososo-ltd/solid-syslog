@@ -42,10 +42,7 @@ jobs:
         run: cmake --preset debug
 
       - name: Build and test
-        run: cmake --build --preset debug --target junit BddTargetTests SolidSyslogBddTarget
-
-      - name: Run BDD target tests
-        run: cd build/debug && ./Tests/Bdd/Targets/BddTargetTests -ojunit -k BddTargetTests
+        run: cmake --build --preset debug --target junit SolidSyslogBddTarget
 
       # The one FreeRTOS shape no other lane builds: the kernel pack selected
       # with Plus-TCP deselected, which is what an lwIP-only integrator has.
