@@ -43,6 +43,7 @@ struct SolidSyslogBlockSequence
     size_t OldestSequence;
     size_t ReadSequence;
     size_t WriteSequence;
+    bool RunHasHoles; /* the resume found a block missing from inside the run */
     size_t ReadCursor;
     size_t ReadBlockSize; /* cached once read, for a read block behind the write block */
     bool ReadBlockSizeKnown;
@@ -61,6 +62,10 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 
 struct SolidSyslogBlockSequence* SolidSyslogBlockSequence_Create(const struct SolidSyslogBlockSequenceConfig* config);
 void SolidSyslogBlockSequence_Destroy(struct SolidSyslogBlockSequence* blockSequence);
+
+/* The fewest blocks a device can have: the least MaxBlocks may be, and the
+ * blocks kept free beyond it. */
+size_t SolidSyslogBlockSequence_MinDeviceBlocks(void);
 
 bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequence);
 

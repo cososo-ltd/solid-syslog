@@ -321,7 +321,7 @@ struct SolidSyslogBlockDevice* BlockDeviceFake_Create(size_t size)
 
 void BlockDeviceFake_SetBlockCount(size_t count)
 {
-    blockCount = count;
+    blockCount = (count < (size_t) BLOCKDEVICEFAKE_BLOCKS) ? count : (size_t) BLOCKDEVICEFAKE_BLOCKS;
 }
 
 size_t BlockDeviceFake_OperationCount(void)

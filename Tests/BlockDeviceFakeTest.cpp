@@ -109,6 +109,12 @@ TEST(BlockDeviceFake, ABlockPastTheCountIsNotAcquired)
     CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 8));
 }
 
+TEST(BlockDeviceFake, TheCountGoesNoHigherThanOneHundred)
+{
+    BlockDeviceFake_SetBlockCount(101);
+    LONGS_EQUAL(100, SolidSyslogBlockDevice_GetBlockCount(device));
+}
+
 TEST(BlockDeviceFake, CreateRestoresTheCount)
 {
     BlockDeviceFake_SetBlockCount(8);

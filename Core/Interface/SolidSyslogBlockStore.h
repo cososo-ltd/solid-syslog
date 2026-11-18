@@ -69,11 +69,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBlockStoreConfig
     {
         /** Required: Create refuses a NULL device, and one with fewer than four
-         *  blocks. The block store is the sole writer. */
+         *  blocks. A device of no blocks, as the Null block device is, gets the
+         *  Null store and no report. The block store is the sole writer. */
         struct SolidSyslogBlockDevice* BlockDevice;
         /** Retention ceiling in blocks, clamped to between 2 and the device's
-         *  block count less 2; GetDiscardPolicy governs the overflow. An eviction that fails freezes the store with one block more
-         *  than this on the media, and the next start keeps it. */
+         *  block count less 2; GetDiscardPolicy governs the overflow. An eviction
+         *  that fails freezes the store with one block more than this on the
+         *  media, and the next start keeps it. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
          *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.

@@ -24,24 +24,21 @@
 
 struct SolidSyslogStore;
 
-enum
-{
-    MIN_DEVICE_BLOCKS = 4U
-};
-
 static inline size_t BlockStore_IndexFromHandle(const struct SolidSyslogStore* base);
 static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
 static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* policy);
-static inline bool BlockStore_DeviceHasEnoughBlocks(struct SolidSyslogBlockDevice* device);
+static bool BlockStore_DeviceHasEnoughBlocks(size_t deviceBlocks);
 static struct SolidSyslogStore* BlockStore_CreateInSlot(
     const struct SolidSyslogBlockStoreConfig* config,
-    struct SolidSyslogSecurityPolicy* policy
+    struct SolidSyslogSecurityPolicy* policy,
+    size_t deviceBlocks
 );
 static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
-    const struct SolidSyslogRecordStore* recordStore
+    const struct SolidSyslogRecordStore* recordStore,
+    size_t deviceBlocks
 );
 static bool BlockStore_DeviceCanHoldOneRecord(
     const struct SolidSyslogBlockStoreConfig* config,
@@ -58,7 +55,13 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 
     if (BlockStore_IsValidConfig(config))
     {
-        result = BlockStore_CreateInSlot(config, BlockStore_ResolveSecurityPolicy(config->SecurityPolicy));
+        size_t deviceBlocks = SolidSyslogBlockDevice_GetBlockCount(config->BlockDevice);
+
+        if (BlockStore_DeviceHasEnoughBlocks(deviceBlocks))
+        {
+            result =
+                BlockStore_CreateInSlot(config, BlockStore_ResolveSecurityPolicy(config->SecurityPolicy), deviceBlocks);
+        }
     }
 
     return result;
@@ -92,14 +95,6 @@ static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* c
             SOLIDSYSLOG_BLOCK_STORE_ERROR_TRAILER_TOO_LARGE
         );
     }
-    else if (!BlockStore_DeviceHasEnoughBlocks(config->BlockDevice))
-    {
-        BlockStore_Report(
-            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
-            SOLIDSYSLOG_CAT_BAD_CONFIG,
-            SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
-        );
-    }
     else
     {
         valid = true;
@@ -120,12 +115,6 @@ static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct
     return resolved;
 }
 
-/* Two for the store to keep, and the two the block sequence leaves free. */
-static inline bool BlockStore_DeviceHasEnoughBlocks(struct SolidSyslogBlockDevice* device)
-{
-    return SolidSyslogBlockDevice_GetBlockCount(device) >= (size_t) MIN_DEVICE_BLOCKS;
-}
-
 /* Every record's trailer is reserved at SOLIDSYSLOG_MAX_INTEGRITY_SIZE, so a policy
  * with a wider one cannot seal into it. Storing records without that policy would
  * keep them unprotected, which the policy contract forbids. */
@@ -134,9 +123,29 @@ static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy
     return policy->TrailerSize <= SOLIDSYSLOG_MAX_INTEGRITY_SIZE;
 }
 
+/* A device of no blocks is the Null block device, or one that answers as it
+ * does: no store is wanted, so the Null store is given and nothing is
+ * reported. */
+static bool BlockStore_DeviceHasEnoughBlocks(size_t deviceBlocks)
+{
+    bool enough = deviceBlocks >= SolidSyslogBlockSequence_MinDeviceBlocks();
+
+    if (!enough && (deviceBlocks > 0U))
+    {
+        BlockStore_Report(
+            SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+            SOLIDSYSLOG_CAT_BAD_CONFIG,
+            SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
+        );
+    }
+
+    return enough;
+}
+
 static struct SolidSyslogStore* BlockStore_CreateInSlot(
     const struct SolidSyslogBlockStoreConfig* config,
-    struct SolidSyslogSecurityPolicy* policy
+    struct SolidSyslogSecurityPolicy* policy,
+    size_t deviceBlocks
 )
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
@@ -162,7 +171,7 @@ static struct SolidSyslogStore* BlockStore_CreateInSlot(
             }
 
             struct SolidSyslogBlockSequenceConfig blockConfig =
-                BlockStore_BuildBlockSequenceConfig(config, recordStore);
+                BlockStore_BuildBlockSequenceConfig(config, recordStore, deviceBlocks);
             struct SolidSyslogBlockSequence* blockSequence = SolidSyslogBlockSequence_Create(&blockConfig);
 
             if (blockSequence != NULL)
@@ -196,7 +205,8 @@ static struct SolidSyslogStore* BlockStore_CreateInSlot(
 
 static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig(
     const struct SolidSyslogBlockStoreConfig* config,
-    const struct SolidSyslogRecordStore* recordStore
+    const struct SolidSyslogRecordStore* recordStore,
+    size_t deviceBlocks
 )
 {
     /* The device is the single source of truth for block size, but a block smaller than
@@ -208,7 +218,7 @@ static struct SolidSyslogBlockSequenceConfig BlockStore_BuildBlockSequenceConfig
 
     struct SolidSyslogBlockSequenceConfig blockConfig = {
         .BlockDevice = config->BlockDevice,
-        .DeviceBlocks = SolidSyslogBlockDevice_GetBlockCount(config->BlockDevice),
+        .DeviceBlocks = deviceBlocks,
         .MaxBlockSize = maxBlockSize,
         .MaxBlocks = config->MaxBlocks,
         .GetDiscardPolicy = config->GetDiscardPolicy,

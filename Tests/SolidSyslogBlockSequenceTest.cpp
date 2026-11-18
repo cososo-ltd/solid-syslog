@@ -415,6 +415,19 @@ TEST(BlockSequenceScan, ARunAcrossTheDevicesLastBlockCountsItsBlocksOnce)
     LONGS_EQUAL(2400, SolidSyslogBlockSequence_UsedBytes(sequence));
 }
 
+/* A device that cannot answer says a block is absent, as it does of a hole. A
+ * run resumed with no hole in it is not asked, so its blocks are never taken
+ * for holes. */
+TEST(BlockSequenceScan, ABlockOfARunWithNoHolesIsNotSteppedOverWhenTheDeviceStopsAnswering)
+{
+    existing = {0, 1, 2};
+    sizes = {{0, 1000}, {1, 1000}, {2, 1000}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    existing.erase(1);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    LONGS_EQUAL(1, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
 /* The step over a hole ends at the write block, so a block a rotation acquires
  * counts as present from then on. */
 TEST(BlockSequenceScan, TheReadReachesABlockAcquiredAfterResume)

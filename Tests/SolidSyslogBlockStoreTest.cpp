@@ -13,6 +13,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogFileBlockDevice.h"
+#include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
@@ -568,7 +569,10 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
 
     void CreateOnADeviceOf(size_t blockCount)
     {
-        struct SolidSyslogBlockDevice* sized = BlockDeviceFake_Create(TEST_MAX_BLOCK_SIZE);
+        /* One worst-case record to a block, which the fake holds whatever the tunables are. */
+        struct SolidSyslogBlockDevice* sized = BlockDeviceFake_Create(
+            SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD + SOLIDSYSLOG_MAX_INTEGRITY_SIZE
+        );
         BlockDeviceFake_SetBlockCount(blockCount);
         struct SolidSyslogBlockStoreConfig config = MakeConfig(sized);
         store = SolidSyslogBlockStore_Create(&config);
@@ -776,6 +780,23 @@ TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsReportedAsFatal)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
     );
+}
+
+/* The Null block device is what a device of no blocks is: a store that is not
+ * wanted, as the Null store is to the logger. */
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfNoBlocksGetsTheNullStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
+    store = SolidSyslogBlockStore_Create(&config);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfNoBlocksIsNotReported)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
+    store = SolidSyslogBlockStore_Create(&config);
+    LONGS_EQUAL(0, ErrorHandlerFake_HandleCallCount());
 }
 
 TEST(SolidSyslogBlockStoreConfig, ADeviceOfFourBlocksIsAccepted)

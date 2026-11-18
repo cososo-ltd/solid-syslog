@@ -8,7 +8,7 @@
 
 enum
 {
-    /* SolidSyslogBlockSequence numbers blocks modulo this, whatever MaxBlocks is. */
+    /* SolidSyslogFileBlockDevice has this many blocks, whatever MaxBlocks is. */
     BLOCK_INDEX_COUNT = 100
 };
 

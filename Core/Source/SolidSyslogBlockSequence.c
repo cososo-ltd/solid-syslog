@@ -76,6 +76,7 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->OldestSequence = 0;
     blockSequence->ReadSequence = 0;
     blockSequence->WriteSequence = 0;
+    blockSequence->RunHasHoles = false;
     blockSequence->ReadCursor = 0;
     blockSequence->ReadBlockSize = 0;
     blockSequence->ReadBlockSizeKnown = false;
@@ -98,6 +99,11 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
      * (integrator-supplied via BlockSequenceConfig.BlockDevice); the next
      * SolidSyslogBlockSequence_Initialise overwrites every field, so clearing here would be churn. */
     (void) blockSequence;
+}
+
+size_t SolidSyslogBlockSequence_MinDeviceBlocks(void)
+{
+    return (size_t) MIN_MAX_BLOCKS + (size_t) SPARE_BLOCKS;
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence);
@@ -168,6 +174,7 @@ struct Gap
 struct Scan
 {
     bool FoundAny;
+    size_t Present; /* how many blocks the device has */
     size_t FirstPresent;
     size_t LastPresent;
     struct Gap LargestInner; /* the largest gap with a present block on each side of it */
@@ -217,6 +224,7 @@ static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence*
         blockSequence->OldestSequence = oldest;
         BlockSequence_StartReadingBlock(blockSequence, oldest);
         blockSequence->WriteSequence = newest;
+        blockSequence->RunHasHoles = BlockSequence_BlocksInRun(blockSequence) != scan.Present;
     }
 
     return scan.FoundAny;
@@ -237,7 +245,7 @@ static inline void BlockSequence_NoteAbsent(struct Scan* scan, size_t sequence);
 /* One pass over the device, asking about each block once. */
 static struct Scan BlockSequence_ScanForBlockPresence(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    struct Scan scan = {false, 0U, 0U, {0U, 0U}, {0U, 0U}};
+    struct Scan scan = {false, 0U, 0U, 0U, {0U, 0U}, {0U, 0U}};
 
     for (size_t sequence = 0U; sequence < blockSequence->DeviceBlocks; sequence++)
     {
@@ -272,6 +280,7 @@ static inline void BlockSequence_NotePresent(struct Scan* scan, size_t sequence)
         /* No gap closed, or one no larger than the largest so far. */
     }
 
+    scan->Present++;
     scan->LastPresent = sequence;
     scan->Current.Length = 0U;
 }
@@ -547,7 +556,8 @@ static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blo
 
 /* Steps over a hole in the run, a block the device no longer has. It stops at
  * the write block whatever the device says of it, so it goes no further than
- * the run does. */
+ * the run does. A run resumed with no hole is not asked: a device that fails
+ * to answer would have its blocks taken for holes. */
 static inline size_t BlockSequence_NextPresentSequence(
     const struct SolidSyslogBlockSequence* blockSequence,
     size_t current
@@ -555,7 +565,8 @@ static inline size_t BlockSequence_NextPresentSequence(
 {
     size_t next = BlockSequence_CircularNext(blockSequence, current);
 
-    while ((next != blockSequence->WriteSequence) && !SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, next))
+    while (blockSequence->RunHasHoles && (next != blockSequence->WriteSequence) &&
+           !SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, next))
     {
         next = BlockSequence_CircularNext(blockSequence, next);
     }

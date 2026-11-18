@@ -33,7 +33,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** @retval true @p blockIndex is present (Acquired and not yet Disposed). Drives crash
      *          recovery: a BlockStore scans the index space with Exists to find the run of
-     *          blocks left by a previous run before deciding where to resume. */
+     *          blocks left by a previous run before deciding where to resume. Where it
+     *          found a block missing from inside that run, it asks again as the read
+     *          reaches the gap, and takes false to mean the block is gone. */
     bool SolidSyslogBlockDevice_Exists(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 
     /** Read @p count bytes from @p blockIndex starting at @p offset into caller-owned @p buf.
