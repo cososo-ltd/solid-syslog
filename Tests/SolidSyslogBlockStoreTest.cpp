@@ -1921,6 +1921,22 @@ TEST(SolidSyslogBlockStoreRotation, AFailedEvictionLeavesTheOldestBlockOnTheDevi
     CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
 }
 
+/* The record is appended before the oldest block is evicted, so an eviction
+ * that fails finds the record already on the device. */
+TEST(SolidSyslogBlockStoreRotation, ARecordThatEvictsIsOnTheDeviceBeforeTheOldestBlockGoes)
+{
+    CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
+    WriteMaxMsg(); /* block 00 */
+    WriteMaxMsg(); /* block 01 */
+    FileFake_FailNextDelete(file);
+
+    WriteMaxMsg(); /* block 02 - the discard of 00 fails */
+
+    size_t size = 0U;
+    CHECK_TRUE(SolidSyslogBlockDevice_Size(device, 2, &size));
+    LONGS_EQUAL(ONE_MAX_MSG_RECORD, size);
+}
+
 TEST(SolidSyslogBlockStoreRotation, AFailedDisposeOfADrainedBlockFreezesTheStore)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
@@ -2240,7 +2256,7 @@ TEST(SolidSyslogBlockStoreIntegrity, ARejectedRecordWithADamagedLengthLeavesTheN
     SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
 
     /* The second record, byte for byte as it was written. */
-    const uint8_t secondRecord[] = {0xA5, 0x5A, 0x06, 0x00, 's', 'e', 'c', 'o', 'n', 'd', 0xFF};
+    const uint8_t secondRecord[] = {0xA5, 0x5A, 0x06, 0x00, 's', 'e', 'c', 'o', 'n', 'd', 0xF0};
     uint8_t onMedia[sizeof(secondRecord)] = {};
     CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 10, onMedia, sizeof(onMedia)));
     MEMCMP_EQUAL(secondRecord, onMedia, sizeof(onMedia));

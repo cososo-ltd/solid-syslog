@@ -73,6 +73,12 @@ bool SolidSyslogBlockSequence_PrepareForWrite(
     size_t recordSize,
     bool* readBlockChanged
 );
+/* Evicts the oldest block where a rotation has left the run over its ceiling,
+ * and says whether it did, the read block having then changed. Called once the
+ * record that needed the new block is on the device: an eviction can take as
+ * long as an erase, and the record is not left waiting on it. A dispose that
+ * fails is noted as a device failure. */
+bool SolidSyslogBlockSequence_EvictIfOverCeiling(struct SolidSyslogBlockSequence* blockSequence);
 struct SolidSyslogBlockDevice* SolidSyslogBlockSequence_BlockDevice(const struct SolidSyslogBlockSequence* blockSequence
 );
 size_t SolidSyslogBlockSequence_WriteSequence(const struct SolidSyslogBlockSequence* blockSequence);

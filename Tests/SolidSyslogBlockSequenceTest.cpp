@@ -185,6 +185,13 @@ TEST_BASE(BlockSequenceTestBase)
             return (call.type == CallType::Dispose) && (call.BlockIndex == blockIndex);
         });
     }
+
+    [[nodiscard]] long DisposeCallCount() const
+    {
+        return std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) {
+            return call.type == CallType::Dispose;
+        });
+    }
 };
 
 TEST_GROUP_BASE(BlockSequenceScan, BlockSequenceTestBase)
@@ -346,6 +353,7 @@ TEST(BlockSequenceScan, AHoleCountsTowardsTheBlockCeiling)
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
     bool readBlockChanged = false;
     CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_EvictIfOverCeiling(sequence));
     CHECK_TRUE(WasDisposed(0));
 }
 
@@ -372,6 +380,7 @@ TEST(BlockSequenceScan, AnEvictionBeforeAHoleHandsOldestToTheBlockAfterIt)
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
     bool readBlockChanged = false;
     CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_EvictIfOverCeiling(sequence));
     CHECK_TRUE(SolidSyslogBlockSequence_EvictedUnsent(sequence));
     LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
     CHECK_FALSE(WasDisposed(1));
@@ -602,9 +611,33 @@ TEST(BlockSequenceRotation, AFailedEvictionIsTheLastDeviceCall)
     calls.clear();
     fakeDevice.failNextDispose = true;
 
-    ForceRotation(); /* block 2 - evicting block 0 fails */
+    ForceRotation(); /* block 2 */
+    CHECK_FALSE(SolidSyslogBlockSequence_EvictIfOverCeiling(sequence)); /* evicting block 0 fails */
+    CHECK_FALSE(SolidSyslogBlockSequence_EvictIfOverCeiling(sequence));
 
     CHECK_TRUE(calls.back().type == CallType::Dispose);
+    LONGS_EQUAL(1, DisposeCallCount());
+}
+
+/* The store appends the record that needed the new block before it evicts. */
+TEST(BlockSequenceRotation, ARotationOverTheCeilingLeavesTheOldestBlockForTheStoreToEvict)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* block 1 */
+    NoteRecordInWriteBlock();
+    calls.clear();
+
+    ForceRotation(); /* block 2 - one over the ceiling */
+
+    LONGS_EQUAL(0, DisposeCallCount());
+}
+
+TEST(BlockSequenceRotation, ARunWithinItsCeilingEvictsNothing)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* block 1 */
+
+    CHECK_FALSE(SolidSyslogBlockSequence_EvictIfOverCeiling(sequence));
 }
 
 TEST(BlockSequenceRotation, AStaleBlockThatWillNotDisposeIsADisposeFailure)

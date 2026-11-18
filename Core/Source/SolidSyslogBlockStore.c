@@ -198,6 +198,7 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
     size_t size
 );
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
+static bool BlockStore_EvictAfterAppend(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
@@ -239,8 +240,6 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
     }
     else
     {
-        BlockStore_ReportEviction(self);
-
         if (readBlockChanged)
         {
             SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
@@ -253,17 +252,25 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
             data,
             size
         );
-        if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED)
+
+        if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
+        {
+            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
+        }
+        else if (BlockStore_EvictAfterAppend(self))
+        {
+            /* The eviction failed and froze the store. The record is on the
+             * device and is still not counted as kept: the store is transient
+             * from here, so the sender takes the record now, and a restart
+             * may send it again. */
+        }
+        else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED)
         {
             result = SOLIDSYSLOG_STORE_WRITE_KEPT;
             SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
             /* A record kept ends a run of refusals or seal failures. */
             self->RefusalReported = false;
             self->SealFailureReported = false;
-        }
-        else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
-        {
-            BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
         }
         else
         {
@@ -273,6 +280,25 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
     }
 
     return result;
+}
+
+/* The oldest block goes only once the record that needed its place has been
+ * appended. True when the eviction failed and the store froze on it. */
+static bool BlockStore_EvictAfterAppend(struct SolidSyslogBlockStore* self)
+{
+    if (SolidSyslogBlockSequence_EvictIfOverCeiling(self->BlockSequence))
+    {
+        SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
+    }
+
+    bool frozen = BlockStore_FreezeIfDeviceFailed(self);
+
+    if (!frozen)
+    {
+        BlockStore_ReportEviction(self);
+    }
+
+    return frozen;
 }
 
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)

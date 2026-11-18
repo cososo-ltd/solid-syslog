@@ -424,16 +424,15 @@ static inline enum SolidSyslogDiscardPolicy BlockSequence_DiscardPolicy(
     return blockSequence->GetDiscardPolicy(blockSequence->DiscardPolicyContext);
 }
 
-static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence);
-static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence);
-
 static inline void BlockSequence_AdvanceWriteToNewBlock(
     struct SolidSyslogBlockSequence* blockSequence,
     size_t nextSequence
 );
-static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 
+/* Leaves the run one block over its ceiling where the read block still holds
+ * records to send: the store appends the record that needed the new block and
+ * then calls SolidSyslogBlockSequence_EvictIfOverCeiling. */
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged)
 {
     size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
@@ -452,15 +451,6 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
          * re-evaluated before any eviction, so a block with nothing left to send
          * is disposed rather than evicted, and an eviction always costs records. */
         SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, readBlockChanged);
-
-        /* A failed device is not called again. */
-        if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
-        {
-            if (BlockSequence_DiscardOldestBlock(blockSequence))
-            {
-                *readBlockChanged = true;
-            }
-        }
     }
     else
     {
@@ -515,6 +505,23 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     blockSequence->WriteSequence = nextSequence;
     blockSequence->WritePosition = 0;
     blockSequence->WriteBlockCorrupt = false;
+}
+
+static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
+static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence);
+static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence);
+
+/* A failed device is not called again. */
+bool SolidSyslogBlockSequence_EvictIfOverCeiling(struct SolidSyslogBlockSequence* blockSequence)
+{
+    bool evicted = false;
+
+    if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
+    {
+        evicted = BlockSequence_DiscardOldestBlock(blockSequence);
+    }
+
+    return evicted;
 }
 
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence)
