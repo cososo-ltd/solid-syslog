@@ -75,10 +75,12 @@ guidance describes. The field's doc comment is the home of the contract.
 **Before the configuration is read.** A device that logs before it knows whether its
 user has opted out answers undecided. The logger holds those records in RAM, in a
 queueing buffer, and writes nothing to the store or the wire; the field's doc comment
-names the buffer that cannot hold. The first answer of off discards them, so a device
-whose user had opted out leaves no trace of the events it logged while it was finding
-that out, and the library writes no record of its own either until the device has been
-on; the first answer of on delivers them. Records held this way are lost if power
+names the buffer that cannot hold. The first service pass that finds the answer off
+discards them, so a device whose user had opted out leaves no trace of the events it
+logged while it was finding that out, and the library writes no record of its own either
+until the device has been on; the first answer of on delivers them. A device that
+answers off and then on before a service pass has run keeps them. Records held this way
+are lost if power
 fails before the decision, so read the opt-out from local storage as early as the
 device can.
 
