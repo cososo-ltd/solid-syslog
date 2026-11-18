@@ -782,21 +782,35 @@ TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsReportedAsFatal)
     );
 }
 
-/* The Null block device is what a device of no blocks is: a store that is not
- * wanted, as the Null store is to the logger. */
-TEST(SolidSyslogBlockStoreConfig, ADeviceOfNoBlocksGetsTheNullStore)
+/* The Null block device is a store that is not wanted, as the Null store is to
+ * the logger. */
+TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceGetsTheNullStore)
 {
     struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
     store = SolidSyslogBlockStore_Create(&config);
     POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
 }
 
-TEST(SolidSyslogBlockStoreConfig, ADeviceOfNoBlocksIsNotReported)
+TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceIsNotReported)
 {
     ErrorHandlerFake_Install(nullptr);
     struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
     store = SolidSyslogBlockStore_Create(&config);
     LONGS_EQUAL(0, ErrorHandlerFake_HandleCallCount());
+}
+
+/* Only the Null block device says no store is wanted. Another device that
+ * answers no blocks is one that has gone wrong. */
+TEST(SolidSyslogBlockStoreConfig, ADeviceOtherThanTheNullOneThatAnswersNoBlocksIsReported)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateOnADeviceOf(0);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
+    );
 }
 
 TEST(SolidSyslogBlockStoreConfig, ADeviceOfFourBlocksIsAccepted)

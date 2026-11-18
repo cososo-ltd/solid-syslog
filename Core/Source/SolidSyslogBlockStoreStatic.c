@@ -15,6 +15,7 @@
 #include "SolidSyslogBlockStorePrivate.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogPoolAllocator.h"
@@ -29,6 +30,7 @@ static inline void BlockStore_CleanupAtIndex(size_t index, void* context);
 static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* config);
 static struct SolidSyslogSecurityPolicy* BlockStore_ResolveSecurityPolicy(struct SolidSyslogSecurityPolicy* configured);
 static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy* policy);
+static inline bool BlockStore_IsNullBlockDevice(const struct SolidSyslogBlockDevice* device);
 static bool BlockStore_DeviceHasEnoughBlocks(size_t deviceBlocks);
 static struct SolidSyslogStore* BlockStore_CreateInSlot(
     const struct SolidSyslogBlockStoreConfig* config,
@@ -53,7 +55,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
 
-    if (BlockStore_IsValidConfig(config))
+    if (BlockStore_IsValidConfig(config) && !BlockStore_IsNullBlockDevice(config->BlockDevice))
     {
         size_t deviceBlocks = SolidSyslogBlockDevice_GetBlockCount(config->BlockDevice);
 
@@ -123,14 +125,18 @@ static inline bool BlockStore_TrailerFits(const struct SolidSyslogSecurityPolicy
     return policy->TrailerSize <= SOLIDSYSLOG_MAX_INTEGRITY_SIZE;
 }
 
-/* A device of no blocks is the Null block device, or one that answers as it
- * does: no store is wanted, so the Null store is given and nothing is
- * reported. */
+/* The Null block device says no store is wanted: the Null store is given and
+ * nothing is reported, as when the logger is given the Null store itself. */
+static inline bool BlockStore_IsNullBlockDevice(const struct SolidSyslogBlockDevice* device)
+{
+    return device == SolidSyslogNullBlockDevice_Get();
+}
+
 static bool BlockStore_DeviceHasEnoughBlocks(size_t deviceBlocks)
 {
     bool enough = deviceBlocks >= SolidSyslogBlockSequence_MinDeviceBlocks();
 
-    if (!enough && (deviceBlocks > 0U))
+    if (!enough)
     {
         BlockStore_Report(
             SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,

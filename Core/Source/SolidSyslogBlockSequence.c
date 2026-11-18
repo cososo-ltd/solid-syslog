@@ -76,7 +76,7 @@ void SolidSyslogBlockSequence_Initialise(
     blockSequence->OldestSequence = 0;
     blockSequence->ReadSequence = 0;
     blockSequence->WriteSequence = 0;
-    blockSequence->RunHasHoles = false;
+    blockSequence->HolesAhead = 0;
     blockSequence->ReadCursor = 0;
     blockSequence->ReadBlockSize = 0;
     blockSequence->ReadBlockSizeKnown = false;
@@ -107,10 +107,7 @@ size_t SolidSyslogBlockSequence_MinDeviceBlocks(void)
 }
 
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence);
-static inline size_t BlockSequence_NextPresentSequence(
-    const struct SolidSyslogBlockSequence* blockSequence,
-    size_t current
-);
+static inline size_t BlockSequence_NextPresentSequence(struct SolidSyslogBlockSequence* blockSequence, size_t current);
 static inline void BlockSequence_NoteDeviceFailure(
     struct SolidSyslogBlockSequence* blockSequence,
     enum SolidSyslogBlockStoreErrors failedOperation
@@ -173,8 +170,7 @@ struct Gap
 /* What one pass over the device's blocks finds. */
 struct Scan
 {
-    bool FoundAny;
-    size_t Present; /* how many blocks the device has */
+    size_t Present; /* how many blocks the device holds */
     size_t FirstPresent;
     size_t LastPresent;
     struct Gap LargestInner; /* the largest gap with a present block on each side of it */
@@ -208,8 +204,9 @@ static inline void BlockSequence_StartReadingBlock(struct SolidSyslogBlockSequen
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence)
 {
     struct Scan scan = BlockSequence_ScanForBlockPresence(blockSequence);
+    bool foundAny = scan.Present > 0U;
 
-    if (scan.FoundAny)
+    if (foundAny)
     {
         struct Gap largest = BlockSequence_LargestGap(blockSequence, &scan);
         size_t oldest = 0U;
@@ -224,10 +221,10 @@ static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence*
         blockSequence->OldestSequence = oldest;
         BlockSequence_StartReadingBlock(blockSequence, oldest);
         blockSequence->WriteSequence = newest;
-        blockSequence->RunHasHoles = BlockSequence_BlocksInRun(blockSequence) != scan.Present;
+        blockSequence->HolesAhead = BlockSequence_BlocksInRun(blockSequence) - scan.Present;
     }
 
-    return scan.FoundAny;
+    return foundAny;
 }
 
 /* The cursor goes to the start of the block, and a size cached for the block
@@ -245,7 +242,7 @@ static inline void BlockSequence_NoteAbsent(struct Scan* scan, size_t sequence);
 /* One pass over the device, asking about each block once. */
 static struct Scan BlockSequence_ScanForBlockPresence(const struct SolidSyslogBlockSequence* blockSequence)
 {
-    struct Scan scan = {false, 0U, 0U, 0U, {0U, 0U}, {0U, 0U}};
+    struct Scan scan = {0U, 0U, 0U, {0U, 0U}, {0U, 0U}};
 
     for (size_t sequence = 0U; sequence < blockSequence->DeviceBlocks; sequence++)
     {
@@ -266,9 +263,8 @@ static struct Scan BlockSequence_ScanForBlockPresence(const struct SolidSyslogBl
  * a present block came before it too. */
 static inline void BlockSequence_NotePresent(struct Scan* scan, size_t sequence)
 {
-    if (!scan->FoundAny)
+    if (scan->Present == 0U)
     {
-        scan->FoundAny = true;
         scan->FirstPresent = sequence;
     }
     else if (scan->Current.Length > scan->LargestInner.Length)
@@ -437,43 +433,70 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     size_t nextSequence
 );
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
+static bool BlockSequence_EvictDownToCeiling(struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged)
 {
-    size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
-    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
+    bool acquired = false;
+    bool drained = false;
+    bool evicted = false;
 
-    *readBlockChanged = false;
+    blockSequence->EvictedUnsent = false;
 
-    if (acquired)
+    /* A run resumed over its ceiling, after an eviction that failed, comes
+     * down to it first: acquiring before that could take the last absent
+     * block, and a start after a power cut there could not find the run. */
+    evicted = BlockSequence_EvictDownToCeiling(blockSequence);
+
+    /* A failed device is not called again. */
+    if (!blockSequence->DeviceFailed)
     {
-        BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
-        blockSequence->EvictedUnsent = false;
+        size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
+        acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
 
-        /* Sealing the prior write block can re-arm dispose-on-empty: drain that
-         * fully MarkSent the block before rotation could not fire here because
-         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. It is
-         * re-evaluated before any eviction, so a block with nothing left to send
-         * is disposed rather than evicted, and an eviction always costs records. */
-        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, readBlockChanged);
-
-        /* A failed device is not called again. */
-        if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
+        if (acquired)
         {
-            if (BlockSequence_DiscardOldestBlock(blockSequence))
+            BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
+
+            /* Sealing the prior write block can re-arm dispose-on-empty: drain that
+             * fully MarkSent the block before rotation could not fire here because
+             * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. It is
+             * re-evaluated before any eviction, so a block with nothing left to send
+             * is disposed rather than evicted, and an eviction always costs records. */
+            SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &drained);
+
+            if (BlockSequence_EvictDownToCeiling(blockSequence))
             {
-                *readBlockChanged = true;
+                evicted = true;
             }
         }
-    }
-    else
-    {
-        /* Only a device failure gets here, and AcquireEmptyBlock has noted it: a
-         * full store that keeps what it has never rotates. */
+        else
+        {
+            /* AcquireEmptyBlock has noted the device failure. */
+        }
     }
 
+    *readBlockChanged = drained || evicted;
+
     return acquired;
+}
+
+/* Evicts the oldest block until the run is no longer over its ceiling, or the
+ * device fails. Says whether any block went. */
+static bool BlockSequence_EvictDownToCeiling(struct SolidSyslogBlockSequence* blockSequence)
+{
+    bool evicted = false;
+
+    while (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
+    {
+        if (BlockSequence_DiscardOldestBlock(blockSequence))
+        {
+            evicted = true;
+        }
+    }
+
+    return evicted;
 }
 
 /* Dispose-then-Acquire enforces the BlockDevice contract that an Acquired block
@@ -554,24 +577,31 @@ static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blo
     BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
 }
 
+static inline bool BlockSequence_IsHole(const struct SolidSyslogBlockSequence* blockSequence, size_t sequence);
+
 /* Steps over a hole in the run, a block the device no longer has. It stops at
  * the write block whatever the device says of it, so it goes no further than
- * the run does. A run resumed with no hole is not asked: a device that fails
- * to answer would have its blocks taken for holes. */
-static inline size_t BlockSequence_NextPresentSequence(
-    const struct SolidSyslogBlockSequence* blockSequence,
-    size_t current
-)
+ * the run does. */
+static inline size_t BlockSequence_NextPresentSequence(struct SolidSyslogBlockSequence* blockSequence, size_t current)
 {
     size_t next = BlockSequence_CircularNext(blockSequence, current);
 
-    while (blockSequence->RunHasHoles && (next != blockSequence->WriteSequence) &&
-           !SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, next))
+    while (BlockSequence_IsHole(blockSequence, next))
     {
+        blockSequence->HolesAhead--;
         next = BlockSequence_CircularNext(blockSequence, next);
     }
 
     return next;
+}
+
+/* The device is asked only while a hole the resume found is still ahead: a
+ * device that fails to answer would otherwise have its blocks taken for
+ * holes. */
+static inline bool BlockSequence_IsHole(const struct SolidSyslogBlockSequence* blockSequence, size_t sequence)
+{
+    return (blockSequence->HolesAhead > 0U) && (sequence != blockSequence->WriteSequence) &&
+           !SolidSyslogBlockDevice_Exists(blockSequence->BlockDevice, sequence);
 }
 
 struct SolidSyslogBlockDevice* SolidSyslogBlockSequence_BlockDevice(const struct SolidSyslogBlockSequence* blockSequence

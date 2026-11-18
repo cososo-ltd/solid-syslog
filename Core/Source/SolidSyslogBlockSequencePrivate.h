@@ -43,7 +43,7 @@ struct SolidSyslogBlockSequence
     size_t OldestSequence;
     size_t ReadSequence;
     size_t WriteSequence;
-    bool RunHasHoles; /* the resume found a block missing from inside the run */
+    size_t HolesAhead; /* blocks the resume found missing from inside the run, not yet stepped over */
     size_t ReadCursor;
     size_t ReadBlockSize; /* cached once read, for a read block behind the write block */
     bool ReadBlockSizeKnown;

@@ -1,39 +1,40 @@
-#include "BddTargetBlockFiles.h"
-#include "SolidSyslogFileDefinition.h"
-#include "CppUTest/TestHarness.h"
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <algorithm>
-#include <iterator>
+#include <set>
 #include <string>
+
+#include "BddTargetBlockFiles.h"
+#include "SolidSyslogBlockDeviceDefinition.h"
+#include "CppUTest/TestHarness.h"
 
 namespace
 {
-/* A File whose Exists answers from a list of present paths; nothing else is
-   ever called on it. */
-const char* presentPaths[4] = {};
+/* A block device that answers how many blocks it has and which are present;
+   nothing else is ever called on it. */
+std::set<size_t> presentBlocks;
+size_t blockCount = 0U;
 
-bool ExistsInList(struct SolidSyslogFile* base, const char* path)
+bool ExistsInSet(struct SolidSyslogBlockDevice* base, size_t blockIndex)
 {
     (void) base;
-    return std::any_of(
-        std::begin(presentPaths),
-        std::end(presentPaths),
-        [path](const char* present) { return (present != nullptr) && (strcmp(present, path) == 0); }
-    );
+    return presentBlocks.count(blockIndex) > 0;
 }
 
-struct SolidSyslogFile listFile = {};
+size_t CountOfBlocks(struct SolidSyslogBlockDevice* base)
+{
+    (void) base;
+    return blockCount;
+}
 
-std::string PrintBlockFiles(struct SolidSyslogFile* file, const char* prefix)
+struct SolidSyslogBlockDevice listDevice = {};
+
+std::string PrintBlocks()
 {
     char* buffer = nullptr;
     size_t length = 0U;
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- open_memstream/fclose is POSIX C; buffer freed below
     FILE* out = open_memstream(&buffer, &length);
-    BddTargetBlockFiles_Print(out, file, prefix);
+    BddTargetBlockFiles_Print(out, &listDevice);
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory) -- see above
     fclose(out);
     std::string captured(buffer, length);
@@ -43,57 +44,82 @@ std::string PrintBlockFiles(struct SolidSyslogFile* file, const char* prefix)
 }
 } // namespace
 
-#define CHECK_BLOCKS_LISTED(expected, file, prefix) STRCMP_EQUAL(expected, PrintBlockFiles(file, prefix).c_str())
+#define CHECK_BLOCKS_LISTED(expected) STRCMP_EQUAL(expected, PrintBlocks().c_str())
 
 // clang-format off
 TEST_GROUP(BddTargetBlockFiles)
 {
     void setup() override
     {
-        std::fill(std::begin(presentPaths), std::end(presentPaths), nullptr);
-        listFile.Exists = ExistsInList;
+        presentBlocks.clear();
+        blockCount = 100U;
+        listDevice.Exists = ExistsInSet;
+        listDevice.GetBlockCount = CountOfBlocks;
+    }
+
+    void teardown() override
+    {
+        presentBlocks.clear();
     }
 };
 // clang-format on
 
 TEST(BddTargetBlockFiles, NoBlocksPrintsTheBareHeader)
 {
-    CHECK_BLOCKS_LISTED("BLOCKS:\n", &listFile, "/STORE");
+    CHECK_BLOCKS_LISTED("BLOCKS:\n");
+}
+
+TEST(BddTargetBlockFiles, ADeviceOfNoBlocksPrintsTheBareHeader)
+{
+    blockCount = 0U;
+    presentBlocks = {0};
+
+    CHECK_BLOCKS_LISTED("BLOCKS:\n");
 }
 
 TEST(BddTargetBlockFiles, OnePresentBlockIsListedByItsIndex)
 {
-    presentPaths[0] = "/STORE00.log";
+    presentBlocks = {0};
 
-    CHECK_BLOCKS_LISTED("BLOCKS: 00\n", &listFile, "/STORE");
+    CHECK_BLOCKS_LISTED("BLOCKS: 00\n");
 }
 
 TEST(BddTargetBlockFiles, PresentBlocksAreListedInIndexOrderWithGapsLeftOut)
 {
-    presentPaths[0] = "/STORE02.log";
-    presentPaths[1] = "/STORE00.log";
+    presentBlocks = {2, 0};
 
-    CHECK_BLOCKS_LISTED("BLOCKS: 00 02\n", &listFile, "/STORE");
+    CHECK_BLOCKS_LISTED("BLOCKS: 00 02\n");
 }
 
-TEST(BddTargetBlockFiles, TheLastIndexTheSequenceCanUseIsListed)
+TEST(BddTargetBlockFiles, TheDevicesLastBlockIsListed)
 {
-    presentPaths[0] = "/STORE99.log";
+    presentBlocks = {99};
 
-    CHECK_BLOCKS_LISTED("BLOCKS: 99\n", &listFile, "/STORE");
+    CHECK_BLOCKS_LISTED("BLOCKS: 99\n");
 }
 
-TEST(BddTargetBlockFiles, AnIndexOfTenOrMoreKeepsTwoDigits)
+TEST(BddTargetBlockFiles, ABlockPastTheDevicesCountIsNotAskedFor)
 {
-    presentPaths[0] = "/ata0a/STORE10.log";
+    blockCount = 8U;
+    presentBlocks = {7, 8};
 
-    CHECK_BLOCKS_LISTED("BLOCKS: 10\n", &listFile, "/ata0a/STORE");
+    CHECK_BLOCKS_LISTED("BLOCKS: 07\n");
+}
+
+TEST(BddTargetBlockFiles, ADeviceOfMoreThanOneHundredBlocksListsThemAll)
+{
+    blockCount = 256U;
+    presentBlocks = {99, 100, 255};
+
+    CHECK_BLOCKS_LISTED("BLOCKS: 99 100 255\n");
 }
 
 /* Test list (ZOMBIES order):
  *  Z  [x] NoBlocksPrintsTheBareHeader
+ *  Z  [x] ADeviceOfNoBlocksPrintsTheBareHeader
  *  O  [x] OnePresentBlockIsListedByItsIndex
  *  M  [x] PresentBlocksAreListedInIndexOrderWithGapsLeftOut
- *  B  [x] TheLastIndexTheSequenceCanUseIsListed
- *  B  [x] AnIndexOfTenOrMoreKeepsTwoDigits
+ *  B  [x] TheDevicesLastBlockIsListed
+ *  B  [x] ABlockPastTheDevicesCountIsNotAskedFor
+ *  B  [x] ADeviceOfMoreThanOneHundredBlocksListsThemAll
  */

@@ -5,15 +5,15 @@
 
 #include "SolidSyslogExternC.h"
 
-struct SolidSyslogFile;
+struct SolidSyslogBlockDevice;
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* The reply to the harness's `blocks` command: one line, `BLOCKS:` then
-       the two-digit index of each block file present under pathPrefix, asked
-       of the pack's own File. Every index the block sequence can use is
-       asked for; the retention limit does not bound the index. */
-    void BddTargetBlockFiles_Print(FILE * out, struct SolidSyslogFile * file, const char* pathPrefix);
+       the index, in at least two digits, of each block the device says is
+       present. Every block the device has is asked for; the retention limit
+       does not bound the index. */
+    void BddTargetBlockFiles_Print(FILE * out, struct SolidSyslogBlockDevice * device);
 
 SOLIDSYSLOG_EXTERN_C_END
 
