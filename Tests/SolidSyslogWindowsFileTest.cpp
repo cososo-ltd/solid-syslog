@@ -273,6 +273,11 @@ TEST(SolidSyslogWindowsFile, CallsThatSucceedReportNothing)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
+TEST(SolidSyslogWindowsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogWindowsFileErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsFilePool)
 {
@@ -412,9 +417,4 @@ TEST(SolidSyslogWindowsFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogWindowsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
-{
-    CHECK(SolidSyslogFileErrors_Name == SolidSyslogWindowsFileErrorSource.DetailName);
 }

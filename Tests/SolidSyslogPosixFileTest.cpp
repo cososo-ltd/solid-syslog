@@ -294,6 +294,11 @@ TEST(SolidSyslogPosixFile, CallsThatSucceedReportNothing)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
+TEST(SolidSyslogPosixFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogPosixFileErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixFilePool)
 {
@@ -433,9 +438,4 @@ TEST(SolidSyslogPosixFilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPosixFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
-{
-    CHECK(SolidSyslogFileErrors_Name == SolidSyslogPosixFileErrorSource.DetailName);
 }

@@ -542,6 +542,11 @@ TEST(SolidSyslogOriginSd, EnterpriseIdAndIpsNoSoftwareSwVersion)
     );
 }
 
+TEST(SolidSyslogOriginSd, TheErrorSourceNamesItsDetailsThroughOriginSdErrors)
+{
+    CHECK(SolidSyslogOriginSdErrors_Name == SolidSyslogOriginSdErrorSource.DetailName);
+}
+
 // Pool tests - prove SOLIDSYSLOG_ORIGIN_SD_POOL_SIZE caps live instances
 // and overflow falls back to the shared SolidSyslogNullSd.
 
@@ -626,9 +631,4 @@ TEST(SolidSyslogOriginSdPool, DestroyingAHandleTwiceReportsTheSecond)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ORIGIN_SD_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogOriginSd, TheErrorSourceNamesItsDetailsThroughOriginSdErrors)
-{
-    CHECK(SolidSyslogOriginSdErrors_Name == SolidSyslogOriginSdErrorSource.DetailName);
 }

@@ -280,6 +280,11 @@ TEST(SolidSyslogMbedTlsHmacSha256Policy, DestroyOfStaleHandleReportsWarning)
     );
 }
 
+TEST(SolidSyslogMbedTlsHmacSha256Policy, TheErrorSourceNamesItsDetailsThroughHmacSha256PolicyErrors)
+{
+    CHECK(SolidSyslogHmacSha256PolicyErrors_Name == SolidSyslogMbedTlsHmacSha256PolicyErrorSource.DetailName);
+}
+
 TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, SealRecordHmacsTheRecordWithTheFetchedKey)
 {
     uint8_t expectedKey[TEST_KEY_SIZE];
@@ -548,9 +553,4 @@ TEST(SolidSyslogMbedTlsHmacSha256PolicySeal, ANewPolicyReportsItsFirstFaultEvenA
     verify(TEST_RECORD, sizeof TEST_RECORD, tag);
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-}
-
-TEST(SolidSyslogMbedTlsHmacSha256Policy, TheErrorSourceNamesItsDetailsThroughHmacSha256PolicyErrors)
-{
-    CHECK(SolidSyslogHmacSha256PolicyErrors_Name == SolidSyslogMbedTlsHmacSha256PolicyErrorSource.DetailName);
 }

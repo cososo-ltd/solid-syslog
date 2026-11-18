@@ -234,6 +234,11 @@ TEST(SolidSyslogLwipRawDatagram, SendToFailsBeforeOpen)
     CALLED_FAKE(LwipUdpFake_UdpSendto, NEVER);
 }
 
+TEST(SolidSyslogLwipRawDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogLwipRawDatagramErrorSource.DetailName);
+}
+
 /* ------------------------------------------------------------------
  * Already-opened tests (Open lifted into the group's setup)
  * ----------------------------------------------------------------*/
@@ -548,9 +553,4 @@ TEST(SolidSyslogLwipRawDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogLwipRawDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
-{
-    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogLwipRawDatagramErrorSource.DetailName);
 }

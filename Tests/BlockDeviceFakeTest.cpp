@@ -212,6 +212,14 @@ TEST(BlockDeviceFake, TheBlockStoreRoundTripsARecordOverTheFake)
     SolidSyslogBlockStore_Destroy(store);
 }
 
+TEST(BlockDeviceFake, AFailedDeviceFailsEveryBlock)
+{
+    SolidSyslogBlockDevice_Acquire(device, 0);
+    BlockDeviceFake_FailEveryOperation();
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, "x", 1));
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 7));
+}
+
 // clang-format off
 TEST_GROUP(BlockDeviceFakeFaults)
 {
@@ -327,12 +335,4 @@ TEST(BlockDeviceFakeFaults, WhenAbsentBlocksAreGhostsOperationsUseTheOldContentB
     CHECK_TRUE(ReadBlock3(0, 6));
     MEMCMP_EQUAL("abcdef", buf, 6);
     CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 3, "g", 1));
-}
-
-TEST(BlockDeviceFake, AFailedDeviceFailsEveryBlock)
-{
-    SolidSyslogBlockDevice_Acquire(device, 0);
-    BlockDeviceFake_FailEveryOperation();
-    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, "x", 1));
-    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 7));
 }

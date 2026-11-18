@@ -505,54 +505,6 @@ TEST(SolidSyslog, HugeMessageDoesNotCorruptMemory)
     CHECK(result.size() <= SOLIDSYSLOG_MAX_MESSAGE_SIZE);
 }
 
-// clang-format off
-static const uint16_t TEST_YEAR        = 2026;
-static const uint8_t  TEST_MONTH       = 4;
-static const uint8_t  TEST_DAY         = 2;
-static const uint8_t  TEST_HOUR        = 14;
-static const uint8_t  TEST_MINUTE      = 30;
-static const uint8_t  TEST_SECOND      = 7;
-static const uint32_t TEST_MICROSECOND = 42;
-static const int16_t  TEST_UTC_OFFSET  = 0;
-// clang-format on
-
-static struct SolidSyslogTimestamp stubTimestamp;
-
-static void StubClock(struct SolidSyslogTimestamp* timestamp)
-{
-    *timestamp = stubTimestamp;
-}
-
-// clang-format off
-TEST_GROUP_BASE(SolidSyslogTimestamp, TEST_GROUP_CppUTestGroupSolidSyslog)
-{
-    void setup() override
-    {
-        TEST_GROUP_CppUTestGroupSolidSyslog::setup();
-        stubTimestamp = {TEST_YEAR, TEST_MONTH, TEST_DAY, TEST_HOUR, TEST_MINUTE, TEST_SECOND, TEST_MICROSECOND, TEST_UTC_OFFSET};
-        config.Clock = StubClock;
-        SolidSyslog_Destroy(solidSyslog);
-        solidSyslog = SolidSyslog_Create(&config);
-    }
-};
-
-// clang-format on
-
-TEST(SolidSyslogTimestamp, NullClockProducesNilvalue)
-{
-    config.Clock = nullptr;
-    SolidSyslog_Destroy(solidSyslog);
-    solidSyslog = SolidSyslog_Create(&config);
-    Log();
-    CHECK_TIMESTAMP_IS_NILVALUE();
-}
-
-TEST(SolidSyslogTimestamp, TimestampAppearsInCorrectMessageFieldPosition)
-{
-    Log();
-    CHECK_TIMESTAMP("2026-04-02T14:30:07.000042Z");
-}
-
 TEST(SolidSyslog, ServiceSendsMessageReadFromBuffer)
 {
     SolidSyslogBuffer* fakeBuffer = BufferFake_Create();
@@ -924,6 +876,73 @@ TEST(SolidSyslog, ServiceDoesNotMarkSentWhenSendingFromBuffer)
     BufferFake_Destroy();
 }
 
+TEST(SolidSyslog, LogAfterDestroyAndRecreateWithNullFunctionsProducesNilvalues)
+{
+    SolidSyslog_Destroy(solidSyslog);
+    SolidSyslogConfig nilConfig = {buffer,  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+                                   nullptr, store,   nullptr, 0,       nullptr, nullptr, nullptr, nullptr,
+                                   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    solidSyslog = SolidSyslog_Create(&nilConfig);
+    Log();
+    CHECK_TIMESTAMP_IS_NILVALUE();
+    CHECK_HOSTNAME("-");
+    CHECK_APP_NAME("-");
+    CHECK_PROCID("-");
+}
+
+TEST(SolidSyslog, TheErrorSourceNamesItsDetailsThroughErrors)
+{
+    CHECK(SolidSyslogErrors_Name == SolidSyslogErrorSource.DetailName);
+}
+
+// clang-format off
+static const uint16_t TEST_YEAR        = 2026;
+static const uint8_t  TEST_MONTH       = 4;
+static const uint8_t  TEST_DAY         = 2;
+static const uint8_t  TEST_HOUR        = 14;
+static const uint8_t  TEST_MINUTE      = 30;
+static const uint8_t  TEST_SECOND      = 7;
+static const uint32_t TEST_MICROSECOND = 42;
+static const int16_t  TEST_UTC_OFFSET  = 0;
+// clang-format on
+
+static struct SolidSyslogTimestamp stubTimestamp;
+
+static void StubClock(struct SolidSyslogTimestamp* timestamp)
+{
+    *timestamp = stubTimestamp;
+}
+
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogTimestamp, TEST_GROUP_CppUTestGroupSolidSyslog)
+{
+    void setup() override
+    {
+        TEST_GROUP_CppUTestGroupSolidSyslog::setup();
+        stubTimestamp = {TEST_YEAR, TEST_MONTH, TEST_DAY, TEST_HOUR, TEST_MINUTE, TEST_SECOND, TEST_MICROSECOND, TEST_UTC_OFFSET};
+        config.Clock = StubClock;
+        SolidSyslog_Destroy(solidSyslog);
+        solidSyslog = SolidSyslog_Create(&config);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogTimestamp, NullClockProducesNilvalue)
+{
+    config.Clock = nullptr;
+    SolidSyslog_Destroy(solidSyslog);
+    solidSyslog = SolidSyslog_Create(&config);
+    Log();
+    CHECK_TIMESTAMP_IS_NILVALUE();
+}
+
+TEST(SolidSyslogTimestamp, TimestampAppearsInCorrectMessageFieldPosition)
+{
+    Log();
+    CHECK_TIMESTAMP("2026-04-02T14:30:07.000042Z");
+}
+
 /* Shared fixture for the eager-drain Service tests - both wire a real
  * CircularBuffer (drives the multi-message-per-tick path) and a FIFO
  * StoreFake. Storage is static so a CHECK failure that skips the test
@@ -1170,20 +1189,6 @@ TEST(SolidSyslogServiceHalt, AStoreThatKeepsNothingCannotHaltTheLogger)
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 }
 
-TEST(SolidSyslog, LogAfterDestroyAndRecreateWithNullFunctionsProducesNilvalues)
-{
-    SolidSyslog_Destroy(solidSyslog);
-    SolidSyslogConfig nilConfig = {buffer,  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-                                   nullptr, store,   nullptr, 0,       nullptr, nullptr, nullptr, nullptr,
-                                   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-    solidSyslog = SolidSyslog_Create(&nilConfig);
-    Log();
-    CHECK_TIMESTAMP_IS_NILVALUE();
-    CHECK_HOSTNAME("-");
-    CHECK_APP_NAME("-");
-    CHECK_PROCID("-");
-}
-
 // clang-format off
 TEST_GROUP(SolidSyslogLifecycle)
 {
@@ -1428,9 +1433,4 @@ TEST(SolidSyslogLifecycle, DestroyClearsInitialisedFlagSoCreateSucceedsAgain)
 
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
     CALLED_FAKE_ON(SenderFake_Send, sender, ONCE);
-}
-
-TEST(SolidSyslog, TheErrorSourceNamesItsDetailsThroughErrors)
-{
-    CHECK(SolidSyslogErrors_Name == SolidSyslogErrorSource.DetailName);
 }

@@ -482,6 +482,11 @@ TEST(SolidSyslogPlusTcpDatagram, SendToForwardsLengthVerbatim)
     LONGS_EQUAL(1232, FreeRtosSocketsFake_LastSendtoLength());
 }
 
+TEST(SolidSyslogPlusTcpDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogPlusTcpDatagramErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpDatagramPool)
 {
@@ -647,9 +652,4 @@ TEST(SolidSyslogPlusTcpDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPlusTcpDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
-{
-    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogPlusTcpDatagramErrorSource.DetailName);
 }

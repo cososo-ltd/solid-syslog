@@ -318,6 +318,11 @@ TEST(SolidSyslogMbedTlsAesGcmPolicy, DestroyOfStaleHandleReportsWarning)
     );
 }
 
+TEST(SolidSyslogMbedTlsAesGcmPolicy, TheErrorSourceNamesItsDetailsThroughAesGcmPolicyErrors)
+{
+    CHECK(SolidSyslogAesGcmPolicyErrors_Name == SolidSyslogMbedTlsAesGcmPolicyErrorSource.DetailName);
+}
+
 TEST(SolidSyslogMbedTlsAesGcmPolicySeal, SealRecordGeneratesAFreshNonceIntoTheTrailer)
 {
     CHECK_TRUE(seal());
@@ -601,9 +606,4 @@ TEST(SolidSyslogMbedTlsAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfter
     open();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-}
-
-TEST(SolidSyslogMbedTlsAesGcmPolicy, TheErrorSourceNamesItsDetailsThroughAesGcmPolicyErrors)
-{
-    CHECK(SolidSyslogAesGcmPolicyErrors_Name == SolidSyslogMbedTlsAesGcmPolicyErrorSource.DetailName);
 }

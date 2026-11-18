@@ -130,6 +130,11 @@ TEST(SolidSyslogWinsockResolver, FreesAddrInfoOnSuccess)
     CALLED_FAKE(WinsockFake_FreeAddrInfo, ONCE);
 }
 
+TEST(SolidSyslogWinsockResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogWinsockResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockResolverPool)
 {
@@ -272,9 +277,4 @@ TEST(SolidSyslogWinsockResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogWinsockResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogWinsockResolverErrorSource.DetailName);
 }

@@ -365,6 +365,11 @@ TEST(SolidSyslogUdpSender, ZeroLengthSendPassesThrough)
     LONGS_EQUAL(0, SocketFake_LastLen());
 }
 
+TEST(SolidSyslogUdpSender, TheErrorSourceNamesItsDetailsThroughUdpSenderErrors)
+{
+    CHECK(SolidSyslogUdpSenderErrors_Name == SolidSyslogUdpSenderErrorSource.DetailName);
+}
+
 // Destroy tests manage their own sender lifetime - base teardown does
 // not call SolidSyslogUdpSender_Destroy because tests already did.
 // clang-format off
@@ -1182,9 +1187,4 @@ TEST(SolidSyslogUdpSenderDeliveryHealth, NullBufferDoesNotReportDeliveryFailed)
         SOLIDSYSLOG_CAT_BAD_ARGUMENT,
         SOLIDSYSLOG_UDP_SENDER_ERROR_SEND_NULL_BUFFER
     );
-}
-
-TEST(SolidSyslogUdpSender, TheErrorSourceNamesItsDetailsThroughUdpSenderErrors)
-{
-    CHECK(SolidSyslogUdpSenderErrors_Name == SolidSyslogUdpSenderErrorSource.DetailName);
 }

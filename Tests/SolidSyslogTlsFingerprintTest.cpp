@@ -267,6 +267,83 @@ TEST(SolidSyslogTlsFingerprint, ParseRefusesANullOutputRatherThanWritingThroughI
     );
 }
 
+TEST(SolidSyslogTlsFingerprint, AListOfSha256PinsIsWellFormed)
+{
+    const char* pins[] = {
+        "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:"
+        "10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F",
+    };
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_WELL_FORMED, SolidSyslogTlsFingerprint_InspectList(pins, 1));
+}
+
+TEST(SolidSyslogTlsFingerprint, AListWithASha1PinSaysSo)
+{
+    const char* pins[] = {
+        "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:"
+        "10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F",
+        "sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D",
+    };
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_USES_SHA1, SolidSyslogTlsFingerprint_InspectList(pins, 2));
+}
+
+TEST(SolidSyslogTlsFingerprint, AMalformedPinOutweighsASha1One)
+{
+    const char* pins[] = {
+        "sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D",
+        "sha-256:not a fingerprint",
+    };
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED, SolidSyslogTlsFingerprint_InspectList(pins, 2));
+}
+
+TEST(SolidSyslogTlsFingerprint, AnEmptyListIsWellFormed)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_WELL_FORMED, SolidSyslogTlsFingerprint_InspectList(nullptr, 0));
+}
+
+TEST(SolidSyslogTlsFingerprint, ParsingAMissingFingerprintFails)
+{
+    CHECK_PIN_REJECTED(nullptr);
+}
+
+TEST(SolidSyslogTlsFingerprint, AListThatIsMissingWhereOneWasCountedIsMalformed)
+{
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED, SolidSyslogTlsFingerprint_InspectList(nullptr, 1));
+}
+
+TEST(SolidSyslogTlsFingerprint, AMissingPinInTheListIsMalformed)
+{
+    const char* pins[] = {nullptr};
+
+    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED, SolidSyslogTlsFingerprint_InspectList(pins, 1));
+}
+
+TEST(SolidSyslogTlsFingerprint, AnEmptyListIsPresent)
+{
+    CHECK_TRUE(SolidSyslogTlsFingerprint_ListIsPresent(nullptr, 0));
+}
+
+TEST(SolidSyslogTlsFingerprint, AListBehindItsCountIsPresent)
+{
+    const char* pins[] = {"sha-256:AA", "sha-256:BB"};
+
+    CHECK_TRUE(SolidSyslogTlsFingerprint_ListIsPresent(pins, 2));
+}
+
+TEST(SolidSyslogTlsFingerprint, ACountWithNoListBehindItIsNotPresent)
+{
+    CHECK_FALSE(SolidSyslogTlsFingerprint_ListIsPresent(nullptr, 1));
+}
+
+TEST(SolidSyslogTlsFingerprint, AListWithAMissingPinIsNotPresent)
+{
+    const char* pins[] = {"sha-256:AA", nullptr};
+
+    CHECK_FALSE(SolidSyslogTlsFingerprint_ListIsPresent(pins, 2));
+}
+
 TEST(SolidSyslogTlsFingerprintAuthorise, MatchesAPinEqualToThePeerDigest)
 {
     const char* pins[] = {"sha-1:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13"};
@@ -363,59 +440,6 @@ TEST(SolidSyslogTlsFingerprintAuthorise, ReportsADigestThePeerCannotSupply)
     LONGS_EQUAL(SOLIDSYSLOG_TLS_AUTHORISATION_DIGEST_UNAVAILABLE, Authorise(pins, 1));
 }
 
-TEST(SolidSyslogTlsFingerprint, AListOfSha256PinsIsWellFormed)
-{
-    const char* pins[] = {
-        "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:"
-        "10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F",
-    };
-
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_WELL_FORMED, SolidSyslogTlsFingerprint_InspectList(pins, 1));
-}
-
-TEST(SolidSyslogTlsFingerprint, AListWithASha1PinSaysSo)
-{
-    const char* pins[] = {
-        "sha-256:00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:"
-        "10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F",
-        "sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D",
-    };
-
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_USES_SHA1, SolidSyslogTlsFingerprint_InspectList(pins, 2));
-}
-
-TEST(SolidSyslogTlsFingerprint, AMalformedPinOutweighsASha1One)
-{
-    const char* pins[] = {
-        "sha-1:E1:2D:53:2B:7C:6B:8A:29:A2:76:C8:64:36:0B:08:4B:7A:F1:9E:9D",
-        "sha-256:not a fingerprint",
-    };
-
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED, SolidSyslogTlsFingerprint_InspectList(pins, 2));
-}
-
-TEST(SolidSyslogTlsFingerprint, AnEmptyListIsWellFormed)
-{
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_WELL_FORMED, SolidSyslogTlsFingerprint_InspectList(nullptr, 0));
-}
-
-TEST(SolidSyslogTlsFingerprint, ParsingAMissingFingerprintFails)
-{
-    CHECK_PIN_REJECTED(nullptr);
-}
-
-TEST(SolidSyslogTlsFingerprint, AListThatIsMissingWhereOneWasCountedIsMalformed)
-{
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED, SolidSyslogTlsFingerprint_InspectList(nullptr, 1));
-}
-
-TEST(SolidSyslogTlsFingerprint, AMissingPinInTheListIsMalformed)
-{
-    const char* pins[] = {nullptr};
-
-    LONGS_EQUAL(SOLIDSYSLOG_TLS_FINGERPRINT_LIST_MALFORMED, SolidSyslogTlsFingerprint_InspectList(pins, 1));
-}
-
 TEST(SolidSyslogTlsFingerprintAuthorise, AListThatIsMissingWhereOneWasCountedIsMalformed)
 {
     LONGS_EQUAL(SOLIDSYSLOG_TLS_AUTHORISATION_MALFORMED, Authorise(nullptr, 1));
@@ -426,28 +450,4 @@ TEST(SolidSyslogTlsFingerprintAuthorise, AMissingPinInTheListIsMalformed)
     const char* pins[] = {nullptr};
 
     LONGS_EQUAL(SOLIDSYSLOG_TLS_AUTHORISATION_MALFORMED, Authorise(pins, 1));
-}
-
-TEST(SolidSyslogTlsFingerprint, AnEmptyListIsPresent)
-{
-    CHECK_TRUE(SolidSyslogTlsFingerprint_ListIsPresent(nullptr, 0));
-}
-
-TEST(SolidSyslogTlsFingerprint, AListBehindItsCountIsPresent)
-{
-    const char* pins[] = {"sha-256:AA", "sha-256:BB"};
-
-    CHECK_TRUE(SolidSyslogTlsFingerprint_ListIsPresent(pins, 2));
-}
-
-TEST(SolidSyslogTlsFingerprint, ACountWithNoListBehindItIsNotPresent)
-{
-    CHECK_FALSE(SolidSyslogTlsFingerprint_ListIsPresent(nullptr, 1));
-}
-
-TEST(SolidSyslogTlsFingerprint, AListWithAMissingPinIsNotPresent)
-{
-    const char* pins[] = {"sha-256:AA", nullptr};
-
-    CHECK_FALSE(SolidSyslogTlsFingerprint_ListIsPresent(pins, 2));
 }

@@ -70,6 +70,11 @@ TEST(SolidSyslogVxWorks64Address, CreateZeroesTheSockaddrFromAnyPriorSlotContent
     MEMCMP_EQUAL(&zeroes, SolidSyslogVxWorks64Address_AsConstSockaddrIn(address), sizeof(zeroes));
 }
 
+TEST(SolidSyslogVxWorks64Address, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogVxWorks64AddressErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64AddressPool)
 {
@@ -201,9 +206,4 @@ TEST(SolidSyslogVxWorks64AddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogVxWorks64Address, TheErrorSourceNamesItsDetailsThroughAddressErrors)
-{
-    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogVxWorks64AddressErrorSource.DetailName);
 }

@@ -508,6 +508,11 @@ TEST(SolidSyslogCircularBuffer, ARecordReadEndsARunOfReadsTooSmallForTheHeadReco
     LONGS_EQUAL(2, ErrorHandlerFake_HandleCallCount());
 }
 
+TEST(SolidSyslogCircularBuffer, TheErrorSourceNamesItsDetailsThroughCircularBufferErrors)
+{
+    CHECK(SolidSyslogCircularBufferErrors_Name == SolidSyslogCircularBufferErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogCircularBufferMutex, CircularBufferFixture)
 {
@@ -1025,9 +1030,4 @@ TEST(SolidSyslogCircularBufferPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_CIRCULAR_BUFFER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogCircularBuffer, TheErrorSourceNamesItsDetailsThroughCircularBufferErrors)
-{
-    CHECK(SolidSyslogCircularBufferErrors_Name == SolidSyslogCircularBufferErrorSource.DetailName);
 }

@@ -336,6 +336,11 @@ TEST(SolidSyslogSwitchingSender, SelectorBeyondEndDisconnectBeforeSendDoesNotTou
     CALLED_FAKE_ON(SenderFake_Disconnect, innerB, NEVER);
 }
 
+TEST(SolidSyslogSwitchingSender, TheErrorSourceNamesItsDetailsThroughSwitchingSenderErrors)
+{
+    CHECK(SolidSyslogSwitchingSenderErrors_Name == SolidSyslogSwitchingSenderErrorSource.DetailName);
+}
+
 // Pool tests - prove SOLIDSYSLOG_SWITCHING_SENDER_POOL_SIZE caps live
 // instances and overflow falls back to the shared SolidSyslogNullSender.
 
@@ -544,9 +549,4 @@ TEST(SolidSyslogSwitchingSenderBadSetup, SendOnBadSetupSenderReturnsTrueAndDrops
      * Store. */
     struct SolidSyslogSender* badSender = SolidSyslogSwitchingSender_Create(nullptr);
     CHECK_TRUE(SolidSyslogSender_Send(badSender, "x", 1));
-}
-
-TEST(SolidSyslogSwitchingSender, TheErrorSourceNamesItsDetailsThroughSwitchingSenderErrors)
-{
-    CHECK(SolidSyslogSwitchingSenderErrors_Name == SolidSyslogSwitchingSenderErrorSource.DetailName);
 }

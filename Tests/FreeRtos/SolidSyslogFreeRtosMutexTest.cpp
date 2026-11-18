@@ -93,6 +93,11 @@ TEST(SolidSyslogFreeRtosMutex, DestroyOfAMutexTheKernelWouldNotCreateDeletesNoth
     CALLED_FAKE(FreeRtosSemaphoreFake_SemaphoreDelete, NEVER);
 }
 
+TEST(SolidSyslogFreeRtosMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogFreeRtosMutexErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogFreeRtosMutexPool)
 {
@@ -251,9 +256,4 @@ TEST(SolidSyslogFreeRtosMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogFreeRtosMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
-{
-    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogFreeRtosMutexErrorSource.DetailName);
 }

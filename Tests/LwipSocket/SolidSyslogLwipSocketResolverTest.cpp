@@ -181,6 +181,11 @@ TEST(SolidSyslogLwipSocketResolver, AStackThatWillNotServeTheIpv4HintFreesNothin
     LONGS_EQUAL(0U, LwipNetdbFake_FreeAddrInfoCallCount());
 }
 
+TEST(SolidSyslogLwipSocketResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipSocketResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketResolverPool)
 {
@@ -322,9 +327,4 @@ TEST(SolidSyslogLwipSocketResolverPool, ResolvingAfterDestroyIsASafeNoOp)
     CHECK_FALSE(resolved);
     LONGS_EQUAL(0U, LwipNetdbFake_GetAddrInfoCallCount());
     SolidSyslogLwipSocketAddress_Destroy(address);
-}
-
-TEST(SolidSyslogLwipSocketResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipSocketResolverErrorSource.DetailName);
 }

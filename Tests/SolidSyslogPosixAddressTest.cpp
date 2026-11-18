@@ -69,6 +69,11 @@ TEST(SolidSyslogPosixAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
     MEMCMP_EQUAL(&zeroes, SolidSyslogPosixAddress_AsConstSockaddrIn(address), sizeof(zeroes));
 }
 
+TEST(SolidSyslogPosixAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogPosixAddressErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixAddressPool)
 {
@@ -200,9 +205,4 @@ TEST(SolidSyslogPosixAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPosixAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
-{
-    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogPosixAddressErrorSource.DetailName);
 }

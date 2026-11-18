@@ -106,6 +106,55 @@ TEST(SolidSyslogLwipRawResolver, ResolveReturnsFalseWhenIpaddrAtonRejectsHost)
     CHECK_FALSE(Resolve(""));
 }
 
+TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)
+
+{
+    // Locks in that the literal-IPv4 resolver does not dispatch on transport -
+    // a future reader must not add transport-typed pcb selection here.
+    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
+    std::string udpIp = ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip);
+    uint16_t udpPort = SolidSyslogLwipRawAddress_AsConst(addr)->Port;
+
+    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
+
+    STRCMP_EQUAL(udpIp.c_str(), ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsRefused)
+{
+    CHECK_FALSE(Resolve("::1"));
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsReportedAsUnsupportedFamily)
+{
+    ErrorHandlerFake_Install(nullptr);
+
+    Resolve("::1");
+
+    CHECK_REPORTED(
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        SolidSyslogLwipRawResolverErrorSource,
+        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
+        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
+    );
+}
+
+TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralLeavesTheCallersAddressAlone)
+{
+    Resolve(TEST_HOST, TEST_PORT);
+
+    Resolve("::1", 9999);
+
+    STRCMP_EQUAL(TEST_HOST, ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
+    LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
+}
+
+TEST(SolidSyslogLwipRawResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipRawResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawResolverPool)
 {
@@ -257,53 +306,4 @@ TEST(SolidSyslogLwipRawResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogLwipRawResolver, UdpTransportResolvesIdenticallyToTcp)
-
-{
-    // Locks in that the literal-IPv4 resolver does not dispatch on transport -
-    // a future reader must not add transport-typed pcb selection here.
-    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_UDP);
-    std::string udpIp = ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip);
-    uint16_t udpPort = SolidSyslogLwipRawAddress_AsConst(addr)->Port;
-
-    Resolve(TEST_HOST, TEST_PORT, SOLIDSYSLOG_TRANSPORT_TCP);
-
-    STRCMP_EQUAL(udpIp.c_str(), ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
-    LONGS_EQUAL(udpPort, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
-}
-
-TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsRefused)
-{
-    CHECK_FALSE(Resolve("::1"));
-}
-
-TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralIsReportedAsUnsupportedFamily)
-{
-    ErrorHandlerFake_Install(nullptr);
-
-    Resolve("::1");
-
-    CHECK_REPORTED(
-        SOLIDSYSLOG_SEVERITY_ERROR,
-        SolidSyslogLwipRawResolverErrorSource,
-        SOLIDSYSLOG_CAT_RESOLVER_RESOLVE_FAILED,
-        SOLIDSYSLOG_RESOLVER_ERROR_ADDRESS_FAMILY_UNSUPPORTED
-    );
-}
-
-TEST(SolidSyslogLwipRawResolver, AnIpv6LiteralLeavesTheCallersAddressAlone)
-{
-    Resolve(TEST_HOST, TEST_PORT);
-
-    Resolve("::1", 9999);
-
-    STRCMP_EQUAL(TEST_HOST, ipaddr_ntoa(&SolidSyslogLwipRawAddress_AsConst(addr)->Ip));
-    LONGS_EQUAL(TEST_PORT, SolidSyslogLwipRawAddress_AsConst(addr)->Port);
-}
-
-TEST(SolidSyslogLwipRawResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipRawResolverErrorSource.DetailName);
 }

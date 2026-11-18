@@ -278,6 +278,11 @@ TEST(SolidSyslogPosixDatagram, SendToReturnsFailedWhenConnectFails)
     );
 }
 
+TEST(SolidSyslogPosixDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogPosixDatagramErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixDatagramPool)
 {
@@ -417,9 +422,4 @@ TEST(SolidSyslogPosixDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPosixDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
-{
-    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogPosixDatagramErrorSource.DetailName);
 }

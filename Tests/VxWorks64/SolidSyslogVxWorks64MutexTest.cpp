@@ -97,6 +97,11 @@ TEST(SolidSyslogVxWorks64Mutex, LockAfterDestroyLeavesTheSemaphoreAlone)
     CALLED_FAKE(VxWorks64SemFake_SemGive, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64Mutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogVxWorks64MutexErrorSource.DetailName);
+}
+
 // semMCreate answers NULL when the kernel cannot allocate the semaphore, and
 // Create has to make that safe rather than hand back a mutex with no semaphore
 // behind it.
@@ -312,9 +317,4 @@ TEST(SolidSyslogVxWorks64MutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogVxWorks64Mutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
-{
-    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogVxWorks64MutexErrorSource.DetailName);
 }

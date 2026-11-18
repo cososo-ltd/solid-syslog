@@ -168,77 +168,6 @@ TEST(SolidSyslogStreamSender, EndpointCallbacksReceiveEndpointContext)
     POINTERS_EQUAL(&context, endpointVersionContext);
 }
 
-// clang-format off
-TEST_GROUP(SolidSyslogStreamSenderDestroy)
-{
-    struct SolidSyslogResolver*      resolver = nullptr;
-    struct SolidSyslogStream*        stream = nullptr;
-    struct SolidSyslogAddress*       address = nullptr;
-    struct SolidSyslogStreamSenderConfig config;
-
-    void setup() override
-    {
-        SocketFake_Reset();
-        endpointGetHost = GetHost;
-        endpointVersion = 0;
-        endpointGetPort = GetPort;
-        resolver        = SolidSyslogPosixResolver_Create();
-        stream          = SolidSyslogPosixTcpStream_Create(nullptr);
-        address         = SolidSyslogPosixAddress_Create();
-        config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
-    }
-
-    void teardown() override
-    {
-        SolidSyslogPosixAddress_Destroy(address);
-        SolidSyslogPosixTcpStream_Destroy(stream);
-        SolidSyslogPosixResolver_Destroy(resolver);
-    }
-
-    void CreateAndDestroy()
-    {
-        struct SolidSyslogSender* localSender = SolidSyslogStreamSender_Create(&config);
-        SolidSyslogStreamSender_Destroy(localSender);
-    }
-};
-
-// clang-format on
-
-TEST(SolidSyslogStreamSenderDestroy, DestroyWithoutSendDoesNotClose)
-{
-    CreateAndDestroy();
-    CALLED_FAKE(SocketFake_Close, NEVER);
-}
-
-TEST(SolidSyslogStreamSenderDestroy, DestroyAfterSendClosesSocket)
-{
-    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
-    SolidSyslogSender_Send(sender, "x", 1);
-    SolidSyslogStreamSender_Destroy(sender);
-    CALLED_FAKE(SocketFake_Close, ONCE);
-    LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
-}
-
-TEST(SolidSyslogStreamSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
-{
-    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
-    SolidSyslogSender_Send(sender, "x", 1);
-    SolidSyslogSender_Disconnect(sender);
-    SolidSyslogStreamSender_Destroy(sender);
-    CALLED_FAKE(SocketFake_Close, ONCE);
-}
-
-TEST(SolidSyslogStreamSenderDestroy, UseAfterDestroyIsCrashSafeViaNullSenderVtable)
-{
-    /* After Destroy the slot's abstract-base vtable is the shared NullSender's, so
-     * calling Send/Disconnect through the stale handle is a safe no-op rather than a
-     * NULL-fn-pointer crash. NullSender.Send returns true (drop-on-floor). */
-    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
-    SolidSyslogStreamSender_Destroy(sender);
-    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
-    SolidSyslogSender_Disconnect(sender);
-}
-
 TEST(SolidSyslogStreamSender, SendConnectsOnFirstCall)
 {
     Send();
@@ -351,6 +280,82 @@ TEST(SolidSyslogStreamSender, EndpointVersionChangeUsesNewPortOnReconnect)
     endpointGetPort = GetAlternatePort;
     Send();
     LONGS_EQUAL(TEST_ALTERNATE_PORT, SocketFake_LastConnectPort());
+}
+
+TEST(SolidSyslogStreamSender, TheErrorSourceNamesItsDetailsThroughStreamSenderErrors)
+{
+    CHECK(SolidSyslogStreamSenderErrors_Name == SolidSyslogStreamSenderErrorSource.DetailName);
+}
+
+// clang-format off
+TEST_GROUP(SolidSyslogStreamSenderDestroy)
+{
+    struct SolidSyslogResolver*      resolver = nullptr;
+    struct SolidSyslogStream*        stream = nullptr;
+    struct SolidSyslogAddress*       address = nullptr;
+    struct SolidSyslogStreamSenderConfig config;
+
+    void setup() override
+    {
+        SocketFake_Reset();
+        endpointGetHost = GetHost;
+        endpointVersion = 0;
+        endpointGetPort = GetPort;
+        resolver        = SolidSyslogPosixResolver_Create();
+        stream          = SolidSyslogPosixTcpStream_Create(nullptr);
+        address         = SolidSyslogPosixAddress_Create();
+        config = {resolver, stream, address, TestEndpoint, TestEndpointVersion, nullptr};
+    }
+
+    void teardown() override
+    {
+        SolidSyslogPosixAddress_Destroy(address);
+        SolidSyslogPosixTcpStream_Destroy(stream);
+        SolidSyslogPosixResolver_Destroy(resolver);
+    }
+
+    void CreateAndDestroy()
+    {
+        struct SolidSyslogSender* localSender = SolidSyslogStreamSender_Create(&config);
+        SolidSyslogStreamSender_Destroy(localSender);
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogStreamSenderDestroy, DestroyWithoutSendDoesNotClose)
+{
+    CreateAndDestroy();
+    CALLED_FAKE(SocketFake_Close, NEVER);
+}
+
+TEST(SolidSyslogStreamSenderDestroy, DestroyAfterSendClosesSocket)
+{
+    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
+    SolidSyslogSender_Send(sender, "x", 1);
+    SolidSyslogStreamSender_Destroy(sender);
+    CALLED_FAKE(SocketFake_Close, ONCE);
+    LONGS_EQUAL(SocketFake_SocketFd(), SocketFake_LastClosedFd());
+}
+
+TEST(SolidSyslogStreamSenderDestroy, DestroyAfterDisconnectDoesNotDoubleClose)
+{
+    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
+    SolidSyslogSender_Send(sender, "x", 1);
+    SolidSyslogSender_Disconnect(sender);
+    SolidSyslogStreamSender_Destroy(sender);
+    CALLED_FAKE(SocketFake_Close, ONCE);
+}
+
+TEST(SolidSyslogStreamSenderDestroy, UseAfterDestroyIsCrashSafeViaNullSenderVtable)
+{
+    /* After Destroy the slot's abstract-base vtable is the shared NullSender's, so
+     * calling Send/Disconnect through the stale handle is a safe no-op rather than a
+     * NULL-fn-pointer crash. NullSender.Send returns true (drop-on-floor). */
+    struct SolidSyslogSender* sender = SolidSyslogStreamSender_Create(&config);
+    SolidSyslogStreamSender_Destroy(sender);
+    CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
+    SolidSyslogSender_Disconnect(sender);
 }
 
 // clang-format off
@@ -971,9 +976,4 @@ TEST(SolidSyslogStreamSenderStreamVersion, SendStillSucceedsAcrossTheReconnect)
     Send();
     StreamFake_SetVersion(stream, 1);
     CHECK_TRUE(SolidSyslogSender_Send(sender, TEST_MESSAGE, TEST_MESSAGE_LEN));
-}
-
-TEST(SolidSyslogStreamSender, TheErrorSourceNamesItsDetailsThroughStreamSenderErrors)
-{
-    CHECK(SolidSyslogStreamSenderErrors_Name == SolidSyslogStreamSenderErrorSource.DetailName);
 }

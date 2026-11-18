@@ -322,6 +322,11 @@ TEST(SolidSyslogWolfSslAesGcmPolicy, DestroyOfStaleHandleReportsWarning)
     );
 }
 
+TEST(SolidSyslogWolfSslAesGcmPolicy, TheErrorSourceNamesItsDetailsThroughAesGcmPolicyErrors)
+{
+    CHECK(SolidSyslogAesGcmPolicyErrors_Name == SolidSyslogWolfSslAesGcmPolicyErrorSource.DetailName);
+}
+
 TEST(SolidSyslogWolfSslAesGcmPolicySeal, SealRecordGeneratesAFreshNonceIntoTheTrailer)
 {
     CHECK_TRUE(seal());
@@ -643,9 +648,4 @@ TEST(SolidSyslogWolfSslAesGcmPolicySeal, ANewPolicyReportsItsFirstFaultEvenAfter
     open();
 
     CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
-}
-
-TEST(SolidSyslogWolfSslAesGcmPolicy, TheErrorSourceNamesItsDetailsThroughAesGcmPolicyErrors)
-{
-    CHECK(SolidSyslogAesGcmPolicyErrors_Name == SolidSyslogWolfSslAesGcmPolicyErrorSource.DetailName);
 }

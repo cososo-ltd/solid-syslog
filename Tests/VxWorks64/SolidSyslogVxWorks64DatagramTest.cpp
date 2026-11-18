@@ -473,6 +473,11 @@ TEST(SolidSyslogVxWorks64Datagram, SendToAfterDestroySendsNothing)
     CALLED_FAKE(VxWorks64NetFake_Sendto, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64Datagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogVxWorks64DatagramErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64DatagramPool)
 {
@@ -612,9 +617,4 @@ TEST(SolidSyslogVxWorks64DatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogVxWorks64Datagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
-{
-    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogVxWorks64DatagramErrorSource.DetailName);
 }

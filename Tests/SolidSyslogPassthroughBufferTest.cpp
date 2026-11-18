@@ -123,6 +123,11 @@ TEST(SolidSyslogPassthroughBuffer, UseAfterDestroyIsCrashSafeViaNullBufferVtable
     buffer = SolidSyslogPassthroughBuffer_Create(fakeSender); // for teardown
 }
 
+TEST(SolidSyslogPassthroughBuffer, TheErrorSourceNamesItsDetailsThroughPassthroughBufferErrors)
+{
+    CHECK(SolidSyslogPassthroughBufferErrors_Name == SolidSyslogPassthroughBufferErrorSource.DetailName);
+}
+
 // Pool tests - prove SOLIDSYSLOG_PASSTHROUGH_BUFFER_POOL_SIZE caps live
 // instances and overflow falls back to a distinct no-op buffer. Generic
 // pool mechanics (lock counts, per-probe locking, stale-handle warning)
@@ -260,9 +265,4 @@ TEST(SolidSyslogPassthroughBufferPool, CreateWithNullSenderDoesNotConsumeAPoolSl
     {
         CHECK_TEXT(slot != overflow, "Pool slot collided with the NULL-sender fallback handle");
     }
-}
-
-TEST(SolidSyslogPassthroughBuffer, TheErrorSourceNamesItsDetailsThroughPassthroughBufferErrors)
-{
-    CHECK(SolidSyslogPassthroughBufferErrors_Name == SolidSyslogPassthroughBufferErrorSource.DetailName);
 }
