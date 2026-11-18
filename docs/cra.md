@@ -62,15 +62,33 @@ has no view of: your application's records answer to it directly, and the librar
 through the function it provides. Retention, access control and disposal at the
 collector.
 
-**Honouring the opt-out.** Log the deactivation, with the identity that made it, and
-only then stop calling `SolidSyslog_Log`; log the reactivation the same way, as the first
-record after it. Records already in the buffer and the store are still delivered, which
-the shape the guidance describes. Where the product's opt-out is to cover the library's
-own records too, answer it from `IsEventReportingOn` on
-[`SolidSyslogConfig`](api/structSolidSyslogConfig.md); the field's doc comment states
-what a pass does with the answer. `IsDestinationKnown` on the same struct is not an
-opt-out: it holds delivery while the device has no collector, and the records wait in
-the buffer and the store under their usual policies.
+**Honouring the opt-out.** The device answers the opt-out from `GetCaptureState` on
+[`SolidSyslogConfig`](api/structSolidSyslogConfig.md), which the logger asks at every
+Log and every service pass. To deactivate, log the deactivation, with the identity that
+made it, and then answer off, from the same task: the deactivation record and everything
+logged before it are delivered, and every Log after it is dropped unformatted, so the
+sequence numbers run on without a gap. To reactivate, answer on and then log the
+reactivation, as the first record after it; the other order drops it. Records already
+in the buffer and the store are still delivered either way, which is the shape the
+guidance describes. The field's doc comment is the home of the contract.
+
+**Before the configuration is read.** A device that logs before it knows whether its
+user has opted out answers undecided. The logger holds those records in RAM, in a
+queueing buffer, and writes nothing to the store or the wire; the field's doc comment
+names the buffer that cannot hold. The first service pass that finds the answer off
+discards them, so a device whose user had opted out leaves no trace of the events it
+logged while it was finding that out, and the library writes no record of its own either
+until the device has been on; the first answer of on delivers them. A device that
+answers off and then on before a service pass has run keeps them. Records held this way
+are lost if power
+fails before the decision, so read the opt-out from local storage as early as the
+device can.
+
+Where the product's opt-out is to cover the library's own records too, answer it from
+`IsEventReportingOn` on the same struct; the field's doc comment states what a pass does
+with the answer. `IsDestinationKnown` is not an opt-out: it holds delivery while the
+device has no collector, and the records wait in the buffer and the store under their
+usual policies.
 
 ## Part I - requirements an audit trail contributes to
 

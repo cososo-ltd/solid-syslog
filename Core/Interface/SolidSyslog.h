@@ -32,7 +32,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /** Format @p message and hand it to the configured Buffer. Whether this
      *  blocks depends on that Buffer: a PassthroughBuffer sends inline; a
      *  CircularBuffer enqueues and returns, leaving delivery to
-     *  SolidSyslog_Service. Concurrent calls are safe only if the configured
+     *  SolidSyslog_Service. A device that answers off from
+     *  SolidSyslogConfig.GetCaptureState has the record dropped before it is
+     *  formatted. Concurrent calls are safe only if the configured
      *  Buffer is thread-safe (e.g. a CircularBuffer with a real Mutex). A NULL handle or
      *  message is reported via SolidSyslog_Error and otherwise ignored. */
     void SolidSyslog_Log(struct SolidSyslog * handle, const struct SolidSyslogMessage* message);
@@ -49,10 +51,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** Run one servicing pass and return an advisory hint for driving an
-     *  event-driven loop. A pass reports the library's own events that are
-     *  waiting (see SolidSyslogConfig.IsEventReportingOn), drains the buffer into the
-     *  store, or straight to the sender when the store keeps nothing, then
-     *  attempts one send from the store. The hint is never load-bearing: each
+     *  event-driven loop. A pass asks whether the device captures
+     *  (SolidSyslogConfig.GetCaptureState), then reports the library's own
+     *  events that are waiting (see SolidSyslogConfig.IsEventReportingOn),
+     *  drains the buffer into the store, or straight to the sender when the
+     *  store keeps nothing, then attempts one send from the store. A device
+     *  still undecided has its buffer, and the reports, held for a later pass. The hint is never load-bearing: each
      *  call works from the live buffer and store and from the record it holds,
      *  so a missed or spurious wake only delays, and a fixed-delay poll loop
      *  may ignore the return. A NULL handle is reported and returns IDLE.
@@ -78,8 +82,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *                                      held back because the device does not yet know
      *                                      where its collector is
      *                                      (SolidSyslogConfig.IsDestinationKnown) counts
-     *                                      as waiting on the sender. Back off and call
-     *                                      again later. A Log also wakes it.
+     *                                      as waiting on the sender, and so does a pass
+     *                                      that read nothing from the buffer because the
+     *                                      device has not decided whether it captures
+     *                                      (SolidSyslogConfig.GetCaptureState). Back off
+     *                                      and call again later. A Log also wakes it.
      *  @retval SOLIDSYSLOG_SERVICE_HALTED  The logger has stopped: a queue refused a record
      *                                      while the discard policy answered HALT, and the
      *                                      pass that saw it raised SOLIDSYSLOG_CAT_LOGGER_HALTED
