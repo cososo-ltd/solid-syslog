@@ -344,11 +344,15 @@ TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedTheRecordsHeldAreDiscar
     Log();
     Log();
     device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    SolidSyslog_Service(solidSyslog);
+    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+    Log("later");
 
     SolidSyslog_Service(solidSyslog);
 
-    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+    STRCMP_CONTAINS("later", SenderFake_LastBufferAsString(fakeSender));
 }
 
 TEST(SolidSyslogCaptureState, OffAfterOnTheDeactivationRecordIsStillSent)
