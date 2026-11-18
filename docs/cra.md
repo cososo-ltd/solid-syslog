@@ -73,8 +73,9 @@ in the buffer and the store are still delivered either way, which is the shape t
 guidance describes. The field's doc comment is the home of the contract.
 
 **Before the configuration is read.** A device that logs before it knows whether its
-user has opted out answers undecided. The logger holds those records in RAM and writes
-nothing to the store or the wire. The first answer of off discards them, so a device
+user has opted out answers undecided. The logger holds those records in RAM, in a
+queueing buffer, and writes nothing to the store or the wire; the field's doc comment
+names the buffer that cannot hold. The first answer of off discards them, so a device
 whose user had opted out leaves no trace of the events it logged while it was finding
 that out; the first answer of on delivers them. Records held this way are lost if power
 fails before the decision, so read the opt-out from local storage as early as the
