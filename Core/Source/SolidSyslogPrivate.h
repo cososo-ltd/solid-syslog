@@ -72,7 +72,14 @@ struct SolidSyslog
     /* Set once the device has answered On, and never cleared; while it is
      * clear, every record in the buffer was logged undecided. Log sets it from
      * the task that logs, before it takes the buffer's mutex, so Service sees
-     * it set by the time it reads that record under the same mutex. */
+     * it set by the time it reads that record under the same mutex. It is a
+     * byte that is only ever stored as true, so the unsynchronised accesses
+     * have no harmful order: writers racing store one value; a read of true
+     * is right, since the device was on and so everything in the buffer is
+     * legitimate; and a read that misses a store can miss only a Log whose
+     * record Service has not yet read, so the discard set is still the
+     * records logged before any Log saw On, and a report or the READY hint
+     * waits one pass, which both contracts allow. */
     bool CaptureSeenOn;
     /* Whether the switch turned a report down this pass; each pass starts
      * without. */
