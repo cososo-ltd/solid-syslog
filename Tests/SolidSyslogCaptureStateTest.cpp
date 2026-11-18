@@ -176,6 +176,15 @@ TEST_GROUP_BASE(SolidSyslogCaptureStateWithAStore, CaptureStateBase)
         DestroyLogger();
         StoreFake_Destroy();
     }
+
+    /* A library event raised while the device was undecided, with the device
+     * now off and never on. */
+    void LeaveAReportPendingWhileOff()
+    {
+        device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+        RaiseBufferLoss();
+        device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    }
 };
 
 /* The device as wired: a stream sender over the stream fake, which keeps every
@@ -465,9 +474,7 @@ TEST(SolidSyslogCaptureStateEndToEnd, TurnedOffThenOnAgainOnlyTheDeactivationAnd
 
 TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedNoReportIsMade)
 {
-    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
-    RaiseBufferLoss();
-    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    LeaveAReportPendingWhileOff();
 
     SolidSyslog_Service(solidSyslog);
 
@@ -476,9 +483,7 @@ TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedNoReportIsMade)
 
 TEST(SolidSyslogCaptureStateWithAStore, OnAfterOffTheHeldReportIsMade)
 {
-    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
-    RaiseBufferLoss();
-    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    LeaveAReportPendingWhileOff();
     SolidSyslog_Service(solidSyslog);
     device.Capture = SOLIDSYSLOG_CAPTURE_ON;
 
@@ -489,9 +494,7 @@ TEST(SolidSyslogCaptureStateWithAStore, OnAfterOffTheHeldReportIsMade)
 
 TEST(SolidSyslogCaptureStateWithAStore, OffNeverOnAHeldReportLeavesThePassIdle)
 {
-    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
-    RaiseBufferLoss();
-    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    LeaveAReportPendingWhileOff();
 
     LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(solidSyslog));
 }
