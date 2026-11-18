@@ -118,6 +118,7 @@ chooses the set; a device chooses only whether reporting is on.
 | `RESOLVER_RESOLVE_FAILED` - transient | `WARNING` | - | DNS may resolve on a later attempt. |
 | `RESOLVER_RESOLVE_FAILED` - unsupported family | `ERROR` | - | the lookup answered in a family the transports cannot send to. Permanent for that destination: it clears when the destination changes to one that resolves in a family the transports send to. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `FILE_IO_FAILED` | `ERROR` | yes | a file system call failed - read-only media, a full volume, a failing device - and the operation that made it failed with it. Single-sourced via `SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY`. |
+| `NOR_FLASH_IO_FAILED` | `ERROR` | - | a flash operation failed, or the flash did not hold what was programmed into it. The block device operation that met it fails with it, and the store freezes. Single-sourced via `SOLIDSYSLOG_NOR_FLASH_IO_FAILED_SEVERITY`. |
 | `STORE_WRITE_FAILED` | `ERROR` | yes | the security policy would not seal the record being written, so it is lost. Each later write tries again. Raised once per run of such records, re-armed by the next record the store keeps. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `STORE_FROZEN` | `ERROR` | yes | the store's device failed, and the store will not use it again until it is created afresh, in practice a restart. Delivery continues without store-and-forward. Raised once. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
 | `STORE_RECORD_DISCARDED` | `ERROR` | yes | a stored record was not delivered: its security policy rejected it, or it was corrupt and the rest of its block went with it. The records after it are delivered. Raised once per run of discarded records, re-armed by the next record that reads cleanly. Explicit `SOLIDSYSLOG_SEVERITY_ERROR` at the site. |
@@ -137,7 +138,8 @@ cannot drift site-by-site again. `STREAM_CONNECT_FAILED` gets the same treatment
 same reason even though it is a split: every TCP backend raises the same shared detail
 codes from `SolidSyslogTcpStreamErrors.h`, so a literal per site would restate one policy
 once per backend. `FILE_IO_FAILED` has one for the same reason: its codes in
-`SolidSyslogFileErrors.h` are shared by every File backend. Each of these
+`SolidSyslogFileErrors.h` are shared by every File backend. `NOR_FLASH_IO_FAILED`
+has one because the flash block device and every NorFlash backend raise it. Each of these
 macros stands for one level. `BAD_CONFIG` is split: the fatal subset uses a macro, the
 degraded subset keeps an explicit `WARNING` literal (the two are different
 severities, so one macro cannot express both). Tests assert the concrete expected level

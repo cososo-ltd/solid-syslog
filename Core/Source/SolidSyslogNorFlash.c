@@ -8,7 +8,13 @@
 #include "SolidSyslogNorFlash.h"
 #include "SolidSyslogNorFlashDefinition.h"
 
-bool SolidSyslogNorFlash_Read(struct SolidSyslogNorFlash* flash, size_t blockIndex, size_t offset, void* buf, size_t count)
+bool SolidSyslogNorFlash_Read(
+    struct SolidSyslogNorFlash* flash,
+    size_t blockIndex,
+    size_t offset,
+    void* buf,
+    size_t count
+)
 {
     return flash->Read(flash, blockIndex, offset, buf, count);
 }

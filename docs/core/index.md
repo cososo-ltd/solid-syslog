@@ -40,6 +40,7 @@ Portable [role](../roles/index.md) implementations - no platform required:
 | [`SolidSyslogSwitchingSender`](../api/SolidSyslogSwitchingSender_8h.md) | Sender - delegates to one of several inners |
 | [`SolidSyslogBlockStore`](../api/SolidSyslogBlockStore_8h.md) | Store - store-and-forward over rotating blocks |
 | [`SolidSyslogFileBlockDevice`](../api/SolidSyslogFileBlockDevice_8h.md) | BlockDevice - sequence-numbered files over a File |
+| [`SolidSyslogNorFlashBlockDevice`](../api/SolidSyslogNorFlashBlockDevice_8h.md) | BlockDevice - one erase block of a NorFlash to a block, with no filesystem |
 | [`SolidSyslogCrc16Policy`](../api/SolidSyslogCrc16Policy_8h.md) | SecurityPolicy - CRC-16 integrity (accidental corruption, not tampering) |
 | [`SolidSyslogMetaSd`](../api/SolidSyslogMetaSd_8h.md) | StructuredData - sequenceId, sysUpTime, language |
 | [`SolidSyslogTimeQualitySd`](../api/SolidSyslogTimeQualitySd_8h.md) | StructuredData - tzKnown, isSynced, syncAccuracy |

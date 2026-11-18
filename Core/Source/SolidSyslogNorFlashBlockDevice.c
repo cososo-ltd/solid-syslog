@@ -76,7 +76,8 @@ static bool NorFlashBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t
 static size_t NorFlashBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* base);
 static size_t NorFlashBlockDevice_GetBlockCount(struct SolidSyslogBlockDevice* base);
 
-static inline struct SolidSyslogNorFlashBlockDevice* NorFlashBlockDevice_SelfFromBase(struct SolidSyslogBlockDevice* base
+static inline struct SolidSyslogNorFlashBlockDevice* NorFlashBlockDevice_SelfFromBase(
+    struct SolidSyslogBlockDevice* base
 );
 
 void SolidSyslogNorFlashBlockDevice_Initialise(
@@ -108,7 +109,8 @@ void SolidSyslogNorFlashBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base)
     *base = *SolidSyslogNullBlockDevice_Get();
 }
 
-static inline struct SolidSyslogNorFlashBlockDevice* NorFlashBlockDevice_SelfFromBase(struct SolidSyslogBlockDevice* base
+static inline struct SolidSyslogNorFlashBlockDevice* NorFlashBlockDevice_SelfFromBase(
+    struct SolidSyslogBlockDevice* base
 )
 {
     return (struct SolidSyslogNorFlashBlockDevice*) base;
@@ -122,7 +124,10 @@ static inline bool NorFlashBlockDevice_IsValidBlockIndex(
     return blockIndex < self->BlockCount;
 }
 
-static inline size_t NorFlashBlockDevice_FlashBlock(const struct SolidSyslogNorFlashBlockDevice* self, size_t blockIndex)
+static inline size_t NorFlashBlockDevice_FlashBlock(
+    const struct SolidSyslogNorFlashBlockDevice* self,
+    size_t blockIndex
+)
 {
     return self->FirstBlock + blockIndex;
 }

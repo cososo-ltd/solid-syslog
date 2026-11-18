@@ -20,127 +20,127 @@
 
 namespace
 {
-    enum SolidSyslogDiscardPolicy AlwaysOldest(void* context)
-    {
-        (void) context;
-        return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
-    }
+enum SolidSyslogDiscardPolicy AlwaysOldest(void* context)
+{
+    (void) context;
+    return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+}
 
-    /* A record of `bytes` bytes that carries its own number. */
-    std::string RecordNumbered(unsigned number, size_t bytes)
-    {
-        char digits[8] = {};
-        (void) snprintf(digits, sizeof(digits), "%05u", number);
-        std::string record(digits);
-        record.resize(bytes, 'x');
-        return record;
-    }
+/* A record of `bytes` bytes that carries its own number. */
+std::string RecordNumbered(unsigned number, size_t bytes)
+{
+    char digits[8] = {};
+    (void) snprintf(digits, sizeof(digits), "%05u", number);
+    std::string record(digits);
+    record.resize(bytes, 'x');
+    return record;
+}
 
-    unsigned NumberOf(const std::string& record)
-    {
-        return static_cast<unsigned>(std::stoul(record.substr(0, 5)));
-    }
+unsigned NumberOf(const std::string& record)
+{
+    return static_cast<unsigned>(std::stoul(record.substr(0, 5)));
+}
 
-    /* The whole store stack over one flash. Restart discards the library's
+/* The whole store stack over one flash. Restart discards the library's
      * state and builds it again over the same bytes, as a reset does. */
-    struct NorFlashStoreStack
+struct NorFlashStoreStack
+{
+    size_t flashBlockSize = NORFLASHFAKE_MAX_BLOCK_SIZE;
+    size_t flashBlockCount = 16;
+    size_t storeMaxBlocks = 8;
+    SolidSyslogDiscardPolicyFunction discardPolicy = nullptr;
+    SolidSyslogNorFlash* flash = nullptr;
+    SolidSyslogSecurityPolicy* policy = nullptr;
+    SolidSyslogBlockDevice* device = nullptr;
+    SolidSyslogStore* store = nullptr;
+
+    void StartOnABlankPart()
     {
-        size_t flashBlockSize = NORFLASHFAKE_MAX_BLOCK_SIZE;
-        size_t flashBlockCount = 16;
-        size_t storeMaxBlocks = 8;
-        SolidSyslogDiscardPolicyFunction discardPolicy = nullptr;
-        SolidSyslogNorFlash* flash = nullptr;
-        SolidSyslogSecurityPolicy* policy = nullptr;
-        SolidSyslogBlockDevice* device = nullptr;
-        SolidSyslogStore* store = nullptr;
-
-        void StartOnABlankPart()
-        {
-            flash = NorFlashFake_Create(flashBlockSize, flashBlockCount);
-            Start();
-        }
-
-        void Start()
-        {
-            policy = SolidSyslogCrc16Policy_Create();
-            SolidSyslogNorFlashBlockDeviceConfig deviceConfig = {};
-            deviceConfig.Flash = flash;
-            deviceConfig.FirstBlock = 0;
-            deviceConfig.BlockCount = flashBlockCount;
-            device = SolidSyslogNorFlashBlockDevice_Create(&deviceConfig);
-            SolidSyslogBlockStoreConfig storeConfig = {};
-            storeConfig.BlockDevice = device;
-            storeConfig.MaxBlocks = storeMaxBlocks;
-            storeConfig.SecurityPolicy = policy;
-            storeConfig.GetDiscardPolicy = discardPolicy;
-            store = SolidSyslogBlockStore_Create(&storeConfig);
-        }
-
-        void Stop()
-        {
-            if (store != nullptr)
-            {
-                SolidSyslogBlockStore_Destroy(store);
-                SolidSyslogNorFlashBlockDevice_Destroy(device);
-                SolidSyslogCrc16Policy_Destroy();
-                store = nullptr;
-                device = nullptr;
-                policy = nullptr;
-            }
-        }
-
-        void Restart()
-        {
-            Stop();
-            NorFlashFake_PowerOn();
-            Start();
-        }
-
-        [[nodiscard]] bool Write(const std::string& record) const
-        {
-            return SolidSyslogStore_Write(store, record.data(), record.size()) == SOLIDSYSLOG_STORE_WRITE_KEPT;
-        }
-
-        /* Reads the next record without marking it. Empty when there is none. */
-        [[nodiscard]] std::string ReadNext() const
-        {
-            char buffer[512] = {};
-            size_t bytesRead = 0U;
-            bool read = SolidSyslogStore_ReadNextUnsent(store, buffer, sizeof(buffer), &bytesRead);
-            return read ? std::string(buffer, bytesRead) : std::string();
-        }
-
-        void MarkSent() const
-        {
-            SolidSyslogStore_MarkSent(store);
-        }
-
-        /* Reads and marks until nothing is left to send. */
-        [[nodiscard]] std::vector<unsigned> Drain() const
-        {
-            std::vector<unsigned> numbers;
-            std::string record = ReadNext();
-            while (!record.empty())
-            {
-                numbers.push_back(NumberOf(record));
-                MarkSent();
-                record = ReadNext();
-            }
-            return numbers;
-        }
-    };
-
-    NorFlashStoreStack stack;
-
-    std::string Listed(const std::vector<unsigned>& numbers)
-    {
-        std::string text;
-        for (unsigned number : numbers)
-        {
-            text += std::to_string(number) + " ";
-        }
-        return text;
+        flash = NorFlashFake_Create(flashBlockSize, flashBlockCount);
+        Start();
     }
+
+    void Start()
+    {
+        policy = SolidSyslogCrc16Policy_Create();
+        SolidSyslogNorFlashBlockDeviceConfig deviceConfig = {};
+        deviceConfig.Flash = flash;
+        deviceConfig.FirstBlock = 0;
+        deviceConfig.BlockCount = flashBlockCount;
+        device = SolidSyslogNorFlashBlockDevice_Create(&deviceConfig);
+        SolidSyslogBlockStoreConfig storeConfig = {};
+        storeConfig.BlockDevice = device;
+        storeConfig.MaxBlocks = storeMaxBlocks;
+        storeConfig.SecurityPolicy = policy;
+        storeConfig.GetDiscardPolicy = discardPolicy;
+        store = SolidSyslogBlockStore_Create(&storeConfig);
+    }
+
+    void Stop()
+    {
+        if (store != nullptr)
+        {
+            SolidSyslogBlockStore_Destroy(store);
+            SolidSyslogNorFlashBlockDevice_Destroy(device);
+            SolidSyslogCrc16Policy_Destroy();
+            store = nullptr;
+            device = nullptr;
+            policy = nullptr;
+        }
+    }
+
+    void Restart()
+    {
+        Stop();
+        NorFlashFake_PowerOn();
+        Start();
+    }
+
+    [[nodiscard]] bool Write(const std::string& record) const
+    {
+        return SolidSyslogStore_Write(store, record.data(), record.size()) == SOLIDSYSLOG_STORE_WRITE_KEPT;
+    }
+
+    /* Reads the next record without marking it. Empty when there is none. */
+    [[nodiscard]] std::string ReadNext() const
+    {
+        char buffer[512] = {};
+        size_t bytesRead = 0U;
+        bool read = SolidSyslogStore_ReadNextUnsent(store, buffer, sizeof(buffer), &bytesRead);
+        return read ? std::string(buffer, bytesRead) : std::string();
+    }
+
+    void MarkSent() const
+    {
+        SolidSyslogStore_MarkSent(store);
+    }
+
+    /* Reads and marks until nothing is left to send. */
+    [[nodiscard]] std::vector<unsigned> Drain() const
+    {
+        std::vector<unsigned> numbers;
+        std::string record = ReadNext();
+        while (!record.empty())
+        {
+            numbers.push_back(NumberOf(record));
+            MarkSent();
+            record = ReadNext();
+        }
+        return numbers;
+    }
+};
+
+NorFlashStoreStack stack;
+
+std::string Listed(const std::vector<unsigned>& numbers)
+{
+    std::string text;
+    for (unsigned number : numbers)
+    {
+        text += std::to_string(number) + " ";
+    }
+    return text;
+}
 } // namespace
 
 enum
@@ -560,6 +560,7 @@ TEST(SolidSyslogNorFlashStorePowerCut, WhereACutCostTheOldestBlockTheRecordThatE
     {
         RECORDS = 30
     };
+
     stack.storeMaxBlocks = 3;
     stack.discardPolicy = AlwaysOldest;
     /* The oldest record on the part once `n` records have been stored. */
@@ -585,8 +586,8 @@ TEST(SolidSyslogNorFlashStorePowerCut, WhereACutCostTheOldestBlockTheRecordThatE
 
             std::vector<unsigned> drained = stack.Drain();
             std::string where = Describe(cutAt, cut, drained);
-            bool oldestBlockWent = !run.kept.empty() && !drained.empty() &&
-                                   (drained.front() > oldestAfter[run.kept.size()]);
+            bool oldestBlockWent =
+                !run.kept.empty() && !drained.empty() && (drained.front() > oldestAfter[run.kept.size()]);
             if (run.writeInFlight && oldestBlockWent)
             {
                 CHECK_TEXT(std::find(drained.begin(), drained.end(), run.inFlight) != drained.end(), where.c_str());

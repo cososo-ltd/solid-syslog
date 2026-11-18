@@ -48,27 +48,27 @@ enum
     }
 
 /* The four bytes of state at the head of the device's block `blockIndex`. */
-#define CHECK_BLOCK_STATE(blockIndex, b0, b1, b2, b3)                           \
-    {                                                                           \
-        BYTES_EQUAL((b0), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 0));    \
-        BYTES_EQUAL((b1), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 1));    \
-        BYTES_EQUAL((b2), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 2));    \
-        BYTES_EQUAL((b3), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 3));    \
+#define CHECK_BLOCK_STATE(blockIndex, b0, b1, b2, b3)                        \
+    {                                                                        \
+        BYTES_EQUAL((b0), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 0)); \
+        BYTES_EQUAL((b1), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 1)); \
+        BYTES_EQUAL((b2), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 2)); \
+        BYTES_EQUAL((b3), NorFlashFake_Peek(FIRST_BLOCK + (blockIndex), 3)); \
     }
 
-#define CHECK_BAD_CONFIG_REPORTED(detail)              \
-    CHECK_ERROR_REPORTED_ONCE(                         \
-        SOLIDSYSLOG_SEVERITY_CRITICAL,                 \
-        &SolidSyslogNorFlashBlockDeviceErrorSource,    \
-        SOLIDSYSLOG_CAT_BAD_CONFIG,                    \
-        (detail)                                       \
+#define CHECK_BAD_CONFIG_REPORTED(detail)           \
+    CHECK_ERROR_REPORTED_ONCE(                      \
+        SOLIDSYSLOG_SEVERITY_CRITICAL,              \
+        &SolidSyslogNorFlashBlockDeviceErrorSource, \
+        SOLIDSYSLOG_CAT_BAD_CONFIG,                 \
+        (detail)                                    \
     )
 
-#define CHECK_VERIFY_FAILURE_REPORTED()                       \
-    CHECK_ERROR_REPORTED_ONCE(                                \
-        SOLIDSYSLOG_SEVERITY_ERROR,                           \
-        &SolidSyslogNorFlashBlockDeviceErrorSource,           \
-        SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED,                  \
+#define CHECK_VERIFY_FAILURE_REPORTED()                        \
+    CHECK_ERROR_REPORTED_ONCE(                                 \
+        SOLIDSYSLOG_SEVERITY_ERROR,                            \
+        &SolidSyslogNorFlashBlockDeviceErrorSource,            \
+        SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED,                   \
         SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_VERIFY_FAILED \
     )
 

@@ -10,7 +10,13 @@
 #include "SolidSyslogNorFlashDefinition.h"
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature mirrored from NorFlash contract
-static bool NullNorFlash_Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buf, size_t count);
+static bool NullNorFlash_Read(
+    struct SolidSyslogNorFlash* base,
+    size_t blockIndex,
+    size_t offset,
+    void* buf,
+    size_t count
+);
 static bool NullNorFlash_Program(
     struct SolidSyslogNorFlash* base,
     size_t blockIndex,
@@ -36,7 +42,13 @@ struct SolidSyslogNorFlash* SolidSyslogNullNorFlash_Get(void)
 }
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature mirrored from NorFlash contract
-static bool NullNorFlash_Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buf, size_t count)
+static bool NullNorFlash_Read(
+    struct SolidSyslogNorFlash* base,
+    size_t blockIndex,
+    size_t offset,
+    void* buf,
+    size_t count
+)
 {
     (void) base;
     (void) blockIndex;
