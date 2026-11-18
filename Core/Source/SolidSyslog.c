@@ -558,7 +558,7 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(self);
     bool dealtWith = !self->Halted && SolidSyslog_DealWithHeldRecord(self);
 
-    if (dealtWith && !self->Halted)
+    if (dealtWith && !self->Halted && !SolidSyslog_WasLoggedUndecided(self))
     {
         dealtWith = SolidSyslog_ReportPendingEvents(self);
     }

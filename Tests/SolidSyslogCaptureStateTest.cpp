@@ -462,3 +462,14 @@ TEST(SolidSyslogCaptureStateEndToEnd, TurnedOffThenOnAgainOnlyTheDeactivationAnd
     STRCMP_EQUAL("reactivated", FrameMsgId(1).c_str());
     STRCMP_CONTAINS("sequenceId=\"2\"", StreamFake_Frame(stream, 1));
 }
+
+TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedNoReportIsMade)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    RaiseBufferLoss();
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
+}
