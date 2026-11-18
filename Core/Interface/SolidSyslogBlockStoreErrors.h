@@ -64,6 +64,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
            given. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE,
+        /** Raised under SOLIDSYSLOG_CAT_BAD_CONFIG: the block device has fewer
+         *  blocks than SolidSyslogBlockStoreConfig.BlockDevice requires, so
+         *  Create refused it. */
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS,
         /** Raised under SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED: used bytes
          *  rose to the capacity threshold or past it. */
         SOLIDSYSLOG_BLOCK_STORE_ERROR_THRESHOLD_CROSSED,

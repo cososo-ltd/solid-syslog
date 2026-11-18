@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cstring>
 
+#include "BlockDeviceFake.h"
 #include "DiscardPolicyAnswer.h"
 #include "CppUTest/TestHarness.h"
 #include "SolidSyslogBlockDevice.h"
@@ -12,6 +13,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogFileBlockDevice.h"
+#include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogSecurityPolicyDefinition.h"
 #include "SolidSyslogStore.h"
@@ -565,6 +567,17 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreConfig, BlockDeviceTestBase)
         store = SolidSyslogBlockStore_Create(&config);
     }
 
+    void CreateOnADeviceOf(size_t blockCount)
+    {
+        /* One worst-case record to a block, which the fake holds whatever the tunables are. */
+        struct SolidSyslogBlockDevice* sized = BlockDeviceFake_Create(
+            SOLIDSYSLOG_MAX_MESSAGE_SIZE + TEST_RECORD_OVERHEAD + SOLIDSYSLOG_MAX_INTEGRITY_SIZE
+        );
+        BlockDeviceFake_SetBlockCount(blockCount);
+        struct SolidSyslogBlockStoreConfig config = MakeConfig(sized);
+        store = SolidSyslogBlockStore_Create(&config);
+    }
+
     void CreateWithMaxBlockSize(size_t maxBlockSize)
     {
         EnsureDeviceBlockSize(maxBlockSize);
@@ -749,6 +762,82 @@ TEST(SolidSyslogBlockStoreConfig, ANullBlockDeviceIsReportedAsFatal)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
     );
+}
+
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsRefused)
+{
+    CreateOnADeviceOf(3);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfThreeBlocksIsReportedAsFatal)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateOnADeviceOf(3);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
+    );
+}
+
+/* The Null block device is a store that is not wanted, as the Null store is to
+ * the logger. */
+TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceGetsTheNullStore)
+{
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
+    store = SolidSyslogBlockStore_Create(&config);
+    POINTERS_EQUAL(SolidSyslogNullStore_Get(), store);
+}
+
+TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceIsNotReported)
+{
+    ErrorHandlerFake_Install(nullptr);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
+    store = SolidSyslogBlockStore_Create(&config);
+    LONGS_EQUAL(0, ErrorHandlerFake_HandleCallCount());
+}
+
+TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceIsNotReportedForAPolicyItWillNeverUse)
+{
+    ErrorHandlerFake_Install(nullptr);
+    policy.TrailerSize = static_cast<uint16_t>(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1U);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
+    config.SecurityPolicy = &policy;
+    store = SolidSyslogBlockStore_Create(&config);
+    LONGS_EQUAL(0, ErrorHandlerFake_HandleCallCount());
+}
+
+/* Only the Null block device says no store is wanted. Another device that
+ * answers no blocks is one that has gone wrong. */
+TEST(SolidSyslogBlockStoreConfig, ADeviceOtherThanTheNullOneThatAnswersNoBlocksIsReported)
+{
+    ErrorHandlerFake_Install(nullptr);
+    CreateOnADeviceOf(0);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_TOO_FEW_BLOCKS
+    );
+}
+
+TEST(SolidSyslogBlockStoreConfig, ADeviceOfFourBlocksIsAccepted)
+{
+    CreateOnADeviceOf(4);
+    CHECK(store != SolidSyslogNullStore_Get());
+}
+
+TEST(SolidSyslogBlockStoreConfig, AStoreOnADeviceOfFourBlocksKeepsWritingPastItsLastBlock)
+{
+    CreateOnADeviceOf(4);
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
+
+    for (int record = 0; record < 40; record++)
+    {
+        LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    }
 }
 
 // clang-format off
@@ -3530,6 +3619,21 @@ TEST(SolidSyslogBlockStorePool, ANullBlockDeviceLeavesEverySlotFree)
     for (auto* slot : pooled)
     {
         CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a NULL BlockDevice kept a pool slot");
+    }
+}
+
+TEST(SolidSyslogBlockStorePool, ADeviceOfTooFewBlocksLeavesEverySlotFree)
+{
+    struct SolidSyslogBlockDevice* small = BlockDeviceFake_Create(TEST_MAX_BLOCK_SIZE);
+    BlockDeviceFake_SetBlockCount(3);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(small);
+    (void) SolidSyslogBlockStore_Create(&config);
+
+    FillPool();
+
+    for (auto* slot : pooled)
+    {
+        CHECK_TEXT(slot != SolidSyslogNullStore_Get(), "a device of too few blocks kept a pool slot");
     }
 }
 

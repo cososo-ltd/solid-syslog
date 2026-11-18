@@ -32,7 +32,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogFormatter.h:38
 misra-c2012-11.3:Core/Source/SolidSyslogBlockStore.c:87
 misra-c2012-11.3:Core/Source/SolidSyslogCircularBuffer.c:190
 misra-c2012-11.3:Core/Source/SolidSyslogEventSd.c:61
-misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:113
+misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:115
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:64
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:64
@@ -153,10 +153,10 @@ misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:78
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:85
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:92
 misra-c2012-11.8:Core/Source/SolidSyslogMessageFormatter.c:101
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:55
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:81
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:186
-misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:211
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:65
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:97
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:227
+misra-c2012-11.8:Core/Source/SolidSyslogBlockStoreStatic.c:253
 misra-c2012-11.8:Platform/LwipRaw/Source/SolidSyslogLwipRawDatagram.c:192
 misra-c2012-11.8:Platform/Windows/Source/SolidSyslogWinsockTcpStream.c:104
 misra-c2012-11.8:Platform/VxWorks64/Source/SolidSyslogVxWorks64Datagram.c:285
@@ -180,7 +180,7 @@ misra-c2012-21.6:Platform/Windows/Source/SolidSyslogWindowsFile.c:13
 # See docs/misra-deviations.md#d009
 misra-c2012-2.4:Core/Interface/SolidSyslogTransport.h:12
 misra-c2012-2.4:Core/Interface/SolidSyslogUdpPayload.h:22
-misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:21
+misra-c2012-2.4:Core/Source/SolidSyslogBlockSequence.c:20
 misra-c2012-2.4:Core/Source/SolidSyslogFormatter.h:18
 misra-c2012-2.4:Core/Source/SolidSyslogMessageFormatter.c:25
 misra-c2012-2.4:Core/Source/SolidSyslogRecordStore.c:18
@@ -194,8 +194,7 @@ misra-c2012-5.7:Core/Interface/SolidSyslogTimeQuality.h:19
 misra-c2012-5.7:Core/Interface/SolidSyslogTlsFingerprint.h:32
 misra-c2012-5.7:Core/Interface/SolidSyslogTransport.h:15
 misra-c2012-5.7:Core/Interface/SolidSyslogUdpPayload.h:27
-misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:21
-misra-c2012-5.7:Core/Source/SolidSyslogBlockSequencePrivate.h:18
+misra-c2012-5.7:Core/Source/SolidSyslogBlockSequence.c:20
 misra-c2012-5.7:Core/Source/SolidSyslogCircularBuffer.c:29
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16.c:16
 misra-c2012-5.7:Core/Source/SolidSyslogCrc16Policy.c:14

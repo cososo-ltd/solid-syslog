@@ -153,6 +153,7 @@ TEST_BASE(BlockSequenceTestBase)
     std::vector<DeviceCall> calls;
     std::map<size_t, size_t> sizes;
     struct SolidSyslogBlockSequence* sequence = nullptr;
+    size_t deviceBlocks = 100;
 
     void WireFakeDevice()
     {
@@ -174,6 +175,7 @@ TEST_BASE(BlockSequenceTestBase)
         config.BlockDevice                = &fakeDevice.Base;
         config.MaxBlockSize               = maxBlockSize;
         config.MaxBlocks                  = maxBlocks;
+        config.DeviceBlocks               = deviceBlocks;
         sequence = SolidSyslogBlockSequence_Create(&config);
     }
 
@@ -205,6 +207,12 @@ TEST_GROUP_BASE(BlockSequenceScan, BlockSequenceTestBase)
         SolidSyslogBlockSequence_Destroy(sequence);
         BuildSequence(SCAN_BLOCK_SIZE, maxBlocks);
     }
+
+    void RecreateOnADeviceOf(size_t blocks, size_t maxBlocks)
+    {
+        deviceBlocks = blocks;
+        RecreateWithMaxBlocks(maxBlocks);
+    }
 };
 
 // clang-format on
@@ -214,6 +222,12 @@ TEST(BlockSequenceScan, MaxBlocksStopsShortOfEverySequenceNumber)
     /* Configured at 99. A failed eviction leaves one block over the ceiling, and
      * a resume needs an absent sequence number to find where the run starts. */
     LONGS_EQUAL(98 * 1000, SolidSyslogBlockSequence_TotalBytes(sequence));
+}
+
+TEST(BlockSequenceScan, MaxBlocksStopsTwoShortOfTheDevicesBlocks)
+{
+    RecreateOnADeviceOf(8, 99);
+    LONGS_EQUAL(6 * 1000, SolidSyslogBlockSequence_TotalBytes(sequence));
 }
 
 TEST(BlockSequenceScan, ColdStartAcquiresBlockZero)
@@ -370,6 +384,81 @@ TEST(BlockSequenceScan, ResumesAcrossAHoleAtTheWrapBoundary)
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
     LONGS_EQUAL(98, SolidSyslogBlockSequence_ReadSequence(sequence));
     LONGS_EQUAL(1, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
+TEST(BlockSequenceScan, TheRunWrapsAtTheDevicesLastBlock)
+{
+    RecreateOnADeviceOf(8, 6);
+    existing = {6, 7, 0};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(6, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
+TEST(BlockSequenceScan, ARotationFromTheDevicesLastBlockStartsOnItsFirst)
+{
+    RecreateOnADeviceOf(8, 6);
+    existing = {6, 7};
+    sizes = {{6, 1000}, {7, 1000}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    bool readBlockChanged = false;
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
+TEST(BlockSequenceScan, ARunAcrossTheDevicesLastBlockCountsItsBlocksOnce)
+{
+    RecreateOnADeviceOf(8, 6);
+    existing = {6, 7, 0};
+    sizes = {{6, 1000}, {7, 1000}, {0, 400}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(2400, SolidSyslogBlockSequence_UsedBytes(sequence));
+}
+
+/* A device that cannot answer says a block is absent, as it does of a hole. A
+ * run resumed with no hole in it is not asked, so its blocks are never taken
+ * for holes. */
+TEST(BlockSequenceScan, ABlockOfARunWithNoHolesIsNotSteppedOverWhenTheDeviceStopsAnswering)
+{
+    existing = {0, 1, 2};
+    sizes = {{0, 1000}, {1, 1000}, {2, 1000}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    existing.erase(1);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    LONGS_EQUAL(1, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
+/* Once the read is past the run's only hole, the device is not asked again. */
+TEST(BlockSequenceScan, ABlockPastTheLastHoleIsNotSteppedOverWhenTheDeviceStopsAnswering)
+{
+    existing = {5, 7, 8, 9};
+    sizes = {{5, 1000}, {7, 1000}, {8, 1000}, {9, 1000}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    existing.erase(8);
+    SolidSyslogBlockSequence_LeaveReadBlock(sequence);
+    LONGS_EQUAL(8, SolidSyslogBlockSequence_ReadSequence(sequence));
+}
+
+/* Sequence numbers are not held in a byte. */
+TEST(BlockSequenceScan, ARunOnADeviceOfThreeHundredBlocksWrapsAtItsLastBlock)
+{
+    RecreateOnADeviceOf(300, 6);
+    existing = {298, 299, 0};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(298, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
+TEST(BlockSequenceScan, ARotationGoesPastBlockTwoHundredAndFiftyFive)
+{
+    RecreateOnADeviceOf(300, 6);
+    existing = {254, 255};
+    sizes = {{254, 1000}, {255, 1000}};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    bool readBlockChanged = false;
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    LONGS_EQUAL(256, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 /* The step over a hole ends at the write block, so a block a rotation acquires

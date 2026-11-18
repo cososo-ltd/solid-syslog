@@ -10,18 +10,13 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 
 struct SolidSyslogBlockDevice;
-
-enum
-{
-    BLOCK_SEQUENCE_MODULUS = 100U /* block sequence numbers run 00 to 99 and wrap */
-};
 
 struct SolidSyslogBlockSequenceConfig
 {
     struct SolidSyslogBlockDevice* BlockDevice;
+    size_t DeviceBlocks; /* the device's block count, where block numbers wrap */
     size_t MaxBlockSize;
     size_t MaxBlocks;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
@@ -34,6 +29,7 @@ struct SolidSyslogBlockSequenceConfig
 struct SolidSyslogBlockSequence
 {
     struct SolidSyslogBlockDevice* BlockDevice;
+    size_t DeviceBlocks; /* the device's block count, where block numbers wrap */
     size_t MaxBlockSize;
     size_t MaxBlocks;
     SolidSyslogDiscardPolicyFunction GetDiscardPolicy;
@@ -43,9 +39,10 @@ struct SolidSyslogBlockSequence
     void* ThresholdContext;
     bool AtCapacity;
     bool ThresholdCrossed;
-    uint8_t OldestSequence;
-    uint8_t ReadSequence;
-    uint8_t WriteSequence;
+    size_t OldestSequence;
+    size_t ReadSequence;
+    size_t WriteSequence;
+    size_t HolesAhead; /* blocks the resume found missing from inside the run, not yet stepped over */
     size_t ReadCursor;
     size_t ReadBlockSize; /* cached once read, for a read block behind the write block */
     bool ReadBlockSizeKnown;
@@ -54,7 +51,6 @@ struct SolidSyslogBlockSequence
     bool DeviceFailed;
     bool EvictedUnsent; /* the latest rotation evicted a block still holding unsent records */
     enum SolidSyslogBlockStoreErrors FailedOperation;
-    bool BlockPresent[BLOCK_SEQUENCE_MODULUS]; /* a hole in the run is stepped over, never read or disposed */
 };
 
 void SolidSyslogBlockSequence_Initialise(
@@ -65,6 +61,10 @@ void SolidSyslogBlockSequence_Cleanup(struct SolidSyslogBlockSequence* blockSequ
 
 struct SolidSyslogBlockSequence* SolidSyslogBlockSequence_Create(const struct SolidSyslogBlockSequenceConfig* config);
 void SolidSyslogBlockSequence_Destroy(struct SolidSyslogBlockSequence* blockSequence);
+
+/* The fewest blocks a device can have: the least MaxBlocks may be, and the
+ * blocks kept free beyond it. */
+size_t SolidSyslogBlockSequence_MinDeviceBlocks(void);
 
 bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequence);
 

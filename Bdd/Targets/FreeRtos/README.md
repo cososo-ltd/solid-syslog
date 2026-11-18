@@ -42,7 +42,7 @@ Behave drives the target over its console, as
 | `set store file` | Puts the target on the file store |
 | `set max-blocks`, `set max-block-size`, `set discard-policy`, `set halt-exit` | Configure the block store, before `set store file` |
 | `set no-reporting 1` | Turns off the logger's reports of its own events |
-| `blocks` | Lists the block files on the store volume as one `BLOCKS: 00 01` line, since Behave cannot see the disk image |
+| `blocks` | Lists the blocks the store's block device holds as one `BLOCKS: 00 01` line, since Behave cannot see the disk image |
 | `set shutdown 1` | Destroys the library's objects, which closes the store's files, unmounts the volume and exits through the board |
 | `quit` | Tears the target down without exiting |
 

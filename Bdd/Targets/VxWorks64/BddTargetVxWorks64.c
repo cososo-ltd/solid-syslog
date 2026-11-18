@@ -40,7 +40,7 @@
 #include "SolidSyslogError.h"
 #include "SolidSyslogFileBlockDevice.h"
 #include "SolidSyslogMetaSd.h"
-#include "SolidSyslogNullFile.h"
+#include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogNullSecurityPolicy.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
@@ -580,8 +580,8 @@ static void BddTargetVxWorks64_OnThresholdCrossed(void* context)
 static void BddTargetVxWorks64_OnBlocks(void)
 {
     (void) semTake(loggerLock, WAIT_FOREVER);
-    struct SolidSyslogFile* file = storeIsFile ? storeFile : SolidSyslogNullFile_Get();
-    BddTargetBlockFiles_Print(BddTargetVxWorks64_Reports(), file, STORE_PATH_PREFIX);
+    struct SolidSyslogBlockDevice* device = storeIsFile ? storeBlockDevice : SolidSyslogNullBlockDevice_Get();
+    BddTargetBlockFiles_Print(BddTargetVxWorks64_Reports(), device);
     (void) semGive(loggerLock);
 }
 

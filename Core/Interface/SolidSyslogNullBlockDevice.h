@@ -5,7 +5,8 @@
 /** @file
  *  The no-op BlockDevice Null object: every method reports a device that does not exist -
  *  Acquire, Dispose, Exists, Read, Append and WriteAt return false, Size fails with a size
- *  of 0 - a failed device, never an empty block - and GetBlockSize returns 0. */
+ *  of 0 - a failed device, never an empty block - and GetBlockSize and GetBlockCount
+ *  return 0. */
 #ifndef SOLIDSYSLOGNULLBLOCKDEVICE_H
 #define SOLIDSYSLOGNULLBLOCKDEVICE_H
 
@@ -17,7 +18,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Every method reports a device that does not exist: Acquire, Dispose, Exists,
      *  Read, Append and WriteAt all return false, Size fails with a size of 0 - a failed
-     *  device, never an empty block - and GetBlockSize returns 0. */
+     *  device, never an empty block - and GetBlockSize and GetBlockCount return 0. */
     struct SolidSyslogBlockDevice* SolidSyslogNullBlockDevice_Get(void);
 
 SOLIDSYSLOG_EXTERN_C_END

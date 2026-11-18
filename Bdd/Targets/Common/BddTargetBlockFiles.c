@@ -3,25 +3,16 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include "SolidSyslogFile.h"
-#include "SolidSyslogTunables.h"
+#include "SolidSyslogBlockDevice.h"
 
-enum
+void BddTargetBlockFiles_Print(FILE* out, struct SolidSyslogBlockDevice* device)
 {
-    /* SolidSyslogBlockSequence numbers blocks modulo this, whatever MaxBlocks is. */
-    BLOCK_INDEX_COUNT = 100
-};
+    size_t blockCount = SolidSyslogBlockDevice_GetBlockCount(device);
 
-void BddTargetBlockFiles_Print(FILE* out, struct SolidSyslogFile* file, const char* pathPrefix)
-{
-    /* The name SolidSyslogFileBlockDevice gives a block: prefix, two-digit
-       index, .log. */
     (void) fprintf(out, "BLOCKS:");
-    for (size_t index = 0U; index < BLOCK_INDEX_COUNT; index++)
+    for (size_t index = 0U; index < blockCount; index++)
     {
-        char path[SOLIDSYSLOG_MAX_PATH_SIZE];
-        (void) snprintf(path, sizeof(path), "%s%02u.log", pathPrefix, (unsigned) index);
-        if (SolidSyslogFile_Exists(file, path))
+        if (SolidSyslogBlockDevice_Exists(device, index))
         {
             (void) fprintf(out, " %02u", (unsigned) index);
         }

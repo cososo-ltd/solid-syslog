@@ -68,12 +68,15 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Destroy releases only the store's own slot. */
     struct SolidSyslogBlockStoreConfig
     {
-        /** Required: Create refuses a NULL device. The block store is the sole
-         *  writer. */
+        /** Required: Create refuses a NULL device, and one with fewer than four
+         *  blocks. SolidSyslogNullBlockDevice_Get() says no store is wanted:
+         *  Create gives the Null store and reports nothing. The block store is
+         *  the sole writer. */
         struct SolidSyslogBlockDevice* BlockDevice;
-        /** Retention ceiling in blocks, clamped to 2..98; GetDiscardPolicy governs
-         *  the overflow. An eviction that fails freezes the store with one block more
-         *  than this on the media, and the next start keeps it. */
+        /** Retention ceiling in blocks, clamped to between 2 and the device's
+         *  block count less 2; GetDiscardPolicy governs the overflow. An eviction
+         *  that fails freezes the store with one block more than this on the
+         *  media, and the next start keeps it. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
          *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.
@@ -89,10 +92,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** Create a store from @p config, resuming from any records already on the
      *  device. Each of these is reported at CRITICAL and falls back to the
-     *  shared NullStore: a NULL config or BlockDevice, an exhausted pool, a
-     *  failed inner allocation, and a SecurityPolicy whose trailer is wider than
-     *  SOLIDSYSLOG_MAX_INTEGRITY_SIZE, since storing records without it would
-     *  leave them unprotected. A block too small for one worst-case record is
+     *  shared NullStore: a NULL config or BlockDevice, a BlockDevice with too
+     *  few blocks, an exhausted pool, a failed inner allocation, and a
+     *  SecurityPolicy whose trailer is wider than SOLIDSYSLOG_MAX_INTEGRITY_SIZE,
+     *  since storing records without it would leave them unprotected. A block too small for one worst-case record is
      *  grown to fit and reported as a WARNING, not a failure. */
     struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config);
     /** Release the pool slot; does not destroy the injected BlockDevice or

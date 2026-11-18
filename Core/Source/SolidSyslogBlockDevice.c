@@ -64,3 +64,8 @@ size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice* device
 {
     return device->GetBlockSize(device);
 }
+
+size_t SolidSyslogBlockDevice_GetBlockCount(struct SolidSyslogBlockDevice* device)
+{
+    return device->GetBlockCount(device);
+}

@@ -4,7 +4,7 @@
 
 /** @file
  *  The block-device role: block-indexed storage (Acquire / Dispose / Exists /
- *  Read / Append / WriteAt / Size / GetBlockSize) beneath a BlockStore. These
+ *  Read / Append / WriteAt / Size / GetBlockSize / GetBlockCount) beneath a BlockStore. These
  *  calls dispatch to the injected device's vtable, so behaviour is that
  *  device's. */
 #ifndef SOLIDSYSLOGBLOCKDEVICE_H
@@ -25,13 +25,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool SolidSyslogBlockDevice_Acquire(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 
     /** Release @p blockIndex, freeing its storage (file drivers delete the backing file).
+     *  May take as long as a block erase. A BlockStore can call it from Create, Write,
+     *  ReadNextUnsent and MarkSent.
      *  @retval false the block could not be released; the caller does not treat it as gone
      *          (a stale block must be Disposed before it is Acquired again for reuse). */
     bool SolidSyslogBlockDevice_Dispose(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 
     /** @retval true @p blockIndex is present (Acquired and not yet Disposed). Drives crash
      *          recovery: a BlockStore scans the index space with Exists to find the run of
-     *          blocks left by a previous run before deciding where to resume. */
+     *          blocks left by a previous run before deciding where to resume. Where it
+     *          found a block missing from inside that run, it asks again as the read
+     *          reaches the gap, and takes false to mean the block is gone. */
     bool SolidSyslogBlockDevice_Exists(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 
     /** Read @p count bytes from @p blockIndex starting at @p offset into caller-owned @p buf.
@@ -55,8 +59,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     );
 
     /** Overwrite @p count bytes at @p offset within @p blockIndex from @p buf, in place.
-     *  Used to patch bytes already present (e.g. flip a stored record's sent flag), not to
-     *  extend the block. Contrast Append.
+     *  Used to patch bytes already present, not to extend the block. Contrast Append.
+     *  A BlockStore uses it only to mark a record sent, which clears bits and never
+     *  sets one.
      *  @retval false the bytes were not stored. */
     bool SolidSyslogBlockDevice_WriteAt(
         struct SolidSyslogBlockDevice * device,
@@ -78,6 +83,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  source of truth; a BlockStore reads this at construction rather than taking a separately
      *  configured size. Fixed for the device's lifetime. */
     size_t SolidSyslogBlockDevice_GetBlockSize(struct SolidSyslogBlockDevice * device);
+
+    /** How many blocks the device has: every @p blockIndex it takes is below this.
+     *  Fixed for the device's lifetime. */
+    size_t SolidSyslogBlockDevice_GetBlockCount(struct SolidSyslogBlockDevice * device);
 
 SOLIDSYSLOG_EXTERN_C_END
 

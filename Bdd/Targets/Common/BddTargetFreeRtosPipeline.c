@@ -35,7 +35,7 @@
 #include "SolidSyslogHeaderField.h"
 #include "SolidSyslogMetaSd.h"
 #include "SolidSyslogMutex.h"
-#include "SolidSyslogNullFile.h"
+#include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogOriginSd.h"
 #include "SolidSyslogPrival.h"
@@ -395,8 +395,8 @@ static void OnThresholdCrossed(void* context)
 static void OnBlocks(void)
 {
     SolidSyslogMutex_Lock(lifecycleMutex);
-    struct SolidSyslogFile* file = currentStoreIsFile ? storeFile : SolidSyslogNullFile_Get();
-    BddTargetBlockFiles_Print(stdout, file, STORE_PATH_PREFIX);
+    struct SolidSyslogBlockDevice* device = currentStoreIsFile ? storeBlockDevice : SolidSyslogNullBlockDevice_Get();
+    BddTargetBlockFiles_Print(stdout, device);
     SolidSyslogMutex_Unlock(lifecycleMutex);
 }
 
