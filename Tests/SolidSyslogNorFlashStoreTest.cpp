@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstddef>
-#include <cstdio>
 #include <string>
 #include <vector>
 
@@ -26,28 +25,30 @@ enum SolidSyslogDiscardPolicy AlwaysOldest(void* context)
     return SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 }
 
+const size_t NUMBER_DIGITS = 5;
+
 /* A record of `bytes` bytes that carries its own number. */
 std::string RecordNumbered(unsigned number, size_t bytes)
 {
-    char digits[8] = {};
-    (void) snprintf(digits, sizeof(digits), "%05u", number);
-    std::string record(digits);
+    std::string digits = std::to_string(number);
+    std::string record = std::string(NUMBER_DIGITS - digits.size(), '0') + digits;
     record.resize(bytes, 'x');
     return record;
 }
 
 unsigned NumberOf(const std::string& record)
 {
-    return static_cast<unsigned>(std::stoul(record.substr(0, 5)));
+    return static_cast<unsigned>(std::stoul(record.substr(0, NUMBER_DIGITS)));
 }
 
 /* The whole store stack over one flash. Restart discards the library's
-     * state and builds it again over the same bytes, as a reset does. */
+ * state and builds it again over the same bytes, as a reset does. */
 struct NorFlashStoreStack
 {
     size_t flashBlockSize = NORFLASHFAKE_MAX_BLOCK_SIZE;
     size_t flashBlockCount = 16;
     size_t storeMaxBlocks = 8;
+    size_t deviceBlockSize = 0; /* all a flash block holds */
     SolidSyslogDiscardPolicyFunction discardPolicy = nullptr;
     SolidSyslogNorFlash* flash = nullptr;
     SolidSyslogSecurityPolicy* policy = nullptr;
@@ -67,6 +68,7 @@ struct NorFlashStoreStack
         deviceConfig.Flash = flash;
         deviceConfig.FirstBlock = 0;
         deviceConfig.BlockCount = flashBlockCount;
+        deviceConfig.BlockSize = deviceBlockSize;
         device = SolidSyslogNorFlashBlockDevice_Create(&deviceConfig);
         SolidSyslogBlockStoreConfig storeConfig = {};
         storeConfig.BlockDevice = device;
@@ -155,10 +157,11 @@ enum
 /* `count` of something for `records` records came to between `least` and
  * `most` hundredths each. A macro, so a failure is reported at the test's own
  * line. */
-#define CHECK_HUNDREDTHS_A_RECORD(least, most, count, records)                                     \
-    CHECK_TEXT(                                                                                    \
-        (((count) * 100U) >= ((records) * (least))) && (((count) * 100U) <= ((records) * (most))), \
-        (std::to_string(count) + " for " + std::to_string(records) + " records").c_str()           \
+#define CHECK_HUNDREDTHS_A_RECORD(least, most, count, records)                                \
+    CHECK_TEXT(                                                                               \
+        ((static_cast<size_t>(count) * 100U) >= (static_cast<size_t>(records) * (least))) &&  \
+            ((static_cast<size_t>(count) * 100U) <= (static_cast<size_t>(records) * (most))), \
+        (std::to_string(count) + " for " + std::to_string(records) + " records").c_str()      \
     )
 
 // clang-format off
@@ -284,6 +287,7 @@ TEST(SolidSyslogNorFlashStoreCost, AfterTheFirstLapEachLapOfTheRingErasesEveryBl
     stack.StartOnABlankPart();
     StoreAndSendAtOnce(RECORDS_A_BLOCK * FLASH_BLOCKS * 2U);
     std::vector<size_t> before;
+    before.reserve(FLASH_BLOCKS);
     for (size_t block = 0; block < FLASH_BLOCKS; block++)
     {
         before.push_back(NorFlashFake_EraseCountOf(block));
@@ -323,6 +327,20 @@ TEST(SolidSyslogNorFlashStoreCost, AFullStoreEvictingItsOldestCostsAboutATwentie
     Store(records);
 
     CHECK_HUNDREDTHS_A_RECORD(5U, 6U, NorFlashFake_EraseCount(), records);
+}
+
+/* The store grows a block size smaller than its largest record to fit one,
+ * and the device takes what the flash block has room for. */
+TEST(SolidSyslogNorFlashStoreCost, ABlockSizeSmallerThanTheLargestRecordStillStores)
+{
+    stack.deviceBlockSize = 300;
+    stack.StartOnABlankPart();
+    ErrorHandlerFake_Install(nullptr);
+
+    Store(10);
+
+    LONGS_EQUAL(10, stack.Drain().size());
+    CHECK_TRUE(NorFlashFake_EraseCount() > 1U); /* it moved on from each block sooner than a whole one fills */
 }
 
 TEST(SolidSyslogNorFlashStoreCost, ARestartFindsWhatWasStoredAndNotSent)
@@ -462,7 +480,7 @@ TEST_GROUP(SolidSyslogNorFlashStorePowerCut)
         }
     }
 
-    void CheckTheStoreStillStores(const std::string& where)
+    void CheckTheStoreStillStores(const std::string& where) const
     {
         CHECK_TEXT(stack.Write(RecordNumbered(nextNumber, SMALL_RECORD_BYTES)), where.c_str());
         std::vector<unsigned> drained = stack.Drain();

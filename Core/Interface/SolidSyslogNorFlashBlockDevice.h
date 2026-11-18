@@ -14,20 +14,28 @@
  *  an erase cut short by power can leave cells that read as erased and are
  *  not, so a blank block is never taken on trust.
  *
- *  Erasing is done ahead of need. Dispose marks the block disposed, erases it
- *  and marks it erased, so the Acquire that next takes it is one short
- *  program; only a block not left erased, as on a part's first use, is erased
- *  by Acquire itself.
+ *  Erasing is done ahead of need. Dispose marks the block disposed, which is
+ *  the point at which it is gone and what Dispose answers for, and then erases
+ *  it and marks it erased, so the Acquire that next takes it is one short
+ *  program. A block not left erased - on a part's first use, or where that
+ *  erase failed or lost power - is erased by Acquire itself, and it is there
+ *  that a flash that will not erase fails the device.
  *
  *  The flash does not say whether a program took, so every Append, WriteAt and
  *  state change is read back, and one that did not take fails the operation
  *  and is reported as SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED.
  *
- *  Size finds the end of a block's data as its last byte that is not 0xFF,
- *  which a BlockStore guarantees by ending every record on a programmed byte.
- *  A program that power cut short can leave a record whose bytes all read as
- *  written and are not, which only a SecurityPolicy that checks the record
- *  detects. */
+ *  Size finds the end of a block's data as its last byte that is not 0xFF, so
+ *  whatever is appended must end on a byte that is not 0xFF. A BlockStore ends
+ *  every record on one. A program that power cut short can leave a record
+ *  whose bytes all read as written and are not, which only a SecurityPolicy
+ *  that checks the record detects.
+ *
+ *  Exists and Size read the block's state. Read, Append and WriteAt do not:
+ *  they go to the flash block whatever its state, so a Read of a block that
+ *  is not there answers with what the cells hold. A BlockStore addresses only
+ *  blocks it has acquired or found. A state that cannot be read is a block
+ *  that is not there, as the BlockDevice role has no third answer to give. */
 #ifndef SOLIDSYSLOGNORFLASHBLOCKDEVICE_H
 #define SOLIDSYSLOGNORFLASHBLOCKDEVICE_H
 
@@ -60,10 +68,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  asks about every one of them once as it is created, which is a read of
          *  the flash for each. */
         size_t BlockCount;
-        /** The capacity of a block in bytes, as SolidSyslogBlockDevice_GetBlockSize
-         *  then reports it. 0 takes all a flash block holds, which is its size less
-         *  SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE. A smaller value leaves the
-         *  rest of each flash block unused; a larger one is refused. */
+        /** The size of a block in bytes, as SolidSyslogBlockDevice_GetBlockSize then
+         *  reports it. 0 takes all a flash block holds, which is its size less
+         *  SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE; more than that is refused.
+         *  A smaller value has a BlockStore move on from each block sooner. It is
+         *  not a limit the device applies: a BlockStore lets its largest record run
+         *  past a block size smaller than one, and the device takes whatever the
+         *  flash block has room for. A flash block must hold the store's largest
+         *  record, or the Append of one fails. */
         size_t BlockSize;
     };
 

@@ -50,6 +50,7 @@ struct SolidSyslogBlockSequence
     bool WriteBlockCorrupt;
     bool DeviceFailed;
     bool EvictedUnsent; /* the latest rotation evicted a block still holding unsent records */
+    bool RotationToFinish; /* a new block has been taken, and FinishRotation has not yet run for it */
     enum SolidSyslogBlockStoreErrors FailedOperation;
 };
 
@@ -68,17 +69,19 @@ size_t SolidSyslogBlockSequence_MinDeviceBlocks(void);
 
 bool SolidSyslogBlockSequence_Open(struct SolidSyslogBlockSequence* blockSequence);
 
-bool SolidSyslogBlockSequence_PrepareForWrite(
-    struct SolidSyslogBlockSequence* blockSequence,
-    size_t recordSize,
-    bool* readBlockChanged
-);
-/* Evicts the oldest block where a rotation has left the run over its ceiling,
- * and says whether it did, the read block having then changed. Called once the
- * record that needed the new block is on the device: an eviction can take as
- * long as an erase, and the record is not left waiting on it. A dispose that
- * fails is noted as a device failure. */
-bool SolidSyslogBlockSequence_EvictIfOverCeiling(struct SolidSyslogBlockSequence* blockSequence);
+/* Makes room for a record of recordSize in the write block, taking the next
+ * block where the current one is full. False where the record is refused: the
+ * store is full and keeps what it has, or the device failed. A rotation it
+ * makes is finished by SolidSyslogBlockSequence_FinishRotation. */
+bool SolidSyslogBlockSequence_PrepareForWrite(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize);
+/* Does for the blocks behind the write block what the last PrepareForWrite's
+ * rotation left owing, and nothing where it made none: the read block is
+ * disposed of where it is drained, and the oldest block evicted where the run
+ * is then still over its ceiling. True where either changed the read block.
+ * Called once the record that needed the new block has been appended, because
+ * a dispose can take as long as an erase and the record is not left waiting on
+ * it. A dispose that fails is noted as a device failure. */
+bool SolidSyslogBlockSequence_FinishRotation(struct SolidSyslogBlockSequence* blockSequence);
 struct SolidSyslogBlockDevice* SolidSyslogBlockSequence_BlockDevice(const struct SolidSyslogBlockSequence* blockSequence
 );
 size_t SolidSyslogBlockSequence_WriteSequence(const struct SolidSyslogBlockSequence* blockSequence);

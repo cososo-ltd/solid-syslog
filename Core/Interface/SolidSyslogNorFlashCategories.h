@@ -21,8 +21,7 @@
 
 /** A flash operation failed, or the flash did not hold what was programmed
  *  into it. event->Source says which class found it and event->Detail what it
- *  found. The block device operation that met it fails with it, which freezes
- *  the store above. */
+ *  found. */
 #define SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED ((uint16_t) (SOLIDSYSLOG_CAT_NOR_FLASH_BASE + 1U))
 
 #endif /* SOLIDSYSLOGNORFLASHCATEGORIES_H */

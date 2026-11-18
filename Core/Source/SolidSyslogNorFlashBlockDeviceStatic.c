@@ -22,12 +22,12 @@
 struct SolidSyslogBlockDevice;
 
 static bool NorFlashBlockDevice_IsWantedConfig(const struct SolidSyslogNorFlashBlockDeviceConfig* config);
-static bool NorFlashBlockDevice_ResolveGeometry(
+static bool NorFlashBlockDevice_ResolveConfig(
     const struct SolidSyslogNorFlashBlockDeviceConfig* config,
-    struct SolidSyslogNorFlashBlockDeviceGeometry* geometry
+    struct SolidSyslogNorFlashBlockDeviceConfig* resolved
 );
 static struct SolidSyslogBlockDevice* NorFlashBlockDevice_CreateInSlot(
-    const struct SolidSyslogNorFlashBlockDeviceGeometry* geometry
+    const struct SolidSyslogNorFlashBlockDeviceConfig* resolved
 );
 static inline size_t NorFlashBlockDevice_IndexFromHandle(const struct SolidSyslogBlockDevice* base);
 static inline void NorFlashBlockDevice_CleanupAtIndex(size_t index, void* context);
@@ -44,11 +44,11 @@ struct SolidSyslogBlockDevice* SolidSyslogNorFlashBlockDevice_Create(
 )
 {
     struct SolidSyslogBlockDevice* result = SolidSyslogNullBlockDevice_Get();
-    struct SolidSyslogNorFlashBlockDeviceGeometry geometry = {NULL, 0U, 0U, 0U};
+    struct SolidSyslogNorFlashBlockDeviceConfig resolved = {NULL, 0U, 0U, 0U};
 
-    if (NorFlashBlockDevice_IsWantedConfig(config) && NorFlashBlockDevice_ResolveGeometry(config, &geometry))
+    if (NorFlashBlockDevice_IsWantedConfig(config) && NorFlashBlockDevice_ResolveConfig(config, &resolved))
     {
-        result = NorFlashBlockDevice_CreateInSlot(&geometry);
+        result = NorFlashBlockDevice_CreateInSlot(&resolved);
     }
 
     return result;
@@ -93,22 +93,16 @@ static inline bool NorFlashBlockDevice_BlocksAreWithinFlash(size_t firstBlock, s
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-/* What a flash block holds once the block's state has its place. */
-static inline size_t NorFlashBlockDevice_DataBytesIn(size_t flashBlockSize)
-{
-    return (flashBlockSize > (size_t) SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE)
-               ? (flashBlockSize - (size_t) SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE)
-               : 0U;
-}
-
-static bool NorFlashBlockDevice_ResolveGeometry(
+/* The config with a BlockSize of 0 replaced by what a flash block holds. False,
+ * and reported, where the flash cannot give what the config asks. */
+static bool NorFlashBlockDevice_ResolveConfig(
     const struct SolidSyslogNorFlashBlockDeviceConfig* config,
-    struct SolidSyslogNorFlashBlockDeviceGeometry* geometry
+    struct SolidSyslogNorFlashBlockDeviceConfig* resolved
 )
 {
-    size_t available = NorFlashBlockDevice_DataBytesIn(SolidSyslogNorFlash_GetBlockSize(config->Flash));
+    size_t available = SolidSyslogNorFlashBlockDevice_DataCapacity(SolidSyslogNorFlash_GetBlockSize(config->Flash));
     size_t blockSize = (config->BlockSize == 0U) ? available : config->BlockSize;
-    bool resolved = false;
+    bool isResolved = false;
 
     if (!NorFlashBlockDevice_BlocksAreWithinFlash(
             config->FirstBlock,
@@ -132,18 +126,16 @@ static bool NorFlashBlockDevice_ResolveGeometry(
     }
     else
     {
-        geometry->Flash = config->Flash;
-        geometry->FirstBlock = config->FirstBlock;
-        geometry->BlockCount = config->BlockCount;
-        geometry->BlockSize = blockSize;
-        resolved = true;
+        *resolved = *config;
+        resolved->BlockSize = blockSize;
+        isResolved = true;
     }
 
-    return resolved;
+    return isResolved;
 }
 
 static struct SolidSyslogBlockDevice* NorFlashBlockDevice_CreateInSlot(
-    const struct SolidSyslogNorFlashBlockDeviceGeometry* geometry
+    const struct SolidSyslogNorFlashBlockDeviceConfig* resolved
 )
 {
     struct SolidSyslogBlockDevice* result = SolidSyslogNullBlockDevice_Get();
@@ -151,7 +143,7 @@ static struct SolidSyslogBlockDevice* NorFlashBlockDevice_CreateInSlot(
 
     if (SolidSyslogPoolAllocator_IndexIsValid(&NorFlashBlockDevice_Allocator, index))
     {
-        SolidSyslogNorFlashBlockDevice_Initialise(&NorFlashBlockDevice_Pool[index].Base, geometry);
+        SolidSyslogNorFlashBlockDevice_Initialise(&NorFlashBlockDevice_Pool[index].Base, resolved);
         result = &NorFlashBlockDevice_Pool[index].Base;
     }
     else

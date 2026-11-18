@@ -207,24 +207,17 @@ static void ClearBits(size_t blockIndex, size_t offset, const uint8_t* bytes, si
 static bool Program(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, const void* buf, size_t count)
 {
     (void) base;
+    bool answers = !powerLost && SpanIsInBlock(blockIndex, offset, count);
     bool programmed = false;
 
-    if (powerLost || !SpanIsInBlock(blockIndex, offset, count))
-    {
-        /* Nothing answers. */
-    }
-    else if (PowerGoesDuringThisOperation())
+    if (answers && PowerGoesDuringThisOperation())
     {
         if (cutKind == NORFLASHFAKE_CUT_TORN)
         {
             ClearBits(blockIndex, offset, (const uint8_t*) buf, count / 2U);
         }
     }
-    else if (TakeFlag(&failNextProgram))
-    {
-        /* Refused. */
-    }
-    else
+    else if (answers && !TakeFlag(&failNextProgram))
     {
         if (!TakeFlag(&ignoreNextProgram))
         {
@@ -234,6 +227,10 @@ static bool Program(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t 
         programCount++;
         programmed = true;
     }
+    else
+    {
+        /* Nothing answers, or the program is refused. */
+    }
 
     return programmed;
 }
@@ -241,29 +238,26 @@ static bool Program(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t 
 static bool Erase(struct SolidSyslogNorFlash* base, size_t blockIndex)
 {
     (void) base;
+    bool answers = !powerLost && (blockIndex < configuredBlockCount);
     bool erased = false;
 
-    if (powerLost || (blockIndex >= configuredBlockCount))
-    {
-        /* Nothing answers. */
-    }
-    else if (PowerGoesDuringThisOperation())
+    if (answers && PowerGoesDuringThisOperation())
     {
         if (cutKind == NORFLASHFAKE_CUT_TORN)
         {
             (void) memset(storage[blockIndex], ERASED_BYTE, configuredBlockSize / 2U);
         }
     }
-    else if (TakeFlag(&failNextErase))
-    {
-        /* Refused. */
-    }
-    else
+    else if (answers && !TakeFlag(&failNextErase))
     {
         (void) memset(storage[blockIndex], ERASED_BYTE, configuredBlockSize);
         eraseCount++;
         eraseCountOf[blockIndex]++;
         erased = true;
+    }
+    else
+    {
+        /* Nothing answers, or the erase is refused. */
     }
 
     return erased;

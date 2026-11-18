@@ -11,43 +11,33 @@
 
 #include "SolidSyslogBlockDeviceDefinition.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogNorFlashBlockDevice.h"
 #include "SolidSyslogNorFlashBlockDeviceErrors.h"
 #include "SolidSyslogPrival.h"
-
-struct SolidSyslogNorFlash;
-
-/* Where the data of one block ends. Appending to a block needs it, and finding
- * it is a read back through the block, so the latest answer is kept. */
-struct KnownEnd
-{
-    size_t BlockIndex;
-    size_t End;
-    bool IsKnown;
-};
 
 struct SolidSyslogNorFlashBlockDevice
 {
     struct SolidSyslogBlockDevice Base;
-    struct SolidSyslogNorFlash* Flash;
-    size_t FirstBlock;
-    size_t BlockCount;
-    size_t BlockSize;
-    struct KnownEnd KnownEnd;
+    /* As Create was given it and has checked it, with a BlockSize of 0
+     * replaced by what a flash block holds. */
+    struct SolidSyslogNorFlashBlockDeviceConfig Config;
+    /* What a flash block holds after the block's state. */
+    size_t DataCapacity;
+    /* Where the data of one block ends. Appending to a block needs it, and
+     * finding it is a read back through the block, so the latest answer is
+     * kept. */
+    size_t EndBlock;
+    size_t End;
+    bool EndIsKnown;
 };
 
-/* A config already checked: a flash, a run of blocks within it, and a block
- * size a flash block holds. */
-struct SolidSyslogNorFlashBlockDeviceGeometry
-{
-    struct SolidSyslogNorFlash* Flash;
-    size_t FirstBlock;
-    size_t BlockCount;
-    size_t BlockSize;
-};
+/* What a flash block of flashBlockSize bytes holds after the block's state. */
+size_t SolidSyslogNorFlashBlockDevice_DataCapacity(size_t flashBlockSize);
 
+/* config has been checked, and its BlockSize is not 0. */
 void SolidSyslogNorFlashBlockDevice_Initialise(
     struct SolidSyslogBlockDevice* base,
-    const struct SolidSyslogNorFlashBlockDeviceGeometry* geometry
+    const struct SolidSyslogNorFlashBlockDeviceConfig* config
 );
 void SolidSyslogNorFlashBlockDevice_Cleanup(struct SolidSyslogBlockDevice* base);
 

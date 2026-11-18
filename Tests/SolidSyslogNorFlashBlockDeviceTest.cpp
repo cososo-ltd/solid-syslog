@@ -443,14 +443,42 @@ TEST(SolidSyslogNorFlashBlockDevice, AnAppendThatDoesNotFitFailsAndProgramsNothi
     LONGS_EQUAL(0, NorFlashFake_ProgramCount());
 }
 
-TEST(SolidSyslogNorFlashBlockDevice, ASmallerBlockSizeIsAllAnAppendMayFill)
+/* A store lets its largest record run past a block size smaller than one. */
+TEST(SolidSyslogNorFlashBlockDevice, AnAppendMayRunPastASmallerBlockSizeWhileTheFlashBlockHasRoom)
 {
     DestroyDevice();
     CreateDevice(FIRST_BLOCK, BLOCK_COUNT, 8);
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
-    CHECK_TRUE(Append(0, "12345678"));
+
+    CHECK_TRUE(Append(0, "123456789"));
+
+    CHECK_BLOCK_SIZE(0, 9);
+}
+
+TEST(SolidSyslogNorFlashBlockDevice, WithASmallerBlockSizeTheFlashBlockIsStillTheLimit)
+{
+    char whole[DATA_BYTES];
+    memset(whole, 'x', sizeof(whole));
+    DestroyDevice();
+    CreateDevice(FIRST_BLOCK, BLOCK_COUNT, 8);
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, whole, sizeof(whole)));
 
     CHECK_FALSE(Append(0, "9"));
+}
+
+TEST(SolidSyslogNorFlashBlockDevice, AnAppendThatDoesNotFitLeavesTheEndKnown)
+{
+    char whole[DATA_BYTES];
+    memset(whole, 'x', sizeof(whole));
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(Append(0, "h"));
+    CHECK_FALSE(SolidSyslogBlockDevice_Append(device, 0, whole, sizeof(whole)));
+    NorFlashFake_ResetCounts();
+
+    CHECK_TRUE(Append(0, "i"));
+
+    LONGS_EQUAL(1, NorFlashFake_ReadCount());
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, AnAppendPastTheRunFails)
@@ -543,6 +571,34 @@ TEST(SolidSyslogNorFlashBlockDevice, ErasedBytesInsideTheDataAreNotItsEnd)
     Restart();
 
     CHECK_BLOCK_SIZE(0, sizeof(record));
+}
+
+TEST(SolidSyslogNorFlashBlockDevice, AfterARestartTheFirstSizeAskedIsKeptForTheAppendThatFollows)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(Append(0, "hello"));
+    Restart();
+    CHECK_BLOCK_SIZE(0, 5);
+    NorFlashFake_ResetCounts();
+
+    CHECK_TRUE(Append(0, "world"));
+
+    LONGS_EQUAL(1, NorFlashFake_ReadCount());
+}
+
+TEST(SolidSyslogNorFlashBlockDevice, TheSizeOfAnotherBlockDoesNotReplaceTheEndThatIsKept)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 1));
+    CHECK_TRUE(Append(1, "other"));
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(Append(0, "hello"));
+    CHECK_BLOCK_SIZE(1, 5);
+    NorFlashFake_ResetCounts();
+
+    CHECK_TRUE(Append(0, "world"));
+
+    LONGS_EQUAL(1, NorFlashFake_ReadCount());
+    CHECK_BLOCK_CONTAINS(0, 0, "helloworld", 10);
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, AfterARestartAnAppendLandsAfterTheData)
@@ -745,7 +801,7 @@ TEST(SolidSyslogNorFlashBlockDevice, ABlockIsMarkedDisposedBeforeItIsErased)
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
     NorFlashFake_CutPowerAt(2, NORFLASHFAKE_CUT_CLEAN); /* the erase */
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 0));
+    SolidSyslogBlockDevice_Dispose(device, 0);
 
     CHECK_BLOCK_STATE(0, 0x00, 0x00, 0x00, 0x00);
 }
@@ -755,7 +811,7 @@ TEST(SolidSyslogNorFlashBlockDevice, ABlockWhoseDisposeLostPowerBeforeTheEraseDo
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
     CHECK_TRUE(Append(0, "hello"));
     NorFlashFake_CutPowerAt(2, NORFLASHFAKE_CUT_CLEAN);
-    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 0));
+    SolidSyslogBlockDevice_Dispose(device, 0);
     NorFlashFake_PowerOn();
 
     Restart();
@@ -768,7 +824,7 @@ TEST(SolidSyslogNorFlashBlockDevice, ABlockWhoseEraseWasCutShortDoesNotExist)
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
     CHECK_TRUE(Append(0, "hello"));
     NorFlashFake_CutPowerAt(2, NORFLASHFAKE_CUT_TORN);
-    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 0));
+    SolidSyslogBlockDevice_Dispose(device, 0);
     NorFlashFake_PowerOn();
 
     Restart();
@@ -785,7 +841,7 @@ TEST(SolidSyslogNorFlashBlockDevice, ABlockWhoseEraseWasCutShortIsErasedAgainWhe
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
     CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, whole, sizeof(whole)));
     NorFlashFake_CutPowerAt(2, NORFLASHFAKE_CUT_TORN);
-    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 0));
+    SolidSyslogBlockDevice_Dispose(device, 0);
     NorFlashFake_PowerOn();
     Restart();
 
@@ -805,20 +861,50 @@ TEST(SolidSyslogNorFlashBlockDevice, DisposeFailsWhenTheBlockCannotBeMarkedDispo
     CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 0));
 }
 
-TEST(SolidSyslogNorFlashBlockDevice, DisposeFailsWhenTheEraseFails)
+/* The block was marked disposed, so it is gone, and that is what Dispose
+ * answers for. The erase is tried again by the Acquire that next takes it. */
+TEST(SolidSyslogNorFlashBlockDevice, ADisposeWhoseEraseFailsHasStillDisposedOfTheBlock)
 {
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
     NorFlashFake_FailNextErase();
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 0));
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 0));
+
+    CHECK_FALSE(SolidSyslogBlockDevice_Exists(device, 0));
 }
 
-TEST(SolidSyslogNorFlashBlockDevice, DisposeFailsWhenTheBlockCannotBeMarkedErased)
+TEST(SolidSyslogNorFlashBlockDevice, ABlockWhoseEraseAheadFailedIsErasedWhenItIsAcquired)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(Append(0, "hello"));
+    NorFlashFake_FailNextErase();
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 0));
+    NorFlashFake_ResetCounts();
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+
+    LONGS_EQUAL(1, NorFlashFake_EraseCount());
+    CHECK_BLOCK_SIZE(0, 0);
+}
+
+TEST(SolidSyslogNorFlashBlockDevice, ABlockThatWillNotEraseFailsTheAcquireThatNextTakesIt)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    NorFlashFake_FailNextErase();
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 0));
+    NorFlashFake_FailNextErase();
+
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 0));
+}
+
+TEST(SolidSyslogNorFlashBlockDevice, ADisposeThatCannotMarkTheBlockErasedHasStillDisposedOfIt)
 {
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
     NorFlashFake_CutPowerAt(3, NORFLASHFAKE_CUT_CLEAN); /* the second program */
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Dispose(device, 0));
+    CHECK_TRUE(SolidSyslogBlockDevice_Dispose(device, 0));
+
+    CHECK_BLOCK_STATE(0, 0xFF, 0xFF, 0xFF, 0xFF);
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, DisposingABlockPastTheRunFails)
