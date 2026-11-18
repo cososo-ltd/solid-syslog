@@ -60,7 +60,7 @@ static inline void SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(struct SolidS
 static inline void SolidSyslog_DropHeldRecord(struct SolidSyslog* self);
 static bool SolidSyslog_HoldNextRecord(struct SolidSyslog* self);
 static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* self);
-static inline bool SolidSyslog_WasLoggedUndecided(const struct SolidSyslog* self);
+static inline bool SolidSyslog_IsOffBeforeEverOn(const struct SolidSyslog* self);
 static inline bool SolidSyslog_ReportPendingEvents(struct SolidSyslog* self);
 static inline bool SolidSyslog_HasRecordSlot(const struct SolidSyslog* self);
 static inline bool SolidSyslog_ReportIfPending(struct SolidSyslog* self, size_t index);
@@ -558,7 +558,7 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     SolidSyslog_ApplyPolicyToHeldRecordIfBufferFull(self);
     bool dealtWith = !self->Halted && SolidSyslog_DealWithHeldRecord(self);
 
-    if (dealtWith && !self->Halted && !SolidSyslog_WasLoggedUndecided(self))
+    if (dealtWith && !self->Halted && !SolidSyslog_IsOffBeforeEverOn(self))
     {
         dealtWith = SolidSyslog_ReportPendingEvents(self);
     }
@@ -572,14 +572,14 @@ static inline bool SolidSyslog_DrainBufferIntoStore(struct SolidSyslog* self)
     return drained;
 }
 
-/* A record logged while the device was undecided, on a device that has since
- * said off, was logged while the user had opted out: it is discarded, and is
+/* A record read from a device that is off and has never been on was logged
+ * while it was undecided, and the user had opted out: it is discarded, and is
  * not a loss. */
 static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* self)
 {
     bool dealtWith = true;
 
-    if (SolidSyslog_WasLoggedUndecided(self))
+    if (SolidSyslog_IsOffBeforeEverOn(self))
     {
         self->HoldsRecord = false;
     }
@@ -591,9 +591,12 @@ static inline bool SolidSyslog_DiscardOrDealWithHeldRecord(struct SolidSyslog* s
     return dealtWith;
 }
 
-/* Asked after the Read, so a Log on another task that saw On before it
- * enqueued has made its note by the time its record is read. */
-static inline bool SolidSyslog_WasLoggedUndecided(const struct SolidSyslog* self)
+/* Off before the device has ever been on: everything in the buffer was logged
+ * undecided, and the library captures nothing of its own either, so the
+ * reports wait as they do while undecided. Asked after a Read, so a Log on
+ * another task that saw On before it enqueued has made its note by the time
+ * its record is read. */
+static inline bool SolidSyslog_IsOffBeforeEverOn(const struct SolidSyslog* self)
 {
     return (self->CaptureState == SOLIDSYSLOG_CAPTURE_OFF) && !self->CaptureSeenOn;
 }
@@ -866,7 +869,7 @@ static inline bool SolidSyslog_IsBlocked(const struct SolidSyslog* self, bool st
  * answered otherwise. The fallback has no slot to report in. */
 static inline bool SolidSyslog_IsReportWaiting(const struct SolidSyslog* self)
 {
-    return SolidSyslog_HasRecordSlot(self) && !self->ReportTurnedDown && !SolidSyslog_WasLoggedUndecided(self) &&
+    return SolidSyslog_HasRecordSlot(self) && !self->ReportTurnedDown && !SolidSyslog_IsOffBeforeEverOn(self) &&
            SolidSyslogPendingEvents_AnyPending();
 }
 

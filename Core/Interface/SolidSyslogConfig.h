@@ -121,7 +121,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  no sequence number and is not reported as a loss, and a pass that
          *  finds the device off, never having found it on, discards the
          *  records the buffer holds, since they were logged while undecided on
-         *  a device whose user had opted out. Once the device has answered on,
+         *  a device whose user had opted out, and makes no report of the
+         *  library's own, as while undecided, so a device that powers up off
+         *  writes nothing to its store. Once the device has answered on,
          *  at a Log or a pass, nothing in the buffer is ever discarded: a pass
          *  that finds it off drains as usual, so what was logged before the
          *  opt-out, the deactivation record among it, is delivered. Log the

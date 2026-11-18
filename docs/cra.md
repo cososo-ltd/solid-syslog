@@ -77,7 +77,8 @@ user has opted out answers undecided. The logger holds those records in RAM, in 
 queueing buffer, and writes nothing to the store or the wire; the field's doc comment
 names the buffer that cannot hold. The first answer of off discards them, so a device
 whose user had opted out leaves no trace of the events it logged while it was finding
-that out; the first answer of on delivers them. Records held this way are lost if power
+that out, and the library writes no record of its own either until the device has been
+on; the first answer of on delivers them. Records held this way are lost if power
 fails before the decision, so read the opt-out from local storage as early as the
 device can.
 
