@@ -527,10 +527,15 @@ static inline void SolidSyslog_AskCaptureState(struct SolidSyslog* self)
 }
 
 /* An On is noted for good: from then on every record in the buffer was
- * captured legitimately, so none is ever discarded. */
+ * captured legitimately, so none is ever discarded. Only true is ever
+ * stored, and only on an On, so a note made by Log on another task cannot
+ * be overwritten by a pass that read the flag before it. */
 static inline void SolidSyslog_NoteIfCaptureOn(struct SolidSyslog* self, enum SolidSyslogCaptureState capture)
 {
-    self->CaptureSeenOn = self->CaptureSeenOn || (capture == SOLIDSYSLOG_CAPTURE_ON);
+    if (capture == SOLIDSYSLOG_CAPTURE_ON)
+    {
+        self->CaptureSeenOn = true;
+    }
 }
 
 /* Undecided holds the buffer, and the reports with it: nothing is read from
