@@ -496,6 +496,14 @@ candidate sender and front them with a
 [`SolidSyslogSwitchingSender`](api/SolidSyslogSwitchingSender_8h.md) whose selector
 reads the same configuration.
 
+Whether the device logs at all is a second question, answered by `GetCaptureState` on
+the same struct, and the two compose. A device that has not yet read whether its user
+has opted out of security logging answers undecided, and the service task leaves the
+ring alone: the records wait in RAM, reach the store only once the answer is on, and
+are discarded by the first service pass that finds the answer off. Read the opt-out from local storage before the network
+configuration, so the boot records reach the store and survive a reboot while the
+collector's address is still awaited. The [CRA page](cra.md) states the opt-out recipe.
+
 The file layer comes from your filesystem, so add its platform to the list from stage 1.
 
 The checksum here is a checksum, not tamper-evidence. It catches a truncated write or

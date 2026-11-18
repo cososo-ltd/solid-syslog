@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "SolidSyslogCaptureState.h"
 #include "SolidSyslogDiscardPolicy.h"
 #include "SolidSyslogHeaderFieldFunction.h"
 #include "SolidSyslogTimestamp.h"
@@ -109,6 +110,31 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  reaches this gate. NULL means known. */
         SolidSyslogDestinationKnownFunction IsDestinationKnown;
         void* DestinationKnownContext; /**< Passed back to IsDestinationKnown unchanged. */
+        /** Asked, with CaptureStateContext, on the task that logs, at each Log
+         *  before the record is formatted, and on the task that calls
+         *  SolidSyslog_Service, at the start of each pass. Undecided is the
+         *  device before it has read its configuration: Log formats and
+         *  enqueues as usual, and the pass reads nothing from the buffer, makes
+         *  no report, and returns SOLIDSYSLOG_SERVICE_BLOCKED; the store still
+         *  sends what it holds, under IsDestinationKnown. On captures. Off is
+         *  the user's opt-out: Log drops the record unformatted, so it consumes
+         *  no sequence number and is not reported as a loss, and a pass that
+         *  finds the device off, never having found it on, discards the
+         *  records the buffer holds, since they were logged while undecided on
+         *  a device whose user had opted out, and makes no report of the
+         *  library's own, as while undecided, so a device that powers up off
+         *  adds no record to its store. The discard is the pass's: a device
+         *  that answers on again before a pass has found it off keeps those
+         *  records. Once the device has answered on,
+         *  at a Log or a pass, nothing in the buffer is ever discarded: a pass
+         *  that finds it off drains as usual, so what was logged before the
+         *  opt-out, the deactivation record among it, is delivered. Log the
+         *  deactivation and then answer off, from one task; answer on and then
+         *  log the reactivation. The records held while undecided are in RAM
+         *  alone, under the buffer's discard policy. SolidSyslogPassthroughBuffer
+         *  sends on the task that logs and cannot hold. NULL means on. */
+        SolidSyslogCaptureStateFunction GetCaptureState;
+        void* CaptureStateContext; /**< Passed back to GetCaptureState unchanged. */
     };
 
     /** Create a logger from @p config. Never returns NULL: on a NULL config or

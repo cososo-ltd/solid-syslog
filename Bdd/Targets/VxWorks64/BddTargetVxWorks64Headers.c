@@ -23,6 +23,7 @@
 #include "SolidSyslogBuffer.h"
 #include "SolidSyslogBufferCategories.h"
 #include "SolidSyslogBufferDefinition.h"
+#include "SolidSyslogCaptureState.h"
 #include "SolidSyslogCircularBuffer.h"
 #include "SolidSyslogCircularBufferErrors.h"
 #include "SolidSyslogConfig.h"
