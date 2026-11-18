@@ -866,7 +866,8 @@ static inline bool SolidSyslog_IsBlocked(const struct SolidSyslog* self, bool st
  * answered otherwise. The fallback has no slot to report in. */
 static inline bool SolidSyslog_IsReportWaiting(const struct SolidSyslog* self)
 {
-    return SolidSyslog_HasRecordSlot(self) && !self->ReportTurnedDown && SolidSyslogPendingEvents_AnyPending();
+    return SolidSyslog_HasRecordSlot(self) && !self->ReportTurnedDown && !SolidSyslog_WasLoggedUndecided(self) &&
+           SolidSyslogPendingEvents_AnyPending();
 }
 
 void SolidSyslog_Log(struct SolidSyslog* handle, const struct SolidSyslogMessage* message)

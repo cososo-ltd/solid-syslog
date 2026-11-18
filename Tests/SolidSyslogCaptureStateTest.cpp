@@ -473,3 +473,25 @@ TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedNoReportIsMade)
 
     CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
 }
+
+TEST(SolidSyslogCaptureStateWithAStore, OnAfterOffTheHeldReportIsMade)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    RaiseBufferLoss();
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    SolidSyslog_Service(solidSyslog);
+    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffNeverOnAHeldReportLeavesThePassIdle)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    RaiseBufferLoss();
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(solidSyslog));
+}
