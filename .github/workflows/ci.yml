@@ -804,6 +804,13 @@ jobs:
           find Core/Interface Core/Source Platform Tests Bdd/Targets -name '*.c' -o -name '*.cpp' -o -name '*.h' \
             | xargs clang-format --dry-run --Werror
 
+      # CppUTest's JUnit output writes one file per group each time a run of
+      # that group's tests ends, so a group resumed after another group's
+      # tests overwrites its own earlier results. The tests still run and
+      # still gate; they are missing from the test report.
+      - name: Assert each test group's tests sit together
+        run: python3 scripts/check_test_groups.py
+
       # README.md claims Core's implementation has no conditional compilation.
       # Keep that true rather than aspirational.
       - name: Assert Core's implementation has no conditional compilation

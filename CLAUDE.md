@@ -854,6 +854,11 @@ code should follow them; reviewers should call out drift.
   bare expression) in `SolidSyslogMessageFormatterTest.cpp`,
   `CHECK_BLOCK_CONTAINS` (declares a local, so keeps its `{ ... }` block) in
   `SolidSyslogFileBlockDeviceTest.cpp`.
+- **A group's tests sit together.** Once another group's `TEST` has followed, a
+  group does not resume later in the file. CppUTest writes one JUnit file per
+  group each time a run of its tests ends, so a resumed group overwrites its own
+  earlier results: the tests run and gate, but vanish from the test report.
+  `scripts/check_test_groups.py` enforces it in the `analyze-format` lane.
 - **DRY the setup, DRY the asserts, keep the test body small.** Each `TEST(...)`
   body should read as a sentence: arrange → act → assert. If three lines of
   setup repeat in five tests, the setup belongs in `setup()` or a TEST_GROUP
