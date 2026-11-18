@@ -799,6 +799,16 @@ TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceIsNotReported)
     LONGS_EQUAL(0, ErrorHandlerFake_HandleCallCount());
 }
 
+TEST(SolidSyslogBlockStoreConfig, TheNullBlockDeviceIsNotReportedForAPolicyItWillNeverUse)
+{
+    ErrorHandlerFake_Install(nullptr);
+    policy.TrailerSize = static_cast<uint16_t>(SOLIDSYSLOG_MAX_INTEGRITY_SIZE + 1U);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(SolidSyslogNullBlockDevice_Get());
+    config.SecurityPolicy = &policy;
+    store = SolidSyslogBlockStore_Create(&config);
+    LONGS_EQUAL(0, ErrorHandlerFake_HandleCallCount());
+}
+
 /* Only the Null block device says no store is wanted. Another device that
  * answers no blocks is one that has gone wrong. */
 TEST(SolidSyslogBlockStoreConfig, ADeviceOtherThanTheNullOneThatAnswersNoBlocksIsReported)

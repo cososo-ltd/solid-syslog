@@ -55,7 +55,7 @@ struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBl
 {
     struct SolidSyslogStore* result = SolidSyslogNullStore_Get();
 
-    if (BlockStore_IsValidConfig(config) && !BlockStore_IsNullBlockDevice(config->BlockDevice))
+    if (BlockStore_IsValidConfig(config))
     {
         size_t deviceBlocks = SolidSyslogBlockDevice_GetBlockCount(config->BlockDevice);
 
@@ -88,6 +88,11 @@ static bool BlockStore_IsValidConfig(const struct SolidSyslogBlockStoreConfig* c
             SOLIDSYSLOG_CAT_BAD_CONFIG,
             SOLIDSYSLOG_BLOCK_STORE_ERROR_NULL_BLOCK_DEVICE
         );
+    }
+    else if (BlockStore_IsNullBlockDevice(config->BlockDevice))
+    {
+        /* No store is wanted, so there is nothing to report, of the device or
+         * of a policy that will never be used. */
     }
     else if (!BlockStore_TrailerFits(BlockStore_ResolveSecurityPolicy(config->SecurityPolicy)))
     {
