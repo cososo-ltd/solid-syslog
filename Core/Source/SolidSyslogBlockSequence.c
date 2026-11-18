@@ -13,7 +13,6 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 
 struct SolidSyslogBlockDevice;
 
@@ -433,70 +432,43 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     size_t nextSequence
 );
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
-static bool BlockSequence_EvictDownToCeiling(struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
 
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence, bool* readBlockChanged)
 {
-    bool acquired = false;
-    bool drained = false;
-    bool evicted = false;
+    size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
+    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
 
-    blockSequence->EvictedUnsent = false;
+    *readBlockChanged = false;
 
-    /* A run resumed over its ceiling, after an eviction that failed, comes
-     * down to it first: acquiring before that could take the last absent
-     * block, and a start after a power cut there could not find the run. */
-    evicted = BlockSequence_EvictDownToCeiling(blockSequence);
-
-    /* A failed device is not called again. */
-    if (!blockSequence->DeviceFailed)
+    if (acquired)
     {
-        size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
-        acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
+        BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
+        blockSequence->EvictedUnsent = false;
 
-        if (acquired)
+        /* Sealing the prior write block can re-arm dispose-on-empty: drain that
+         * fully MarkSent the block before rotation could not fire here because
+         * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. It is
+         * re-evaluated before any eviction, so a block with nothing left to send
+         * is disposed rather than evicted, and an eviction always costs records. */
+        SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, readBlockChanged);
+
+        /* A failed device is not called again. */
+        if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
         {
-            BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
-
-            /* Sealing the prior write block can re-arm dispose-on-empty: drain that
-             * fully MarkSent the block before rotation could not fire here because
-             * BlockSequence_IsReadBlockActiveWrite was true at MarkSent time. It is
-             * re-evaluated before any eviction, so a block with nothing left to send
-             * is disposed rather than evicted, and an eviction always costs records. */
-            SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &drained);
-
-            if (BlockSequence_EvictDownToCeiling(blockSequence))
+            if (BlockSequence_DiscardOldestBlock(blockSequence))
             {
-                evicted = true;
+                *readBlockChanged = true;
             }
         }
-        else
-        {
-            /* AcquireEmptyBlock has noted the device failure. */
-        }
     }
-
-    *readBlockChanged = drained || evicted;
+    else
+    {
+        /* Only a device failure gets here, and AcquireEmptyBlock has noted it: a
+         * full store that keeps what it has never rotates. */
+    }
 
     return acquired;
-}
-
-/* Evicts the oldest block until the run is no longer over its ceiling, or the
- * device fails. Says whether any block went. */
-static bool BlockSequence_EvictDownToCeiling(struct SolidSyslogBlockSequence* blockSequence)
-{
-    bool evicted = false;
-
-    while (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
-    {
-        if (BlockSequence_DiscardOldestBlock(blockSequence))
-        {
-            evicted = true;
-        }
-    }
-
-    return evicted;
 }
 
 /* Dispose-then-Acquire enforces the BlockDevice contract that an Acquired block

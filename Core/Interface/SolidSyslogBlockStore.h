@@ -76,7 +76,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** Retention ceiling in blocks, clamped to between 2 and the device's
          *  block count less 2; GetDiscardPolicy governs the overflow. An eviction
          *  that fails freezes the store with one block more than this on the
-         *  media, and the next start keeps it until its first rotation. */
+         *  media, and the next start keeps it. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
          *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.
@@ -95,8 +95,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  shared NullStore: a NULL config or BlockDevice, a BlockDevice with too
      *  few blocks, an exhausted pool, a failed inner allocation, and a
      *  SecurityPolicy whose trailer is wider than SOLIDSYSLOG_MAX_INTEGRITY_SIZE,
-     *  since storing records without it would leave them unprotected. The Null
-     *  block device falls back the same way, unreported. A block too small for one worst-case record is
+     *  since storing records without it would leave them unprotected. A block too small for one worst-case record is
      *  grown to fit and reported as a WARNING, not a failure. */
     struct SolidSyslogStore* SolidSyslogBlockStore_Create(const struct SolidSyslogBlockStoreConfig* config);
     /** Release the pool slot; does not destroy the injected BlockDevice or

@@ -882,12 +882,12 @@ _BLOCKS_REPLY = re.compile(r"^BLOCKS:(.*)$", re.MULTILINE)
 
 
 def existing_block_indexes(context):
-    """The two-digit index of every block file present now, as a set.
+    """The index of every block present now, as a set.
 
     Linux and Windows keep the store under STORE_PATH_PREFIX on this file
     system, so the prefix is globbed. A REMOTE_STORE_TARGETS target answers the
-    `blocks` console command with one `BLOCKS: 00 01` line, listing what the
-    pack's own File finds on the target's volume.
+    `blocks` console command with one `BLOCKS: 00 01` line, listing the
+    blocks the store's block device says are present.
     """
     if context.target in REMOTE_STORE_TARGETS:
         reply = send_command(context.interactive_process, "blocks")

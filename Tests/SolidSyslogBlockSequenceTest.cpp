@@ -440,46 +440,25 @@ TEST(BlockSequenceScan, ABlockPastTheLastHoleIsNotSteppedOverWhenTheDeviceStopsA
     LONGS_EQUAL(8, SolidSyslogBlockSequence_ReadSequence(sequence));
 }
 
-/* A failed eviction leaves the run one block over its ceiling, and the next
- * start keeps it. The first rotation after that evicts until the run is back
- * at the ceiling, or it would stay one over and use up a spare block. */
-TEST(BlockSequenceScan, ARotationBringsARunResumedOverItsCeilingBackToIt)
+/* Sequence numbers are not held in a byte. */
+TEST(BlockSequenceScan, ARunOnADeviceOfThreeHundredBlocksWrapsAtItsLastBlock)
 {
-    RecreateOnADeviceOf(8, 3);
-    existing = {0, 1, 2, 3};
-    sizes = {{0, 1000}, {1, 1000}, {2, 1000}, {3, 1000}};
+    RecreateOnADeviceOf(300, 6);
+    existing = {298, 299, 0};
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    LONGS_EQUAL(298, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
+
+TEST(BlockSequenceScan, ARotationGoesPastBlockTwoHundredAndFiftyFive)
+{
+    RecreateOnADeviceOf(300, 6);
+    existing = {254, 255};
+    sizes = {{254, 1000}, {255, 1000}};
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
     bool readBlockChanged = false;
     CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
-    LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
-}
-
-/* Resumed one over a ceiling two short of the device, the run leaves one block
- * absent. Acquiring it first would leave none, and a start after a power cut
- * there could not find the run. */
-TEST(BlockSequenceScan, ARunResumedOverItsCeilingEvictsBeforeItTakesTheLastAbsentBlock)
-{
-    RecreateOnADeviceOf(8, 6);
-    existing = {0, 1, 2, 3, 4, 5, 6};
-    sizes = {{0, 1000}, {1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}, {5, 1000}, {6, 1000}};
-    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    calls.clear();
-    bool readBlockChanged = false;
-    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
-    CHECK_TRUE(calls.front().type == CallType::Dispose);
-    LONGS_EQUAL(0, calls.front().BlockIndex);
-}
-
-TEST(BlockSequenceScan, ARunResumedOverItsCeilingTakesNoBlockWhenItsEvictionFails)
-{
-    RecreateOnADeviceOf(8, 6);
-    existing = {0, 1, 2, 3, 4, 5, 6};
-    sizes = {{0, 1000}, {1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}, {5, 1000}, {6, 1000}};
-    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    fakeDevice.failNextDispose = true;
-    bool readBlockChanged = false;
-    CHECK_FALSE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
-    CHECK_FALSE(existing.count(7) > 0);
+    LONGS_EQUAL(256, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
 /* The step over a hole ends at the write block, so a block a rotation acquires
