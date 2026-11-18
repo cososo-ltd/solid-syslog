@@ -49,6 +49,13 @@
 #define SOLIDSYSLOG_FILE_IO_FAILED_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
 
 /*
+ * A failed flash operation gets a macro for the same reason: the category is
+ * raised by the flash block device and by every NorFlash backend. See
+ * docs/error-severity.md.
+ */
+#define SOLIDSYSLOG_NOR_FLASH_IO_FAILED_SEVERITY SOLIDSYSLOG_SEVERITY_ERROR
+
+/*
  * A next hop that does not resolve gets a macro for the same reason: the
  * SolidSyslogDatagramErrors code raised under it is shared by every Datagram
  * backend. See docs/error-severity.md.
