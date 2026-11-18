@@ -24,7 +24,12 @@ enum
      * policy never encrypts it) and message as the body. */
     CONTENT_HEADER_SIZE = MAGIC_SIZE + RECORD_LENGTH_SIZE,
     SENT_FLAG_SIZE = 1,
-    SENT_FLAG_UNSENT = 0xFF,
+    /* Not 0xFF, so that a record ends on a programmed byte and a flash device
+     * can find the end of a block's data by looking for one. A release before
+     * 0.5.0 wrote 0xFF, which still reads as unsent: only the two values below
+     * mark a record finished with. Clearing this to SENT passes through no
+     * value that reads as DISCARDED. */
+    SENT_FLAG_UNSENT = 0xF0,
     SENT_FLAG_SENT = 0x00,
     /* Written by releases before 0.4.0 for a record the policy rejected, and
      * still read as finished with. Nothing writes it now. */
