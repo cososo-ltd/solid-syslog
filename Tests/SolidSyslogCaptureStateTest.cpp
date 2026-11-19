@@ -296,26 +296,6 @@ TEST(SolidSyslogCaptureState, UndecidedThePassIsBlocked)
     LONGS_EQUAL(SOLIDSYSLOG_SERVICE_BLOCKED, SolidSyslog_Service(solidSyslog));
 }
 
-TEST(SolidSyslogCaptureStateWithAStore, UndecidedNothingIsWrittenToTheStore)
-{
-    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
-    Log();
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
-}
-
-TEST(SolidSyslogCaptureStateWithAStore, UndecidedNoReportIsMade)
-{
-    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
-    RaiseBufferLoss();
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
-}
-
 TEST(SolidSyslogCaptureState, OffARecordLoggedIsNotSent)
 {
     device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
@@ -335,33 +315,6 @@ TEST(SolidSyslogCaptureState, OffARecordLoggedConsumesNoSequenceNumber)
     Log();
 
     LONGS_EQUAL(1, CounterFake_LastHandedOut(counter));
-}
-
-TEST(SolidSyslogCaptureStateWithAStore, OffARecordLoggedIsNotReportedAsALoss)
-{
-    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
-    Log();
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
-}
-
-TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedTheRecordsHeldAreDiscarded)
-{
-    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
-    Log();
-    Log();
-    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
-    SolidSyslog_Service(solidSyslog);
-    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
-    Log("later");
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
-    STRCMP_CONTAINS("later", SenderFake_LastBufferAsString(fakeSender));
 }
 
 TEST(SolidSyslogCaptureState, OffAfterOnTheDeactivationRecordIsStillSent)
@@ -391,6 +344,89 @@ TEST(SolidSyslogCaptureState, OnceServiceHasSeenOnARecordLoggedUndecidedLaterIsK
     STRCMP_CONTAINS("second", SenderFake_LastBufferAsString(fakeSender));
 }
 
+TEST(SolidSyslogCaptureState, TheDeviceIsAskedOnceALogAndOnceAPass)
+{
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    LONGS_EQUAL(2, device.Asked);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, UndecidedNothingIsWrittenToTheStore)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, UndecidedNoReportIsMade)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    RaiseBufferLoss();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffARecordLoggedIsNotReportedAsALoss)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedTheRecordsHeldAreDiscarded)
+{
+    device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
+    Log();
+    Log();
+    device.Capture = SOLIDSYSLOG_CAPTURE_OFF;
+    SolidSyslog_Service(solidSyslog);
+    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+    Log("later");
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+    STRCMP_CONTAINS("later", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedNoReportIsMade)
+{
+    LeaveAReportPendingWhileOff();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OnAfterOffTheHeldReportIsMade)
+{
+    LeaveAReportPendingWhileOff();
+    SolidSyslog_Service(solidSyslog);
+    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
+}
+
+TEST(SolidSyslogCaptureStateWithAStore, OffNeverOnAHeldReportLeavesThePassIdle)
+{
+    LeaveAReportPendingWhileOff();
+
+    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(solidSyslog));
+}
+
 TEST(SolidSyslogCaptureStateRacingALog, ARecordReadBeforeALogSawOnIsKeptWithIt)
 {
     device.Capture = SOLIDSYSLOG_CAPTURE_UNDECIDED;
@@ -410,15 +446,6 @@ TEST(SolidSyslogCaptureStateUnwired, NothingWiredMeansOn)
     SolidSyslog_Service(solidSyslog);
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
-}
-
-TEST(SolidSyslogCaptureState, TheDeviceIsAskedOnceALogAndOnceAPass)
-{
-    Log();
-
-    SolidSyslog_Service(solidSyslog);
-
-    LONGS_EQUAL(2, device.Asked);
 }
 
 TEST(SolidSyslogCaptureStateEndToEnd, ABootThatFindsLoggingOffLeavesNoTrace)
@@ -470,31 +497,4 @@ TEST(SolidSyslogCaptureStateEndToEnd, TurnedOffThenOnAgainOnlyTheDeactivationAnd
     STRCMP_EQUAL("deactivated", FrameMsgId(0).c_str());
     STRCMP_EQUAL("reactivated", FrameMsgId(1).c_str());
     STRCMP_CONTAINS("sequenceId=\"2\"", StreamFake_Frame(stream, 1));
-}
-
-TEST(SolidSyslogCaptureStateWithAStore, OffAfterUndecidedNoReportIsMade)
-{
-    LeaveAReportPendingWhileOff();
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE_ON(StoreFake_Write, fakeStore, NEVER);
-}
-
-TEST(SolidSyslogCaptureStateWithAStore, OnAfterOffTheHeldReportIsMade)
-{
-    LeaveAReportPendingWhileOff();
-    SolidSyslog_Service(solidSyslog);
-    device.Capture = SOLIDSYSLOG_CAPTURE_ON;
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE_ON(StoreFake_Write, fakeStore, ONCE);
-}
-
-TEST(SolidSyslogCaptureStateWithAStore, OffNeverOnAHeldReportLeavesThePassIdle)
-{
-    LeaveAReportPendingWhileOff();
-
-    LONGS_EQUAL(SOLIDSYSLOG_SERVICE_IDLE, SolidSyslog_Service(solidSyslog));
 }

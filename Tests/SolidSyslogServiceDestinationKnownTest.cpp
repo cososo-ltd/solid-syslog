@@ -195,16 +195,6 @@ TEST(SolidSyslogServiceDestinationKnown, NotKnownNothingIsOfferedToTheSender)
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 }
 
-TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownARecordTheStoreKeepsIsNotSent)
-{
-    gate.Known = false;
-    Log();
-
-    SolidSyslog_Service(solidSyslog);
-
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
-}
-
 TEST(SolidSyslogServiceDestinationKnown, NotKnownThePassIsBlocked)
 {
     gate.Known = false;
@@ -244,13 +234,14 @@ TEST(SolidSyslogServiceDestinationKnown, NotKnownTheGateIsAskedOnceAPass)
     LONGS_EQUAL(1, gate.Asked);
 }
 
-TEST(SolidSyslogServiceDestinationKnownUnwired, NothingWiredMeansKnown)
+TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownARecordTheStoreKeepsIsNotSent)
 {
+    gate.Known = false;
     Log();
 
     SolidSyslog_Service(solidSyslog);
 
-    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, NEVER);
 }
 
 TEST(SolidSyslogServiceDestinationKnownWithAStore, NotKnownTheBufferStillDrainsIntoTheStore)
@@ -294,6 +285,15 @@ TEST(SolidSyslogServiceDestinationKnownWithAStore, KnownAgainTheStoredRecordIsSe
 
     CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
     STRCMP_CONTAINS("boot", SenderFake_LastBufferAsString(fakeSender));
+}
+
+TEST(SolidSyslogServiceDestinationKnownUnwired, NothingWiredMeansKnown)
+{
+    Log();
+
+    SolidSyslog_Service(solidSyslog);
+
+    CALLED_FAKE_ON(SenderFake_Send, fakeSender, ONCE);
 }
 
 TEST(SolidSyslogServiceDestinationKnownEndToEnd, WhileTheDestinationIsNotKnownNothingIsResolvedOpenedOrReported)

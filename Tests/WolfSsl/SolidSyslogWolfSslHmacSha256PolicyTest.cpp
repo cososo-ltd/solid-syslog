@@ -291,6 +291,11 @@ TEST(SolidSyslogWolfSslHmacSha256Policy, DestroyOfStaleHandleReportsWarning)
     );
 }
 
+TEST(SolidSyslogWolfSslHmacSha256Policy, TheErrorSourceNamesItsDetailsThroughHmacSha256PolicyErrors)
+{
+    CHECK(SolidSyslogHmacSha256PolicyErrors_Name == SolidSyslogWolfSslHmacSha256PolicyErrorSource.DetailName);
+}
+
 TEST(SolidSyslogWolfSslHmacSha256PolicySeal, SealRecordHmacsTheRecordWithTheFetchedKey)
 {
     uint8_t expectedKey[TEST_KEY_SIZE];
@@ -620,9 +625,4 @@ TEST(SolidSyslogWolfSslHmacSha256PolicySeal, EverySealFreesTheContextItInitialis
 
     LONGS_EQUAL(1, WolfSslFake_HmacInitCallCount());
     LONGS_EQUAL(1, WolfSslFake_HmacFreeCallCount());
-}
-
-TEST(SolidSyslogWolfSslHmacSha256Policy, TheErrorSourceNamesItsDetailsThroughHmacSha256PolicyErrors)
-{
-    CHECK(SolidSyslogHmacSha256PolicyErrors_Name == SolidSyslogWolfSslHmacSha256PolicyErrorSource.DetailName);
 }

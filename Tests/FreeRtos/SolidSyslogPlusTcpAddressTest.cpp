@@ -71,6 +71,11 @@ TEST(SolidSyslogPlusTcpAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
     MEMCMP_EQUAL(&zeroes, SolidSyslogPlusTcpAddress_AsConstFreertosSockaddr(address), sizeof(zeroes));
 }
 
+TEST(SolidSyslogPlusTcpAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogPlusTcpAddressErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpAddressPool)
 {
@@ -210,9 +215,4 @@ TEST(SolidSyslogPlusTcpAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPlusTcpAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
-{
-    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogPlusTcpAddressErrorSource.DetailName);
 }

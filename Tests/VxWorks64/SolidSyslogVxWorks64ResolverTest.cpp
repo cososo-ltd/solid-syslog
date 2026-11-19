@@ -182,6 +182,11 @@ TEST(SolidSyslogVxWorks64Resolver, ALiteralNeverReachesTheHostLibrary)
     CALLED_FAKE(VxWorks64NetFake_HostGetByName, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64Resolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogVxWorks64ResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64ResolverPool)
 {
@@ -323,9 +328,4 @@ TEST(SolidSyslogVxWorks64ResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogVxWorks64Resolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogVxWorks64ResolverErrorSource.DetailName);
 }

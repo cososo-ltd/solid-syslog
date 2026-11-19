@@ -172,6 +172,11 @@ TEST(SolidSyslogTimeQualitySd, DestroyDoesNotCrash)
     // Covered by teardown - this test documents the intent
 }
 
+TEST(SolidSyslogTimeQualitySd, TheErrorSourceNamesItsDetailsThroughTimeQualitySdErrors)
+{
+    CHECK(SolidSyslogTimeQualitySdErrors_Name == SolidSyslogTimeQualitySdErrorSource.DetailName);
+}
+
 // Pool tests - prove SOLIDSYSLOG_TIME_QUALITY_SD_POOL_SIZE caps live
 // instances and overflow falls back to the shared SolidSyslogNullSd.
 
@@ -280,9 +285,4 @@ TEST(SolidSyslogTimeQualitySdBadSetup, CreateWithNullCallbackReportsError)
         SOLIDSYSLOG_CAT_BAD_CONFIG,
         SOLIDSYSLOG_TIME_QUALITY_SD_ERROR_NULL_CALLBACK
     );
-}
-
-TEST(SolidSyslogTimeQualitySd, TheErrorSourceNamesItsDetailsThroughTimeQualitySdErrors)
-{
-    CHECK(SolidSyslogTimeQualitySdErrors_Name == SolidSyslogTimeQualitySdErrorSource.DetailName);
 }

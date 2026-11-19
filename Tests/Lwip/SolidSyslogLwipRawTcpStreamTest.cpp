@@ -319,25 +319,6 @@ TEST(SolidSyslogLwipRawTcpStream, CloseBeforeOpenIsNoOp)
     CALLED_FAKE(LwipTcpFake_TcpAbort, NEVER);
 }
 
-TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDetachesTheStreamFromThePcbItCloses)
-{
-    SolidSyslogStream_Close(stream);
-
-    POINTERS_EQUAL(nullptr, LwipTcpFake_LastCallbackArg());
-    CHECK_TRUE(LwipTcpFake_LastErrFn() == nullptr);
-    CHECK_TRUE(LwipTcpFake_LastRecvFn() == nullptr);
-    CHECK_TRUE(LwipTcpFake_LastSentFn() == nullptr);
-}
-
-TEST(SolidSyslogLwipRawTcpStreamConnected, CloseAbortsThePcbWhenTheCloseCannotBeQueued)
-{
-    LwipTcpFake_SetTcpCloseError(ERR_MEM);
-
-    SolidSyslogStream_Close(stream);
-
-    CALLED_FAKE(LwipTcpFake_TcpAbort, ONCE);
-}
-
 TEST(SolidSyslogLwipRawTcpStream, SendBeforeOpenReturnsFalse)
 {
     CHECK_FALSE(sendBytes());
@@ -618,6 +599,35 @@ TEST(SolidSyslogLwipRawTcpStream, ADeadlineAboveTheCapIsBoundedToIt)
 
     /* 300 000 ms / 10 ms poll = 30 000 polls. */
     LONGS_EQUAL(30000, FakeSleep_CallCount);
+}
+
+TEST(SolidSyslogLwipRawTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogLwipRawTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogLwipRawTcpStreamErrorSource.DetailName);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, CloseDetachesTheStreamFromThePcbItCloses)
+{
+    SolidSyslogStream_Close(stream);
+
+    POINTERS_EQUAL(nullptr, LwipTcpFake_LastCallbackArg());
+    CHECK_TRUE(LwipTcpFake_LastErrFn() == nullptr);
+    CHECK_TRUE(LwipTcpFake_LastRecvFn() == nullptr);
+    CHECK_TRUE(LwipTcpFake_LastSentFn() == nullptr);
+}
+
+TEST(SolidSyslogLwipRawTcpStreamConnected, CloseAbortsThePcbWhenTheCloseCannotBeQueued)
+{
+    LwipTcpFake_SetTcpCloseError(ERR_MEM);
+
+    SolidSyslogStream_Close(stream);
+
+    CALLED_FAKE(LwipTcpFake_TcpAbort, ONCE);
 }
 
 /* ------------------------------------------------------------------
@@ -1205,14 +1215,4 @@ TEST(SolidSyslogLwipRawTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogLwipRawTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
-{
-    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
-}
-
-TEST(SolidSyslogLwipRawTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
-{
-    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogLwipRawTcpStreamErrorSource.DetailName);
 }

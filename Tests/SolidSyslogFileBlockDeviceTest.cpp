@@ -378,6 +378,11 @@ TEST(SolidSyslogFileBlockDevice, UseAfterDestroyIsCrashSafeViaNullBlockDeviceVta
     device = nullptr; // teardown's nullptr guard skips the second Destroy
 }
 
+TEST(SolidSyslogFileBlockDevice, TheErrorSourceNamesItsDetailsThroughFileBlockDeviceErrors)
+{
+    CHECK(SolidSyslogFileBlockDeviceErrors_Name == SolidSyslogFileBlockDeviceErrorSource.DetailName);
+}
+
 // Pool tests - prove SOLIDSYSLOG_FILE_BLOCK_DEVICE_POOL_SIZE caps live
 // instances and overflow falls back to the class-private no-op BlockDevice.
 // Generic pool mechanics (lock counts, per-probe locking, stale-handle warning)
@@ -465,9 +470,4 @@ TEST(SolidSyslogFileBlockDevicePool, DestroyingAHandleTwiceReportsTheSecond)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogFileBlockDevice, TheErrorSourceNamesItsDetailsThroughFileBlockDeviceErrors)
-{
-    CHECK(SolidSyslogFileBlockDeviceErrors_Name == SolidSyslogFileBlockDeviceErrorSource.DetailName);
 }

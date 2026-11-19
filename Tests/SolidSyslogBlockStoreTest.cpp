@@ -370,6 +370,11 @@ TEST(SolidSyslogBlockStore, FiveWritesDrainAllInOrder)
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
 }
 
+TEST(SolidSyslogBlockStore, TheErrorSourceNamesItsDetailsThroughBlockStoreErrors)
+{
+    CHECK(SolidSyslogBlockStoreErrors_Name == SolidSyslogBlockStoreErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP_BASE(SolidSyslogBlockStoreResume, BlockDeviceTestBase)
 {
@@ -3657,9 +3662,4 @@ TEST(SolidSyslogBlockStorePool, UseAfterDestroyIsCrashSafeViaNullStoreVtable)
     LONGS_EQUAL(0, bytesRead);
     CHECK_FALSE(SolidSyslogStore_HasUnsent(store));
     SolidSyslogStore_MarkSent(store); /* no-op */
-}
-
-TEST(SolidSyslogBlockStore, TheErrorSourceNamesItsDetailsThroughBlockStoreErrors)
-{
-    CHECK(SolidSyslogBlockStoreErrors_Name == SolidSyslogBlockStoreErrorSource.DetailName);
 }

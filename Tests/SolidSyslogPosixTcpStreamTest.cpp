@@ -924,6 +924,16 @@ TEST(SolidSyslogPosixTcpStream, ReadReturnsNegativeOneOnErrorAndClosesSocket)
     CHECK_SOCKET_CLOSED_ONCE();
 }
 
+TEST(SolidSyslogPosixTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogPosixTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogPosixTcpStreamErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixTcpStreamPool)
 {
@@ -1063,14 +1073,4 @@ TEST(SolidSyslogPosixTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPosixTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
-{
-    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
-}
-
-TEST(SolidSyslogPosixTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
-{
-    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogPosixTcpStreamErrorSource.DetailName);
 }

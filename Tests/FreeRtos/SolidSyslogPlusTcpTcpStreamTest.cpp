@@ -596,6 +596,16 @@ TEST(SolidSyslogPlusTcpTcpStream, OpeningAStreamThatIsAlreadyOpenLeavesTheSocket
     CALLED_FAKE(FreeRtosSocketsFake_Closesocket, NEVER);
 }
 
+TEST(SolidSyslogPlusTcpTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogPlusTcpTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogPlusTcpTcpStreamErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpTcpStreamPool)
 {
@@ -764,14 +774,4 @@ TEST(SolidSyslogPlusTcpTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPlusTcpTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
-{
-    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
-}
-
-TEST(SolidSyslogPlusTcpTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
-{
-    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogPlusTcpTcpStreamErrorSource.DetailName);
 }

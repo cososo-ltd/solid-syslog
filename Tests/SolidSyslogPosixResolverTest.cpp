@@ -130,6 +130,11 @@ TEST(SolidSyslogPosixResolver, FreesAddrInfoOnSuccess)
     CALLED_FAKE(SocketFake_FreeAddrInfo, ONCE);
 }
 
+TEST(SolidSyslogPosixResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogPosixResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixResolverPool)
 {
@@ -271,9 +276,4 @@ TEST(SolidSyslogPosixResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPosixResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogPosixResolverErrorSource.DetailName);
 }

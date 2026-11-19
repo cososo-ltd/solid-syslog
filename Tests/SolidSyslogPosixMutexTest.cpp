@@ -43,6 +43,11 @@ TEST(SolidSyslogPosixMutex, LockUnlockDoesNotCrash)
     SolidSyslogMutex_Unlock(mutex);
 }
 
+TEST(SolidSyslogPosixMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogPosixMutexErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMutexPool)
 {
@@ -183,9 +188,4 @@ TEST(SolidSyslogPosixMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPosixMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
-{
-    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogPosixMutexErrorSource.DetailName);
 }

@@ -67,6 +67,11 @@ TEST(SolidSyslogLwipSocketAddress, CreateZeroesTheSockaddrFromAnyPriorSlotConten
     MEMCMP_EQUAL(&zeroes, SolidSyslogLwipSocketAddress_AsConstSockaddrIn(address), sizeof(zeroes));
 }
 
+TEST(SolidSyslogLwipSocketAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogLwipSocketAddressErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketAddressPool)
 {
@@ -197,9 +202,4 @@ TEST(SolidSyslogLwipSocketAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogLwipSocketAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
-{
-    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogLwipSocketAddressErrorSource.DetailName);
 }

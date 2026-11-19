@@ -686,6 +686,11 @@ TEST(SolidSyslogLwipSocketTcpStream, AStackThatRefusesEveryOptionStillReportsOnl
     LONGS_EQUAL(ONCE, ErrorHandlerFake_HandleCallCount());
 }
 
+TEST(SolidSyslogLwipSocketTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogLwipSocketTcpStreamErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketTcpStreamPool)
 {
@@ -839,9 +844,4 @@ TEST(SolidSyslogLwipSocketTcpStreamPool, SendingAfterDestroyIsASafeNoOp)
     CHECK_TRUE(SolidSyslogStream_Send(stale, TEST_PAYLOAD, TEST_PAYLOAD_SIZE));
 
     LONGS_EQUAL(0U, LwipSocketsFake_SendCallCount());
-}
-
-TEST(SolidSyslogLwipSocketTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
-{
-    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogLwipSocketTcpStreamErrorSource.DetailName);
 }

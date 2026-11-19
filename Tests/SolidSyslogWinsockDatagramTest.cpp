@@ -283,6 +283,11 @@ TEST(SolidSyslogWinsockDatagram, MaxPayloadFallsBackWhenIpMtuLookupFails)
     LONGS_EQUAL(SolidSyslogUdpPayload_UnknownPath(false), SolidSyslogDatagram_MaxPayload(datagram));
 }
 
+TEST(SolidSyslogWinsockDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogWinsockDatagramErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockDatagramPool)
 {
@@ -428,9 +433,4 @@ TEST(SolidSyslogWinsockDatagramPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_DATAGRAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogWinsockDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
-{
-    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogWinsockDatagramErrorSource.DetailName);
 }

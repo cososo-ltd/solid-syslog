@@ -244,6 +244,11 @@ TEST(SolidSyslogLwipSocketDatagram, OpeningADatagramThatIsAlreadyOpenLeavesTheSo
     CALLED_FAKE(LwipSocketsFake_Close, NEVER);
 }
 
+TEST(SolidSyslogLwipSocketDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
+{
+    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogLwipSocketDatagramErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipSocketDatagramPool)
 {
@@ -399,9 +404,4 @@ TEST(SolidSyslogLwipSocketDatagramPool, SendingAfterDestroyIsASafeNoOp)
     LONGS_EQUAL(SOLIDSYSLOG_DATAGRAM_SEND_RESULT_SENT, sent);
     LONGS_EQUAL(0U, LwipSocketsFake_SendToCallCount());
     SolidSyslogLwipSocketAddress_Destroy(address);
-}
-
-TEST(SolidSyslogLwipSocketDatagram, TheErrorSourceNamesItsDetailsThroughDatagramErrors)
-{
-    CHECK(SolidSyslogDatagramErrors_Name == SolidSyslogLwipSocketDatagramErrorSource.DetailName);
 }

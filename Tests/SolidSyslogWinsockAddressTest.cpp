@@ -68,6 +68,11 @@ TEST(SolidSyslogWinsockAddress, CreateZeroesTheSockaddrFromAnyPriorSlotContents)
     MEMCMP_EQUAL(&zeroes, SolidSyslogWinsockAddress_AsConstSockaddrIn(address), sizeof(zeroes));
 }
 
+TEST(SolidSyslogWinsockAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogWinsockAddressErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockAddressPool)
 {
@@ -199,9 +204,4 @@ TEST(SolidSyslogWinsockAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogWinsockAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
-{
-    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogWinsockAddressErrorSource.DetailName);
 }

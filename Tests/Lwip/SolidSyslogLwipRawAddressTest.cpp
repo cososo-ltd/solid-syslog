@@ -77,6 +77,11 @@ TEST(SolidSyslogLwipRawAddress, CreateZeroesIpAndPortFromAnyPriorSlotContents)
     LONGS_EQUAL(0, fresh->Port);
 }
 
+TEST(SolidSyslogLwipRawAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
+{
+    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogLwipRawAddressErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawAddressPool)
 {
@@ -216,9 +221,4 @@ TEST(SolidSyslogLwipRawAddressPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_ADDRESS_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogLwipRawAddress, TheErrorSourceNamesItsDetailsThroughAddressErrors)
-{
-    CHECK(SolidSyslogAddressErrors_Name == SolidSyslogLwipRawAddressErrorSource.DetailName);
 }

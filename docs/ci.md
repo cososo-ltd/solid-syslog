@@ -35,7 +35,7 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
-| `analyze-format` | - | clang-format dry-run; fails if any file needs reformatting |
+| `analyze-format` | - | clang-format dry-run; fails if any file needs reformatting. Then `scripts/check_test_groups.py`: no CppUTest group resumes after another group's tests in the same file, which would leave the earlier ones out of the JUnit XML and so out of the test report |
 | `analyze-iwyu` | `iwyu` | include-what-you-use over every pack a Linux host can build, on `cpputest-clang`; fails on missing or unused `#include` directives. Advisory - runs `continue-on-error` |
 | `analyze-tidy-embedded` | `tidy` | clang-tidy on `cpputest-freertos`, whose upstream trees select the eight embedded packs the base `analyze-tidy` lane cannot reach: FreeRtos, PlusTcp, PlusFat, LwipRaw, LwipSocket, MbedTls, FatFs and LittleFs |
 | `analyze-markdown` | - | `markdownlint-cli2` over every tracked `.md` file |

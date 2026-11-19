@@ -313,6 +313,11 @@ TEST(SolidSyslogMetaSd, CreateWithNullCounterReportsCritical)
     );
 }
 
+TEST(SolidSyslogMetaSd, TheErrorSourceNamesItsDetailsThroughMetaSdErrors)
+{
+    CHECK(SolidSyslogMetaSdErrors_Name == SolidSyslogMetaSdErrorSource.DetailName);
+}
+
 // Pool tests - prove SOLIDSYSLOG_META_SD_POOL_SIZE caps live instances
 // and overflow falls back to the shared SolidSyslogNullSd.
 
@@ -399,9 +404,4 @@ TEST(SolidSyslogMetaSdPool, DestroyingAHandleTwiceReportsTheSecond)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_META_SD_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogMetaSd, TheErrorSourceNamesItsDetailsThroughMetaSdErrors)
-{
-    CHECK(SolidSyslogMetaSdErrors_Name == SolidSyslogMetaSdErrorSource.DetailName);
 }

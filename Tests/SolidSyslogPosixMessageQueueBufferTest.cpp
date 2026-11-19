@@ -596,6 +596,23 @@ TEST(SolidSyslogPosixMessageQueueBuffer, ServiceSendsMessageWrittenViaLog)
     SenderFake_Destroy(fakeSender);
 }
 
+TEST(SolidSyslogPosixMessageQueueBuffer, PosixMessageQueueBufferErrorsNamesItsCodes)
+{
+    STRCMP_EQUAL(
+        "MQ_OPEN_FAILED",
+        SolidSyslogPosixMessageQueueBufferErrors_Name(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED)
+    );
+    CHECK_VOCABULARY_NAMED(
+        SolidSyslogPosixMessageQueueBufferErrors_Name,
+        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX
+    );
+}
+
+TEST(SolidSyslogPosixMessageQueueBuffer, TheErrorSourceNamesItsDetailsThroughPosixMessageQueueBufferErrors)
+{
+    CHECK(SolidSyslogPosixMessageQueueBufferErrors_Name == SolidSyslogPosixMessageQueueBufferErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPosixMessageQueueBufferMutex)
 {
@@ -1008,21 +1025,4 @@ TEST(SolidSyslogPosixMessageQueueBufferPool, EachPooledHandleHasIsolatedQueue)
 
     CHECK_FALSE(readSucceeded);
     LONGS_EQUAL(0, bytesRead);
-}
-
-TEST(SolidSyslogPosixMessageQueueBuffer, PosixMessageQueueBufferErrorsNamesItsCodes)
-{
-    STRCMP_EQUAL(
-        "MQ_OPEN_FAILED",
-        SolidSyslogPosixMessageQueueBufferErrors_Name(SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MQ_OPEN_FAILED)
-    );
-    CHECK_VOCABULARY_NAMED(
-        SolidSyslogPosixMessageQueueBufferErrors_Name,
-        SOLIDSYSLOG_POSIX_MESSAGE_QUEUE_BUFFER_ERROR_MAX
-    );
-}
-
-TEST(SolidSyslogPosixMessageQueueBuffer, TheErrorSourceNamesItsDetailsThroughPosixMessageQueueBufferErrors)
-{
-    CHECK(SolidSyslogPosixMessageQueueBufferErrors_Name == SolidSyslogPosixMessageQueueBufferErrorSource.DetailName);
 }

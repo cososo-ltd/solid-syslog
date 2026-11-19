@@ -443,6 +443,11 @@ TEST(SolidSyslogLwipRawDnsResolver, ResolveAcceptsNumericLiteralAsSynchronousHit
     STRCMP_EQUAL("10.0.2.2", LwipDnsFake_LastHostname());
 }
 
+TEST(SolidSyslogLwipRawDnsResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipRawDnsResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogLwipRawDnsResolverPool)
 {
@@ -641,9 +646,4 @@ TEST(SolidSyslogLwipRawDnsResolverPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogLwipRawDnsResolver, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogLwipRawDnsResolverErrorSource.DetailName);
 }

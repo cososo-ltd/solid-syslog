@@ -116,6 +116,11 @@ TEST(SolidSyslogCmsisRtosMutex, DestroyDeletesTheIdMutexNewReturned)
     POINTERS_EQUAL(CmsisRtosMutexFake_LastCreatedId(), CmsisRtosMutexFake_LastDeletedId());
 }
 
+TEST(SolidSyslogCmsisRtosMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogCmsisRtosMutexErrorSource.DetailName);
+}
+
 // A guard on the documented alternative to supplying a control block. NULL with
 // a zero size is the form CMSIS-RTOS2 defines for "allocate it yourself", so the
 // adapter must pass the pair through untouched rather than substitute anything
@@ -409,9 +414,4 @@ TEST(SolidSyslogCmsisRtosMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogCmsisRtosMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
-{
-    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogCmsisRtosMutexErrorSource.DetailName);
 }

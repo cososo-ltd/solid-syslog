@@ -829,6 +829,28 @@ TEST(SolidSyslogWinsockTcpStream, DestroyClosesOpenSocket)
     CALLED_FAKE(WinsockFake_Close, ONCE);
 }
 
+TEST(SolidSyslogWinsockTcpStream, DestroyClosesWithSocketFd)
+{
+    SolidSyslogStream_Open(stream, addr);
+    SolidSyslogWinsockTcpStream_Destroy(stream);
+    CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
+}
+
+TEST(SolidSyslogWinsockTcpStream, DefaultPortMatchesRfc6587)
+{
+    LONGS_EQUAL(601, SOLIDSYSLOG_TCP_DEFAULT_PORT);
+}
+
+TEST(SolidSyslogWinsockTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
+{
+    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
+}
+
+TEST(SolidSyslogWinsockTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogWinsockTcpStreamErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogWinsockTcpStreamPool)
 {
@@ -968,26 +990,4 @@ TEST(SolidSyslogWinsockTcpStreamPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_TCP_STREAM_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogWinsockTcpStream, DestroyClosesWithSocketFd)
-{
-    SolidSyslogStream_Open(stream, addr);
-    SolidSyslogWinsockTcpStream_Destroy(stream);
-    CHECK(WinsockFake_SocketFd() == WinsockFake_LastClosedFd());
-}
-
-TEST(SolidSyslogWinsockTcpStream, DefaultPortMatchesRfc6587)
-{
-    LONGS_EQUAL(601, SOLIDSYSLOG_TCP_DEFAULT_PORT);
-}
-
-TEST(SolidSyslogWinsockTcpStream, VersionIsAlwaysZeroBecauseNothingChangesAtRuntime)
-{
-    LONGS_EQUAL(0, SolidSyslogStream_Version(stream));
-}
-
-TEST(SolidSyslogWinsockTcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
-{
-    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogWinsockTcpStreamErrorSource.DetailName);
 }

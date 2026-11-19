@@ -579,6 +579,24 @@ TEST(SolidSyslogVxWorks64TcpStream, SendAfterDestroyTouchesNoSocket)
     CALLED_FAKE(VxWorks64NetFake_Send, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
+{
+    SolidSyslogVxWorks64TcpStream_Destroy(stream);
+    struct SolidSyslogVxWorks64TcpStreamConfig config = {};
+    stream = SolidSyslogVxWorks64TcpStream_Create(&config);
+    SolidSyslogStream_Open(stream, address);
+    LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS / 1000U, VxWorks64NetFake_LastConnectTimeoutSeconds());
+    LONGS_EQUAL(
+        (SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U,
+        VxWorks64NetFake_LastConnectTimeoutMicroseconds()
+    );
+}
+
+TEST(SolidSyslogVxWorks64TcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
+{
+    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogVxWorks64TcpStreamErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64TcpStreamPool)
 {
@@ -691,22 +709,4 @@ TEST(SolidSyslogVxWorks64TcpStreamPool, DestroyOfAHandleThePoolDoesNotOwnTakesNo
     struct SolidSyslogStream stranger = {};
     SolidSyslogVxWorks64TcpStream_Destroy(&stranger);
     CALLED_FAKE(ConfigLockFake_Lock, NEVER);
-}
-
-TEST(SolidSyslogVxWorks64TcpStream, OpenBoundsTheConnectByTheTunableWhenTheConfigHasNoGetter)
-{
-    SolidSyslogVxWorks64TcpStream_Destroy(stream);
-    struct SolidSyslogVxWorks64TcpStreamConfig config = {};
-    stream = SolidSyslogVxWorks64TcpStream_Create(&config);
-    SolidSyslogStream_Open(stream, address);
-    LONGS_EQUAL(SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS / 1000U, VxWorks64NetFake_LastConnectTimeoutSeconds());
-    LONGS_EQUAL(
-        (SOLIDSYSLOG_TCP_CONNECT_TIMEOUT_MS % 1000U) * 1000U,
-        VxWorks64NetFake_LastConnectTimeoutMicroseconds()
-    );
-}
-
-TEST(SolidSyslogVxWorks64TcpStream, TheErrorSourceNamesItsDetailsThroughTcpStreamErrors)
-{
-    CHECK(SolidSyslogTcpStreamErrors_Name == SolidSyslogVxWorks64TcpStreamErrorSource.DetailName);
 }

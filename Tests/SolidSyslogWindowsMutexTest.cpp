@@ -43,6 +43,11 @@ TEST(SolidSyslogWindowsMutex, LockUnlockDoesNotCrash)
     SolidSyslogMutex_Unlock(mutex);
 }
 
+TEST(SolidSyslogWindowsMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
+{
+    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogWindowsMutexErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogWindowsMutexPool)
 {
@@ -183,9 +188,4 @@ TEST(SolidSyslogWindowsMutexPool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_MUTEX_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogWindowsMutex, TheErrorSourceNamesItsDetailsThroughMutexErrors)
-{
-    CHECK(SolidSyslogMutexErrors_Name == SolidSyslogWindowsMutexErrorSource.DetailName);
 }

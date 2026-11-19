@@ -129,6 +129,11 @@ TEST(SolidSyslogPlusTcpResolverTest, FreesAddrInfoOnSuccess)
     CALLED_FAKE(FreeRtosDnsFake_FreeAddrInfo, ONCE);
 }
 
+TEST(SolidSyslogPlusTcpResolverTest, TheErrorSourceNamesItsDetailsThroughResolverErrors)
+{
+    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogPlusTcpResolverErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogPlusTcpResolverPoolTest)
 {
@@ -271,9 +276,4 @@ TEST(SolidSyslogPlusTcpResolverPoolTest, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_RESOLVER_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogPlusTcpResolverTest, TheErrorSourceNamesItsDetailsThroughResolverErrors)
-{
-    CHECK(SolidSyslogResolverErrors_Name == SolidSyslogPlusTcpResolverErrorSource.DetailName);
 }

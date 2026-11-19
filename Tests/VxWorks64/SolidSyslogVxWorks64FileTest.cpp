@@ -689,6 +689,11 @@ TEST(SolidSyslogVxWorks64File, DestroyOfAClosedFileClosesNothing)
     CALLED_FAKE(VxWorks64IoFake_Close, NEVER);
 }
 
+TEST(SolidSyslogVxWorks64File, TheErrorSourceNamesItsDetailsThroughFileErrors)
+{
+    CHECK(SolidSyslogFileErrors_Name == SolidSyslogVxWorks64FileErrorSource.DetailName);
+}
+
 // clang-format off
 TEST_GROUP(SolidSyslogVxWorks64FilePool)
 {
@@ -828,9 +833,4 @@ TEST(SolidSyslogVxWorks64FilePool, DestroyOfStaleHandleReportsWarning)
         SOLIDSYSLOG_CAT_UNKNOWN_DESTROY,
         SOLIDSYSLOG_FILE_ERROR_UNKNOWN_DESTROY
     );
-}
-
-TEST(SolidSyslogVxWorks64File, TheErrorSourceNamesItsDetailsThroughFileErrors)
-{
-    CHECK(SolidSyslogFileErrors_Name == SolidSyslogVxWorks64FileErrorSource.DetailName);
 }
