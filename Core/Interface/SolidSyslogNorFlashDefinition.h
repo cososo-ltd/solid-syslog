@@ -27,10 +27,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  by offset within it, so a part of any capacity fits the same signatures.
      *
      *  Every call returns in bounded time. One the flash does not finish within
-     *  the time the part allows for it answers false, and so fails the block
-     *  device operation that made it, which freezes a store above: a part that
-     *  stops answering costs one wait, not a Service that never returns. The
-     *  bound includes the bus under the flash.
+     *  the time the part allows for it answers false, so a part that stops
+     *  answering costs a bounded wait, not a Service that never returns. The
+     *  bound includes the bus under the flash. What the false does depends on
+     *  the block device operation that met it: most fail with it, which
+     *  freezes a store above; a state that cannot be read is taken as a block
+     *  that is not there (see SolidSyslogNorFlashBlockDevice.h), so the store
+     *  carries on and freezes only at a later operation that fails.
      *
      *  Access is single-threaded, so an implementation need not be reentrant. Where
      *  the part is shared with another user, the implementation takes whatever

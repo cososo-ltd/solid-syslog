@@ -2036,6 +2036,7 @@ static struct SolidSyslogSecurityPolicy spyPolicy = {
 TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
 {
     struct SolidSyslogStore* store = nullptr;
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
 
     void setup() override
     {
@@ -2073,6 +2074,24 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreIntegrity, BlockDeviceTestBase)
     {
         SolidSyslogBlockStore_Destroy(store);
         CreateStore();
+    }
+
+    /* Blocks of one largest record, the first written and sent, so that the
+     * next write of maxMsg takes block 01 and disposes of the drained block 00
+     * after it. The policy will not seal that record, and the dispose fails. */
+    void PrepareAWriteWhoseSealAndRotationBothFail()
+    {
+        memset(maxMsg, 'A', sizeof(maxMsg));
+        SolidSyslogBlockStore_Destroy(store);
+        EnsureDeviceBlockSize(sizeof(maxMsg) + TEST_RECORD_OVERHEAD);
+        CreateStore();
+        SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 00, full */
+        char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+        size_t bytesRead = 0U;
+        SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+        SolidSyslogStore_MarkSent(store); /* block 00 drained */
+        spySealSucceeds = false;
+        FileFake_FailNextDelete(file);
     }
 
     /* Two records, then the first's length byte damaged on the media under
@@ -2117,37 +2136,14 @@ TEST(SolidSyslogBlockStoreIntegrity, ASealThePolicyRefusesReportsTheRecordWasNot
  * whatever then becomes of the rotation the write had made. */
 TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyWouldNotSealIsLostEvenWhenFinishingTheRotationFreezesTheStore)
 {
-    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    memset(maxMsg, 'A', sizeof(maxMsg));
-    SolidSyslogBlockStore_Destroy(store);
-    EnsureDeviceBlockSize(sizeof(maxMsg) + TEST_RECORD_OVERHEAD);
-    CreateStore();
-    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 00, full */
-    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0U;
-    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
-    SolidSyslogStore_MarkSent(store); /* block 00 drained */
-    spySealSucceeds = false;
-    FileFake_FailNextDelete(file);
+    PrepareAWriteWhoseSealAndRotationBothFail();
 
-    /* Takes block 01, is not sealed, and the dispose of block 00 fails. */
     LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_LOST, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
 }
 
 TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyWouldNotSealIsReportedEvenWhenFinishingTheRotationFreezesTheStore)
 {
-    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    memset(maxMsg, 'A', sizeof(maxMsg));
-    SolidSyslogBlockStore_Destroy(store);
-    EnsureDeviceBlockSize(sizeof(maxMsg) + TEST_RECORD_OVERHEAD);
-    CreateStore();
-    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 00, full */
-    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
-    size_t bytesRead = 0U;
-    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
-    SolidSyslogStore_MarkSent(store); /* block 00 drained */
-    spySealSucceeds = false;
-    FileFake_FailNextDelete(file);
+    PrepareAWriteWhoseSealAndRotationBothFail();
     ErrorHandlerFake_Install(nullptr);
 
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
