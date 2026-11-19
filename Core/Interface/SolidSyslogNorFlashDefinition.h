@@ -42,12 +42,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  place. */
     struct SolidSyslogNorFlash
     {
-        bool (*Read)(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buf, size_t count);
+        bool (*Read)(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buffer, size_t count);
         bool (*Program)(
             struct SolidSyslogNorFlash* base,
             size_t blockIndex,
             size_t offset,
-            const void* buf,
+            const void* buffer,
             size_t count
         );
         bool (*Erase)(struct SolidSyslogNorFlash* base, size_t blockIndex);

@@ -40,9 +40,11 @@ enum
 
 /* The word for each state, disposed reached from in use by clearing bits. A
  * block is in a state only while its word reads as exactly these bytes, so a
- * blank word, and whatever an erase or a program cut short by power leaves,
- * is neither. No state says a block is erased: Acquire erases whatever it
- * takes, so nothing a power cut can leave is trusted as erased. */
+ * blank word, and almost anything an erase or a program cut short by power
+ * leaves, is neither. No state says a block is erased: Acquire erases whatever
+ * it takes, so nothing a power cut can leave is trusted as erased. The one
+ * case left, an erase that stops on the in-use word, is accepted; the device
+ * header says what it costs. */
 static const uint8_t NorFlashBlockDevice_StateWords[STATE_COUNT][STATE_SIZE] =
     {[STATE_IN_USE] = {0x5A, 0xA5, 0xFF, 0xFF}, [STATE_DISPOSED] = {0x00, 0x00, 0x00, 0x00}};
 
@@ -55,14 +57,14 @@ static bool NorFlashBlockDevice_Read(
     struct SolidSyslogBlockDevice* base,
     size_t blockIndex,
     size_t offset,
-    void* buf,
+    void* buffer,
     size_t count
 );
 // NOLINTEND(bugprone-easily-swappable-parameters)
 static bool NorFlashBlockDevice_Append(
     struct SolidSyslogBlockDevice* base,
     size_t blockIndex,
-    const void* buf,
+    const void* buffer,
     size_t count
 );
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
@@ -70,7 +72,7 @@ static bool NorFlashBlockDevice_WriteAt(
     struct SolidSyslogBlockDevice* base,
     size_t blockIndex,
     size_t offset,
-    const void* buf,
+    const void* buffer,
     size_t count
 );
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -155,7 +157,7 @@ static bool NorFlashBlockDevice_ProgramAndVerify(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
     size_t flashOffset,
-    const void* buf,
+    const void* buffer,
     size_t count
 );
 static inline void NorFlashBlockDevice_RememberEnd(
@@ -251,7 +253,7 @@ static bool NorFlashBlockDevice_ProgramAndVerify(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
     size_t flashOffset,
-    const void* buf,
+    const void* buffer,
     size_t count
 )
 {
@@ -259,13 +261,13 @@ static bool NorFlashBlockDevice_ProgramAndVerify(
         self->Config.Flash,
         NorFlashBlockDevice_FlashBlock(self, blockIndex),
         flashOffset,
-        buf,
+        buffer,
         count
     );
 
     if (programmed)
     {
-        programmed = NorFlashBlockDevice_Holds(self, blockIndex, flashOffset, buf, count);
+        programmed = NorFlashBlockDevice_Holds(self, blockIndex, flashOffset, buffer, count);
     }
 
     return programmed;
@@ -401,7 +403,7 @@ static bool NorFlashBlockDevice_Read(
     struct SolidSyslogBlockDevice* base,
     size_t blockIndex,
     size_t offset,
-    void* buf,
+    void* buffer,
     size_t count
 )
 {
@@ -414,7 +416,7 @@ static bool NorFlashBlockDevice_Read(
             self->Config.Flash,
             NorFlashBlockDevice_FlashBlock(self, blockIndex),
             (size_t) DATA_OFFSET + offset,
-            buf,
+            buffer,
             count
         );
     }
@@ -438,7 +440,7 @@ static bool NorFlashBlockDevice_FindEndOfData(
 static bool NorFlashBlockDevice_Append(
     struct SolidSyslogBlockDevice* base,
     size_t blockIndex,
-    const void* buf,
+    const void* buffer,
     size_t count
 )
 {
@@ -450,7 +452,7 @@ static bool NorFlashBlockDevice_Append(
         NorFlashBlockDevice_EndOfData(self, blockIndex, &end) &&
         NorFlashBlockDevice_SpanIsWithinFlashBlock(self, end, count))
     {
-        appended = NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, (size_t) DATA_OFFSET + end, buf, count);
+        appended = NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, (size_t) DATA_OFFSET + end, buffer, count);
 
         /* After a program that did not take, where the data ends is not known. */
         if (appended)
@@ -549,7 +551,7 @@ static bool NorFlashBlockDevice_WriteAt(
     struct SolidSyslogBlockDevice* base,
     size_t blockIndex,
     size_t offset,
-    const void* buf,
+    const void* buffer,
     size_t count
 )
 {
@@ -558,7 +560,7 @@ static bool NorFlashBlockDevice_WriteAt(
 
     if (NorFlashBlockDevice_IsReachableSpan(self, blockIndex, offset, count))
     {
-        written = NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, (size_t) DATA_OFFSET + offset, buf, count);
+        written = NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, (size_t) DATA_OFFSET + offset, buffer, count);
     }
 
     return written;

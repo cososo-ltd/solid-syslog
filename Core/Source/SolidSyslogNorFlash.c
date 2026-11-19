@@ -12,22 +12,22 @@ bool SolidSyslogNorFlash_Read(
     struct SolidSyslogNorFlash* flash,
     size_t blockIndex,
     size_t offset,
-    void* buf,
+    void* buffer,
     size_t count
 )
 {
-    return flash->Read(flash, blockIndex, offset, buf, count);
+    return flash->Read(flash, blockIndex, offset, buffer, count);
 }
 
 bool SolidSyslogNorFlash_Program(
     struct SolidSyslogNorFlash* flash,
     size_t blockIndex,
     size_t offset,
-    const void* buf,
+    const void* buffer,
     size_t count
 )
 {
-    return flash->Program(flash, blockIndex, offset, buf, count);
+    return flash->Program(flash, blockIndex, offset, buffer, count);
 }
 
 bool SolidSyslogNorFlash_Erase(struct SolidSyslogNorFlash* flash, size_t blockIndex)

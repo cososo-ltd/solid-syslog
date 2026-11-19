@@ -14,14 +14,14 @@ static bool NullNorFlash_Read(
     struct SolidSyslogNorFlash* base,
     size_t blockIndex,
     size_t offset,
-    void* buf,
+    void* buffer,
     size_t count
 );
 static bool NullNorFlash_Program(
     struct SolidSyslogNorFlash* base,
     size_t blockIndex,
     size_t offset,
-    const void* buf,
+    const void* buffer,
     size_t count
 );
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -46,14 +46,14 @@ static bool NullNorFlash_Read(
     struct SolidSyslogNorFlash* base,
     size_t blockIndex,
     size_t offset,
-    void* buf,
+    void* buffer,
     size_t count
 )
 {
     (void) base;
     (void) blockIndex;
     (void) offset;
-    (void) buf;
+    (void) buffer;
     (void) count;
     return false;
 }
@@ -62,14 +62,14 @@ static bool NullNorFlash_Program(
     struct SolidSyslogNorFlash* base,
     size_t blockIndex,
     size_t offset,
-    const void* buf,
+    const void* buffer,
     size_t count
 )
 {
     (void) base;
     (void) blockIndex;
     (void) offset;
-    (void) buf;
+    (void) buffer;
     (void) count;
     return false;
 }

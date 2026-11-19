@@ -10,7 +10,11 @@
  *  The first bytes of each flash block hold a state word that is advanced only
  *  by clearing bits - in use, then disposed - and the block's data follows it.
  *  A block exists while its word reads exactly as in use. Any other value, a
- *  blank block's included, is a block that is not there.
+ *  blank block's included, is a block that is not there. An erase of a
+ *  disposed block that power cuts short could, rarely, stop with the in-use
+ *  word restored over what the block held. The block then reads as in use: the
+ *  store does not jam on it, and at worst reports a few errors for records it
+ *  cannot read and delivers again records it had evicted unsent.
  *
  *  Acquire erases the block it takes, whatever the block reads as, and then
  *  marks it in use; Dispose only marks it disposed. No state claims a block is

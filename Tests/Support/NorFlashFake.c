@@ -32,8 +32,14 @@ static size_t cutAt;
 static enum NorFlashFakeCut cutKind;
 static bool powerLost;
 
-static bool Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buf, size_t count);
-static bool Program(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, const void* buf, size_t count);
+static bool Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buffer, size_t count);
+static bool Program(
+    struct SolidSyslogNorFlash* base,
+    size_t blockIndex,
+    size_t offset,
+    const void* buffer,
+    size_t count
+);
 static bool Erase(struct SolidSyslogNorFlash* base, size_t blockIndex);
 static size_t GetBlockSize(struct SolidSyslogNorFlash* base);
 static size_t GetBlockCount(struct SolidSyslogNorFlash* base);
@@ -168,7 +174,7 @@ static bool ReadTouchesTheFailedByte(size_t blockIndex, size_t offset, size_t co
            (failReadsOffset < (offset + count));
 }
 
-static bool Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buf, size_t count)
+static bool Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, void* buffer, size_t count)
 {
     (void) base;
     bool read = !powerLost && !TakeFlag(&failNextRead) && SpanIsInBlock(blockIndex, offset, count) &&
@@ -176,7 +182,7 @@ static bool Read(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t off
 
     if (read)
     {
-        (void) memcpy(buf, &storage[blockIndex][offset], count);
+        (void) memcpy(buffer, &storage[blockIndex][offset], count);
         readCount++;
     }
 
@@ -204,7 +210,13 @@ static void ClearBits(size_t blockIndex, size_t offset, const uint8_t* bytes, si
     }
 }
 
-static bool Program(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t offset, const void* buf, size_t count)
+static bool Program(
+    struct SolidSyslogNorFlash* base,
+    size_t blockIndex,
+    size_t offset,
+    const void* buffer,
+    size_t count
+)
 {
     (void) base;
     bool answers = !powerLost && SpanIsInBlock(blockIndex, offset, count);
@@ -214,14 +226,14 @@ static bool Program(struct SolidSyslogNorFlash* base, size_t blockIndex, size_t 
     {
         if (cutKind == NORFLASHFAKE_CUT_TORN)
         {
-            ClearBits(blockIndex, offset, (const uint8_t*) buf, count / 2U);
+            ClearBits(blockIndex, offset, (const uint8_t*) buffer, count / 2U);
         }
     }
     else if (answers && !TakeFlag(&failNextProgram))
     {
         if (!TakeFlag(&ignoreNextProgram))
         {
-            ClearBits(blockIndex, offset, (const uint8_t*) buf, count);
+            ClearBits(blockIndex, offset, (const uint8_t*) buffer, count);
         }
 
         programCount++;

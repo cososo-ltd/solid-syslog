@@ -19,17 +19,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogNorFlash;
 
     /** Read @p count bytes from @p blockIndex starting at @p offset into caller-owned
-     *  @p buf. The span lies within the block.
-     *  @retval false nothing usable was read; @p buf is undefined. */
+     *  @p buffer. The span lies within the block.
+     *  @retval false nothing usable was read; @p buffer is undefined. */
     bool SolidSyslogNorFlash_Read(
         struct SolidSyslogNorFlash * flash,
         size_t blockIndex,
         size_t offset,
-        void* buf,
+        void* buffer,
         size_t count
     );
 
-    /** Program @p count bytes from @p buf into @p blockIndex starting at @p offset,
+    /** Program @p count bytes from @p buffer into @p blockIndex starting at @p offset,
      *  returning once the flash has finished. The span lies within the block, and
      *  may cross whatever unit the part programs in: splitting it is the
      *  implementation's work. A program clears bits and sets none, so each byte
@@ -40,7 +40,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         struct SolidSyslogNorFlash * flash,
         size_t blockIndex,
         size_t offset,
-        const void* buf,
+        const void* buffer,
         size_t count
     );
 

@@ -675,40 +675,40 @@ TEST(SolidSyslogNorFlashBlockDevice, ReadAtAnOffsetReturnsTheBytesFromThere)
 
 TEST(SolidSyslogNorFlashBlockDevice, AReadToTheEndOfTheBlockIsTaken)
 {
-    char buf[4] = {};
+    char buffer[4] = {};
 
-    CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, DATA_BYTES - sizeof(buf), buf, sizeof(buf)));
+    CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, DATA_BYTES - sizeof(buffer), buffer, sizeof(buffer)));
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, AReadThatRunsPastTheBlockFails)
 {
-    char buf[4] = {};
+    char buffer[4] = {};
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, DATA_BYTES - sizeof(buf) + 1, buf, sizeof(buf)));
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, DATA_BYTES - sizeof(buffer) + 1, buffer, sizeof(buffer)));
 
     LONGS_EQUAL(0, NorFlashFake_ReadCount());
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, AReadOfMoreThanABlockFails)
 {
-    static char buf[DATA_BYTES + 1] = {};
+    static char buffer[DATA_BYTES + 1] = {};
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buf, sizeof(buf)));
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buffer, sizeof(buffer)));
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, AReadPastTheRunFails)
 {
-    char buf[4] = {};
+    char buffer[4] = {};
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, BLOCK_COUNT, 0, buf, sizeof(buf)));
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, BLOCK_COUNT, 0, buffer, sizeof(buffer)));
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, AReadFailsWhenTheFlashRefusesIt)
 {
-    char buf[4] = {};
+    char buffer[4] = {};
     NorFlashFake_FailNextRead();
 
-    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buf, sizeof(buf)));
+    CHECK_FALSE(SolidSyslogBlockDevice_Read(device, 0, 0, buffer, sizeof(buffer)));
 }
 
 TEST(SolidSyslogNorFlashBlockDevice, WriteAtClearsBitsInPlace)
@@ -802,19 +802,21 @@ TEST(SolidSyslogNorFlashBlockDevice, AcquiringADisposedBlockErasesIt)
  * erase was cut short on can read as erased and not be. */
 TEST(SolidSyslogNorFlashBlockDevice, AcquireErasesABlockWhateverItsStateReads)
 {
-    const uint8_t words[][STATE_SIZE] = {
+    const std::array<std::array<uint8_t, STATE_SIZE>, 5> words = {{
         {0xFF, 0xFF, 0xFF, 0xFF}, /* blank */
         {0x5A, 0xFF, 0xFF, 0xFF}, /* its first byte programmed and no more */
         {0x5A, 0xA5, 0xFF, 0xFF}, /* in use */
         {0x00, 0x00, 0x00, 0x00}, /* disposed */
         {0x12, 0x34, 0x56, 0x78} /* what a cut-short erase or program might leave */
-    };
+    }};
 
     for (const auto& word : words)
     {
-        for (size_t i = 0; i < STATE_SIZE; i++)
+        size_t offset = 0U;
+        for (uint8_t byte : word)
         {
-            NorFlashFake_Poke(FIRST_BLOCK, i, word[i]);
+            NorFlashFake_Poke(FIRST_BLOCK, offset, byte);
+            offset++;
         }
         NorFlashFake_ResetCounts();
 

@@ -27,8 +27,8 @@ TEST(SolidSyslogNullNorFlash, GetReturnsTheSameInstance)
 
 TEST(SolidSyslogNullNorFlash, ReadReturnsFalse)
 {
-    char buf[4] = {};
-    CHECK_FALSE(SolidSyslogNorFlash_Read(flash, 0, 0, buf, sizeof(buf)));
+    char buffer[4] = {};
+    CHECK_FALSE(SolidSyslogNorFlash_Read(flash, 0, 0, buffer, sizeof(buffer)));
 }
 
 TEST(SolidSyslogNullNorFlash, ProgramReturnsFalse)
