@@ -31,18 +31,25 @@ enum
     ERASED_BYTE = 0xFF,
     /* How much is read at a time, onto the stack, to look for the end of a
      * block's data or to check what a program left. */
-    CHUNK_SIZE = 64
+    CHUNK_SIZE = 64,
+    /* A block's states, in the order it passes through them. */
+    STATE_ERASED = 0,
+    STATE_IN_USE = 1,
+    STATE_DISPOSED = 2,
+    STATE_COUNT = 3
 };
 
-/* A block's state, each reached from the one before by clearing bits. A block
+/* The word for each state, each reached from the one before by clearing bits. A block
  * is in a state only while its word reads as exactly these bytes, so a blank
  * word, and whatever an erase or a program cut short by power leaves, is none
  * of them. Disposed clears every bit: an erase sets bits, and for one cut
  * short to leave another state's word it would have to set the right bits of
  * all four bytes and no others. */
-static const uint8_t STATE_ERASED[STATE_SIZE] = {0x5A, 0xFF, 0xFF, 0xFF};
-static const uint8_t STATE_IN_USE[STATE_SIZE] = {0x5A, 0xA5, 0xFF, 0xFF};
-static const uint8_t STATE_DISPOSED[STATE_SIZE] = {0x00, 0x00, 0x00, 0x00};
+static const uint8_t STATE_WORDS[STATE_COUNT][STATE_SIZE] = {
+    [STATE_ERASED] = {0x5A, 0xFF, 0xFF, 0xFF},
+    [STATE_IN_USE] = {0x5A, 0xA5, 0xFF, 0xFF},
+    [STATE_DISPOSED] = {0x00, 0x00, 0x00, 0x00}
+};
 
 /* vtable - forward-declared because SolidSyslogNorFlashBlockDevice_Initialise wires them before their definitions */
 static bool NorFlashBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, size_t blockIndex);
@@ -140,12 +147,12 @@ static inline size_t NorFlashBlockDevice_FlashBlock(
 static bool NorFlashBlockDevice_StateIs(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
-    const uint8_t* state
+    size_t state
 );
 static bool NorFlashBlockDevice_EnterState(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
-    const uint8_t* state
+    size_t state
 );
 static bool NorFlashBlockDevice_ProgramAndVerify(
     const struct SolidSyslogNorFlashBlockDevice* self,
@@ -200,7 +207,7 @@ static bool NorFlashBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, siz
 static bool NorFlashBlockDevice_StateIs(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
-    const uint8_t* state
+    size_t state
 )
 {
     uint8_t word[STATE_SIZE] = {0};
@@ -212,16 +219,16 @@ static bool NorFlashBlockDevice_StateIs(
         STATE_SIZE
     );
 
-    return read && (memcmp(word, state, STATE_SIZE) == 0);
+    return read && (memcmp(word, STATE_WORDS[state], STATE_SIZE) == 0);
 }
 
 static bool NorFlashBlockDevice_EnterState(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
-    const uint8_t* state
+    size_t state
 )
 {
-    return NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, STATE_OFFSET, state, STATE_SIZE);
+    return NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, STATE_OFFSET, STATE_WORDS[state], STATE_SIZE);
 }
 
 static bool NorFlashBlockDevice_Holds(

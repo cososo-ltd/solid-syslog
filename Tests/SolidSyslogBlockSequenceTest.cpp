@@ -188,9 +188,9 @@ TEST_BASE(BlockSequenceTestBase)
 
     [[nodiscard]] long DisposeCallCount() const
     {
-        return std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) {
+        return static_cast<long>(std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) {
             return call.type == CallType::Dispose;
-        });
+        }));
     }
 };
 

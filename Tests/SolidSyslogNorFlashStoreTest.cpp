@@ -12,6 +12,7 @@
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogStore.h"
 #include "SolidSyslogStoreDefinition.h"
+#include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
 
 /* The block store over the flash block device over a flash in memory: what a
@@ -106,7 +107,7 @@ struct NorFlashStoreStack
     /* Reads the next record without marking it. Empty when there is none. */
     [[nodiscard]] std::string ReadNext() const
     {
-        char buffer[512] = {};
+        char buffer[SOLIDSYSLOG_MAX_MESSAGE_SIZE] = {};
         size_t bytesRead = 0U;
         bool read = SolidSyslogStore_ReadNextUnsent(store, buffer, sizeof(buffer), &bytesRead);
         return read ? std::string(buffer, bytesRead) : std::string();
@@ -369,8 +370,10 @@ struct RunToTheCut
 
 enum
 {
-    SMALL_BLOCK_SIZE = 512,
-    SMALL_RECORD_BYTES = 100 /* 107 stored: four to a 508-byte block */
+    /* A block size the store grows to one record of the largest message, so
+     * that these records go four to a block whatever that largest is. */
+    SMALLEST_BLOCK_SIZE = 1,
+    SMALL_RECORD_BYTES = (SOLIDSYSLOG_MAX_MESSAGE_SIZE / 4) - 20
 };
 
 // clang-format off
@@ -382,7 +385,7 @@ TEST_GROUP(SolidSyslogNorFlashStorePowerCut)
     void setup() override
     {
         stack = NorFlashStoreStack();
-        stack.flashBlockSize = SMALL_BLOCK_SIZE;
+        stack.deviceBlockSize = SMALLEST_BLOCK_SIZE;
     }
 
     void teardown() override
