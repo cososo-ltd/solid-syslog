@@ -8,18 +8,15 @@
  *  leaves the rest of the part to its owner.
  *
  *  The first bytes of each flash block hold a state word that is advanced only
- *  by clearing bits - erased, then in use, then disposed - and the block's
- *  data follows it. A block exists while its word reads exactly as in use.
- *  Any other value, a blank block's included, is a block that is not there:
- *  an erase cut short by power can leave cells that read as erased and are
- *  not, so a blank block is never taken on trust.
+ *  by clearing bits - in use, then disposed - and the block's data follows it.
+ *  A block exists while its word reads exactly as in use. Any other value, a
+ *  blank block's included, is a block that is not there.
  *
- *  Erasing is done ahead of need. Dispose marks the block disposed, which is
- *  the point at which it is gone and what Dispose answers for, and then erases
- *  it and marks it erased, so the Acquire that next takes it is one short
- *  program. A block not left erased - on a part's first use, or where that
- *  erase failed or lost power - is erased by Acquire itself, and it is there
- *  that a flash that will not erase fails the device.
+ *  Acquire erases the block it takes, whatever the block reads as, and then
+ *  marks it in use; Dispose only marks it disposed. No state claims a block is
+ *  erased, because an erase cut short by power can leave cells that read as
+ *  erased and are not, and an erase repeated is what clears them. So Acquire
+ *  takes as long as an erase, and Dispose as long as one short program.
  *
  *  The flash does not say whether a program took, so every Append, WriteAt and
  *  state change is read back, and one that did not take fails the operation

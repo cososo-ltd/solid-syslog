@@ -11,9 +11,13 @@
 #include "SolidSyslogNorFlashBlockDevice.h"
 #include "SolidSyslogNullStore.h"
 #include "SolidSyslogStore.h"
+#include "SolidSyslogStoreCategories.h"
 #include "SolidSyslogStoreDefinition.h"
+#include "TestUtils.h"
 #include "SolidSyslogTunables.h"
 #include "CppUTest/TestHarness.h"
+
+using namespace CososoTesting;
 
 /* The block store over the flash block device over a flash in memory: what a
  * record costs the part, and what a power cut at any program or erase leaves. */
@@ -118,13 +122,19 @@ struct NorFlashStoreStack
         SolidSyslogStore_MarkSent(store);
     }
 
-    /* Reads and marks until nothing is left to send. */
+    /* Reads and marks until nothing is left to send. A record read twice
+         * running is one whose sent mark did not take, and ends the drain as a
+         * failure where it would otherwise never end. */
     [[nodiscard]] std::vector<unsigned> Drain() const
     {
         std::vector<unsigned> numbers;
         std::string record = ReadNext();
         while (!record.empty())
         {
+            if (!numbers.empty() && (numbers.back() == NumberOf(record)))
+            {
+                FAIL("the same record was read twice: its sent mark did not take");
+            }
             numbers.push_back(NumberOf(record));
             MarkSent();
             record = ReadNext();
@@ -217,9 +227,9 @@ TEST(SolidSyslogNorFlashStoreCost, AStoreOnABlankPartReadsEachBlockOnceAndErases
 {
     stack.StartOnABlankPart();
 
-    /* One read of each block's state, then the first block's state again and
-     * the check of the program that takes it. */
-    LONGS_EQUAL(FLASH_BLOCKS + 2, NorFlashFake_ReadCount());
+    /* One read of each block's state, then the check of the program that takes
+     * the first. */
+    LONGS_EQUAL(FLASH_BLOCKS + 1, NorFlashFake_ReadCount());
     LONGS_EQUAL(1, NorFlashFake_EraseCount());
 }
 
@@ -302,18 +312,56 @@ TEST(SolidSyslogNorFlashStoreCost, AfterTheFirstLapEachLapOfTheRingErasesEveryBl
     }
 }
 
-/* Dispose erased the block ahead, so the rotation into it is one program. */
-TEST(SolidSyslogNorFlashStoreCost, AfterTheFirstLapTakingTheNextBlockErasesNothing)
+/* The erase is spent on the block being taken, as late as it can be. */
+TEST(SolidSyslogNorFlashStoreCost, TakingTheNextBlockCostsOneEraseAndDisposingOfOneCostsNone)
 {
     stack.StartOnABlankPart();
-    StoreAndSendAtOnce(RECORDS_A_BLOCK * FLASH_BLOCKS);
-    Store(RECORDS_A_BLOCK); /* the lap left the write block full: these take the next and fill it */
+    Store(RECORDS_A_BLOCK);
+    Send(RECORDS_A_BLOCK); /* drained, and still the write block */
     NorFlashFake_ResetCounts();
 
-    Store(1);
+    Store(1); /* takes the next block, then disposes of the drained one */
 
-    LONGS_EQUAL(0, NorFlashFake_EraseCount());
-    LONGS_EQUAL(2, NorFlashFake_ProgramCount()); /* the block's state, and the record */
+    LONGS_EQUAL(1, NorFlashFake_EraseCount());
+    LONGS_EQUAL(3, NorFlashFake_ProgramCount()); /* the new block's state, the record, the old block's state */
+}
+
+/* A flash that will not erase the block the store needs fails the store's
+ * device: the store freezes, and what is logged from then on is left to the
+ * sender. */
+TEST(SolidSyslogNorFlashStoreCost, AnEraseThatFailsFreezesTheStoreAndLeavesRecordsToTheSender)
+{
+    const std::string record = RecordNumbered(RECORDS_A_BLOCK, RECORD_BYTES);
+    stack.StartOnABlankPart();
+    Store(RECORDS_A_BLOCK); /* the next record needs the next block */
+    ErrorHandlerFake_Install(nullptr);
+    NorFlashFake_FailNextErase();
+
+    LONGS_EQUAL(
+        SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED,
+        SolidSyslogStore_Write(stack.store, record.data(), record.size())
+    );
+
+    CHECK_TRUE(SolidSyslogStore_IsTransient(stack.store));
+    LONGS_EQUAL(
+        SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED,
+        SolidSyslogStore_Write(stack.store, record.data(), record.size())
+    );
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE); /* the freeze, and nothing for the write after it */
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_FROZEN, ErrorHandlerFake_LastCategory());
+}
+
+TEST(SolidSyslogNorFlashStoreCost, AFrozenStoreKeepsWhatItHeldForTheNextStart)
+{
+    stack.StartOnABlankPart();
+    Store(RECORDS_A_BLOCK);
+    ErrorHandlerFake_Install(nullptr);
+    NorFlashFake_FailNextErase();
+    CHECK_FALSE(stack.Write(RecordNumbered(RECORDS_A_BLOCK, RECORD_BYTES)));
+
+    stack.Restart();
+
+    LONGS_EQUAL(RECORDS_A_BLOCK, stack.Drain().size());
 }
 
 TEST(SolidSyslogNorFlashStoreCost, AFullStoreEvictingItsOldestCostsAboutATwentiethOfAnEraseARecord)

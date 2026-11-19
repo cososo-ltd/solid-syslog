@@ -187,8 +187,6 @@ reviews:
           `lowerCamelCase` locals preferred but not enforced; do not request
           rename sweeps of existing test code.
         - The this-pointer-first convention applies to test helpers too.
-        - IWYU: when a CHECK_* macro references a TEST_GROUP member, the test
-          file needs a forward declaration `class TEST_<group>_<name>_Test;`.
 
     # ---------------------------------------------------------------------
     # BDD — out of scope for support, but two rules matter.

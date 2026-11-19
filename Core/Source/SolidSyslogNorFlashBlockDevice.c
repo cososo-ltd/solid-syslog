@@ -33,23 +33,18 @@ enum
      * block's data or to check what a program left. */
     CHUNK_SIZE = 64,
     /* A block's states, in the order it passes through them. */
-    STATE_ERASED = 0,
-    STATE_IN_USE = 1,
-    STATE_DISPOSED = 2,
-    STATE_COUNT = 3
+    STATE_IN_USE = 0,
+    STATE_DISPOSED = 1,
+    STATE_COUNT = 2
 };
 
-/* The word for each state, each reached from the one before by clearing bits. A block
- * is in a state only while its word reads as exactly these bytes, so a blank
- * word, and whatever an erase or a program cut short by power leaves, is none
- * of them. Disposed clears every bit: an erase sets bits, and for one cut
- * short to leave another state's word it would have to set the right bits of
- * all four bytes and no others. */
-static const uint8_t STATE_WORDS[STATE_COUNT][STATE_SIZE] = {
-    [STATE_ERASED] = {0x5A, 0xFF, 0xFF, 0xFF},
-    [STATE_IN_USE] = {0x5A, 0xA5, 0xFF, 0xFF},
-    [STATE_DISPOSED] = {0x00, 0x00, 0x00, 0x00}
-};
+/* The word for each state, disposed reached from in use by clearing bits. A
+ * block is in a state only while its word reads as exactly these bytes, so a
+ * blank word, and whatever an erase or a program cut short by power leaves,
+ * is neither. No state says a block is erased: Acquire erases whatever it
+ * takes, so nothing a power cut can leave is trusted as erased. */
+static const uint8_t NorFlashBlockDevice_StateWords[STATE_COUNT][STATE_SIZE] =
+    {[STATE_IN_USE] = {0x5A, 0xA5, 0xFF, 0xFF}, [STATE_DISPOSED] = {0x00, 0x00, 0x00, 0x00}};
 
 /* vtable - forward-declared because SolidSyslogNorFlashBlockDevice_Initialise wires them before their definitions */
 static bool NorFlashBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, size_t blockIndex);
@@ -169,10 +164,11 @@ static inline void NorFlashBlockDevice_RememberEnd(
     size_t end
 );
 static inline void NorFlashBlockDevice_ForgetEndOf(struct SolidSyslogNorFlashBlockDevice* self, size_t blockIndex);
+static bool NorFlashBlockDevice_IsInUse(const struct SolidSyslogNorFlashBlockDevice* self, size_t blockIndex);
 
-/* A block Dispose left erased is taken with one program. Any other is erased
- * here first: a blank one too, because cells an erase was cut short on can
- * read as erased and not be. */
+/* Every block is erased as it is taken, whatever it reads as: cells an erase
+ * was cut short on can read as erased and not be, and an erase repeated is
+ * what clears them. */
 static bool NorFlashBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, size_t blockIndex)
 {
     struct SolidSyslogNorFlashBlockDevice* self = NorFlashBlockDevice_SelfFromBase(base);
@@ -180,12 +176,7 @@ static bool NorFlashBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, siz
 
     if (NorFlashBlockDevice_IsValidBlockIndex(self, blockIndex))
     {
-        ready = NorFlashBlockDevice_StateIs(self, blockIndex, STATE_ERASED);
-
-        if (!ready)
-        {
-            ready = SolidSyslogNorFlash_Erase(self->Config.Flash, NorFlashBlockDevice_FlashBlock(self, blockIndex));
-        }
+        ready = SolidSyslogNorFlash_Erase(self->Config.Flash, NorFlashBlockDevice_FlashBlock(self, blockIndex));
 
         if (ready)
         {
@@ -222,7 +213,7 @@ static bool NorFlashBlockDevice_StateIs(
         STATE_SIZE
     );
 
-    return read && (memcmp(word, STATE_WORDS[state], STATE_SIZE) == 0);
+    return read && (memcmp(word, NorFlashBlockDevice_StateWords[state], STATE_SIZE) == 0);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -234,7 +225,13 @@ static bool NorFlashBlockDevice_EnterState(
     size_t state
 )
 {
-    return NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, STATE_OFFSET, STATE_WORDS[state], STATE_SIZE);
+    return NorFlashBlockDevice_ProgramAndVerify(
+        self,
+        blockIndex,
+        STATE_OFFSET,
+        NorFlashBlockDevice_StateWords[state],
+        STATE_SIZE
+    );
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -274,9 +271,9 @@ static bool NorFlashBlockDevice_ProgramAndVerify(
     return programmed;
 }
 
-static inline size_t NorFlashBlockDevice_Smaller(size_t a, size_t b)
+static inline size_t NorFlashBlockDevice_Smaller(size_t first, size_t second)
 {
-    return (a < b) ? a : b;
+    return (first < second) ? first : second;
 }
 
 static bool NorFlashBlockDevice_Holds(
@@ -343,11 +340,8 @@ static inline void NorFlashBlockDevice_ForgetEndOf(struct SolidSyslogNorFlashBlo
     }
 }
 
-static void NorFlashBlockDevice_EraseAhead(const struct SolidSyslogNorFlashBlockDevice* self, size_t blockIndex);
-
-/* The block is gone once it is marked disposed, which is done before the
- * erase so that an erase power cuts short leaves it gone all the same, and
- * that mark is what the answer reports. */
+/* The block is gone once it is marked disposed, and that one program is all
+ * Dispose does: the erase waits for the Acquire that next takes the block. */
 static bool NorFlashBlockDevice_Dispose(struct SolidSyslogBlockDevice* base, size_t blockIndex)
 {
     struct SolidSyslogNorFlashBlockDevice* self = NorFlashBlockDevice_SelfFromBase(base);
@@ -357,32 +351,19 @@ static bool NorFlashBlockDevice_Dispose(struct SolidSyslogBlockDevice* base, siz
     {
         NorFlashBlockDevice_ForgetEndOf(self, blockIndex);
         disposed = NorFlashBlockDevice_EnterState(self, blockIndex, STATE_DISPOSED);
-
-        if (disposed)
-        {
-            NorFlashBlockDevice_EraseAhead(self, blockIndex);
-        }
     }
 
     return disposed;
 }
 
-/* Erased and marked so now, the block costs the Acquire that next takes it
- * one program. Where the erase or the mark fails the block is left for that
- * Acquire to erase, and it is there that a flash that will not erase fails
- * the device. */
-static void NorFlashBlockDevice_EraseAhead(const struct SolidSyslogNorFlashBlockDevice* self, size_t blockIndex)
-{
-    if (SolidSyslogNorFlash_Erase(self->Config.Flash, NorFlashBlockDevice_FlashBlock(self, blockIndex)))
-    {
-        (void) NorFlashBlockDevice_EnterState(self, blockIndex, STATE_ERASED);
-    }
-}
-
 static bool NorFlashBlockDevice_Exists(struct SolidSyslogBlockDevice* base, size_t blockIndex)
 {
-    const struct SolidSyslogNorFlashBlockDevice* self = NorFlashBlockDevice_SelfFromBase(base);
+    return NorFlashBlockDevice_IsInUse(NorFlashBlockDevice_SelfFromBase(base), blockIndex);
+}
 
+/* A state that cannot be read is no state, so such a block is not in use. */
+static bool NorFlashBlockDevice_IsInUse(const struct SolidSyslogNorFlashBlockDevice* self, size_t blockIndex)
+{
     return NorFlashBlockDevice_IsValidBlockIndex(self, blockIndex) &&
            NorFlashBlockDevice_StateIs(self, blockIndex, STATE_IN_USE);
 }
@@ -400,6 +381,19 @@ static inline bool NorFlashBlockDevice_SpanIsWithinFlashBlock(
     return (count <= self->DataCapacity) && (offset <= (self->DataCapacity - count));
 }
 
+/* Where Read and WriteAt may go: a block of the run, and a span of its flash
+ * block. */
+static inline bool NorFlashBlockDevice_IsReachableSpan(
+    const struct SolidSyslogNorFlashBlockDevice* self,
+    size_t blockIndex,
+    size_t offset,
+    size_t count
+)
+{
+    return NorFlashBlockDevice_IsValidBlockIndex(self, blockIndex) &&
+           NorFlashBlockDevice_SpanIsWithinFlashBlock(self, offset, count);
+}
+
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics
@@ -414,8 +408,7 @@ static bool NorFlashBlockDevice_Read(
     const struct SolidSyslogNorFlashBlockDevice* self = NorFlashBlockDevice_SelfFromBase(base);
     bool read = false;
 
-    if (NorFlashBlockDevice_IsValidBlockIndex(self, blockIndex) &&
-        NorFlashBlockDevice_SpanIsWithinFlashBlock(self, offset, count))
+    if (NorFlashBlockDevice_IsReachableSpan(self, blockIndex, offset, count))
     {
         read = SolidSyslogNorFlash_Read(
             self->Config.Flash,
@@ -563,8 +556,7 @@ static bool NorFlashBlockDevice_WriteAt(
     const struct SolidSyslogNorFlashBlockDevice* self = NorFlashBlockDevice_SelfFromBase(base);
     bool written = false;
 
-    if (NorFlashBlockDevice_IsValidBlockIndex(self, blockIndex) &&
-        NorFlashBlockDevice_SpanIsWithinFlashBlock(self, offset, count))
+    if (NorFlashBlockDevice_IsReachableSpan(self, blockIndex, offset, count))
     {
         written = NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, (size_t) DATA_OFFSET + offset, buf, count);
     }
@@ -584,8 +576,7 @@ static bool NorFlashBlockDevice_Size(struct SolidSyslogBlockDevice* base, size_t
     bool known = false;
     *size = 0U;
 
-    if (NorFlashBlockDevice_IsValidBlockIndex(self, blockIndex) &&
-        NorFlashBlockDevice_StateIs(self, blockIndex, STATE_IN_USE))
+    if (NorFlashBlockDevice_IsInUse(self, blockIndex))
     {
         known = NorFlashBlockDevice_EndOfData(self, blockIndex, size);
 

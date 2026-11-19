@@ -26,6 +26,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  A block is the unit Erase works on, and the flash is addressed by block and
      *  by offset within it, so a part of any capacity fits the same signatures.
      *
+     *  Every call returns in bounded time. One the flash does not finish within
+     *  the time the part allows for it answers false, and so fails the block
+     *  device operation that made it, which freezes a store above: a part that
+     *  stops answering costs one wait, not a Service that never returns. The
+     *  bound includes the bus under the flash.
+     *
      *  Access is single-threaded, so an implementation need not be reentrant. Where
      *  the part is shared with another user, the implementation takes whatever
      *  lock that needs around each call; the library holds none.
