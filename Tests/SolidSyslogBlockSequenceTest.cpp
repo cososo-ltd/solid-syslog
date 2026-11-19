@@ -524,7 +524,8 @@ TEST_GROUP_BASE(BlockSequenceRotation, BlockSequenceTestBase)
 
     void NoteRecordInWriteBlock()
     {
-        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
+        SolidSyslogBlockSequence_NoteRecordAppended(sequence, SIMULATED_RECORD_SIZE);
+        SolidSyslogBlockSequence_NoteRecordKept(sequence);
         sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
     }
 

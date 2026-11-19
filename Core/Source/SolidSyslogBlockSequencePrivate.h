@@ -87,7 +87,14 @@ struct SolidSyslogBlockDevice* SolidSyslogBlockSequence_BlockDevice(const struct
 size_t SolidSyslogBlockSequence_WriteSequence(const struct SolidSyslogBlockSequence* blockSequence);
 /* How far the write block's data runs: where the next record is appended. */
 size_t SolidSyslogBlockSequence_WritePosition(const struct SolidSyslogBlockSequence* blockSequence);
-void SolidSyslogBlockSequence_NoteRecordWritten(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize);
+/* A record of recordSize is on the device at the write position, which moves
+ * past it. Called before FinishRotation, so the record's bytes count as used
+ * while the blocks behind the write block are seen to. */
+void SolidSyslogBlockSequence_NoteRecordAppended(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize);
+/* The store has kept the record: it is no longer refusing, and the threshold
+ * is judged against what is now used. Called after FinishRotation, so a run a
+ * rotation left over its ceiling is not judged before the oldest block goes. */
+void SolidSyslogBlockSequence_NoteRecordKept(struct SolidSyslogBlockSequence* blockSequence);
 void SolidSyslogBlockSequence_MarkWriteBlockCorrupt(struct SolidSyslogBlockSequence* blockSequence);
 
 size_t SolidSyslogBlockSequence_ReadSequence(const struct SolidSyslogBlockSequence* blockSequence);

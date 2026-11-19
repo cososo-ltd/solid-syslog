@@ -2113,6 +2113,62 @@ TEST(SolidSyslogBlockStoreIntegrity, ASealThePolicyRefusesReportsTheRecordWasNot
     );
 }
 
+/* Nothing was appended, so the record is lost and not left to the sender,
+ * whatever then becomes of the rotation the write had made. */
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyWouldNotSealIsLostEvenWhenFinishingTheRotationFreezesTheStore)
+{
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+    SolidSyslogBlockStore_Destroy(store);
+    EnsureDeviceBlockSize(sizeof(maxMsg) + TEST_RECORD_OVERHEAD);
+    CreateStore();
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 00, full */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 00 drained */
+    spySealSucceeds = false;
+    FileFake_FailNextDelete(file);
+
+    /* Takes block 01, is not sealed, and the dispose of block 00 fails. */
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_LOST, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+}
+
+TEST(SolidSyslogBlockStoreIntegrity, ARecordThePolicyWouldNotSealIsReportedEvenWhenFinishingTheRotationFreezesTheStore)
+{
+    char maxMsg[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    memset(maxMsg, 'A', sizeof(maxMsg));
+    SolidSyslogBlockStore_Destroy(store);
+    EnsureDeviceBlockSize(sizeof(maxMsg) + TEST_RECORD_OVERHEAD);
+    CreateStore();
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 00, full */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 00 drained */
+    spySealSucceeds = false;
+    FileFake_FailNextDelete(file);
+    ErrorHandlerFake_Install(nullptr);
+
+    SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    CHECK_ERROR_EVENT_AT(
+        0,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_FROZEN,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED
+    );
+    CHECK_ERROR_EVENT_AT(
+        1,
+        SOLIDSYSLOG_SEVERITY_ERROR,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_WRITE_FAILED,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_SEAL_FAILED
+    );
+}
+
 TEST(SolidSyslogBlockStoreIntegrity, ARunOfSealsThePolicyRefusesIsReportedOnce)
 {
     ErrorHandlerFake_Install(nullptr);
@@ -3284,6 +3340,30 @@ TEST(SolidSyslogBlockStoreCapacityThreshold, ReArmsAfterFallingEdgeOnDiscardOlde
     SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)); /* block 2: 2 records (4 total) - fires again */
 
     CALLED_FUNCTION(CountThresholdCrossings, TWICE);
+}
+
+/* Given usage above the threshold in a block whose records are all sent,
+ * When the next write takes a new block and the drained one is disposed of,
+ * Then onThresholdCrossed does not fire again: the new record was on the
+ * device before the drained block went, so usage never fell below. */
+TEST(SolidSyslogBlockStoreCapacityThreshold, DoesNotFireAgainWhenADrainedBlockGoesAfterTheRecordThatReplacedIt)
+{
+    EnsureDeviceBlockSize(MAX_MSG_RECORD);
+    struct SolidSyslogBlockStoreConfig config = MakeConfig(device);
+    config.MaxBlocks = 4;
+    config.GetCapacityThreshold = ReturnsConfiguredThreshold;
+    config.OnThresholdCrossed = CountThresholdCrossings;
+    thresholdReturnValue = MAX_MSG_RECORD;
+    store = SolidSyslogBlockStore_Create(&config);
+    WriteMaxMsg(); /* block 0 full - fires */
+    char buf[SOLIDSYSLOG_MAX_MESSAGE_SIZE];
+    size_t bytesRead = 0U;
+    SolidSyslogStore_ReadNextUnsent(store, buf, sizeof(buf), &bytesRead);
+    SolidSyslogStore_MarkSent(store); /* block 0 drained, and still the write block */
+
+    WriteMaxMsg(); /* block 1 full, then block 0 disposed of */
+
+    CALLED_FUNCTION(CountThresholdCrossings, ONCE);
 }
 
 /* Given getCapacityThreshold returns 0,

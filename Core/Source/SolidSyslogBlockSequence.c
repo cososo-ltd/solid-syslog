@@ -604,9 +604,13 @@ size_t SolidSyslogBlockSequence_WritePosition(const struct SolidSyslogBlockSeque
     return blockSequence->WritePosition;
 }
 
-void SolidSyslogBlockSequence_NoteRecordWritten(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize)
+void SolidSyslogBlockSequence_NoteRecordAppended(struct SolidSyslogBlockSequence* blockSequence, size_t recordSize)
 {
     blockSequence->WritePosition += recordSize;
+}
+
+void SolidSyslogBlockSequence_NoteRecordKept(struct SolidSyslogBlockSequence* blockSequence)
+{
     blockSequence->AtCapacity = false;
     BlockSequence_NotifyThresholdCrossed(blockSequence);
 }
