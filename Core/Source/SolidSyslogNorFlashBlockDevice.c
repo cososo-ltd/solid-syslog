@@ -144,6 +144,7 @@ static inline size_t NorFlashBlockDevice_FlashBlock(
     return self->Config.FirstBlock + blockIndex;
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block and a state; distinct semantics
 static bool NorFlashBlockDevice_StateIs(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
@@ -154,6 +155,7 @@ static bool NorFlashBlockDevice_EnterState(
     size_t blockIndex,
     size_t state
 );
+// NOLINTEND(bugprone-easily-swappable-parameters)
 static bool NorFlashBlockDevice_ProgramAndVerify(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
@@ -204,6 +206,7 @@ static bool NorFlashBlockDevice_Acquire(struct SolidSyslogBlockDevice* base, siz
 }
 
 /* A state word that cannot be read is in no state. */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block and a state; distinct semantics
 static bool NorFlashBlockDevice_StateIs(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
@@ -222,6 +225,9 @@ static bool NorFlashBlockDevice_StateIs(
     return read && (memcmp(word, STATE_WORDS[state], STATE_SIZE) == 0);
 }
 
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block and a state; distinct semantics
 static bool NorFlashBlockDevice_EnterState(
     const struct SolidSyslogNorFlashBlockDevice* self,
     size_t blockIndex,
@@ -230,6 +236,8 @@ static bool NorFlashBlockDevice_EnterState(
 {
     return NorFlashBlockDevice_ProgramAndVerify(self, blockIndex, STATE_OFFSET, STATE_WORDS[state], STATE_SIZE);
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static bool NorFlashBlockDevice_Holds(
     const struct SolidSyslogNorFlashBlockDevice* self,
