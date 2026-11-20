@@ -329,8 +329,8 @@ static inline bool SpiNorFlash_ReadSfdp(
     size_t count
 )
 {
-    /* The last byte is the one the part ignores. It is not all ones: a part
-     * can take that as the end of a mode it was never in. */
+    /* The last byte is the one the part is to ignore. It is not all ones: a
+     * W25Q128JV sent 0xFF there stops answering. */
     const uint8_t request[SFDP_REQUEST_LENGTH] =
         {READ_SFDP, (uint8_t) (address >> 16U), (uint8_t) (address >> 8U), (uint8_t) address, 0x00};
 
