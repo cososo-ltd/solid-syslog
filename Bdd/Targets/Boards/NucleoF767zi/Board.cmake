@@ -178,13 +178,14 @@ set(BDD_BOARD_DISK_PROJECT_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
 
-# LittleFS is on the W25Q128 flash: the block device and the flash driver
-# from the targets' common code, over the same SPI4.
+# LittleFS is on the W25Q128 flash: the block device from the targets' common
+# code, over the library's SpiNorFlash pack, over the same SPI4. A target that
+# takes these names SpiNorFlash among its platforms.
 set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
-    ${BDD_BOARD_DIR}/BddTargetBoardFlashBus.c
+    ${BDD_BOARD_DIR}/BddTargetBoardSpiNorFlashBus.c
     ${BDD_BOARD_DIR}/BoardSpi4.c
+    ${BDD_BOARD_DIR}/BoardSpi4Flash.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsFlash.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSpiNorFlash.c
 )
 
 set(BDD_BOARD_INCLUDES

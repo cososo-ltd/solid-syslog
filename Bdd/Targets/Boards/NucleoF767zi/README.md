@@ -28,7 +28,7 @@ what it supplies to the code.
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`. An exit or a fault is a line on the console followed by a halt |
 | Time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The [real-time clock](#clock), read to the microsecond once `set time` has set it |
 | Sector disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the shared card driver |
-| LittleFS block device | `BddTargetBoardFlashBus.c` | A [W25Q128 flash](#w25q128-flash) on SPI4, under the shared flash driver and LittleFS block device |
+| LittleFS block device | `BddTargetBoardSpiNorFlashBus.c`, `BoardSpi4Flash.c` | A [W25Q128 flash](#w25q128-flash) on SPI4, as the bus under the library's SPI NOR flash pack and the shared LittleFS block device |
 | SPI4 | `BoardSpi4.c` | The pins, the rate and the two chip selects |
 | Ethernet, under any stack | `BoardEthernet.c`, `EthernetPhy.c` | The MAC's clock, pins and interrupt, which ST's HAL Ethernet driver asks the board for, and a restart of the PHY before the MAC is reset. The link is read from the PHY's standard registers |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over ST's HAL Ethernet driver |
@@ -41,8 +41,8 @@ echoes each line it receives and blinks the green LED. It separates a fault in
 the board or the toolchain from a fault in anything built on them. Its `probe`
 command asks each [storage breakout](#storage-breakouts-spi4) whether it is
 present, with no driver involved. Its `flash` command erases, programs and
-reads back the last sector of the [flash](#w25q128-flash) through the flash
-driver, with no filesystem.
+reads back the last sector of the [flash](#w25q128-flash) through a flash
+driver of its own, with no filesystem and none of the library.
 
 ST's HAL driver and CMSIS device files are not in the repository. The cross
 image pins them, and the build reads them from `STM32F7_HAL_DRIVER_PATH` and
@@ -257,18 +257,22 @@ the part's own, and a program clears bits and sets none. Under QEMU the same
 target has a disk of sectors, where an erase is a write of `0xFF` and a program
 can set bits.
 
-The flash driver is this repository's own, in the targets' common code, and is
-unit-tested on the host against a fake part that programs and erases as a real
-one does. It drives a Winbond W25Q of no more than 16 MiB, recognised by its
-JEDEC id, and refuses any other. It has been run on one part, a W25Q128JV,
-which identifies itself as `EF4018`.
+The target drives the part through the library's
+[SPI NOR flash pack](../../../../docs/platforms/spinorflash/index.md), which
+learns the part from its SFDP table, over the bus functions in
+`BddTargetBoardSpiNorFlashBus.c`. The bring-up image has a flash driver of its
+own instead, in `Bringup/`, with none of the library in it: that one drives a
+Winbond W25Q of no more than 16 MiB, recognised by its JEDEC id, and refuses
+any other. Both are unit-tested on the host against a fake part that programs
+and erases as a real one does. The board's part is a W25Q128JV, which
+identifies itself as `EF4018`.
 
 The part runs at 6.75 MHz, as the [card](#disk) does on the same wires. Unlike
 the card it sends no check with what it reads out, so damage on the wires would
 go undetected. On this part a sector erase took 52 to 58 ms and a page program
 about 1 ms. The task that asked for either polls the part's status until it
 finishes. A part that was erasing when the board was reset carries on, and
-answers only its status until it finishes, so the driver waits for that before
+answers only its status until it finishes, so the pack waits for that before
 asking it anything else.
 
 LittleFS is given a program unit of 16 bytes and not the 256 of a page, for the

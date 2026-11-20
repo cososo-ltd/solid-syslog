@@ -10,7 +10,10 @@
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* A SPI NOR flash, as bytes that are read, programmed and erased, over the
-     * bus the board supplies (BddTargetBoardFlashBus.h). One part.
+     * bus the board supplies (BddTargetBoardFlashBus.h). One part. It is the
+     * bring-up image's own driver, with no SolidSyslog in it, so that a fault
+     * in the board or the part can be told from one in the library's flash
+     * pack, which the BDD targets use.
      *
      * It supports only a Winbond W25Q of up to 16 MiB, the most a three-byte
      * address reaches, using the plain SPI commands in the part's datasheet.
