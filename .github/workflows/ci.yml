@@ -16,7 +16,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -134,7 +134,7 @@ jobs:
     # cpputest-freertos image carries /opt/littlefs (and exports LITTLEFS_PATH);
     # Tests/LittleFsIntegration/CMakeLists.txt requires that env var.
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -184,7 +184,7 @@ jobs:
     # cpputest-freertos image carries /opt/mbedtls (and exports MBEDTLS_DIR);
     # Tests/MbedTlsIntegration/CMakeLists.txt requires that env var.
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -457,7 +457,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -590,7 +590,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       # Docker's default seccomp profile refuses the personality call
       # setarch -R makes below.
       options: --user root --security-opt seccomp=unconfined
@@ -757,7 +757,7 @@ jobs:
   analyze-tidy-embedded:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -1898,7 +1898,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -1946,7 +1946,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2005,7 +2005,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2064,7 +2064,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2126,7 +2126,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2178,7 +2178,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2222,7 +2222,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2267,7 +2267,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2558,7 +2558,7 @@ jobs:
   analyze-manifest:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:ff25e6b2f2ce81810d145b6e3882ec4f61b495c78cedbc186eb21fe851ceaec1 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos@sha256:490444799522893c14ca82d1255bda87ad997f148767f26cb2bd73daeaaf2bd5 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -2665,7 +2665,7 @@ jobs:
     permissions:
       contents: read
     container:
-      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:21c6da228d8b279048bdddb85d31f86d403e0b5179a5b2d3d2781d34736c2c50 # sha-8bb2ba8
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:1c208205865b81a19f78de856a872481c814010c9f4851f3a5f88974badfe215 # sha-19a6401
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
