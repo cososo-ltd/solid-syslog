@@ -74,9 +74,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  the sole writer. */
         struct SolidSyslogBlockDevice* BlockDevice;
         /** Retention ceiling in blocks, clamped to between 2 and the device's
-         *  block count less 2; GetDiscardPolicy governs the overflow. An eviction
-         *  that fails freezes the store with one block more than this on the
-         *  media, and the next start keeps it. */
+         *  block count less 2; GetDiscardPolicy governs the overflow. The record
+         *  that takes a new block is appended before the oldest is evicted, so an
+         *  eviction that fails freezes the store with one block more than this
+         *  on the media, that record in it, and the next start keeps it. The
+         *  write is still answered as not retained, so the record is sent
+         *  directly as well, and the next start may send it again. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
          *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.

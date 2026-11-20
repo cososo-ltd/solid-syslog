@@ -185,6 +185,13 @@ TEST_BASE(BlockSequenceTestBase)
             return (call.type == CallType::Dispose) && (call.BlockIndex == blockIndex);
         });
     }
+
+    [[nodiscard]] long DisposeCallCount() const
+    {
+        return static_cast<long>(std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) {
+            return call.type == CallType::Dispose;
+        }));
+    }
 };
 
 TEST_GROUP_BASE(BlockSequenceScan, BlockSequenceTestBase)
@@ -344,8 +351,8 @@ TEST(BlockSequenceScan, AHoleCountsTowardsTheBlockCeiling)
     sizes = {{0, 1000}, {2, 1000}};
     RecreateWithMaxBlocks(3);
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    bool readBlockChanged = false;
-    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
+    CHECK_TRUE(SolidSyslogBlockSequence_FinishRotation(sequence));
     CHECK_TRUE(WasDisposed(0));
 }
 
@@ -370,8 +377,8 @@ TEST(BlockSequenceScan, AnEvictionBeforeAHoleHandsOldestToTheBlockAfterIt)
     sizes = {{0, 1000}, {2, 1000}};
     RecreateWithMaxBlocks(2);
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    bool readBlockChanged = false;
-    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
+    CHECK_TRUE(SolidSyslogBlockSequence_FinishRotation(sequence));
     CHECK_TRUE(SolidSyslogBlockSequence_EvictedUnsent(sequence));
     LONGS_EQUAL(2, SolidSyslogBlockSequence_ReadSequence(sequence));
     CHECK_FALSE(WasDisposed(1));
@@ -401,8 +408,7 @@ TEST(BlockSequenceScan, ARotationFromTheDevicesLastBlockStartsOnItsFirst)
     existing = {6, 7};
     sizes = {{6, 1000}, {7, 1000}};
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    bool readBlockChanged = false;
-    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
     LONGS_EQUAL(0, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
@@ -456,8 +462,7 @@ TEST(BlockSequenceScan, ARotationGoesPastBlockTwoHundredAndFiftyFive)
     existing = {254, 255};
     sizes = {{254, 1000}, {255, 1000}};
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    bool readBlockChanged = false;
-    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged));
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
     LONGS_EQUAL(256, SolidSyslogBlockSequence_WriteSequence(sequence));
 }
 
@@ -468,8 +473,7 @@ TEST(BlockSequenceScan, TheReadReachesABlockAcquiredAfterResume)
     existing = {0, 2};
     sizes = {{0, 1000}, {2, 1000}};
     CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    bool readBlockChanged = false;
-    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1, &readBlockChanged)); /* acquires 3 */
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1)); /* acquires 3 */
     SolidSyslogBlockSequence_LeaveReadBlock(sequence);
     SolidSyslogBlockSequence_LeaveReadBlock(sequence);
     LONGS_EQUAL(3, SolidSyslogBlockSequence_ReadSequence(sequence));
@@ -520,7 +524,8 @@ TEST_GROUP_BASE(BlockSequenceRotation, BlockSequenceTestBase)
 
     void NoteRecordInWriteBlock()
     {
-        SolidSyslogBlockSequence_NoteRecordWritten(sequence, SIMULATED_RECORD_SIZE);
+        SolidSyslogBlockSequence_NoteRecordAppended(sequence, SIMULATED_RECORD_SIZE);
+        SolidSyslogBlockSequence_NoteRecordKept(sequence);
         sizes[SolidSyslogBlockSequence_WriteSequence(sequence)] = SIMULATED_RECORD_SIZE;
     }
 
@@ -542,10 +547,17 @@ TEST_GROUP_BASE(BlockSequenceRotation, BlockSequenceTestBase)
         return (disposeAt >= 0) && (acquireAt >= 0) && (disposeAt < acquireAt);
     }
 
+    /* A rotation as the store drives it: the new block, then what is owed the
+     * blocks behind it. */
     void ForceRotation() const
     {
-        bool readBlockChanged = false;
-        SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+        TakeTheNextBlock();
+        (void) SolidSyslogBlockSequence_FinishRotation(sequence);
+    }
+
+    void TakeTheNextBlock() const
+    {
+        SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1);
     }
 };
 
@@ -581,8 +593,7 @@ TEST(BlockSequenceRotation, RotationFailsWhenStaleBlockDisposeFails)
     existing.insert(1);
     fakeDevice.failNextDispose = true;
 
-    bool readBlockChanged = false;
-    bool acquired = SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1, &readBlockChanged);
+    bool acquired = SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1);
 
     CHECK_FALSE(acquired);
     for (const auto& call : calls)
@@ -605,6 +616,64 @@ TEST(BlockSequenceRotation, AFailedEvictionIsTheLastDeviceCall)
     ForceRotation(); /* block 2 - evicting block 0 fails */
 
     CHECK_TRUE(calls.back().type == CallType::Dispose);
+    LONGS_EQUAL(1, DisposeCallCount());
+}
+
+/* The store appends the record that needed the new block before anything
+ * behind it is disposed of. */
+TEST(BlockSequenceRotation, TakingTheNextBlockOverTheCeilingLeavesTheEvictionToFinishRotation)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* block 1 */
+    NoteRecordInWriteBlock();
+    calls.clear();
+
+    TakeTheNextBlock(); /* block 2 - one over the ceiling */
+
+    LONGS_EQUAL(0, DisposeCallCount());
+    CHECK_TRUE(SolidSyslogBlockSequence_FinishRotation(sequence));
+    LONGS_EQUAL(1, DisposeCallCount());
+}
+
+TEST(BlockSequenceRotation, TakingTheNextBlockLeavesADrainedBlockToFinishRotation)
+{
+    SolidSyslogBlockSequence_SetReadCursor(sequence, SIMULATED_RECORD_SIZE); /* block 0 is drained */
+
+    TakeTheNextBlock(); /* block 1 */
+
+    LONGS_EQUAL(0, DisposeCallCount());
+    CHECK_TRUE(SolidSyslogBlockSequence_FinishRotation(sequence));
+    CHECK_TRUE(WasDisposed(0));
+}
+
+TEST(BlockSequenceRotation, ARotationIsFinishedOnce)
+{
+    RecreateWithMaxBlocks(2);
+    ForceRotation(); /* block 1 */
+    NoteRecordInWriteBlock();
+    ForceRotation(); /* block 2 - evicts block 0 */
+    calls.clear();
+
+    CHECK_FALSE(SolidSyslogBlockSequence_FinishRotation(sequence));
+
+    LONGS_EQUAL(0, DisposeCallCount());
+}
+
+/* A run a restart found over its ceiling is left as it is by a write that
+ * takes no new block, whatever the discard policy. */
+TEST(BlockSequenceRotation, AWriteThatTakesNoNewBlockEvictsNothingFromARunOverItsCeiling)
+{
+    SolidSyslogBlockSequence_Destroy(sequence);
+    existing = {0, 1, 2};
+    sizes = {{0, SIMULATED_RECORD_SIZE}, {1, SIMULATED_RECORD_SIZE}, {2, SIMULATED_RECORD_SIZE}};
+    BuildSequence(ROTATION_BLOCK_SIZE, 2);
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    calls.clear();
+
+    CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
+    CHECK_FALSE(SolidSyslogBlockSequence_FinishRotation(sequence));
+
+    LONGS_EQUAL(0, DisposeCallCount());
 }
 
 TEST(BlockSequenceRotation, AStaleBlockThatWillNotDisposeIsADisposeFailure)

@@ -35,6 +35,7 @@ misra-c2012-11.3:Core/Source/SolidSyslogEventSd.c:61
 misra-c2012-11.3:Core/Source/SolidSyslogFileBlockDevice.c:115
 misra-c2012-11.3:Core/Source/SolidSyslogFormatter.c:83
 misra-c2012-11.3:Core/Source/SolidSyslogMetaSd.c:64
+misra-c2012-11.3:Core/Source/SolidSyslogNorFlashBlockDevice.c:125
 misra-c2012-11.3:Core/Source/SolidSyslogOriginSd.c:64
 misra-c2012-11.3:Core/Source/SolidSyslogPassthroughBuffer.c:69
 misra-c2012-11.3:Core/Source/SolidSyslogSharedScratch.c:50

@@ -62,6 +62,10 @@ set(SOURCES
     SolidSyslogBlockDevice.c
     SolidSyslogFileBlockDevice.c
     SolidSyslogFileBlockDeviceStatic.c
+    SolidSyslogNorFlash.c
+    SolidSyslogNullNorFlash.c
+    SolidSyslogNorFlashBlockDevice.c
+    SolidSyslogNorFlashBlockDeviceStatic.c
     SolidSyslogUdpPayload.c
     SolidSyslogResolver.c
     SolidSyslogNullResolver.c
@@ -78,6 +82,7 @@ set(SOURCES
     SolidSyslogHmacSha256PolicyErrorsName.c
     SolidSyslogMetaSdErrorsName.c
     SolidSyslogMutexErrorsName.c
+    SolidSyslogNorFlashBlockDeviceErrorsName.c
     SolidSyslogOriginSdErrorsName.c
     SolidSyslogPassthroughBufferErrorsName.c
     SolidSyslogSharedScratchErrorsName.c

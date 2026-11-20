@@ -14,6 +14,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileCategories.h"
 #include "SolidSyslogLoggerCategories.h"
+#include "SolidSyslogNorFlashCategories.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
@@ -27,6 +28,7 @@
 #include "SolidSyslogHmacSha256PolicyErrors.h"
 #include "SolidSyslogMetaSdErrors.h"
 #include "SolidSyslogMutexErrors.h"
+#include "SolidSyslogNorFlashBlockDeviceErrors.h"
 #include "SolidSyslogOriginSdErrors.h"
 #include "SolidSyslogPassthroughBufferErrors.h"
 #include "SolidSyslogResolverErrors.h"
@@ -96,6 +98,15 @@ TEST(SolidSyslogErrorNames, FileBlockDeviceErrorsNamesItsCodes)
         SolidSyslogFileBlockDeviceErrors_Name(SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_POOL_EXHAUSTED)
     );
     CHECK_VOCABULARY_NAMED(SolidSyslogFileBlockDeviceErrors_Name, SOLIDSYSLOG_FILE_BLOCK_DEVICE_ERROR_MAX);
+}
+
+TEST(SolidSyslogErrorNames, NorFlashBlockDeviceErrorsNamesItsCodes)
+{
+    STRCMP_EQUAL(
+        "POOL_EXHAUSTED",
+        SolidSyslogNorFlashBlockDeviceErrors_Name(SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_POOL_EXHAUSTED)
+    );
+    CHECK_VOCABULARY_NAMED(SolidSyslogNorFlashBlockDeviceErrors_Name, SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_MAX);
 }
 
 TEST(SolidSyslogErrorNames, FileErrorsNamesItsCodes)
@@ -229,6 +240,7 @@ TEST(SolidSyslogErrorNames, EveryCategoryHasAName)
         SOLIDSYSLOG_CAT_STORE_THRESHOLD_CROSSED,
         SOLIDSYSLOG_CAT_DATAGRAM_NEXT_HOP_UNRESOLVED,
         SOLIDSYSLOG_CAT_LOGGER_HALTED,
+        SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED,
     };
     for (uint16_t category : categories)
     {

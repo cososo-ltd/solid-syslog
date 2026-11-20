@@ -26,6 +26,7 @@ diagram of the backends that realise it.
 | [Store](../api/structSolidSyslogStore.md) | store and forward across an outage |
 | [BlockDevice](../api/structSolidSyslogBlockDevice.md) | block-indexed storage beneath a Store |
 | [File](../api/structSolidSyslogFile.md) | the file primitive beneath a BlockDevice |
+| [NorFlash](../api/structSolidSyslogNorFlash.md) | a NOR flash, by erase block and offset, beneath a BlockDevice that needs no File |
 
 ## OS primitives
 

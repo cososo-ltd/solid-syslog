@@ -11,6 +11,7 @@
 #include "SolidSyslogDatagramCategories.h"
 #include "SolidSyslogFileCategories.h"
 #include "SolidSyslogLoggerCategories.h"
+#include "SolidSyslogNorFlashCategories.h"
 #include "SolidSyslogResolverCategories.h"
 #include "SolidSyslogSecurityPolicyCategories.h"
 #include "SolidSyslogSenderCategories.h"
@@ -98,6 +99,9 @@ const char* SolidSyslogErrorCategory_Name(uint16_t category)
             break;
         case SOLIDSYSLOG_CAT_LOGGER_HALTED:
             name = "LOGGER_HALTED";
+            break;
+        case SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED:
+            name = "NOR_FLASH_IO_FAILED";
             break;
         default:
             /* Unassigned, or in the integrator range. */

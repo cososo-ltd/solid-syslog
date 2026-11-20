@@ -425,6 +425,26 @@
 #endif
 
 /**
+ * Number of SolidSyslogNorFlashBlockDevice instances the library's
+ * internal static pool can simultaneously hold. Each instance carries
+ * its run of flash blocks and where the data of the block being
+ * appended to ends.
+ *
+ * Default 1 - almost all integrators wire a single NorFlashBlockDevice
+ * as the backing store for one BlockStore. Bump via
+ * SOLIDSYSLOG_USER_TUNABLES_FILE if more than one is genuinely needed.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_POOL_SIZE
+#define SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_POOL_SIZE < 1
+#error "SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_POOL_SIZE must be >= 1"
+#endif
+
+/**
  * Number of SolidSyslogMetaSd instances the library's internal
  * static pool can simultaneously hold. Default 1 - meta SD is typically
  * wired into SolidSyslogConfig.Sd[] once per process.

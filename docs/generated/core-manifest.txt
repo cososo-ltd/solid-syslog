@@ -76,6 +76,10 @@ Core/Source/SolidSyslogBlockSequenceStatic.c
 Core/Source/SolidSyslogBlockDevice.c
 Core/Source/SolidSyslogFileBlockDevice.c
 Core/Source/SolidSyslogFileBlockDeviceStatic.c
+Core/Source/SolidSyslogNorFlash.c
+Core/Source/SolidSyslogNullNorFlash.c
+Core/Source/SolidSyslogNorFlashBlockDevice.c
+Core/Source/SolidSyslogNorFlashBlockDeviceStatic.c
 Core/Source/SolidSyslogUdpPayload.c
 Core/Source/SolidSyslogResolver.c
 Core/Source/SolidSyslogNullResolver.c
@@ -92,6 +96,7 @@ Core/Source/SolidSyslogFileErrorsName.c
 Core/Source/SolidSyslogHmacSha256PolicyErrorsName.c
 Core/Source/SolidSyslogMetaSdErrorsName.c
 Core/Source/SolidSyslogMutexErrorsName.c
+Core/Source/SolidSyslogNorFlashBlockDeviceErrorsName.c
 Core/Source/SolidSyslogOriginSdErrorsName.c
 Core/Source/SolidSyslogPassthroughBufferErrorsName.c
 Core/Source/SolidSyslogSharedScratchErrorsName.c

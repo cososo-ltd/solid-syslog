@@ -1,14 +1,15 @@
 """Damaging the block store's files between runs, for the steps that corrupt a stored record."""
 
 # A record as the store lays it out: a two-byte magic, a little-endian length,
-# the message, the security policy's trailer, and one flag byte that stays 0xFF
-# until the record is sent or discarded. The hosted targets default to the
+# the message, the security policy's trailer, and one flag byte that takes one
+# of two values once the record is sent or discarded, and reads as unsent with
+# any other. The hosted targets default to the
 # CRC-16 policy, whose trailer is two bytes.
 _MAGIC = b"\xa5\x5a"
 _HEADER_SIZE = 4
 _CRC16_TRAILER_SIZE = 2
 _FLAG_SIZE = 1
-_FLAG_UNSENT = 0xFF
+_FLAGS_FINISHED_WITH = (0x00, 0x0F)
 
 
 def first_unsent_record_body_offset(block):
@@ -21,7 +22,7 @@ def first_unsent_record_body_offset(block):
         flag_offset = offset + _HEADER_SIZE + length + _CRC16_TRAILER_SIZE
         if flag_offset >= len(block):
             raise ValueError(f"the record at offset {offset} runs past the end of the block")
-        if block[flag_offset] == _FLAG_UNSENT:
+        if block[flag_offset] not in _FLAGS_FINISHED_WITH:
             return offset + _HEADER_SIZE
         offset = flag_offset + _FLAG_SIZE
     return None

@@ -19,8 +19,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     struct SolidSyslogBlockDevice;
 
     /** Make @p blockIndex ready for fresh writes, leaving it empty (file drivers
-     *  create-or-truncate, flash drivers erase). Not for a block whose content is
-     *  to be kept: use Exists + Size to detect and resume a populated block.
+     *  create-or-truncate, flash drivers erase). May take as long as a block
+     *  erase. Not for a block whose content is to be kept: use Exists + Size to
+     *  detect and resume a populated block.
      *  @retval false the block could not be made ready; the caller does not write to it. */
     bool SolidSyslogBlockDevice_Acquire(struct SolidSyslogBlockDevice * device, size_t blockIndex);
 

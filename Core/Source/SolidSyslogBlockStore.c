@@ -198,6 +198,11 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
     size_t size
 );
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self);
+static enum SolidSyslogStoreWriteResult BlockStore_KeepAppendedRecord(
+    struct SolidSyslogBlockStore* self,
+    size_t recordSize
+);
+static bool BlockStore_FinishRotation(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportRefusal(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportEviction(struct SolidSyslogBlockStore* self);
 static void BlockStore_ReportSealFailed(struct SolidSyslogBlockStore* self);
@@ -224,9 +229,8 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
 )
 {
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
-    bool readBlockChanged = false;
     enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
-    bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize, &readBlockChanged);
+    bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize);
     bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
     if (frozen)
@@ -239,13 +243,6 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
     }
     else
     {
-        BlockStore_ReportEviction(self);
-
-        if (readBlockChanged)
-        {
-            SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
-        }
-
         enum SolidSyslogRecordStoreAppendResult appended = SolidSyslogRecordStore_Append(
             self->RecordStore,
             SolidSyslogBlockSequence_BlockDevice(self->BlockSequence),
@@ -253,26 +250,77 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
             data,
             size
         );
-        if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED)
-        {
-            result = SOLIDSYSLOG_STORE_WRITE_KEPT;
-            SolidSyslogBlockSequence_NoteRecordWritten(self->BlockSequence, recordSize);
-            /* A record kept ends a run of refusals or seal failures. */
-            self->RefusalReported = false;
-            self->SealFailureReported = false;
-        }
-        else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
+
+        if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_DEVICE_FAILED)
         {
             BlockStore_Freeze(self, SOLIDSYSLOG_BLOCK_STORE_ERROR_APPEND_FAILED);
         }
+        else if (appended == SOLIDSYSLOG_RECORD_STORE_APPEND_SUCCEEDED)
+        {
+            result = BlockStore_KeepAppendedRecord(self, recordSize);
+        }
         else
         {
+            /* Nothing was appended, so the record is lost whatever becomes of
+             * the rotation, which is finished because the new block is taken
+             * either way. */
+            (void) BlockStore_FinishRotation(self);
             result = SOLIDSYSLOG_STORE_WRITE_LOST;
             BlockStore_ReportSealFailed(self);
         }
     }
 
     return result;
+}
+
+/* The record's bytes are counted before the blocks behind it are seen to, so
+ * that used bytes do not dip under the threshold as a drained block goes when
+ * the record that replaced it is already on the device. */
+static enum SolidSyslogStoreWriteResult BlockStore_KeepAppendedRecord(
+    struct SolidSyslogBlockStore* self,
+    size_t recordSize
+)
+{
+    enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
+
+    SolidSyslogBlockSequence_NoteRecordAppended(self->BlockSequence, recordSize);
+
+    if (BlockStore_FinishRotation(self))
+    {
+        /* The record is on the device and is still not counted as kept: the
+         * store is transient from here, so the sender takes the record now,
+         * and a restart may send it again. */
+    }
+    else
+    {
+        result = SOLIDSYSLOG_STORE_WRITE_KEPT;
+        SolidSyslogBlockSequence_NoteRecordKept(self->BlockSequence);
+        /* A record kept ends a run of refusals or seal failures. */
+        self->RefusalReported = false;
+        self->SealFailureReported = false;
+    }
+
+    return result;
+}
+
+/* Where the write took a new block, the blocks behind it are seen to only now,
+ * after the append: a drained block is disposed of and, at the ceiling, the
+ * oldest evicted. True when a dispose failed and the store froze on it. */
+static bool BlockStore_FinishRotation(struct SolidSyslogBlockStore* self)
+{
+    if (SolidSyslogBlockSequence_FinishRotation(self->BlockSequence))
+    {
+        SolidSyslogRecordStore_ForgetLastRead(self->RecordStore);
+    }
+
+    bool frozen = BlockStore_FreezeIfDeviceFailed(self);
+
+    if (!frozen)
+    {
+        BlockStore_ReportEviction(self);
+    }
+
+    return frozen;
 }
 
 static bool BlockStore_FreezeIfDeviceFailed(struct SolidSyslogBlockStore* self)

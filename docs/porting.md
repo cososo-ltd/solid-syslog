@@ -280,12 +280,14 @@ one directly.
 ### Storage
 
 The store-and-forward stack is layered: Store (Core `BlockStore`) sits over
-BlockDevice, which sits over File. On a new platform you usually implement
-only File (and BlockDevice for raw flash); the rest is Core.
+BlockDevice, which sits over File, or over NorFlash where the store is to run
+directly on a NOR flash with no filesystem. On a new platform you usually
+implement only File or NorFlash; the rest is Core.
 
 - [Store](api/structSolidSyslogStore.md)
 - [BlockDevice](api/structSolidSyslogBlockDevice.md)
 - [File](api/structSolidSyslogFile.md)
+- [NorFlash](api/structSolidSyslogNorFlash.md)
 - [Buffer](api/structSolidSyslogBuffer.md)
 
 The portable in-memory `CircularBuffer` takes an injected `Mutex`, so a `Buffer`
