@@ -12,6 +12,7 @@
 #include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogFileCategories.h"
 #include "SolidSyslogLoggerCategories.h"
+#include "SolidSyslogNorFlashCategories.h"
 #include "SolidSyslogNullBuffer.h"
 #include "SolidSyslogNullSender.h"
 #include "SolidSyslogNullStore.h"
@@ -129,6 +130,7 @@ TEST(SolidSyslogPendingEvents, ACategoryOutsideTheSetChangesNothing)
  * then the delivery state. */
 static const uint16_t REPORTED_KINDS[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
     SOLIDSYSLOG_CAT_FILE_IO_FAILED,
+    SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_KEY_UNAVAILABLE,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_SEAL_FAILED,
     SOLIDSYSLOG_CAT_SECURITY_POLICY_OPEN_FAILED,
@@ -249,6 +251,7 @@ TEST(SolidSyslogPendingEvents, AskingWhetherAnyKindIsPendingLeavesItPending)
 
 /* The least severe severity each kind is raised at, in table order. */
 static const enum SolidSyslogSeverity KIND_SEVERITIES[SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT] = {
+    SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,
     SOLIDSYSLOG_SEVERITY_ERROR,

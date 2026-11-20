@@ -20,10 +20,10 @@
 namespace
 {
 /* A pass moves at most what the ring held, the record held from the last
- * pass, a report of each of the sixteen kinds Service reports and one record
+ * pass, a report of each of the seventeen kinds Service reports and one record
  * from the store, with two sends and a few device operations per record.
  * Tripwires, not budgets: a call that spins passes them at once. */
-const size_t REPORTS_PER_PASS = 16U;
+const size_t REPORTS_PER_PASS = 17U;
 const size_t RECORDS_BEYOND_THE_RING = 1U + REPORTS_PER_PASS + 1U;
 
 /* The kinds whose last event the end invariant requires reported: those the
