@@ -1,0 +1,64 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
+/** @file
+ *  A NorFlash over a SPI NOR flash part, for a SolidSyslogNorFlashBlockDevice.
+ *  It learns the part from the part's own SFDP table (JESD216), so it is not
+ *  written for one maker's parts, and it refuses at Create a part it cannot
+ *  drive. */
+#ifndef SOLIDSYSLOGSPINORFLASH_H
+#define SOLIDSYSLOGSPINORFLASH_H
+
+#include "SolidSyslogExternC.h"
+
+struct SolidSyslogNorFlash;
+struct SolidSyslogSpiNorFlashBus;
+
+SOLIDSYSLOG_EXTERN_C_BEGIN
+
+    struct SolidSyslogSpiNorFlashConfig
+    {
+        /** The bus the part is on, ready for use. It must outlive the flash. */
+        struct SolidSyslogSpiNorFlashBus* Bus;
+    };
+
+    /** Start the part on @p config's bus and learn it from its SFDP table.
+     *
+     *  Create talks to the part. It first waits for the part to be ready, for up
+     *  to 3000 ms: a part that was erasing when the processor was reset carries
+     *  on, and answers nothing else until it finishes. It then reads the basic
+     *  parameter table, and no other, for the part's capacity, its address
+     *  width, its smallest erase and that erase's command, its page size, and
+     *  the longest an erase and a page program take.
+     *
+     *  A block of the NorFlash is one erase of the smallest size the table
+     *  lists, and the blocks cover the whole part.
+     *
+     *  A table older than JESD216A carries no page size and no times. For such
+     *  a part the page is taken as 256 bytes, an erase is allowed 3000 ms and a
+     *  page program 20 ms.
+     *
+     *  Refused, each reported as SOLIDSYSLOG_CAT_BAD_CONFIG:
+     *   - a NULL @p config or Bus, or a Bus with a member not filled;
+     *   - a part with no SFDP table, or one whose table is not understood;
+     *   - a part of more than 16 MiB, the most three address bytes reach;
+     *   - a part that takes only four-byte addresses;
+     *   - a part with any of bits 2 to 6 of its first status register set,
+     *     which protect some or all of it from being written. The flash never
+     *     writes a status register, so it never unlocks a part.
+     *
+     *  A part that does not answer, one still busy after the wait, and a bus
+     *  call that fails are each reported as SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED.
+     *
+     *  Every one of those returns SolidSyslogNullNorFlash, as an exhausted pool
+     *  does, reported as SOLIDSYSLOG_CAT_POOL_EXHAUSTED. event->Detail is an
+     *  enum SolidSyslogSpiNorFlashErrors saying which. */
+    struct SolidSyslogNorFlash* SolidSyslogSpiNorFlash_Create(const struct SolidSyslogSpiNorFlashConfig* config);
+
+    /** Release the pool slot. The part is not touched. */
+    void SolidSyslogSpiNorFlash_Destroy(struct SolidSyslogNorFlash * base);
+
+SOLIDSYSLOG_EXTERN_C_END
+
+#endif /* SOLIDSYSLOGSPINORFLASH_H */

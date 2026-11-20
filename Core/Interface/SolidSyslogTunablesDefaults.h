@@ -445,6 +445,24 @@
 #endif
 
 /**
+ * Number of NorFlash instances each NorFlash implementation's internal
+ * static pool can simultaneously hold - one per flash part a
+ * SolidSyslogNorFlashBlockDevice is kept on. Named for the role, so one
+ * tunable sizes whichever implementation the build links.
+ *
+ * Default 1 - a store is kept on one part.
+ *
+ * Floor: 1. Sub-floor values rejected at compile time.
+ */
+#ifndef SOLIDSYSLOG_NOR_FLASH_POOL_SIZE
+#define SOLIDSYSLOG_NOR_FLASH_POOL_SIZE 1U
+#endif
+
+#if SOLIDSYSLOG_NOR_FLASH_POOL_SIZE < 1
+#error "SOLIDSYSLOG_NOR_FLASH_POOL_SIZE must be >= 1"
+#endif
+
+/**
  * Number of SolidSyslogMetaSd instances the library's internal
  * static pool can simultaneously hold. Default 1 - meta SD is typically
  * wired into SolidSyslogConfig.Sd[] once per process.

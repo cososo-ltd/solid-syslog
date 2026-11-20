@@ -454,6 +454,24 @@ TEST(SpiNorFlashPartFake, FailsTheNextReadAndNoOther)
     CHECK_TRUE(bus->Read(bus, &in, 1));
 }
 
+TEST(SpiNorFlashPartFake, FailsTheWriteThatManyCallsFromNow)
+{
+    const uint8_t command = WRITE_ENABLE;
+    SpiNorFlashPartFake::FailWriteAt(2);
+    CHECK_TRUE(bus->Write(bus, &command, 1));
+    CHECK_FALSE(bus->Write(bus, &command, 1));
+    CHECK_TRUE(bus->Write(bus, &command, 1));
+}
+
+TEST(SpiNorFlashPartFake, FailsTheReadThatManyCallsFromNow)
+{
+    uint8_t in = 0;
+    SpiNorFlashPartFake::FailReadAt(2);
+    CHECK_TRUE(bus->Read(bus, &in, 1));
+    CHECK_FALSE(bus->Read(bus, &in, 1));
+    CHECK_TRUE(bus->Read(bus, &in, 1));
+}
+
 TEST(SpiNorFlashPartFake, StartsEachTestAsABlankPartWithNoHistory)
 {
     Program(AN_ADDRESS, {0x00});

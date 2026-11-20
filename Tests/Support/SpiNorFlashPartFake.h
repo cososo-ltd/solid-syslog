@@ -92,6 +92,9 @@ SolidSyslogSpiNorFlashBus* Bus();
 /* The next call of that kind answers false, and the part sees none of it. */
 void FailNextWrite();
 void FailNextRead();
+/* The same for the call that many from now, counting from 1. */
+void FailWriteAt(int call);
+void FailReadAt(int call);
 
 /* Puts bytes into the part as they are, with no erase needed first. */
 void Store(uint32_t address, const std::vector<uint8_t>& bytes);

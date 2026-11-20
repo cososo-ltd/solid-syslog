@@ -49,8 +49,9 @@ struct State
 {
     bool selected = false;
     bool writeEnabled = false;
-    bool failNextWrite = false;
-    bool failNextRead = false;
+    /* How many calls until the one that fails. Zero is none. */
+    int writesUntilFailure = 0;
+    int readsUntilFailure = 0;
     uint32_t milliseconds = 0;
     uint32_t busyUntil = 0;
     /* What has been written since the select fell, and how many bytes have
@@ -248,11 +249,15 @@ bool PartIsListening()
     return SpiNorFlashPartFake::settings.present && state->selected;
 }
 
-bool TakeFlag(bool& flag)
+/* True for the call a countdown reaches one on. */
+bool IsTheCallThatFails(int& callsUntilFailure)
 {
-    const bool was = flag;
-    flag = false;
-    return was;
+    const bool fails = (callsUntilFailure == 1);
+    if (callsUntilFailure > 0)
+    {
+        callsUntilFailure--;
+    }
+    return fails;
 }
 
 void CountATransfer()
@@ -285,7 +290,7 @@ extern "C"
     {
         (void) base;
         CountATransfer();
-        const bool sent = !TakeFlag(state->failNextWrite);
+        const bool sent = !IsTheCallThatFails(state->writesUntilFailure);
         if (sent && PartIsListening())
         {
             const auto* bytes = static_cast<const uint8_t*>(buffer);
@@ -298,7 +303,7 @@ extern "C"
     {
         (void) base;
         CountATransfer();
-        const bool received = !TakeFlag(state->failNextRead);
+        const bool received = !IsTheCallThatFails(state->readsUntilFailure);
         if (received)
         {
             auto* bytes = static_cast<uint8_t*>(buffer);
@@ -372,12 +377,22 @@ SolidSyslogSpiNorFlashBus* Bus()
 
 void FailNextWrite()
 {
-    state->failNextWrite = true;
+    FailWriteAt(1);
 }
 
 void FailNextRead()
 {
-    state->failNextRead = true;
+    FailReadAt(1);
+}
+
+void FailWriteAt(int call)
+{
+    state->writesUntilFailure = call;
+}
+
+void FailReadAt(int call)
+{
+    state->readsUntilFailure = call;
 }
 
 void Store(uint32_t address, const std::vector<uint8_t>& bytes)

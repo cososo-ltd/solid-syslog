@@ -11,23 +11,24 @@ vtable.
 
 ## Capability matrix
 
-| Platform | Wraps | Network | TLS | At-rest crypto | Files | Buffer | OS primitives | Time & host |
-|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | ● | ● | ● |
-| [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | | ● | ● |
-| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | | ● | |
-| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | | ● | |
-| [VxWorks 6.4](vxworks64/index.md) | VxWorks 6.4 kernel API | ● | | | ● | | ● | ● |
-| [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | | |
-| [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | | |
-| [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | | |
-| [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | | |
-| [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | | |
-| [wolfSSL](wolfssl/index.md) | wolfSSL | | ● | ● | | | | |
-| [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | | |
-| [LittleFS](littlefs/index.md) | LittleFS | | | | ● | | | |
-| [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | | |
-| [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | | ● | |
+| Platform | Wraps | Network | TLS | At-rest crypto | Files | Raw flash | Buffer | OS primitives | Time & host |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| [Posix](posix/index.md) | POSIX / BSD sockets | ● | | | ● | | ● | ● | ● |
+| [Windows](windows/index.md) | Win32 / Winsock | ● | | | ● | | | ● | ● |
+| [FreeRTOS](freertos/index.md) | FreeRTOS kernel | | | | | | | ● | |
+| [CMSIS-RTOS2](cmsisrtos/index.md) | CMSIS-RTOS2 API | | | | | | | ● | |
+| [VxWorks 6.4](vxworks64/index.md) | VxWorks 6.4 kernel API | ● | | | ● | | | ● | ● |
+| [FreeRTOS-Plus-TCP](plustcp/index.md) | FreeRTOS-Plus-TCP | ● | | | | | | | |
+| [lwIP (Raw API)](lwipraw/index.md) | lwIP Raw API | ● | | | | | | | |
+| [lwIP (Sockets API)](lwipsocket/index.md) | lwIP Sockets API | ● | | | | | | | |
+| [OpenSSL](openssl/index.md) | OpenSSL ≥ 3.0 | | ● | ● | | | | | |
+| [Mbed TLS](mbedtls/index.md) | Mbed TLS | | ● | ● | | | | | |
+| [wolfSSL](wolfssl/index.md) | wolfSSL | | ● | ● | | | | | |
+| [FatFs](fatfs/index.md) | ChaN FatFs | | | | ● | | | | |
+| [LittleFS](littlefs/index.md) | LittleFS | | | | ● | | | | |
+| [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | | | |
+| [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | | | ● | |
+| [SPI NOR flash](spinorflash/index.md) | A SPI NOR flash part, by its SFDP table | | | | | ● | | | |
 
 The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
 unkeyed CRC-16 policy is Core.
@@ -40,6 +41,9 @@ sleep callbacks; VxWorks 6.4 has no process-id callback. A bare kernel such as
 FreeRTOS or CMSIS-RTOS2 gives the first without the second, so a target on one
 still needs a clock, and a sleep wherever a backend takes one, from its
 integrator.
+
+The Raw flash column is a NOR flash a store keeps its blocks on directly, with
+no filesystem and so no File beneath it.
 
 The Buffer column is a platform-backed Buffer, which today means the POSIX
 message queue. Core ships the Passthrough and Circular buffers, so an unmarked

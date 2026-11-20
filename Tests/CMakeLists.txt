@@ -216,6 +216,10 @@ elseif(SOLIDSYSLOG_WINDOWS AND HAVE_WINDOWS_INTERLOCKED)
     )
 endif()
 
+if(SOLIDSYSLOG_SPINORFLASH)
+    list(APPEND TEST_SOURCES SolidSyslogSpiNorFlashTest.cpp)
+endif()
+
 if(SOLIDSYSLOG_POSIX)
     list(APPEND TEST_SOURCES
         SolidSyslogPosixClockTest.cpp

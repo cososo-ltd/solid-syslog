@@ -231,6 +231,7 @@ nav:
       - OpenSSL: platforms/openssl/index.md
       - wolfSSL: platforms/wolfssl/index.md
       - Posix: platforms/posix/index.md
+      - SPI NOR flash: platforms/spinorflash/index.md
       - Windows: platforms/windows/index.md
       - VxWorks 6.4: platforms/vxworks64/index.md
   - Compliance:

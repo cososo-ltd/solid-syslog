@@ -1,0 +1,31 @@
+/* SPDX-FileCopyrightText: Copyright 2026 Cozens Software Solutions Limited
+ * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 OR LicenseRef-PolyForm-Internal-Use-1.0.0 OR LicenseRef-COSOSO-Commercial
+ */
+
+#include "SolidSyslogSpiNorFlashErrors.h"
+
+#include <stdint.h>
+
+#include "SolidSyslogErrorName.h"
+
+/* Indexed by the enum, so no name can shift; a code without one is NULL. */
+const char* SolidSyslogSpiNorFlashErrors_Name(int32_t detail)
+{
+    static const char* const names[SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_MAX] = {
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_POOL_EXHAUSTED] = "POOL_EXHAUSTED",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_UNKNOWN_DESTROY] = "UNKNOWN_DESTROY",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NULL_CONFIG] = "NULL_CONFIG",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NULL_BUS] = "NULL_BUS",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_INCOMPLETE] = "BUS_INCOMPLETE",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_SFDP] = "NO_SFDP",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_SFDP_NOT_UNDERSTOOD] = "SFDP_NOT_UNDERSTOOD",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_TOO_LARGE] = "PART_TOO_LARGE",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_FOUR_BYTE_ADDRESSES_ONLY] = "FOUR_BYTE_ADDRESSES_ONLY",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_PROTECTED] = "PART_PROTECTED",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER] = "NO_ANSWER",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED] = "BUS_FAILED",
+        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT] = "TIMED_OUT",
+    };
+
+    return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_MAX, detail);
+}

@@ -1232,6 +1232,7 @@ jobs:
           -IPlatform/FatFs/Interface
           -IPlatform/LittleFs/Interface
           -IPlatform/PlusFat/Interface
+          -IPlatform/SpiNorFlash/Interface
           --xml --xml-version=2
           Core/Source/
           Platform/StdAtomic/Source/
@@ -1249,6 +1250,7 @@ jobs:
           Platform/FatFs/Source/
           Platform/LittleFs/Source/
           Platform/PlusFat/Source/
+          Platform/SpiNorFlash/Source/
           2> build/cppcheck/cppcheck-report.xml
 
       - name: Upload cppcheck report
@@ -1340,6 +1342,7 @@ jobs:
             -IPlatform/FatFs/Interface \
             -IPlatform/LittleFs/Interface \
             -IPlatform/PlusFat/Interface \
+            -IPlatform/SpiNorFlash/Interface \
             Core/Source/ \
             Platform/StdAtomic/Source/ \
             Platform/Posix/Source/ \
@@ -1356,6 +1359,7 @@ jobs:
             Platform/FatFs/Source/ \
             Platform/LittleFs/Source/ \
             Platform/PlusFat/Source/ \
+            Platform/SpiNorFlash/Source/ \
             2>&1 | tee build/cppcheck-misra/cppcheck-misra.log
           if ! python3 scripts/misra_public_api.py build/cppcheck-misra/cppcheck-misra.log; then
             echo '::error::MISRA findings above are covered by neither misra_suppressions.txt nor D.016'
@@ -1410,6 +1414,7 @@ jobs:
             -IPlatform/FatFs/Interface \
             -IPlatform/LittleFs/Interface \
             -IPlatform/PlusFat/Interface \
+            -IPlatform/SpiNorFlash/Interface \
             --xml --xml-version=2 \
             Core/Source/ \
             Platform/StdAtomic/Source/ \
@@ -1427,6 +1432,7 @@ jobs:
             Platform/FatFs/Source/ \
             Platform/LittleFs/Source/ \
             Platform/PlusFat/Source/ \
+            Platform/SpiNorFlash/Source/ \
             2> build/cppcheck-misra/cppcheck-misra-report.xml
 
       - name: Upload cppcheck-misra report
