@@ -129,6 +129,12 @@ static inline uint32_t SpiNorFlash_AddressOf(
 // NOLINTEND(bugprone-easily-swappable-parameters)
 static inline void SpiNorFlash_SetCommand(uint8_t* request, uint8_t command, uint32_t address);
 static inline bool SpiNorFlash_BusHeld(bool held);
+static bool SpiNorFlash_ProgramPages(
+    struct SolidSyslogSpiNorFlash* self,
+    uint32_t address,
+    const uint8_t* bytes,
+    size_t count
+);
 static inline size_t SpiNorFlash_BytesToProgramInPage(
     const struct SolidSyslogSpiNorFlash* self,
     uint32_t address,
@@ -500,25 +506,36 @@ static bool SpiNorFlash_Program(
 )
 {
     struct SolidSyslogSpiNorFlash* self = SpiNorFlash_SelfFromBase(base);
-    const uint8_t* bytes = (const uint8_t*) buffer;
-    size_t done = 0U;
+
     /* A part still busy keeps writing enabled, so it would seem to take a
      * program it ignores. So it is asked first whether it is ready. */
-    bool programmed =
-        SpiNorFlash_CheckSpan(self, blockIndex, offset, count) && SpiNorFlash_WaitUntilReady(self, NO_WAIT);
+    return SpiNorFlash_CheckSpan(self, blockIndex, offset, count) && SpiNorFlash_WaitUntilReady(self, NO_WAIT) &&
+           SpiNorFlash_ProgramPages(self, SpiNorFlash_AddressOf(self, blockIndex, offset), buffer, count);
+}
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
+/* One command for each page the span touches. True for a span of nothing. */
+static bool SpiNorFlash_ProgramPages(
+    struct SolidSyslogSpiNorFlash* self,
+    uint32_t address,
+    const uint8_t* bytes,
+    size_t count
+)
+{
+    size_t done = 0U;
+    bool programmed = true;
 
     while (programmed && (done < count))
     {
-        uint32_t address = SpiNorFlash_AddressOf(self, blockIndex, offset + done);
-        size_t length = SpiNorFlash_BytesToProgramInPage(self, address, count - done);
-        programmed = SpiNorFlash_ProgramInPage(self, address, &bytes[done], length);
+        uint32_t from = address + (uint32_t) done;
+        size_t length = SpiNorFlash_BytesToProgramInPage(self, from, count - done);
+        programmed = SpiNorFlash_ProgramInPage(self, from, &bytes[done], length);
         done += length;
     }
 
     return programmed;
 }
-
-// NOLINTEND(bugprone-easily-swappable-parameters)
 
 /* A program that runs past the end of its page wraps to the page's start,
  * so no more than is left of the page is sent in one command. */

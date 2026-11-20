@@ -85,11 +85,6 @@ enum
     TICK_ALLOWANCE_MILLISECONDS = 1
 };
 
-/* Milliseconds, by the two bits above an erase time's count. */
-static const uint32_t Sfdp_EraseTimeUnits[ERASE_TIME_UNITS_COUNT] = {1U, 16U, 128U, 1000U};
-
-static const uint8_t Sfdp_Signature[SIGNATURE_LENGTH] = {0x53, 0x46, 0x44, 0x50};
-
 static const uint32_t DENSITY_IS_AN_EXPONENT = 0x80000000U;
 
 static inline bool Sfdp_HasSignature(const uint8_t* header);
@@ -138,11 +133,13 @@ bool SolidSyslogSpiNorFlashSfdp_Locate(
 
 static inline bool Sfdp_HasSignature(const uint8_t* header)
 {
+    /* "SFDP". */
+    static const uint8_t signature[SIGNATURE_LENGTH] = {0x53, 0x46, 0x44, 0x50};
     bool matches = true;
 
     for (size_t i = 0U; i < (size_t) SIGNATURE_LENGTH; i++)
     {
-        if (header[i] != Sfdp_Signature[i])
+        if (header[i] != signature[i])
         {
             matches = false;
         }
@@ -314,10 +311,11 @@ static inline uint32_t Sfdp_PageBytes(const uint8_t* bytes)
  * of a second, 32 times over, so nothing overflows. */
 static uint32_t Sfdp_EraseTimeoutMilliseconds(const uint8_t* bytes, size_t eraseType)
 {
+    /* Milliseconds, by the two bits above an erase time's count. */
+    static const uint32_t timeUnits[ERASE_TIME_UNITS_COUNT] = {1U, 16U, 128U, 1000U};
     uint32_t dword = Sfdp_Dword(bytes, DWORD_ERASE_TIMES);
     uint32_t field = dword >> ((uint32_t) ERASE_TIME_SHIFT + ((uint32_t) eraseType * (uint32_t) ERASE_TIME_BITS));
-    uint32_t units =
-        Sfdp_EraseTimeUnits[(field >> (uint32_t) ERASE_TIME_UNITS_SHIFT) & (uint32_t) ERASE_TIME_UNITS_MASK];
+    uint32_t units = timeUnits[(field >> (uint32_t) ERASE_TIME_UNITS_SHIFT) & (uint32_t) ERASE_TIME_UNITS_MASK];
     uint32_t typical = Sfdp_TimeCount(field) * units;
 
     return (typical * Sfdp_LongestTimeMultiplier(dword)) + (uint32_t) TICK_ALLOWANCE_MILLISECONDS;
