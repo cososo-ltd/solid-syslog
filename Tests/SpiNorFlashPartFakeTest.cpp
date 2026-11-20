@@ -358,7 +358,7 @@ TEST(SpiNorFlashPartFake, IsBusyAfterAnErase)
 {
     Erase(SECTOR_ERASE, START_OF_A_SECTOR);
     CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
-    BYTES_EQUAL(STATUS_BUSY, Status());
+    BYTES_EQUAL(STATUS_BUSY, Status() & STATUS_BUSY);
 }
 
 TEST(SpiNorFlashPartFake, IsBusyUntilTheTimeAnEraseTakesHasPassed)
@@ -406,11 +406,38 @@ TEST(SpiNorFlashPartFake, IgnoresACommandThatArrivesWhileItIsBusy)
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(READ_DATA));
 }
 
-TEST(SpiNorFlashPartFake, DoesNotEnableWritingWhileItIsBusy)
+TEST(SpiNorFlashPartFake, ShowsWritingEnabledUntilAnEraseHasFinished)
 {
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_MILLISECONDS;
     Erase(SECTOR_ERASE, START_OF_A_SECTOR);
+    BYTES_EQUAL(STATUS_BUSY | STATUS_WRITE_ENABLED, Status());
+    LetTimePass(ERASE_MILLISECONDS);
+    BYTES_EQUAL(0x00, Status());
+}
+
+TEST(SpiNorFlashPartFake, ShowsWritingEnabledUntilAProgramHasFinished)
+{
+    SpiNorFlashPartFake::settings.programMilliseconds = 3;
+    Program(AN_ADDRESS, {0x00});
+    BYTES_EQUAL(STATUS_BUSY | STATUS_WRITE_ENABLED, Status());
+    LetTimePass(3);
+    BYTES_EQUAL(0x00, Status());
+}
+
+TEST(SpiNorFlashPartFake, StopsAnsweringAfterTheCommandsItIsGiven)
+{
+    SpiNorFlashPartFake::GoQuietAfter(2);
+    BYTES_EQUAL(0x00, Status());
+    CHECK_BYTES_EQUAL(Bytes({0xEF}), Command({READ_JEDEC_ID}, 1));
+    BYTES_EQUAL(0xFF, Status());
+}
+
+TEST(SpiNorFlashPartFake, CarriesOutNothingOnceItHasStoppedAnswering)
+{
+    SpiNorFlashPartFake::GoQuietAfter(1);
     (void) Command({WRITE_ENABLE});
-    BYTES_EQUAL(STATUS_BUSY, Status());
+    (void) Command(WithAddress(PAGE_PROGRAM, AN_ADDRESS, {0x00}));
+    BYTES_EQUAL(0xFF, SpiNorFlashPartFake::Stored(AN_ADDRESS, 1)[0]);
 }
 
 TEST(SpiNorFlashPartFake, IsBusyFromPowerUpForTheTimeItIsGiven)

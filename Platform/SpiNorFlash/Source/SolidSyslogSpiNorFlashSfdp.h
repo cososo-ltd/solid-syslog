@@ -35,8 +35,15 @@ struct SolidSyslogSpiNorFlashSfdpTable
 struct SolidSyslogSpiNorFlashGeometry
 {
     uint32_t CapacityBytes;
-    /* The smallest erase the part has. */
+    /* The smallest erase the part has, and the command for it. */
     uint32_t EraseBytes;
+    uint8_t EraseCommand;
+    /* The most one program command takes. */
+    uint32_t PageBytes;
+    /* How long to wait for an erase of EraseBytes, and for a program of a
+     * page, before giving the part up. */
+    uint32_t EraseTimeoutMilliseconds;
+    uint32_t ProgramTimeoutMilliseconds;
 };
 
 /* Finds the basic table from the SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_HEADER_BYTES at
@@ -48,11 +55,13 @@ bool SolidSyslogSpiNorFlashSfdp_Locate(
     enum SolidSyslogSpiNorFlashErrors* fault
 );
 
-/* Reads the part's geometry from the bytes of the basic table that Locate
- * found. False, with the reason in fault, for a part outside what the flash
- * drives. */
+/* Reads the part's geometry from the table->Bytes of the basic table that
+ * Locate found. Where the table is too short to give a page size and times,
+ * they are the defaults SolidSyslogSpiNorFlash.h states. False, with the
+ * reason in fault, for a part outside what the flash drives. */
 bool SolidSyslogSpiNorFlashSfdp_ReadGeometry(
     const uint8_t* bytes,
+    const struct SolidSyslogSpiNorFlashSfdpTable* table,
     struct SolidSyslogSpiNorFlashGeometry* geometry,
     enum SolidSyslogSpiNorFlashErrors* fault
 );

@@ -40,12 +40,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** A protection bit of the part's first status register is set. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_PROTECTED,
         /** Nothing drives the bus: no part, or no path to it. Raised under
-         *  SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED, as are those below. */
+         *  SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED, as are the three after it. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER,
         /** A call of the bus answered false. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED,
         /** The part was still busy when the time allowed had passed. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT,
+        /** The part would not enable writing, so nothing was programmed or
+         *  erased. */
+        SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_WRITE_REFUSED,
+        /** A read, a program or an erase was asked for outside a block of the
+         *  part. Raised under SOLIDSYSLOG_CAT_BAD_ARGUMENT, and nothing was
+         *  sent to the part. */
+        SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE,
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

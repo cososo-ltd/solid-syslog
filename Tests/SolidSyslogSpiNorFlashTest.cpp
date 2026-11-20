@@ -1,11 +1,14 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
+#include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogNorFlash.h"
+#include "SolidSyslogNorFlashBlockDevice.h"
 #include "SolidSyslogNorFlashCategories.h"
 #include "SolidSyslogNullNorFlash.h"
 #include "SolidSyslogPrival.h"
@@ -664,4 +667,736 @@ TEST(SolidSyslogSpiNorFlashPool, HasASlotAgainOnceAFlashIsDestroyed)
     pooled[0] = nullptr;
     CreateFlash();
     CHECK_CREATED();
+}
+
+enum
+{
+    PAGE_PROGRAM = 0x02,
+    READ_DATA = 0x03,
+    SECTOR_ERASE = 0x20,
+    BLOCK_ERASE = 0xD8,
+
+    PAGE_BYTES = 256,
+    A_BLOCK = 0x42,
+    START_OF_A_BLOCK = A_BLOCK * SECTOR_BYTES,
+    AN_OFFSET = 0x345,
+    LAST_BYTE_OF_A_PAGE = 0x2FF,
+    LAST_BLOCK = SECTORS_IN_SIXTEEN_MEBIBYTES - 1,
+    THREE_PAGES_AND_A_LITTLE = (3 * PAGE_BYTES) + 10,
+    MORE_THAN_A_PAGE = PAGE_BYTES + 44,
+
+    DWORD_ERASE_TIMES = 10,
+    DWORD_PAGE_AND_PROGRAM = 11,
+
+    /* What the fixture's table works out to, and what a table too short to
+     * say is given. */
+    LONGEST_ERASE_BY_THE_TABLE = 896,
+    LONGEST_PROGRAM_BY_THE_TABLE = 5,
+    DEFAULT_ERASE_TIMEOUT = 3000,
+    DEFAULT_PROGRAM_TIMEOUT = 20,
+    FAR_LONGER_THAN_ANY_TIMEOUT = 100000,
+
+    /* The transfers each makes of a part that does as it is asked. A program
+     * here is of one page. */
+    WRITES_IN_A_READ = 2,
+    READS_IN_A_READ = 2,
+    WRITES_IN_A_PROGRAM = 6,
+    READS_IN_A_PROGRAM = 3,
+    WRITES_IN_AN_ERASE = 5,
+    READS_IN_AN_ERASE = 3
+};
+
+static const uint32_t PAGE_SIZE_FIELD = 0x000000F0U;
+static const uint32_t PAGE_SIZE_OF_512 = 0x00000090U;
+static const uint32_t PROGRAM_TIME_UNITS_ARE_LONG = 0x00002000U;
+/* The 4 KiB erase's time, 64 ms typical and 14 times that at most, moved
+ * from the first type's field to the fourth's, with 1 ms left in the first. */
+static const uint32_t ERASE_TIMES_WITH_THE_FOURTH_TYPE_SLOW = 0x46000006U;
+
+#define CHECK_OPERATION_FAILED(detail, succeeded) \
+    {                                             \
+        CHECK_FALSE(succeeded);                   \
+        CHECK_IO_FAILURE_REPORTED(detail);        \
+    }
+
+#define CHECK_OUT_OF_RANGE(succeeded)                    \
+    {                                                    \
+        CHECK_FALSE(succeeded);                          \
+        CHECK_ERROR_REPORTED_ONCE(                       \
+            SOLIDSYSLOG_SEVERITY_CRITICAL,               \
+            &SolidSyslogSpiNorFlashErrorSource,          \
+            SOLIDSYSLOG_CAT_BAD_ARGUMENT,                \
+            SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE \
+        );                                               \
+    }
+
+#define CHECK_BYTES_EQUAL(expected, actual)                                           \
+    {                                                                                 \
+        const std::vector<uint8_t>& expectedBytes = (expected);                       \
+        const std::vector<uint8_t>& actualBytes = (actual);                           \
+        LONGS_EQUAL(expectedBytes.size(), actualBytes.size());                        \
+        MEMCMP_EQUAL(expectedBytes.data(), actualBytes.data(), expectedBytes.size()); \
+    }
+
+static std::vector<uint8_t> BytesOfPattern(uint8_t first, size_t count)
+{
+    std::vector<uint8_t> bytes(count);
+    uint8_t next = first;
+    for (uint8_t& byte : bytes)
+    {
+        byte = next;
+        next++;
+    }
+    return bytes;
+}
+
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogSpiNorFlashOperations, SpiNorFlashTestBase)
+{
+    std::vector<uint8_t> buffer;
+
+    void setup() override
+    {
+        SetupPart();
+    }
+
+    void teardown() override
+    {
+        TeardownPart();
+        buffer = std::vector<uint8_t>();
+    }
+
+    /* Creates the flash over the part as the test has arranged it, and
+     * forgets what creating it reported and sent. */
+    void Start()
+    {
+        CreateFlash();
+        CHECK_CREATED();
+        ErrorHandlerFake_Install(nullptr);
+    }
+
+    /* A blank part and no flash, for a test that starts more than one. */
+    void StartOver()
+    {
+        TeardownPart();
+        SetupPart();
+    }
+
+    [[nodiscard]] bool Read(size_t block, size_t offset, size_t count)
+    {
+        buffer.assign(count, 0);
+        return SolidSyslogNorFlash_Read(flash, block, offset, buffer.data(), count);
+    }
+
+    [[nodiscard]] bool Program(size_t block, size_t offset, const std::vector<uint8_t>& bytes) const
+    {
+        return SolidSyslogNorFlash_Program(flash, block, offset, bytes.data(), bytes.size());
+    }
+
+    [[nodiscard]] bool Erase(size_t block) const
+    {
+        return SolidSyslogNorFlash_Erase(flash, block);
+    }
+
+    static void LetTimePass(uint32_t milliseconds)
+    {
+        SolidSyslogSpiNorFlashBus* bus = SpiNorFlashPartFake::Bus();
+        for (uint32_t i = 0; i < milliseconds; i++)
+        {
+            (void) bus->Milliseconds(bus);
+        }
+    }
+
+    static void UseATableTooShortToGiveTimesOrAPageSize()
+    {
+        SpiNorFlashPartFake::settings.sfdp.at(TABLE_LENGTH_DWORDS) = DWORDS_IN_THE_FIRST_JESD216;
+    }
+
+    /* One erase type: its time's count less one in the low five bits, its
+     * units in the two above, and the multiplier that gives the longest. */
+    static void SetFirstEraseTime(uint32_t countLessOne, uint32_t units, uint32_t multiplierField)
+    {
+        SetDword(DWORD_ERASE_TIMES, multiplierField | (((units << 5U) | countLessOne) << 4U));
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogSpiNorFlashOperations, ReadsTheBytesAtAnOffsetInABlock)
+{
+    const std::vector<uint8_t> held = {0x11, 0x22, 0x33, 0x44, 0x55};
+    SpiNorFlashPartFake::Store(START_OF_A_BLOCK + AN_OFFSET, held);
+    Start();
+    CHECK_TRUE(Read(A_BLOCK, AN_OFFSET, held.size()));
+    CHECK_BYTES_EQUAL(held, buffer);
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ReadsAWholeBlockWithOneCommand)
+{
+    const std::vector<uint8_t> held = BytesOfPattern(3, SECTOR_BYTES);
+    SpiNorFlashPartFake::Store(START_OF_A_BLOCK, held);
+    Start();
+    CHECK_TRUE(Read(A_BLOCK, 0, SECTOR_BYTES));
+    CHECK_BYTES_EQUAL(held, buffer);
+    LONGS_EQUAL(1, SpiNorFlashPartFake::CountOf(READ_DATA));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ReadsTheLastByteOfThePart)
+{
+    SpiNorFlashPartFake::Store((SECTORS_IN_SIXTEEN_MEBIBYTES * SECTOR_BYTES) - 1, {0x5A});
+    Start();
+    CHECK_TRUE(Read(LAST_BLOCK, SECTOR_BYTES - 1, 1));
+    BYTES_EQUAL(0x5A, buffer[0]);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, LeavesThePartDeselectedAfterARead)
+{
+    Start();
+    (void) Read(A_BLOCK, AN_OFFSET, 4);
+    CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    LONGS_EQUAL(0, SpiNorFlashPartFake::TransfersWhileDeselected());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadThatRunsPastTheEndOfItsBlock)
+{
+    Start();
+    CHECK_OUT_OF_RANGE(Read(A_BLOCK, SECTOR_BYTES - 1, 2));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(READ_DATA));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadLongerThanABlock)
+{
+    Start();
+    CHECK_OUT_OF_RANGE(Read(A_BLOCK, 0, SECTOR_BYTES + 1));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadOfABlockPastTheEndOfThePart)
+{
+    Start();
+    CHECK_OUT_OF_RANGE(Read(LAST_BLOCK + 1, 0, 1));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatIsBusy)
+{
+    Start();
+    SpiNorFlashPartFake::settings.staysBusy = true;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Read(A_BLOCK, AN_OFFSET, 4));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatHasStoppedAnswering)
+{
+    Start();
+    SpiNorFlashPartFake::settings.present = false;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadWhenAnyWriteOfTheBusFails)
+{
+    for (int call = 1; call <= WRITES_IN_A_READ; call++)
+    {
+        StartOver();
+        Start();
+        SpiNorFlashPartFake::FailWriteAt(call);
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Read(A_BLOCK, AN_OFFSET, 4));
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadWhenAnyReadOfTheBusFails)
+{
+    for (int call = 1; call <= READS_IN_A_READ; call++)
+    {
+        StartOver();
+        Start();
+        SpiNorFlashPartFake::FailReadAt(call);
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Read(A_BLOCK, AN_OFFSET, 4));
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ProgramsBytesAtAnOffsetInABlock)
+{
+    const std::vector<uint8_t> bytes = {0x12, 0x34, 0x56};
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, bytes));
+    CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(START_OF_A_BLOCK + AN_OFFSET, bytes.size()));
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ProgramsAWholePageWithOneCommand)
+{
+    const std::vector<uint8_t> bytes = BytesOfPattern(1, PAGE_BYTES);
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, PAGE_BYTES, bytes));
+    CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(START_OF_A_BLOCK + PAGE_BYTES, bytes.size()));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::Programs().size());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SplitsAProgramWhereItCrossesIntoTheNextPage)
+{
+    const std::vector<uint8_t> bytes = {0x01, 0x02, 0x03};
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, LAST_BYTE_OF_A_PAGE, bytes));
+    CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(START_OF_A_BLOCK + LAST_BYTE_OF_A_PAGE, bytes.size()));
+    LONGS_EQUAL(2, SpiNorFlashPartFake::Programs().size());
+    LONGS_EQUAL(START_OF_A_BLOCK + LAST_BYTE_OF_A_PAGE, SpiNorFlashPartFake::Programs()[0].address);
+    LONGS_EQUAL(1, SpiNorFlashPartFake::Programs()[0].length);
+    LONGS_EQUAL(START_OF_A_BLOCK + LAST_BYTE_OF_A_PAGE + 1, SpiNorFlashPartFake::Programs()[1].address);
+    LONGS_EQUAL(2, SpiNorFlashPartFake::Programs()[1].length);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ProgramsASpanOfManyPages)
+{
+    const std::vector<uint8_t> bytes = BytesOfPattern(7, THREE_PAGES_AND_A_LITTLE);
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, LAST_BYTE_OF_A_PAGE, bytes));
+    CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(START_OF_A_BLOCK + LAST_BYTE_OF_A_PAGE, bytes.size()));
+    LONGS_EQUAL(5, SpiNorFlashPartFake::Programs().size());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ProgramsAWholeBlock)
+{
+    const std::vector<uint8_t> bytes = BytesOfPattern(9, SECTOR_BYTES);
+    Start();
+    CHECK_TRUE(Program(LAST_BLOCK, 0, bytes));
+    CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(LAST_BLOCK * SECTOR_BYTES, bytes.size()));
+    LONGS_EQUAL(SECTOR_BYTES / PAGE_BYTES, SpiNorFlashPartFake::Programs().size());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, EnablesWritingBeforeEveryPageItPrograms)
+{
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, LAST_BYTE_OF_A_PAGE, {0x01, 0x02}));
+    LONGS_EQUAL(2, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, WaitsForOnePageToFinishBeforeItProgramsTheNext)
+{
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, LAST_BYTE_OF_A_PAGE, {0x01, 0x02}));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, IsNoLongerBusyWhenAProgramReturns)
+{
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
+    CHECK_FALSE(SpiNorFlashPartFake::IsBusy());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ProgramsNothingWhenGivenNothing)
+{
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {}));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SplitsAProgramByThePageSizeTheTableGives)
+{
+    SetDword(DWORD_PAGE_AND_PROGRAM, (Dword(DWORD_PAGE_AND_PROGRAM) & ~PAGE_SIZE_FIELD) | PAGE_SIZE_OF_512);
+    SpiNorFlashPartFake::settings.pageBytes = 2 * PAGE_BYTES;
+    const std::vector<uint8_t> bytes = BytesOfPattern(1, MORE_THAN_A_PAGE);
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, 0, bytes));
+    CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(START_OF_A_BLOCK, bytes.size()));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::Programs().size());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SplitsAProgramBy256WhereTheTableIsTooShortToGiveAPageSize)
+{
+    SetDword(DWORD_PAGE_AND_PROGRAM, (Dword(DWORD_PAGE_AND_PROGRAM) & ~PAGE_SIZE_FIELD) | PAGE_SIZE_OF_512);
+    UseATableTooShortToGiveTimesOrAPageSize();
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, 0, BytesOfPattern(1, MORE_THAN_A_PAGE)));
+    LONGS_EQUAL(2, SpiNorFlashPartFake::Programs().size());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, RefusesAProgramThatRunsPastTheEndOfItsBlock)
+{
+    Start();
+    CHECK_OUT_OF_RANGE(Program(A_BLOCK, SECTOR_BYTES - 1, {0x00, 0x00}));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SendsNoProgramToAPartThatDidNotEnableWriting)
+{
+    Start();
+    SpiNorFlashPartFake::settings.ignoresWriteEnable = true;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_WRITE_REFUSED, Program(A_BLOCK, AN_OFFSET, {0x00}));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAProgramTheLongestTheTableSaysOneTakes)
+{
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = LONGEST_PROGRAM_BY_THE_TABLE;
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAProgramThatOutlastsWhatTheTableAllows)
+{
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = 2 * LONGEST_PROGRAM_BY_THE_TABLE;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ReadsAProgramTimeGivenInTheShorterUnits)
+{
+    /* The same count in units of 8 us is under a millisecond at its longest,
+     * so the time the fixture's own table allows is now too long. */
+    SetDword(DWORD_PAGE_AND_PROGRAM, Dword(DWORD_PAGE_AND_PROGRAM) & ~PROGRAM_TIME_UNITS_ARE_LONG);
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = LONGEST_PROGRAM_BY_THE_TABLE;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAProgramTwentyMillisecondsWhereTheTableIsTooShortToSay)
+{
+    UseATableTooShortToGiveTimesOrAPageSize();
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = DEFAULT_PROGRAM_TIMEOUT - 2;
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAProgramAfterTwentyMillisecondsWhereTheTableIsTooShortToSay)
+{
+    UseATableTooShortToGiveTimesOrAPageSize();
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = DEFAULT_PROGRAM_TIMEOUT + 5;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, StopsAtThePageThatFails)
+{
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
+    CHECK_FALSE(Program(A_BLOCK, LAST_BYTE_OF_A_PAGE, {0x01, 0x02}));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SendsNoProgramToAPartLeftBusyByOneThatOutlastedItsTime)
+{
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
+    (void) Program(A_BLOCK, AN_OFFSET, {0x00});
+    ErrorHandlerFake_Install(nullptr);
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET + 1, {0x00}));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SendsNoEraseToAPartLeftBusyByAProgramThatOutlastedItsTime)
+{
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
+    (void) Program(A_BLOCK, AN_OFFSET, {0x00});
+    ErrorHandlerFake_Install(nullptr);
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ProgramsAgainOnceThePartHasFinishedWhatOutlastedItsTime)
+{
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = 1000;
+    (void) Program(A_BLOCK, AN_OFFSET, {0x00});
+    LetTimePass(1000);
+    SpiNorFlashPartFake::settings.programMilliseconds = 1;
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET + 1, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenThePartStopsAnsweringBeforeWritingIsEnabled)
+{
+    Start();
+    /* It answers that it is ready, and nothing after. */
+    SpiNorFlashPartFake::GoQuietAfter(1);
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Program(A_BLOCK, AN_OFFSET, {0x00}));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenThePartStopsAnsweringWhileItPrograms)
+{
+    Start();
+    /* Ready, writing enabled, its status, and the program itself. */
+    SpiNorFlashPartFake::GoQuietAfter(4);
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Program(A_BLOCK, AN_OFFSET, {0x00}));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenAnyWriteOfTheBusFails)
+{
+    for (int call = 1; call <= WRITES_IN_A_PROGRAM; call++)
+    {
+        StartOver();
+        Start();
+        SpiNorFlashPartFake::FailWriteAt(call);
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Program(A_BLOCK, AN_OFFSET, {0x00}));
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenAnyReadOfTheBusFails)
+{
+    for (int call = 1; call <= READS_IN_A_PROGRAM; call++)
+    {
+        StartOver();
+        Start();
+        SpiNorFlashPartFake::FailReadAt(call);
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Program(A_BLOCK, AN_OFFSET, {0x00}));
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ErasesABlock)
+{
+    SpiNorFlashPartFake::Store(START_OF_A_BLOCK, BytesOfPattern(0, SECTOR_BYTES));
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    CHECK_BYTES_EQUAL(
+        std::vector<uint8_t>(SECTOR_BYTES, 0xFF),
+        SpiNorFlashPartFake::Stored(START_OF_A_BLOCK, SECTOR_BYTES)
+    );
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ErasesOneBlockAndNoOther)
+{
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::Erases().size());
+    LONGS_EQUAL(START_OF_A_BLOCK, SpiNorFlashPartFake::Erases()[0]);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ErasesByTheCommandTheTableGivesForItsSmallestErase)
+{
+    SetEraseTypes(0, ERASE_64K_BY_D8, 0, 0);
+    SpiNorFlashPartFake::settings.eraseCommand = BLOCK_ERASE;
+    SpiNorFlashPartFake::settings.eraseBytes = BLOCK_BYTES;
+    Start();
+    CHECK_TRUE(Erase(2));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::Erases().size());
+    LONGS_EQUAL(2 * BLOCK_BYTES, SpiNorFlashPartFake::Erases()[0]);
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(SECTOR_ERASE));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, IsNoLongerBusyWhenAnEraseReturns)
+{
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    CHECK_FALSE(SpiNorFlashPartFake::IsBusy());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, ErasesTheLastBlockOfThePart)
+{
+    Start();
+    CHECK_TRUE(Erase(LAST_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, RefusesToEraseABlockPastTheEndOfThePart)
+{
+    Start();
+    CHECK_OUT_OF_RANGE(Erase(LAST_BLOCK + 1));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SendsNoEraseToAPartThatDidNotEnableWriting)
+{
+    Start();
+    SpiNorFlashPartFake::settings.ignoresWriteEnable = true;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_WRITE_REFUSED, Erase(A_BLOCK));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(SECTOR_ERASE));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseTheLongestTheTableSaysOneTakes)
+{
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE;
+    CHECK_TRUE(Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsWhatTheTableAllows)
+{
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE + 10;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, TakesTheTimeOfTheEraseTypeItUses)
+{
+    SetEraseTypes(ERASE_64K_BY_D8, 0, 0, ERASE_4K_BY_20);
+    SetDword(DWORD_ERASE_TIMES, ERASE_TIMES_WITH_THE_FOURTH_TYPE_SLOW);
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE;
+    CHECK_TRUE(Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseTheLongestEachUnitOfTimeGives)
+{
+    /* Twice a typical time of 20 ms, 2 x 16 ms, 2 x 128 ms and 2 x 1 s. */
+    const std::array<uint32_t, 4> countLessOne = {19, 1, 1, 1};
+    const std::array<uint32_t, 4> longest = {40, 64, 512, 4000};
+
+    for (uint32_t units = 0; units < 4U; units++)
+    {
+        StartOver();
+        SetFirstEraseTime(countLessOne.at(units), units, 0);
+        Start();
+        SpiNorFlashPartFake::settings.eraseMilliseconds = longest.at(units);
+        CHECK_TRUE(Erase(A_BLOCK));
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsTheLongestEachUnitOfTimeGives)
+{
+    const std::array<uint32_t, 4> countLessOne = {19, 1, 1, 1};
+    const std::array<uint32_t, 4> longest = {40, 64, 512, 4000};
+
+    for (uint32_t units = 0; units < 4U; units++)
+    {
+        StartOver();
+        SetFirstEraseTime(countLessOne.at(units), units, 0);
+        Start();
+        SpiNorFlashPartFake::settings.eraseMilliseconds = longest.at(units) + 10;
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseThreeSecondsWhereTheTableIsTooShortToSay)
+{
+    UseATableTooShortToGiveTimesOrAPageSize();
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = DEFAULT_ERASE_TIMEOUT - 10;
+    CHECK_TRUE(Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseAfterThreeSecondsWhereTheTableIsTooShortToSay)
+{
+    UseATableTooShortToGiveTimesOrAPageSize();
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = DEFAULT_ERASE_TIMEOUT + 10;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, SendsNoReadToAPartLeftBusyByAnEraseThatOutlastedItsTime)
+{
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
+    (void) Erase(A_BLOCK);
+    ErrorHandlerFake_Install(nullptr);
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Read(A_BLOCK, AN_OFFSET, 4));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(READ_DATA));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAnEraseWhenAnyWriteOfTheBusFails)
+{
+    for (int call = 1; call <= WRITES_IN_AN_ERASE; call++)
+    {
+        StartOver();
+        Start();
+        SpiNorFlashPartFake::FailWriteAt(call);
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Erase(A_BLOCK));
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAnEraseWhenAnyReadOfTheBusFails)
+{
+    for (int call = 1; call <= READS_IN_AN_ERASE; call++)
+    {
+        StartOver();
+        Start();
+        SpiNorFlashPartFake::FailReadAt(call);
+        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Erase(A_BLOCK));
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+    }
+}
+
+enum
+{
+    FIRST_DEVICE_BLOCK = 16,
+    DEVICE_BLOCKS = 4
+};
+
+/* A SolidSyslogNorFlashBlockDevice over the flash over the part: what a store
+ * is built on. The device's own behaviour is tested over NorFlashFake; this
+ * shows the two fit together. */
+// clang-format off
+TEST_GROUP_BASE(SolidSyslogSpiNorFlashUnderABlockDevice, SpiNorFlashTestBase)
+{
+    struct SolidSyslogBlockDevice* device = nullptr;
+
+    void setup() override
+    {
+        SetupPart();
+        CreateFlash();
+        struct SolidSyslogNorFlashBlockDeviceConfig config = {};
+        config.Flash = flash;
+        config.FirstBlock = FIRST_DEVICE_BLOCK;
+        config.BlockCount = DEVICE_BLOCKS;
+        device = SolidSyslogNorFlashBlockDevice_Create(&config);
+    }
+
+    void teardown() override
+    {
+        SolidSyslogNorFlashBlockDevice_Destroy(device);
+        TeardownPart();
+    }
+};
+
+// clang-format on
+
+TEST(SolidSyslogSpiNorFlashUnderABlockDevice, GivesTheDeviceABlockLessItsState)
+{
+    LONGS_EQUAL(
+        SECTOR_BYTES - SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE,
+        SolidSyslogBlockDevice_GetBlockSize(device)
+    );
+}
+
+TEST(SolidSyslogSpiNorFlashUnderABlockDevice, ErasesTheSectorOfABlockTheDeviceAcquires)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 1));
+    LONGS_EQUAL(1, SpiNorFlashPartFake::Erases().size());
+    LONGS_EQUAL((FIRST_DEVICE_BLOCK + 1) * SECTOR_BYTES, SpiNorFlashPartFake::Erases()[0]);
+    CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 1));
+}
+
+TEST(SolidSyslogSpiNorFlashUnderABlockDevice, ReadsBackWhatTheDeviceAppends)
+{
+    const std::vector<uint8_t> record = BytesOfPattern(1, MORE_THAN_A_PAGE);
+    std::vector<uint8_t> found(record.size());
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, record.data(), record.size()));
+    CHECK_TRUE(SolidSyslogBlockDevice_Read(device, 0, 0, found.data(), found.size()));
+    CHECK_BYTES_EQUAL(record, found);
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogSpiNorFlashUnderABlockDevice, FindsABlockAgainAfterARestart)
+{
+    const std::vector<uint8_t> record = {0x11, 0x22, 0x33};
+    size_t size = 0;
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 2));
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 2, record.data(), record.size()));
+
+    SolidSyslogNorFlashBlockDevice_Destroy(device);
+    DestroyFlash();
+    CreateFlash();
+    struct SolidSyslogNorFlashBlockDeviceConfig config = {};
+    config.Flash = flash;
+    config.FirstBlock = FIRST_DEVICE_BLOCK;
+    config.BlockCount = DEVICE_BLOCKS;
+    device = SolidSyslogNorFlashBlockDevice_Create(&config);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 2));
+    CHECK_TRUE(SolidSyslogBlockDevice_Size(device, 2, &size));
+    LONGS_EQUAL(record.size(), size);
+}
+
+TEST(SolidSyslogSpiNorFlashUnderABlockDevice, FailsTheDevicesAcquireWhenAnEraseOutlastsItsTime)
+{
+    SpiNorFlashPartFake::settings.eraseMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
+    CHECK_FALSE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_IO_FAILURE_REPORTED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT);
 }

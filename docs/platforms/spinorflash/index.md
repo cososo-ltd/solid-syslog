@@ -41,6 +41,21 @@ against writing, in part or in whole, and is refused at Create. The pack never
 writes a status register, so clearing the protection is a decision you take, in
 your own code, before you create the flash.
 
+### A part that stops answering costs a bounded wait
+
+An erase and a page program are each given the longest the part's own table
+says one takes, and no longer. One that outlasts it fails, as does any
+operation on a part that will not enable writing or has stopped answering, and
+each is reported as
+[`SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED`](../../api/SolidSyslogNorFlashCategories_8h.md)
+with a detail saying which. A program or an erase that fails freezes the store
+above, which keeps what it holds and does not wait on the part for ever; the
+[NorFlash](../../api/structSolidSyslogNorFlash.md) contract states what a
+failed read does.
+
+That bound is the pack's. A call of your bus that never returns is outside it,
+which is why the bus must bound its own time.
+
 ### The flash layer offers no confidentiality or tamper evidence
 
 Bytes are programmed as given. Detecting modification of a stored record, or

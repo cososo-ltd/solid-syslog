@@ -15,7 +15,9 @@ struct SolidSyslogSpiNorFlashBus;
  * difference: a program clears bits and sets none, one that runs past the end
  * of its page goes round to the page's start, neither a program nor an erase
  * happens unless writing was enabled just before it, and while it is busy it
- * answers nothing but a request for its status.
+ * answers nothing but a request for its status. Its status shows writing
+ * enabled from the enable until the program or erase that follows has
+ * finished.
  *
  * The part's geometry and its SFDP table are separate settings, as they are in
  * silicon: the part erases by eraseCommand and eraseBytes whatever its table
@@ -95,6 +97,10 @@ void FailNextRead();
 /* The same for the call that many from now, counting from 1. */
 void FailWriteAt(int call);
 void FailReadAt(int call);
+
+/* The part takes that many more commands and then stops answering, as one
+ * that has lost power does. */
+void GoQuietAfter(int commands);
 
 /* Puts bytes into the part as they are, with no erase needed first. */
 void Store(uint32_t address, const std::vector<uint8_t>& bytes);

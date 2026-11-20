@@ -35,6 +35,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  A block of the NorFlash is one erase of the smallest size the table
      *  lists, and the blocks cover the whole part.
      *
+     *  An erase and a page program are each allowed the longest the table says
+     *  one takes, rounded up to a whole millisecond, and one millisecond more.
      *  A table older than JESD216A carries no page size and no times. For such
      *  a part the page is taken as 256 bytes, an erase is allowed 3000 ms and a
      *  page program 20 ms.
@@ -53,7 +55,16 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      *  Every one of those returns SolidSyslogNullNorFlash, as an exhausted pool
      *  does, reported as SOLIDSYSLOG_CAT_POOL_EXHAUSTED. event->Detail is an
-     *  enum SolidSyslogSpiNorFlashErrors saying which. */
+     *  enum SolidSyslogSpiNorFlashErrors saying which.
+     *
+     *  Once created, a Read, a Program or an Erase that fails answers false and
+     *  is reported as SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED: an erase or a page
+     *  program the part has not finished in the time allowed, a part that will
+     *  not enable writing or has stopped answering, and a bus call that fails.
+     *  A part left busy by an operation that outlasted its time fails every
+     *  operation, at once, until it is ready again. A span that is not within
+     *  one block is reported as SOLIDSYSLOG_CAT_BAD_ARGUMENT, and nothing is
+     *  sent for it. */
     struct SolidSyslogNorFlash* SolidSyslogSpiNorFlash_Create(const struct SolidSyslogSpiNorFlashConfig* config);
 
     /** Release the pool slot. The part is not touched. */

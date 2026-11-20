@@ -49,6 +49,12 @@ struct State
 {
     bool selected = false;
     bool writeEnabled = false;
+    /* A program or an erase was begun and writing has not yet been disabled
+     * for its finishing. */
+    bool writeInProgress = false;
+    /* How many commands until the part stops answering. Zero is never. */
+    int commandsUntilQuiet = 0;
+    bool quiet = false;
     /* How many calls until the one that fails. Zero is none. */
     int writesUntilFailure = 0;
     int readsUntilFailure = 0;
@@ -105,8 +111,19 @@ uint32_t AddressIn(const std::vector<uint8_t>& frame)
            static_cast<uint32_t>(frame[3]);
 }
 
+/* A part disables writing as a program or an erase finishes. */
+void FinishAWriteThatHasHadItsTime()
+{
+    if (state->writeInProgress && !IsBusyNow())
+    {
+        state->writeInProgress = false;
+        state->writeEnabled = false;
+    }
+}
+
 uint8_t StatusByte()
 {
+    FinishAWriteThatHasHadItsTime();
     uint8_t status = SpiNorFlashPartFake::settings.status & static_cast<uint8_t>(~(STATUS_BUSY | STATUS_WRITE_ENABLED));
     if (IsBusyNow())
     {
@@ -122,6 +139,7 @@ uint8_t StatusByte()
 /* The first byte of a command: a busy part takes only a request for status. */
 void BeginCommand(uint8_t command)
 {
+    FinishAWriteThatHasHadItsTime();
     if (IsBusyNow() && (command != READ_STATUS))
     {
         state->commandsWhileBusy++;
@@ -210,7 +228,16 @@ void FinishCommand()
     state->written.clear();
     state->bytesRead = 0;
     state->ignoringCommand = false;
-    if (frame.empty() || ignored)
+    if (frame.empty())
+    {
+        return;
+    }
+    if (state->commandsUntilQuiet > 0)
+    {
+        state->commandsUntilQuiet--;
+        state->quiet = (state->commandsUntilQuiet == 0);
+    }
+    if (ignored)
     {
         return;
     }
@@ -236,7 +263,7 @@ void FinishCommand()
         {
             /* Writing was not enabled, so the part does nothing. */
         }
-        state->writeEnabled = false;
+        state->writeInProgress = state->writeEnabled;
     }
     else
     {
@@ -246,7 +273,7 @@ void FinishCommand()
 
 bool PartIsListening()
 {
-    return SpiNorFlashPartFake::settings.present && state->selected;
+    return SpiNorFlashPartFake::settings.present && !state->quiet && state->selected;
 }
 
 /* True for the call a countdown reaches one on. */
@@ -393,6 +420,12 @@ void FailWriteAt(int call)
 void FailReadAt(int call)
 {
     state->readsUntilFailure = call;
+}
+
+void GoQuietAfter(int commands)
+{
+    state->commandsUntilQuiet = commands;
+    state->quiet = (commands == 0);
 }
 
 void Store(uint32_t address, const std::vector<uint8_t>& bytes)
