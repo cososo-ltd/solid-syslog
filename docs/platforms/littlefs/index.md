@@ -90,8 +90,9 @@ A path of `SOLIDSYSLOG_MAX_PATH_SIZE` bytes or more is too long for the file to
 keep, so a file opened by one is left open across its writes. The store's own
 paths always fit.
 
-A file that will not open again is left closed and the write fails, with the
-failed open reported.
+A file that will not open again is left closed, with the failed open reported.
+The write still succeeds, because its bytes are on the media. The store finds
+the file closed at its next call and opens it then.
 
 ### A failed file call is reported, with its lfs code
 

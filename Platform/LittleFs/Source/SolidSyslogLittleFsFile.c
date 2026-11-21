@@ -41,7 +41,7 @@ static bool LittleFsFile_OpenPath(struct SolidSyslogLittleFsFile* self, const ch
 static inline void LittleFsFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeCode);
 static inline bool LittleFsFile_IsWholeTransfer(lfs_ssize_t transferred, size_t count);
 static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self);
-static inline bool LittleFsFile_OpenAgain(struct SolidSyslogLittleFsFile* self);
+static inline void LittleFsFile_OpenAgain(struct SolidSyslogLittleFsFile* self);
 static inline int LittleFsFile_SeekToStart(struct SolidSyslogLittleFsFile* self);
 
 bool SolidSyslogLittleFsFile_Initialise(
@@ -230,7 +230,7 @@ static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, si
     }
     if (committed)
     {
-        committed = LittleFsFile_OpenAgain(self);
+        LittleFsFile_OpenAgain(self);
     }
     return committed;
 }
@@ -265,17 +265,16 @@ static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self)
  *
  * The position is left at the start of the file. The File contract has the
  * consumer seek before each transfer. A file that will not open again is left
- * closed and the write fails, although its bytes are on the media: the next
- * call would otherwise be made on a closed file. */
-static inline bool LittleFsFile_OpenAgain(struct SolidSyslogLittleFsFile* self)
+ * closed, with the failed open reported, and the write still succeeds: its
+ * bytes are on the media, which is all a true return says. IsOpen then
+ * answers false. */
+static inline void LittleFsFile_OpenAgain(struct SolidSyslogLittleFsFile* self)
 {
-    bool open = true;
     if (self->IsPathKept)
     {
         LittleFsFile_Close(&self->Base);
-        open = LittleFsFile_OpenPath(self, self->Path);
+        (void) LittleFsFile_OpenPath(self, self->Path);
     }
-    return open;
 }
 
 static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)

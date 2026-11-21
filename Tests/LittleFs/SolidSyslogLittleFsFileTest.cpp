@@ -209,13 +209,22 @@ TEST(SolidSyslogLittleFsFile, AWriteWhoseSyncFailsLeavesTheFileAsItIs)
     LONGS_EQUAL(1, LittleFsFake_OpenCallCount());
 }
 
-TEST(SolidSyslogLittleFsFile, AWriteFailsWhenTheFileWillNotOpenAgain)
+TEST(SolidSyslogLittleFsFile, AWriteThatIsCommittedSucceedsThoughTheFileWillNotOpenAgain)
 {
     const unsigned char record[] = {'r', 'e', 'c'};
     CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
     LittleFsFake_SetOpenResult(LFS_ERR_IO);
 
-    CHECK_FALSE(SolidSyslogFile_Write(file, record, sizeof(record)));
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+}
+
+TEST(SolidSyslogLittleFsFile, AFileThatWillNotOpenAgainIsLeftClosed)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    LittleFsFake_SetOpenResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
 
     CHECK_FALSE(SolidSyslogFile_IsOpen(file));
 }
