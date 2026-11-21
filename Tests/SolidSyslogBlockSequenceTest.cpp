@@ -792,3 +792,20 @@ TEST(BlockSequenceRotation, AnEvictionBeforeTakingTheNextBlockThatFailsTakesNoBl
     LONGS_EQUAL(1, DisposeCallCount());
     LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
 }
+
+/* An eviction that fails at every start - a worn block that will not dispose -
+ * leaves a block of the device absent, so each restart still finds the run. */
+TEST(BlockSequenceRotation, AnEvictionThatFailsAtEveryStartLeavesTheNextStartTheRun)
+{
+    deviceBlocks = 4;
+    ResumeRun({1, 2, 3}, 2);
+    fakeDevice.failNextDispose = true;
+    TakeTheNextBlock();
+    (void) SolidSyslogBlockSequence_FinishRotation(sequence);
+    const std::set<size_t> left = existing;
+
+    ResumeRun(left, 2);
+
+    LONGS_EQUAL(1, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(3, SolidSyslogBlockSequence_WriteSequence(sequence));
+}
