@@ -6,6 +6,7 @@
 #include "SolidSyslogSender.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /* Shared FreeRTOS BDD-target pipeline.
@@ -69,6 +70,12 @@ struct BddTargetFreeRtosPipelineConfig
      * CreateStoreFile and DestroyStoreFile NULL. */
     struct SolidSyslogBlockDevice* (*CreateStoreBlockDevice)(void);
     void (*DestroyStoreBlockDevice)(struct SolidSyslogBlockDevice* device);
+
+    /* For a target that counts what its store's medium is asked to do: writes
+     * the counts into text as one line with no newline, and answers false
+     * while it has none to give. `set store report` prints the line. NULL on
+     * a target that does not count, where that command is refused. */
+    bool (*DescribeStoreMedium)(char* text, size_t size);
 };
 
 /* Install the platform seam. Call once from main() before the tasks run. */

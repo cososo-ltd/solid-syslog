@@ -271,6 +271,18 @@ finishes. A part that was erasing when the board was reset carries on, and
 answers only its status until it finishes, so the pack waits for that before
 asking it anything else.
 
+Both images count what they ask of the part, so that what a store costs it can
+be measured. `set store report` prints the counts as one line:
+
+```text
+[store] flash: erases 12, programs 340, reads 5120
+```
+
+Each is a count of calls at the pack's flash interface since the image started
+the part, where a program is one call whatever it spans. A sustained run
+through the store ends with what its messages cost in each. An image that keeps
+its store on the card keeps no count, and answers `set: invalid`.
+
 ### Under LittleFS
 
 `set store file` mounts LittleFS on the part, formatting first if it finds

@@ -353,6 +353,8 @@ add_executable(SolidSyslogBddTargetCmsis
     # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
     # HMAC/AES-GCM policies), and the store's.
     ${BDD_STORE_SOURCES}
+    # Counts what a store asks of a NOR flash, where the board has one.
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCountingNorFlash.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetKey.c

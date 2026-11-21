@@ -122,6 +122,7 @@ enum
 };
 
 static bool OnSet(const char* name, const char* value);
+static bool ReportStoreMedium(void);
 static bool RebuildWithFileStore(void);
 static struct SolidSyslogBlockDevice* CreateStoreBlockDevice(void);
 static void DestroyCurrentStore(void);
@@ -270,6 +271,10 @@ static bool OnSet(const char* name, const char* value)
              * it, and where the harness replaces the medium itself. */
             return !currentStoreIsFile && g_config->WipeStore();
         }
+        if (strcmp(value, "report") == 0)
+        {
+            return ReportStoreMedium();
+        }
         return false;
     }
     if (strcmp(name, "shutdown") == 0)
@@ -298,6 +303,20 @@ static bool OnSet(const char* name, const char* value)
         return (strcmp(value, "0") == 0) || (strcmp(value, "1") == 0);
     }
     return BddTargetTlsConfig_SetByName(name, value);
+}
+
+/* What the store's medium has been asked to do, on a target that counts it,
+ * for a harness measuring what the store costs. Runs on the interactive
+ * thread, so it may use stdio. */
+static bool ReportStoreMedium(void)
+{
+    char text[REPORT_LINE_CAPACITY];
+    bool described = (g_config->DescribeStoreMedium != NULL) && g_config->DescribeStoreMedium(text, sizeof(text));
+    if (described)
+    {
+        (void) printf("[store] %s\n", text);
+    }
+    return described;
 }
 
 /* `set store file` trigger: swap the default NullStore for a file-backed

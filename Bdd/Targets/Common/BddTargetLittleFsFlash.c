@@ -17,6 +17,7 @@
 #include "BddTargetLittleFsDisk.h"
 
 #include "BddTargetBoardSpiNorFlashBus.h"
+#include "BddTargetCountingNorFlash.h"
 #include "SolidSyslogNorFlash.h"
 #include "SolidSyslogNullNorFlash.h"
 #include "SolidSyslogSpiNorFlash.h"
@@ -49,6 +50,9 @@ static uint8_t lookaheadBuffer[BDD_TARGET_LITTLE_FS_DISK_LOOKAHEAD_SIZE];
 /* NULL until the part first starts, and again after a part that started and
  * did not fit the filesystem. */
 static struct SolidSyslogNorFlash* flash;
+/* The same flash with its erases, programs and reads counted on the way,
+ * which is the one the filesystem's operations go to. */
+static struct SolidSyslogNorFlash* countedFlash;
 /* So a mount retried over a part that will not start, or does not fit, says
  * so once. */
 static bool startFailureSaid;
@@ -118,6 +122,7 @@ static void LittleFsFlash_Start(void)
 {
     const struct SolidSyslogSpiNorFlashConfig config = {BddTargetBoardSpiNorFlashBus_Take()};
     flash = SolidSyslogSpiNorFlash_Create(&config);
+    countedFlash = BddTargetCountingNorFlash_Over(flash);
 
     if (!LittleFsFlash_IsStarted())
     {
@@ -184,7 +189,7 @@ static int FlashRead(const struct lfs_config* c, lfs_block_t block, lfs_off_t of
     int result = LFS_ERR_IO;
     if (LittleFsFlash_EnsureReady())
     {
-        result = LittleFsFlash_Judge("read", block, SolidSyslogNorFlash_Read(flash, block, off, buffer, size));
+        result = LittleFsFlash_Judge("read", block, SolidSyslogNorFlash_Read(countedFlash, block, off, buffer, size));
     }
     return result;
 }
@@ -206,7 +211,8 @@ static int FlashProg(const struct lfs_config* c, lfs_block_t block, lfs_off_t of
     int result = LFS_ERR_IO;
     if (LittleFsFlash_EnsureReady())
     {
-        result = LittleFsFlash_Judge("program", block, SolidSyslogNorFlash_Program(flash, block, off, buffer, size));
+        result =
+            LittleFsFlash_Judge("program", block, SolidSyslogNorFlash_Program(countedFlash, block, off, buffer, size));
     }
     return result;
 }
@@ -217,7 +223,7 @@ static int FlashErase(const struct lfs_config* c, lfs_block_t block)
     int result = LFS_ERR_IO;
     if (LittleFsFlash_EnsureReady())
     {
-        result = LittleFsFlash_Judge("erase", block, SolidSyslogNorFlash_Erase(flash, block));
+        result = LittleFsFlash_Judge("erase", block, SolidSyslogNorFlash_Erase(countedFlash, block));
     }
     return result;
 }

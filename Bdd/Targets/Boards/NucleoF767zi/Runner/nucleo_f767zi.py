@@ -30,6 +30,7 @@ _RESET_ATTEMPTS = 3
 
 _BANNER_STARTS = b"SolidSyslog BDD target"
 _BANNER = re.compile(r"NUCLEO-F767ZI, image (\S+), commit (\S+)")
+_STORE_REPORT = re.compile(r"\[store\] flash: erases (\d+), programs (\d+), reads (\d+)")
 _CACHED_ADDRESS = re.compile(r"^SOLIDSYSLOG_BDD_BOARD_IP:\w+=(\S+)$", re.MULTILINE)
 
 
@@ -265,6 +266,17 @@ def use_the_file_store(console, timeout_seconds):
     answer = output_to_prompt(console, timeout_seconds)
     if "set: invalid" in answer:
         raise RuntimeError(f"The board did not take the file store: {answer!r}")
+
+
+# Returns what the store's medium has been asked to do since the target
+# started it, as counts of erases, programs and reads. Returns None from an
+# image that keeps no count, which refuses the command.
+def store_report(console, timeout_seconds):
+    console.stdin.write("set store report\n")
+    counts = _STORE_REPORT.search(output_to_prompt(console, timeout_seconds))
+    if not counts:
+        return None
+    return {"erases": int(counts.group(1)), "programs": int(counts.group(2)), "reads": int(counts.group(3))}
 
 
 # Each image has its own name and build directory, so neither environment

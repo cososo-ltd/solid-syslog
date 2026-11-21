@@ -3,6 +3,7 @@
 #include "BddTargetNorFlashStore.h"
 
 #include "BddTargetBoardSpiNorFlashBus.h"
+#include "BddTargetCountingNorFlash.h"
 #include "BddTargetStoreSettings.h"
 #include "SolidSyslogBlockDevice.h"
 #include "SolidSyslogNorFlashBlockDevice.h"
@@ -21,6 +22,9 @@ enum
 
 /* NULL until the part is first asked to start, and again after Unmount. */
 static struct SolidSyslogNorFlash* flash;
+/* The same flash with its erases, programs and reads counted on the way,
+ * which is the one the block device is given. */
+static struct SolidSyslogNorFlash* countedFlash;
 
 static inline bool NorFlashStore_IsStarted(void);
 static struct SolidSyslogBlockDevice* NorFlashStore_CreateDevice(size_t blockSize);
@@ -31,6 +35,7 @@ bool BddTargetNorFlashStore_Mount(void)
     {
         const struct SolidSyslogSpiNorFlashConfig config = {BddTargetBoardSpiNorFlashBus_Take()};
         flash = SolidSyslogSpiNorFlash_Create(&config);
+        countedFlash = BddTargetCountingNorFlash_Over(flash);
     }
     return NorFlashStore_IsStarted();
 }
@@ -49,6 +54,7 @@ void BddTargetNorFlashStore_Unmount(void)
         SolidSyslogSpiNorFlash_Destroy(flash);
     }
     flash = NULL;
+    countedFlash = NULL;
 }
 
 struct SolidSyslogBlockDevice* BddTargetNorFlashStore_CreateBlockDevice(void)
@@ -64,7 +70,7 @@ struct SolidSyslogBlockDevice* BddTargetNorFlashStore_CreateBlockDevice(void)
 static struct SolidSyslogBlockDevice* NorFlashStore_CreateDevice(size_t blockSize)
 {
     const struct SolidSyslogNorFlashBlockDeviceConfig config = {
-        .Flash = flash,
+        .Flash = countedFlash,
         .FirstBlock = FIRST_BLOCK,
         .BlockCount = BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT,
         .BlockSize = blockSize,

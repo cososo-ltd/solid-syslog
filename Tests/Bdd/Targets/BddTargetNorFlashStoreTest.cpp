@@ -1,4 +1,5 @@
 #include "BddTargetBoardSpiNorFlashBus.h"
+#include "BddTargetCountingNorFlash.h"
 #include "BddTargetNorFlashStore.h"
 #include "BddTargetStoreSettings.h"
 #include "ErrorHandlerFake.h"
@@ -18,7 +19,9 @@ enum
     FLASH_BLOCK_DATA_BYTES = FLASH_BLOCK_BYTES - SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE,
 
     FIRST_BLOCK = 0,
-    LAST_BLOCK = BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT - 1
+    LAST_BLOCK = BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT - 1,
+
+    COUNTS_BYTES = 80
 };
 
 /* The board seam the store takes its bus from. Here the board is the fake
@@ -207,4 +210,14 @@ TEST(BddTargetNorFlashStore, WipeAnswersFalseWhenABlockCannotBeDisposedOf)
     SpiNorFlashPartFake::settings.ignoresWriteEnable = true;
 
     CHECK_FALSE(BddTargetNorFlashStore_Wipe());
+}
+
+TEST(BddTargetNorFlashStore, WhatTheStoreAsksOfThePartIsCounted)
+{
+    char counts[COUNTS_BYTES] = {};
+    MountAndAcquire(FIRST_BLOCK);
+
+    BddTargetCountingNorFlash_Describe(counts, sizeof(counts));
+
+    STRCMP_CONTAINS("erases 1,", counts);
 }

@@ -3,6 +3,7 @@ set(BDD_TARGET_TEST_SOURCES
     BddTargetAppNameTest.cpp
     BddTargetCalendarTest.cpp
     BddTargetClockTest.cpp
+    BddTargetCountingNorFlashTest.cpp
     BddTargetCustomSdTest.cpp
     BddTargetErrorTextTest.cpp
     BddTargetIpsTest.cpp
@@ -24,6 +25,7 @@ set(BDD_TARGET_PRODUCTION_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetAppName.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCalendar.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetClock.c
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCountingNorFlash.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetCustomSd.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetIps.c
@@ -92,7 +94,7 @@ endif()
 
 add_executable(BddTargetTests ${BDD_TARGET_TEST_SOURCES})
 
-target_link_libraries(BddTargetTests PRIVATE ${PROJECT_NAME} CppUTest CppUTestExt Threads::Threads)
+target_link_libraries(BddTargetTests PRIVATE ${PROJECT_NAME} NorFlashFake CppUTest CppUTestExt Threads::Threads)
 
 if(SOLIDSYSLOG_SPINORFLASH)
     target_link_libraries(BddTargetTests PRIVATE SpiNorFlashPartFake ErrorHandlerFake)

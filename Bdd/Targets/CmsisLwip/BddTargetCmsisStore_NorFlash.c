@@ -4,6 +4,7 @@
 
 #include "BddTargetCmsisStore.h"
 
+#include "BddTargetCountingNorFlash.h"
 #include "BddTargetFreeRtosPipeline.h"
 #include "BddTargetNorFlashStore.h"
 
@@ -14,4 +15,5 @@ void BddTargetCmsisStore_Fill(struct BddTargetFreeRtosPipelineConfig* config)
     config->WipeStore = BddTargetNorFlashStore_Wipe;
     config->CreateStoreBlockDevice = BddTargetNorFlashStore_CreateBlockDevice;
     config->DestroyStoreBlockDevice = BddTargetNorFlashStore_DestroyBlockDevice;
+    config->DescribeStoreMedium = BddTargetCountingNorFlash_Describe;
 }
