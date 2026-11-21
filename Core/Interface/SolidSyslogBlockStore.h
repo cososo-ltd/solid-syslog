@@ -79,7 +79,14 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  eviction that fails freezes the store with one block more than this
          *  on the media, that record in it, and the next start keeps it. The
          *  write is still answered as not retained, so the record is sent
-         *  directly as well, and the next start may send it again. */
+         *  directly as well, and the next start may send it again.
+         *
+         *  A start that finds more blocks than this - after such a freeze, a
+         *  power cut before the eviction, or a ceiling lowered between runs -
+         *  keeps them all. Under Oldest the first write that needs a new block
+         *  evicts the oldest down to the ceiling before taking it, reported as
+         *  any eviction is; under Newest and Halt the store is full, and
+         *  refuses as a full store does. */
         size_t MaxBlocks;
         /** Asked, with DiscardPolicyContext, on a write the full store cannot
          *  fit: Oldest evicts the oldest block, Newest and Halt refuse the record.
