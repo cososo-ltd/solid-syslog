@@ -12,6 +12,7 @@
 #include "SolidSyslogFileDefinition.h"
 #include "SolidSyslogLittleFsFileErrors.h"
 #include "SolidSyslogPrival.h"
+#include "SolidSyslogTunables.h"
 #include "lfs.h"
 
 struct SolidSyslogLittleFsFile
@@ -20,6 +21,8 @@ struct SolidSyslogLittleFsFile
     lfs_t* Filesystem;
     lfs_file_t Handle;
     struct lfs_file_config OpenConfig;
+    char Path[SOLIDSYSLOG_MAX_PATH_SIZE]; /* the open file's, for a write to open it again */
+    bool IsPathKept; /* false where the path was too long for Path */
     bool IsOpen;
 };
 

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "SolidSyslogError.h"
 #include "SolidSyslogErrorCategory.h"
@@ -35,9 +36,12 @@ static bool LittleFsFile_Delete(struct SolidSyslogFile* base, const char* path);
 
 static inline struct SolidSyslogLittleFsFile* LittleFsFile_SelfFromBase(struct SolidSyslogFile* base);
 static inline bool LittleFsFile_IsValidSetup(const lfs_t* filesystem, const void* fileBuffer, uint32_t fileBufferBytes);
+static inline void LittleFsFile_KeepPath(struct SolidSyslogLittleFsFile* self, const char* path);
+static bool LittleFsFile_OpenPath(struct SolidSyslogLittleFsFile* self, const char* path);
 static inline void LittleFsFile_ReportFailure(enum SolidSyslogFileErrors code, int nativeCode);
 static inline bool LittleFsFile_IsWholeTransfer(lfs_ssize_t transferred, size_t count);
 static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self);
+static inline void LittleFsFile_OpenAgain(struct SolidSyslogLittleFsFile* self);
 static inline int LittleFsFile_SeekToStart(struct SolidSyslogLittleFsFile* self);
 
 bool SolidSyslogLittleFsFile_Initialise(
@@ -67,6 +71,7 @@ bool SolidSyslogLittleFsFile_Initialise(
         self->Base.Exists = LittleFsFile_Exists;
         self->Base.Delete = LittleFsFile_Delete;
         self->IsOpen = false;
+        self->IsPathKept = false;
     }
     return valid;
 }
@@ -118,6 +123,24 @@ void SolidSyslogLittleFsFile_Cleanup(struct SolidSyslogFile* base)
 static bool LittleFsFile_Open(struct SolidSyslogFile* base, const char* path)
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
+    LittleFsFile_KeepPath(self, path);
+    return LittleFsFile_OpenPath(self, path);
+}
+
+/* The path is kept so a write can open the file again. One too long to keep
+ * still opens; it is the write that then leaves the file as it is. */
+static inline void LittleFsFile_KeepPath(struct SolidSyslogLittleFsFile* self, const char* path)
+{
+    size_t length = strlen(path);
+    self->IsPathKept = length < sizeof(self->Path);
+    if (self->IsPathKept)
+    {
+        (void) memcpy(self->Path, path, length + 1U);
+    }
+}
+
+static bool LittleFsFile_OpenPath(struct SolidSyslogLittleFsFile* self, const char* path)
+{
     int result =
         lfs_file_opencfg(self->Filesystem, &self->Handle, path, LITTLEFSFILE_READ_WRITE_OR_CREATE, &self->OpenConfig);
     self->IsOpen = (result == LFS_ERR_OK);
@@ -193,20 +216,24 @@ static bool LittleFsFile_Write(struct SolidSyslogFile* base, const void* buf, si
 {
     struct SolidSyslogLittleFsFile* self = LittleFsFile_SelfFromBase(base);
     lfs_ssize_t written = lfs_file_write(self->Filesystem, &self->Handle, buf, (lfs_size_t) count);
-    bool wroteAllData = LittleFsFile_IsWholeTransfer(written, count);
-    if (wroteAllData)
+    bool committed = false;
+    if (LittleFsFile_IsWholeTransfer(written, count))
     {
         /* The File contract makes a true return mean the bytes are on the media:
          * the BlockStore treats it as durable across power loss, so the sync is
          * part of the write rather than something a caller arranges. */
-        wroteAllData = LittleFsFile_Sync(self);
+        committed = LittleFsFile_Sync(self);
     }
     else
     {
         /* A short write has no code behind it. */
         LittleFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_WRITE_FAILED, (written < 0) ? (int) written : LFS_ERR_OK);
     }
-    return wroteAllData;
+    if (committed)
+    {
+        LittleFsFile_OpenAgain(self);
+    }
+    return committed;
 }
 
 static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self)
@@ -217,6 +244,39 @@ static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self)
         LittleFsFile_ReportFailure(SOLIDSYSLOG_FILE_ERROR_SYNC_FAILED, result);
     }
     return result == LFS_ERR_OK;
+}
+
+/* Closes the file and opens it again, after every write that reached the
+ * media.
+ *
+ * An open file carries LittleFS's copy of the directory block its entry is in,
+ * and that copy says whether the space after the block's last commit is known
+ * to be erased. LittleFS decides that as it opens the file and, as of v2.11.3,
+ * does not decide it again while the file stays open. A file opened straight
+ * after a commit that ran to the end of the block is told the space is not
+ * erased, and every commit made through it from then on erases a block and
+ * rewrites the directory into it. A store keeps one file open for as long as
+ * it is appending to it, so one such open would double the erases of every
+ * record that follows. LittleFS has it as
+ * https://github.com/littlefs-project/littlefs/issues/1247
+ *
+ * Opening the file again after each write limits that to a single commit, and
+ * that commit had no room left in the block, so it would have erased anyway.
+ * The cost is in reads: LittleFS finds the file by its path again, reading the
+ * metadata of every directory from the root down to the file's own.
+ *
+ * The position is left at the start of the file. The File contract has the
+ * consumer seek before each transfer. A file that will not open again is left
+ * closed, with the failed open reported, and the write still succeeds: its
+ * bytes are on the media, which is all a true return says. IsOpen then
+ * answers false. */
+static inline void LittleFsFile_OpenAgain(struct SolidSyslogLittleFsFile* self)
+{
+    if (self->IsPathKept)
+    {
+        LittleFsFile_Close(&self->Base);
+        (void) LittleFsFile_OpenPath(self, self->Path);
+    }
 }
 
 static void LittleFsFile_SeekTo(struct SolidSyslogFile* base, size_t offset)

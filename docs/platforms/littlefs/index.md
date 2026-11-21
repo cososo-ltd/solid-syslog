@@ -68,6 +68,35 @@ guarantee still rests on your block-device callbacks reporting a program or eras
 as complete only once it is, and on the flash part behaving as its datasheet says
 through a power cut.
 
+### Every write closes the file and opens it again
+
+LittleFS decides whether a directory block still has erased space as it opens
+a file and, as of v2.11.3, does not decide again while the file stays open. A
+file opened straight after a commit that ran to the end of its directory block
+would have every later commit erase a block, and the store keeps one file open
+for as long as it appends to it. Opening the file again after each write limits
+that to one commit.
+
+LittleFS has this as
+[issue 1247](https://github.com/littlefs-project/littlefs/issues/1247), with a
+fix proposed in
+[pull request 1248](https://github.com/littlefs-project/littlefs/pull/1248).
+The file is opened again after each write until a LittleFS release carries that
+fix.
+
+It costs reads, not erases. Each write ends with LittleFS finding the file by
+its path again, which reads the metadata of every directory from the root down
+to the file's own. A path with more directories in it, or a directory with more
+files, costs more.
+
+A path of `SOLIDSYSLOG_MAX_PATH_SIZE` bytes or more is too long for the file to
+keep, so a file opened by one is left open across its writes. The store's own
+paths always fit.
+
+A file that will not open again is left closed, with the failed open reported.
+The write still succeeds, because its bytes are on the media. The store finds
+the file closed at its next call and opens it then.
+
 ### A failed file call is reported, with its lfs code
 
 Each call the file makes on an open file, and the open itself, is reported

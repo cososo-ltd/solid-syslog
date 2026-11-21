@@ -1,6 +1,8 @@
 #include "CppUTest/TestHarness.h"
 #include "TestUtils.h"
 
+#include <string>
+
 extern "C"
 {
 #include "ErrorHandlerFake.h"
@@ -14,6 +16,7 @@ extern "C"
 #include "SolidSyslogNullFile.h"
 #include "SolidSyslogPrival.h"
 #include "SolidSyslogError.h"
+#include "SolidSyslogTunables.h"
 #include "lfs.h"
 }
 
@@ -143,6 +146,99 @@ TEST(SolidSyslogLittleFsFile, WriteFailsWhenFewerBytesAreAccepted)
 
     CHECK_FALSE(SolidSyslogFile_Write(file, record, sizeof(record)));
     LONGS_EQUAL(0, LittleFsFake_SyncCallCount());
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteOpensTheFileAgain)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "records.log"));
+
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+
+    LONGS_EQUAL(1, LittleFsFake_CloseCallCount());
+    LONGS_EQUAL(2, LittleFsFake_OpenCallCount());
+    STRCMP_EQUAL("records.log", LittleFsFake_LastOpenPath());
+    CHECK_TRUE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteOpensThePathItWasGivenThoughTheCallersCopyHasChanged)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    char path[] = "records.log";
+    CHECK_TRUE(SolidSyslogFile_Open(file, path));
+    path[0] = 'X';
+
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+
+    STRCMP_EQUAL("records.log", LittleFsFake_LastOpenPath());
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteLeavesOpenAFileWhosePathIsTooLongToKeep)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    const std::string path(SOLIDSYSLOG_MAX_PATH_SIZE, 'p');
+    CHECK_TRUE(SolidSyslogFile_Open(file, path.c_str()));
+
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+
+    LONGS_EQUAL(0, LittleFsFake_CloseCallCount());
+    LONGS_EQUAL(1, LittleFsFake_OpenCallCount());
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteOpensAgainAPathThatJustFits)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    const std::string path(SOLIDSYSLOG_MAX_PATH_SIZE - 1U, 'p');
+    CHECK_TRUE(SolidSyslogFile_Open(file, path.c_str()));
+
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+
+    LONGS_EQUAL(2, LittleFsFake_OpenCallCount());
+    STRCMP_EQUAL(path.c_str(), LittleFsFake_LastOpenPath());
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteWhoseSyncFailsLeavesTheFileAsItIs)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    LittleFsFake_SetSyncResult(LFS_ERR_IO);
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+
+    CHECK_FALSE(SolidSyslogFile_Write(file, record, sizeof(record)));
+
+    LONGS_EQUAL(0, LittleFsFake_CloseCallCount());
+    LONGS_EQUAL(1, LittleFsFake_OpenCallCount());
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteThatIsCommittedSucceedsThoughTheFileWillNotOpenAgain)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    LittleFsFake_SetOpenResult(LFS_ERR_IO);
+
+    CHECK_TRUE(SolidSyslogFile_Write(file, record, sizeof(record)));
+}
+
+TEST(SolidSyslogLittleFsFile, AFileThatWillNotOpenAgainIsLeftClosed)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    LittleFsFake_SetOpenResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    CHECK_FALSE(SolidSyslogFile_IsOpen(file));
+}
+
+TEST(SolidSyslogLittleFsFile, AWriteThatCannotOpenTheFileAgainReportsTheFailedOpenAndItsCode)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "test.log"));
+    ErrorHandlerFake_Install(nullptr);
+    LittleFsFake_SetOpenResult(LFS_ERR_IO);
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    CHECK_FAILURE_REPORTED_WITH_CODE(SOLIDSYSLOG_FILE_ERROR_OPEN_FAILED, LFS_ERR_IO);
 }
 
 TEST(SolidSyslogLittleFsFile, SeekToPositionsFromTheStart)
@@ -380,6 +476,18 @@ TEST(SolidSyslogLittleFsFile, DestroyClosesAFileLeftOpen)
     /* The group's teardown destroys again; the slot is already free and the
        handle already carries the Null vtable, so that is a safe no-op. */
     file = SolidSyslogNullFile_Get();
+}
+
+TEST(SolidSyslogLittleFsFile, AFileCreatedInAUsedSlotKeepsNoPathFromTheOneBeforeIt)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "old.log"));
+    SolidSyslogLittleFsFile_Destroy(file);
+    file = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, sizeof(fileBuffer));
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    LONGS_EQUAL(1, LittleFsFake_OpenCallCount());
 }
 
 TEST(SolidSyslogLittleFsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)

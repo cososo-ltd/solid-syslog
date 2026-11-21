@@ -42,6 +42,7 @@ add_executable(LittleFsIntegrationTests
     LittleFsDisk.c
     LittleFsDiskTest.cpp
     SolidSyslogLittleFsDurabilityTest.cpp
+    SolidSyslogLittleFsFileWearTest.cpp
     SolidSyslogLittleFsWearTest.cpp
 )
 
