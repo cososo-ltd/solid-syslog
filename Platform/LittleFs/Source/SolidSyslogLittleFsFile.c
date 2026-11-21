@@ -262,7 +262,8 @@ static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self)
  *
  * Opening the file again after each write limits that to a single commit, and
  * that commit had no room left in the block, so it would have erased anyway.
- * The cost is in reads: the directory block is read back each time.
+ * The cost is in reads: LittleFS finds the file by its path again, reading the
+ * metadata of every directory from the root down to the file's own.
  *
  * The position is left at the start of the file. The File contract has the
  * consumer seek before each transfer. A file that will not open again is left

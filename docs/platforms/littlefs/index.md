@@ -84,7 +84,10 @@ fix proposed in
 The file is opened again after each write until a LittleFS release carries that
 fix.
 
-It costs reads, not erases: the directory block is read back on every write.
+It costs reads, not erases. Each write ends with LittleFS finding the file by
+its path again, which reads the metadata of every directory from the root down
+to the file's own. A path with more directories in it, or a directory with more
+files, costs more.
 
 A path of `SOLIDSYSLOG_MAX_PATH_SIZE` bytes or more is too long for the file to
 keep, so a file opened by one is left open across its writes. The store's own
