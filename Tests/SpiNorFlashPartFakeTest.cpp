@@ -1,5 +1,6 @@
 #include "SolidSyslogSpiNorFlashBus.h"
 #include "SpiNorFlashPartFake.h"
+#include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
 #include <cstddef>
@@ -29,19 +30,16 @@ enum
     BLOCK_BYTES = 65536,
     START_OF_A_BLOCK = 0x040000,
     SFDP_TABLE_ADDRESS = 0x80,
-    ERASE_MILLISECONDS = 50
+    ERASE_MILLISECONDS = 50,
+
+    EIGHT_MEBIBYTES = 8 * 1024 * 1024,
+    NOT_READ = 0xA5
 };
 
-using Bytes = std::vector<uint8_t>;
+/* Two readings before the count of milliseconds wraps to zero. */
+static const uint32_t JUST_BEFORE_THE_WRAP = UINT32_MAX - 1U;
 
-/* The references keep an argument that sends a command from sending it twice. */
-#define CHECK_BYTES_EQUAL(expected, actual)                                           \
-    {                                                                                 \
-        const Bytes& expectedBytes = (expected);                                      \
-        const Bytes& actualBytes = (actual);                                          \
-        LONGS_EQUAL(expectedBytes.size(), actualBytes.size());                        \
-        MEMCMP_EQUAL(expectedBytes.data(), actualBytes.data(), expectedBytes.size()); \
-    }
+using Bytes = std::vector<uint8_t>;
 
 // clang-format off
 TEST_GROUP(SpiNorFlashPartFake)
@@ -60,10 +58,12 @@ TEST_GROUP(SpiNorFlashPartFake)
         SpiNorFlashPartFake::Release();
     }
 
-    /* One command: what is written, then how many bytes are read back. */
+    /* One command: what is written, then how many bytes are read back. The
+     * bytes start as something no test expects, so a read that left them
+     * alone shows. */
     [[nodiscard]] Bytes Command(const Bytes& out, size_t readCount = 0) const
     {
-        Bytes in(readCount);
+        Bytes in(readCount, NOT_READ);
         bus->Select(bus);
         (void) bus->Write(bus, out.data(), out.size());
         (void) bus->Read(bus, in.data(), in.size());
@@ -274,6 +274,20 @@ TEST(SpiNorFlashPartFake, RecordsTheProgramsItCarriesOut)
     LONGS_EQUAL(2, SpiNorFlashPartFake::Programs()[0].length);
 }
 
+TEST(SpiNorFlashPartFake, RecordsAProgramAtTheAddressItWasSent)
+{
+    SpiNorFlashPartFake::settings.capacityBytes = EIGHT_MEBIBYTES;
+    Program(EIGHT_MEBIBYTES + AN_ADDRESS, {0x12});
+    LONGS_EQUAL(EIGHT_MEBIBYTES + AN_ADDRESS, SpiNorFlashPartFake::Programs()[0].address);
+}
+
+TEST(SpiNorFlashPartFake, ProgramsAnAddressPastItsEndAsOneWrappedToItsStart)
+{
+    SpiNorFlashPartFake::settings.capacityBytes = EIGHT_MEBIBYTES;
+    Program(EIGHT_MEBIBYTES + AN_ADDRESS, {0x12});
+    BYTES_EQUAL(0x12, SpiNorFlashPartFake::Stored(AN_ADDRESS, 1)[0]);
+}
+
 TEST(SpiNorFlashPartFake, ClearsBitsAndSetsNoneWhenItPrograms)
 {
     SpiNorFlashPartFake::Store(AN_ADDRESS, {0xF0});
@@ -329,6 +343,21 @@ TEST(SpiNorFlashPartFake, RecordsTheErasesItCarriesOut)
     LONGS_EQUAL(START_OF_A_SECTOR, SpiNorFlashPartFake::Erases()[0]);
 }
 
+TEST(SpiNorFlashPartFake, RecordsAnEraseAtTheAddressItWasSent)
+{
+    SpiNorFlashPartFake::settings.capacityBytes = EIGHT_MEBIBYTES;
+    Erase(SECTOR_ERASE, EIGHT_MEBIBYTES + START_OF_A_SECTOR);
+    LONGS_EQUAL(EIGHT_MEBIBYTES + START_OF_A_SECTOR, SpiNorFlashPartFake::Erases()[0]);
+}
+
+TEST(SpiNorFlashPartFake, ErasesAnAddressPastItsEndAsOneWrappedToItsStart)
+{
+    SpiNorFlashPartFake::settings.capacityBytes = EIGHT_MEBIBYTES;
+    SpiNorFlashPartFake::Store(START_OF_A_SECTOR, {0x00});
+    Erase(SECTOR_ERASE, EIGHT_MEBIBYTES + START_OF_A_SECTOR);
+    BYTES_EQUAL(0xFF, SpiNorFlashPartFake::Stored(START_OF_A_SECTOR, 1)[0]);
+}
+
 TEST(SpiNorFlashPartFake, ErasesNothingUnlessWritingWasEnabled)
 {
     SpiNorFlashPartFake::Store(START_OF_A_SECTOR, {0x00});
@@ -376,6 +405,55 @@ TEST(SpiNorFlashPartFake, IsBusyUntilTheTimeAProgramTakesHasPassed)
     SpiNorFlashPartFake::settings.programMilliseconds = 3;
     Program(AN_ADDRESS, {0x00});
     LetTimePass(2);
+    CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
+    LetTimePass(1);
+    CHECK_FALSE(SpiNorFlashPartFake::IsBusy());
+}
+
+TEST(SpiNorFlashPartFake, StartsItsClockWhereATestPutsIt)
+{
+    SpiNorFlashPartFake::StartClockAt(JUST_BEFORE_THE_WRAP);
+    LONGS_EQUAL(JUST_BEFORE_THE_WRAP, SpiNorFlashPartFake::Milliseconds());
+    LONGS_EQUAL(JUST_BEFORE_THE_WRAP, bus->Milliseconds(bus));
+}
+
+TEST(SpiNorFlashPartFake, WrapsItsCountOfMillisecondsToZero)
+{
+    SpiNorFlashPartFake::StartClockAt(JUST_BEFORE_THE_WRAP);
+    LetTimePass(2);
+    LONGS_EQUAL(0, SpiNorFlashPartFake::Milliseconds());
+}
+
+TEST(SpiNorFlashPartFake, IsBusyForTheTimeAProgramTakesAcrossAWrapOfTheCount)
+{
+    SpiNorFlashPartFake::StartClockAt(JUST_BEFORE_THE_WRAP);
+    SpiNorFlashPartFake::settings.programMilliseconds = 5;
+    Program(AN_ADDRESS, {0x00});
+    CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
+    LetTimePass(4);
+    CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
+    LetTimePass(1);
+    CHECK_FALSE(SpiNorFlashPartFake::IsBusy());
+}
+
+TEST(SpiNorFlashPartFake, IsBusyForTheTimeAnEraseTakesAcrossAWrapOfTheCount)
+{
+    SpiNorFlashPartFake::StartClockAt(JUST_BEFORE_THE_WRAP);
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_MILLISECONDS;
+    Erase(SECTOR_ERASE, START_OF_A_SECTOR);
+    CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
+    LetTimePass(ERASE_MILLISECONDS - 1);
+    CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
+    LetTimePass(1);
+    CHECK_FALSE(SpiNorFlashPartFake::IsBusy());
+}
+
+TEST(SpiNorFlashPartFake, IsBusyFromPowerUpAcrossAWrapOfTheCount)
+{
+    SpiNorFlashPartFake::StartClockAt(JUST_BEFORE_THE_WRAP);
+    SpiNorFlashPartFake::settings.busyAtPowerUpMilliseconds = 5;
+    CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
+    LetTimePass(4);
     CHECK_TRUE(SpiNorFlashPartFake::IsBusy());
     LetTimePass(1);
     CHECK_FALSE(SpiNorFlashPartFake::IsBusy());
@@ -438,6 +516,17 @@ TEST(SpiNorFlashPartFake, CarriesOutNothingOnceItHasStoppedAnswering)
     (void) Command({WRITE_ENABLE});
     (void) Command(WithAddress(PAGE_PROGRAM, AN_ADDRESS, {0x00}));
     BYTES_EQUAL(0xFF, SpiNorFlashPartFake::Stored(AN_ADDRESS, 1)[0]);
+}
+
+TEST(SpiNorFlashPartFake, ForgetsACommandItWasTakingWhenItLostPower)
+{
+    const uint8_t command = WRITE_ENABLE;
+    bus->Select(bus);
+    (void) bus->Write(bus, &command, 1);
+    SpiNorFlashPartFake::settings.present = false;
+    bus->Deselect(bus);
+    SpiNorFlashPartFake::settings.present = true;
+    BYTES_EQUAL(0x00, Status());
 }
 
 TEST(SpiNorFlashPartFake, IsBusyFromPowerUpForTheTimeItIsGiven)

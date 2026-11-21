@@ -88,6 +88,10 @@ void Reset();
  * next Reset. */
 void Release();
 
+/* Powers the part up with the count of milliseconds at that value and not at
+ * zero, for a test of a count about to wrap. Call it before anything else. */
+void StartClockAt(uint32_t milliseconds);
+
 /* The bus the part is on. The same table every time. */
 SolidSyslogSpiNorFlashBus* Bus();
 
@@ -112,9 +116,12 @@ int CountOf(uint8_t command);
 /* Commands other than a request for status that arrived while it was busy,
  * which a real part ignores. */
 int CommandsWhileBusy();
-/* Every page program the part carried out, in order. */
+/* Every page program the part carried out, in order, each at the address it
+ * was sent. One past the end of the part is recorded as sent, though the part
+ * programmed the address it wraps to. */
 const std::vector<Program>& Programs();
-/* The address of every erase the part carried out, as it was sent. */
+/* The address of every erase the part carried out, as it was sent, in the
+ * same way. */
 const std::vector<uint32_t>& Erases();
 
 bool IsBusy();

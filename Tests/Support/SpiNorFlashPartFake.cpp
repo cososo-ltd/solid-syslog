@@ -59,7 +59,13 @@ struct State
     int writesUntilFailure = 0;
     int readsUntilFailure = 0;
     uint32_t milliseconds = 0;
-    uint32_t busyUntil = 0;
+    /* What the count read as the part was powered, and as its last program
+     * or erase began, with how long that one takes. Kept as a start and a
+     * length, not as the count it ends at, so that being busy holds across a
+     * wrap of the count. */
+    uint32_t poweredUpAt = 0;
+    uint32_t busySince = 0;
+    uint32_t busyFor = 0;
     /* What has been written since the select fell, and how many bytes have
      * been read since then. */
     std::vector<uint8_t> written;
@@ -98,11 +104,20 @@ void SetByteAt(uint32_t address, uint8_t value)
     }
 }
 
+/* Unsigned differences, so each holds when the count wraps. */
 bool IsBusyNow()
 {
+    const uint32_t sincePowerUp = state->milliseconds - state->poweredUpAt;
+    const uint32_t sinceItBegan = state->milliseconds - state->busySince;
     return SpiNorFlashPartFake::settings.staysBusy ||
-           (state->milliseconds < SpiNorFlashPartFake::settings.busyAtPowerUpMilliseconds) ||
-           (state->milliseconds < state->busyUntil);
+           (sincePowerUp < SpiNorFlashPartFake::settings.busyAtPowerUpMilliseconds) ||
+           (sinceItBegan < state->busyFor);
+}
+
+void BeBusyFor(uint32_t milliseconds)
+{
+    state->busySince = state->milliseconds;
+    state->busyFor = milliseconds;
 }
 
 uint32_t AddressIn(const std::vector<uint8_t>& frame)
@@ -206,8 +221,8 @@ void CarryOutProgram(const std::vector<uint8_t>& frame)
         const uint32_t at = page + static_cast<uint32_t>((address - page + i) % pageBytes);
         SetByteAt(at, ByteAt(at) & frame[COMMAND_AND_ADDRESS + i]);
     }
-    state->programs.push_back({address, length});
-    state->busyUntil = state->milliseconds + SpiNorFlashPartFake::settings.programMilliseconds;
+    state->programs.push_back({AddressIn(frame), length});
+    BeBusyFor(SpiNorFlashPartFake::settings.programMilliseconds);
 }
 
 void CarryOutErase(const std::vector<uint8_t>& frame)
@@ -216,18 +231,13 @@ void CarryOutErase(const std::vector<uint8_t>& frame)
     const uint32_t address = AddressIn(frame) % SpiNorFlashPartFake::settings.capacityBytes;
     const uint32_t first = address - (address % eraseBytes);
     state->cells.erase(state->cells.lower_bound(first), state->cells.lower_bound(first + eraseBytes));
-    state->erases.push_back(address);
-    state->busyUntil = state->milliseconds + SpiNorFlashPartFake::settings.eraseMilliseconds;
+    state->erases.push_back(AddressIn(frame));
+    BeBusyFor(SpiNorFlashPartFake::settings.eraseMilliseconds);
 }
 
 /* A part does what it was told when its select rises. */
-void FinishCommand()
+void FinishCommand(const std::vector<uint8_t>& frame, bool ignored)
 {
-    const std::vector<uint8_t> frame = state->written;
-    const bool ignored = state->ignoringCommand;
-    state->written.clear();
-    state->bytesRead = 0;
-    state->ignoringCommand = false;
     if (frame.empty())
     {
         return;
@@ -306,9 +316,17 @@ extern "C"
     void Deselect(struct SolidSyslogSpiNorFlashBus* base)
     {
         (void) base;
+        /* What was sent is forgotten whether or not the part is still there
+         * to act on it. A part that lost power part-way through a command
+         * comes back knowing nothing of it. */
+        const std::vector<uint8_t> frame = state->written;
+        const bool ignored = state->ignoringCommand;
+        state->written.clear();
+        state->bytesRead = 0;
+        state->ignoringCommand = false;
         if (PartIsListening())
         {
-            FinishCommand();
+            FinishCommand(frame, ignored);
         }
         state->selected = false;
     }
@@ -395,6 +413,12 @@ void Reset()
 void Release()
 {
     state.reset();
+}
+
+void StartClockAt(uint32_t milliseconds)
+{
+    state->milliseconds = milliseconds;
+    state->poweredUpAt = milliseconds;
 }
 
 SolidSyslogSpiNorFlashBus* Bus()

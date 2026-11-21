@@ -71,8 +71,15 @@ static const uint32_t EXPONENT_OF_2_MEBIBYTES = 24U;
 static const uint32_t EXPONENT_OF_16_MEBIBYTES = 27U;
 static const uint32_t EXPONENT_OF_32_MEBIBYTES = 28U;
 
-/* A macro, so a failure is reported at the test's own line. */
-#define CHECK_CREATED() CHECK_TRUE(flash != SolidSyslogNullNorFlash_Get())
+/* Macros, so a failure is reported at the test's own line. A handle that is
+ * NULL is no more a flash than the Null flash is. */
+#define CHECK_IS_A_FLASH(handle)                               \
+    {                                                          \
+        CHECK_TRUE((handle) != nullptr);                       \
+        CHECK_TRUE((handle) != SolidSyslogNullNorFlash_Get()); \
+    }
+
+#define CHECK_CREATED() CHECK_IS_A_FLASH(flash)
 
 #define CHECK_NOT_CREATED() POINTERS_EQUAL(SolidSyslogNullNorFlash_Get(), flash)
 
@@ -170,6 +177,18 @@ TEST_BASE(SpiNorFlashTestBase)
     static void SetAddressBytes(uint32_t field)
     {
         SetDword(DWORD_ADDRESS_BYTES, (Dword(DWORD_ADDRESS_BYTES) & ~ADDRESS_BYTES_MASK) | field);
+    }
+
+    static std::array<struct SolidSyslogSpiNorFlashBus, 5> TheFakesBusWithEachMemberMissingInTurn()
+    {
+        const struct SolidSyslogSpiNorFlashBus whole = *SpiNorFlashPartFake::Bus();
+        std::array<struct SolidSyslogSpiNorFlashBus, 5> incomplete = {whole, whole, whole, whole, whole};
+        incomplete[0].Select = nullptr;
+        incomplete[1].Deselect = nullptr;
+        incomplete[2].Write = nullptr;
+        incomplete[3].Read = nullptr;
+        incomplete[4].Milliseconds = nullptr;
+        return incomplete;
     }
 };
 
@@ -509,15 +528,7 @@ TEST(SolidSyslogSpiNorFlash, RefusesAConfigWithNoBus)
 
 TEST(SolidSyslogSpiNorFlash, RefusesABusWithAnyMemberNotFilled)
 {
-    const struct SolidSyslogSpiNorFlashBus whole = *SpiNorFlashPartFake::Bus();
-    std::array<struct SolidSyslogSpiNorFlashBus, 5> incomplete = {whole, whole, whole, whole, whole};
-    incomplete[0].Select = nullptr;
-    incomplete[1].Deselect = nullptr;
-    incomplete[2].Write = nullptr;
-    incomplete[3].Read = nullptr;
-    incomplete[4].Milliseconds = nullptr;
-
-    for (auto& bus : incomplete)
+    for (auto& bus : TheFakesBusWithEachMemberMissingInTurn())
     {
         ErrorHandlerFake_Install(nullptr);
         const struct SolidSyslogSpiNorFlashConfig config = {&bus};
@@ -528,9 +539,17 @@ TEST(SolidSyslogSpiNorFlash, RefusesABusWithAnyMemberNotFilled)
 
 TEST(SolidSyslogSpiNorFlash, AsksNothingOfABusItRefuses)
 {
-    const struct SolidSyslogSpiNorFlashConfig config = {nullptr};
-    flash = SolidSyslogSpiNorFlash_Create(&config);
-    LONGS_EQUAL(0, SpiNorFlashPartFake::Commands().size());
+    /* Each is the fake's own bus but for the member missing, so a call of
+     * any member that is there would show. */
+    for (auto& bus : TheFakesBusWithEachMemberMissingInTurn())
+    {
+        const struct SolidSyslogSpiNorFlashConfig config = {&bus};
+        flash = SolidSyslogSpiNorFlash_Create(&config);
+        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
+        LONGS_EQUAL(0, SpiNorFlashPartFake::Commands().size());
+        LONGS_EQUAL(0, SpiNorFlashPartFake::TransfersWhileDeselected());
+        LONGS_EQUAL(0, SpiNorFlashPartFake::Milliseconds());
+    }
 }
 
 TEST(SolidSyslogSpiNorFlash, IsTheNullFlashOnceDestroyed)
@@ -655,9 +674,14 @@ TEST(SolidSyslogSpiNorFlashPool, GivesBackTheSlotOfAPartItRefuses)
 {
     SpiNorFlashPartFake::settings.answersSfdp = false;
     CreateFlash();
+    CHECK_NOT_CREATED();
     SpiNorFlashPartFake::settings.answersSfdp = true;
     FillPool();
-    CHECK_TRUE(pooled[0] != SolidSyslogNullNorFlash_Get());
+    /* Every slot: one the refusal kept would leave the last without. */
+    for (const auto* handle : pooled)
+    {
+        CHECK_IS_A_FLASH(handle);
+    }
 }
 
 TEST(SolidSyslogSpiNorFlashPool, HasASlotAgainOnceAFlashIsDestroyed)
@@ -712,6 +736,9 @@ static const uint32_t PROGRAM_TIME_UNITS_ARE_LONG = 0x00002000U;
 /* The 4 KiB erase's time, 64 ms typical and 14 times that at most, moved
  * from the first type's field to the fourth's, with 1 ms left in the first. */
 static const uint32_t ERASE_TIMES_WITH_THE_FOURTH_TYPE_SLOW = 0x46000006U;
+/* Near enough to where the count of milliseconds wraps that an erase begun
+ * then is still going after it. */
+static const uint32_t A_LITTLE_BEFORE_THE_WRAP = UINT32_MAX - 100U;
 
 #define CHECK_OPERATION_FAILED(detail, succeeded) \
     {                                             \
@@ -728,14 +755,6 @@ static const uint32_t ERASE_TIMES_WITH_THE_FOURTH_TYPE_SLOW = 0x46000006U;
             SOLIDSYSLOG_CAT_BAD_ARGUMENT,                \
             SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE \
         );                                               \
-    }
-
-#define CHECK_BYTES_EQUAL(expected, actual)                                           \
-    {                                                                                 \
-        const std::vector<uint8_t>& expectedBytes = (expected);                       \
-        const std::vector<uint8_t>& actualBytes = (actual);                           \
-        LONGS_EQUAL(expectedBytes.size(), actualBytes.size());                        \
-        MEMCMP_EQUAL(expectedBytes.data(), actualBytes.data(), expectedBytes.size()); \
     }
 
 static std::vector<uint8_t> BytesOfPattern(uint8_t first, size_t count)
@@ -1074,6 +1093,8 @@ TEST(SolidSyslogSpiNorFlashOperations, StopsAtThePageThatFails)
     SpiNorFlashPartFake::settings.programMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
     CHECK_FALSE(Program(A_BLOCK, LAST_BYTE_OF_A_PAGE, {0x01, 0x02}));
     LONGS_EQUAL(1, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
+    /* The second page was not sent to a part too busy to take it, either. */
+    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, SendsNoProgramToAPartLeftBusyByOneThatOutlastedItsTime)
@@ -1222,6 +1243,22 @@ TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsWhatTheTableA
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
 }
 
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseItsTimeAcrossAWrapOfTheCountOfMilliseconds)
+{
+    SpiNorFlashPartFake::StartClockAt(A_LITTLE_BEFORE_THE_WRAP);
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE;
+    CHECK_TRUE(Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsItsTimeAcrossAWrapOfTheCountOfMilliseconds)
+{
+    SpiNorFlashPartFake::StartClockAt(A_LITTLE_BEFORE_THE_WRAP);
+    Start();
+    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE + 10;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
+}
+
 TEST(SolidSyslogSpiNorFlashOperations, TakesTheTimeOfTheEraseTypeItUses)
 {
     SetEraseTypes(ERASE_64K_BY_D8, 0, 0, ERASE_4K_BY_20);
@@ -1329,6 +1366,19 @@ TEST_GROUP_BASE(SolidSyslogSpiNorFlashUnderABlockDevice, SpiNorFlashTestBase)
     void setup() override
     {
         SetupPart();
+        CreateDeviceOverANewFlash();
+    }
+
+    void teardown() override
+    {
+        SolidSyslogNorFlashBlockDevice_Destroy(device);
+        TeardownPart();
+    }
+
+    /* The one place the device's run of blocks is given, so a restart finds
+     * the run the test began with. */
+    void CreateDeviceOverANewFlash()
+    {
         CreateFlash();
         struct SolidSyslogNorFlashBlockDeviceConfig config = {};
         config.Flash = flash;
@@ -1337,10 +1387,11 @@ TEST_GROUP_BASE(SolidSyslogSpiNorFlashUnderABlockDevice, SpiNorFlashTestBase)
         device = SolidSyslogNorFlashBlockDevice_Create(&config);
     }
 
-    void teardown() override
+    void Restart()
     {
         SolidSyslogNorFlashBlockDevice_Destroy(device);
-        TeardownPart();
+        DestroyFlash();
+        CreateDeviceOverANewFlash();
     }
 };
 
@@ -1380,14 +1431,7 @@ TEST(SolidSyslogSpiNorFlashUnderABlockDevice, FindsABlockAgainAfterARestart)
     CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 2));
     CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 2, record.data(), record.size()));
 
-    SolidSyslogNorFlashBlockDevice_Destroy(device);
-    DestroyFlash();
-    CreateFlash();
-    struct SolidSyslogNorFlashBlockDeviceConfig config = {};
-    config.Flash = flash;
-    config.FirstBlock = FIRST_DEVICE_BLOCK;
-    config.BlockCount = DEVICE_BLOCKS;
-    device = SolidSyslogNorFlashBlockDevice_Create(&config);
+    Restart();
 
     CHECK_TRUE(SolidSyslogBlockDevice_Exists(device, 2));
     CHECK_TRUE(SolidSyslogBlockDevice_Size(device, 2, &size));
