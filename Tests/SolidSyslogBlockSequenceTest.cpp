@@ -751,3 +751,17 @@ TEST(BlockSequenceRotation, ADisposeFailureDuringRotationStopsTheEvictionAfterIt
         std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) { return call.type == CallType::Dispose; })
     );
 }
+
+TEST(BlockSequenceRotation, ARunResumedOverItsCeilingEvictsItsOldestBeforeTakingTheNextBlock)
+{
+    SolidSyslogBlockSequence_Destroy(sequence);
+    existing = {0, 1, 2};
+    sizes = {{0, SIMULATED_RECORD_SIZE}, {1, SIMULATED_RECORD_SIZE}, {2, SIMULATED_RECORD_SIZE}};
+    BuildSequence(ROTATION_BLOCK_SIZE, 2);
+    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+    calls.clear();
+
+    TakeTheNextBlock();
+
+    CHECK_TRUE(WasDisposed(0));
+}
