@@ -198,8 +198,8 @@ releases, `example-sweep.yml` keeps them honest against `main`:
    then is that branch with the pin and the image overridden, committing
    nothing.
 4. The stack answers with `sweep-finished`, naming the commit, the verdict,
-   the stages that failed, a stage that did not apply and the stages whose
-   `app/` differs.
+   the stages that failed, a stage that did not apply, and the stages whose
+   `app/` differs or that the comparison could not be made.
 5. Anything but a clean rebase and a green sweep opens one issue per stack
    here, labelled `example-sweep`, naming what failed and the commits since the
    stack's last green sweep. Each later red sweep comments on it, and the next

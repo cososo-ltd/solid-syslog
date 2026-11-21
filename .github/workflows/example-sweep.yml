@@ -122,6 +122,7 @@ jobs:
       REBASE: ${{ github.event.client_payload.rebase }}
       CONFLICT: ${{ github.event.client_payload.conflict }}
       CONFLICT_COMMIT: ${{ github.event.client_payload.conflict_commit }}
+      INVARIANT: ${{ github.event.client_payload.invariant }}
       DIFFERING: ${{ github.event.client_payload.differing }}
       RUN_URL: ${{ github.event.client_payload.run_url }}
     steps:
@@ -160,6 +161,10 @@ jobs:
               echo
             elif [ "$REBASE" = failure ]; then
               echo "\`wip/next\` could not be rebased, and nothing was swept. The run says why."
+              echo
+            fi
+            if [ "$INVARIANT" = failure ]; then
+              echo "\`app/\` could not be compared with the sibling stack's. The run says why."
               echo
             fi
             if [ -n "$DIFFERING" ]; then
