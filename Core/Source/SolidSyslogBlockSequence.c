@@ -435,25 +435,29 @@ static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* bl
  * store calls once the record that needed the new block is appended. */
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
+    bool acquired = false;
     blockSequence->EvictedUnsent = false;
 
-    while (BlockSequence_ExceedsMaxBlocks(blockSequence))
+    while (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
     {
         (void) BlockSequence_DiscardOldestBlock(blockSequence);
     }
 
-    size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
-    bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
+    if (!blockSequence->DeviceFailed)
+    {
+        size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
+        acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
 
-    if (acquired)
-    {
-        BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
-        blockSequence->RotationToFinish = true;
-    }
-    else
-    {
-        /* Only a device failure gets here, and AcquireEmptyBlock has noted it: a
-         * full store that keeps what it has never rotates. */
+        if (acquired)
+        {
+            BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
+            blockSequence->RotationToFinish = true;
+        }
+        else
+        {
+            /* Only a device failure gets here, and AcquireEmptyBlock has noted it: a
+             * full store that keeps what it has never rotates. */
+        }
     }
 
     return acquired;
