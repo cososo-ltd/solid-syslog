@@ -44,12 +44,13 @@ what becomes of a write to a block the part protects.
 
 ### A part that stops answering costs a bounded wait
 
-An erase and a page program are each given a fixed time limit, which
-[`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md)
-states. One that outlasts it fails, as does any operation on a part that will
-not enable writing or whose line is no longer driven, and each is reported as
+An erase and a page program are each given a fixed time limit. One that
+outlasts it fails and is reported as
 [`SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED`](../../api/SolidSyslogNorFlashCategories_8h.md)
-with a detail saying which. A program or an erase that fails freezes the store
+with a detail saying which.
+[`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md)
+states the limits, the other faults reported the same way, and what the pack
+does not catch. A program or an erase that fails freezes the store
 above, which keeps what it holds and does not wait on the part for ever; the
 [NorFlash](../../api/structSolidSyslogNorFlash.md) contract states what a
 failed read does.
