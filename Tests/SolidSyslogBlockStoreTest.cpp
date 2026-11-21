@@ -1451,6 +1451,21 @@ TEST(SolidSyslogBlockStoreRotation, ARunResumedOverItsCeilingUnderNewestIsKeptUn
     CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
 }
 
+TEST(SolidSyslogBlockStoreRotation, AnEvictionBeforeATakeThatFailsIsReportedAheadOfTheFreeze)
+{
+    ResumeThreeBlocksUnderACeilingOfTwo(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    WriteMaxMsg(); /* evicts block 00, then taking block 03 fails */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, ErrorHandlerFake_CategoryAt(0));
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED, ErrorHandlerFake_DetailAt(0));
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_FROZEN, ErrorHandlerFake_CategoryAt(1));
+}
+
 TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleBlocksExist)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
