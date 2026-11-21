@@ -19,9 +19,12 @@ struct SolidSyslogBlockDevice;
 enum
 {
     MIN_MAX_BLOCKS = 2U,
-    /* Kept free below the device's block count: a rotation takes its new block
-     * before the oldest goes, and a failed eviction leaves the run that one
-     * block over the ceiling; and a resume needs an absent one to find the run. */
+    /* Kept free below the device's block count, so that a resume always finds
+     * an absent block to mark where the run starts. A rotation takes its new
+     * block before the oldest goes, so the run is one over its ceiling until it
+     * goes; a cut or a failed eviction can leave it so. A rotation that starts
+     * over its ceiling evicts down to it first, so it never takes the last absent
+     * block. */
     SPARE_BLOCKS = 2U
 };
 
@@ -199,9 +202,10 @@ static inline void BlockSequence_StartReadingBlock(struct SolidSyslogBlockSequen
  * the store at its ceiling the free gap is two slots, and a hole of two or
  * more consecutive blocks is then read as the gap instead.
  *
- * There is no gap when every block is present: maxBlocks is clamped two short
- * of the device's blocks, so that cannot arise from the library's own
- * rotation, and the run is then read as starting at block 0. */
+ * There is no gap when every block is present, and the run is then read as
+ * starting at block 0. The library's own rotation never leaves one: maxBlocks
+ * is clamped two short of the device's blocks, and a rotation that finds the
+ * run over its ceiling evicts down to it before taking a block. */
 static bool BlockSequence_ScanForExistingBlocks(struct SolidSyslogBlockSequence* blockSequence)
 {
     struct Scan scan = BlockSequence_ScanForBlockPresence(blockSequence);

@@ -226,8 +226,9 @@ TEST_GROUP_BASE(BlockSequenceScan, BlockSequenceTestBase)
 
 TEST(BlockSequenceScan, MaxBlocksStopsShortOfEverySequenceNumber)
 {
-    /* Configured at 99. A failed eviction leaves one block over the ceiling, and
-     * a resume needs an absent sequence number to find where the run starts. */
+    /* Configured at 99. A rotation is one block over the ceiling until its
+     * eviction, and a resume needs an absent sequence number to find where the
+     * run starts. */
     LONGS_EQUAL(98 * 1000, SolidSyslogBlockSequence_TotalBytes(sequence));
 }
 
