@@ -250,13 +250,14 @@ static inline bool LittleFsFile_Sync(struct SolidSyslogLittleFsFile* self)
  *
  * An open file carries LittleFS's copy of the directory block its entry is in,
  * and that copy says whether the space after the block's last commit is known
- * to be erased. LittleFS decides that as it opens the file and, as of v2.11,
+ * to be erased. LittleFS decides that as it opens the file and, as of v2.11.3,
  * does not decide it again while the file stays open. A file opened straight
  * after a commit that ran to the end of the block is told the space is not
  * erased, and every commit made through it from then on erases a block and
  * rewrites the directory into it. A store keeps one file open for as long as
  * it is appending to it, so one such open would double the erases of every
- * record that follows.
+ * record that follows. LittleFS has it as
+ * https://github.com/littlefs-project/littlefs/issues/1247
  *
  * Opening the file again after each write limits that to a single commit, and
  * that commit had no room left in the block, so it would have erased anyway.

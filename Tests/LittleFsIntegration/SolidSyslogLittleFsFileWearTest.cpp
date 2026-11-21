@@ -16,7 +16,7 @@ extern "C"
  *
  * LittleFS decides whether a directory block still has erased space as it
  * opens a file. A file opened straight after a commit that ran to the end of
- * the block is told there is none, and as of v2.11 every commit through it
+ * the block is told there is none, and as of v2.11.3 every commit through it
  * then erases a block for as long as it stays open. SolidSyslogLittleFsFile
  * opens the file again after each write, and the first test pins what that
  * buys.
@@ -25,7 +25,9 @@ extern "C"
  * opened again, so it shows what LittleFS does left alone. It fails for one of
  * two reasons, and either is worth knowing: the opens below no longer reach
  * that state, so the first test proves nothing; or LittleFS no longer behaves
- * this way, and the file need not be opened again. */
+ * this way, and the file need not be opened again. The second is what a
+ * LittleFS carrying this fix brings:
+ * https://github.com/littlefs-project/littlefs/pull/1248 */
 
 enum
 {

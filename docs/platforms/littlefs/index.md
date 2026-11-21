@@ -71,11 +71,18 @@ through a power cut.
 ### Every write closes the file and opens it again
 
 LittleFS decides whether a directory block still has erased space as it opens
-a file and, as of the version this pack is tested with, does not decide again
-while the file stays open. A file opened straight after a commit that ran to
-the end of its directory block would have every later commit erase a block,
-and the store keeps one file open for as long as it appends to it. Opening the
-file again after each write limits that to one commit.
+a file and, as of v2.11.3, does not decide again while the file stays open. A
+file opened straight after a commit that ran to the end of its directory block
+would have every later commit erase a block, and the store keeps one file open
+for as long as it appends to it. Opening the file again after each write limits
+that to one commit.
+
+LittleFS has this as
+[issue 1247](https://github.com/littlefs-project/littlefs/issues/1247), with a
+fix proposed in
+[pull request 1248](https://github.com/littlefs-project/littlefs/pull/1248).
+The file is opened again after each write until a LittleFS release carries that
+fix.
 
 It costs reads, not erases: the directory block is read back on every write.
 
