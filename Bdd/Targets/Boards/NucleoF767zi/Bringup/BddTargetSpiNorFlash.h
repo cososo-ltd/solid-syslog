@@ -9,7 +9,7 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* A SPI NOR flash, as bytes that are read, programmed and erased, over the
+    /* An SPI NOR flash, as bytes that are read, programmed and erased, over the
      * bus the board supplies (BddTargetBoardFlashBus.h). One part. It is the
      * bring-up image's own driver, with no SolidSyslog in it, so that a fault
      * in the board or the part can be told from one in the library's flash

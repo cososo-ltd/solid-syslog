@@ -289,10 +289,13 @@ the store is on the part. That `set store file` prints one line of LittleFS's
 own before it answers, `error: Corrupted dir pair at {0x0, 0x1}`, which is its
 mount finding the two blocks erased.
 
-Any fault with the part is a console line beginning `[board] flash:`, with the
-block where there is one and the reason, such as no answer, timed out or would
-not enable writing. A missing part, or a wire out of the breadboard, gives
-`[board] flash: the part did not start: no answer`. `set store file` then says
+Any fault with the part is two console lines. The pack reports the reason
+through the library's error handler, as a line beginning `[solidsyslog]` that
+names `SpiNorFlash` and ends with the reason, such as `NO_ANSWER`, `TIMED_OUT`
+or `WRITE_REFUSED`. The target then says which operation met it, as a line
+beginning `[board] flash:`, with the block where there is one. A missing part,
+or a wire out of the breadboard, gives `NO_ANSWER` and then
+`[board] flash: the part did not start`. `set store file` then says
 `[solidsyslog] littlefs mount failed`, answers `set: invalid` and leaves the
 target on the store it started with.
 

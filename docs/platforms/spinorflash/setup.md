@@ -54,9 +54,10 @@ long as the wait its header states where a reset has left the part part-way
 through an erase.
 
 **Every bus call must come back.** The pack bounds how long it waits for the
-part, by your count of milliseconds. It cannot bound a transfer that never
-returns, so give each of your bus functions a time limit of its own and answer
-false when it passes.
+part, by your count of milliseconds. It cannot bound a call that never
+returns, so give each of your bus functions a time limit of its own. `Write`
+and `Read` answer false when theirs passes; the other three have no failure to
+report.
 
 **Another device on the same wires is yours to keep quiet.** Whatever it needs
 before it will stay off the bus while the part is selected, do before Create,

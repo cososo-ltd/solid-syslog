@@ -1,4 +1,4 @@
-/* LittleFS block device over a SPI NOR flash - see BddTargetLittleFsDisk.h.
+/* LittleFS block device over an SPI NOR flash - see BddTargetLittleFsDisk.h.
  *
  * The flash is the SpiNorFlash pack's, over the bus the board supplies
  * (BddTargetBoardSpiNorFlashBus.h): the same flash code a store kept

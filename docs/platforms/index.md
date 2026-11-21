@@ -28,7 +28,7 @@ vtable.
 | [LittleFS](littlefs/index.md) | LittleFS | | | | ● | | | | |
 | [FreeRTOS-Plus-FAT](plusfat/index.md) | FreeRTOS-Plus-FAT | | | | ● | | | | |
 | [C11 atomics](stdatomic/index.md) | `<stdatomic.h>` | | | | | | | ● | |
-| [SPI NOR flash](spinorflash/index.md) | A SPI NOR flash part, by its SFDP table | | | | | ● | | | |
+| [SPI NOR flash](spinorflash/index.md) | An SPI NOR flash part, by its SFDP table | | | | | ● | | | |
 
 The at-rest-crypto column is the keyed policies (HMAC-SHA256, AES-256-GCM); the
 unkeyed CRC-16 policy is Core.

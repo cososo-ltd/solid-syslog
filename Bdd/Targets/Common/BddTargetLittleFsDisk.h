@@ -19,7 +19,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *   value across the block. A program there can raise bits as well as
      *   clear them, which a real part cannot, so this device is a functional
      *   check and not a validation of flash behaviour.
-     * - BddTargetLittleFsFlash.c, over a SPI NOR flash driven by the
+     * - BddTargetLittleFsFlash.c, over an SPI NOR flash driven by the
      *   library's SpiNorFlash pack, where a block is one of the part's sectors
      *   and an erase is the part's own.
      *

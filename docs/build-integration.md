@@ -103,7 +103,7 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 | `FatFs` | file | ChaN FatFs |
 | `PlusFat` | file | FreeRTOS-Plus-FAT |
 | `LittleFs` | file | LittleFS |
-| `SpiNorFlash` | flash | a SPI NOR flash part, over a bus you supply |
+| `SpiNorFlash` | flash | an SPI NOR flash part, over a bus you supply |
 
 <!-- /platforms -->
 

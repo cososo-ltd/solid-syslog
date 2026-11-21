@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-/* A SPI NOR flash, and the bus it is on, for the tests of the flash driver.
+/* An SPI NOR flash, and the bus it is on, for the tests of the flash driver.
  * It defines the BddTargetBoardFlashBus_* functions the driver calls.
  *
  * It behaves as a Winbond W25Q128 would until a test changes one of the

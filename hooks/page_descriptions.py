@@ -188,7 +188,7 @@ DESCRIPTIONS = {
         "SFDP table."
     ),
     "platforms/spinorflash/setup.md": (
-        "Put the store on a SPI NOR flash part: the five bus functions you "
+        "Put the store on an SPI NOR flash part: the five bus functions you "
         "supply, creating the flash, and what will catch you out."
     ),
     "platforms/stdatomic/index.md": (
