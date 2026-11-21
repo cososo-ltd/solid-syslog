@@ -3,7 +3,7 @@
  */
 
 /** @file
- *  A NorFlash over a SPI NOR flash part, for a SolidSyslogNorFlashBlockDevice.
+ *  A NorFlash over an SPI NOR flash part, for a SolidSyslogNorFlashBlockDevice.
  *  It learns the part from the part's own SFDP table (JESD216), so it is not
  *  written for one maker's parts, and it refuses at Create a part it cannot
  *  drive. */
@@ -27,10 +27,11 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *
      *  Create talks to the part. It first waits for the part to be ready, for up
      *  to 3000 ms: a part that was erasing when the processor was reset carries
-     *  on, and answers nothing else until it finishes. It then reads the basic
-     *  parameter table, and no other, for the part's capacity, its address
-     *  width, its smallest erase and that erase's command, its page size, and
-     *  the longest an erase and a page program take.
+     *  on, and answers nothing else until it finishes. It then reads the SFDP
+     *  header and every parameter header, and one table, the basic parameter
+     *  table, for the part's capacity, its address width, its smallest erase
+     *  and that erase's command, its page size, and the longest an erase and a
+     *  page program take.
      *
      *  A block of the NorFlash is one erase of the smallest size the table
      *  lists, and the blocks cover the whole part.
@@ -46,9 +47,19 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *   - a part with no SFDP table, or one whose table is not understood;
      *   - a part of more than 16 MiB, the most three address bytes reach;
      *   - a part that takes only four-byte addresses;
+     *   - a part whose SFDP has a parameter header for a sector map. Such a
+     *     part does not erase the same way throughout, and the map that says
+     *     where each erase applies is not read;
      *   - a part with any of bits 2 to 6 of its first status register set,
      *     which protect some or all of it from being written. The flash never
      *     writes a status register, so it never unlocks a part.
+     *
+     *  Protection a part holds anywhere else is not seen: a bit of another
+     *  status register, or a lock on each block. Such a part is created, and
+     *  a program or an erase it ignores answers true. The
+     *  SolidSyslogNorFlashBlockDevice above reads back what it programs, and
+     *  reports the difference as
+     *  SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_VERIFY_FAILED.
      *
      *  A part that does not answer, one still busy after the wait, and a bus
      *  call that fails are each reported as SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED.

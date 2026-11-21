@@ -19,6 +19,8 @@ enum
     /* The SFDP header and the first parameter header after it, which is the
      * basic table's. */
     SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_HEADER_BYTES = 16,
+    /* One parameter header. Every table an SFDP has is announced by one. */
+    SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_PARAMETER_HEADER_BYTES = 8,
     /* As much of the basic table as is read: its first eleven DWORDs, the last
      * of which carries the page size. */
     SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_TABLE_BYTES = 44
@@ -30,6 +32,8 @@ struct SolidSyslogSpiNorFlashSfdpTable
     uint32_t Address;
     /* Never more than SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_TABLE_BYTES. */
     size_t Bytes;
+    /* How many parameter headers the SFDP has after the basic table's. */
+    size_t FurtherParameterHeaders;
 };
 
 struct SolidSyslogSpiNorFlashGeometry
@@ -54,6 +58,15 @@ bool SolidSyslogSpiNorFlashSfdp_Locate(
     struct SolidSyslogSpiNorFlashSfdpTable* table,
     enum SolidSyslogSpiNorFlashErrors* fault
 );
+
+/* The SFDP address of a parameter header after the basic table's. They are
+ * numbered from 1, up to the FurtherParameterHeaders Locate gave. */
+uint32_t SolidSyslogSpiNorFlashSfdp_ParameterHeaderAddress(size_t number);
+
+/* True where those SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_PARAMETER_HEADER_BYTES are
+ * the parameter header of a sector map: the table of a part whose erases are
+ * not the same throughout. */
+bool SolidSyslogSpiNorFlashSfdp_IsSectorMapHeader(const uint8_t* parameterHeader);
 
 /* Reads the part's geometry from the table->Bytes of the basic table that
  * Locate found. Where the table is too short to give a page size and times,

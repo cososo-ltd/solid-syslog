@@ -234,6 +234,20 @@ TEST(SpiNorFlashPartFake, LeavesTheLineAloneWhenItHasNoSfdp)
     CHECK_BYTES_EQUAL(Bytes({0xFF, 0xFF, 0xFF, 0xFF}), Sfdp(0, 4));
 }
 
+TEST(SpiNorFlashPartFake, RecordsWhatIsReadOfItsSfdp)
+{
+    (void) Sfdp(0x10, 8);
+    LONGS_EQUAL(1, SpiNorFlashPartFake::SfdpReads().size());
+    LONGS_EQUAL(0x10, SpiNorFlashPartFake::SfdpReads()[0].address);
+    LONGS_EQUAL(8, SpiNorFlashPartFake::SfdpReads()[0].length);
+}
+
+TEST(SpiNorFlashPartFake, RecordsNoReadOfItsSfdpForAnotherCommand)
+{
+    (void) Command(WithAddress(READ_DATA, AN_ADDRESS), 2);
+    LONGS_EQUAL(0, SpiNorFlashPartFake::SfdpReads().size());
+}
+
 TEST(SpiNorFlashPartFake, ReadsErasedBytesFromABlankPart)
 {
     CHECK_BYTES_EQUAL(Bytes({0xFF, 0xFF}), Command(WithAddress(READ_DATA, AN_ADDRESS), 2));

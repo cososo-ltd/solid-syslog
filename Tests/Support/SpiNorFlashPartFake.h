@@ -8,7 +8,7 @@
 
 struct SolidSyslogSpiNorFlashBus;
 
-/* A SPI NOR flash part, and the bus it is on, behind the SpiNorFlashBus seam.
+/* An SPI NOR flash part, and the bus it is on, behind the SpiNorFlashBus seam.
  *
  * Until a test changes a setting it is the Winbond W25Q128JV the SFDP table
  * below was read from. It behaves as a part does where a driver could tell the
@@ -80,6 +80,12 @@ struct Program
     size_t length;
 };
 
+struct SfdpRead
+{
+    uint32_t address;
+    size_t length;
+};
+
 /* Back to a part just powered and wholly erased: default settings, no history,
  * the count of milliseconds at zero. */
 void Reset();
@@ -123,6 +129,9 @@ const std::vector<Program>& Programs();
 /* The address of every erase the part carried out, as it was sent, in the
  * same way. */
 const std::vector<uint32_t>& Erases();
+/* Every read of the SFDP the part answered, in order: where it began and how
+ * many bytes were taken. */
+const std::vector<SfdpRead>& SfdpReads();
 
 bool IsBusy();
 bool IsSelected();

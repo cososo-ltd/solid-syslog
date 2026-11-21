@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -32,8 +33,27 @@ enum
     BLOCK_BYTES = 65536,
     BLOCKS_IN_SIXTEEN_MEBIBYTES = 256,
 
+    READ_SFDP = 0x5A,
+
     /* Where the fixture's SFDP keeps things. */
     SFDP_MAJOR_REVISION = 5,
+    SFDP_FURTHER_PARAMETER_HEADERS = 6,
+    SFDP_HEADER_BYTES = 8,
+    PARAMETER_HEADER_BYTES = 8,
+    PARAMETER_HEADER_ID_HIGH = 7,
+    /* The SFDP header and the basic table's parameter header are read as
+     * one, and as much of the table as the flash uses. */
+    FIRST_SFDP_READ_BYTES = SFDP_HEADER_BYTES + PARAMETER_HEADER_BYTES,
+    TABLE_BYTES_READ = 44,
+
+    /* The parameter IDs JESD216 gives a sector map, in two bytes, and the
+     * low byte of two of its other tables. */
+    SECTOR_MAP_ID_LOW = 0x81,
+    JEDEC_TABLE_ID_HIGH = 0xFF,
+    FOUR_BYTE_ADDRESS_TABLE_ID_LOW = 0x84,
+    STATUS_AND_CONTROL_TABLE_ID_LOW = 0x87,
+    A_MAKERS_TABLE_ID_HIGH = 0x01,
+
     TABLE_ID_LOW = 8,
     TABLE_MAJOR_REVISION = 10,
     TABLE_LENGTH_DWORDS = 11,
@@ -58,6 +78,9 @@ enum
      * Each is one command, of one write and one read. */
     COMMANDS_IN_A_START = 5,
     TRANSFERS_IN_A_START = COMMANDS_IN_A_START,
+    /* Its status, its maker and its SFDP header come before any further
+     * parameter header is asked for. */
+    TRANSFERS_BEFORE_A_FURTHER_PARAMETER_HEADER = 3,
     START_TIMEOUT_MILLISECONDS = 3000
 };
 
@@ -112,6 +135,12 @@ static const uint32_t EXPONENT_OF_32_MEBIBYTES = 28U;
     {                                      \
         CHECK_NOT_CREATED();               \
         CHECK_IO_FAILURE_REPORTED(detail); \
+    }
+
+#define CHECK_SFDP_READ(expectedAddress, expectedLength, read) \
+    {                                                          \
+        LONGS_EQUAL((expectedAddress), (read).address);        \
+        LONGS_EQUAL((expectedLength), (read).length);          \
     }
 
 // clang-format off
@@ -179,6 +208,23 @@ TEST_BASE(SpiNorFlashTestBase)
     static void SetAddressBytes(uint32_t field)
     {
         SetDword(DWORD_ADDRESS_BYTES, (Dword(DWORD_ADDRESS_BYTES) & ~ADDRESS_BYTES_MASK) | field);
+    }
+
+    /* One more parameter header after those the SFDP has, for a table of
+     * that ID. The table itself is not there: nothing should read it. */
+    static void AddParameterHeader(uint8_t idLow, uint8_t idHigh)
+    {
+        auto& sfdp = SpiNorFlashPartFake::settings.sfdp;
+        sfdp.at(SFDP_FURTHER_PARAMETER_HEADERS)++;
+        const size_t at = AddressOfParameterHeader(sfdp.at(SFDP_FURTHER_PARAMETER_HEADERS));
+        const std::array<uint8_t, PARAMETER_HEADER_BYTES> header = {idLow, 0x00, 0x01, 0x02, 0x40, 0x00, 0x00, idHigh};
+        std::copy(header.begin(), header.end(), sfdp.begin() + static_cast<std::ptrdiff_t>(at));
+    }
+
+    /* Numbered from 0, which is the basic table's. */
+    static size_t AddressOfParameterHeader(size_t number)
+    {
+        return SFDP_HEADER_BYTES + (number * PARAMETER_HEADER_BYTES);
     }
 
     static std::array<struct SolidSyslogSpiNorFlashBus, 5> TheFakesBusWithEachMemberMissingInTurn()
@@ -487,6 +533,88 @@ TEST(SolidSyslogSpiNorFlash, RefusesAnAddressWidthJesd216Reserves)
     SetAddressBytes(ADDRESS_BYTES_RESERVED);
     CreateFlash();
     CHECK_REFUSED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_FOUR_BYTE_ADDRESSES_ONLY);
+}
+
+TEST(SolidSyslogSpiNorFlash, RefusesAPartWhoseSfdpHasASectorMap)
+{
+    AddParameterHeader(SECTOR_MAP_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    CreateFlash();
+    CHECK_REFUSED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_HAS_SECTOR_MAP);
+}
+
+TEST(SolidSyslogSpiNorFlash, FindsASectorMapAfterOtherParameterHeaders)
+{
+    AddParameterHeader(FOUR_BYTE_ADDRESS_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    AddParameterHeader(SECTOR_MAP_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    CreateFlash();
+    CHECK_REFUSED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_HAS_SECTOR_MAP);
+}
+
+TEST(SolidSyslogSpiNorFlash, TakesAPartWhoseFurtherParameterHeadersAreNotOfASectorMap)
+{
+    AddParameterHeader(FOUR_BYTE_ADDRESS_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    AddParameterHeader(STATUS_AND_CONTROL_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    CreateFlash();
+    CHECK_CREATED();
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
+}
+
+TEST(SolidSyslogSpiNorFlash, TellsASectorMapByBothBytesOfItsId)
+{
+    AddParameterHeader(SECTOR_MAP_ID_LOW, A_MAKERS_TABLE_ID_HIGH);
+    CreateFlash();
+    CHECK_CREATED();
+}
+
+TEST(SolidSyslogSpiNorFlash, ReadsEachFurtherParameterHeaderAndNoTableButTheBasicOne)
+{
+    AddParameterHeader(FOUR_BYTE_ADDRESS_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    AddParameterHeader(STATUS_AND_CONTROL_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    CreateFlash();
+    const auto& reads = SpiNorFlashPartFake::SfdpReads();
+    LONGS_EQUAL(4, reads.size());
+    CHECK_SFDP_READ(0, FIRST_SFDP_READ_BYTES, reads[0]);
+    CHECK_SFDP_READ(AddressOfParameterHeader(1), PARAMETER_HEADER_BYTES, reads[1]);
+    CHECK_SFDP_READ(AddressOfParameterHeader(2), PARAMETER_HEADER_BYTES, reads[2]);
+    CHECK_SFDP_READ(TABLE_ADDRESS, TABLE_BYTES_READ, reads[3]);
+}
+
+TEST(SolidSyslogSpiNorFlash, ReadsNoMoreOfASectorMapThanItsParameterHeader)
+{
+    AddParameterHeader(SECTOR_MAP_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    AddParameterHeader(FOUR_BYTE_ADDRESS_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    CreateFlash();
+    const auto& reads = SpiNorFlashPartFake::SfdpReads();
+    LONGS_EQUAL(2, reads.size());
+    CHECK_SFDP_READ(0, FIRST_SFDP_READ_BYTES, reads[0]);
+    CHECK_SFDP_READ(AddressOfParameterHeader(1), PARAMETER_HEADER_BYTES, reads[1]);
+}
+
+TEST(SolidSyslogSpiNorFlash, ReadsNoFurtherParameterHeaderOfAPartThatHasNone)
+{
+    CreateFlash();
+    LONGS_EQUAL(2, SpiNorFlashPartFake::CountOf(READ_SFDP));
+}
+
+TEST(SolidSyslogSpiNorFlash, DoesNotStartWhenTheWriteAskingForAFurtherParameterHeaderFails)
+{
+    AddParameterHeader(FOUR_BYTE_ADDRESS_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    SpiNorFlashPartFake::FailWriteAt(TRANSFERS_BEFORE_A_FURTHER_PARAMETER_HEADER + 1);
+    CreateFlash();
+    CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
+}
+
+TEST(SolidSyslogSpiNorFlash, DoesNotStartWhenTheReadOfAFurtherParameterHeaderFails)
+{
+    AddParameterHeader(FOUR_BYTE_ADDRESS_TABLE_ID_LOW, JEDEC_TABLE_ID_HIGH);
+    SpiNorFlashPartFake::FailReadAt(TRANSFERS_BEFORE_A_FURTHER_PARAMETER_HEADER + 1);
+    CreateFlash();
+    CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
+    /* The parameter header was asked for, none of it came, and the table
+     * was not asked for after it. */
+    const auto& reads = SpiNorFlashPartFake::SfdpReads();
+    LONGS_EQUAL(2, reads.size());
+    CHECK_SFDP_READ(AddressOfParameterHeader(1), 0, reads[1]);
 }
 
 TEST(SolidSyslogSpiNorFlash, RefusesAPartWithAnyProtectionBitSet)

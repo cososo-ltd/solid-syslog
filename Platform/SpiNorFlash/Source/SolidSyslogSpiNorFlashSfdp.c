@@ -16,6 +16,9 @@ enum
 {
     SIGNATURE_LENGTH = 4,
     HEADER_MAJOR_REVISION = 5,
+    /* How many parameter headers follow the first. */
+    HEADER_FURTHER_PARAMETER_HEADERS = 6,
+    SFDP_HEADER_BYTES = 8,
     /* The first parameter header follows the eight bytes of the SFDP header. */
     TABLE_ID_LOW = 8,
     TABLE_MAJOR_REVISION = 10,
@@ -23,9 +26,15 @@ enum
     TABLE_POINTER = 12,
     TABLE_ID_HIGH = 15,
 
+    /* Within any one parameter header. */
+    PARAMETER_ID_LOW = 0,
+    PARAMETER_ID_HIGH = 7,
+
     MAJOR_REVISION_READ = 1,
     BASIC_TABLE_ID_LOW = 0x00,
     BASIC_TABLE_ID_HIGH = 0xFF,
+    SECTOR_MAP_ID_LOW = 0x81,
+    SECTOR_MAP_ID_HIGH = 0xFF,
     DWORD_BYTES = 4,
     /* The basic table as JESD216 first defined it. */
     SHORTEST_BASIC_TABLE_DWORDS = 9,
@@ -125,6 +134,7 @@ bool SolidSyslogSpiNorFlashSfdp_Locate(
         table->Address = (uint32_t) header[TABLE_POINTER] | ((uint32_t) header[TABLE_POINTER + 1] << 8U) |
                          ((uint32_t) header[TABLE_POINTER + 2] << 16U);
         table->Bytes = Sfdp_BytesToRead(header[TABLE_LENGTH_DWORDS]);
+        table->FurtherParameterHeaders = (size_t) header[HEADER_FURTHER_PARAMETER_HEADERS];
         located = true;
     }
 
@@ -167,6 +177,19 @@ static inline size_t Sfdp_BytesToRead(uint8_t tableDwords)
     }
 
     return bytes;
+}
+
+/* At most 255 headers of eight bytes, so nothing overflows. */
+uint32_t SolidSyslogSpiNorFlashSfdp_ParameterHeaderAddress(size_t number)
+{
+    return (uint32_t) SFDP_HEADER_BYTES +
+           ((uint32_t) number * (uint32_t) SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_PARAMETER_HEADER_BYTES);
+}
+
+bool SolidSyslogSpiNorFlashSfdp_IsSectorMapHeader(const uint8_t* parameterHeader)
+{
+    return (parameterHeader[PARAMETER_ID_LOW] == (uint8_t) SECTOR_MAP_ID_LOW) &&
+           (parameterHeader[PARAMETER_ID_HIGH] == (uint8_t) SECTOR_MAP_ID_HIGH);
 }
 
 bool SolidSyslogSpiNorFlashSfdp_ReadGeometry(

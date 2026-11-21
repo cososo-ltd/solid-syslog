@@ -76,6 +76,7 @@ struct State
     int transfersWhileDeselected = 0;
     std::vector<SpiNorFlashPartFake::Program> programs;
     std::vector<uint32_t> erases;
+    std::vector<SpiNorFlashPartFake::SfdpRead> sfdpReads;
     /* Only the bytes that are not erased, so that a part of 16 MiB costs a
      * test nothing. */
     std::map<uint32_t, uint8_t> cells;
@@ -236,7 +237,7 @@ void CarryOutErase(const std::vector<uint8_t>& frame)
 }
 
 /* A part does what it was told when its select rises. */
-void FinishCommand(const std::vector<uint8_t>& frame, bool ignored)
+void FinishCommand(const std::vector<uint8_t>& frame, size_t bytesRead, bool ignored)
 {
     if (frame.empty())
     {
@@ -274,6 +275,11 @@ void FinishCommand(const std::vector<uint8_t>& frame, bool ignored)
             /* Writing was not enabled, so the part does nothing. */
         }
         state->writeInProgress = state->writeEnabled;
+    }
+    else if ((command == READ_SFDP) && (frame.size() >= SFDP_REQUEST_LENGTH) &&
+             SpiNorFlashPartFake::settings.answersSfdp)
+    {
+        state->sfdpReads.push_back({AddressIn(frame), bytesRead});
     }
     else
     {
@@ -320,13 +326,14 @@ extern "C"
          * to act on it. A part that lost power part-way through a command
          * comes back knowing nothing of it. */
         const std::vector<uint8_t> frame = state->written;
+        const size_t bytesRead = state->bytesRead;
         const bool ignored = state->ignoringCommand;
         state->written.clear();
         state->bytesRead = 0;
         state->ignoringCommand = false;
         if (PartIsListening())
         {
-            FinishCommand(frame, ignored);
+            FinishCommand(frame, bytesRead, ignored);
         }
         state->selected = false;
     }
@@ -493,6 +500,11 @@ const std::vector<Program>& Programs()
 const std::vector<uint32_t>& Erases()
 {
     return state->erases;
+}
+
+const std::vector<SfdpRead>& SfdpReads()
+{
+    return state->sfdpReads;
 }
 
 bool IsBusy()

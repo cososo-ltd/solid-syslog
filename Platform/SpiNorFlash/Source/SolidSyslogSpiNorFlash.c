@@ -103,6 +103,10 @@ static inline bool SpiNorFlash_ReadSfdp(
     size_t count
 );
 static inline void SpiNorFlash_ReportUnsupported(enum SolidSyslogSpiNorFlashErrors code);
+static bool SpiNorFlash_HasNoSectorMap(
+    struct SolidSyslogSpiNorFlash* self,
+    const struct SolidSyslogSpiNorFlashSfdpTable* table
+);
 static bool SpiNorFlash_ReadTheTable(
     struct SolidSyslogSpiNorFlash* self,
     const struct SolidSyslogSpiNorFlashSfdpTable* table
@@ -298,9 +302,10 @@ static inline bool SpiNorFlash_IsNoMaker(uint8_t maker)
 
 static bool SpiNorFlash_LearnThePart(struct SolidSyslogSpiNorFlash* self)
 {
-    struct SolidSyslogSpiNorFlashSfdpTable table = {0U, 0U};
+    struct SolidSyslogSpiNorFlashSfdpTable table = {0U, 0U, 0U};
 
-    return SpiNorFlash_LocateTheTable(self, &table) && SpiNorFlash_ReadTheTable(self, &table);
+    return SpiNorFlash_LocateTheTable(self, &table) && SpiNorFlash_HasNoSectorMap(self, &table) &&
+           SpiNorFlash_ReadTheTable(self, &table);
 }
 
 static bool SpiNorFlash_LocateTheTable(
@@ -346,6 +351,50 @@ static inline bool SpiNorFlash_ReadSfdp(
 static inline void SpiNorFlash_ReportUnsupported(enum SolidSyslogSpiNorFlashErrors code)
 {
     SpiNorFlash_Report(SOLIDSYSLOG_BAD_CONFIG_FATAL_SEVERITY, SOLIDSYSLOG_CAT_BAD_CONFIG, code);
+}
+
+/* The basic table gives one smallest erase for the whole part. A part with
+ * a sector map has regions that erase differently, and that erase may reach
+ * only some of them. The map itself is not read: its parameter header is
+ * enough to refuse the part by. False, and reported, for a part that has
+ * one and for a bus that fails. */
+static bool SpiNorFlash_HasNoSectorMap(
+    struct SolidSyslogSpiNorFlash* self,
+    const struct SolidSyslogSpiNorFlashSfdpTable* table
+)
+{
+    size_t number = 1U;
+    bool asked = true;
+    bool found = false;
+    bool none = false;
+
+    while (asked && !found && (number <= table->FurtherParameterHeaders))
+    {
+        uint8_t header[SOLIDSYSLOG_SPI_NOR_FLASH_SFDP_PARAMETER_HEADER_BYTES] = {0};
+        asked = SpiNorFlash_ReadSfdp(
+            self,
+            SolidSyslogSpiNorFlashSfdp_ParameterHeaderAddress(number),
+            header,
+            sizeof(header)
+        );
+        found = asked && SolidSyslogSpiNorFlashSfdp_IsSectorMapHeader(header);
+        number++;
+    }
+
+    if (!asked)
+    {
+        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
+    }
+    else if (found)
+    {
+        SpiNorFlash_ReportUnsupported(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_HAS_SECTOR_MAP);
+    }
+    else
+    {
+        none = true;
+    }
+
+    return none;
 }
 
 static bool SpiNorFlash_ReadTheTable(

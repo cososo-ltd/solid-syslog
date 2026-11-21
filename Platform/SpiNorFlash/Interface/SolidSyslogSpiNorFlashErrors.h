@@ -37,6 +37,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_TOO_LARGE,
         /** The part takes only four-byte addresses. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_FOUR_BYTE_ADDRESSES_ONLY,
+        /** The part's SFDP has a sector map, the table of a part that does
+         *  not erase the same way throughout. The map is not read, so where
+         *  the smallest erase applies is not known. */
+        SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_HAS_SECTOR_MAP,
         /** A protection bit of the part's first status register is set. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_PROTECTED,
         /** Nothing drives the bus: no part, or no path to it. Raised under
@@ -46,8 +50,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED,
         /** The part was still busy when the time allowed had passed. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT,
-        /** The part would not enable writing, so nothing was programmed or
-         *  erased. */
+        /** The part would not enable writing, so the command that needed it
+         *  was not sent. A Program over several pages sends one for each, so
+         *  the pages before the one refused may already be programmed. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_WRITE_REFUSED,
         /** A read, a program or an erase was asked for outside a block of the
          *  part. Raised under SOLIDSYSLOG_CAT_BAD_ARGUMENT, and nothing was
