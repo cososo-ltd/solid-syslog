@@ -183,7 +183,8 @@ releases, `example-sweep.yml` keeps them honest against `main`:
 1. A push to `main` that touches `Core/`, a pack the stacks link, `CMakeLists.txt`,
    `CMakePresets.json`, `cmake/` or `ci.yml` sends a `repository_dispatch` event,
    `library-changed`, to each stack, naming the commit and the
-   `cpputest-freertos-cross` image digest that commit's `ci.yml` pins. The token
+   `cpputest-freertos-cross` image that commit's `ci.yml` pins, by tag and
+   digest. The token
    is minted from the release GitHub App, which is installed on the stacks.
 2. Each stack's **Sweep** workflow rebases its `wip/next` branch: the stages
    onto a Baseline with `solid-syslog.pin` at that commit and every container

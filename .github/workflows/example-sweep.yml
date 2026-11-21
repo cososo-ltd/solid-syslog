@@ -67,18 +67,23 @@ jobs:
           echo "sha=$full" >> "$GITHUB_OUTPUT"
           echo "sweeping the stacks against $full"
 
-      # The cross image is pinned by digest in ci.yml; the commit's own pin is
-      # the image its CI tested it in, so the stacks sweep it in that one.
+      # The cross image is pinned by digest in ci.yml, with the tag that names
+      # its source commit in a trailing comment. The commit's own pin is the
+      # image its CI tested it in, so the stacks sweep it in that one, and write
+      # it as tag and digest together, the form their compose files keep.
       - name: Read the image the commit's CI pins
         id: image
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
-          image=$(gh api -H "Accept: application/vnd.github.raw+json" \
-                    "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/ci.yml?ref=$SHA" \
-                  | grep -o 'ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:[0-9a-f]\{64\}' | sort -u)
-          [ "$(echo "$image" | grep -c .)" -eq 1 ] || { echo "ci.yml at $SHA pins the cross image as:" "$image" >&2; exit 1; }
+          gh api -H "Accept: application/vnd.github.raw+json" \
+            "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/ci.yml?ref=$SHA" > ci.yml
+          cross='ghcr.io/cososo-ltd/cpputest-freertos-cross'
+          digest=$(grep -o "$cross@sha256:[0-9a-f]\{64\}" ci.yml | sort -u)
+          [ "$(echo "$digest" | grep -c .)" -eq 1 ] || { echo "ci.yml at $SHA pins the cross image as:" "$digest" >&2; exit 1; }
+          image=$(sed -n "s|.*$cross@\(sha256:[0-9a-f]\{64\}\) *# *\(sha-[0-9a-f]\{7,40\}\) *\$|$cross:\2@\1|p" ci.yml | sort -u)
+          [ "$(echo "$image" | grep -c .)" -eq 1 ] || { echo "ci.yml at $SHA names the cross image's tag as:" "$image" >&2; exit 1; }
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "in $image"
 
