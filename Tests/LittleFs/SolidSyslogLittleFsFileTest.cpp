@@ -478,6 +478,18 @@ TEST(SolidSyslogLittleFsFile, DestroyClosesAFileLeftOpen)
     file = SolidSyslogNullFile_Get();
 }
 
+TEST(SolidSyslogLittleFsFile, AFileCreatedInAUsedSlotKeepsNoPathFromTheOneBeforeIt)
+{
+    const unsigned char record[] = {'r', 'e', 'c'};
+    CHECK_TRUE(SolidSyslogFile_Open(file, "old.log"));
+    SolidSyslogLittleFsFile_Destroy(file);
+    file = SolidSyslogLittleFsFile_Create(filesystem, fileBuffer, sizeof(fileBuffer));
+
+    SolidSyslogFile_Write(file, record, sizeof(record));
+
+    LONGS_EQUAL(1, LittleFsFake_OpenCallCount());
+}
+
 TEST(SolidSyslogLittleFsFile, TheErrorSourceNamesItsDetailsThroughFileErrors)
 {
     CHECK(SolidSyslogFileErrors_Name == SolidSyslogLittleFsFileErrorSource.DetailName);

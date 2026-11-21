@@ -71,6 +71,7 @@ bool SolidSyslogLittleFsFile_Initialise(
         self->Base.Exists = LittleFsFile_Exists;
         self->Base.Delete = LittleFsFile_Delete;
         self->IsOpen = false;
+        self->IsPathKept = false;
     }
     return valid;
 }
