@@ -426,22 +426,27 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     size_t nextSequence
 );
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
+static inline void BlockSequence_EvictDownToCeiling(struct SolidSyslogBlockSequence* blockSequence);
 static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
 static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence);
 
-/* Takes the new block and no more. What the rotation owes the blocks behind
- * it - a drained one disposed of, the oldest evicted where the run is now over
- * its ceiling - waits for SolidSyslogBlockSequence_FinishRotation, which the
- * store calls once the record that needed the new block is appended. */
+/* Takes the new block. What the rotation owes the blocks behind it - a drained
+ * one disposed of, the oldest evicted where the new block puts the run over its
+ * ceiling - waits for SolidSyslogBlockSequence_FinishRotation, which the store
+ * calls once the record that needed the new block is appended.
+ *
+ * A run already over its ceiling is first brought down to it, so no rotation
+ * takes every block of the device and the resume scan always finds a gap. A
+ * restart can find a run over its ceiling: a power cut between the take and
+ * its eviction leaves one, as does an eviction that fails, and so does a
+ * MaxBlocks lowered between runs. The store reaches a rotation over its ceiling only
+ * when the policy has just answered Oldest. */
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
     bool acquired = false;
     blockSequence->EvictedUnsent = false;
 
-    while (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
-    {
-        (void) BlockSequence_DiscardOldestBlock(blockSequence);
-    }
+    BlockSequence_EvictDownToCeiling(blockSequence);
 
     if (!blockSequence->DeviceFailed)
     {
@@ -461,6 +466,49 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
     }
 
     return acquired;
+}
+
+/* A failed eviction stops it, and the rotation with it. */
+static inline void BlockSequence_EvictDownToCeiling(struct SolidSyslogBlockSequence* blockSequence)
+{
+    while (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
+    {
+        (void) BlockSequence_DiscardOldestBlock(blockSequence);
+    }
+}
+
+static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence)
+{
+    return BlockSequence_BlocksInRun(blockSequence) > blockSequence->MaxBlocks;
+}
+
+static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence);
+
+/* The oldest block is the read block - a block the read has finished with is
+ * disposed of as the read leaves it - so an eviction always costs records
+ * still to send, and the read starts again on the block after it. */
+static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence)
+{
+    bool readBlockChanged = false;
+
+    if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
+    {
+        blockSequence->EvictedUnsent = true;
+        blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
+        BlockSequence_ResetReadToOldest(blockSequence);
+        readBlockChanged = true;
+    }
+    else
+    {
+        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
+    }
+
+    return readBlockChanged;
+}
+
+static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence)
+{
+    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
 }
 
 /* Dispose-then-Acquire enforces the BlockDevice contract that an Acquired block
@@ -509,8 +557,6 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     blockSequence->WriteBlockCorrupt = false;
 }
 
-static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence);
-
 bool SolidSyslogBlockSequence_FinishRotation(struct SolidSyslogBlockSequence* blockSequence)
 {
     bool readBlockChanged = false;
@@ -540,38 +586,6 @@ bool SolidSyslogBlockSequence_FinishRotation(struct SolidSyslogBlockSequence* bl
     }
 
     return readBlockChanged;
-}
-
-static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence)
-{
-    return BlockSequence_BlocksInRun(blockSequence) > blockSequence->MaxBlocks;
-}
-
-/* The oldest block is the read block - a block the read has finished with is
- * disposed of as the read leaves it - so an eviction always costs records
- * still to send, and the read starts again on the block after it. */
-static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence)
-{
-    bool readBlockChanged = false;
-
-    if (SolidSyslogBlockDevice_Dispose(blockSequence->BlockDevice, blockSequence->OldestSequence))
-    {
-        blockSequence->EvictedUnsent = true;
-        blockSequence->OldestSequence = BlockSequence_NextPresentSequence(blockSequence, blockSequence->OldestSequence);
-        BlockSequence_ResetReadToOldest(blockSequence);
-        readBlockChanged = true;
-    }
-    else
-    {
-        BlockSequence_NoteDeviceFailure(blockSequence, SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED);
-    }
-
-    return readBlockChanged;
-}
-
-static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence)
-{
-    BlockSequence_StartReadingBlock(blockSequence, blockSequence->OldestSequence);
 }
 
 static inline bool BlockSequence_IsHole(const struct SolidSyslogBlockSequence* blockSequence, size_t sequence);
