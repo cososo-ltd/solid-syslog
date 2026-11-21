@@ -28,7 +28,7 @@ what it supplies to the code.
 | Console, exit and fault | `BddTargetBoard.c` | USART3 through `Board.c`. An exit or a fault is a line on the console followed by a halt |
 | Time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The [real-time clock](#clock), read to the microsecond once `set time` has set it |
 | Sector disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the shared card driver |
-| LittleFS block device | `BddTargetBoardSpiNorFlashBus.c`, `BoardSpi4Flash.c` | A [W25Q128 flash](#w25q128-flash) on SPI4, as the bus under the library's SPI NOR flash pack and the shared LittleFS block device |
+| NOR flash bus | `BddTargetBoardSpiNorFlashBus.c`, `BoardSpi4Flash.c` | A [W25Q128 flash](#w25q128-flash) on SPI4, as the bus under the library's SPI NOR flash pack. One image puts the shared LittleFS block device over the pack, and another the store itself |
 | SPI4 | `BoardSpi4.c` | The pins, the rate and the two chip selects |
 | Ethernet, under any stack | `BoardEthernet.c`, `EthernetPhy.c` | The MAC's clock, pins and interrupt, which ST's HAL Ethernet driver asks the board for, and a restart of the PHY before the MAC is reset. The link is read from the PHY's standard registers |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over ST's HAL Ethernet driver |
@@ -55,13 +55,14 @@ image pins them, and the build reads them from `STM32F7_HAL_DRIVER_PATH` and
 | Bring-up | `nucleo-f767zi-bringup` | `SolidSyslogNucleoF767ziBringup` | `build-nucleo-bringup` | `solid-syslog-nucleo-f767zi-bringup` |
 | [FreeRTOS + lwIP Raw](../../FreeRtosLwip/README.md) | `nucleo-f767zi-lwip` | `SolidSyslogBddTargetLwip` | `build-nucleo-freertos-lwipraw` | `solid-syslog-nucleo-f767zi-freertos-lwip` |
 | [CMSIS-RTOS2 + lwIP Sockets](../../CmsisLwip/README.md) | `nucleo-f767zi-cmsis-lwip` | `SolidSyslogBddTargetCmsis` | `build-nucleo-cmsisrtos-lwipsocket` | `solid-syslog-nucleo-f767zi-cmsis-lwip` |
+| [CMSIS-RTOS2 + lwIP Sockets](../../CmsisLwip/README.md), store on raw flash | `nucleo-f767zi-cmsis-lwip-norflash` | `SolidSyslogBddTargetCmsis` | `build-nucleo-cmsisrtos-lwipsocket-norflash` | `solid-syslog-nucleo-f767zi-cmsis-lwip-norflash` |
 | [FreeRTOS-Plus-TCP](../../FreeRtos/README.md) | `nucleo-f767zi-plustcp` | `SolidSyslogBddTarget` | `build-nucleo-freertos-plustcp` | `solid-syslog-nucleo-f767zi-plustcp` |
 
-All four build in the `cpputest-freertos-cross` image.
+All five build in the `cpputest-freertos-cross` image.
 [`docs/builds.md`](../../../../docs/builds.md) gives each preset's commands and
 where its ELF lands. The bring-up build leaves a raw `.bin` beside its ELF. The
-CMSIS-RTOS2 image is built over Mbed TLS. The wolfSSL build of that target is
-not built for this board.
+two CMSIS-RTOS2 images are built over Mbed TLS. The wolfSSL build of that
+target is not built for this board.
 
 CI builds the BDD images with no addresses. An image that is to run on the
 board is configured with those of the network under test:
@@ -74,7 +75,7 @@ cmake --preset nucleo-f767zi-lwip \
     -DSOLIDSYSLOG_BDD_BOARD_ORACLE=<collector address>
 ```
 
-What the rest of this page says of the BDD target applies to all three images
+What the rest of this page says of the BDD target applies to all four images
 unless it names one.
 
 ## Network
@@ -97,7 +98,7 @@ is a line on the console:
 [board] link up, 100 Mbit/s full duplex
 ```
 
-The two lwIP images give the speed and duplex, say `link down` as they boot,
+The lwIP images give the speed and duplex, say `link down` as they boot,
 and poll the PHY four times a second. The FreeRTOS-Plus-TCP image says only
 `[board] link up` and `[board] link down`, when its stack reports a change, and
 polls twice a second while the link is up. It says nothing until the network
@@ -246,16 +247,11 @@ answers `set: invalid` and leaves the target on the store it started with.
 
 ## W25Q128 flash
 
-The CMSIS-RTOS2 target keeps LittleFS on a W25Q128 flash in a breakout on SPI4,
-wired as in the [pin plan](#storage-breakouts-spi4). `set store file` mounts
-LittleFS on it, formatting first if it finds none, and puts the target on a
-file store there. The filesystem is the first 8 MiB of the part's 16, the size
-the same target has under QEMU.
-
-A filesystem block is one of the part's 4 KiB sectors, so LittleFS's erase is
-the part's own, and a program clears bits and sets none. Under QEMU the same
-target has a disk of sectors, where an erase is a write of `0xFF` and a program
-can set bits.
+The CMSIS-RTOS2 target keeps its store on a W25Q128 flash in a breakout on
+SPI4, wired as in the [pin plan](#storage-breakouts-spi4). There are two images
+of it. One keeps the store in files [on LittleFS](#under-littlefs), and the
+other keeps it on the part directly, [with no filesystem](#with-no-filesystem).
+Each uses the first 8 MiB of the part's 16.
 
 The target drives the part through the library's
 [SPI NOR flash pack](../../../../docs/platforms/spinorflash/index.md), which
@@ -274,6 +270,17 @@ about 1 ms. The task that asked for either polls the part's status until it
 finishes. A part that was erasing when the board was reset carries on, and
 answers only its status until it finishes, so the pack waits for that before
 asking it anything else.
+
+### Under LittleFS
+
+`set store file` mounts LittleFS on the part, formatting first if it finds
+none, and puts the target on a file store there. The filesystem is the size the
+same target has under QEMU.
+
+A filesystem block is one of the part's 4 KiB sectors, so LittleFS's erase is
+the part's own, and a program clears bits and sets none. Under QEMU the same
+target has a disk of sectors, where an erase is a write of `0xFF` and a program
+can set bits.
 
 LittleFS is given a program unit of 16 bytes and not the 256 of a page, for the
 reason the
@@ -299,6 +306,24 @@ or a wire out of the breadboard, gives `NO_ANSWER` and then
 long as the part goes on failing to start. `set store file` then says
 `[solidsyslog] littlefs mount failed`, answers `set: invalid` and leaves the
 target on the store it started with.
+
+### With no filesystem
+
+`set store file` puts the target on a store whose blocks are the part's own
+4 KiB sectors, the first 2048 of them, through the library's
+`SolidSyslogNorFlashBlockDevice`. A store block is all a sector holds beyond
+the four bytes that device keeps there for the block's state, unless the run
+sets a `max-block-size`. The size a run sets is passed on as it stands, and the
+device refuses one larger than a sector holds.
+
+`set store wipe` marks each block that exists as disposed and erases nothing,
+because the store erases every sector as it takes it. It is refused once the
+store is on the part.
+
+A fault the pack reports is the pack's own console line, as described above.
+This image adds no `[board] flash:` line after it. Where the part does not
+start, `set store file` then answers `set: invalid` and leaves the target on
+the store it started with.
 
 ## What the board does not have yet
 
@@ -388,8 +413,8 @@ flash: erased the sector in 56 ms, and it reads as erased
 flash: passed
 ```
 
-That sector is beyond the 8 MiB given to the filesystem, so a store on the part
-is not disturbed. A step that fails says which and why, and the last line is
+That sector is beyond the 8 MiB either image gives its store, so a store on the
+part is not disturbed. A step that fails says which and why, and the last line is
 `flash: failed`.
 
 The BDD target echoes each character and shows a `SolidSyslog>` prompt a few
@@ -428,7 +453,7 @@ uses, writes it to the board, starts the collector and runs Behave.
 
 | Parameter | Meaning |
 |---|---|
-| `-Target` | Required. `lwip` for the FreeRTOS + lwIP Raw image, `cmsis` for CMSIS-RTOS2 + lwIP Sockets, `plustcp` for FreeRTOS-Plus-TCP |
+| `-Target` | Required. `lwip` for the FreeRTOS + lwIP Raw image, `cmsis` for CMSIS-RTOS2 + lwIP Sockets, `cmsis-norflash` for the same with its store on raw flash, `plustcp` for FreeRTOS-Plus-TCP |
 | `-Netmask`, `-Gateway` | The other two [network](#network) settings. Each of the four can be left in an environment variable, which the script's help names |
 | `-SerialPort` | The console's port, where it is not to be found by ST's USB vendor id |
 | `-SkipBuild` | Writes the image already built |
@@ -455,7 +480,7 @@ The board's [clock](#clock) keeps it through the reset that starts each
 scenario. A sustained run does the same before its first message.
 
 Before a scenario tagged `@store` the run resets the board and has it wipe its
-medium, so the scenario starts with no filesystem, as it does under QEMU on a
+medium, so the scenario starts with no store on it, as it does under QEMU on a
 new disk image.
 
 Where a scenario kills the target to stand in for a power cut, the run asks the
@@ -650,6 +675,7 @@ change to all of them.
 |---|---|---|---|
 | FreeRTOS + lwIP Raw | `build-nucleo-freertos-lwipraw` | `-Target lwip` | FatFs on the MicroSD card |
 | CMSIS-RTOS2 + lwIP Sockets | `build-nucleo-cmsisrtos-lwipsocket` | `-Target cmsis` | LittleFS on the W25Q128 flash |
+| CMSIS-RTOS2 + lwIP Sockets, store on raw flash | `build-nucleo-cmsisrtos-lwipsocket-norflash` | `-Target cmsis-norflash` | The block store directly on the W25Q128 flash |
 | FreeRTOS-Plus-TCP | `build-nucleo-freertos-plustcp` | `-Target plustcp` | FreeRTOS-Plus-FAT on the MicroSD card |
 
 The board is cabled to the test network, with a MicroSD card in its breakout

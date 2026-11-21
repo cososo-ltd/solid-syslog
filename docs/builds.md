@@ -253,14 +253,18 @@ ARM cross-builds for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
 hard-float ABI), under that board's toolchain file. Three are the cross BDD
 targets above built with `SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`, with the same
 packs and tunables. `nucleo-f767zi-cmsis-lwip` names one pack more,
-`SpiNorFlash`, the flash under its LittleFS. The fourth is the bring-up firmware, which carries no
-SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and the image does not link the
-library.
+`SpiNorFlash`, the flash under its LittleFS. A fourth,
+`nucleo-f767zi-cmsis-lwip-norflash`, is that target again with
+`SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP_NOR_FLASH`: its store is directly on the
+flash, so it names `SpiNorFlash` and not `LittleFs`. The fifth is the bring-up
+firmware, which carries no SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and
+the image does not link the library.
 
 | Preset | Builds | Build target | ELF |
 |---|---|---|---|
 | `nucleo-f767zi-lwip` | The `freertos-cross-lwip` target | `SolidSyslogBddTargetLwip` | `build/nucleo-f767zi-lwip/Bdd/Targets/FreeRtosLwip/SolidSyslogBddTargetLwip.elf` |
 | `nucleo-f767zi-cmsis-lwip` | The `cmsis-cross-lwip` target | `SolidSyslogBddTargetCmsis` | `build/nucleo-f767zi-cmsis-lwip/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf` |
+| `nucleo-f767zi-cmsis-lwip-norflash` | The `cmsis-cross-lwip` target, with its store on the NOR flash and no filesystem | `SolidSyslogBddTargetCmsis` | `build/nucleo-f767zi-cmsis-lwip-norflash/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf` |
 | `nucleo-f767zi-plustcp` | The `freertos-cross` target | `SolidSyslogBddTarget` | `build/nucleo-f767zi-plustcp/Bdd/Targets/FreeRtos/SolidSyslogBddTarget.elf` |
 | `nucleo-f767zi-bringup` | The bring-up firmware | `SolidSyslogNucleoF767ziBringup` | `build/nucleo-f767zi-bringup/Bdd/Targets/Boards/NucleoF767zi/Bringup/SolidSyslogNucleoF767ziBringup.elf`, with a raw `.bin` beside it |
 
