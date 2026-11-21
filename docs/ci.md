@@ -192,8 +192,8 @@ releases, `example-sweep.yml` keeps them honest against `main`:
    moves them to the ones that image carries in the same commit. The stages
    are `wip/next`'s own, so a stage fixed there by hand stays fixed; the first
    run takes them from the latest `release/<version>` branch, which is never
-   touched. The rebased branch is pushed, compared with the other stack's -
-   `app/` is the same in both at every stage - and swept as pushed.
+   touched. The rebased branch is pushed, its `app/` is compared stage by stage
+   with the other stack's, and it is swept as pushed.
 3. A stage that does not apply leaves `wip/next` as it was. What is swept
    then is that branch with the pin and the image overridden, committing
    nothing.
