@@ -15,7 +15,7 @@ endif()
 
 # The targets the board supports. Any other would configure and then fail
 # part way through its build.
-set(bdd_board_targets FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
+set(bdd_board_targets FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP CMSIS_LWIP_NOR_FLASH NUCLEO_F767ZI_BRINGUP)
 if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST bdd_board_targets)
     string(REPLACE ";" ", " bdd_board_target_list "${bdd_board_targets}")
     message(FATAL_ERROR
@@ -178,13 +178,19 @@ set(BDD_BOARD_DISK_PROJECT_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSdCard.c
 )
 
-# LittleFS is on the W25Q128 flash: the block device from the targets' common
-# code, over the library's SpiNorFlash pack, over the same SPI4. A target that
-# takes these names SpiNorFlash among its platforms.
-set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
+# The NOR flash is a W25Q128 on the same SPI4: the bus the library's
+# SpiNorFlash pack drives it over. A target that takes these names SpiNorFlash
+# among its platforms.
+set(BDD_BOARD_NOR_FLASH_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/BddTargetBoardSpiNorFlashBus.c
     ${BDD_BOARD_DIR}/BoardSpi4.c
     ${BDD_BOARD_DIR}/BoardSpi4Flash.c
+)
+
+# LittleFS is on that flash: the block device from the targets' common code,
+# over the pack.
+set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
+    ${BDD_BOARD_NOR_FLASH_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsFlash.c
 )
 

@@ -29,7 +29,45 @@ set(LWIP_SHARED_DIR "${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/lwip")
 # The upstream trees this target wires, beyond the kernel's - see
 # Bdd/Targets/Common/UpstreamTrees.cmake.
 solidsyslog_bdd_upstream(LWIP_DIR SOLIDSYSLOG_LWIP_PATH /opt/lwip)
-solidsyslog_bdd_upstream(LITTLEFS_PATH SOLIDSYSLOG_LITTLEFS_PATH /opt/littlefs)
+
+# --- The store ---------------------------------------------------------------
+#
+# One target, two stores: files on LittleFS by default, and the board's NOR
+# flash with no filesystem where the configure asks for CMSIS_LWIP_NOR_FLASH.
+# Each branch says which upstream it compiles, which of our sources fill the
+# store half of the pipeline's seam, and what the executable links.
+if(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP_NOR_FLASH")
+    set(BDD_STORE_UPSTREAM_SOURCES "")
+    set(BDD_STORE_UPSTREAM_INCLUDES "")
+    # The SpiNorFlash pack has no upstream and compiles into the library, so
+    # there is nothing more to link. The bus under it is the board's.
+    set(BDD_STORE_SOURCES
+        BddTargetCmsisStore_NorFlash.c
+        ${BDD_BOARD_NOR_FLASH_PROJECT_SOURCES}
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetNorFlashStore.c
+    )
+    set(BDD_STORE_LIBRARIES "")
+else()
+    solidsyslog_bdd_upstream(LITTLEFS_PATH SOLIDSYSLOG_LITTLEFS_PATH /opt/littlefs)
+    # LittleFS upstream, under the upstream library's relaxations: lfs.c raises
+    # well over a hundred diagnostics against this project's -Werror set, which
+    # is not upstream's problem and not ours to pin a version over.
+    set(BDD_STORE_UPSTREAM_SOURCES
+        ${LITTLEFS_PATH}/lfs.c
+        ${LITTLEFS_PATH}/lfs_util.c
+    )
+    set(BDD_STORE_UPSTREAM_INCLUDES ${LITTLEFS_PATH})    # lfs.h, lfs_util.h
+    # The block device under LittleFS is the board's, over whichever medium it
+    # has for it.
+    set(BDD_STORE_SOURCES
+        BddTargetCmsisStore_LittleFs.c
+        ${BDD_BOARD_LITTLEFS_PROJECT_SOURCES}
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsMount.c
+    )
+    set(BDD_STORE_LIBRARIES
+        SolidSyslog::LittleFs                         # LittleFS file adapter (sources)
+    )
+endif()
 
 # lwIP ships its source lists as *_SRCS variables via Filelists.cmake. For
 # NO_SYS=0 we consume the IPv4 core set plus the api/ set, which already names
@@ -68,11 +106,8 @@ add_library(solid_syslog_cmsis_lwip_upstream OBJECT
     ${BDD_BOARD_LWIP_UPSTREAM_SOURCES}
     # The board vendor's own sources, where it has a vendor layer.
     ${BDD_BOARD_UPSTREAM_SOURCES}
-    # LittleFS upstream, under the same relaxations: lfs.c raises well over a
-    # hundred diagnostics against this project's -Werror set, which is not
-    # upstream's problem and not ours to pin a version over.
-    ${LITTLEFS_PATH}/lfs.c
-    ${LITTLEFS_PATH}/lfs_util.c
+    # The store's upstream, where it has one.
+    ${BDD_STORE_UPSTREAM_SOURCES}
 )
 
 target_compile_options(solid_syslog_cmsis_lwip_upstream PRIVATE
@@ -105,7 +140,7 @@ target_include_directories(solid_syslog_cmsis_lwip_upstream PRIVATE
     ${BDD_BOARD_LWIP_INCLUDES}                        # the controller driver's headers
     ${LWIP_DIR}/src/include
     ${LWIP_CONTRIB_FREERTOS_DIR}/include              # arch/sys_arch.h
-    ${LITTLEFS_PATH}                                  # lfs.h, lfs_util.h
+    ${BDD_STORE_UPSTREAM_INCLUDES}
 )
 
 # --- The TLS pack ----------------------------------------------------------
@@ -316,11 +351,9 @@ add_executable(SolidSyslogBddTargetCmsis
     # SolidSyslog platform adapters arrive via the SolidSyslog::* pack umbrellas
     # linked below: LwipSocket (Address/Datagram/TcpStream/
     # Resolver), CmsisRtos (Mutex + SysUpTime), the TLS pack (TLS Stream +
-    # HMAC/AES-GCM policies), LittleFs (file adapter). The block device under
-    # LittleFS is the board's, over whichever medium it has for it.
-    ${BDD_BOARD_LITTLEFS_PROJECT_SOURCES}
+    # HMAC/AES-GCM policies), and the store's.
+    ${BDD_STORE_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetErrorText.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsMount.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetFreeRtosPipeline.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetKey.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetMessageSettings.c
@@ -359,7 +392,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
     ${BDD_BOARD_INCLUDES}                             # the device facts FreeRTOSConfig.h reads
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslog*.h
     ${CMAKE_SOURCE_DIR}/Core/Source                   # internal headers consumed by adapters
-    # Platform/{LwipSocket,CmsisRtos,LittleFs}/{Interface,Source} and the TLS pack's include dirs
+    # Platform/{LwipSocket,CmsisRtos}/{Interface,Source} and the TLS and store packs' include dirs
     # arrive transitively from the SolidSyslog::* pack umbrellas linked below.
     ${BAKED_PEMS_DIR}                                 # BddBaked*.h (xxd -i output)
     ${BDD_TLS_INCLUDES}
@@ -373,7 +406,7 @@ target_include_directories(SolidSyslogBddTargetCmsis PRIVATE
 # without relaxing anything we compile - the same treatment
 # docs/platforms/littlefs/setup.md tells an integrator on this bar to apply.
 target_include_directories(SolidSyslogBddTargetCmsis SYSTEM PRIVATE
-    ${LITTLEFS_PATH}
+    ${BDD_STORE_UPSTREAM_INCLUDES}
     ${BDD_TLS_SYSTEM_INCLUDES}
     ${BDD_BOARD_SYSTEM_INCLUDES}                      # the board vendor's headers
 )
@@ -382,7 +415,7 @@ target_link_libraries(SolidSyslogBddTargetCmsis PRIVATE
     ${PROJECT_NAME}                                   # libSolidSyslog.a (cross-compiled)
     SolidSyslog::LwipSocket                           # lwIP Sockets adapters (need LWIP_SOCKET/LWIP_NETCONN/LWIP_DNS=1)
     SolidSyslog::CmsisRtos                            # Mutex + SysUpTime adapters (sources)
-    SolidSyslog::LittleFs                             # LittleFS file adapter (sources)
+    ${BDD_STORE_LIBRARIES}
     ${BDD_TLS_LIBRARIES}
 )
 

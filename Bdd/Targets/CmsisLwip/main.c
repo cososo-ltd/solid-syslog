@@ -1,9 +1,11 @@
 /* CMSIS-RTOS2 + lwIP (Sockets API, NO_SYS=0) SolidSyslog BDD target.
  *
- * The platform-independent pipeline - SolidSyslog lifecycle, LittleFS-backed store
+ * The platform-independent pipeline - SolidSyslog lifecycle, the store
  * + security policies, SD set, the interactive `set` handler, the Service drain
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
- * (shared between the targets). This file keeps only the
+ * (shared between the targets). Which store the build has - files on LittleFS,
+ * or the board's NOR flash with no filesystem - is BddTargetCmsisStore.h's
+ * business. This file keeps only the
  * lwIP network backend behind the pipeline seam: the tcpip thread, the
  * board's netif (BddTargetBoardNetif.h), the static-IP bring-up +
  * oracle ARP warm-up, the LwipSocket sender wiring (UDP + octet-framed TCP +
@@ -20,7 +22,7 @@
  * lwIP's DNS_LOCAL_HOSTLIST (see lwipopts.h) maps that name statically to the
  * address the board reaches it at. */
 
-#include "BddTargetLittleFsMount.h"
+#include "BddTargetCmsisStore.h"
 #include "BddTargetBoard.h"
 #include "BddTargetBoardConfig.h"
 #include "BddTargetBoardNetif.h"
@@ -79,16 +81,13 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
 static void TeardownNetwork(void);
 
-static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
+/* The network half is this file's. main() has the store half filled in by
+ * whichever store the build has - see BddTargetCmsisStore.h. */
+static struct BddTargetFreeRtosPipelineConfig pipelineConfig = {
     .DefaultHost = "syslog-ng",
     .BuildSender = BuildSender,
     .GetHostname = GetHostname,
     .TeardownNetwork = TeardownNetwork,
-    .MountStore = BddTargetLittleFsMount_Mount,
-    .UnmountStore = BddTargetLittleFsMount_Unmount,
-    .CreateStoreFile = BddTargetLittleFsMount_CreateFile,
-    .DestroyStoreFile = BddTargetLittleFsMount_DestroyFile,
-    .WipeStore = BddTargetLittleFsMount_Wipe,
 };
 
 /* lwIP randomness source (declared by arch/cc.h's LWIP_RAND). sys_now() comes
@@ -107,7 +106,8 @@ unsigned int LwipPortRand(void)
 int main(void)
 {
     BddTargetBoard_Init();
-    BddTargetFreeRtosPipeline_SetConfig(&PIPELINE_CONFIG);
+    BddTargetCmsisStore_Fill(&pipelineConfig);
+    BddTargetFreeRtosPipeline_SetConfig(&pipelineConfig);
 
     /* Create the tcpip thread + mbox + core-lock mutex. Pre-scheduler safe; the
      * thread runs once the scheduler starts. The netif bring-up is deferred to

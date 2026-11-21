@@ -584,10 +584,10 @@ endif()
 #
 # NUCLEO_F767ZI_BRINGUP is the exception: firmware for the NUCLEO-F767ZI that
 # carries no SolidSyslog, and proves the board and its toolchain.
-set(SOLIDSYSLOG_BDD_TARGETS FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP NUCLEO_F767ZI_BRINGUP)
+set(SOLIDSYSLOG_BDD_TARGETS FREERTOS_PLUSTCP FREERTOS_LWIP CMSIS_LWIP CMSIS_LWIP_NOR_FLASH NUCLEO_F767ZI_BRINGUP)
 if(SOLIDSYSLOG_IS_TOP_LEVEL)
     set(SOLIDSYSLOG_BDD_TARGET "FREERTOS_PLUSTCP" CACHE STRING
-        "Which BDD target the cross build produces: FREERTOS_PLUSTCP (default), FREERTOS_LWIP, CMSIS_LWIP or NUCLEO_F767ZI_BRINGUP")
+        "Which BDD target the cross build produces: FREERTOS_PLUSTCP (default), FREERTOS_LWIP, CMSIS_LWIP, CMSIS_LWIP_NOR_FLASH or NUCLEO_F767ZI_BRINGUP")
     set_property(CACHE SOLIDSYSLOG_BDD_TARGET PROPERTY STRINGS ${SOLIDSYSLOG_BDD_TARGETS})
     if(NOT SOLIDSYSLOG_BDD_TARGET IN_LIST SOLIDSYSLOG_BDD_TARGETS)
         string(REPLACE ";" ", " solidsyslog_bdd_target_list "${SOLIDSYSLOG_BDD_TARGETS}")
@@ -665,7 +665,8 @@ endif()
 # only enter the build when a cross preset is active. SOLIDSYSLOG_BDD_TARGET
 # picks which one: FREERTOS_PLUSTCP builds the full FreeRTOS-Plus-TCP BDD
 # target; FREERTOS_LWIP the FreeRtosLwip one - LAN9118 netif + NO_SYS=0 lwIP +
-# LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one;
+# LwipRaw adapters, no PlusTcp; CMSIS_LWIP the CmsisLwip one, and
+# CMSIS_LWIP_NOR_FLASH the same with its store directly on a NOR flash;
 # NUCLEO_F767ZI_BRINGUP the NUCLEO-F767ZI bring-up firmware, which needs that
 # board's own toolchain file
 # (Bdd/Targets/Boards/NucleoF767zi/cmake/arm-none-eabi-cortex-m7.cmake).
@@ -682,7 +683,7 @@ if(SOLIDSYSLOG_IS_TOP_LEVEL
     set(solidsyslog_bdd_target "${SOLIDSYSLOG_BDD_TARGET}")
     if(SOLIDSYSLOG_BDD_TARGET STREQUAL "NUCLEO_F767ZI_BRINGUP")
         add_subdirectory(Bdd/Targets/Boards/NucleoF767zi/Bringup)
-    elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP")
+    elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP" OR SOLIDSYSLOG_BDD_TARGET STREQUAL "CMSIS_LWIP_NOR_FLASH")
         add_subdirectory(Bdd/Targets/CmsisLwip)
     elseif(SOLIDSYSLOG_BDD_TARGET STREQUAL "FREERTOS_LWIP")
         add_subdirectory(Bdd/Targets/FreeRtosLwip)
