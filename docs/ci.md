@@ -185,22 +185,31 @@ releases, `example-sweep.yml` keeps them honest against `main`:
    `library-changed`, to each stack, naming the commit and the
    `cpputest-freertos-cross` image digest that commit's `ci.yml` pins. The token
    is minted from the release GitHub App, which is installed on the stacks.
-2. Each stack's **Sweep** workflow checks out its latest `release/<version>`
-   branch and sweeps every stage with `solid-syslog.pin` overridden to that
-   commit and every container on the cross image replaced by the one named, as
-   it does for a release, committing nothing. The release branch is not
-   touched: a sweep of it with neither override still measures the branch as it
-   shipped. It answers with `sweep-finished`, naming the stack, the commit, the
-   verdict and the stages that failed.
-3. A failed sweep opens one issue per stack here, labelled `example-sweep`,
-   naming the stages and the commits since the stack's last green sweep. Each
-   later red sweep comments on it, and the next green one closes it.
+2. Each stack's **Sweep** workflow rebases its `wip/next` branch: the stages
+   onto a Baseline with `solid-syslog.pin` at that commit and every container
+   on the cross image named. The Make stack carries its own upstreams, and
+   moves them to the ones that image carries in the same commit. The stages
+   are `wip/next`'s own, so a stage fixed there by hand stays fixed; the first
+   run takes them from the latest `release/<version>` branch, which is never
+   touched. The rebased branch is pushed, compared with the other stack's -
+   `app/` is the same in both at every stage - and swept as pushed.
+3. A stage that does not apply leaves `wip/next` as it was. What is swept
+   then is that branch with the pin and the image overridden, committing
+   nothing.
+4. The stack answers with `sweep-finished`, naming the commit, the verdict,
+   the stages that failed, a stage that did not apply and the stages whose
+   `app/` differs.
+5. Anything but a clean rebase and a green sweep opens one issue per stack
+   here, labelled `example-sweep`, naming what failed and the commits since the
+   stack's last green sweep. Each later red sweep comments on it, and the next
+   green one closes it.
 
-The fix is to the stage, or to the library where the change was not meant. Run
-the **Example Sweep** workflow from the Actions tab with a commit to send the
-event by hand; a stack's **Sweep** workflow also takes the pin and the image
-directly, for sweeping one stack against one commit. Figures from a sweep with
-either override are not the release branch's and are never committed as its
+The fix is to the stage, on `wip/next` as the stack's README describes, or to
+the library where the change was not meant. Run the **Example Sweep** workflow
+from the Actions tab with a commit to send the event by hand; a stack's
+**Sweep** workflow also takes a branch, a pin and an image directly, for
+sweeping one stack against one commit without rebasing anything. Figures from a
+sweep with either override are not the branch's and are never committed as
 evidence; the evidence commit of a release holds the output of a sweep with
 neither.
 

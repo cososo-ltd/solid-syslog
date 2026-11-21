@@ -251,9 +251,9 @@ The documentation is brought to a release on one branch, from one issue, and tha
 branch merges after the last functional change and before the release pull request.
 It carries everything the checklist below names: the example stacks' `release/<version>`
 links, the `GIT_TAG`, the cost figures in `README.md`, and `docs/hardening-path.md`
-re-taken stage by stage. The figures come from the example stacks' `wip/<version>`
-branches, replayed onto the current `main` and swept; the evidence commit on each
-release branch states why the figures hold at the tag. From the moment the branch merges
+re-taken stage by stage. The figures come from the example stacks' `wip/next`
+branches, which follow `main` per [ci.md](ci.md#example-stacks); the evidence commit
+on each release branch states why the figures hold at the tag. From the moment the branch merges
 the site links release branches that do not yet exist, so the release PR, the tag, the
 release branches and the publication follow in one sitting.
 

@@ -2,11 +2,11 @@ name: Example Sweep
 
 # Keeps the example stacks honest against main. A push to main that touches
 # Core, a pack the stacks link, the build files or the cross image sends
-# `library-changed` to each stack, which sweeps its latest release branch with
-# the pin overridden to that commit, in the container image the commit's own CI
-# pins, and answers with `sweep-finished`. A failed sweep becomes one
-# issue per stack here, updated while it stays red and closed by the next green
-# sweep. docs/ci.md describes the chain; workflow_dispatch sends the event for
+# `library-changed` to each stack, which rebases its `wip/next` branch onto a
+# Baseline pinned at that commit, on the container image the commit's own CI
+# pins, sweeps it, and answers with `sweep-finished`. A stage that does not
+# apply, or a failed sweep, becomes one issue per stack here, updated while the
+# stack stays red and closed by its next green sweep. docs/ci.md describes the chain; workflow_dispatch sends the event for
 # a commit by hand.
 on:
   push:
@@ -114,6 +114,10 @@ jobs:
       REF: ${{ github.event.client_payload.ref }}
       VERDICT: ${{ github.event.client_payload.verdict }}
       FAILED: ${{ github.event.client_payload.failed }}
+      REBASE: ${{ github.event.client_payload.rebase }}
+      CONFLICT: ${{ github.event.client_payload.conflict }}
+      CONFLICT_COMMIT: ${{ github.event.client_payload.conflict_commit }}
+      DIFFERING: ${{ github.event.client_payload.differing }}
       RUN_URL: ${{ github.event.client_payload.run_url }}
     steps:
       - name: Open, update or close the stack's issue
@@ -142,18 +146,32 @@ jobs:
           else
             range="no green sweep on record; the break is at or before \`$short\`"
           fi
-          failed_list=$(echo "$FAILED" | tr ',' '\n' | sed '/^$/d; s/^/- `/; s/$/`/')
-          cat > /tmp/update.md <<MD
-          Sweep of \`$REF\` against solid-syslog \`$short\` failed ([run]($RUN_URL)).
-
-          Stages failed:
-          $failed_list
-
-          Commits since the last green sweep: $range
-          MD
+          as_list() { echo "$1" | tr ',' '\n' | sed "/^\$/d; s/^/- \`/; s/\$/\`/"; }
+          {
+            echo "Sweep of \`$REF\` against solid-syslog \`$short\` failed ([run]($RUN_URL))."
+            echo
+            if [ -n "$CONFLICT" ]; then
+              echo "Stage \`$CONFLICT\` ([\`${CONFLICT_COMMIT:0:7}\`](https://github.com/cososo-ltd/$STACK/commit/$CONFLICT_COMMIT)) does not apply to a Baseline at this commit, so \`wip/next\` was left as it was. What was swept is that branch with the pin and the image overridden."
+              echo
+            elif [ "$REBASE" = failure ]; then
+              echo "\`wip/next\` could not be rebased, and nothing was swept. The run says why."
+              echo
+            fi
+            if [ -n "$DIFFERING" ]; then
+              echo "Stages whose \`app/\` differs from the sibling stack's:"
+              as_list "$DIFFERING"
+              echo
+            fi
+            if [ -n "$FAILED" ]; then
+              echo "Stages failed:"
+              as_list "$FAILED"
+              echo
+            fi
+            echo "Commits since the last green sweep: $range"
+          } > /tmp/update.md
           if [ -z "$number" ]; then
             cat > /tmp/body.md <<MD
-          The \`$STACK\` stack no longer builds and runs against \`main\`. Each stage below is one commit of its latest release branch, swept with \`solid-syslog.pin\` overridden to the commit named, in the container image that commit's CI pins. The fix is to the stage, on the stack's \`wip/next\` branch where one exists, or to the library where the change was not meant.
+          The \`$STACK\` stack no longer builds and runs against \`main\`. Each stage below is one commit of its \`wip/next\` branch, which the stack's Sweep workflow rebases onto a Baseline pinned at the commit named, on the container image that commit's CI pins. The fix is to the stage, on \`wip/next\` as the stack's README describes, or to the library where the change was not meant.
 
           This issue is updated by the Example Sweep workflow while the stack stays red, and closed by its next green sweep.
 
