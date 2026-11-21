@@ -26,7 +26,6 @@ const char* SolidSyslogSpiNorFlashErrors_Name(int32_t detail)
         [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED] = "BUS_FAILED",
         [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT] = "TIMED_OUT",
         [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_WRITE_REFUSED] = "WRITE_REFUSED",
-        [SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE] = "OUT_OF_RANGE",
     };
 
     return SolidSyslogErrorName_Lookup(names, (int32_t) SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_MAX, detail);

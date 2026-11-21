@@ -13,11 +13,11 @@ beneath a [NorFlashBlockDevice](../../api/SolidSyslogNorFlashBlockDevice_8h.md).
 ## Requirements
 
 A part that publishes an SFDP basic parameter table, erases the same way
-throughout, takes three-byte addresses and holds no more than 16 MiB. The pack
-uses the plain SPI commands only: read
-data `03h`, page program `02h`, read status `05h`, write enable `06h`, read
-identification `9Fh`, read SFDP `5Ah`, and the erase command the part's table
-lists for its smallest erase.
+throughout, takes three-byte addresses, holds no more than 16 MiB, and programs
+in pages of 256 bytes or a multiple of that. The pack uses the plain SPI
+commands only: read data `03h`, page program `02h`, read status `05h`, write
+enable `06h`, read SFDP `5Ah`, and the erase command the part's table lists for
+its smallest erase.
 
 A bus to reach it over: the five functions of
 [`SolidSyslogSpiNorFlashBus`](../../api/structSolidSyslogSpiNorFlashBus.md), which
@@ -28,13 +28,11 @@ beyond C99, and nothing of an operating system.
 
 ### A part it cannot drive is refused at Create
 
-The pack reads the basic parameter table and no other. A part with no table, one
-larger than 16 MiB, one that takes only four-byte addresses, and one whose SFDP
-announces a sector map are each refused when the flash is created: Create
-reports why and answers the Null flash, so a store built on it holds nothing and
-says so.
+The pack reads the basic parameter table and no other. A part outside what it
+drives is refused when the flash is created: Create reports why and answers the
+Null flash, so a store built on it holds nothing and says so.
 [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md) lists
-every refusal and what an older table's missing fields default to.
+every refusal, and the three things the pack does not check.
 
 ### Write protection is yours
 
@@ -46,11 +44,10 @@ what becomes of a write to a block the part protects.
 
 ### A part that stops answering costs a bounded wait
 
-An erase and a page program are each given a time limit, which
+An erase and a page program are each given a fixed time limit, which
 [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md)
-states. One that outlasts it fails, as does any
-operation on a part that will not enable writing or has stopped answering, and
-each is reported as
+states. One that outlasts it fails, as does any operation on a part that will
+not enable writing or whose line is no longer driven, and each is reported as
 [`SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED`](../../api/SolidSyslogNorFlashCategories_8h.md)
 with a detail saying which. A program or an erase that fails freezes the store
 above, which keeps what it holds and does not wait on the part for ever; the

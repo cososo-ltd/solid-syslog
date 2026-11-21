@@ -48,10 +48,10 @@ size the part has, commonly 4 KiB.
 
 ## What will catch you out
 
-**Create talks to the part.** It waits for the part to be ready, identifies it
-and reads its SFDP table, so the bus must already work, and Create can take as
-long as the wait its header states where a reset has left the part part-way
-through an erase.
+**Create talks to the part.** It waits for the part to be ready and reads its
+SFDP table, so the bus must already work, and Create can take as long as the
+wait its header states where a reset has left the part part-way through an
+erase.
 
 **Every bus call must come back.** The pack bounds how long it waits for the
 part, by your count of milliseconds. It cannot bound a call that never

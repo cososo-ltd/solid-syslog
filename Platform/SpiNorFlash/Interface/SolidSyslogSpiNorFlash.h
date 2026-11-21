@@ -28,19 +28,18 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  Create talks to the part. It first waits for the part to be ready, for up
      *  to 3000 ms: a part that was erasing when the processor was reset carries
      *  on, and answers nothing else until it finishes. It then reads the SFDP
-     *  header and every parameter header, and one table, the basic parameter
-     *  table, for the part's capacity, its address width, its smallest erase
-     *  and that erase's command, its page size, and the longest an erase and a
-     *  page program take.
+     *  header, every parameter header, and the first nine DWORDs of one table,
+     *  the basic parameter table, for the part's capacity, its address width,
+     *  and its smallest erase with that erase's command.
      *
      *  A block of the NorFlash is one erase of the smallest size the table
      *  lists, and the blocks cover the whole part.
      *
-     *  An erase and a page program are each allowed the longest the table says
-     *  one takes, rounded up to a whole millisecond, and one millisecond more.
-     *  A table older than JESD216A carries no page size and no times. For such
-     *  a part the page is taken as 256 bytes, an erase is allowed 3000 ms and a
-     *  page program 20 ms.
+     *  Nothing else is taken from the table. On any part an erase is allowed
+     *  3000 ms and a page program 20 ms, each well beyond what a part in good
+     *  order takes, and a program is sent no more than 256 bytes at a time,
+     *  split where a page of that size ends. So the part's page must be 256
+     *  bytes or a multiple of it.
      *
      *  Refused, each reported as SOLIDSYSLOG_CAT_BAD_CONFIG:
      *   - a NULL @p config or Bus, or a Bus with a member not filled;
@@ -51,16 +50,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *     part does not erase the same way throughout, and the map that says
      *     where each erase applies is not read.
      *
-     *  Write protection is the part's owner's business. The flash neither
-     *  looks for it nor changes it: it never writes a status register. A part
-     *  takes a program or an erase of a block it protects and does nothing,
-     *  without saying so, so that Program or Erase answers true. The
-     *  SolidSyslogNorFlashBlockDevice above reads back what it programs, and
-     *  reports the difference as
-     *  SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_VERIFY_FAILED.
-     *
      *  A part that does not answer, one still busy after the wait, and a bus
      *  call that fails are each reported as SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED.
+     *  A line held low, as a part with no power may leave it, reads as a part
+     *  that is ready, so it is refused for the SFDP it does not have.
      *
      *  Every one of those returns SolidSyslogNullNorFlash, as an exhausted pool
      *  does, reported as SOLIDSYSLOG_CAT_POOL_EXHAUSTED. event->Detail is an
@@ -71,9 +64,22 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  program the part has not finished in the time allowed, a part that will
      *  not enable writing or has stopped answering, and a bus call that fails.
      *  A part left busy by an operation that outlasted its time fails every
-     *  operation, at once, until it is ready again. A span that is not within
-     *  one block is reported as SOLIDSYSLOG_CAT_BAD_ARGUMENT, and nothing is
-     *  sent for it. */
+     *  operation, at once, until it is ready again.
+     *
+     *  Three things the flash does not check:
+     *   - The span of a Read, a Program or an Erase. The NorFlash role makes
+     *     it the caller's to keep within a block, and an address past the end
+     *     of a part wraps to its start.
+     *   - Write protection, which is the part's owner's business. The flash
+     *     neither looks for it nor changes it: it never writes a status
+     *     register. A part takes a program or an erase of a block it protects
+     *     and does nothing, without saying so, so that Program or Erase
+     *     answers true. The SolidSyslogNorFlashBlockDevice above reads back
+     *     what it programs, and reports the difference as
+     *     SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_VERIFY_FAILED.
+     *   - A line held low once the flash is created. A Read then answers true
+     *     with bytes of zero; a Program or an Erase fails, because writing
+     *     does not show as enabled. */
     struct SolidSyslogNorFlash* SolidSyslogSpiNorFlash_Create(const struct SolidSyslogSpiNorFlashConfig* config);
 
     /** Release the pool slot. The part is not touched. */

@@ -52,10 +52,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  was not sent. A Program over several pages sends one for each, so
          *  the pages before the one refused may already be programmed. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_WRITE_REFUSED,
-        /** A read, a program or an erase was asked for outside a block of the
-         *  part. Raised under SOLIDSYSLOG_CAT_BAD_ARGUMENT, and nothing was
-         *  sent to the part. */
-        SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE,
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_MAX /**< One past the last code; never emitted. Bounds the range for iteration. */
     };
 

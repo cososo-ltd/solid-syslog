@@ -42,9 +42,9 @@ enum
     PARAMETER_HEADER_BYTES = 8,
     PARAMETER_HEADER_ID_HIGH = 7,
     /* The SFDP header and the basic table's parameter header are read as
-     * one, and as much of the table as the flash uses. */
+     * one, and then the nine DWORDs of the table that the flash uses. */
     FIRST_SFDP_READ_BYTES = SFDP_HEADER_BYTES + PARAMETER_HEADER_BYTES,
-    TABLE_BYTES_READ = 44,
+    TABLE_BYTES_READ = 36,
 
     /* The parameter IDs JESD216 gives a sector map, in two bytes, and the
      * low byte of two of its other tables. */
@@ -73,16 +73,15 @@ enum
     ERASE_64K_BY_D8 = 0xD810,
     ERASE_32M_BY_DC = 0xDC19,
 
-    /* What a start asks of a part that is ready: its status, its maker, its
-     * SFDP header and its table. Each is one command, of one write and one
-     * read. */
-    COMMANDS_IN_A_START = 4,
+    /* What a start asks of a part that is ready: its status, its SFDP header
+     * and its table. Each is one command, of one write and one read. */
+    COMMANDS_IN_A_START = 3,
     /* Every bit of the first status register but busy and write enabled. */
     STATUS_BITS_THE_PART_DOES_NOT_SET_ITSELF = 0xFC,
     TRANSFERS_IN_A_START = COMMANDS_IN_A_START,
-    /* Its status, its maker and its SFDP header come before any further
-     * parameter header is asked for. */
-    TRANSFERS_BEFORE_A_FURTHER_PARAMETER_HEADER = 3,
+    /* Its status and its SFDP header come before any further parameter
+     * header is asked for. */
+    TRANSFERS_BEFORE_A_FURTHER_PARAMETER_HEADER = 2,
     START_TIMEOUT_MILLISECONDS = 3000
 };
 
@@ -392,18 +391,13 @@ TEST(SolidSyslogSpiNorFlash, DoesNotStartWithNoPartOnTheBus)
     CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
 }
 
-TEST(SolidSyslogSpiNorFlash, DoesNotStartWithTheLineHeldLow)
+TEST(SolidSyslogSpiNorFlash, TakesALineHeldLowForAPartWithNoSfdp)
 {
+    /* A line held low reads as a status that says ready, so it is the
+     * table of zeros after it that is refused. */
     SpiNorFlashPartFake::settings.lineHeldLow = true;
     CreateFlash();
-    CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
-}
-
-TEST(SolidSyslogSpiNorFlash, DoesNotStartAPartThatGivesNoMaker)
-{
-    SpiNorFlashPartFake::settings.jedecId[0] = 0xFF;
-    CreateFlash();
-    CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
+    CHECK_REFUSED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_SFDP);
 }
 
 TEST(SolidSyslogSpiNorFlash, DoesNotStartWhenAnyWriteOfTheBusFails)
@@ -829,7 +823,6 @@ enum
     READ_DATA = 0x03,
     READ_STATUS = 0x05,
     SECTOR_ERASE = 0x20,
-    READ_JEDEC_ID = 0x9F,
     BLOCK_ERASE = 0xD8,
 
     PAGE_BYTES = 256,
@@ -841,33 +834,25 @@ enum
     THREE_PAGES_AND_A_LITTLE = (3 * PAGE_BYTES) + 10,
     MORE_THAN_A_PAGE = PAGE_BYTES + 44,
 
-    DWORD_ERASE_TIMES = 10,
-    DWORD_PAGE_AND_PROGRAM = 11,
-
-    /* What the fixture's table works out to, and what a table too short to
-     * say is given. */
-    LONGEST_ERASE_BY_THE_TABLE = 896,
-    LONGEST_PROGRAM_BY_THE_TABLE = 5,
-    DEFAULT_ERASE_TIMEOUT = 3000,
-    DEFAULT_PROGRAM_TIMEOUT = 20,
+    /* What an erase and a page program are allowed, on any part. */
+    ERASE_TIMEOUT = 3000,
+    PROGRAM_TIMEOUT = 20,
     FAR_LONGER_THAN_ANY_TIMEOUT = 100000,
 
     /* The transfers each makes of a part that does as it is asked. A program
      * here is of one page. */
-    WRITES_IN_A_READ = 3,
-    READS_IN_A_READ = 3,
-    WRITES_IN_A_PROGRAM = 6,
-    READS_IN_A_PROGRAM = 3,
-    WRITES_IN_AN_ERASE = 5,
-    READS_IN_AN_ERASE = 3
+    WRITES_IN_A_READ = 2,
+    READS_IN_A_READ = 2,
+    WRITES_IN_A_PROGRAM = 5,
+    READS_IN_A_PROGRAM = 2,
+    WRITES_IN_AN_ERASE = 4,
+    READS_IN_AN_ERASE = 2
 };
 
+/* Where a table of JESD216A or later gives the part's page size. */
+static const size_t DWORD_PAGE_SIZE = 11;
 static const uint32_t PAGE_SIZE_FIELD = 0x000000F0U;
 static const uint32_t PAGE_SIZE_OF_512 = 0x00000090U;
-static const uint32_t PROGRAM_TIME_UNITS_ARE_LONG = 0x00002000U;
-/* The 4 KiB erase's time, 64 ms typical and 14 times that at most, moved
- * from the first type's field to the fourth's, with 1 ms left in the first. */
-static const uint32_t ERASE_TIMES_WITH_THE_FOURTH_TYPE_SLOW = 0x46000006U;
 /* Near enough to where the count of milliseconds wraps that an erase begun
  * then is still going after it. */
 static const uint32_t A_LITTLE_BEFORE_THE_WRAP = UINT32_MAX - 100U;
@@ -876,17 +861,6 @@ static const uint32_t A_LITTLE_BEFORE_THE_WRAP = UINT32_MAX - 100U;
     {                                             \
         CHECK_FALSE(succeeded);                   \
         CHECK_IO_FAILURE_REPORTED(detail);        \
-    }
-
-#define CHECK_OUT_OF_RANGE(succeeded)                    \
-    {                                                    \
-        CHECK_FALSE(succeeded);                          \
-        CHECK_ERROR_REPORTED_ONCE(                       \
-            SOLIDSYSLOG_SEVERITY_CRITICAL,               \
-            &SolidSyslogSpiNorFlashErrorSource,          \
-            SOLIDSYSLOG_CAT_BAD_ARGUMENT,                \
-            SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE \
-        );                                               \
     }
 
 static std::vector<uint8_t> BytesOfPattern(uint8_t first, size_t count)
@@ -905,6 +879,7 @@ static std::vector<uint8_t> BytesOfPattern(uint8_t first, size_t count)
 TEST_GROUP_BASE(SolidSyslogSpiNorFlashOperations, SpiNorFlashTestBase)
 {
     std::vector<uint8_t> buffer;
+    size_t commandsInTheStart = 0;
 
     void setup() override
     {
@@ -924,6 +899,22 @@ TEST_GROUP_BASE(SolidSyslogSpiNorFlashOperations, SpiNorFlashTestBase)
         CreateFlash();
         CHECK_CREATED();
         ErrorHandlerFake_Install(nullptr);
+        commandsInTheStart = SpiNorFlashPartFake::Commands().size();
+    }
+
+    /* The first byte of each command the part has taken since Start. */
+    [[nodiscard]] std::vector<uint8_t> CommandsSinceTheStart() const
+    {
+        const std::vector<uint8_t>& commands = SpiNorFlashPartFake::Commands();
+        return {commands.begin() + static_cast<std::ptrdiff_t>(commandsInTheStart), commands.end()};
+    }
+
+    /* The first of those, where a wait went on to ask the status many times. */
+    [[nodiscard]] std::vector<uint8_t> FirstCommandsSinceTheStart(size_t count) const
+    {
+        std::vector<uint8_t> commands = CommandsSinceTheStart();
+        commands.resize(std::min(count, commands.size()));
+        return commands;
     }
 
     /* A blank part and no flash, for a test that starts more than one. */
@@ -956,18 +947,6 @@ TEST_GROUP_BASE(SolidSyslogSpiNorFlashOperations, SpiNorFlashTestBase)
         {
             (void) bus->Milliseconds(bus);
         }
-    }
-
-    static void UseATableTooShortToGiveTimesOrAPageSize()
-    {
-        SpiNorFlashPartFake::settings.sfdp.at(TABLE_LENGTH_DWORDS) = DWORDS_IN_THE_FIRST_JESD216;
-    }
-
-    /* One erase type: its time's count less one in the low five bits, its
-     * units in the two above, and the multiplier that gives the longest. */
-    static void SetFirstEraseTime(uint32_t countLessOne, uint32_t units, uint32_t multiplierField)
-    {
-        SetDword(DWORD_ERASE_TIMES, multiplierField | (((units << 5U) | countLessOne) << 4U));
     }
 };
 
@@ -1009,51 +988,11 @@ TEST(SolidSyslogSpiNorFlashOperations, LeavesThePartDeselectedAfterARead)
     LONGS_EQUAL(0, SpiNorFlashPartFake::TransfersWhileDeselected());
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadThatRunsPastTheEndOfItsBlock)
+TEST(SolidSyslogSpiNorFlashOperations, AsksThePartsStatusOnceItHasTheDataAndNotBefore)
 {
     Start();
-    CHECK_OUT_OF_RANGE(Read(A_BLOCK, SECTOR_BYTES - 1, 2));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(READ_DATA));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadLongerThanABlock)
-{
-    Start();
-    CHECK_OUT_OF_RANGE(Read(A_BLOCK, 0, SECTOR_BYTES + 1));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadOfABlockPastTheEndOfThePart)
-{
-    Start();
-    CHECK_OUT_OF_RANGE(Read(LAST_BLOCK + 1, 0, 1));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, AsksThePartsStatusAndItsMakerOnceItHasTheDataAndNotBefore)
-{
-    Start();
-    const size_t sentToStart = SpiNorFlashPartFake::Commands().size();
     CHECK_TRUE(Read(A_BLOCK, AN_OFFSET, 4));
-    const std::vector<uint8_t>& commands = SpiNorFlashPartFake::Commands();
-    CHECK_BYTES_EQUAL(
-        std::vector<uint8_t>({READ_DATA, READ_STATUS, READ_JEDEC_ID}),
-        std::vector<uint8_t>(commands.begin() + static_cast<std::ptrdiff_t>(sentToStart), commands.end())
-    );
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, FailsAReadWithTheLineHeldLow)
-{
-    /* A line held low reads as data of all zeros and as a status that says
-     * ready. Only the maker's code tells it from a part. */
-    Start();
-    SpiNorFlashPartFake::settings.lineHeldLow = true;
-    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatStopsAnsweringOnceItHasGivenItsStatus)
-{
-    Start();
-    SpiNorFlashPartFake::GoQuietAfter(2);
-    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
+    CHECK_BYTES_EQUAL(std::vector<uint8_t>({READ_DATA, READ_STATUS}), CommandsSinceTheStart());
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatIsBusy)
@@ -1157,6 +1096,15 @@ TEST(SolidSyslogSpiNorFlashOperations, EnablesWritingBeforeEveryPageItPrograms)
     LONGS_EQUAL(2, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
 }
 
+TEST(SolidSyslogSpiNorFlashOperations, AsksNothingBeforeTheEnableOfAProgram)
+{
+    /* The status asked after the enable says whether it took and whether
+     * the part is ready, so nothing is asked before it. */
+    Start();
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
+    CHECK_BYTES_EQUAL(std::vector<uint8_t>({WRITE_ENABLE, READ_STATUS, PAGE_PROGRAM}), FirstCommandsSinceTheStart(3));
+}
+
 TEST(SolidSyslogSpiNorFlashOperations, WaitsForOnePageToFinishBeforeItProgramsTheNext)
 {
     Start();
@@ -1178,31 +1126,17 @@ TEST(SolidSyslogSpiNorFlashOperations, ProgramsNothingWhenGivenNothing)
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, SplitsAProgramByThePageSizeTheTableGives)
+TEST(SolidSyslogSpiNorFlashOperations, SplitsAProgramBy256OnAPartWhoseTableGivesLargerPages)
 {
-    SetDword(DWORD_PAGE_AND_PROGRAM, (Dword(DWORD_PAGE_AND_PROGRAM) & ~PAGE_SIZE_FIELD) | PAGE_SIZE_OF_512);
+    /* A page of 512 takes a program of either half of it, so the split
+     * that suits a page of 256 suits it too, and the table is not asked. */
+    SetDword(DWORD_PAGE_SIZE, (Dword(DWORD_PAGE_SIZE) & ~PAGE_SIZE_FIELD) | PAGE_SIZE_OF_512);
     SpiNorFlashPartFake::settings.pageBytes = 2 * PAGE_BYTES;
     const std::vector<uint8_t> bytes = BytesOfPattern(1, MORE_THAN_A_PAGE);
     Start();
     CHECK_TRUE(Program(A_BLOCK, 0, bytes));
     CHECK_BYTES_EQUAL(bytes, SpiNorFlashPartFake::Stored(START_OF_A_BLOCK, bytes.size()));
-    LONGS_EQUAL(1, SpiNorFlashPartFake::Programs().size());
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, SplitsAProgramBy256WhereTheTableIsTooShortToGiveAPageSize)
-{
-    SetDword(DWORD_PAGE_AND_PROGRAM, (Dword(DWORD_PAGE_AND_PROGRAM) & ~PAGE_SIZE_FIELD) | PAGE_SIZE_OF_512);
-    UseATableTooShortToGiveTimesOrAPageSize();
-    Start();
-    CHECK_TRUE(Program(A_BLOCK, 0, BytesOfPattern(1, MORE_THAN_A_PAGE)));
     LONGS_EQUAL(2, SpiNorFlashPartFake::Programs().size());
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, RefusesAProgramThatRunsPastTheEndOfItsBlock)
-{
-    Start();
-    CHECK_OUT_OF_RANGE(Program(A_BLOCK, SECTOR_BYTES - 1, {0x00, 0x00}));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, SendsNoProgramToAPartThatDidNotEnableWriting)
@@ -1213,43 +1147,18 @@ TEST(SolidSyslogSpiNorFlashOperations, SendsNoProgramToAPartThatDidNotEnableWrit
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, AllowsAProgramTheLongestTheTableSaysOneTakes)
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAPageProgramTwentyMilliseconds)
 {
+    /* The fixture's own table says 5 ms at the longest. It is not asked. */
     Start();
-    SpiNorFlashPartFake::settings.programMilliseconds = LONGEST_PROGRAM_BY_THE_TABLE;
+    SpiNorFlashPartFake::settings.programMilliseconds = PROGRAM_TIMEOUT - 2;
     CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAProgramThatOutlastsWhatTheTableAllows)
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAPageProgramAfterTwentyMilliseconds)
 {
     Start();
-    SpiNorFlashPartFake::settings.programMilliseconds = 2 * LONGEST_PROGRAM_BY_THE_TABLE;
-    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET, {0x00}));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, ReadsAProgramTimeGivenInTheShorterUnits)
-{
-    /* The same count in units of 8 us is under a millisecond at its longest,
-     * so the time the fixture's own table allows is now too long. */
-    SetDword(DWORD_PAGE_AND_PROGRAM, Dword(DWORD_PAGE_AND_PROGRAM) & ~PROGRAM_TIME_UNITS_ARE_LONG);
-    Start();
-    SpiNorFlashPartFake::settings.programMilliseconds = LONGEST_PROGRAM_BY_THE_TABLE;
-    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET, {0x00}));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, AllowsAProgramTwentyMillisecondsWhereTheTableIsTooShortToSay)
-{
-    UseATableTooShortToGiveTimesOrAPageSize();
-    Start();
-    SpiNorFlashPartFake::settings.programMilliseconds = DEFAULT_PROGRAM_TIMEOUT - 2;
-    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAProgramAfterTwentyMillisecondsWhereTheTableIsTooShortToSay)
-{
-    UseATableTooShortToGiveTimesOrAPageSize();
-    Start();
-    SpiNorFlashPartFake::settings.programMilliseconds = DEFAULT_PROGRAM_TIMEOUT + 5;
+    SpiNorFlashPartFake::settings.programMilliseconds = PROGRAM_TIMEOUT + 5;
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET, {0x00}));
 }
 
@@ -1270,8 +1179,9 @@ TEST(SolidSyslogSpiNorFlashOperations, SendsNoProgramToAPartLeftBusyByOneThatOut
     (void) Program(A_BLOCK, AN_OFFSET, {0x00});
     ErrorHandlerFake_Install(nullptr);
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Program(A_BLOCK, AN_OFFSET + 1, {0x00}));
-    LONGS_EQUAL(1, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
+    /* The enable reached the busy part, which ignored it, and nothing was
+     * sent after it. */
+    LONGS_EQUAL(1, SpiNorFlashPartFake::CommandsWhileBusy());
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, SendsNoEraseToAPartLeftBusyByAProgramThatOutlastedItsTime)
@@ -1281,7 +1191,7 @@ TEST(SolidSyslogSpiNorFlashOperations, SendsNoEraseToAPartLeftBusyByAProgramThat
     (void) Program(A_BLOCK, AN_OFFSET, {0x00});
     ErrorHandlerFake_Install(nullptr);
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
+    LONGS_EQUAL(1, SpiNorFlashPartFake::CommandsWhileBusy());
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, ProgramsAgainOnceThePartHasFinishedWhatOutlastedItsTime)
@@ -1297,7 +1207,7 @@ TEST(SolidSyslogSpiNorFlashOperations, ProgramsAgainOnceThePartHasFinishedWhatOu
 TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenThePartStopsAnsweringBeforeWritingIsEnabled)
 {
     Start();
-    /* It answers that it is ready, and nothing after. */
+    /* It takes the enable, and answers nothing after. */
     SpiNorFlashPartFake::GoQuietAfter(1);
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Program(A_BLOCK, AN_OFFSET, {0x00}));
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(PAGE_PROGRAM));
@@ -1306,8 +1216,8 @@ TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenThePartStopsAnsweringBef
 TEST(SolidSyslogSpiNorFlashOperations, FailsAProgramWhenThePartStopsAnsweringWhileItPrograms)
 {
     Start();
-    /* Ready, writing enabled, its status, and the program itself. */
-    SpiNorFlashPartFake::GoQuietAfter(4);
+    /* Writing enabled, its status, and the program itself. */
+    SpiNorFlashPartFake::GoQuietAfter(3);
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Program(A_BLOCK, AN_OFFSET, {0x00}));
 }
 
@@ -1355,6 +1265,13 @@ TEST(SolidSyslogSpiNorFlashOperations, ErasesOneBlockAndNoOther)
     LONGS_EQUAL(START_OF_A_BLOCK, SpiNorFlashPartFake::Erases()[0]);
 }
 
+TEST(SolidSyslogSpiNorFlashOperations, AsksNothingBeforeTheEnableOfAnErase)
+{
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    CHECK_BYTES_EQUAL(std::vector<uint8_t>({WRITE_ENABLE, READ_STATUS, SECTOR_ERASE}), FirstCommandsSinceTheStart(3));
+}
+
 TEST(SolidSyslogSpiNorFlashOperations, ErasesByTheCommandTheTableGivesForItsSmallestErase)
 {
     SetEraseTypes(0, ERASE_64K_BY_D8, 0, 0);
@@ -1380,13 +1297,6 @@ TEST(SolidSyslogSpiNorFlashOperations, ErasesTheLastBlockOfThePart)
     CHECK_TRUE(Erase(LAST_BLOCK));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, RefusesToEraseABlockPastTheEndOfThePart)
-{
-    Start();
-    CHECK_OUT_OF_RANGE(Erase(LAST_BLOCK + 1));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
-}
-
 TEST(SolidSyslogSpiNorFlashOperations, SendsNoEraseToAPartThatDidNotEnableWriting)
 {
     Start();
@@ -1395,25 +1305,11 @@ TEST(SolidSyslogSpiNorFlashOperations, SendsNoEraseToAPartThatDidNotEnableWritin
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(SECTOR_ERASE));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseTheLongestTheTableSaysOneTakes)
-{
-    Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE;
-    CHECK_TRUE(Erase(A_BLOCK));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsWhatTheTableAllows)
-{
-    Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE + 10;
-    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
-}
-
 TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseItsTimeAcrossAWrapOfTheCountOfMilliseconds)
 {
     SpiNorFlashPartFake::StartClockAt(A_LITTLE_BEFORE_THE_WRAP);
     Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE;
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_TIMEOUT - 10;
     CHECK_TRUE(Erase(A_BLOCK));
 }
 
@@ -1421,63 +1317,22 @@ TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsItsTimeAcross
 {
     SpiNorFlashPartFake::StartClockAt(A_LITTLE_BEFORE_THE_WRAP);
     Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE + 10;
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_TIMEOUT + 10;
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, TakesTheTimeOfTheEraseTypeItUses)
+TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseThreeSeconds)
 {
-    SetEraseTypes(ERASE_64K_BY_D8, 0, 0, ERASE_4K_BY_20);
-    SetDword(DWORD_ERASE_TIMES, ERASE_TIMES_WITH_THE_FOURTH_TYPE_SLOW);
+    /* The fixture's own table says 896 ms at the longest. It is not asked. */
     Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = LONGEST_ERASE_BY_THE_TABLE;
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_TIMEOUT - 10;
     CHECK_TRUE(Erase(A_BLOCK));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseTheLongestEachUnitOfTimeGives)
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseAfterThreeSeconds)
 {
-    /* Twice a typical time of 20 ms, 2 x 16 ms, 2 x 128 ms and 2 x 1 s. */
-    const std::array<uint32_t, 4> countLessOne = {19, 1, 1, 1};
-    const std::array<uint32_t, 4> longest = {40, 64, 512, 4000};
-
-    for (uint32_t units = 0; units < 4U; units++)
-    {
-        StartOver();
-        SetFirstEraseTime(countLessOne.at(units), units, 0);
-        Start();
-        SpiNorFlashPartFake::settings.eraseMilliseconds = longest.at(units);
-        CHECK_TRUE(Erase(A_BLOCK));
-    }
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseThatOutlastsTheLongestEachUnitOfTimeGives)
-{
-    const std::array<uint32_t, 4> countLessOne = {19, 1, 1, 1};
-    const std::array<uint32_t, 4> longest = {40, 64, 512, 4000};
-
-    for (uint32_t units = 0; units < 4U; units++)
-    {
-        StartOver();
-        SetFirstEraseTime(countLessOne.at(units), units, 0);
-        Start();
-        SpiNorFlashPartFake::settings.eraseMilliseconds = longest.at(units) + 10;
-        CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
-    }
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, AllowsAnEraseThreeSecondsWhereTheTableIsTooShortToSay)
-{
-    UseATableTooShortToGiveTimesOrAPageSize();
     Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = DEFAULT_ERASE_TIMEOUT - 10;
-    CHECK_TRUE(Erase(A_BLOCK));
-}
-
-TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseAfterThreeSecondsWhereTheTableIsTooShortToSay)
-{
-    UseATableTooShortToGiveTimesOrAPageSize();
-    Start();
-    SpiNorFlashPartFake::settings.eraseMilliseconds = DEFAULT_ERASE_TIMEOUT + 10;
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_TIMEOUT + 10;
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
 }
 

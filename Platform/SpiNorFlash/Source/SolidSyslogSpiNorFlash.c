@@ -25,16 +25,14 @@ const struct SolidSyslogErrorSource SolidSyslogSpiNorFlashErrorSource = {
 
 enum
 {
-    /* A line with nothing driving it, and one held low. */
+    /* A line with nothing driving it. */
     IDLE_LINE = 0xFF,
-    LOW_LINE = 0x00,
 
     PAGE_PROGRAM = 0x02,
     READ_DATA = 0x03,
     READ_STATUS = 0x05,
     WRITE_ENABLE = 0x06,
     READ_SFDP = 0x5A,
-    READ_JEDEC_ID = 0x9F,
 
     STATUS_BUSY = 0x01,
     STATUS_WRITE_ENABLED = 0x02,
@@ -46,8 +44,17 @@ enum
     /* A command and the three bytes of address after it. */
     COMMAND_AND_ADDRESS_LENGTH = 4,
 
+    /* The most one program command is given. A part with larger pages takes
+     * it too, as long as its page is a multiple of this. */
+    PAGE_BYTES = 256,
+
+    /* How long an erase and a page program are waited for, on any part.
+     * Each is well beyond what a part in good order takes, so it only
+     * bounds the wait for one that is not. */
+    ERASE_TIMEOUT_MILLISECONDS = 3000,
+    PROGRAM_TIMEOUT_MILLISECONDS = 20,
     /* Long enough for an erase a reset interrupted to finish. */
-    START_TIMEOUT_MILLISECONDS = 3000,
+    START_TIMEOUT_MILLISECONDS = ERASE_TIMEOUT_MILLISECONDS,
     /* For asking whether the part is ready now. */
     NO_WAIT = 0
 };
@@ -86,8 +93,6 @@ static bool SpiNorFlash_Ask(
 static inline bool SpiNorFlash_IsBusy(uint8_t status);
 static inline bool SpiNorFlash_HasPassed(struct SolidSyslogSpiNorFlash* self, uint32_t since, uint32_t milliseconds);
 static inline void SpiNorFlash_ReportIoFailure(enum SolidSyslogSpiNorFlashErrors code);
-static bool SpiNorFlash_IsAnswering(struct SolidSyslogSpiNorFlash* self);
-static inline bool SpiNorFlash_IsNoMaker(uint8_t maker);
 static bool SpiNorFlash_LearnThePart(struct SolidSyslogSpiNorFlash* self);
 static bool SpiNorFlash_LocateTheTable(
     struct SolidSyslogSpiNorFlash* self,
@@ -108,19 +113,7 @@ static bool SpiNorFlash_ReadTheTable(
     struct SolidSyslogSpiNorFlash* self,
     const struct SolidSyslogSpiNorFlashSfdpTable* table
 );
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block, an offset in it and a count; distinct semantics
-static bool SpiNorFlash_CheckSpan(
-    const struct SolidSyslogSpiNorFlash* self,
-    size_t blockIndex,
-    size_t offset,
-    size_t count
-);
-static inline bool SpiNorFlash_IsWithinABlock(
-    const struct SolidSyslogSpiNorFlash* self,
-    size_t blockIndex,
-    size_t offset,
-    size_t count
-);
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block and an offset in it; distinct semantics
 static inline uint32_t SpiNorFlash_AddressOf(
     const struct SolidSyslogSpiNorFlash* self,
     size_t blockIndex,
@@ -135,11 +128,7 @@ static bool SpiNorFlash_ProgramPages(
     const uint8_t* bytes,
     size_t count
 );
-static inline size_t SpiNorFlash_BytesToProgramInPage(
-    const struct SolidSyslogSpiNorFlash* self,
-    uint32_t address,
-    size_t remaining
-);
+static inline size_t SpiNorFlash_BytesToProgramInPage(uint32_t address, size_t remaining);
 static bool SpiNorFlash_ProgramInPage(
     struct SolidSyslogSpiNorFlash* self,
     uint32_t address,
@@ -166,8 +155,7 @@ bool SolidSyslogSpiNorFlash_Initialise(struct SolidSyslogNorFlash* base, struct 
     self->Base.GetBlockCount = SpiNorFlash_GetBlockCount;
     self->Bus = bus;
 
-    return SpiNorFlash_WaitUntilReady(self, START_TIMEOUT_MILLISECONDS) && SpiNorFlash_IsAnswering(self) &&
-           SpiNorFlash_LearnThePart(self);
+    return SpiNorFlash_WaitUntilReady(self, START_TIMEOUT_MILLISECONDS) && SpiNorFlash_LearnThePart(self);
 }
 
 void SolidSyslogSpiNorFlash_Cleanup(struct SolidSyslogNorFlash* base)
@@ -266,39 +254,9 @@ static inline void SpiNorFlash_ReportIoFailure(enum SolidSyslogSpiNorFlashErrors
     SpiNorFlash_Report(SOLIDSYSLOG_NOR_FLASH_IO_FAILED_SEVERITY, SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED, code);
 }
 
-/* A line held low reads as a status of zero, which is a part that is ready.
- * Its maker's code tells the two apart: every maker has one, and it is
- * neither all zeros nor all ones. */
-static bool SpiNorFlash_IsAnswering(struct SolidSyslogSpiNorFlash* self)
-{
-    const uint8_t request = READ_JEDEC_ID;
-    uint8_t maker = IDLE_LINE;
-    bool answering = false;
-
-    if (!SpiNorFlash_Ask(self, &request, sizeof(request), &maker, sizeof(maker)))
-    {
-        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
-    }
-    else if (SpiNorFlash_IsNoMaker(maker))
-    {
-        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
-    }
-    else
-    {
-        answering = true;
-    }
-
-    return answering;
-}
-
-static inline bool SpiNorFlash_IsNoMaker(uint8_t maker)
-{
-    return (maker == (uint8_t) IDLE_LINE) || (maker == (uint8_t) LOW_LINE);
-}
-
 static bool SpiNorFlash_LearnThePart(struct SolidSyslogSpiNorFlash* self)
 {
-    struct SolidSyslogSpiNorFlashSfdpTable table = {0U, 0U, 0U};
+    struct SolidSyslogSpiNorFlashSfdpTable table = {0U, 0U};
 
     return SpiNorFlash_LocateTheTable(self, &table) && SpiNorFlash_HasNoSectorMap(self, &table) &&
            SpiNorFlash_ReadTheTable(self, &table);
@@ -402,11 +360,11 @@ static bool SpiNorFlash_ReadTheTable(
     enum SolidSyslogSpiNorFlashErrors fault = SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_SFDP;
     bool read = false;
 
-    if (!SpiNorFlash_ReadSfdp(self, table->Address, bytes, table->Bytes))
+    if (!SpiNorFlash_ReadSfdp(self, table->Address, bytes, sizeof(bytes)))
     {
         SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
     }
-    else if (!SolidSyslogSpiNorFlashSfdp_ReadGeometry(bytes, table, &self->Geometry, &fault))
+    else if (!SolidSyslogSpiNorFlashSfdp_ReadGeometry(bytes, &self->Geometry, &fault))
     {
         SpiNorFlash_ReportUnsupported(fault);
     }
@@ -428,70 +386,23 @@ static bool SpiNorFlash_Read(
 )
 {
     struct SolidSyslogSpiNorFlash* self = SpiNorFlash_SelfFromBase(base);
-    bool read = false;
+    uint8_t request[COMMAND_AND_ADDRESS_LENGTH] = {0};
+    SpiNorFlash_SetCommand(request, READ_DATA, SpiNorFlash_AddressOf(self, blockIndex, offset));
 
-    if (SpiNorFlash_CheckSpan(self, blockIndex, offset, count))
-    {
-        uint8_t request[COMMAND_AND_ADDRESS_LENGTH] = {0};
-        SpiNorFlash_SetCommand(request, READ_DATA, SpiNorFlash_AddressOf(self, blockIndex, offset));
-
-        /* Erased bytes and an undriven line both read as all ones, so the
-         * data cannot show whether the part sent it. Its status can, and is
-         * asked once the data is in, not before: a part that has stopped
-         * answering by then, or one still busy with something that
-         * outlasted its time and so ignored the read, is caught either
-         * way. A line held low reads as data and as a status that says
-         * ready, so the maker's code is asked for as well, as it is at the
-         * start. */
-        read = SpiNorFlash_BusHeld(SpiNorFlash_Ask(self, request, sizeof(request), buffer, count)) &&
-               SpiNorFlash_WaitUntilReady(self, NO_WAIT) && SpiNorFlash_IsAnswering(self);
-    }
-
-    return read;
+    /* Erased bytes and an undriven line both read as all ones, so the data
+     * cannot show whether the part sent it. Its status can, and is asked
+     * once the data is in, not before: a part that has stopped answering by
+     * then, or one still busy with something that outlasted its time and so
+     * ignored the read, is caught either way. */
+    return SpiNorFlash_BusHeld(SpiNorFlash_Ask(self, request, sizeof(request), buffer, count)) &&
+           SpiNorFlash_WaitUntilReady(self, NO_WAIT);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block, an offset in it and a count; distinct semantics
-/* False, and reported, for a span that is not all within one block of the
- * part. An address past the end of a part wraps to its start, so nothing is
- * sent for one. */
-static bool SpiNorFlash_CheckSpan(
-    const struct SolidSyslogSpiNorFlash* self,
-    size_t blockIndex,
-    size_t offset,
-    size_t count
-)
-{
-    bool within = SpiNorFlash_IsWithinABlock(self, blockIndex, offset, count);
-
-    if (!within)
-    {
-        SpiNorFlash_Report(
-            SOLIDSYSLOG_BAD_ARGUMENT_SEVERITY,
-            SOLIDSYSLOG_CAT_BAD_ARGUMENT,
-            SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_OUT_OF_RANGE
-        );
-    }
-
-    return within;
-}
-
-/* The subtraction keeps `offset + count` from wrapping past the comparison. */
-static inline bool SpiNorFlash_IsWithinABlock(
-    const struct SolidSyslogSpiNorFlash* self,
-    size_t blockIndex,
-    size_t offset,
-    size_t count
-)
-{
-    size_t blockSize = (size_t) self->Geometry.EraseBytes;
-    size_t blockCount = (size_t) (self->Geometry.CapacityBytes / self->Geometry.EraseBytes);
-
-    return (blockIndex < blockCount) && (count <= blockSize) && (offset <= (blockSize - count));
-}
-
-/* For a span SpiNorFlash_CheckSpan has passed, so it is within the part. */
+/* The span is the caller's to keep within the part, as the NorFlash role
+ * asks: nothing here checks it. */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block and an offset in it; distinct semantics
 static inline uint32_t SpiNorFlash_AddressOf(
     const struct SolidSyslogSpiNorFlash* self,
     size_t blockIndex,
@@ -535,10 +446,7 @@ static bool SpiNorFlash_Program(
 {
     struct SolidSyslogSpiNorFlash* self = SpiNorFlash_SelfFromBase(base);
 
-    /* A part still busy keeps writing enabled, so it would seem to take a
-     * program it ignores. So it is asked first whether it is ready. */
-    return SpiNorFlash_CheckSpan(self, blockIndex, offset, count) && SpiNorFlash_WaitUntilReady(self, NO_WAIT) &&
-           SpiNorFlash_ProgramPages(self, SpiNorFlash_AddressOf(self, blockIndex, offset), buffer, count);
+    return SpiNorFlash_ProgramPages(self, SpiNorFlash_AddressOf(self, blockIndex, offset), buffer, count);
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -557,7 +465,7 @@ static bool SpiNorFlash_ProgramPages(
     while (programmed && (done < count))
     {
         uint32_t from = address + (uint32_t) done;
-        size_t length = SpiNorFlash_BytesToProgramInPage(self, from, count - done);
+        size_t length = SpiNorFlash_BytesToProgramInPage(from, count - done);
         programmed = SpiNorFlash_ProgramInPage(self, from, &bytes[done], length);
         done += length;
     }
@@ -567,19 +475,13 @@ static bool SpiNorFlash_ProgramPages(
 
 /* A program that runs past the end of its page wraps to the page's start,
  * so no more than is left of the page is sent in one command. */
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) -- an address and a count of bytes; distinct semantics
-static inline size_t SpiNorFlash_BytesToProgramInPage(
-    const struct SolidSyslogSpiNorFlash* self,
-    uint32_t address,
-    size_t remaining
-)
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- an address and a count of bytes; distinct semantics
+static inline size_t SpiNorFlash_BytesToProgramInPage(uint32_t address, size_t remaining)
 {
-    size_t leftInPage = (size_t) (self->Geometry.PageBytes - (address % self->Geometry.PageBytes));
+    size_t leftInPage = (size_t) ((uint32_t) PAGE_BYTES - (address % (uint32_t) PAGE_BYTES));
 
     return (remaining < leftInPage) ? remaining : leftInPage;
 }
-
-// NOLINTEND(bugprone-easily-swappable-parameters)
 
 static bool SpiNorFlash_ProgramInPage(
     struct SolidSyslogSpiNorFlash* self,
@@ -595,12 +497,15 @@ static bool SpiNorFlash_ProgramInPage(
      * send. */
     return SpiNorFlash_EnableWriting(self) &&
            SpiNorFlash_BusHeld(SpiNorFlash_SendWithData(self, command, sizeof(command), bytes, count)) &&
-           SpiNorFlash_WaitUntilReady(self, self->Geometry.ProgramTimeoutMilliseconds);
+           SpiNorFlash_WaitUntilReady(self, PROGRAM_TIMEOUT_MILLISECONDS);
 }
 
 /* The part accepts a program or an erase only immediately after a write
  * enable, and its status shows whether the enable took. If it did not, the
- * part would ignore the next command without saying so. */
+ * part would ignore the next command without saying so. The same status
+ * shows a part still busy with something that outlasted its time: it keeps
+ * writing enabled meanwhile, so it would seem to take a command it
+ * ignores. */
 static bool SpiNorFlash_EnableWriting(struct SolidSyslogSpiNorFlash* self)
 {
     const uint8_t command = WRITE_ENABLE;
@@ -614,6 +519,10 @@ static bool SpiNorFlash_EnableWriting(struct SolidSyslogSpiNorFlash* self)
     else if (status == (uint8_t) IDLE_LINE)
     {
         SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
+    }
+    else if (SpiNorFlash_IsBusy(status))
+    {
+        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT);
     }
     else if ((status & (uint8_t) STATUS_WRITE_ENABLED) == 0U)
     {
@@ -661,21 +570,13 @@ static bool SpiNorFlash_SendWithData(
 static bool SpiNorFlash_Erase(struct SolidSyslogNorFlash* base, size_t blockIndex)
 {
     struct SolidSyslogSpiNorFlash* self = SpiNorFlash_SelfFromBase(base);
-    bool erased = false;
+    uint8_t command[COMMAND_AND_ADDRESS_LENGTH] = {0};
+    SpiNorFlash_SetCommand(command, self->Geometry.EraseCommand, SpiNorFlash_AddressOf(self, blockIndex, 0U));
 
-    if (SpiNorFlash_CheckSpan(self, blockIndex, 0U, 0U) && SpiNorFlash_WaitUntilReady(self, NO_WAIT))
-    {
-        uint8_t command[COMMAND_AND_ADDRESS_LENGTH] = {0};
-        SpiNorFlash_SetCommand(command, self->Geometry.EraseCommand, SpiNorFlash_AddressOf(self, blockIndex, 0U));
-
-        /* The part begins the erase as its select rises, at the end of the
-         * send. */
-        erased = SpiNorFlash_EnableWriting(self) &&
-                 SpiNorFlash_BusHeld(SpiNorFlash_Send(self, command, sizeof(command))) &&
-                 SpiNorFlash_WaitUntilReady(self, self->Geometry.EraseTimeoutMilliseconds);
-    }
-
-    return erased;
+    /* The part begins the erase as its select rises, at the end of the
+     * send. */
+    return SpiNorFlash_EnableWriting(self) && SpiNorFlash_BusHeld(SpiNorFlash_Send(self, command, sizeof(command))) &&
+           SpiNorFlash_WaitUntilReady(self, ERASE_TIMEOUT_MILLISECONDS);
 }
 
 static size_t SpiNorFlash_GetBlockSize(struct SolidSyslogNorFlash* base)
