@@ -1147,6 +1147,19 @@ TEST_GROUP_BASE(SolidSyslogBlockStoreRotation, BlockDeviceTestBase)
     {
         SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg));
     }
+
+    /* Blocks 00 to 02 under a ceiling of two: what a restart finds after a
+     * power cut between a rotation's take and its eviction. */
+    void ResumeThreeBlocksUnderACeilingOfTwo(enum SolidSyslogDiscardPolicy policy)
+    {
+        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, SOLIDSYSLOG_DISCARD_POLICY_OLDEST, 3);
+        WriteMaxMsg();
+        WriteMaxMsg();
+        WriteMaxMsg();
+        SolidSyslogBlockStore_Destroy(store);
+        RestartDevice();
+        CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD, policy, 2);
+    }
 };
 
 // clang-format on
@@ -1400,6 +1413,77 @@ TEST(SolidSyslogBlockStoreRotation, AStoreWhosePolicyFunctionChangesItsAnswerApp
     configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 
     LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+}
+
+TEST(SolidSyslogBlockStoreRotation, ARunResumedOverItsCeilingIsEvictedDownToItAndTheEvictionReported)
+{
+    ResumeThreeBlocksUnderACeilingOfTwo(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+    ErrorHandlerFake_Install(nullptr);
+
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* block 03 */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store02.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store03.log"));
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_WARNING,
+        &SolidSyslogBlockStoreErrorSource,
+        SOLIDSYSLOG_CAT_STORE_RECORDS_LOST,
+        SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED
+    );
+}
+
+/* Newest keeps what is stored, over the ceiling or not; the policy answering
+ * Oldest later brings the run down at the next write that needs a block. */
+TEST(SolidSyslogBlockStoreRotation, ARunResumedOverItsCeilingUnderNewestIsKeptUntilThePolicyAnswersOldest)
+{
+    ResumeThreeBlocksUnderACeilingOfTwo(SOLIDSYSLOG_DISCARD_POLICY_NEWEST);
+
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg)));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store03.log"));
+
+    configuredPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
+
+    LONGS_EQUAL(SOLIDSYSLOG_STORE_WRITE_KEPT, SolidSyslogStore_Write(store, maxMsg, sizeof(maxMsg))); /* block 03 */
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store01.log"));
+}
+
+/* The write's two reports, in the order things happened: the records the
+ * eviction lost, then the freeze. */
+#define CHECK_EVICTION_REPORTED_AHEAD_OF_THE_FREEZE()                                           \
+    {                                                                                           \
+        CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);                                            \
+        LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, ErrorHandlerFake_CategoryAt(0));        \
+        LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED, ErrorHandlerFake_DetailAt(0)); \
+        LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_FROZEN, ErrorHandlerFake_CategoryAt(1));              \
+    }
+
+TEST(SolidSyslogBlockStoreRotation, AnEvictionBeforeATakeThatFailsIsReportedAheadOfTheFreeze)
+{
+    ResumeThreeBlocksUnderACeilingOfTwo(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailNextOpen(file);
+
+    WriteMaxMsg(); /* evicts block 00, then taking block 03 fails */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CHECK_EVICTION_REPORTED_AHEAD_OF_THE_FREEZE();
+}
+
+TEST(SolidSyslogBlockStoreRotation, AnEvictionBeforeATakeIsReportedAheadOfAFreezeAfterTheAppend)
+{
+    ResumeThreeBlocksUnderACeilingOfTwo(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailDeleteAfter(file, 1);
+
+    WriteMaxMsg(); /* evicts block 00, takes block 03, then evicting block 01 fails */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store03.log"));
+    CHECK_EVICTION_REPORTED_AHEAD_OF_THE_FREEZE();
 }
 
 TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleBlocksExist)

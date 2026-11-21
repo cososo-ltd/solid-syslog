@@ -13,7 +13,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     {
         /* Sized to fit struct FileFake on both ILP32 and LP64 hosts.
          * Bump if a new field grows the implementation past current capacity. */
-        FILEFAKE_STORAGE_SLOTS = 15
+        FILEFAKE_STORAGE_SLOTS = 16
     };
 
     struct FileFakeStorage
@@ -31,6 +31,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     /* Lets @p readsThatSucceed reads through, then fails one. */
     void FileFake_FailReadAfter(struct SolidSyslogFile * file, size_t readsThatSucceed);
     void FileFake_FailNextDelete(struct SolidSyslogFile * file);
+    /* Lets @p deletesThatSucceed deletes through, then fails one. */
+    void FileFake_FailDeleteAfter(struct SolidSyslogFile * file, size_t deletesThatSucceed);
     void FileFake_FailNextSize(struct SolidSyslogFile * file);
     const void* FileFake_FileContent(void);
     size_t FileFake_FileSize(void);

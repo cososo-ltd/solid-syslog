@@ -231,6 +231,13 @@ static enum SolidSyslogStoreWriteResult BlockStore_StoreRecord(
     size_t recordSize = SolidSyslogRecordStore_RecordSize(self->RecordStore, (uint16_t) size);
     enum SolidSyslogStoreWriteResult result = SOLIDSYSLOG_STORE_WRITE_NOT_RETAINED;
     bool prepared = SolidSyslogBlockSequence_PrepareForWrite(self->BlockSequence, recordSize);
+    /* An eviction made before the new block was taken is reported here, ahead
+     * of any freeze that follows it in this write. Only FinishRotation ends a
+     * run of evictions. */
+    if (SolidSyslogBlockSequence_EvictedUnsent(self->BlockSequence))
+    {
+        BlockStore_ReportEviction(self);
+    }
     bool frozen = BlockStore_FreezeIfDeviceFailed(self);
 
     if (frozen)
