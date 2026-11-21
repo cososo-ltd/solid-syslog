@@ -5,7 +5,8 @@
 # SOLIDSYSLOG_BDD_TARGET. The directory above is the board support, which the
 # BDD targets reach through the board seam; this image takes it directly, and
 # carries no SolidSyslog, no kernel and no network stack. It separates a fault
-# in the board or its toolchain from one in anything built on them.
+# in the board or its toolchain from one in anything built on them. So its
+# flash driver is its own, here, and not the library's.
 #
 # ST's HAL driver and CMSIS device files compile into an OBJECT library under
 # a relaxed warning set, as the other targets' upstream sources do; the code
@@ -40,13 +41,14 @@ target_include_directories(solid_syslog_nucleo_f767zi_upstream PRIVATE
 
 add_executable(SolidSyslogNucleoF767ziBringup
     main.c
+    BddTargetBoardFlashBus.c
+    BddTargetSpiNorFlash.c
     FlashCheck.c
     StorageProbe.c
     ${BDD_BOARD_DIR}/Board.c
     ${BDD_BOARD_DIR}/BoardSpi4.c
-    ${BDD_BOARD_DIR}/BddTargetBoardFlashBus.c
+    ${BDD_BOARD_DIR}/BoardSpi4Flash.c
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLineAssembler.c
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetSpiNorFlash.c
     $<TARGET_OBJECTS:solid_syslog_nucleo_f767zi_upstream>
 )
 
@@ -61,7 +63,7 @@ set_source_files_properties(main.c PROPERTIES
 
 target_include_directories(SolidSyslogNucleoF767ziBringup PRIVATE
     ${BDD_BOARD_DIR}                                  # Board.h, stm32f7xx_hal_conf.h
-    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetLineAssembler.h, BddTargetSpiNorFlash.h
+    ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common            # BddTargetLineAssembler.h
     ${CMAKE_SOURCE_DIR}/Core/Interface                # SolidSyslogExternC.h, which that header reads
 )
 target_include_directories(SolidSyslogNucleoF767ziBringup SYSTEM PRIVATE

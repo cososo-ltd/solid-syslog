@@ -119,4 +119,16 @@ enum
         LONGS_EQUAL((expected), checkSize);                   \
     }
 
+/* Asserts two runs of bytes are the same length and hold the same bytes. Each
+ * argument is a std::vector<uint8_t>, and is evaluated once, so one that sends
+ * a command to a fake sends it once. The caller includes <cstdint> and
+ * <vector>. */
+#define CHECK_BYTES_EQUAL(expected, actual)                                           \
+    {                                                                                 \
+        const std::vector<uint8_t>& expectedBytes = (expected);                       \
+        const std::vector<uint8_t>& actualBytes = (actual);                           \
+        LONGS_EQUAL(expectedBytes.size(), actualBytes.size());                        \
+        MEMCMP_EQUAL(expectedBytes.data(), actualBytes.data(), expectedBytes.size()); \
+    }
+
 #endif /* TESTUTILS_H */

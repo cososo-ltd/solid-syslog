@@ -17,8 +17,8 @@
  * code, Source, Detail, NativeCode with its HasNativeCode flag, and a Pending
  * flag. The category is the slot's index, so it is not stored. On a 32-bit
  * target a slot is 16 bytes and the table of
- * SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 256 bytes of static RAM; the
- * kind table beside it, which also holds each kind's own severity, is 128
+ * SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT slots is 272 bytes of static RAM; the
+ * kind table beside it, which also holds each kind's own severity, is 136
  * bytes of constant data, and the severities the codes index are 32 more. A
  * 64-bit host pads a slot to 24 bytes.
  *
@@ -52,7 +52,7 @@
 #include "SolidSyslogExternC.h"
 
 /* The number of reported kinds, and so of slots. */
-#define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 16U
+#define SOLIDSYSLOG_PENDING_EVENT_KIND_COUNT 17U
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 

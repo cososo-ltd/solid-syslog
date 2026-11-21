@@ -103,6 +103,7 @@ command line. Each platform also has its own switch (`-DSOLIDSYSLOG_LWIPRAW=ON`,
 | `FatFs` | file | ChaN FatFs |
 | `PlusFat` | file | FreeRTOS-Plus-FAT |
 | `LittleFs` | file | LittleFS |
+| `SpiNorFlash` | flash | an SPI NOR flash part, over a bus you supply |
 
 <!-- /platforms -->
 
@@ -130,7 +131,7 @@ The variable takes three kinds of answer:
 
 | Value | Selects |
 |---|---|
-| `Auto` (the default) | the host platforms this toolchain can provide, decided by a compile probe: `Posix`, `Windows`, `StdAtomic`, `OpenSsl` |
+| `Auto` (the default) | the host platforms this toolchain can provide, decided by a compile probe: `Posix`, `Windows`, `StdAtomic`, `OpenSsl`; and `SpiNorFlash`, which asks nothing of the toolchain and so is always among them |
 | `""` | nothing - Core alone, for an integrator supplying every adapter themselves |
 | a list | exactly those, host or upstream |
 
@@ -169,7 +170,8 @@ Stable system APIs - POSIX, Win32/Winsock, OpenSSL, C11 atomics - have no such
 hazard and compile straight into `libSolidSyslog.a`. Linking `SolidSyslog` is
 all they need, except OpenSSL itself, which your project finds and links
 alongside it: `find_package(OpenSSL 3.0 REQUIRED)`, then
-`OpenSSL::SSL OpenSSL::Crypto`.
+`OpenSSL::SSL OpenSSL::Crypto`. The SPI NOR flash pack is inside the library
+too: it has no upstream at all, only the bus functions you hand it.
 
 <!-- /platforms -->
 
@@ -383,7 +385,8 @@ selected, empty describes none. The Core `.c` set is always included.
 <!-- platforms: kind=probe -->
 
 Platforms selected by a toolchain capability probe - `StdAtomic`, `Posix`,
-`Windows`, `OpenSsl` - get their own section. A CMake consumer receives them
+`Windows`, `OpenSsl` - get their own section, and so does `SpiNorFlash`, which
+needs no probe. A CMake consumer receives them
 inside `libSolidSyslog.a`, but a manifest build has no such library, so compile
 them alongside everything else. `StdAtomic` is the one that matters on a
 cross-toolchain: it is the counter behind the meta element's `sequenceId`, and

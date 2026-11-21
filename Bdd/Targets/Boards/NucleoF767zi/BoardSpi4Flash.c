@@ -1,12 +1,11 @@
-/* The NUCLEO-F767ZI's flash bus behind the board seam - see
- * BddTargetBoardFlashBus.h. The W25Q128 is on SPI4, which BoardSpi4.c drives. */
+/* SPI4 made ready for the W25Q128 - see BoardSpi4Flash.h. */
 
-#include "BddTargetBoardFlashBus.h"
+#include "BoardSpi4Flash.h"
 
-#include "Board.h"
 #include "BoardSpi4.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 enum
 {
@@ -22,27 +21,23 @@ enum
  * mode. */
 static const uint8_t CARD_GO_IDLE[CARD_COMMAND_LENGTH] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x95};
 
-static inline void BddTargetBoardFlashBus_PutTheCardInSpiMode(void);
+static inline void BoardSpi4Flash_PutTheCardInSpiMode(void);
 
 /* The flash runs at the card's rate, on the same wires. */
-void BddTargetBoardFlashBus_Take(void)
+void BoardSpi4Flash_Take(void)
 {
     BoardSpi4_Take(BOARD_SPI4_RATE_START);
-    BddTargetBoardFlashBus_PutTheCardInSpiMode();
+    BoardSpi4Flash_PutTheCardInSpiMode();
     BoardSpi4_SetRate(BOARD_SPI4_RATE_RUN);
 }
 
-/* The MicroSD card shares these wires, and an image that uses the flash never
- * starts it. A card that has not been started is not yet in SPI mode: it
- * treats MOSI as its command line whatever its select is doing, and could
- * answer flash traffic that happened to read as a command. CMD0, sent with
- * its select low, puts it in SPI mode, where a high select keeps it off the
- * bus. The answer is ignored: with no card fitted there is none, and nothing
- * to keep off the bus.
+/* CMD0, sent with the card's select low, puts it in SPI mode. The answer is
+ * ignored: with no card fitted there is none, and nothing to keep off the
+ * bus.
  *
  * It is sent at the card's start rate, with the flash's select high
  * throughout. */
-static inline void BddTargetBoardFlashBus_PutTheCardInSpiMode(void)
+static inline void BoardSpi4Flash_PutTheCardInSpiMode(void)
 {
     for (size_t i = 0U; i < (size_t) CARD_WAKE_BYTES; i++)
     {
@@ -60,24 +55,4 @@ static inline void BddTargetBoardFlashBus_PutTheCardInSpiMode(void)
     BoardSpi4_Deselect(BOARD_SPI4_CARD);
     /* A card releases its data line a byte after its select rises. */
     (void) BoardSpi4_Exchange(IDLE_LINE);
-}
-
-void BddTargetBoardFlashBus_Select(void)
-{
-    BoardSpi4_Select(BOARD_SPI4_FLASH);
-}
-
-void BddTargetBoardFlashBus_Deselect(void)
-{
-    BoardSpi4_Deselect(BOARD_SPI4_FLASH);
-}
-
-uint8_t BddTargetBoardFlashBus_Exchange(uint8_t out)
-{
-    return BoardSpi4_Exchange(out);
-}
-
-uint32_t BddTargetBoardFlashBus_Milliseconds(void)
-{
-    return Board_Milliseconds();
 }

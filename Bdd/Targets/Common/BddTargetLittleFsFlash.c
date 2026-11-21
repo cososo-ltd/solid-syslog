@@ -1,27 +1,31 @@
-/* LittleFS block device over a SPI NOR flash - see BddTargetLittleFsDisk.h.
+/* LittleFS block device over an SPI NOR flash - see BddTargetLittleFsDisk.h.
  *
- * The filesystem uses the first BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT sectors
+ * The flash is the SpiNorFlash pack's, over the bus the board supplies
+ * (BddTargetBoardSpiNorFlashBus.h): the same flash code a store kept
+ * directly on the part runs over. A filesystem block is one block of the
+ * flash, which is one of the part's smallest erases.
+ *
+ * The filesystem uses the first BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT blocks
  * of the part, whatever the part's size.
  *
- * Failures are reported on the console, so a part that has stopped answering
- * can be told from a fault in the store. LittleFS calls these functions from
- * whichever thread is using the store, so nothing here uses stdio, which
- * belongs to the console thread. */
+ * The pack reports why a part did not start, or why an operation failed,
+ * through the library's error handler. What is said here, on the console,
+ * is which operation of the filesystem's met it. LittleFS calls these
+ * functions from whichever thread is using the store, so nothing here uses
+ * stdio, which belongs to the console thread. */
 
 #include "BddTargetLittleFsDisk.h"
 
-#include "BddTargetSpiNorFlash.h"
+#include "BddTargetBoardSpiNorFlashBus.h"
+#include "SolidSyslogNorFlash.h"
+#include "SolidSyslogNullNorFlash.h"
+#include "SolidSyslogSpiNorFlash.h"
 
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
-
-_Static_assert(
-    (int) BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE == (int) BDD_TARGET_SPI_NOR_FLASH_SECTOR_SIZE,
-    "a LittleFS block is one sector of the flash"
-);
 
 enum
 {
@@ -42,10 +46,13 @@ static uint8_t readBuffer[BDD_TARGET_LITTLE_FS_DISK_CACHE_SIZE];
 static uint8_t progBuffer[BDD_TARGET_LITTLE_FS_DISK_CACHE_SIZE];
 static uint8_t lookaheadBuffer[BDD_TARGET_LITTLE_FS_DISK_LOOKAHEAD_SIZE];
 
-/* The result of the last Start, so a mount retried over a missing part
- * reports the failure once. */
-static enum BddTargetSpiNorFlashResult startFailureSaid = BDD_TARGET_SPI_NOR_FLASH_OK;
-static bool tooSmallSaid;
+/* NULL until the part first starts, and again after a part that started and
+ * did not fit the filesystem. */
+static struct SolidSyslogNorFlash* flash;
+/* So a mount retried over a part that will not start, or does not fit, says
+ * so once. */
+static bool startFailureSaid;
+static bool misfitSaid;
 
 static int FlashRead(const struct lfs_config* c, lfs_block_t block, lfs_off_t off, void* buffer, lfs_size_t size);
 static int FlashProg(const struct lfs_config* c, lfs_block_t block, lfs_off_t off, const void* buffer, lfs_size_t size);
@@ -53,9 +60,11 @@ static int FlashErase(const struct lfs_config* c, lfs_block_t block);
 static int FlashSync(const struct lfs_config* c);
 
 static bool LittleFsFlash_EnsureReady(void);
+static inline bool LittleFsFlash_IsStarted(void);
+static void LittleFsFlash_Start(void);
+static inline bool LittleFsFlash_FitsTheFilesystem(void);
 static void LittleFsFlash_Say(const char* format, ...) __attribute__((format(printf, 1, 2)));
-static inline uint32_t LittleFsFlash_AddressOf(lfs_block_t block, lfs_off_t off);
-static int LittleFsFlash_Judge(const char* what, lfs_block_t block, enum BddTargetSpiNorFlashResult result);
+static int LittleFsFlash_Judge(const char* what, lfs_block_t block, bool succeeded);
 
 static const struct lfs_config CONFIG = {
     .context = NULL,
@@ -89,35 +98,64 @@ bool BddTargetLittleFsDisk_Wipe(void)
            (FlashErase(&CONFIG, SECOND_SUPERBLOCK) == LFS_ERR_OK);
 }
 
+/* A part that did not start is tried again at the next operation: creating
+ * the flash waits for whatever the part was left doing. */
 static bool LittleFsFlash_EnsureReady(void)
 {
-    if (!BddTargetSpiNorFlash_IsStarted())
+    if (!LittleFsFlash_IsStarted())
     {
-        enum BddTargetSpiNorFlashResult result = BddTargetSpiNorFlash_Start();
-        if (result != BDD_TARGET_SPI_NOR_FLASH_OK)
-        {
-            if (result != startFailureSaid)
-            {
-                LittleFsFlash_Say("the part did not start: %s", BddTargetSpiNorFlash_ResultText(result));
-            }
-        }
-        else if (BddTargetSpiNorFlash_Capacity() <
-                 ((uint32_t) BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT * (uint32_t) BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE))
-        {
-            if (!tooSmallSaid)
-            {
-                LittleFsFlash_Say("the part is smaller than the filesystem");
-                tooSmallSaid = true;
-            }
-            BddTargetSpiNorFlash_Stop();
-        }
-        else
-        {
-            /* Started, and large enough. */
-        }
-        startFailureSaid = result;
+        LittleFsFlash_Start();
     }
-    return BddTargetSpiNorFlash_IsStarted();
+    return LittleFsFlash_IsStarted();
+}
+
+static inline bool LittleFsFlash_IsStarted(void)
+{
+    return (flash != NULL) && (flash != SolidSyslogNullNorFlash_Get());
+}
+
+static void LittleFsFlash_Start(void)
+{
+    const struct SolidSyslogSpiNorFlashConfig config = {BddTargetBoardSpiNorFlashBus_Take()};
+    flash = SolidSyslogSpiNorFlash_Create(&config);
+
+    if (!LittleFsFlash_IsStarted())
+    {
+        if (!startFailureSaid)
+        {
+            LittleFsFlash_Say("the part did not start");
+            startFailureSaid = true;
+        }
+    }
+    else if (!LittleFsFlash_FitsTheFilesystem())
+    {
+        if (!misfitSaid)
+        {
+            LittleFsFlash_Say(
+                "the part has %lu blocks of %lu bytes, and the filesystem needs %lu of %lu",
+                (unsigned long) SolidSyslogNorFlash_GetBlockCount(flash),
+                (unsigned long) SolidSyslogNorFlash_GetBlockSize(flash),
+                (unsigned long) BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT,
+                (unsigned long) BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE
+            );
+            misfitSaid = true;
+        }
+        SolidSyslogSpiNorFlash_Destroy(flash);
+        flash = NULL;
+    }
+    else
+    {
+        /* Started, and it fits. A later failure to start is news again. */
+        startFailureSaid = false;
+    }
+}
+
+/* A filesystem block is one block of the flash, so the part's smallest erase
+ * must be the filesystem's block size. */
+static inline bool LittleFsFlash_FitsTheFilesystem(void)
+{
+    return (SolidSyslogNorFlash_GetBlockSize(flash) == (size_t) BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE) &&
+           (SolidSyslogNorFlash_GetBlockCount(flash) >= (size_t) BDD_TARGET_LITTLE_FS_DISK_BLOCK_COUNT);
 }
 
 /* One whole line in one write, which the console lock keeps from
@@ -146,35 +184,20 @@ static int FlashRead(const struct lfs_config* c, lfs_block_t block, lfs_off_t of
     int result = LFS_ERR_IO;
     if (LittleFsFlash_EnsureReady())
     {
-        result = LittleFsFlash_Judge(
-            "read",
-            block,
-            BddTargetSpiNorFlash_Read(LittleFsFlash_AddressOf(block, off), buffer, size)
-        );
+        result = LittleFsFlash_Judge("read", block, SolidSyslogNorFlash_Read(flash, block, off, buffer, size));
     }
     return result;
 }
 
-static inline uint32_t LittleFsFlash_AddressOf(lfs_block_t block, lfs_off_t off)
+/* The flash stays created after a failure. A part left busy fails every
+ * operation at once until it is ready again, and then carries on. */
+static int LittleFsFlash_Judge(const char* what, lfs_block_t block, bool succeeded)
 {
-    return (uint32_t) ((block * (lfs_block_t) BDD_TARGET_LITTLE_FS_DISK_BLOCK_SIZE) + off);
-}
-
-/* A part that has failed is stopped, so the next operation starts it again;
- * a Start waits for whatever the part was left doing. */
-static int LittleFsFlash_Judge(const char* what, lfs_block_t block, enum BddTargetSpiNorFlashResult result)
-{
-    if (result != BDD_TARGET_SPI_NOR_FLASH_OK)
+    if (!succeeded)
     {
-        LittleFsFlash_Say(
-            "%s failed, block %lu: %s",
-            what,
-            (unsigned long) block,
-            BddTargetSpiNorFlash_ResultText(result)
-        );
-        BddTargetSpiNorFlash_Stop();
+        LittleFsFlash_Say("%s failed, block %lu", what, (unsigned long) block);
     }
-    return (result == BDD_TARGET_SPI_NOR_FLASH_OK) ? LFS_ERR_OK : LFS_ERR_IO;
+    return succeeded ? LFS_ERR_OK : LFS_ERR_IO;
 }
 
 static int FlashProg(const struct lfs_config* c, lfs_block_t block, lfs_off_t off, const void* buffer, lfs_size_t size)
@@ -183,11 +206,7 @@ static int FlashProg(const struct lfs_config* c, lfs_block_t block, lfs_off_t of
     int result = LFS_ERR_IO;
     if (LittleFsFlash_EnsureReady())
     {
-        result = LittleFsFlash_Judge(
-            "program",
-            block,
-            BddTargetSpiNorFlash_Program(LittleFsFlash_AddressOf(block, off), buffer, size)
-        );
+        result = LittleFsFlash_Judge("program", block, SolidSyslogNorFlash_Program(flash, block, off, buffer, size));
     }
     return result;
 }
@@ -198,12 +217,12 @@ static int FlashErase(const struct lfs_config* c, lfs_block_t block)
     int result = LFS_ERR_IO;
     if (LittleFsFlash_EnsureReady())
     {
-        result = LittleFsFlash_Judge("erase", block, BddTargetSpiNorFlash_EraseSector((uint32_t) block));
+        result = LittleFsFlash_Judge("erase", block, SolidSyslogNorFlash_Erase(flash, block));
     }
     return result;
 }
 
-/* The driver returns from a program or an erase only once the part has
+/* The flash returns from a program or an erase only once the part has
  * finished, so there is nothing to flush. */
 static int FlashSync(const struct lfs_config* c)
 {
