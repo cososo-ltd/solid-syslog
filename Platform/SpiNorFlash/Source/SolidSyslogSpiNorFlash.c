@@ -478,9 +478,9 @@ static bool SpiNorFlash_ProgramPages(
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- an address and a count of bytes; distinct semantics
 static inline size_t SpiNorFlash_BytesToProgramInPage(uint32_t address, size_t remaining)
 {
-    size_t leftInPage = (size_t) ((uint32_t) PAGE_BYTES - (address % (uint32_t) PAGE_BYTES));
+    uint32_t leftInPage = (uint32_t) PAGE_BYTES - (address % (uint32_t) PAGE_BYTES);
 
-    return (remaining < leftInPage) ? remaining : leftInPage;
+    return (remaining < (size_t) leftInPage) ? remaining : (size_t) leftInPage;
 }
 
 static bool SpiNorFlash_ProgramInPage(
