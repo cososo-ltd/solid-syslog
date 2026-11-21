@@ -6,6 +6,15 @@ add_library(NorFlashFake STATIC NorFlashFake.c)
 target_include_directories(NorFlashFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(NorFlashFake PUBLIC ${PROJECT_NAME})
 
+# An SPI NOR flash part and the bus it is on, behind the bus seam the SpiNorFlash
+# pack takes. C++ with no CppUTest dependency.
+add_library(SpiNorFlashPartFake STATIC SpiNorFlashPartFake.cpp)
+target_include_directories(SpiNorFlashPartFake PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/Platform/SpiNorFlash/Interface
+)
+target_link_libraries(SpiNorFlashPartFake PUBLIC ${PROJECT_NAME})
+
 add_library(BlockDeviceFake STATIC BlockDeviceFake.c)
 target_include_directories(BlockDeviceFake PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(BlockDeviceFake PUBLIC ${PROJECT_NAME})

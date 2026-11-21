@@ -1,4 +1,4 @@
-/* A SPI NOR flash - see BddTargetSpiNorFlash.h.
+/* An SPI NOR flash - see BddTargetSpiNorFlash.h.
  *
  * The commands and the times are those of the Winbond W25Q128JV datasheet. */
 

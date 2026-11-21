@@ -53,6 +53,7 @@ severity each arrives at, and the rule for when it is raised, are on
 | Category | `source` | What happened |
 |---|---|---|
 | `FILE_IO_FAILED` | the file class | A filesystem call failed; `native` carries its code |
+| `NOR_FLASH_IO_FAILED` | the flash class, or `NorFlashBlockDevice` | A flash operation failed, or the flash did not hold what was programmed into it |
 | `SECURITY_POLICY_KEY_UNAVAILABLE` | the policy | The key for sealing or opening stored records was not available |
 | `SECURITY_POLICY_SEAL_FAILED` | the policy | The cryptographic backend failed to seal a record |
 | `SECURITY_POLICY_OPEN_FAILED` | the policy | The cryptographic backend failed to open a record |
@@ -173,7 +174,7 @@ to it next is stated by
 
 ### What it costs
 
-Static RAM for the table of pending events: sixteen slots of 16 bytes on a 32-bit
+Static RAM for the table of pending events: seventeen slots of 16 bytes on a 32-bit
 target, 24 on a 64-bit host, shared by every logger in the build. On the Service task's
 stack, the formatter's frame and the element while a report is formatted. The task
 that calls `SolidSyslog_Log` needs no additional stack: recording an event is a few

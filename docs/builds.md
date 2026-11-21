@@ -252,7 +252,8 @@ cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCms
 ARM cross-builds for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
 hard-float ABI), under that board's toolchain file. Three are the cross BDD
 targets above built with `SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`, with the same
-packs and tunables. The fourth is the bring-up firmware, which carries no
+packs and tunables. `nucleo-f767zi-cmsis-lwip` names one pack more,
+`SpiNorFlash`, the flash under its LittleFS. The fourth is the bring-up firmware, which carries no
 SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and the image does not link the
 library.
 

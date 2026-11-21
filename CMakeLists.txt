@@ -300,6 +300,7 @@ set(SOLIDSYSLOG_PLATFORM_REGISTRY
     "FatFs|SOLIDSYSLOG_FATFS|${HAVE_FATFS_PATH}|upstream|Platform/FatFs|file"
     "PlusFat|SOLIDSYSLOG_PLUSFAT|${HAVE_FREERTOS_PLUS_FAT_PATH}|upstream|Platform/PlusFat|file"
     "LittleFs|SOLIDSYSLOG_LITTLEFS|${HAVE_LITTLEFS_PATH}|upstream|Platform/LittleFs|file"
+    "SpiNorFlash|SOLIDSYSLOG_SPINORFLASH|TRUE|probe|Platform/SpiNorFlash|flash"
 )
 
 # Split one registry row into the names the loops below use. A row is

@@ -7,10 +7,10 @@
 
 SOLIDSYSLOG_EXTERN_C_BEGIN
 
-    /* The SPI bus a NOR flash sits on, as the flash driver
-     * (BddTargetSpiNorFlash.h) needs it. Part of the board seam - see
-     * BddTargetBoard.h - and defined in the directory of a board that has a
-     * flash.
+    /* The SPI bus the flash sits on, as the bring-up image's flash driver
+     * (BddTargetSpiNorFlash.h) needs it. The BDD targets do not use it: they
+     * reach the part through the library's SpiNorFlash pack, over
+     * BddTargetBoardSpiNorFlashBus.h.
      *
      * SPI mode 0, most significant bit first. The board drives the part's
      * select: a command begins when it falls, and a program or an erase

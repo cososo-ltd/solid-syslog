@@ -182,6 +182,15 @@ DESCRIPTIONS = {
         "Back store-and-forward with FreeRTOS-Plus-FAT: what the ff_stdio File "
         "adapter needs from your build and media, and how the store sits above it."
     ),
+    "platforms/spinorflash/index.md": (
+        "The SPI NOR flash pack, filling the NorFlash role so a store keeps its "
+        "blocks directly on a flash part, which it learns from the part's own "
+        "SFDP table."
+    ),
+    "platforms/spinorflash/setup.md": (
+        "Put the store on an SPI NOR flash part: the five bus functions you "
+        "supply, creating the flash, and what will catch you out."
+    ),
     "platforms/stdatomic/index.md": (
         "The portable C11 stdatomic.h AtomicCounter — the sequenceId source on "
         "any target with a C11 compiler, with no OS dependency."
