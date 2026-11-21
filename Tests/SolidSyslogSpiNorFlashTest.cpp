@@ -838,6 +838,7 @@ enum
     READ_DATA = 0x03,
     READ_STATUS = 0x05,
     SECTOR_ERASE = 0x20,
+    READ_JEDEC_ID = 0x9F,
     BLOCK_ERASE = 0xD8,
 
     PAGE_BYTES = 256,
@@ -862,8 +863,8 @@ enum
 
     /* The transfers each makes of a part that does as it is asked. A program
      * here is of one page. */
-    WRITES_IN_A_READ = 2,
-    READS_IN_A_READ = 2,
+    WRITES_IN_A_READ = 3,
+    READS_IN_A_READ = 3,
     WRITES_IN_A_PROGRAM = 6,
     READS_IN_A_PROGRAM = 3,
     WRITES_IN_AN_ERASE = 5,
@@ -1036,16 +1037,32 @@ TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadOfABlockPastTheEndOfThePart)
     CHECK_OUT_OF_RANGE(Read(LAST_BLOCK + 1, 0, 1));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, AsksThePartsStatusOnceItHasTheDataAndNotBefore)
+TEST(SolidSyslogSpiNorFlashOperations, AsksThePartsStatusAndItsMakerOnceItHasTheDataAndNotBefore)
 {
     Start();
     const size_t sentToStart = SpiNorFlashPartFake::Commands().size();
     CHECK_TRUE(Read(A_BLOCK, AN_OFFSET, 4));
     const std::vector<uint8_t>& commands = SpiNorFlashPartFake::Commands();
     CHECK_BYTES_EQUAL(
-        std::vector<uint8_t>({READ_DATA, READ_STATUS}),
+        std::vector<uint8_t>({READ_DATA, READ_STATUS, READ_JEDEC_ID}),
         std::vector<uint8_t>(commands.begin() + static_cast<std::ptrdiff_t>(sentToStart), commands.end())
     );
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadWithTheLineHeldLow)
+{
+    /* A line held low reads as data of all zeros and as a status that says
+     * ready. Only the maker's code tells it from a part. */
+    Start();
+    SpiNorFlashPartFake::settings.lineHeldLow = true;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatStopsAnsweringOnceItHasGivenItsStatus)
+{
+    Start();
+    SpiNorFlashPartFake::GoQuietAfter(2);
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatIsBusy)

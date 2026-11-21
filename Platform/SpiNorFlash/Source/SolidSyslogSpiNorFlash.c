@@ -473,9 +473,11 @@ static bool SpiNorFlash_Read(
          * asked once the data is in, not before: a part that has stopped
          * answering by then, or one still busy with something that
          * outlasted its time and so ignored the read, is caught either
-         * way. */
+         * way. A line held low reads as data and as a status that says
+         * ready, so the maker's code is asked for as well, as it is at the
+         * start. */
         read = SpiNorFlash_BusHeld(SpiNorFlash_Ask(self, request, sizeof(request), buffer, count)) &&
-               SpiNorFlash_WaitUntilReady(self, NO_WAIT);
+               SpiNorFlash_WaitUntilReady(self, NO_WAIT) && SpiNorFlash_IsAnswering(self);
     }
 
     return read;
