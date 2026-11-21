@@ -770,3 +770,13 @@ TEST(BlockSequenceRotation, ARunResumedOverItsCeilingEvictsItsOldestBeforeTaking
 
     CHECK_TRUE(WasDisposed(0));
 }
+
+TEST(BlockSequenceRotation, ARunResumedTwoOverItsCeilingEvictsDownToItBeforeTakingTheNextBlock)
+{
+    ResumeRun({0, 1, 2, 3}, 2);
+
+    TakeTheNextBlock();
+
+    CHECK_TRUE(WasDisposed(0));
+    CHECK_TRUE(WasDisposed(1));
+}
