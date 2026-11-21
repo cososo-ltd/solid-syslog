@@ -437,7 +437,7 @@ static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blo
 {
     blockSequence->EvictedUnsent = false;
 
-    if (BlockSequence_ExceedsMaxBlocks(blockSequence))
+    while (BlockSequence_ExceedsMaxBlocks(blockSequence))
     {
         (void) BlockSequence_DiscardOldestBlock(blockSequence);
     }
