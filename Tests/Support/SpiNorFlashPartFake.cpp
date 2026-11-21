@@ -111,8 +111,7 @@ bool IsBusyNow()
     const uint32_t sincePowerUp = state->milliseconds - state->poweredUpAt;
     const uint32_t sinceItBegan = state->milliseconds - state->busySince;
     return SpiNorFlashPartFake::settings.staysBusy ||
-           (sincePowerUp < SpiNorFlashPartFake::settings.busyAtPowerUpMilliseconds) ||
-           (sinceItBegan < state->busyFor);
+           (sincePowerUp < SpiNorFlashPartFake::settings.busyAtPowerUpMilliseconds) || (sinceItBegan < state->busyFor);
 }
 
 void BeBusyFor(uint32_t milliseconds)
