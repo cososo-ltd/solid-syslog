@@ -780,3 +780,15 @@ TEST(BlockSequenceRotation, ARunResumedTwoOverItsCeilingEvictsDownToItBeforeTaki
     CHECK_TRUE(WasDisposed(0));
     CHECK_TRUE(WasDisposed(1));
 }
+
+TEST(BlockSequenceRotation, AnEvictionBeforeTakingTheNextBlockThatFailsTakesNoBlock)
+{
+    ResumeRun({0, 1, 2}, 2);
+    fakeDevice.failNextDispose = true;
+
+    CHECK_FALSE(SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1));
+
+    CHECK_TRUE(calls.back().type == CallType::Dispose);
+    LONGS_EQUAL(1, DisposeCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}
