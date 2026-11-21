@@ -33,7 +33,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  and its smallest erase with that erase's command.
      *
      *  A block of the NorFlash is one erase of the smallest size the table
-     *  lists, and the blocks cover the whole part.
+     *  lists, and the blocks run from the start of the part, as many as it
+     *  holds.
      *
      *  Nothing else is taken from the table. On any part an erase is allowed
      *  3000 ms and a page program 20 ms, each well beyond what a part in good

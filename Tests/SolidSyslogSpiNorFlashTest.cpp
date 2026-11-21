@@ -669,10 +669,7 @@ TEST(SolidSyslogSpiNorFlash, AsksNothingOfABusItRefuses)
     {
         const struct SolidSyslogSpiNorFlashConfig config = {&bus};
         flash = SolidSyslogSpiNorFlash_Create(&config);
-        CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
-        LONGS_EQUAL(0, SpiNorFlashPartFake::Commands().size());
-        LONGS_EQUAL(0, SpiNorFlashPartFake::TransfersWhileDeselected());
-        LONGS_EQUAL(0, SpiNorFlashPartFake::Milliseconds());
+        LONGS_EQUAL(0, SpiNorFlashPartFake::BusCalls());
     }
 }
 

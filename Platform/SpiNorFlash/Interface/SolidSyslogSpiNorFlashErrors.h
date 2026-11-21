@@ -30,12 +30,13 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_SFDP,
         /** The part has an SFDP table, and it is not one this reads: its
          *  revision is not 1.x, its first table is not the basic one or is
-         *  shorter than JESD216 defines, or it lists no erase the part's
-         *  capacity is a whole number of. */
+         *  shorter than JESD216 defines, or it lists no erase that fits within
+         *  the part. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_SFDP_NOT_UNDERSTOOD,
         /** The part is larger than 16 MiB. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_TOO_LARGE,
-        /** The part takes only four-byte addresses. */
+        /** The part takes only four-byte addresses, or its table gives an
+         *  address width that JESD216 reserves. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_FOUR_BYTE_ADDRESSES_ONLY,
         /** The part's SFDP has a sector map, the table of a part that does
          *  not erase the same way throughout. The map is not read, so where

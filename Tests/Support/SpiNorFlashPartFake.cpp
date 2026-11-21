@@ -74,6 +74,7 @@ struct State
     std::vector<uint8_t> commands;
     int commandsWhileBusy = 0;
     int transfersWhileDeselected = 0;
+    int busCalls = 0;
     std::vector<SpiNorFlashPartFake::Program> programs;
     std::vector<uint32_t> erases;
     std::vector<SpiNorFlashPartFake::SfdpRead> sfdpReads;
@@ -315,12 +316,14 @@ extern "C"
     void Select(struct SolidSyslogSpiNorFlashBus* base)
     {
         (void) base;
+        state->busCalls++;
         state->selected = true;
     }
 
     void Deselect(struct SolidSyslogSpiNorFlashBus* base)
     {
         (void) base;
+        state->busCalls++;
         /* What was sent is forgotten whether or not the part is still there
          * to act on it. A part that lost power part-way through a command
          * comes back knowing nothing of it. */
@@ -340,6 +343,7 @@ extern "C"
     bool Write(struct SolidSyslogSpiNorFlashBus* base, const void* buffer, size_t count)
     {
         (void) base;
+        state->busCalls++;
         CountATransfer();
         const bool sent = !IsTheCallThatFails(state->writesUntilFailure);
         if (sent && PartIsListening())
@@ -353,6 +357,7 @@ extern "C"
     bool Read(struct SolidSyslogSpiNorFlashBus* base, void* buffer, size_t count)
     {
         (void) base;
+        state->busCalls++;
         CountATransfer();
         const bool received = !IsTheCallThatFails(state->readsUntilFailure);
         if (received)
@@ -388,6 +393,7 @@ extern "C"
     uint32_t MillisecondsNow(struct SolidSyslogSpiNorFlashBus* base)
     {
         (void) base;
+        state->busCalls++;
         const uint32_t now = state->milliseconds;
         state->milliseconds += SpiNorFlashPartFake::settings.millisecondsPerReading;
         return now;
@@ -514,6 +520,11 @@ bool IsBusy()
 bool IsSelected()
 {
     return state->selected;
+}
+
+int BusCalls()
+{
+    return state->busCalls;
 }
 
 int TransfersWhileDeselected()

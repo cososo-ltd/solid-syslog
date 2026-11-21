@@ -60,7 +60,7 @@ enum
     LARGEST_ERASE_EXPONENT = 24
 };
 
-static const uint32_t DENSITY_IS_AN_EXPONENT = 0x80000000U;
+static const uint32_t Sfdp_DensityIsAnExponent = 0x80000000U;
 
 static inline bool Sfdp_HasSignature(const uint8_t* header);
 static inline bool Sfdp_BeginsWithABasicTable(const uint8_t* header);
@@ -194,9 +194,9 @@ static inline bool Sfdp_DensityIsWithinReach(uint32_t density)
 {
     bool withinReach = false;
 
-    if ((density & DENSITY_IS_AN_EXPONENT) != 0U)
+    if ((density & Sfdp_DensityIsAnExponent) != 0U)
     {
-        withinReach = (density & ~DENSITY_IS_AN_EXPONENT) <= (uint32_t) LARGEST_DENSITY_EXPONENT;
+        withinReach = (density & ~Sfdp_DensityIsAnExponent) <= (uint32_t) LARGEST_DENSITY_EXPONENT;
     }
     else
     {
@@ -211,9 +211,9 @@ static inline uint32_t Sfdp_CapacityBytes(uint32_t density)
 {
     uint32_t bits = density + 1U;
 
-    if ((density & DENSITY_IS_AN_EXPONENT) != 0U)
+    if ((density & Sfdp_DensityIsAnExponent) != 0U)
     {
-        bits = (uint32_t) 1U << (density & ~DENSITY_IS_AN_EXPONENT);
+        bits = (uint32_t) 1U << (density & ~Sfdp_DensityIsAnExponent);
     }
 
     return bits / (uint32_t) BITS_PER_BYTE;

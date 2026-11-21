@@ -155,8 +155,29 @@ TEST(SpiNorFlashPartFake, ReadsAnIdleLineWithNoPartOnTheBus)
 
 TEST(SpiNorFlashPartFake, ReadsZerosWithTheLineHeldLow)
 {
+    /* Asked of the bus itself, so that the read is seen to answer true. */
     SpiNorFlashPartFake::settings.lineHeldLow = true;
-    CHECK_BYTES_EQUAL(Bytes({0x00, 0x00, 0x00}), Command({READ_JEDEC_ID}, 3));
+    Bytes in(3, NOT_READ);
+    bus->Select(bus);
+    CHECK_TRUE(bus->Read(bus, in.data(), in.size()));
+    bus->Deselect(bus);
+    CHECK_BYTES_EQUAL(Bytes({0x00, 0x00, 0x00}), in);
+}
+
+TEST(SpiNorFlashPartFake, CountsEveryCallOfItsBus)
+{
+    uint8_t byte = READ_STATUS;
+    bus->Select(bus);
+    (void) bus->Write(bus, &byte, 1);
+    (void) bus->Read(bus, &byte, 1);
+    bus->Deselect(bus);
+    (void) bus->Milliseconds(bus);
+    LONGS_EQUAL(5, SpiNorFlashPartFake::BusCalls());
+}
+
+TEST(SpiNorFlashPartFake, HasCountedNoCallOfItsBusBeforeOneIsMade)
+{
+    LONGS_EQUAL(0, SpiNorFlashPartFake::BusCalls());
 }
 
 TEST(SpiNorFlashPartFake, RecordsTheCommandsItTakes)

@@ -136,6 +136,8 @@ const std::vector<SfdpRead>& SfdpReads();
 
 bool IsBusy();
 bool IsSelected();
+/* Calls of any of the bus's five functions. */
+int BusCalls();
 /* Calls of Write and Read made while the part was not selected. */
 int TransfersWhileDeselected();
 /* The count of milliseconds, without moving it on. */
