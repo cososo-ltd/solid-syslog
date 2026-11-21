@@ -38,9 +38,6 @@ enum
 
     STATUS_BUSY = 0x01,
     STATUS_WRITE_ENABLED = 0x02,
-    /* Bits 2 to 6 of the first status register: the block protection, by
-     * whichever of the common layouts the part uses. */
-    STATUS_PROTECTION = 0x7C,
 
     /* The command, three bytes of address, and one byte the part ignores. */
     SFDP_REQUEST_LENGTH = 5,
@@ -111,7 +108,6 @@ static bool SpiNorFlash_ReadTheTable(
     struct SolidSyslogSpiNorFlash* self,
     const struct SolidSyslogSpiNorFlashSfdpTable* table
 );
-static bool SpiNorFlash_IsUnprotected(struct SolidSyslogSpiNorFlash* self);
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- a block, an offset in it and a count; distinct semantics
 static bool SpiNorFlash_CheckSpan(
     const struct SolidSyslogSpiNorFlash* self,
@@ -171,7 +167,7 @@ bool SolidSyslogSpiNorFlash_Initialise(struct SolidSyslogNorFlash* base, struct 
     self->Bus = bus;
 
     return SpiNorFlash_WaitUntilReady(self, START_TIMEOUT_MILLISECONDS) && SpiNorFlash_IsAnswering(self) &&
-           SpiNorFlash_LearnThePart(self) && SpiNorFlash_IsUnprotected(self);
+           SpiNorFlash_LearnThePart(self);
 }
 
 void SolidSyslogSpiNorFlash_Cleanup(struct SolidSyslogNorFlash* base)
@@ -420,35 +416,6 @@ static bool SpiNorFlash_ReadTheTable(
     }
 
     return read;
-}
-
-/* The flash never writes a status register, so a part that is protected
- * stays so, and is refused here before a program or an erase can fail on
- * it. An undriven line reads as every protection bit set, so it is told
- * apart first: a part that has stopped answering is not a protected one. */
-static bool SpiNorFlash_IsUnprotected(struct SolidSyslogSpiNorFlash* self)
-{
-    uint8_t status = IDLE_LINE;
-    bool unprotected = false;
-
-    if (!SpiNorFlash_ReadStatus(self, &status))
-    {
-        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
-    }
-    else if (status == (uint8_t) IDLE_LINE)
-    {
-        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
-    }
-    else if ((status & (uint8_t) STATUS_PROTECTION) != 0U)
-    {
-        SpiNorFlash_ReportUnsupported(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_PROTECTED);
-    }
-    else
-    {
-        unprotected = true;
-    }
-
-    return unprotected;
 }
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) -- vtable signature: blockIndex / offset are positional, distinct semantics

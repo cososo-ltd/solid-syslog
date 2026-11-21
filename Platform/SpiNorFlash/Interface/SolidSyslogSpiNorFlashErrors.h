@@ -41,8 +41,6 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  not erase the same way throughout. The map is not read, so where
          *  the smallest erase applies is not known. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_HAS_SECTOR_MAP,
-        /** A protection bit of the part's first status register is set. */
-        SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_PROTECTED,
         /** Nothing drives the bus: no part, or no path to it. Raised under
          *  SOLIDSYSLOG_CAT_NOR_FLASH_IO_FAILED, as are the three after it. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER,

@@ -36,17 +36,13 @@ says so.
 [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md) lists
 every refusal and what an older table's missing fields default to.
 
-### It never unlocks a part
+### Write protection is yours
 
-A part with any of bits 2 to 6 of its first status register set is protected
-against writing, in part or in whole, and is refused at Create. The pack never
-writes a status register, so clearing the protection is a decision you take, in
-your own code, before you create the flash.
-
-Those bits are all it looks at. Protection a part holds anywhere else is not
-seen, and
+The pack neither looks for write protection nor changes it: it never writes a
+status register. Leave unprotected the blocks you give the store, and protect
+the rest of the part as you see fit.
 [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md) says
-what becomes of such a part.
+what becomes of a write to a block the part protects.
 
 ### A part that stops answering costs a bounded wait
 

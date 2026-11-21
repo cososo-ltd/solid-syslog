@@ -74,9 +74,11 @@ enum
     ERASE_32M_BY_DC = 0xDC19,
 
     /* What a start asks of a part that is ready: its status, its maker, its
-     * SFDP header, its table, and its status again for the protection bits.
-     * Each is one command, of one write and one read. */
-    COMMANDS_IN_A_START = 5,
+     * SFDP header and its table. Each is one command, of one write and one
+     * read. */
+    COMMANDS_IN_A_START = 4,
+    /* Every bit of the first status register but busy and write enabled. */
+    STATUS_BITS_THE_PART_DOES_NOT_SET_ITSELF = 0xFC,
     TRANSFERS_IN_A_START = COMMANDS_IN_A_START,
     /* Its status, its maker and its SFDP header come before any further
      * parameter header is asked for. */
@@ -617,39 +619,28 @@ TEST(SolidSyslogSpiNorFlash, DoesNotStartWhenTheReadOfAFurtherParameterHeaderFai
     CHECK_SFDP_READ(AddressOfParameterHeader(1), 0, reads[1]);
 }
 
-TEST(SolidSyslogSpiNorFlash, RefusesAPartWithAnyProtectionBitSet)
+TEST(SolidSyslogSpiNorFlash, TakesAPartWhateverTheOtherBitsOfItsStatusSay)
 {
-    for (unsigned bit = 2; bit <= 6; bit++)
-    {
-        ErrorHandlerFake_Install(nullptr);
-        SpiNorFlashPartFake::settings.status = static_cast<uint8_t>(1U << bit);
-        CreateFlash();
-        CHECK_REFUSED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_PART_PROTECTED);
-    }
-}
-
-TEST(SolidSyslogSpiNorFlash, DoesNotTakeAPartThatStopsAnsweringForOneThatIsProtected)
-{
-    /* It answers everything up to its table, and then nothing: a status of
-     * all ones has every protection bit set, and is not a part's answer. */
-    SpiNorFlashPartFake::GoQuietAfter(COMMANDS_IN_A_START - 1);
-    CreateFlash();
-    CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
-}
-
-TEST(SolidSyslogSpiNorFlash, TakesAPartWithOnlyTheTopBitOfItsStatusSet)
-{
-    SpiNorFlashPartFake::settings.status = 0x80;
+    /* Protection is the part's owner's business: it is neither looked for
+     * nor refused. */
+    SpiNorFlashPartFake::settings.status = STATUS_BITS_THE_PART_DOES_NOT_SET_ITSELF;
     CreateFlash();
     CHECK_CREATED();
+    CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(SolidSyslogSpiNorFlash, NeverUnlocksAPartItRefusesAsProtected)
+TEST(SolidSyslogSpiNorFlash, LeavesTheStatusOfAPartAsItFindsIt)
 {
-    SpiNorFlashPartFake::settings.status = 0x7C;
+    SpiNorFlashPartFake::settings.status = STATUS_BITS_THE_PART_DOES_NOT_SET_ITSELF;
     CreateFlash();
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_ENABLE));
     LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(WRITE_STATUS));
+}
+
+TEST(SolidSyslogSpiNorFlash, AsksNothingOfThePartOnceItHasItsTable)
+{
+    CreateFlash();
+    LONGS_EQUAL(COMMANDS_IN_A_START, SpiNorFlashPartFake::Commands().size());
 }
 
 TEST(SolidSyslogSpiNorFlash, RefusesANullConfig)

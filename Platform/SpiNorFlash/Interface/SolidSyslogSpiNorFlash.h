@@ -49,14 +49,12 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *   - a part that takes only four-byte addresses;
      *   - a part whose SFDP has a parameter header for a sector map. Such a
      *     part does not erase the same way throughout, and the map that says
-     *     where each erase applies is not read;
-     *   - a part with any of bits 2 to 6 of its first status register set,
-     *     which protect some or all of it from being written. The flash never
-     *     writes a status register, so it never unlocks a part.
+     *     where each erase applies is not read.
      *
-     *  Protection a part holds anywhere else is not seen: a bit of another
-     *  status register, or a lock on each block. Such a part is created, and
-     *  a program or an erase it ignores answers true. The
+     *  Write protection is the part's owner's business. The flash neither
+     *  looks for it nor changes it: it never writes a status register. A part
+     *  takes a program or an erase of a block it protects and does nothing,
+     *  without saying so, so that Program or Erase answers true. The
      *  SolidSyslogNorFlashBlockDevice above reads back what it programs, and
      *  reports the difference as
      *  SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_VERIFY_FAILED.

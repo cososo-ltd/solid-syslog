@@ -53,7 +53,8 @@ struct Settings
     /* Read back from any address, repeating every SFDP_BYTES. */
     SfdpTable sfdp = W25Q128JvSfdp();
     /* The bits of the first status register other than busy and write enabled,
-     * which the part sets itself. Bits 2 to 6 are its block protection. */
+     * which the part sets itself. They are where a part keeps its protection,
+     * and the fake does nothing about them but show them. */
     uint8_t status = 0x00;
     uint32_t capacityBytes = 16U * 1024U * 1024U;
     uint32_t pageBytes = 256;

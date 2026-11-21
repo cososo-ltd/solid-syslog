@@ -63,9 +63,10 @@ report.
 before it will stay off the bus while the part is selected, do before Create,
 and hold whatever lock the bus needs from select to deselect.
 
-**A protected part is refused, not unlocked.** If your part ships with
-protection bits set, or your product sets them, clear them in your own code
-before Create.
+**The store's blocks must not be write-protected.** The pack does not look,
+and never unlocks a part. If your part ships with protection set, or your
+product sets it, clear it for the store's blocks in your own code before
+Create.
 
 ## When it does not work
 
