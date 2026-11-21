@@ -375,7 +375,8 @@ static bool SpiNorFlash_ReadTheTable(
 
 /* The flash never writes a status register, so a part that is protected
  * stays so, and is refused here before a program or an erase can fail on
- * it. */
+ * it. An undriven line reads as every protection bit set, so it is told
+ * apart first: a part that has stopped answering is not a protected one. */
 static bool SpiNorFlash_IsUnprotected(struct SolidSyslogSpiNorFlash* self)
 {
     uint8_t status = IDLE_LINE;
@@ -384,6 +385,10 @@ static bool SpiNorFlash_IsUnprotected(struct SolidSyslogSpiNorFlash* self)
     if (!SpiNorFlash_ReadStatus(self, &status))
     {
         SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED);
+    }
+    else if (status == (uint8_t) IDLE_LINE)
+    {
+        SpiNorFlash_ReportIoFailure(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
     }
     else if ((status & (uint8_t) STATUS_PROTECTION) != 0U)
     {
@@ -409,14 +414,19 @@ static bool SpiNorFlash_Read(
     struct SolidSyslogSpiNorFlash* self = SpiNorFlash_SelfFromBase(base);
     bool read = false;
 
-    /* A part still busy with something that outlasted its time answers only
-     * a status read, and a data read would appear to succeed with nothing
-     * sent back. So it is asked first. */
-    if (SpiNorFlash_CheckSpan(self, blockIndex, offset, count) && SpiNorFlash_WaitUntilReady(self, NO_WAIT))
+    if (SpiNorFlash_CheckSpan(self, blockIndex, offset, count))
     {
         uint8_t request[COMMAND_AND_ADDRESS_LENGTH] = {0};
         SpiNorFlash_SetCommand(request, READ_DATA, SpiNorFlash_AddressOf(self, blockIndex, offset));
-        read = SpiNorFlash_BusHeld(SpiNorFlash_Ask(self, request, sizeof(request), buffer, count));
+
+        /* Erased bytes and an undriven line both read as all ones, so the
+         * data cannot show whether the part sent it. Its status can, and is
+         * asked once the data is in, not before: a part that has stopped
+         * answering by then, or one still busy with something that
+         * outlasted its time and so ignored the read, is caught either
+         * way. */
+        read = SpiNorFlash_BusHeld(SpiNorFlash_Ask(self, request, sizeof(request), buffer, count)) &&
+               SpiNorFlash_WaitUntilReady(self, NO_WAIT);
     }
 
     return read;

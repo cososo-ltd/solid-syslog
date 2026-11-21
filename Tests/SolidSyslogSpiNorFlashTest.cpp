@@ -53,9 +53,11 @@ enum
     ERASE_64K_BY_D8 = 0xD810,
     ERASE_32M_BY_DC = 0xDC19,
 
-    /* The transfers a start makes of a part that is ready: one write and one
-     * read for each thing it asks. */
-    TRANSFERS_IN_A_START = 5,
+    /* What a start asks of a part that is ready: its status, its maker, its
+     * SFDP header, its table, and its status again for the protection bits.
+     * Each is one command, of one write and one read. */
+    COMMANDS_IN_A_START = 5,
+    TRANSFERS_IN_A_START = COMMANDS_IN_A_START,
     START_TIMEOUT_MILLISECONDS = 3000
 };
 
@@ -498,6 +500,15 @@ TEST(SolidSyslogSpiNorFlash, RefusesAPartWithAnyProtectionBitSet)
     }
 }
 
+TEST(SolidSyslogSpiNorFlash, DoesNotTakeAPartThatStopsAnsweringForOneThatIsProtected)
+{
+    /* It answers everything up to its table, and then nothing: a status of
+     * all ones has every protection bit set, and is not a part's answer. */
+    SpiNorFlashPartFake::GoQuietAfter(COMMANDS_IN_A_START - 1);
+    CreateFlash();
+    CHECK_DID_NOT_START(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER);
+}
+
 TEST(SolidSyslogSpiNorFlash, TakesAPartWithOnlyTheTopBitOfItsStatusSet)
 {
     SpiNorFlashPartFake::settings.status = 0x80;
@@ -697,6 +708,7 @@ enum
 {
     PAGE_PROGRAM = 0x02,
     READ_DATA = 0x03,
+    READ_STATUS = 0x05,
     SECTOR_ERASE = 0x20,
     BLOCK_ERASE = 0xD8,
 
@@ -896,18 +908,36 @@ TEST(SolidSyslogSpiNorFlashOperations, RefusesAReadOfABlockPastTheEndOfThePart)
     CHECK_OUT_OF_RANGE(Read(LAST_BLOCK + 1, 0, 1));
 }
 
+TEST(SolidSyslogSpiNorFlashOperations, AsksThePartsStatusOnceItHasTheDataAndNotBefore)
+{
+    Start();
+    const size_t sentToStart = SpiNorFlashPartFake::Commands().size();
+    CHECK_TRUE(Read(A_BLOCK, AN_OFFSET, 4));
+    const std::vector<uint8_t>& commands = SpiNorFlashPartFake::Commands();
+    CHECK_BYTES_EQUAL(
+        std::vector<uint8_t>({READ_DATA, READ_STATUS}),
+        std::vector<uint8_t>(commands.begin() + static_cast<std::ptrdiff_t>(sentToStart), commands.end())
+    );
+}
+
 TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatIsBusy)
 {
     Start();
     SpiNorFlashPartFake::settings.staysBusy = true;
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Read(A_BLOCK, AN_OFFSET, 4));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CommandsWhileBusy());
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatHasStoppedAnswering)
 {
     Start();
     SpiNorFlashPartFake::settings.present = false;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartThatStopsAnsweringOnceItHasTheCommand)
+{
+    Start();
+    SpiNorFlashPartFake::GoQuietAfter(1);
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_ANSWER, Read(A_BLOCK, AN_OFFSET, 4));
 }
 
@@ -1315,14 +1345,13 @@ TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseAfterThreeSecondsWhereThe
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
 }
 
-TEST(SolidSyslogSpiNorFlashOperations, SendsNoReadToAPartLeftBusyByAnEraseThatOutlastedItsTime)
+TEST(SolidSyslogSpiNorFlashOperations, FailsAReadOfAPartLeftBusyByAnEraseThatOutlastedItsTime)
 {
     Start();
     SpiNorFlashPartFake::settings.eraseMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
     (void) Erase(A_BLOCK);
     ErrorHandlerFake_Install(nullptr);
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Read(A_BLOCK, AN_OFFSET, 4));
-    LONGS_EQUAL(0, SpiNorFlashPartFake::CountOf(READ_DATA));
 }
 
 TEST(SolidSyslogSpiNorFlashOperations, FailsAnEraseWhenAnyWriteOfTheBusFails)
