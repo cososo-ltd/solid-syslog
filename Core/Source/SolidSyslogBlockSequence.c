@@ -426,6 +426,8 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     size_t nextSequence
 );
 static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequence* blockSequence, size_t blockIndex);
+static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
+static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence);
 
 /* Takes the new block and no more. What the rotation owes the blocks behind
  * it - a drained one disposed of, the oldest evicted where the run is now over
@@ -433,13 +435,19 @@ static inline bool BlockSequence_AcquireEmptyBlock(struct SolidSyslogBlockSequen
  * store calls once the record that needed the new block is appended. */
 static bool BlockSequence_RotateToNextBlock(struct SolidSyslogBlockSequence* blockSequence)
 {
+    blockSequence->EvictedUnsent = false;
+
+    if (BlockSequence_ExceedsMaxBlocks(blockSequence))
+    {
+        (void) BlockSequence_DiscardOldestBlock(blockSequence);
+    }
+
     size_t nextSequence = BlockSequence_CircularNext(blockSequence, blockSequence->WriteSequence);
     bool acquired = BlockSequence_AcquireEmptyBlock(blockSequence, nextSequence);
 
     if (acquired)
     {
         BlockSequence_AdvanceWriteToNewBlock(blockSequence, nextSequence);
-        blockSequence->EvictedUnsent = false;
         blockSequence->RotationToFinish = true;
     }
     else
@@ -497,8 +505,6 @@ static inline void BlockSequence_AdvanceWriteToNewBlock(
     blockSequence->WriteBlockCorrupt = false;
 }
 
-static inline bool BlockSequence_ExceedsMaxBlocks(const struct SolidSyslogBlockSequence* blockSequence);
-static bool BlockSequence_DiscardOldestBlock(struct SolidSyslogBlockSequence* blockSequence);
 static void BlockSequence_ResetReadToOldest(struct SolidSyslogBlockSequence* blockSequence);
 
 bool SolidSyslogBlockSequence_FinishRotation(struct SolidSyslogBlockSequence* blockSequence)
@@ -507,6 +513,8 @@ bool SolidSyslogBlockSequence_FinishRotation(struct SolidSyslogBlockSequence* bl
 
     if (blockSequence->RotationToFinish)
     {
+        /* An eviction made before the new block was taken changed the read block too. */
+        bool evictedBeforeTaking = blockSequence->EvictedUnsent;
         blockSequence->RotationToFinish = false;
 
         /* Sealing the prior write block can re-arm dispose-on-empty: a drain that
@@ -515,6 +523,7 @@ bool SolidSyslogBlockSequence_FinishRotation(struct SolidSyslogBlockSequence* bl
          * eviction, so a block with nothing left to send is disposed rather
          * than evicted, and an eviction always costs records. */
         SolidSyslogBlockSequence_DisposeReadBlockIfDrained(blockSequence, &readBlockChanged);
+        readBlockChanged = readBlockChanged || evictedBeforeTaking;
 
         /* A failed device is not called again. */
         if (!blockSequence->DeviceFailed && BlockSequence_ExceedsMaxBlocks(blockSequence))
