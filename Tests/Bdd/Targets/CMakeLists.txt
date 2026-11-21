@@ -81,9 +81,22 @@ if(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
     )
 endif()
 
+# The store a target keeps directly on a NOR flash runs over the SpiNorFlash
+# pack, so its tests build where that pack does.
+if(SOLIDSYSLOG_SPINORFLASH)
+    list(APPEND BDD_TARGET_TEST_SOURCES BddTargetNorFlashStoreTest.cpp)
+    list(APPEND BDD_TARGET_PRODUCTION_SOURCES
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetNorFlashStore.c
+    )
+endif()
+
 add_executable(BddTargetTests ${BDD_TARGET_TEST_SOURCES})
 
 target_link_libraries(BddTargetTests PRIVATE ${PROJECT_NAME} CppUTest CppUTestExt Threads::Threads)
+
+if(SOLIDSYSLOG_SPINORFLASH)
+    target_link_libraries(BddTargetTests PRIVATE SpiNorFlashPartFake ErrorHandlerFake)
+endif()
 
 if(SOLIDSYSLOG_POSIX)
     target_link_libraries(BddTargetTests PRIVATE PosixFakes)
