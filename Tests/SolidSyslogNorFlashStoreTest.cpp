@@ -708,7 +708,10 @@ TEST(SolidSyslogNorFlashStorePowerCut, TwoCutsWhileAFullStoreAtItsClampEvictsDel
             for (unsigned number : run.kept)
             {
                 bool evicted = drained.empty() || (number < drained.front());
-                CHECK_TEXT(evicted || (std::find(drained.begin(), drained.end(), number) != drained.end()), where.c_str());
+                CHECK_TEXT(
+                    evicted || (std::find(drained.begin(), drained.end(), number) != drained.end()),
+                    where.c_str()
+                );
             }
             CheckTheStoreStillStores(where);
         }
