@@ -18,9 +18,11 @@
  * wiring, the IP-stack bring-up and the filesystem mount. The OS calls go
  * through BddTargetOsPrimitives.h, so nothing here names a kernel. */
 
-/* Forward declaration - the FS-mount seam traffics in SolidSyslogFile handles
- * without the pipeline header pulling SolidSyslogFile.h. */
+/* Forward declarations - the store seam traffics in SolidSyslogFile and
+ * SolidSyslogBlockDevice handles without the pipeline header pulling either
+ * header. */
 struct SolidSyslogFile;
+struct SolidSyslogBlockDevice;
 
 /* The platform seam each target injects via BddTargetFreeRtosPipeline_SetConfig. */
 struct BddTargetFreeRtosPipelineConfig
@@ -58,6 +60,15 @@ struct BddTargetFreeRtosPipelineConfig
      * target to the next; only called with nothing mounted. Returns false if
      * the medium is cleared some other way, or the change fails. */
     bool (*WipeStore)(void);
+
+    /* For a target whose store is not kept in files: the store's block
+     * device, made once MountStore has answered true, with whatever block
+     * size BddTargetStoreSettings holds. Both are NULL on a target with a
+     * filesystem, and the pipeline then makes a SolidSyslogFileBlockDevice
+     * over CreateStoreFile's file. A target that sets them leaves
+     * CreateStoreFile and DestroyStoreFile NULL. */
+    struct SolidSyslogBlockDevice* (*CreateStoreBlockDevice)(void);
+    void (*DestroyStoreBlockDevice)(struct SolidSyslogBlockDevice* device);
 };
 
 /* Install the platform seam. Call once from main() before the tasks run. */

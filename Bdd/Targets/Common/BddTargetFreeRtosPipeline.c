@@ -123,7 +123,9 @@ enum
 
 static bool OnSet(const char* name, const char* value);
 static bool RebuildWithFileStore(void);
+static struct SolidSyslogBlockDevice* CreateStoreBlockDevice(void);
 static void DestroyCurrentStore(void);
+static void DestroyStoreBlockDevice(void);
 static void OnHalt(void* context);
 static void OnThresholdCrossed(void* context);
 static void OnBlocks(void);
@@ -322,9 +324,7 @@ static bool RebuildWithFileStore(void)
     solidSyslog = NULL;
     DestroyCurrentStore();
 
-    storeFile = g_config->CreateStoreFile();
-    storeBlockDevice =
-        SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
+    storeBlockDevice = CreateStoreBlockDevice();
 
     struct SolidSyslogSecurityPolicy* policy = BddTargetSecurityPolicy_Create();
     currentPolicy = policy;
@@ -352,20 +352,49 @@ static bool RebuildWithFileStore(void)
     return true;
 }
 
-/* Tears down whichever store is currently installed (file-backed or null).
- * The platform DestroyStoreFile hook's Close flushes any buffered dir entry /
- * file data through to the media. */
+/* The target's own block device where it supplies one, and otherwise one that
+ * keeps each block in a file of the target's filesystem. */
+static struct SolidSyslogBlockDevice* CreateStoreBlockDevice(void)
+{
+    struct SolidSyslogBlockDevice* device = NULL;
+    if (g_config->CreateStoreBlockDevice != NULL)
+    {
+        device = g_config->CreateStoreBlockDevice();
+    }
+    else
+    {
+        storeFile = g_config->CreateStoreFile();
+        device = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
+    }
+    return device;
+}
+
+/* Tears down whichever store is currently installed (the block store or null). */
 static void DestroyCurrentStore(void)
 {
     if (currentStoreIsFile)
     {
         SolidSyslogBlockStore_Destroy(currentStore);
-        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
+        DestroyStoreBlockDevice();
         BddTargetSecurityPolicy_Destroy(currentPolicy);
         currentPolicy = NULL;
-        g_config->DestroyStoreFile(storeFile);
     }
     /* else: NullStore is shared and immutable - nothing to destroy. */
+}
+
+/* Where the blocks are files, the platform DestroyStoreFile hook's Close
+ * flushes any buffered dir entry / file data through to the media. */
+static void DestroyStoreBlockDevice(void)
+{
+    if (g_config->DestroyStoreBlockDevice != NULL)
+    {
+        g_config->DestroyStoreBlockDevice(storeBlockDevice);
+    }
+    else
+    {
+        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
+        g_config->DestroyStoreFile(storeFile);
+    }
 }
 
 static void OnHalt(void* context)
