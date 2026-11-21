@@ -7,7 +7,6 @@ extern "C"
 #include "LittleFsDisk.h"
 #include "SolidSyslogFile.h"
 #include "SolidSyslogLittleFsFile.h"
-#include "SolidSyslogTunables.h"
 #include "lfs.h"
 }
 
@@ -21,12 +20,14 @@ extern "C"
  * opens the file again after each write, and the first test pins what that
  * buys.
  *
- * The second is its control. A path too long for the file to keep is not
- * opened again, so it shows what LittleFS does left alone. It fails for one of
- * two reasons, and either is worth knowing: the opens below no longer reach
- * that state, so the first test proves nothing; or LittleFS no longer behaves
- * this way, and the file need not be opened again. The second is what a
- * LittleFS carrying this fix brings:
+ * The second is its control: the same opens and the same writes, made on
+ * LittleFS itself, where nothing opens the file again. Opening a file again
+ * commits nothing, so the two leave the directory in the same state before
+ * every open up to the first that follows such a commit, and meet that one
+ * together. The control fails for one of two reasons, and either is worth
+ * knowing: the opens below no longer reach that state, so the first test
+ * proves nothing; or LittleFS no longer behaves this way, and the file need
+ * not be opened again. The second is what a LittleFS carrying this fix brings:
  * https://github.com/littlefs-project/littlefs/pull/1248 */
 
 enum
@@ -42,10 +43,16 @@ enum
     MOST_ERASES_AN_OPEN = WRITES_AN_OPEN / 2
 };
 
+/* The length of the name matters: it sets where the directory's commits
+ * fall. With this one, ten of the opens follow a commit that ran to the end
+ * of the block, and a name a few characters either way does the same. */
+static const char* const PATH = "/a-file-a-store-keeps-open.log";
+
 static LittleFsDisk disk;
 static lfs_config config;
 static lfs_t filesystem;
 static unsigned char fileCache[LITTLEFS_DISK_CACHE_SIZE];
+static const unsigned char DATA[LONGEST_WRITE] = {};
 
 // clang-format off
 TEST_GROUP(SolidSyslogLittleFsFileWear)
@@ -67,26 +74,53 @@ TEST_GROUP(SolidSyslogLittleFsFileWear)
         (void) lfs_unmount(&filesystem);
     }
 
-    /* Opens the file OPENS times, writing to it a few times each, and says
-     * what the writes of one open cost in erases at the worst. */
-    [[nodiscard]] unsigned WorstErasesForTheWritesOfOneOpen(const std::string& path) const
+    /* Opens the file OPENS times and says what the writes of one open cost in
+     * erases at the worst. `erasesForTheWritesOfOneOpen` opens it, writes
+     * `length` bytes to it WRITES_AN_OPEN times, and closes it. */
+    template <typename ErasesForTheWritesOfOneOpen>
+    static unsigned WorstOfEveryOpen(ErasesForTheWritesOfOneOpen erasesForTheWritesOfOneOpen)
     {
-        const unsigned char data[LONGEST_WRITE] = {};
         unsigned worst = 0;
         for (unsigned open = 0; open < static_cast<unsigned>(OPENS); open++)
         {
-            CHECK_TRUE(SolidSyslogFile_Open(file, path.c_str()));
-            const unsigned before = LittleFsDisk_EraseCount(&disk);
-            for (unsigned write = 0; write < static_cast<unsigned>(WRITES_AN_OPEN); write++)
-            {
-                SolidSyslogFile_SeekTo(file, 0);
-                CHECK_TRUE(SolidSyslogFile_Write(file, data, 1U + (open % static_cast<unsigned>(LONGEST_WRITE))));
-            }
-            const unsigned erases = LittleFsDisk_EraseCount(&disk) - before;
+            const unsigned erases = erasesForTheWritesOfOneOpen(1U + (open % static_cast<unsigned>(LONGEST_WRITE)));
             worst = (erases > worst) ? erases : worst;
-            SolidSyslogFile_Close(file);
         }
         return worst;
+    }
+
+    [[nodiscard]] unsigned ErasesThroughTheFile(unsigned length) const
+    {
+        CHECK_TRUE(SolidSyslogFile_Open(file, PATH));
+        const unsigned before = LittleFsDisk_EraseCount(&disk);
+        for (unsigned write = 0; write < static_cast<unsigned>(WRITES_AN_OPEN); write++)
+        {
+            SolidSyslogFile_SeekTo(file, 0);
+            CHECK_TRUE(SolidSyslogFile_Write(file, DATA, length));
+        }
+        const unsigned erases = LittleFsDisk_EraseCount(&disk) - before;
+        SolidSyslogFile_Close(file);
+        return erases;
+    }
+
+    /* What SolidSyslogLittleFsFile asks of LittleFS for the same open and the
+     * same writes, less opening the file again. */
+    static unsigned ErasesOnLittleFsItself(unsigned length)
+    {
+        lfs_file_t handle = {};
+        lfs_file_config openConfig = {};
+        openConfig.buffer = fileCache;
+        LONGS_EQUAL(LFS_ERR_OK, lfs_file_opencfg(&filesystem, &handle, PATH, LFS_O_RDWR | LFS_O_CREAT, &openConfig));
+        const unsigned before = LittleFsDisk_EraseCount(&disk);
+        for (unsigned write = 0; write < static_cast<unsigned>(WRITES_AN_OPEN); write++)
+        {
+            LONGS_EQUAL(0, lfs_file_seek(&filesystem, &handle, 0, LFS_SEEK_SET));
+            LONGS_EQUAL(length, lfs_file_write(&filesystem, &handle, DATA, length));
+            LONGS_EQUAL(LFS_ERR_OK, lfs_file_sync(&filesystem, &handle));
+        }
+        const unsigned erases = LittleFsDisk_EraseCount(&disk) - before;
+        LONGS_EQUAL(LFS_ERR_OK, lfs_file_close(&filesystem, &handle));
+        return erases;
     }
 };
 
@@ -94,9 +128,7 @@ TEST_GROUP(SolidSyslogLittleFsFileWear)
 
 TEST(SolidSyslogLittleFsFileWear, TheWritesAfterAnyOpenCostFewErases)
 {
-    const std::string pathThatIsKept(SOLIDSYSLOG_MAX_PATH_SIZE - 1U, 'p');
-
-    const unsigned worst = WorstErasesForTheWritesOfOneOpen(pathThatIsKept);
+    const unsigned worst = WorstOfEveryOpen([this](unsigned length) { return ErasesThroughTheFile(length); });
 
     CHECK_TEXT(
         worst <= static_cast<unsigned>(MOST_ERASES_AN_OPEN),
@@ -106,9 +138,7 @@ TEST(SolidSyslogLittleFsFileWear, TheWritesAfterAnyOpenCostFewErases)
 
 TEST(SolidSyslogLittleFsFileWear, AFileLeftOpenCanPayAnEraseForEveryWrite)
 {
-    const std::string pathTooLongToKeep(SOLIDSYSLOG_MAX_PATH_SIZE, 'p');
-
-    const unsigned worst = WorstErasesForTheWritesOfOneOpen(pathTooLongToKeep);
+    const unsigned worst = WorstOfEveryOpen(ErasesOnLittleFsItself);
 
     CHECK_TEXT(
         worst >= static_cast<unsigned>(WRITES_AN_OPEN),
