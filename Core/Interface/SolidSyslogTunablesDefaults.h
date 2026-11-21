@@ -83,7 +83,9 @@
  * Maximum bytes the library will format for a single on-disk path
  * produced by SolidSyslogFileBlockDevice (path prefix + two-digit
  * sequence number + ".log" + null terminator). Caps both the per-call
- * Formatter storage and the bounded prefix copy.
+ * Formatter storage and the bounded prefix copy. A file backend that
+ * keeps the path of its open file, to open it again, keeps it in a
+ * buffer this size.
  *
  * Floor: smallest size that still leaves room for a meaningful prefix
  * after subtracting the 6-byte filename suffix and null terminator.

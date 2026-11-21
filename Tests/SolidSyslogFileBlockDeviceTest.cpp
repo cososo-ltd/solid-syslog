@@ -358,6 +358,19 @@ TEST(SolidSyslogFileBlockDevice, ReadFollowedByWriteOnSameBlockDoesNotOpenTwoHan
     CHECK_BLOCK_CONTAINS(0, 0, "rXc", 3);
 }
 
+/* A file may close itself beneath the device: one that could not open again
+ * after a write does. The device asks the file, not its own record of it. */
+TEST(SolidSyslogFileBlockDevice, ABlockWhoseFileClosedBeneathItIsOpenedAgain)
+{
+    CHECK_TRUE(SolidSyslogBlockDevice_Acquire(device, 0));
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, "abc", 3));
+    SolidSyslogFile_Close(file);
+
+    CHECK_TRUE(SolidSyslogBlockDevice_Append(device, 0, "xyz", 3));
+
+    CHECK_BLOCK_CONTAINS(0, 0, "abcxyz", 6);
+}
+
 TEST(SolidSyslogFileBlockDevice, UseAfterDestroyIsCrashSafeViaNullBlockDeviceVtable)
 {
     /* After Destroy the slot's abstract-base vtable is the shared NullBlockDevice's, so
