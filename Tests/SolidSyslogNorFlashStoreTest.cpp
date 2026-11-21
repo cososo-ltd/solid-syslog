@@ -664,3 +664,56 @@ TEST(SolidSyslogNorFlashStorePowerCut, WhereACutCostTheOldestBlockTheRecordThatE
         }
     }
 }
+
+/* A store at the clamp of its ceiling, two blocks short of the part, written
+ * to under the Oldest policy without a send. A cut in a rotation can leave the
+ * run one over its ceiling, and a second cut in a later run then finds it so.
+ * Delivery stays in order, and what is lost is only ever the oldest records,
+ * which is what an eviction loses. */
+TEST(SolidSyslogNorFlashStorePowerCut, TwoCutsWhileAFullStoreAtItsClampEvictsDeliverInOrder)
+{
+    enum
+    {
+        FIRST_RUN = 16,
+        SECOND_RUN = 12
+    };
+
+    stack.flashBlockCount = 5;
+    stack.storeMaxBlocks = 3;
+    stack.discardPolicy = AlwaysOldest;
+    const size_t firstOperations = WriteOperationsIn([this] { Store(FIRST_RUN); });
+    stack.Restart();
+    Store(SECOND_RUN);
+    const size_t secondOperations = NorFlashFake_WriteOperationCount();
+
+    for (size_t firstCut = 1; firstCut <= firstOperations; firstCut++)
+    {
+        for (size_t secondCut = 1; secondCut <= secondOperations; secondCut++)
+        {
+            StartARun();
+            NorFlashFake_CutPowerAt(firstCut, NORFLASHFAKE_CUT_CLEAN);
+            Store(FIRST_RUN);
+            stack.Restart();
+            NorFlashFake_CutPowerAt(secondCut, NORFLASHFAKE_CUT_CLEAN);
+            Store(SECOND_RUN);
+
+            stack.Restart();
+
+            std::vector<unsigned> drained = stack.Drain();
+            std::string where = "cuts " + std::to_string(firstCut) + " and " + std::to_string(secondCut) +
+                                ": drained " + Listed(drained);
+            CHECK_TEXT(std::is_sorted(drained.begin(), drained.end()), where.c_str());
+            CHECK_TEXT(std::adjacent_find(drained.begin(), drained.end()) == drained.end(), where.c_str());
+            CHECK_TEXT(run.kept.empty() || !drained.empty(), where.c_str());
+            for (unsigned number : run.kept)
+            {
+                bool evicted = drained.empty() || (number < drained.front());
+                CHECK_TEXT(
+                    evicted || (std::find(drained.begin(), drained.end(), number) != drained.end()),
+                    where.c_str()
+                );
+            }
+            CheckTheStoreStillStores(where);
+        }
+    }
+}

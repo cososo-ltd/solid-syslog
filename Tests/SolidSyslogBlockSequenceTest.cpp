@@ -226,8 +226,9 @@ TEST_GROUP_BASE(BlockSequenceScan, BlockSequenceTestBase)
 
 TEST(BlockSequenceScan, MaxBlocksStopsShortOfEverySequenceNumber)
 {
-    /* Configured at 99. A failed eviction leaves one block over the ceiling, and
-     * a resume needs an absent sequence number to find where the run starts. */
+    /* Configured at 99. A rotation is one block over the ceiling until its
+     * eviction, and a resume needs an absent sequence number to find where the
+     * run starts. */
     LONGS_EQUAL(98 * 1000, SolidSyslogBlockSequence_TotalBytes(sequence));
 }
 
@@ -522,6 +523,21 @@ TEST_GROUP_BASE(BlockSequenceRotation, BlockSequenceTestBase)
         CreateSequence(maxBlocks);
     }
 
+    /* A restart that finds these blocks, each holding a record. */
+    void ResumeRun(const std::set<size_t>& blocks, size_t maxBlocks)
+    {
+        SolidSyslogBlockSequence_Destroy(sequence);
+        existing = blocks;
+        sizes.clear();
+        for (size_t block : blocks)
+        {
+            sizes[block] = SIMULATED_RECORD_SIZE;
+        }
+        BuildSequence(ROTATION_BLOCK_SIZE, maxBlocks);
+        CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+        calls.clear();
+    }
+
     void NoteRecordInWriteBlock()
     {
         SolidSyslogBlockSequence_NoteRecordAppended(sequence, SIMULATED_RECORD_SIZE);
@@ -663,12 +679,7 @@ TEST(BlockSequenceRotation, ARotationIsFinishedOnce)
  * takes no new block, whatever the discard policy. */
 TEST(BlockSequenceRotation, AWriteThatTakesNoNewBlockEvictsNothingFromARunOverItsCeiling)
 {
-    SolidSyslogBlockSequence_Destroy(sequence);
-    existing = {0, 1, 2};
-    sizes = {{0, SIMULATED_RECORD_SIZE}, {1, SIMULATED_RECORD_SIZE}, {2, SIMULATED_RECORD_SIZE}};
-    BuildSequence(ROTATION_BLOCK_SIZE, 2);
-    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    calls.clear();
+    ResumeRun({0, 1, 2}, 2);
 
     CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
     CHECK_FALSE(SolidSyslogBlockSequence_FinishRotation(sequence));
@@ -750,4 +761,52 @@ TEST(BlockSequenceRotation, ADisposeFailureDuringRotationStopsTheEvictionAfterIt
         1,
         std::count_if(calls.begin(), calls.end(), [](const DeviceCall& call) { return call.type == CallType::Dispose; })
     );
+}
+
+TEST(BlockSequenceRotation, ARunResumedOverItsCeilingEvictsItsOldestBeforeTakingTheNextBlock)
+{
+    ResumeRun({0, 1, 2}, 2);
+
+    TakeTheNextBlock();
+
+    CHECK_TRUE(WasDisposed(0));
+}
+
+TEST(BlockSequenceRotation, ARunResumedTwoOverItsCeilingEvictsDownToItBeforeTakingTheNextBlock)
+{
+    ResumeRun({0, 1, 2, 3}, 2);
+
+    TakeTheNextBlock();
+
+    CHECK_TRUE(WasDisposed(0));
+    CHECK_TRUE(WasDisposed(1));
+}
+
+TEST(BlockSequenceRotation, AnEvictionBeforeTakingTheNextBlockThatFailsTakesNoBlock)
+{
+    ResumeRun({0, 1, 2}, 2);
+    fakeDevice.failNextDispose = true;
+
+    CHECK_FALSE(SolidSyslogBlockSequence_PrepareForWrite(sequence, ROTATION_BLOCK_SIZE + 1));
+
+    CHECK_TRUE(calls.back().type == CallType::Dispose);
+    LONGS_EQUAL(1, DisposeCallCount());
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_DISPOSE_FAILED, SolidSyslogBlockSequence_FailedOperation(sequence));
+}
+
+/* An eviction that fails at every start - a worn block that will not dispose -
+ * leaves a block of the device absent, so each restart still finds the run. */
+TEST(BlockSequenceRotation, AnEvictionThatFailsAtEveryStartLeavesTheNextStartTheRun)
+{
+    deviceBlocks = 4;
+    ResumeRun({1, 2, 3}, 2);
+    fakeDevice.failNextDispose = true;
+    TakeTheNextBlock();
+    (void) SolidSyslogBlockSequence_FinishRotation(sequence);
+    const std::set<size_t> left = existing;
+
+    ResumeRun(left, 2);
+
+    LONGS_EQUAL(1, SolidSyslogBlockSequence_ReadSequence(sequence));
+    LONGS_EQUAL(3, SolidSyslogBlockSequence_WriteSequence(sequence));
 }

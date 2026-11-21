@@ -69,9 +69,9 @@ struct FileFake
     size_t position;
     size_t opensUntilFailure; /* 0 when no open is set to fail; 1 fails the next */
     size_t readsUntilFailure; /* 0 when no read is set to fail; 1 fails the next */
+    size_t deletesUntilFailure; /* 0 when no delete is set to fail; 1 fails the next */
     bool open;
     bool failNextWrite;
-    bool failNextDelete;
     bool failNextSize;
 };
 
@@ -221,7 +221,17 @@ void FileFake_FailNextDelete(struct SolidSyslogFile* file)
         TestAssert_Fail("FileFake_FailNextDelete called with null file");
         return;
     }
-    AsFake(file)->failNextDelete = true;
+    AsFake(file)->deletesUntilFailure = 1U;
+}
+
+void FileFake_FailDeleteAfter(struct SolidSyslogFile* file, size_t deletesThatSucceed)
+{
+    if (file == NULL)
+    {
+        TestAssert_Fail("FileFake_FailDeleteAfter called with null file");
+        return;
+    }
+    AsFake(file)->deletesUntilFailure = deletesThatSucceed + 1U;
 }
 
 void FileFake_FailNextSize(struct SolidSyslogFile* file)
@@ -546,7 +556,7 @@ static bool FileFake_Delete(struct SolidSyslogFile* self, const char* path)
 {
     struct FileFake* fake = AsFake(self);
 
-    if (ShouldFailOnThisCall(&fake->failNextDelete))
+    if (CountDownToFailure(&fake->deletesUntilFailure))
     {
         return false;
     }
