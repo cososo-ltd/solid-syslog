@@ -1466,6 +1466,22 @@ TEST(SolidSyslogBlockStoreRotation, AnEvictionBeforeATakeThatFailsIsReportedAhea
     LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_FROZEN, ErrorHandlerFake_CategoryAt(1));
 }
 
+TEST(SolidSyslogBlockStoreRotation, AnEvictionBeforeATakeIsReportedAheadOfAFreezeAfterTheAppend)
+{
+    ResumeThreeBlocksUnderACeilingOfTwo(SOLIDSYSLOG_DISCARD_POLICY_OLDEST);
+    ErrorHandlerFake_Install(nullptr);
+    FileFake_FailDeleteAfter(file, 1);
+
+    WriteMaxMsg(); /* evicts block 00, takes block 03, then evicting block 01 fails */
+
+    CHECK_FALSE(SolidSyslogFile_Exists(file, "/tmp/test_store00.log"));
+    CHECK_TRUE(SolidSyslogFile_Exists(file, "/tmp/test_store03.log"));
+    CALLED_FAKE(ErrorHandlerFake_Handle, TWICE);
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_RECORDS_LOST, ErrorHandlerFake_CategoryAt(0));
+    LONGS_EQUAL(SOLIDSYSLOG_BLOCK_STORE_ERROR_BLOCK_EVICTED, ErrorHandlerFake_DetailAt(0));
+    LONGS_EQUAL(SOLIDSYSLOG_CAT_STORE_FROZEN, ErrorHandlerFake_CategoryAt(1));
+}
+
 TEST(SolidSyslogBlockStoreRotation, ResumeHasUnsentWhenMultipleBlocksExist)
 {
     CreateWithMaxBlockSize(ONE_MAX_MSG_RECORD);
