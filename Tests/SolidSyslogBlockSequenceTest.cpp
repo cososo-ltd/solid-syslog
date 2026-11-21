@@ -522,6 +522,21 @@ TEST_GROUP_BASE(BlockSequenceRotation, BlockSequenceTestBase)
         CreateSequence(maxBlocks);
     }
 
+    /* A restart that finds these blocks, each holding a record. */
+    void ResumeRun(const std::set<size_t>& blocks, size_t maxBlocks)
+    {
+        SolidSyslogBlockSequence_Destroy(sequence);
+        existing = blocks;
+        sizes.clear();
+        for (size_t block : blocks)
+        {
+            sizes[block] = SIMULATED_RECORD_SIZE;
+        }
+        BuildSequence(ROTATION_BLOCK_SIZE, maxBlocks);
+        CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
+        calls.clear();
+    }
+
     void NoteRecordInWriteBlock()
     {
         SolidSyslogBlockSequence_NoteRecordAppended(sequence, SIMULATED_RECORD_SIZE);
@@ -663,12 +678,7 @@ TEST(BlockSequenceRotation, ARotationIsFinishedOnce)
  * takes no new block, whatever the discard policy. */
 TEST(BlockSequenceRotation, AWriteThatTakesNoNewBlockEvictsNothingFromARunOverItsCeiling)
 {
-    SolidSyslogBlockSequence_Destroy(sequence);
-    existing = {0, 1, 2};
-    sizes = {{0, SIMULATED_RECORD_SIZE}, {1, SIMULATED_RECORD_SIZE}, {2, SIMULATED_RECORD_SIZE}};
-    BuildSequence(ROTATION_BLOCK_SIZE, 2);
-    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    calls.clear();
+    ResumeRun({0, 1, 2}, 2);
 
     CHECK_TRUE(SolidSyslogBlockSequence_PrepareForWrite(sequence, 1));
     CHECK_FALSE(SolidSyslogBlockSequence_FinishRotation(sequence));
@@ -754,12 +764,7 @@ TEST(BlockSequenceRotation, ADisposeFailureDuringRotationStopsTheEvictionAfterIt
 
 TEST(BlockSequenceRotation, ARunResumedOverItsCeilingEvictsItsOldestBeforeTakingTheNextBlock)
 {
-    SolidSyslogBlockSequence_Destroy(sequence);
-    existing = {0, 1, 2};
-    sizes = {{0, SIMULATED_RECORD_SIZE}, {1, SIMULATED_RECORD_SIZE}, {2, SIMULATED_RECORD_SIZE}};
-    BuildSequence(ROTATION_BLOCK_SIZE, 2);
-    CHECK_TRUE(SolidSyslogBlockSequence_Open(sequence));
-    calls.clear();
+    ResumeRun({0, 1, 2}, 2);
 
     TakeTheNextBlock();
 
