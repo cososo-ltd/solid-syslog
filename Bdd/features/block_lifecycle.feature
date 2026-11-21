@@ -8,7 +8,7 @@ Feature: Block lifecycle
 
   Scenario: Active write block is not disposed when its only records are sent
     Given the syslog oracle is running
-    And the block store is enabled with max-blocks 4 and max-block-size 5000 and discard-policy oldest
+    And the block store is enabled with max-blocks 4 and max-block-size 4000 and discard-policy oldest
     And the BDD target is running with transport tcp and no structured data
     And the set of existing block files is recorded
     When the client sends 2 messages
