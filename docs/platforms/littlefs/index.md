@@ -153,6 +153,8 @@ stored and sent at once costs about two erases. Draining a backlog costs about
 one erase a record where a store block fits in one filesystem block, and more
 where it spans several. These are measurements, not figures the pack
 guarantees, and a different LittleFS version or configuration may move them.
+[A store on NOR flash](../../roles/flash-store-costs.md) has the figures from
+one part, beside those of a store with no filesystem under it.
 
 Check that at the rate you expect to log, your part stays within its rated
 erase cycles for the design life of the product. As a first estimate, a part

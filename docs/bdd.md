@@ -184,16 +184,20 @@ recorded on the pull request.
 |---|---|---|
 | FreeRTOS (lwIP Raw API) | The on-board Ethernet MAC and PHY, over ST's HAL driver | FatFs on a MicroSD card, over SPI |
 | CMSIS-RTOS2 (lwIP Sockets API) | The same | LittleFS on a W25Q128 NOR flash, over SPI |
+| CMSIS-RTOS2 (lwIP Sockets API), a second image | The same | The block store directly on that flash, with no filesystem |
 | FreeRTOS (FreeRTOS-Plus-TCP) | The same, under the network interface FreeRTOS-Plus-TCP ships for the STM32 MACs | FreeRTOS-Plus-FAT on the MicroSD card |
 
-On each of the three:
+On each of the four:
 
 - The UDP, TCP and store scenarios pass, and the `@rtc` scenarios against the
   board's real-time clock. [Feature tags](#feature-tags) lists what is excluded.
 - 10,000 messages over UDP and 10,000 over TCP arrive once each and in order,
-  and 2,000 over each do so through the file store.
-- With the network cable removed and replaced, the target reports the link
-  down and up, and a message sent afterwards arrives.
+  and 2,000 over each do so through the store.
+
+On three of them, with the network cable removed and replaced, the target
+reports the link down and up, and a message sent afterwards arrives. The second
+CMSIS-RTOS2 image has the network code of the first, and the cable was not
+pulled on it.
 
 Not run on the board:
 

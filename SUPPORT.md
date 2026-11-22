@@ -55,6 +55,15 @@ within that release, following its latest patch rather than a later release.
 An older upstream version is supported only on an explicit requirement; raise
 one in Discussions.
 
+## Hardware beneath a pack
+
+A pack that drives a part directly, with no third-party software beneath it,
+is supported as code. Its tests and analysis are the library's, and a fault in
+what it is documented to do is a bug like any other. It is tested on the part
+its page under `docs/platforms/` names, and that is the whole of its claim
+about hardware. Proving it on another part is the integrator's work, and where
+a part needs the pack changed, the pack's page says how to go about it.
+
 ## Security issues
 
 Do **not** report security vulnerabilities in public issues. Follow the

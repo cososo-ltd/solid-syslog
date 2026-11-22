@@ -284,6 +284,7 @@ nav:
           - BlockDevice: api/structSolidSyslogBlockDevice.md
           - File: api/structSolidSyslogFile.md
           - NorFlash: api/structSolidSyslogNorFlash.md
+          - A store on NOR flash: roles/flash-store-costs.md
           - Mutex: api/structSolidSyslogMutex.md
           - AtomicCounter: api/structSolidSyslogAtomicCounter.md
           - StructuredData: api/structSolidSyslogStructuredData.md

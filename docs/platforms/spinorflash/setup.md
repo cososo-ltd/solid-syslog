@@ -59,6 +59,17 @@ returns, so give each of your bus functions a time limit of its own. `Write`
 and `Read` answer false when theirs passes; the other three have no failure to
 report.
 
+**Service is held while the part erases, and the pack does not yield.** The
+store erases a block as it takes it, and the call of `SolidSyslog_Service` that
+met it returns only when the part has finished. On a Winbond W25Q128JV that was
+52 to 58 ms, about once for every block of records; the most the pack allows is
+in [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md).
+The pack waits by asking the part its status over and over, with nothing
+between. Under a pre-emptive kernel, tasks of lower priority than the one that
+calls Service get no time until the erase ends, and a loop with no kernel is
+held for all of it. Letting the pack yield is
+[#1302](https://github.com/cososo-ltd/solid-syslog/issues/1302).
+
 **Another device on the same wires is yours to keep quiet.** Whatever it needs
 before it will stay off the bus while the part is selected, do before Create,
 and hold whatever lock the bus needs from select to deselect.

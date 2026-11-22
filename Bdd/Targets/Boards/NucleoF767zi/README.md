@@ -300,7 +300,7 @@ reason the
 gives, and the 512-byte cache it has under QEMU. The
 [LittleFS platform page](../../../../docs/platforms/littlefs/index.md#what-the-store-costs-the-flash-in-erases)
 says what a stored message costs in erases. The store kept up with one message
-every 120 ms and not with one every 50 ms.
+every 260 ms and not with one every 120 ms.
 
 `set store wipe` erases the two blocks that hold LittleFS's superblock, so that
 the next `set store file` finds no filesystem and formats. It is refused once
@@ -331,6 +331,10 @@ device refuses one larger than a sector holds.
 `set store wipe` marks each block that exists as disposed and erases nothing,
 because the store erases every sector as it takes it. It is refused once the
 store is on the part.
+
+The store kept up with one message every 20 ms and not with one every 10 ms.
+[A store on NOR flash](../../../../docs/roles/flash-store-costs.md) sets what
+it costs the part beside what LittleFS does.
 
 A fault the pack reports is the pack's own console line, as described above.
 This image adds no `[board] flash:` line after it. Where the part does not
@@ -508,7 +512,8 @@ version are not held to a value, and a message's time must be no earlier than
 that of the one before. The run ends with a line for each transport giving the
 messages sent, received and at fault. Through the file store each message is
 written to the medium before it is sent, so the run paces itself at twenty a
-second on the card and four a second on the flash. Sent faster than the medium
+second on the card and on the flash with no filesystem, and four a second on
+LittleFS. Sent faster than the medium
 takes them, messages fill the target's buffer and are discarded, which is the
 library's discard policy at work.
 

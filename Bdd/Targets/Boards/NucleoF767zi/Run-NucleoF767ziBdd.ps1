@@ -88,13 +88,13 @@ $healthUri = 'http://127.0.0.1:13133/'
 # For each image: its preset, the target's directory under the build tree, the
 # target name (also the image's file name), the name in its banner (the
 # preset's SOLIDSYSLOG_BDD_TARGET), and the seconds a sustained run leaves
-# between file-store messages. The interval is about twice what the medium
-# was measured to take per message: a sector write on the card, and one or two
-# erases on the flash.
+# between file-store messages. The interval is one the image's store was
+# found to keep up with; the board's README says, medium by medium, what was
+# tried and what was not kept up with.
 $images = @{
     lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; FileStoreInterval = '0.05' }
     cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; FileStoreInterval = '0.25' }
-    'cmsis-norflash' = @{ Preset = 'nucleo-f767zi-cmsis-lwip-norflash'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP_NOR_FLASH'; FileStoreInterval = '0.25' }
+    'cmsis-norflash' = @{ Preset = 'nucleo-f767zi-cmsis-lwip-norflash'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP_NOR_FLASH'; FileStoreInterval = '0.05' }
     plustcp = @{ Preset = 'nucleo-f767zi-plustcp'; Directory = 'Bdd/Targets/FreeRtos'; Name = 'SolidSyslogBddTarget'; Banner = 'FREERTOS_PLUSTCP'; FileStoreInterval = '0.05' }
 }
 $preset = $images[$Target].Preset
