@@ -206,9 +206,12 @@ def main(count, store, file_store_interval_seconds):
             print(f"Sustained run, {transport.upper()}: {count} sent, {len(messages)} received, {len(faults)} faults")
             for fault in faults[:_FAULTS_SHOWN]:
                 print(f"  {fault}")
-        # Only an image whose medium is a flash counts what it was asked.
-        if medium_before:
-            print(cost_line(medium_before, store_report(console, _ANSWER_TIMEOUT_SECONDS), 2 * count))
+        # Only an image whose medium is a flash counts what it was asked, and
+        # a report that cannot be read costs the run its cost line, not its
+        # verdict.
+        medium_after = store_report(console, _ANSWER_TIMEOUT_SECONDS) if medium_before else None
+        if medium_after:
+            print(cost_line(medium_before, medium_after, 2 * count))
         print(f"Commit under test: {commit}")
     finally:
         console.kill()

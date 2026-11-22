@@ -55,6 +55,7 @@ void BddTargetNorFlashStore_Unmount(void)
     }
     flash = NULL;
     countedFlash = NULL;
+    (void) BddTargetCountingNorFlash_Over(NULL);
 }
 
 struct SolidSyslogBlockDevice* BddTargetNorFlashStore_CreateBlockDevice(void)

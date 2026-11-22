@@ -89,8 +89,8 @@ $healthUri = 'http://127.0.0.1:13133/'
 # target name (also the image's file name), the name in its banner (the
 # preset's SOLIDSYSLOG_BDD_TARGET), and the seconds a sustained run leaves
 # between file-store messages. The interval is one the image's store was
-# found to keep up with; the board's README says, medium by medium, what was
-# tried and what was not kept up with.
+# found to keep up with. For the flash, docs/roles/flash-store-costs.md has
+# what was tried and what was not kept up with.
 $images = @{
     lwip  = @{ Preset = 'nucleo-f767zi-lwip'; Directory = 'Bdd/Targets/FreeRtosLwip'; Name = 'SolidSyslogBddTargetLwip'; Banner = 'FREERTOS_LWIP'; FileStoreInterval = '0.05' }
     cmsis = @{ Preset = 'nucleo-f767zi-cmsis-lwip'; Directory = 'Bdd/Targets/CmsisLwip'; Name = 'SolidSyslogBddTargetCmsis'; Banner = 'CMSIS_LWIP'; FileStoreInterval = '0.25' }

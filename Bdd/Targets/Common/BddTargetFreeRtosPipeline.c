@@ -266,7 +266,7 @@ static bool OnSet(const char* name, const char* value)
         }
         if (strcmp(value, "wipe") == 0)
         {
-            /* Leaves the store's medium with no filesystem, for a harness
+            /* Leaves the store's medium holding no store, for a harness
              * whose medium outlives the target. Refused once the store is on
              * it, and where the harness replaces the medium itself. */
             return !currentStoreIsFile && g_config->WipeStore();
@@ -368,7 +368,10 @@ static bool RebuildWithFileStore(void)
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
-    return true;
+    /* A store the library refused, as it does a block larger than the medium
+     * holds, is the Null one: the harness is told, so that its scenario stops
+     * here and does not run on with nothing stored. */
+    return currentStore != SolidSyslogNullStore_Get();
 }
 
 /* The target's own block device where it supplies one, and otherwise one that

@@ -221,3 +221,13 @@ TEST(BddTargetNorFlashStore, WhatTheStoreAsksOfThePartIsCounted)
 
     STRCMP_CONTAINS("erases 1,", counts);
 }
+
+TEST(BddTargetNorFlashStore, NothingIsCountedOnceThePartIsLetGo)
+{
+    char counts[COUNTS_BYTES] = {};
+    BddTargetNorFlashStore_Mount();
+
+    BddTargetNorFlashStore_Unmount();
+
+    CHECK_FALSE(BddTargetCountingNorFlash_Describe(counts, sizeof(counts)));
+}

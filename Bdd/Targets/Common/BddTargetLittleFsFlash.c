@@ -147,6 +147,7 @@ static void LittleFsFlash_Start(void)
         }
         SolidSyslogSpiNorFlash_Destroy(flash);
         flash = NULL;
+        (void) BddTargetCountingNorFlash_Over(NULL);
     }
     else
     {

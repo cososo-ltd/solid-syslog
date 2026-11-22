@@ -247,7 +247,7 @@ def tell_the_time(console, timeout_seconds, now=time.time, wait=time.sleep):
         raise RuntimeError(f"The board did not take the time: {answer!r}")
 
 
-# Removes the filesystem from the board's disk so that the next store starts
+# Leaves the board's disk holding no store, so that the next one starts
 # empty. The disk is a card or a flash part and survives a reset, so without
 # this a scenario would inherit the previous one's records. Raises if the
 # board refuses, which means the medium did not answer or did not accept the

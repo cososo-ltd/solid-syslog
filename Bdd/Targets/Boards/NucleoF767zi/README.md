@@ -299,8 +299,9 @@ reason the
 [LittleFS setup page](../../../../docs/platforms/littlefs/setup.md#what-will-catch-you-out)
 gives, and the 512-byte cache it has under QEMU. The
 [LittleFS platform page](../../../../docs/platforms/littlefs/index.md#what-the-store-costs-the-flash-in-erases)
-says what a stored message costs in erases. The store kept up with one message
-every 260 ms and not with one every 120 ms.
+says what a stored message costs in erases, and
+[A store on NOR flash](../../../../docs/roles/flash-store-costs.md) has the
+pace the store kept up with on this part.
 
 `set store wipe` erases the two blocks that hold LittleFS's superblock, so that
 the next `set store file` finds no filesystem and formats. It is refused once
@@ -332,9 +333,9 @@ device refuses one larger than a sector holds.
 because the store erases every sector as it takes it. It is refused once the
 store is on the part.
 
-The store kept up with one message every 20 ms and not with one every 10 ms.
-[A store on NOR flash](../../../../docs/roles/flash-store-costs.md) sets what
-it costs the part beside what LittleFS does.
+[A store on NOR flash](../../../../docs/roles/flash-store-costs.md) has the
+pace the store kept up with and what it costs the part, beside the same for
+LittleFS.
 
 A fault the pack reports is the pack's own console line, as described above.
 This image adds no `[board] flash:` line after it. Where the part does not

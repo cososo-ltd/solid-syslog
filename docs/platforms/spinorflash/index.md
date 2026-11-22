@@ -90,8 +90,8 @@ its status.
 On hardware it has run on one part, that W25Q128JV, on SPI at 6.75 MHz. There
 it has carried the store scenarios, and 2000 messages over each of UDP and TCP,
 through a store kept directly on the part, and the same beneath a filesystem on
-the same part. [A store on NOR flash](../../roles/flash-store-costs.md) has
-what those runs measured.
+the same part. [A store on NOR flash](../../roles/flash-store-costs.md)
+compares the two by what each asked of the part.
 
 Not tested on the part:
 
