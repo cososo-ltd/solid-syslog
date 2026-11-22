@@ -119,11 +119,11 @@ jobs:
       REF: ${{ github.event.client_payload.ref }}
       VERDICT: ${{ github.event.client_payload.verdict }}
       FAILED: ${{ github.event.client_payload.failed }}
-      REBASE: ${{ github.event.client_payload.rebase }}
-      CONFLICT: ${{ github.event.client_payload.conflict }}
-      CONFLICT_COMMIT: ${{ github.event.client_payload.conflict_commit }}
-      INVARIANT: ${{ github.event.client_payload.invariant }}
-      DIFFERING: ${{ github.event.client_payload.differing }}
+      REBASE: ${{ github.event.client_payload.rebase.outcome }}
+      CONFLICT: ${{ github.event.client_payload.rebase.conflict }}
+      CONFLICT_COMMIT: ${{ github.event.client_payload.rebase.commit }}
+      INVARIANT: ${{ github.event.client_payload.app.outcome }}
+      DIFFERING: ${{ github.event.client_payload.app.differing }}
       RUN_URL: ${{ github.event.client_payload.run_url }}
     steps:
       - name: Open, update or close the stack's issue
