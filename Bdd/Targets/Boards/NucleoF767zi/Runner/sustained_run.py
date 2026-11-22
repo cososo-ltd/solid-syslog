@@ -207,8 +207,8 @@ def main(count, store, file_store_interval_seconds):
             for fault in faults[:_FAULTS_SHOWN]:
                 print(f"  {fault}")
         # Only an image whose medium is a flash counts what it was asked, and
-        # a report that cannot be read costs the run its cost line, not its
-        # verdict.
+        # an answer with no counts in it costs the run its cost line, not its
+        # verdict. A console that does not answer at all still ends the run.
         medium_after = store_report(console, _ANSWER_TIMEOUT_SECONDS) if medium_before else None
         if medium_after:
             print(cost_line(medium_before, medium_after, 2 * count))

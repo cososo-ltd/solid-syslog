@@ -2,8 +2,8 @@
  *
  * It counts each call it passes on, whether or not the flash beneath then
  * carries it out. The counts are written on the thread that uses the store and
- * read on the console's, with nothing between them: a count read while the
- * store is busy may be one behind. */
+ * read on the console's, and nothing here keeps the two apart: whoever asks
+ * for the counts holds the store's thread off the flash while it does. */
 
 #include "BddTargetCountingNorFlash.h"
 

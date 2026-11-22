@@ -307,11 +307,14 @@ static bool OnSet(const char* name, const char* value)
 
 /* What the store's medium has been asked to do, on a target that counts it,
  * for a harness measuring what the store costs. Runs on the interactive
- * thread, so it may use stdio. */
+ * thread, so it may use stdio. The lifecycle mutex keeps the Service task,
+ * which is what the counts follow, off the medium while they are read. */
 static bool ReportStoreMedium(void)
 {
     char text[REPORT_LINE_CAPACITY];
+    SolidSyslogMutex_Lock(lifecycleMutex);
     bool described = (g_config->DescribeStoreMedium != NULL) && g_config->DescribeStoreMedium(text, sizeof(text));
+    SolidSyslogMutex_Unlock(lifecycleMutex);
     if (described)
     {
         (void) printf("[store] %s\n", text);

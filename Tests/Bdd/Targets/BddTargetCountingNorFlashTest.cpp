@@ -16,6 +16,14 @@ enum
     A_BYTE = 0x5A
 };
 
+/* Asserts the counts as the flash describes them. A macro, so a failure
+ * reports the test's own line. */
+#define CHECK_FLASH_COUNTS(expected)                                        \
+    {                                                                       \
+        CHECK_TRUE(BddTargetCountingNorFlash_Describe(text, sizeof(text))); \
+        STRCMP_EQUAL((expected), text);                                     \
+    }
+
 // clang-format off
 TEST_GROUP(BddTargetCountingNorFlash)
 {
@@ -110,17 +118,14 @@ TEST(BddTargetCountingNorFlash, ThereIsSomethingToDescribeWithAFlashBeneath)
 
 TEST(BddTargetCountingNorFlash, NothingIsCountedUntilSomethingIsAsked)
 {
-    BddTargetCountingNorFlash_Describe(text, sizeof(text));
-
-    STRCMP_EQUAL("flash: erases 0, programs 0, reads 0", text);
+    CHECK_FLASH_COUNTS("flash: erases 0, programs 0, reads 0");
 }
 
 TEST(BddTargetCountingNorFlash, AnEraseIsCounted)
 {
     SolidSyslogNorFlash_Erase(counted, A_BLOCK);
 
-    BddTargetCountingNorFlash_Describe(text, sizeof(text));
-    STRCMP_EQUAL("flash: erases 1, programs 0, reads 0", text);
+    CHECK_FLASH_COUNTS("flash: erases 1, programs 0, reads 0");
 }
 
 TEST(BddTargetCountingNorFlash, AProgramIsCounted)
@@ -128,8 +133,7 @@ TEST(BddTargetCountingNorFlash, AProgramIsCounted)
     const uint8_t byte = A_BYTE;
     SolidSyslogNorFlash_Program(counted, A_BLOCK, AN_OFFSET, &byte, sizeof(byte));
 
-    BddTargetCountingNorFlash_Describe(text, sizeof(text));
-    STRCMP_EQUAL("flash: erases 0, programs 1, reads 0", text);
+    CHECK_FLASH_COUNTS("flash: erases 0, programs 1, reads 0");
 }
 
 TEST(BddTargetCountingNorFlash, AReadIsCounted)
@@ -137,8 +141,7 @@ TEST(BddTargetCountingNorFlash, AReadIsCounted)
     uint8_t byte = 0;
     SolidSyslogNorFlash_Read(counted, A_BLOCK, AN_OFFSET, &byte, sizeof(byte));
 
-    BddTargetCountingNorFlash_Describe(text, sizeof(text));
-    STRCMP_EQUAL("flash: erases 0, programs 0, reads 1", text);
+    CHECK_FLASH_COUNTS("flash: erases 0, programs 0, reads 1");
 }
 
 TEST(BddTargetCountingNorFlash, AFlashPutBeneathStartsTheCountsAgain)
@@ -147,6 +150,5 @@ TEST(BddTargetCountingNorFlash, AFlashPutBeneathStartsTheCountsAgain)
 
     BddTargetCountingNorFlash_Over(beneath);
 
-    BddTargetCountingNorFlash_Describe(text, sizeof(text));
-    STRCMP_EQUAL("flash: erases 0, programs 0, reads 0", text);
+    CHECK_FLASH_COUNTS("flash: erases 0, programs 0, reads 0");
 }
