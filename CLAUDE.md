@@ -472,6 +472,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack, with wolfSSL built from source |
 | `nucleo-f767zi-lwip` | ARM Cortex-M7 cross-build of the FreeRTOS + lwIP Raw BDD target for the NUCLEO-F767ZI |
 | `nucleo-f767zi-cmsis-lwip` | ARM Cortex-M7 cross-build of the CMSIS-RTOS2 + lwIP Sockets BDD target for the NUCLEO-F767ZI |
+| `nucleo-f767zi-cmsis-lwip-norflash` | The same target, with its block store directly on the board's SPI NOR flash and no filesystem |
 | `nucleo-f767zi-plustcp` | ARM Cortex-M7 cross-build of the FreeRTOS-Plus-TCP BDD target for the NUCLEO-F767ZI |
 | `nucleo-f767zi-bringup` | ARM Cortex-M7 cross-build of the NUCLEO-F767ZI bring-up firmware, with no SolidSyslog in it |
 | `release` | Release build — optimisations enabled, no instrumentation |

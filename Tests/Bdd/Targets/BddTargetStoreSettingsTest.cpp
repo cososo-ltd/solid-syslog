@@ -55,6 +55,41 @@ TEST(BddTargetStoreSettings, MaxBlockSizeThatIsNotANumberIsRefused)
     LONGS_EQUAL(65536, BddTargetStoreSettings_MaxBlockSize());
 }
 
+TEST(BddTargetStoreSettings, MaxBlockSizeIsNotSetUntilSet)
+{
+    CHECK_FALSE(BddTargetStoreSettings_MaxBlockSizeIsSet());
+}
+
+TEST(BddTargetStoreSettings, SetMaxBlockSizeMarksItSet)
+{
+    BddTargetStoreSettings_SetByName("max-block-size", "520");
+
+    CHECK_TRUE(BddTargetStoreSettings_MaxBlockSizeIsSet());
+}
+
+TEST(BddTargetStoreSettings, MaxBlockSizeSetToWhatItAlreadyWasIsSet)
+{
+    BddTargetStoreSettings_SetByName("max-block-size", "65536");
+
+    CHECK_TRUE(BddTargetStoreSettings_MaxBlockSizeIsSet());
+}
+
+TEST(BddTargetStoreSettings, MaxBlockSizeThatIsNotANumberLeavesItNotSet)
+{
+    BddTargetStoreSettings_SetByName("max-block-size", "big");
+
+    CHECK_FALSE(BddTargetStoreSettings_MaxBlockSizeIsSet());
+}
+
+TEST(BddTargetStoreSettings, ResetForgetsThatMaxBlockSizeWasSet)
+{
+    BddTargetStoreSettings_SetByName("max-block-size", "520");
+
+    BddTargetStoreSettings_Reset();
+
+    CHECK_FALSE(BddTargetStoreSettings_MaxBlockSizeIsSet());
+}
+
 TEST(BddTargetStoreSettings, CapacityThresholdIsZeroUntilSet)
 {
     LONGS_EQUAL(0, BddTargetStoreSettings_GetCapacityThreshold(nullptr));

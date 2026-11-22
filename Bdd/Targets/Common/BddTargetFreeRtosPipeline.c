@@ -122,8 +122,11 @@ enum
 };
 
 static bool OnSet(const char* name, const char* value);
+static bool ReportStoreMedium(void);
 static bool RebuildWithFileStore(void);
+static struct SolidSyslogBlockDevice* CreateStoreBlockDevice(void);
 static void DestroyCurrentStore(void);
+static void DestroyStoreBlockDevice(void);
 static void OnHalt(void* context);
 static void OnThresholdCrossed(void* context);
 static void OnBlocks(void);
@@ -263,10 +266,14 @@ static bool OnSet(const char* name, const char* value)
         }
         if (strcmp(value, "wipe") == 0)
         {
-            /* Leaves the store's medium with no filesystem, for a harness
+            /* Leaves the store's medium holding no store, for a harness
              * whose medium outlives the target. Refused once the store is on
              * it, and where the harness replaces the medium itself. */
             return !currentStoreIsFile && g_config->WipeStore();
+        }
+        if (strcmp(value, "report") == 0)
+        {
+            return ReportStoreMedium();
         }
         return false;
     }
@@ -298,6 +305,23 @@ static bool OnSet(const char* name, const char* value)
     return BddTargetTlsConfig_SetByName(name, value);
 }
 
+/* What the store's medium has been asked to do, on a target that counts it,
+ * for a harness measuring what the store costs. Runs on the interactive
+ * thread, so it may use stdio. The lifecycle mutex keeps the Service task,
+ * which is what the counts follow, off the medium while they are read. */
+static bool ReportStoreMedium(void)
+{
+    char text[REPORT_LINE_CAPACITY];
+    SolidSyslogMutex_Lock(lifecycleMutex);
+    bool described = (g_config->DescribeStoreMedium != NULL) && g_config->DescribeStoreMedium(text, sizeof(text));
+    SolidSyslogMutex_Unlock(lifecycleMutex);
+    if (described)
+    {
+        (void) printf("[store] %s\n", text);
+    }
+    return described;
+}
+
 /* `set store file` trigger: swap the default NullStore for a file-backed
  * BlockStore over the platform FS-mount seam. One-way until the target
  * restarts. The lifecycle mutex blocks the Service task across the
@@ -322,9 +346,7 @@ static bool RebuildWithFileStore(void)
     solidSyslog = NULL;
     DestroyCurrentStore();
 
-    storeFile = g_config->CreateStoreFile();
-    storeBlockDevice =
-        SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
+    storeBlockDevice = CreateStoreBlockDevice();
 
     struct SolidSyslogSecurityPolicy* policy = BddTargetSecurityPolicy_Create();
     currentPolicy = policy;
@@ -349,23 +371,55 @@ static bool RebuildWithFileStore(void)
     solidSyslog = SolidSyslog_Create(&solidSyslogConfig);
     solidSyslogReady = true;
     SolidSyslogMutex_Unlock(lifecycleMutex);
-    return true;
+    /* A store the library refused, as it does a block larger than the medium
+     * holds, is the Null one: the harness is told, so that its scenario stops
+     * here and does not run on with nothing stored. */
+    return currentStore != SolidSyslogNullStore_Get();
 }
 
-/* Tears down whichever store is currently installed (file-backed or null).
- * The platform DestroyStoreFile hook's Close flushes any buffered dir entry /
- * file data through to the media. */
+/* The target's own block device where it supplies one, and otherwise one that
+ * keeps each block in a file of the target's filesystem. */
+static struct SolidSyslogBlockDevice* CreateStoreBlockDevice(void)
+{
+    struct SolidSyslogBlockDevice* device = NULL;
+    if (g_config->CreateStoreBlockDevice != NULL)
+    {
+        device = g_config->CreateStoreBlockDevice();
+    }
+    else
+    {
+        storeFile = g_config->CreateStoreFile();
+        device = SolidSyslogFileBlockDevice_Create(storeFile, STORE_PATH_PREFIX, BddTargetStoreSettings_MaxBlockSize());
+    }
+    return device;
+}
+
+/* Tears down whichever store is currently installed (the block store or null). */
 static void DestroyCurrentStore(void)
 {
     if (currentStoreIsFile)
     {
         SolidSyslogBlockStore_Destroy(currentStore);
-        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
+        DestroyStoreBlockDevice();
         BddTargetSecurityPolicy_Destroy(currentPolicy);
         currentPolicy = NULL;
-        g_config->DestroyStoreFile(storeFile);
     }
     /* else: NullStore is shared and immutable - nothing to destroy. */
+}
+
+/* Where the blocks are files, the platform DestroyStoreFile hook's Close
+ * flushes any buffered dir entry / file data through to the media. */
+static void DestroyStoreBlockDevice(void)
+{
+    if (g_config->DestroyStoreBlockDevice != NULL)
+    {
+        g_config->DestroyStoreBlockDevice(storeBlockDevice);
+    }
+    else
+    {
+        SolidSyslogFileBlockDevice_Destroy(storeBlockDevice);
+        g_config->DestroyStoreFile(storeFile);
+    }
 }
 
 static void OnHalt(void* context)

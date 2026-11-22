@@ -6,6 +6,7 @@
 #include "SolidSyslogSender.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /* Shared FreeRTOS BDD-target pipeline.
@@ -18,9 +19,11 @@
  * wiring, the IP-stack bring-up and the filesystem mount. The OS calls go
  * through BddTargetOsPrimitives.h, so nothing here names a kernel. */
 
-/* Forward declaration - the FS-mount seam traffics in SolidSyslogFile handles
- * without the pipeline header pulling SolidSyslogFile.h. */
+/* Forward declarations - the store seam traffics in SolidSyslogFile and
+ * SolidSyslogBlockDevice handles without the pipeline header pulling either
+ * header. */
 struct SolidSyslogFile;
+struct SolidSyslogBlockDevice;
 
 /* The platform seam each target injects via BddTargetFreeRtosPipeline_SetConfig. */
 struct BddTargetFreeRtosPipelineConfig
@@ -53,11 +56,28 @@ struct BddTargetFreeRtosPipelineConfig
     /* Create / destroy the platform SolidSyslogFile adapter for the store. */
     struct SolidSyslogFile* (*CreateStoreFile)(void);
     void (*DestroyStoreFile)(struct SolidSyslogFile* file);
-    /* Leaves the store's medium with no filesystem on it, so the next mount
-     * formats it. For a medium that keeps its contents from one run of the
-     * target to the next; only called with nothing mounted. Returns false if
+    /* Leaves the store's medium holding no store, so the next one starts
+     * empty: a filesystem is removed for the next mount to format, and a
+     * medium with none has its blocks let go. For a medium that keeps its
+     * contents from one run of the target to the next; only called with
+     * nothing mounted. Returns false if
      * the medium is cleared some other way, or the change fails. */
     bool (*WipeStore)(void);
+
+    /* For a target whose store is not kept in files: the store's block
+     * device, made once MountStore has answered true, with whatever block
+     * size BddTargetStoreSettings holds. Both are NULL on a target with a
+     * filesystem, and the pipeline then makes a SolidSyslogFileBlockDevice
+     * over CreateStoreFile's file. A target that sets them leaves
+     * CreateStoreFile and DestroyStoreFile NULL. */
+    struct SolidSyslogBlockDevice* (*CreateStoreBlockDevice)(void);
+    void (*DestroyStoreBlockDevice)(struct SolidSyslogBlockDevice* device);
+
+    /* For a target that counts what its store's medium is asked to do: writes
+     * the counts into text as one line with no newline, and answers false
+     * while it has none to give. `set store report` prints the line. NULL on
+     * a target that does not count, where that command is refused. */
+    bool (*DescribeStoreMedium)(char* text, size_t size);
 };
 
 /* Install the platform seam. Call once from main() before the tasks run. */

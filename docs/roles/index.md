@@ -28,6 +28,9 @@ diagram of the backends that realise it.
 | [File](../api/structSolidSyslogFile.md) | the file primitive beneath a BlockDevice |
 | [NorFlash](../api/structSolidSyslogNorFlash.md) | a NOR flash, by erase block and offset, beneath a BlockDevice that needs no File |
 
+A store on a NOR flash part can go through a File or through NorFlash.
+[A store on NOR flash](flash-store-costs.md) measures the two on one part.
+
 ## OS primitives
 
 | Role | Does |

@@ -25,6 +25,10 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
     bool BddTargetStoreSettings_SetByName(const char* name, const char* value);
     size_t BddTargetStoreSettings_MaxBlocks(void);
     size_t BddTargetStoreSettings_MaxBlockSize(void);
+    /* Whether the harness has sent a max-block-size since the last Reset. Until
+       it has, MaxBlockSize answers a default chosen for a file, which a store
+       whose blocks are a medium's own has no use for. */
+    bool BddTargetStoreSettings_MaxBlockSizeIsSet(void);
     /* The GetDiscardPolicy callback a target installs on its buffer, its
        BlockStore and its SolidSyslogConfig alike, so one `set discard-policy`
        answers for all three; the context is unused. */

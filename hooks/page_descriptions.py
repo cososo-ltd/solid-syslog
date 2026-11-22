@@ -278,6 +278,11 @@ DESCRIPTIONS = {
         "The vtable contracts SolidSyslog composes against, what fills "
         "each one, and the Null fallback that keeps an unfilled role safe."
     ),
+    "roles/flash-store-costs.md": (
+        "A store on NOR flash with LittleFS and with no filesystem, measured on "
+        "one part: the pace each keeps up with, the erases a message costs, and "
+        "the time to create the store."
+    ),
     "assets/postit/README.md": (
         "The post-it diagram kit behind the SolidSyslog architecture pictures: "
         "what each colour and arrow means, and how the diagrams are generated."

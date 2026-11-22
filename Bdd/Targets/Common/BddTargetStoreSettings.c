@@ -14,6 +14,7 @@ enum
 
 static size_t maxBlocks = DEFAULT_MAX_BLOCKS;
 static size_t maxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
+static bool maxBlockSizeIsSet = false;
 static size_t capacityThreshold = 0U;
 static enum SolidSyslogDiscardPolicy discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
 static enum BddTargetSecurityPolicy securityPolicy = BDD_TARGET_SECURITY_POLICY_CRC16;
@@ -55,6 +56,7 @@ void BddTargetStoreSettings_Reset(void)
 {
     maxBlocks = DEFAULT_MAX_BLOCKS;
     maxBlockSize = DEFAULT_MAX_BLOCK_SIZE;
+    maxBlockSizeIsSet = false;
     capacityThreshold = 0U;
     discardPolicy = SOLIDSYSLOG_DISCARD_POLICY_OLDEST;
     securityPolicy = BDD_TARGET_SECURITY_POLICY_CRC16;
@@ -76,6 +78,7 @@ bool BddTargetStoreSettings_SetByName(const char* name, const char* value)
     else if (strcmp(name, "max-block-size") == 0)
     {
         taken = StoreSettings_SetSize(value, &maxBlockSize);
+        maxBlockSizeIsSet = maxBlockSizeIsSet || taken;
     }
     else if (strcmp(name, "capacity-threshold") == 0)
     {
@@ -172,6 +175,11 @@ size_t BddTargetStoreSettings_MaxBlocks(void)
 size_t BddTargetStoreSettings_MaxBlockSize(void)
 {
     return maxBlockSize;
+}
+
+bool BddTargetStoreSettings_MaxBlockSizeIsSet(void)
+{
+    return maxBlockSizeIsSet;
 }
 
 enum SolidSyslogDiscardPolicy BddTargetStoreSettings_GetDiscardPolicy(void* context)

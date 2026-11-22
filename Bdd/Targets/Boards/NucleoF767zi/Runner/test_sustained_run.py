@@ -199,5 +199,16 @@ class ArgumentsTest(unittest.TestCase):
             sustained_run.arguments_in(["sustained_run.py", "100", "file"])
 
 
+class CostTest(unittest.TestCase):
+    def test_the_cost_is_what_the_medium_was_asked_between_the_two_reports(self):
+        before = {"erases": 2, "programs": 10, "reads": 2048}
+        after = {"erases": 302, "programs": 8010, "reads": 12048}
+
+        self.assertEqual(
+            "Sustained run, medium: 300 erases, 8000 programs and 10000 reads for 4000 messages",
+            sustained_run.cost_line(before, after, 4000),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

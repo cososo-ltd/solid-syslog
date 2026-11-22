@@ -67,14 +67,24 @@ board seam: see [`../Boards/Mps2An385/`](../Boards/Mps2An385/README.md) for
 the one CI runs on.
 
 The target's own files are its `CMakeLists.txt`, its `main.c`, its `Kernel/`
-directory and its configuration headers: `lwipopts.h`,
-`mbedtls_user_config.h` and `solidsyslog_user_tunables.h`.
+directory, the `BddTargetCmsisStore` files that say which store a build has,
+and its configuration headers: `lwipopts.h`, `mbedtls_user_config.h` and
+`solidsyslog_user_tunables.h`.
 
 ## On the NUCLEO-F767ZI
 
 The `nucleo-f767zi-cmsis-lwip` preset builds this target for ST's
 NUCLEO-F767ZI, over Mbed TLS. Nothing in this directory changes for it: the
 board supplies its own half of the seam, and the kernel configuration takes the
-core clock and the interrupt priority bits from the board. CI builds the image
-and never runs it. The board's [README](../Boards/NucleoF767zi/README.md) has
-the build, the run and the target checklist.
+core clock and the interrupt priority bits from the board.
+
+The `nucleo-f767zi-cmsis-lwip-norflash` preset builds it a second way for the
+same board, as `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP_NOR_FLASH`. That image keeps
+its store directly on the board's NOR flash, through the `SpiNorFlash` pack and
+Core's flash block device, and has no `LittleFs` in it. The two builds differ
+in one place: `CMakeLists.txt` takes `BddTargetCmsisStore_LittleFs.c` for the
+first and `BddTargetCmsisStore_NorFlash.c` for the second.
+
+CI builds both images and runs neither. The board's
+[README](../Boards/NucleoF767zi/README.md) has the build, the run and the
+target checklist.

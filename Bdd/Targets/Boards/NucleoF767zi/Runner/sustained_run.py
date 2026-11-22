@@ -28,6 +28,7 @@ from nucleo_f767zi import (
     image_under_test,
     open_board,
     output_to_prompt,
+    store_report,
     tell_the_time,
     use_the_file_store,
     wipe_the_disk,
@@ -148,6 +149,13 @@ def _lines_of(path):
     return lines
 
 
+# Returns the line that says what count messages cost the store's medium,
+# from its counts before the first and after the last.
+def cost_line(before, after, count):
+    erases, programs, reads = (after[kind] - before[kind] for kind in ("erases", "programs", "reads"))
+    return f"Sustained run, medium: {erases} erases, {programs} programs and {reads} reads for {count} messages"
+
+
 def _send(console, count, interval_seconds):
     for _ in range(count):
         console.stdin.write("send 1\n")
@@ -173,10 +181,12 @@ def main(count, store, file_store_interval_seconds):
             sent = message_as_sent(board_address_in(cache.read()))
         tell_the_time(console, _ANSWER_TIMEOUT_SECONDS)
         interval_seconds = 0
+        medium_before = None
         if store == "file":
             wipe_the_disk(console, _ANSWER_TIMEOUT_SECONDS)
             use_the_file_store(console, _ANSWER_TIMEOUT_SECONDS)
             interval_seconds = file_store_interval_seconds
+            medium_before = store_report(console, _ANSWER_TIMEOUT_SECONDS)
         _send(console, count, interval_seconds)
         if store == "file":
             # The console answers `send 1` before the message has left the
@@ -196,6 +206,12 @@ def main(count, store, file_store_interval_seconds):
             print(f"Sustained run, {transport.upper()}: {count} sent, {len(messages)} received, {len(faults)} faults")
             for fault in faults[:_FAULTS_SHOWN]:
                 print(f"  {fault}")
+        # Only an image whose medium is a flash counts what it was asked, and
+        # an answer with no counts in it costs the run its cost line, not its
+        # verdict. A console that does not answer at all still ends the run.
+        medium_after = store_report(console, _ANSWER_TIMEOUT_SECONDS) if medium_before else None
+        if medium_after:
+            print(cost_line(medium_before, medium_after, 2 * count))
         print(f"Commit under test: {commit}")
     finally:
         console.kill()

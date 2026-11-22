@@ -181,6 +181,30 @@ class UseTheFileStoreTest(unittest.TestCase):
             nucleo_f767zi.use_the_file_store(self.console, 5)
 
 
+class StoreReportTest(unittest.TestCase):
+    def setUp(self):
+        self.port = FakePort()
+        self.console = serial_console.SerialConsole(self.port, lambda: None)
+        self.addCleanup(self.console.kill)
+
+    def test_the_board_is_asked_for_its_report(self):
+        self.port.arrived.put(b"SolidSyslog> ")
+
+        nucleo_f767zi.store_report(self.console, 5)
+
+        self.assertEqual(b"set store report\n", self.port.written)
+
+    def test_the_counts_the_board_gives_are_returned(self):
+        self.port.arrived.put(b"[store] flash: erases 12, programs 340, reads 5120\r\nset store=report\r\nSolidSyslog> ")
+
+        self.assertEqual({"erases": 12, "programs": 340, "reads": 5120}, nucleo_f767zi.store_report(self.console, 5))
+
+    def test_an_image_that_does_not_count_gives_none(self):
+        self.port.arrived.put(b"set: invalid\r\nSolidSyslog> ")
+
+        self.assertIsNone(nucleo_f767zi.store_report(self.console, 5))
+
+
 # The ST-LINK buffers what the board printed while the port was closed, and
 # delivers it when the port opens.
 class DiscardTest(unittest.TestCase):

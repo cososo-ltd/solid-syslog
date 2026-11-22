@@ -45,7 +45,14 @@
 #                                         and BddTargetLittleFsDisk_Wipe, over
 #                                         whichever medium the board has for it
 #
-# A target takes one of the two, so a board does not need to know which
+#   BDD_BOARD_NOR_FLASH_PROJECT_SOURCES - the bus of the board's NOR flash,
+#                                         which defines
+#                                         BddTargetBoardSpiNorFlashBus_Take, for
+#                                         a store kept on the flash with no
+#                                         filesystem. Empty on a board with no
+#                                         flash
+#
+# A target takes one of the three, so a board does not need to know which
 # targets exist.
 #
 # For the Ethernet controller, by network stack:
