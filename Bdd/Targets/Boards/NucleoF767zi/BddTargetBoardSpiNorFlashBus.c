@@ -10,6 +10,7 @@
 
 #include "BddTargetBoardSpiNorFlashBus.h"
 
+#include "BddTargetOsPrimitives.h"
 #include "Board.h"
 #include "BoardSpi4.h"
 #include "BoardSpi4Flash.h"
@@ -30,6 +31,7 @@ static void FlashBus_Deselect(struct SolidSyslogSpiNorFlashBus* base);
 static bool FlashBus_Write(struct SolidSyslogSpiNorFlashBus* base, const void* buffer, size_t count);
 static bool FlashBus_Read(struct SolidSyslogSpiNorFlashBus* base, void* buffer, size_t count);
 static uint32_t FlashBus_Milliseconds(struct SolidSyslogSpiNorFlashBus* base);
+static void FlashBus_WhileBusy(struct SolidSyslogSpiNorFlashBus* base);
 
 static struct SolidSyslogSpiNorFlashBus bus = {
     FlashBus_Select,
@@ -37,6 +39,7 @@ static struct SolidSyslogSpiNorFlashBus bus = {
     FlashBus_Write,
     FlashBus_Read,
     FlashBus_Milliseconds,
+    FlashBus_WhileBusy,
 };
 
 struct SolidSyslogSpiNorFlashBus* BddTargetBoardSpiNorFlashBus_Take(void)
@@ -83,4 +86,10 @@ static uint32_t FlashBus_Milliseconds(struct SolidSyslogSpiNorFlashBus* base)
 {
     (void) base;
     return Board_Milliseconds();
+}
+
+static void FlashBus_WhileBusy(struct SolidSyslogSpiNorFlashBus* base)
+{
+    (void) base;
+    BddTargetOsPrimitives_Sleep(1);
 }
