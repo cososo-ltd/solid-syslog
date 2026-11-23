@@ -5,10 +5,12 @@ pack fills and what it refuses.
 
 ## What you provide
 
-The bus the part is on, as the five functions of
+The bus the part is on, as the functions of
 [`SolidSyslogSpiNorFlashBus`](../../api/structSolidSyslogSpiNorFlashBus.md):
 select, deselect, write a buffer, read a buffer, and a count of milliseconds.
-The header states what each must do.
+A sixth, `WhileBusy`, is yours to fill or leave: it is where the pack lets you
+give up the processor while the part is busy. The header states what each must
+do.
 
 Bring the bus up before you create the flash: its pins, SPI mode 0, and its
 rate are yours to set.
@@ -34,7 +36,8 @@ functions need to find anything, and hand it to Create:
 
 ```c
 static struct SolidSyslogSpiNorFlashBus bus = {
-    BoardFlash_Select, BoardFlash_Deselect, BoardFlash_Write, BoardFlash_Read, BoardFlash_Milliseconds
+    BoardFlash_Select, BoardFlash_Deselect, BoardFlash_Write, BoardFlash_Read, BoardFlash_Milliseconds,
+    BoardFlash_WhileBusy /* or NULL */
 };
 
 struct SolidSyslogSpiNorFlashConfig flashConfig = {&bus};
@@ -56,19 +59,35 @@ erase.
 **Every bus call must come back.** The pack bounds how long it waits for the
 part, by your count of milliseconds. It cannot bound a call that never
 returns, so give each of your bus functions a time limit of its own. `Write`
-and `Read` answer false when theirs passes; the other three have no failure to
+and `Read` answer false when theirs passes; the others have no failure to
 report.
 
-**Service is held while the part erases, and the pack does not yield.** The
-store erases a block as it takes it, and the call of `SolidSyslog_Service` that
-met it returns only when the part has finished. On a Winbond W25Q128JV that was
-52 to 58 ms, about once for every block of records; the most the pack allows is
-in [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md).
-The pack waits by asking the part its status over and over, with nothing
-between. Under a pre-emptive kernel, tasks of lower priority than the one that
-calls Service get no time until the erase ends, and a loop with no kernel is
-held for all of it. Letting the pack yield is
-[#1302](https://github.com/cososo-ltd/solid-syslog/issues/1302).
+**Service is held while the part erases.** The store erases a block as it takes
+it, and the call of `SolidSyslog_Service` that met it returns only when the
+part has finished. On a Winbond W25Q128JV that was 52 to 58 ms, about once for
+every block of records; the most the pack allows is in
+[`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md).
+
+**With `WhileBusy` left NULL, nothing else runs meanwhile.** The pack waits by
+asking the part its status over and over, with nothing between. Under a
+pre-emptive kernel, tasks of lower priority than the one that calls Service get
+no time until the erase ends, and a loop with no kernel is held for all of it.
+Fill `WhileBusy` and the pack calls it between one ask and the next, which is
+where you sleep, yield, or service a watchdog. Service still returns only when
+the part has finished; what changes is what the processor does until then.
+
+**`WhileBusy` is called through a page program too, and is not told which.** A
+page program is far shorter than an erase and far more frequent:
+[a store on NOR flash](../../roles/flash-store-costs.md) counts both for a
+message. Where your kernel's shortest sleep is longer than a page program
+takes, a `WhileBusy` that sleeps every time it is called slows every record the
+store writes. What it does is yours to choose, so choose it for your kernel's
+tick and your part's times.
+
+**Create may call `WhileBusy`.** A part that a reset left part-way through an
+erase is waited for in Create, through the same function. If yours sleeps on a
+kernel, create the flash where sleeping is allowed, or have the function tell
+whether the kernel is running.
 
 **Another device on the same wires is yours to keep quiet.** Whatever it needs
 before it will stay off the bus while the part is selected, do before Create,
