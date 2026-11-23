@@ -44,7 +44,8 @@ struct SolidSyslogNorFlash* SolidSyslogSpiNorFlash_Create(const struct SolidSysl
 }
 
 /* The bus table is the caller's, so it is checked here, once, and nothing
- * that calls through it checks again. */
+ * that calls through it checks again. WhileBusy alone may be left unfilled,
+ * and is looked at where it is called. */
 static bool SpiNorFlash_IsUsableConfig(const struct SolidSyslogSpiNorFlashConfig* config)
 {
     bool usable = false;

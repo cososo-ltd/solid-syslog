@@ -43,7 +43,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      *  bytes or a multiple of it.
      *
      *  Refused, each reported as SOLIDSYSLOG_CAT_BAD_CONFIG:
-     *   - a NULL @p config or Bus, or a Bus with a member not filled;
+     *   - a NULL @p config or Bus, or a Bus with a member it must have not
+     *     filled;
      *   - a part with no SFDP table, or one whose table is not understood;
      *   - a part of more than 16 MiB, the most three address bytes reach;
      *   - a part that takes only four-byte addresses;

@@ -4,8 +4,8 @@
 
 /** @file
  *  The SPI bus a SolidSyslogSpiNorFlash reaches its part over (Select /
- *  Deselect / Write / Read / Milliseconds) - the table of functions an
- *  integrator fills in for the board the part is on. */
+ *  Deselect / Write / Read / Milliseconds / WhileBusy) - the table of
+ *  functions an integrator fills in for the board the part is on. */
 #ifndef SOLIDSYSLOGSPINORFLASHBUS_H
 #define SOLIDSYSLOGSPINORFLASHBUS_H
 
@@ -19,7 +19,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The bus under a SolidSyslogSpiNorFlash: an integrator fills this table and
      *  embeds it as the first member of its own struct, so @p base downcasts back
-     *  to that struct. Every member is filled; there is no optional one.
+     *  to that struct. Every member is filled but WhileBusy, which may be left
+     *  NULL.
      *
      *  The bus is ready before the flash is created: its pins, its mode and its
      *  rate are the integrator's, and so is anything another device on the same
@@ -57,6 +58,22 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         /** A count of milliseconds that wraps at 2^32, for timing the part. Only
          *  differences between two readings are used. */
         uint32_t (*Milliseconds)(struct SolidSyslogSpiNorFlashBus* base);
+        /** Optional. Called each time the part has answered that it is still
+         *  busy, before it is asked again: through an erase, through a page
+         *  program, and in Create where the part was busy as it started. The
+         *  part is deselected when it is called. It is the integrator's way
+         *  to give up the processor meanwhile, and what it does is the
+         *  integrator's to choose: sleep, yield, service a watchdog, or
+         *  nothing. It is not told what the part is busy with.
+         *
+         *  The flash times each wait by Milliseconds, never by this, and asks
+         *  the part once more after the time allowed has passed. So a call
+         *  that returns late does not fail a part that finished meanwhile,
+         *  and one that returns at once costs nothing but the call.
+         *
+         *  Left NULL, the part is asked again at once, and the calling thread
+         *  is held, asking, until the part has finished. */
+        void (*WhileBusy)(struct SolidSyslogSpiNorFlashBus* base);
     };
 
 SOLIDSYSLOG_EXTERN_C_END

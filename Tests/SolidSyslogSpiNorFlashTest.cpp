@@ -384,6 +384,23 @@ TEST(SolidSyslogSpiNorFlash, AsksOnceMoreAfterTheTimeAllowedHasPassed)
     CHECK_CREATED();
 }
 
+TEST(SolidSyslogSpiNorFlash, CallsWhileBusyWhileItWaitsForAPartToBeReady)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    SpiNorFlashPartFake::settings.busyAtPowerUpMilliseconds = 100;
+    CreateFlash();
+    CHECK_CREATED();
+    CHECK_TRUE(SpiNorFlashPartFake::WhileBusyCalls() > 0);
+}
+
+TEST(SolidSyslogSpiNorFlash, DoesNotCallWhileBusyForAPartThatIsReady)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    CreateFlash();
+    CHECK_CREATED();
+    LONGS_EQUAL(0, SpiNorFlashPartFake::WhileBusyCalls());
+}
+
 TEST(SolidSyslogSpiNorFlash, DoesNotStartWithNoPartOnTheBus)
 {
     SpiNorFlashPartFake::settings.present = false;
@@ -1364,6 +1381,80 @@ TEST(SolidSyslogSpiNorFlashOperations, FailsAnEraseWhenAnyReadOfTheBusFails)
         CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_FAILED, Erase(A_BLOCK));
         CHECK_FALSE(SpiNorFlashPartFake::IsSelected());
     }
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, CallsWhileBusyWhileAnEraseIsUnderWay)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    CHECK_TRUE(SpiNorFlashPartFake::WhileBusyCalls() > 0);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, CallsWhileBusyWhileAPageProgramIsUnderWay)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    SpiNorFlashPartFake::settings.programMilliseconds = 5;
+    CHECK_TRUE(Program(A_BLOCK, AN_OFFSET, {0x00}));
+    CHECK_TRUE(SpiNorFlashPartFake::WhileBusyCalls() > 0);
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesWhileBusyTheBusItIsOn)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    CHECK_TRUE(SpiNorFlashPartFake::WhileBusyWasGivenTheBus());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, CallsWhileBusyWithThePartDeselected)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    CHECK_TRUE(Erase(A_BLOCK));
+    LONGS_EQUAL(0, SpiNorFlashPartFake::WhileBusyCallsWhileSelected());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, CallsWhileBusyOnceEachTimeItFindsThePartStillBusy)
+{
+    /* Time passes only in WhileBusy, 10 ms a call, so an erase of 50 ms is
+     * found busy five times and then found finished. */
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    SpiNorFlashPartFake::settings.millisecondsPerReading = 0;
+    SpiNorFlashPartFake::settings.millisecondsPerWhileBusy = 10;
+    CHECK_TRUE(Erase(A_BLOCK));
+    LONGS_EQUAL(5, SpiNorFlashPartFake::WhileBusyCalls());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, TakesAnEraseThatFinishedWhileWhileBusyOverslept)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    SpiNorFlashPartFake::settings.millisecondsPerWhileBusy = ERASE_TIMEOUT + 2000;
+    SpiNorFlashPartFake::settings.eraseMilliseconds = ERASE_TIMEOUT - 10;
+    CHECK_TRUE(Erase(A_BLOCK));
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseOnceWhileBusyHasUsedItsTime)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    SpiNorFlashPartFake::settings.millisecondsPerReading = 0;
+    SpiNorFlashPartFake::settings.millisecondsPerWhileBusy = 100;
+    SpiNorFlashPartFake::settings.eraseMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
+    CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));
+    LONGS_EQUAL(ERASE_TIMEOUT / 100, SpiNorFlashPartFake::WhileBusyCalls());
+}
+
+TEST(SolidSyslogSpiNorFlashOperations, DoesNotCallWhileBusyWhenItOnlyAsksWhetherThePartIsReady)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    Start();
+    SpiNorFlashPartFake::settings.staysBusy = true;
+    (void) Read(A_BLOCK, AN_OFFSET, 4);
+    LONGS_EQUAL(0, SpiNorFlashPartFake::WhileBusyCalls());
 }
 
 enum

@@ -75,6 +75,9 @@ struct State
     int commandsWhileBusy = 0;
     int transfersWhileDeselected = 0;
     int busCalls = 0;
+    int whileBusyCalls = 0;
+    bool whileBusyWasGivenTheBus = true;
+    int whileBusyCallsWhileSelected = 0;
     std::vector<SpiNorFlashPartFake::Program> programs;
     std::vector<uint32_t> erases;
     std::vector<SpiNorFlashPartFake::SfdpRead> sfdpReads;
@@ -398,9 +401,21 @@ extern "C"
         state->milliseconds += SpiNorFlashPartFake::settings.millisecondsPerReading;
         return now;
     }
+
+    void WhileBusy(struct SolidSyslogSpiNorFlashBus* base)
+    {
+        state->busCalls++;
+        state->whileBusyCalls++;
+        state->whileBusyWasGivenTheBus = state->whileBusyWasGivenTheBus && (base == SpiNorFlashPartFake::Bus());
+        if (state->selected)
+        {
+            state->whileBusyCallsWhileSelected++;
+        }
+        state->milliseconds += SpiNorFlashPartFake::settings.millisecondsPerWhileBusy;
+    }
 }
 
-SolidSyslogSpiNorFlashBus bus = {Select, Deselect, Write, Read, MillisecondsNow};
+SolidSyslogSpiNorFlashBus bus = {Select, Deselect, Write, Read, MillisecondsNow, nullptr};
 } // namespace
 
 namespace SpiNorFlashPartFake
@@ -420,6 +435,7 @@ void Reset()
 {
     settings = Settings();
     state = std::make_unique<State>();
+    bus.WhileBusy = nullptr;
 }
 
 void Release()
@@ -436,6 +452,11 @@ void StartClockAt(uint32_t milliseconds)
 SolidSyslogSpiNorFlashBus* Bus()
 {
     return &bus;
+}
+
+void FillWhileBusy()
+{
+    bus.WhileBusy = WhileBusy;
 }
 
 void FailNextWrite()
@@ -525,6 +546,21 @@ bool IsSelected()
 int BusCalls()
 {
     return state->busCalls;
+}
+
+int WhileBusyCalls()
+{
+    return state->whileBusyCalls;
+}
+
+bool WhileBusyWasGivenTheBus()
+{
+    return state->whileBusyWasGivenTheBus;
+}
+
+int WhileBusyCallsWhileSelected()
+{
+    return state->whileBusyCallsWhileSelected;
 }
 
 int TransfersWhileDeselected()
