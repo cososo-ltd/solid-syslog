@@ -402,6 +402,7 @@ extern "C"
         return now;
     }
 
+    // cppcheck-suppress constParameterCallback -- the signature is the bus table's WhileBusy.
     void WhileBusy(struct SolidSyslogSpiNorFlashBus* base)
     {
         state->busCalls++;
