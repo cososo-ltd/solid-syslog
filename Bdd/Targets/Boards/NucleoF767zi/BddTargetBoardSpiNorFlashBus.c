@@ -88,8 +88,13 @@ static uint32_t FlashBus_Milliseconds(struct SolidSyslogSpiNorFlashBus* base)
     return Board_Milliseconds();
 }
 
+/* A yield and not a sleep. The kernel's tick is 10 ms and a page program takes
+ * about 1 ms, so a sleep through each would hold the store for a tick where
+ * the part needs a tenth of one. A yield returns at once where no other thread
+ * is ready, and through an erase it lets the thread that logs run beside the
+ * one that stores. */
 static void FlashBus_WhileBusy(struct SolidSyslogSpiNorFlashBus* base)
 {
     (void) base;
-    BddTargetOsPrimitives_Sleep(1);
+    BddTargetOsPrimitives_Yield();
 }

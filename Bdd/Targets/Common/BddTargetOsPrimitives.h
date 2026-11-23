@@ -71,6 +71,10 @@ bool BddTargetOsPrimitives_WaitForNotify(uint32_t timeoutMilliseconds);
  * blocks for a tick rather than merely yielding. */
 void BddTargetOsPrimitives_Sleep(uint32_t milliseconds);
 
+/* Let another ready thread of the calling thread's priority run, and return at
+ * once where there is none. Never blocks, so it costs no tick. */
+void BddTargetOsPrimitives_Yield(void);
+
 /* The console is one polled UART that every thread writes, a byte at a time,
  * and the UART driver yields between bytes. Without a lock the Service thread's
  * error reports land inside the interactive thread's prompt, and the host

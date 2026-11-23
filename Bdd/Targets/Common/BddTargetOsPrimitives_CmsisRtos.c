@@ -151,6 +151,11 @@ void BddTargetOsPrimitives_Sleep(uint32_t milliseconds)
     (void) osDelay(ticks);
 }
 
+void BddTargetOsPrimitives_Yield(void)
+{
+    (void) osThreadYield();
+}
+
 uint64_t BddTargetOsPrimitives_UptimeMilliseconds(void)
 {
     return ((uint64_t) osKernelGetTickCount() * 1000U) / (uint64_t) osKernelGetTickFreq();

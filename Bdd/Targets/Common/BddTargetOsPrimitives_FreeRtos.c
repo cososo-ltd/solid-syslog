@@ -127,6 +127,11 @@ void BddTargetOsPrimitives_Sleep(uint32_t milliseconds)
     vTaskDelay(ticks);
 }
 
+void BddTargetOsPrimitives_Yield(void)
+{
+    taskYIELD();
+}
+
 uint64_t BddTargetOsPrimitives_UptimeMilliseconds(void)
 {
     return (uint64_t) xTaskGetTickCount() * (uint64_t) portTICK_PERIOD_MS;
