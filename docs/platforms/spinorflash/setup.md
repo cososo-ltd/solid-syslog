@@ -68,7 +68,8 @@ part has finished. On a Winbond W25Q128JV that was 52 to 58 ms, about once for
 every block of records; the most the pack allows is in
 [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md).
 
-**With `WhileBusy` left NULL, nothing else runs meanwhile.** The pack waits by
+**With `WhileBusy` left NULL, the pack does not give up the processor
+meanwhile.** It waits by
 asking the part its status over and over, with nothing between. Under a
 pre-emptive kernel, tasks of lower priority than the one that calls Service get
 no time until the erase ends, and a loop with no kernel is held for all of it.
