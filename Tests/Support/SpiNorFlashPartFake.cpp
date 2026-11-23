@@ -555,7 +555,7 @@ int WhileBusyCalls()
 
 bool WhileBusyWasGivenTheBus()
 {
-    return state->whileBusyWasGivenTheBus;
+    return (state->whileBusyCalls > 0) && state->whileBusyWasGivenTheBus;
 }
 
 int WhileBusyCallsWhileSelected()

@@ -1418,11 +1418,10 @@ TEST(SolidSyslogSpiNorFlashOperations, CallsWhileBusyWithThePartDeselected)
 
 TEST(SolidSyslogSpiNorFlashOperations, CallsWhileBusyOnceEachTimeItFindsThePartStillBusy)
 {
-    /* Time passes only in WhileBusy, 10 ms a call, so an erase of 50 ms is
-     * found busy five times and then found finished. */
+    /* Each time round, 10 ms pass in WhileBusy and 1 ms as the time is read,
+     * so an erase of 50 ms is found busy five times and then found finished. */
     SpiNorFlashPartFake::FillWhileBusy();
     Start();
-    SpiNorFlashPartFake::settings.millisecondsPerReading = 0;
     SpiNorFlashPartFake::settings.millisecondsPerWhileBusy = 10;
     CHECK_TRUE(Erase(A_BLOCK));
     LONGS_EQUAL(5, SpiNorFlashPartFake::WhileBusyCalls());
@@ -1441,7 +1440,6 @@ TEST(SolidSyslogSpiNorFlashOperations, GivesUpOnAnEraseOnceWhileBusyHasUsedItsTi
 {
     SpiNorFlashPartFake::FillWhileBusy();
     Start();
-    SpiNorFlashPartFake::settings.millisecondsPerReading = 0;
     SpiNorFlashPartFake::settings.millisecondsPerWhileBusy = 100;
     SpiNorFlashPartFake::settings.eraseMilliseconds = FAR_LONGER_THAN_ANY_TIMEOUT;
     CHECK_OPERATION_FAILED(SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_TIMED_OUT, Erase(A_BLOCK));

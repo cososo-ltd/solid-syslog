@@ -8,9 +8,9 @@ pack fills and what it refuses.
 The bus the part is on, as the functions of
 [`SolidSyslogSpiNorFlashBus`](../../api/structSolidSyslogSpiNorFlashBus.md):
 select, deselect, write a buffer, read a buffer, and a count of milliseconds.
-A sixth, `WhileBusy`, is yours to fill or leave: it is where the pack lets you
-give up the processor while the part is busy. The header states what each must
-do.
+A sixth, `WhileBusy`, is yours to fill or set to NULL: it is where the pack
+lets you give up the processor while the part is busy. The header states what
+each must do.
 
 Bring the bus up before you create the flash: its pins, SPI mode 0, and its
 rate are yours to set.
@@ -68,22 +68,21 @@ part has finished. On a Winbond W25Q128JV that was 52 to 58 ms, about once for
 every block of records; the most the pack allows is in
 [`SolidSyslogSpiNorFlash_Create`](../../api/SolidSyslogSpiNorFlash_8h.md).
 
-**With `WhileBusy` left NULL, the pack does not give up the processor
-meanwhile.** It waits by
-asking the part its status over and over, with nothing between. Under a
-pre-emptive kernel, tasks of lower priority than the one that calls Service get
-no time until the erase ends, and a loop with no kernel is held for all of it.
-Fill `WhileBusy` and the pack calls it between one ask and the next, which is
-where you sleep, yield, or service a watchdog. Service still returns only when
-the part has finished; what changes is what the processor does until then.
+**With `WhileBusy` NULL, the pack does not give up the processor meanwhile.**
+It waits by asking the part its status over and over, with nothing between.
+Under a pre-emptive kernel, tasks of lower priority than the one that calls
+Service get no time until the erase ends, and a loop with no kernel is held for
+all of it. Filling `WhileBusy` is how you change that, and
+[the bus's header](../../api/structSolidSyslogSpiNorFlashBus.md) says when it
+is called and what it may do. Service still returns only when the part has
+finished; what changes is what the processor does until then.
 
-**`WhileBusy` is called through a page program too, and is not told which.** A
-page program is far shorter than an erase and far more frequent:
-[a store on NOR flash](../../roles/flash-store-costs.md) counts both for a
-message. Where your kernel's shortest sleep is longer than a page program
-takes, a `WhileBusy` that sleeps every time it is called slows every record the
-store writes. What it does is yours to choose, so choose it for your kernel's
-tick and your part's times.
+**A `WhileBusy` that sleeps is paid for at every page program.** It is called
+through a page program as through an erase, and a page program is far shorter
+and far more frequent: [a store on NOR flash](../../roles/flash-store-costs.md)
+counts both for a message. Where your kernel's shortest sleep is longer than a
+page program takes, sleeping on every call slows every record the store writes.
+Choose what it does for your kernel's tick and your part's times.
 
 **Create may call `WhileBusy`.** A part that a reset left part-way through an
 erase is waited for in Create, through the same function. If yours sleeps on a

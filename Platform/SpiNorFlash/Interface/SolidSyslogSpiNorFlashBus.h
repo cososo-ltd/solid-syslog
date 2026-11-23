@@ -19,8 +19,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /** The bus under a SolidSyslogSpiNorFlash: an integrator fills this table and
      *  embeds it as the first member of its own struct, so @p base downcasts back
-     *  to that struct. Every member is filled but WhileBusy, which may be left
-     *  NULL.
+     *  to that struct. Every member is filled but WhileBusy, which is filled or
+     *  is NULL.
      *
      *  The bus is ready before the flash is created: its pins, its mode and its
      *  rate are the integrator's, and so is anything another device on the same
@@ -66,13 +66,17 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  integrator's to choose: sleep, yield, service a watchdog, or
          *  nothing. It is not told what the part is busy with.
          *
+         *  The flash is part-way through an operation when it is called, so
+         *  nothing it does may call this flash, or the store above it, before
+         *  it returns.
+         *
          *  The flash times each wait by Milliseconds, never by this, and asks
          *  the part once more after the time allowed has passed. So a call
          *  that returns late does not fail a part that finished meanwhile,
          *  and one that returns at once costs nothing but the call.
          *
-         *  Left NULL, the part is asked again at once, and the calling thread
-         *  is held, asking, until the part has finished. */
+         *  Where it is NULL, the part is asked again at once, and the calling
+         *  thread is held, asking, until the part has finished. */
         void (*WhileBusy)(struct SolidSyslogSpiNorFlashBus* base);
     };
 

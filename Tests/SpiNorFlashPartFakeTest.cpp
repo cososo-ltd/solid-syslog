@@ -225,6 +225,12 @@ TEST(SpiNorFlashPartFake, SaysWhenWhileBusyWasGivenTheBus)
     CHECK_TRUE(SpiNorFlashPartFake::WhileBusyWasGivenTheBus());
 }
 
+TEST(SpiNorFlashPartFake, DoesNotSayWhileBusyWasGivenTheBusBeforeItIsCalled)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    CHECK_FALSE(SpiNorFlashPartFake::WhileBusyWasGivenTheBus());
+}
+
 TEST(SpiNorFlashPartFake, SaysWhenWhileBusyWasGivenSomethingElse)
 {
     SpiNorFlashPartFake::FillWhileBusy();

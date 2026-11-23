@@ -24,7 +24,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_UNKNOWN_DESTROY,
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NULL_CONFIG,
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NULL_BUS,
-        /** A member of the bus table is not filled. */
+        /** A member the bus table must have is not filled. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_BUS_INCOMPLETE,
         /** The part did not answer a request for its SFDP table with one. */
         SOLIDSYSLOG_SPI_NOR_FLASH_ERROR_NO_SFDP,

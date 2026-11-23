@@ -145,7 +145,7 @@ bool IsSelected();
 /* Calls of any of the bus's functions. */
 int BusCalls();
 int WhileBusyCalls();
-/* Whether every one of them was handed this bus. */
+/* Whether there were any, and every one of them was handed this bus. */
 bool WhileBusyWasGivenTheBus();
 /* Those made while the part was selected. */
 int WhileBusyCallsWhileSelected();

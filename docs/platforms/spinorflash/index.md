@@ -27,7 +27,7 @@ your part's datasheet.
 
 A bus to reach it over: the functions of
 [`SolidSyslogSpiNorFlashBus`](../../api/structSolidSyslogSpiNorFlashBus.md), five
-the pack needs and one that is yours to fill or leave, which
+the pack needs and one that is yours to fill or set to NULL, which
 [setting it up](setup.md) describes. The pack needs nothing of the toolchain
 beyond C99, and nothing of an operating system.
 

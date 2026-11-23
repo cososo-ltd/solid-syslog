@@ -268,10 +268,9 @@ the card it sends no check with what it reads out, so damage on the wires would
 go undetected. On this part a sector erase took 52 to 58 ms and a page program
 about 1 ms. The task that asked for either polls the part's status until it
 finishes, and the bus's `WhileBusy` yields between one ask and the next, so the
-target's other thread runs meanwhile. It yields where it could sleep because
-the kernel's tick is 10 ms, ten times a page program. A part that was erasing
-when the board was reset carries on, and answers only its status until it
-finishes, so the pack waits for that before asking it anything else.
+target's other thread can run meanwhile. A part that was erasing when the board
+was reset carries on, and answers only its status until it finishes, so the
+pack waits for that before asking it anything else.
 
 Both images count what they ask of the part, so that what a store costs it can
 be measured. `set store report` prints the counts as one line:
