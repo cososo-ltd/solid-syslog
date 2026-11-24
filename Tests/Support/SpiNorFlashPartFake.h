@@ -71,6 +71,9 @@ struct Settings
     /* How far the count of milliseconds moves on each time it is read. A
      * large step is a task that was switched out between two readings. */
     uint32_t millisecondsPerReading = 1;
+    /* How far it moves on in each call of the bus's WhileBusy. Nothing, until
+     * a test makes that call a sleep. */
+    uint32_t millisecondsPerWhileBusy = 0;
 };
 
 extern Settings settings;
@@ -99,8 +102,11 @@ void Release();
  * zero, for a test of a count about to wrap. Call it before anything else. */
 void StartClockAt(uint32_t milliseconds);
 
-/* The bus the part is on. The same table every time. */
+/* The bus the part is on. The same table every time. Its WhileBusy is not
+ * filled until a test fills it. */
 SolidSyslogSpiNorFlashBus* Bus();
+/* Fills the bus's WhileBusy, until the next Reset. */
+void FillWhileBusy();
 
 /* The next call of that kind answers false, and the part sees none of it. */
 void FailNextWrite();
@@ -136,8 +142,13 @@ const std::vector<SfdpRead>& SfdpReads();
 
 bool IsBusy();
 bool IsSelected();
-/* Calls of any of the bus's five functions. */
+/* Calls of any of the bus's functions. */
 int BusCalls();
+int WhileBusyCalls();
+/* Whether there were any, and every one of them was handed this bus. */
+bool WhileBusyWasGivenTheBus();
+/* Those made while the part was selected. */
+int WhileBusyCallsWhileSelected();
 /* Calls of Write and Read made while the part was not selected. */
 int TransfersWhileDeselected();
 /* The count of milliseconds, without moving it on. */

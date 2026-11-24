@@ -180,6 +180,75 @@ TEST(SpiNorFlashPartFake, HasCountedNoCallOfItsBusBeforeOneIsMade)
     LONGS_EQUAL(0, SpiNorFlashPartFake::BusCalls());
 }
 
+TEST(SpiNorFlashPartFake, LeavesWhileBusyUnfilledUntilATestFillsIt)
+{
+    CHECK_TRUE(bus->WhileBusy == nullptr);
+    SpiNorFlashPartFake::FillWhileBusy();
+    CHECK_TRUE(bus->WhileBusy != nullptr);
+}
+
+TEST(SpiNorFlashPartFake, LeavesWhileBusyUnfilledAgainAfterAReset)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    SpiNorFlashPartFake::Reset();
+    CHECK_TRUE(bus->WhileBusy == nullptr);
+}
+
+TEST(SpiNorFlashPartFake, CountsCallsOfWhileBusyAmongThoseOfItsBus)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    bus->WhileBusy(bus);
+    bus->WhileBusy(bus);
+    LONGS_EQUAL(2, SpiNorFlashPartFake::WhileBusyCalls());
+    LONGS_EQUAL(2, SpiNorFlashPartFake::BusCalls());
+}
+
+TEST(SpiNorFlashPartFake, PassesNoTimeInWhileBusyUntilToldTo)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    bus->WhileBusy(bus);
+    LONGS_EQUAL(0, SpiNorFlashPartFake::Milliseconds());
+}
+
+TEST(SpiNorFlashPartFake, MovesTheTimeOnInWhileBusyByWhatItIsSet)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    SpiNorFlashPartFake::settings.millisecondsPerWhileBusy = 7;
+    bus->WhileBusy(bus);
+    LONGS_EQUAL(7, SpiNorFlashPartFake::Milliseconds());
+}
+
+TEST(SpiNorFlashPartFake, SaysWhenWhileBusyWasGivenTheBus)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    bus->WhileBusy(bus);
+    CHECK_TRUE(SpiNorFlashPartFake::WhileBusyWasGivenTheBus());
+}
+
+TEST(SpiNorFlashPartFake, DoesNotSayWhileBusyWasGivenTheBusBeforeItIsCalled)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    CHECK_FALSE(SpiNorFlashPartFake::WhileBusyWasGivenTheBus());
+}
+
+TEST(SpiNorFlashPartFake, SaysWhenWhileBusyWasGivenSomethingElse)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    SolidSyslogSpiNorFlashBus another = *bus;
+    bus->WhileBusy(&another);
+    CHECK_FALSE(SpiNorFlashPartFake::WhileBusyWasGivenTheBus());
+}
+
+TEST(SpiNorFlashPartFake, CountsCallsOfWhileBusyMadeWhileThePartIsSelected)
+{
+    SpiNorFlashPartFake::FillWhileBusy();
+    bus->WhileBusy(bus);
+    bus->Select(bus);
+    bus->WhileBusy(bus);
+    bus->Deselect(bus);
+    LONGS_EQUAL(1, SpiNorFlashPartFake::WhileBusyCallsWhileSelected());
+}
+
 TEST(SpiNorFlashPartFake, RecordsTheCommandsItTakes)
 {
     (void) Command({READ_JEDEC_ID}, 3);

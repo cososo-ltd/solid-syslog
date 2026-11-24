@@ -24,9 +24,9 @@ struct SolidSyslogSpiNorFlash
     struct SolidSyslogSpiNorFlashGeometry Geometry;
 };
 
-/* bus has been checked: it and its members are filled. Starts the part and
- * learns it. False, and reported, for a part that does not start or that the
- * flash does not drive. */
+/* bus has been checked: it and every member it must have are filled. Starts
+ * the part and learns it. False, and reported, for a part that does not start
+ * or that the flash does not drive. */
 bool SolidSyslogSpiNorFlash_Initialise(struct SolidSyslogNorFlash* base, struct SolidSyslogSpiNorFlashBus* bus);
 void SolidSyslogSpiNorFlash_Cleanup(struct SolidSyslogNorFlash* base);
 

@@ -91,6 +91,7 @@ static bool SpiNorFlash_Ask(
     size_t answerCount
 );
 static inline bool SpiNorFlash_IsBusy(uint8_t status);
+static inline void SpiNorFlash_CallWhileBusy(struct SolidSyslogSpiNorFlash* self);
 static inline bool SpiNorFlash_HasPassed(struct SolidSyslogSpiNorFlash* self, uint32_t since, uint32_t milliseconds);
 static inline void SpiNorFlash_ReportIoFailure(enum SolidSyslogSpiNorFlashErrors code);
 static bool SpiNorFlash_LearnThePart(struct SolidSyslogSpiNorFlash* self);
@@ -171,21 +172,24 @@ static inline struct SolidSyslogSpiNorFlash* SpiNorFlash_SelfFromBase(struct Sol
 }
 
 /* False, and reported, for a part still busy after the time given, one that
- * does not answer, and a bus that fails. */
+ * does not answer, and a bus that fails. Given NO_WAIT the part is asked
+ * once. */
 static bool SpiNorFlash_WaitUntilReady(struct SolidSyslogSpiNorFlash* self, uint32_t milliseconds)
 {
     uint32_t since = self->Bus->Milliseconds(self->Bus);
     uint8_t status = IDLE_LINE;
     bool asked = SpiNorFlash_ReadStatus(self, &status);
-    bool expired = false;
+    bool expired = (milliseconds == (uint32_t) NO_WAIT);
     bool ready = false;
 
     while (asked && SpiNorFlash_IsBusy(status) && !expired)
     {
-        /* The time is read before the status, so the status is always read
-         * once after the timeout has passed. Otherwise a task switched out
-         * for longer than the timeout would give up on a part that finished
-         * while it was away. */
+        /* The bus's WhileBusy and then the time come before the status, so
+         * the status is always read once after the timeout has passed.
+         * Otherwise a WhileBusy that took longer than the timeout, or a task
+         * switched out for as long, would give up on a part that finished
+         * meanwhile. */
+        SpiNorFlash_CallWhileBusy(self);
         expired = SpiNorFlash_HasPassed(self, since, milliseconds);
         asked = SpiNorFlash_ReadStatus(self, &status);
     }
@@ -241,6 +245,16 @@ static bool SpiNorFlash_Ask(
 static inline bool SpiNorFlash_IsBusy(uint8_t status)
 {
     return (status != (uint8_t) IDLE_LINE) && ((status & (uint8_t) STATUS_BUSY) != 0U);
+}
+
+/* The one member of the bus that may be left unfilled. With none, the part
+ * is asked again at once. */
+static inline void SpiNorFlash_CallWhileBusy(struct SolidSyslogSpiNorFlash* self)
+{
+    if (self->Bus->WhileBusy != NULL)
+    {
+        self->Bus->WhileBusy(self->Bus);
+    }
 }
 
 /* Unsigned arithmetic, so it holds when the count wraps. */
