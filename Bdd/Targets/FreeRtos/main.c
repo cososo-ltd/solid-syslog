@@ -38,12 +38,14 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
+#include <FreeRTOS_ARP.h>
 #include <FreeRTOS_IP.h>
 #include <FreeRTOS_Routing.h>
 #include <FreeRTOS_Sockets.h>
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -89,6 +91,7 @@ static bool networkIsUp = false;
 static void ReportNetworkChange(bool isUp);
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
+static void WarmUpOracleArp(void);
 static void TeardownNetwork(void);
 
 static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
@@ -233,6 +236,10 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
  * flips it at runtime. Runs on the interactive task. */
 static struct SolidSyslogSender* BuildSender(void)
 {
+    /* Wait for the oracle's link address first, so the first record is not
+     * reported undelivered while the stack is still asking for it. */
+    WarmUpOracleArp();
+
     /* Route TLS / mTLS to the oracle by the address the board reaches it at,
      * the same path UDP/TCP take, since this target resolves no name for it.
      * ServerName is pinned to "syslog-ng" (the cert subject) so SNI / cert
@@ -279,6 +286,44 @@ static struct SolidSyslogSender* BuildSender(void)
     BddTargetSwitchConfig_SetByName("udp");
     switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
     return switchingSender;
+}
+
+/* Blocks the calling (interactive) task until the stack holds the link address
+ * of the oracle's next hop, or a bounded deadline passes, asking for it again
+ * for as long as it waits. The stack does not queue a packet while it resolves
+ * the next hop, so a first record sent before the answer is a delivery the
+ * logger reports failed and then restored, and those are two records no
+ * scenario expects. Generous deadline: a host that has not heard from the board
+ * can take hundreds of milliseconds to answer it. */
+static void WarmUpOracleArp(void)
+{
+    enum
+    {
+        WARM_UP_ATTEMPTS = 500,
+        WARM_UP_INTERVAL_MS = 10
+    };
+
+    bool resolved = false;
+    int attempt = 0;
+    for (; (attempt < WARM_UP_ATTEMPTS) && !resolved; attempt++)
+    {
+        /* The stack names the next hop: the oracle when it is on the subnet,
+         * otherwise the gateway. */
+        uint32_t nextHop = FreeRTOS_inet_addr(BDD_TARGET_BOARD_ORACLE_ADDRESS);
+        MACAddress_t linkAddress;
+        NetworkEndPoint_t* endPoint = NULL;
+        resolved = eARPGetCacheEntry(&nextHop, &linkAddress, &endPoint) == eResolutionCacheHit;
+        if (!resolved)
+        {
+            if ((attempt % 10) == 0)
+            {
+                FreeRTOS_OutputARPRequest(nextHop);
+            }
+            BddTargetOsPrimitives_Sleep(WARM_UP_INTERVAL_MS);
+        }
+    }
+    (void) printf("[board] oracle %s after %d ms
+", resolved ? "resolved" : "unresolved", (attempt - 1) * WARM_UP_INTERVAL_MS);
 }
 
 /* Reverse-order teardown of the PlusTcp sender stack. BddTargetTlsSender owns
