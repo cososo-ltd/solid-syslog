@@ -5,7 +5,7 @@
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared between the targets). This file keeps only the FreeRTOS-Plus-TCP
  * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
- * static-IP bring-up, the per-endpoint RNG /
+ * static-IP bring-up, the oracle ARP warm-up, the per-endpoint RNG /
  * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
@@ -38,6 +38,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
+#include <FreeRTOS_ARP.h>
 #include <FreeRTOS_IP.h>
 #include <FreeRTOS_Routing.h>
 #include <FreeRTOS_Sockets.h>
@@ -89,6 +90,7 @@ static bool networkIsUp = false;
 static void ReportNetworkChange(bool isUp);
 static void GetHostname(struct SolidSyslogHeaderField* field, void* context);
 static struct SolidSyslogSender* BuildSender(void);
+static void WarmUpOracleArp(void);
 static void TeardownNetwork(void);
 
 static const struct BddTargetFreeRtosPipelineConfig PIPELINE_CONFIG = {
@@ -230,9 +232,12 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 /* Build the PlusTcp SwitchingSender: UDP datagram, octet-framed TCP, and a
  * TLS/mTLS slot (mbedTLS over a second PlusTcp TCP stream). Default transport
  * UDP so existing @udp scenarios stay green; `set transport <udp|tcp|tls|mtls>`
- * flips it at runtime. Runs on the interactive task. */
+ * flips it at runtime. Waits for the oracle's link address first. Runs on the
+ * interactive task. */
 static struct SolidSyslogSender* BuildSender(void)
 {
+    WarmUpOracleArp();
+
     /* Route TLS / mTLS to the oracle by the address the board reaches it at,
      * the same path UDP/TCP take, since this target resolves no name for it.
      * ServerName is pinned to "syslog-ng" (the cert subject) so SNI / cert
@@ -279,6 +284,41 @@ static struct SolidSyslogSender* BuildSender(void)
     BddTargetSwitchConfig_SetByName("udp");
     switchingSender = SolidSyslogSwitchingSender_Create(&switchConfig);
     return switchingSender;
+}
+
+/* Blocks the calling (interactive) task until the stack holds the link address
+ * of the oracle's next hop, or a bounded deadline passes, asking for it again
+ * for as long as it waits. The stack does not queue a packet while it resolves
+ * the next hop, and the pack waits only so long for the answer before a
+ * datagram or a connect. A first record whose answer takes longer is a
+ * delivery the logger reports failed and then restored, and those are two
+ * records no scenario expects. Generous deadline: an emulated board is markedly
+ * slower than its host, and the host of a real one can take half a second to
+ * answer a board whose link has just come up. It runs once, at the first
+ * link-up. */
+static void WarmUpOracleArp(void)
+{
+    enum
+    {
+        WARM_UP_ATTEMPTS = 50,
+        WARM_UP_INTERVAL_MS = 100
+    };
+
+    bool resolved = false;
+    for (int attempt = 0; (attempt < WARM_UP_ATTEMPTS) && !resolved; attempt++)
+    {
+        /* The stack names the next hop: the oracle when it is on the subnet,
+         * otherwise the gateway. */
+        uint32_t nextHop = FreeRTOS_inet_addr(BDD_TARGET_BOARD_ORACLE_ADDRESS);
+        MACAddress_t linkAddress;
+        NetworkEndPoint_t* endPoint = NULL;
+        resolved = eARPGetCacheEntry(&nextHop, &linkAddress, &endPoint) == eResolutionCacheHit;
+        if (!resolved)
+        {
+            FreeRTOS_OutputARPRequest(nextHop);
+            BddTargetOsPrimitives_Sleep(WARM_UP_INTERVAL_MS);
+        }
+    }
 }
 
 /* Reverse-order teardown of the PlusTcp sender stack. BddTargetTlsSender owns
