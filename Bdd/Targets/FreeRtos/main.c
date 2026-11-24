@@ -5,7 +5,7 @@
  * task, and the console glue - lives in Bdd/Targets/Common/BddTargetFreeRtosPipeline
  * (shared between the targets). This file keeps only the FreeRTOS-Plus-TCP
  * network backend and the FreeRTOS-Plus-FAT store behind the pipeline seam:
- * static-IP bring-up, the per-endpoint RNG /
+ * static-IP bring-up, the oracle ARP warm-up, the per-endpoint RNG /
  * sequence hooks, the PlusTcp sender wiring (UDP datagram + octet-framed TCP +
  * TLS/mTLS via mbedTLS over PlusTcp TCP), the RFC 5424 HOSTNAME read from the
  * Plus-TCP endpoint, and the Plus-FAT FS-mount seam (BddTargetPlusFatMount over
@@ -45,7 +45,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -293,19 +292,19 @@ static struct SolidSyslogSender* BuildSender(void)
  * for as long as it waits. The stack does not queue a packet while it resolves
  * the next hop, so a first record sent before the answer is a delivery the
  * logger reports failed and then restored, and those are two records no
- * scenario expects. Generous deadline: a host that has not heard from the board
- * can take hundreds of milliseconds to answer it. */
+ * scenario expects. Generous deadline: an emulated board is markedly slower
+ * than its host, and the host of a real one can take half a second to answer a
+ * board whose link has just come up. */
 static void WarmUpOracleArp(void)
 {
     enum
     {
-        WARM_UP_ATTEMPTS = 500,
-        WARM_UP_INTERVAL_MS = 10
+        WARM_UP_ATTEMPTS = 50,
+        WARM_UP_INTERVAL_MS = 100
     };
 
     bool resolved = false;
-    int attempt = 0;
-    for (; (attempt < WARM_UP_ATTEMPTS) && !resolved; attempt++)
+    for (int attempt = 0; (attempt < WARM_UP_ATTEMPTS) && !resolved; attempt++)
     {
         /* The stack names the next hop: the oracle when it is on the subnet,
          * otherwise the gateway. */
@@ -315,14 +314,10 @@ static void WarmUpOracleArp(void)
         resolved = eARPGetCacheEntry(&nextHop, &linkAddress, &endPoint) == eResolutionCacheHit;
         if (!resolved)
         {
-            if ((attempt % 10) == 0)
-            {
-                FreeRTOS_OutputARPRequest(nextHop);
-            }
+            FreeRTOS_OutputARPRequest(nextHop);
             BddTargetOsPrimitives_Sleep(WARM_UP_INTERVAL_MS);
         }
     }
-    (void) printf("[board] oracle %s after %d ms\n", resolved ? "resolved" : "unresolved", (attempt - 1) * WARM_UP_INTERVAL_MS);
 }
 
 /* Reverse-order teardown of the PlusTcp sender stack. BddTargetTlsSender owns
