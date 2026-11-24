@@ -322,8 +322,7 @@ static void WarmUpOracleArp(void)
             BddTargetOsPrimitives_Sleep(WARM_UP_INTERVAL_MS);
         }
     }
-    (void) printf("[board] oracle %s after %d ms
-", resolved ? "resolved" : "unresolved", (attempt - 1) * WARM_UP_INTERVAL_MS);
+    (void) printf("[board] oracle %s after %d ms\n", resolved ? "resolved" : "unresolved", (attempt - 1) * WARM_UP_INTERVAL_MS);
 }
 
 /* Reverse-order teardown of the PlusTcp sender stack. BddTargetTlsSender owns
