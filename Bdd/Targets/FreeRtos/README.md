@@ -91,6 +91,8 @@ the host sees every prompt and every report whole.
 `main()` then starts FreeRTOS-Plus-TCP with a static IPv4 address on the
 board's network, and starts the scheduler. The IP task's event hook reports
 each change of the network on the console, as `[board] link up` or
-`[board] link down`. On the first link-up it creates the interactive task,
-which runs `BddTargetInteractive_Run`, and the Service task, which drains the
-buffer into the switching sender.
+`[board] link down`. On the first link-up it creates the interactive task and
+the Service task, which drains the buffer into the switching sender. The
+interactive task first waits for the oracle's link address, for up to five
+seconds, so the first record does not find it unresolved, and then runs
+`BddTargetInteractive_Run`.

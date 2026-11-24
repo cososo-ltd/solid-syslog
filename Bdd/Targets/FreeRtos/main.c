@@ -232,11 +232,10 @@ static void GetHostname(struct SolidSyslogHeaderField* field, void* context)
 /* Build the PlusTcp SwitchingSender: UDP datagram, octet-framed TCP, and a
  * TLS/mTLS slot (mbedTLS over a second PlusTcp TCP stream). Default transport
  * UDP so existing @udp scenarios stay green; `set transport <udp|tcp|tls|mtls>`
- * flips it at runtime. Runs on the interactive task. */
+ * flips it at runtime. Waits for the oracle's link address first. Runs on the
+ * interactive task. */
 static struct SolidSyslogSender* BuildSender(void)
 {
-    /* Wait for the oracle's link address first, so the first record is not
-     * reported undelivered while the stack is still asking for it. */
     WarmUpOracleArp();
 
     /* Route TLS / mTLS to the oracle by the address the board reaches it at,
@@ -290,11 +289,13 @@ static struct SolidSyslogSender* BuildSender(void)
 /* Blocks the calling (interactive) task until the stack holds the link address
  * of the oracle's next hop, or a bounded deadline passes, asking for it again
  * for as long as it waits. The stack does not queue a packet while it resolves
- * the next hop, so a first record sent before the answer is a delivery the
- * logger reports failed and then restored, and those are two records no
- * scenario expects. Generous deadline: an emulated board is markedly slower
- * than its host, and the host of a real one can take half a second to answer a
- * board whose link has just come up. */
+ * the next hop, and the pack waits only so long for the answer before a
+ * datagram or a connect. A first record whose answer takes longer is a
+ * delivery the logger reports failed and then restored, and those are two
+ * records no scenario expects. Generous deadline: an emulated board is markedly
+ * slower than its host, and the host of a real one can take half a second to
+ * answer a board whose link has just come up. It runs once, at the first
+ * link-up. */
 static void WarmUpOracleArp(void)
 {
     enum
