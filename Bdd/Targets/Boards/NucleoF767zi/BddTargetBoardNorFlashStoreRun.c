@@ -1,12 +1,17 @@
 /* The run of the NUCLEO-F767ZI's W25Q128 that a store with no filesystem may
- * use - see BddTargetBoardNorFlashStoreRun.h. The first 2048 of the part's
- * 4 KiB sectors, which is 8 MiB of its 16. */
+ * use - see BddTargetBoardNorFlashStoreRun.h. 2048 of the part's 4 KiB
+ * sectors from sector 1024, which is 8 MiB of its 16 with 4 MiB either side:
+ * sectors 1024 to 3071.
+ *
+ * A run in the middle of the part, as a product that fits a store to a board
+ * it already has may have to give it. It is clear of the part's last sector,
+ * which the bring-up image's flash check erases. */
 
 #include "BddTargetBoardNorFlashStoreRun.h"
 
 enum
 {
-    FIRST_BLOCK = 0,
+    FIRST_BLOCK = 1024,
     BLOCK_COUNT = 2048
 };
 
