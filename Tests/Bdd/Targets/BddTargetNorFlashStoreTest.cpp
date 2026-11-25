@@ -1,3 +1,4 @@
+#include "BddTargetBoardNorFlashStoreRun.h"
 #include "BddTargetBoardSpiNorFlashBus.h"
 #include "BddTargetCountingNorFlash.h"
 #include "BddTargetNorFlashStore.h"
@@ -17,9 +18,17 @@ enum
     /* The fake part's smallest erase, which is a block of the flash. */
     FLASH_BLOCK_BYTES = 4096,
     FLASH_BLOCK_DATA_BYTES = FLASH_BLOCK_BYTES - SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_STATE_SIZE,
+    /* The fake part's 16 MiB. */
+    FLASH_BLOCKS = 4096,
 
+    /* The run the board states until a test says otherwise: clear of both
+     * ends of the part, so a store that took any other shows. */
+    RUN_FIRST_BLOCK = 1024,
+    RUN_BLOCK_COUNT = 16,
+
+    /* The store's own blocks, which it counts from the start of its run. */
     FIRST_BLOCK = 0,
-    LAST_BLOCK = BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT - 1,
+    LAST_BLOCK = RUN_BLOCK_COUNT - 1,
 
     COUNTS_BYTES = 80
 };
@@ -29,6 +38,17 @@ enum
 struct SolidSyslogSpiNorFlashBus* BddTargetBoardSpiNorFlashBus_Take(void)
 {
     return SpiNorFlashPartFake::Bus();
+}
+
+/* The board seam the store takes its run of blocks from. Here the board
+ * answers with whatever a test set, and keeps the count it was told. */
+static struct BddTargetBoardNorFlashStoreRun boardRun;
+static size_t flashBlockCountTold;
+
+struct BddTargetBoardNorFlashStoreRun BddTargetBoardNorFlashStoreRun_Within(size_t flashBlockCount)
+{
+    flashBlockCountTold = flashBlockCount;
+    return boardRun;
 }
 
 // clang-format off
@@ -41,6 +61,9 @@ TEST_GROUP(BddTargetNorFlashStore)
         SpiNorFlashPartFake::Reset();
         ErrorHandlerFake_Install(nullptr);
         BddTargetStoreSettings_Reset();
+        boardRun.FirstBlock = RUN_FIRST_BLOCK;
+        boardRun.BlockCount = RUN_BLOCK_COUNT;
+        flashBlockCountTold = 0;
     }
 
     void teardown() override
@@ -115,13 +138,36 @@ TEST(BddTargetNorFlashStore, UnmountWithNoPartStartedReportsNothing)
     CALLED_FAKE(ErrorHandlerFake_Handle, NEVER);
 }
 
-TEST(BddTargetNorFlashStore, TheBlockDeviceHasTheStoresRunOfBlocks)
+TEST(BddTargetNorFlashStore, TheBlockDeviceHasAsManyBlocksAsTheBoardsRun)
 {
     BddTargetNorFlashStore_Mount();
 
     CreateDevice();
 
-    LONGS_EQUAL(BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT, SolidSyslogBlockDevice_GetBlockCount(device));
+    LONGS_EQUAL(RUN_BLOCK_COUNT, SolidSyslogBlockDevice_GetBlockCount(device));
+}
+
+TEST(BddTargetNorFlashStore, TheStoresFirstBlockIsTheFirstOfTheBoardsRun)
+{
+    MountAndAcquire(FIRST_BLOCK);
+
+    LONGS_EQUAL(RUN_FIRST_BLOCK * FLASH_BLOCK_BYTES, SpiNorFlashPartFake::Erases().back());
+}
+
+TEST(BddTargetNorFlashStore, TheBoardIsToldHowManyBlocksThePartHas)
+{
+    BddTargetNorFlashStore_Mount();
+
+    CreateDevice();
+
+    LONGS_EQUAL(FLASH_BLOCKS, flashBlockCountTold);
+}
+
+TEST(BddTargetNorFlashStore, ABlockDeviceWithNoPartStartedIsTheNullOne)
+{
+    CreateDevice();
+
+    POINTERS_EQUAL(SolidSyslogNullBlockDevice_Get(), device);
 }
 
 TEST(BddTargetNorFlashStore, ABlockIsAllAFlashBlockHoldsWhenNoSizeIsSet)

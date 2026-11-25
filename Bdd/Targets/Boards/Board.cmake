@@ -47,8 +47,11 @@
 #
 #   BDD_BOARD_NOR_FLASH_PROJECT_SOURCES - the bus of the board's NOR flash,
 #                                         which defines
-#                                         BddTargetBoardSpiNorFlashBus_Take, for
-#                                         a store kept on the flash with no
+#                                         BddTargetBoardSpiNorFlashBus_Take, and
+#                                         the run of the part's blocks a store
+#                                         may use, which defines
+#                                         BddTargetBoardNorFlashStoreRun_Within,
+#                                         for a store kept on the flash with no
 #                                         filesystem. Empty on a board with no
 #                                         flash, real or simulated
 #

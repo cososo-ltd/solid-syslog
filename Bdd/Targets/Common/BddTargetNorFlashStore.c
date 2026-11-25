@@ -2,10 +2,12 @@
 
 #include "BddTargetNorFlashStore.h"
 
+#include "BddTargetBoardNorFlashStoreRun.h"
 #include "BddTargetBoardSpiNorFlashBus.h"
 #include "BddTargetCountingNorFlash.h"
 #include "BddTargetStoreSettings.h"
 #include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogNorFlash.h"
 #include "SolidSyslogNorFlashBlockDevice.h"
 #include "SolidSyslogNullNorFlash.h"
 #include "SolidSyslogSpiNorFlash.h"
@@ -14,7 +16,6 @@
 
 enum
 {
-    FIRST_BLOCK = 0,
     /* What SolidSyslogNorFlashBlockDeviceConfig takes as a BlockSize to mean
      * the flash block less the device's own state. */
     ALL_A_FLASH_BLOCK_HOLDS = 0
@@ -28,6 +29,7 @@ static struct SolidSyslogNorFlash* countedFlash;
 
 static inline bool NorFlashStore_IsStarted(void);
 static struct SolidSyslogBlockDevice* NorFlashStore_CreateDevice(size_t blockSize);
+static inline size_t NorFlashStore_PartBlockCount(void);
 
 bool BddTargetNorFlashStore_Mount(void)
 {
@@ -70,13 +72,22 @@ struct SolidSyslogBlockDevice* BddTargetNorFlashStore_CreateBlockDevice(void)
 
 static struct SolidSyslogBlockDevice* NorFlashStore_CreateDevice(size_t blockSize)
 {
+    const struct BddTargetBoardNorFlashStoreRun run =
+        BddTargetBoardNorFlashStoreRun_Within(NorFlashStore_PartBlockCount());
     const struct SolidSyslogNorFlashBlockDeviceConfig config = {
         .Flash = countedFlash,
-        .FirstBlock = FIRST_BLOCK,
-        .BlockCount = BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT,
+        .FirstBlock = run.FirstBlock,
+        .BlockCount = run.BlockCount,
         .BlockSize = blockSize,
     };
     return SolidSyslogNorFlashBlockDevice_Create(&config);
+}
+
+/* A part that has not started has no blocks for the board to state a run of.
+ * The device's Create then refuses whatever run the board answers with. */
+static inline size_t NorFlashStore_PartBlockCount(void)
+{
+    return NorFlashStore_IsStarted() ? SolidSyslogNorFlash_GetBlockCount(flash) : 0U;
 }
 
 void BddTargetNorFlashStore_DestroyBlockDevice(struct SolidSyslogBlockDevice* device)

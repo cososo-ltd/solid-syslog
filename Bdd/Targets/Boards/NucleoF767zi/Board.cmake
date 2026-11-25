@@ -179,18 +179,25 @@ set(BDD_BOARD_DISK_PROJECT_SOURCES
 )
 
 # The NOR flash is a W25Q128 on the same SPI4: the bus the library's
-# SpiNorFlash pack drives it over. A target that takes these names SpiNorFlash
+# SpiNorFlash pack drives it over. A target that takes it names SpiNorFlash
 # among its platforms.
-set(BDD_BOARD_NOR_FLASH_PROJECT_SOURCES
+set(bdd_board_flash_bus_sources
     ${BDD_BOARD_DIR}/BddTargetBoardSpiNorFlashBus.c
     ${BDD_BOARD_DIR}/BoardSpi4.c
     ${BDD_BOARD_DIR}/BoardSpi4Flash.c
 )
 
-# LittleFS is on that flash: the block device from the targets' common code,
-# over the pack.
+# A store with no filesystem is on that flash, on the run of the part's blocks
+# the board states for it.
+set(BDD_BOARD_NOR_FLASH_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/BddTargetBoardNorFlashStoreRun.c
+    ${bdd_board_flash_bus_sources}
+)
+
+# LittleFS is on that flash too: the block device from the targets' common
+# code, over the pack. It has a region of its own and takes no run.
 set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
-    ${BDD_BOARD_NOR_FLASH_PROJECT_SOURCES}
+    ${bdd_board_flash_bus_sources}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsFlash.c
 )
 
