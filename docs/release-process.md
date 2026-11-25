@@ -213,9 +213,9 @@ listed above; the written sections are added by hand in the release pull request
 5. Publishing the draft is a separate step. Nothing the release attaches exists
    until then, so publish once everything the documentation links by name is in
    place - the example stacks' `release/<version>` branches, which pin the
-   tag's SHA and so can only be cut once the tag exists. The branch is the
-   first of four parts of a stack's release, and the other three are listed
-   under *Releasing the example stacks* below. Publish with
+   tag's SHA and so can only be cut once the tag exists. Each stack's
+   **Release** workflow cuts its branch, per *Releasing the example stacks*
+   below, and a green run on both is what allows publication. Publish with
    `gh release edit v<version> --draft=false --latest`, so the release is the
    one GitHub serves as latest; a fix to an older line takes `--latest=false`
    instead.
@@ -257,6 +257,27 @@ on each release branch states why the figures hold at the tag. From the moment t
 the site links release branches that do not yet exist, so the release PR, the tag, the
 release branches and the publication follow in one sitting.
 
+`scripts/release_docs.py` writes the links, the `GIT_TAG` and the cost figures in
+`README.md` and `docs/hardening-path.md`, from the output of each stack's latest
+chain-started **Sweep** run:
+
+```bash
+gh run download <run> --repo cososo-ltd/solid-syslog-example --name sweep --dir sweep/cmake
+gh run download <run> --repo cososo-ltd/solid-syslog-example-make --name sweep --dir sweep/make
+python3 scripts/release_docs.py <version> sweep/cmake sweep/make --previous <directory>
+```
+
+It does not rewrite the stage costs in `docs/hardening-path.md`, which are rounded and
+sit in prose. Given `--previous`, a directory holding `figures.csv` and `stages.csv` from
+`evidence/` on `solid-syslog-example`'s last release branch, it names each stage whose
+cost has moved since, and those are re-taken by hand.
+
+The runs it is given are the ones the stacks' releases are later cut from, which is what
+makes the figures in the tag the figures in each release's evidence. A change that
+reaches the stacks after this branch merges starts new Sweep runs, so run the script
+again with `--check` against the runs the release will be cut from: it rewrites nothing
+and fails where a page would differ.
+
 ### Releasing the example stacks
 
 Each example stack - `solid-syslog-example` and `solid-syslog-example-make` -
@@ -280,21 +301,30 @@ finished when all four parts exist, and the stack's `main` README names them.
 3. A tag `v<version>` at the branch tip, carrying a GitHub Release marked
    latest, with the sweep output attached as `sweep-<version>.zip` and a
    description naming the branch, the library tag and SHA it pins, and the
-   Sweep run. One command creates them together: with an asset named, gh
-   creates the Release as a draft, uploads the asset, then publishes, so a
-   failed upload leaves a draft rather than a published Release without its
-   file. Confirm with `gh release view v<version>` that the asset is listed:
+   Sweep run.
+4. A row for the branch in the *Releases* table of the stack's `main` README.
 
-   ```bash
-   gh release create v<version> --repo cososo-ltd/<stack> --target <tip> \
-     --title <version> --latest --notes-file <file> sweep-<version>.zip
-   ```
+Each stack's **Release** workflow makes all four from one dispatch, once the
+tag exists:
 
-4. A row for the branch in the *Releases* table of the stack's `main` README,
-   committed to `main`.
+```bash
+gh workflow run release.yml --repo cososo-ltd/<stack> -f version=<version> \
+  -f tag=<the tag's full SHA> -f run=<Sweep run id> -f dry-run=false
+```
 
-Steps 1 and 2 happen before the library release is published, steps 3 and 4
-after it; none of them is done by a workflow.
+The workflow measures nothing. The evidence is the output of the Sweep run it is
+given, which must be the run the documentation's figures were taken from, and it
+refuses a release where that run's figures would not hold at the tag. The
+stack's README states each check and what answers a refusal. Its last step
+confirms that the branch the documentation links resolves, so a green run on
+both stacks is what allows the draft to be published.
+
+`dry-run` is on unless it is cleared, because a release branch is never deleted
+or rewritten. A dry run makes every check, reports each one that would refuse
+the release, and pushes nothing, so the release can be rehearsed before the tag
+exists. The run's summary lists the stage commit messages that quote a figure in
+their prose; those are corrected by hand on `wip/next`, and swept again, before
+the documentation is brought to the release.
 
 ### Why the documentation ships as a file
 
@@ -324,12 +354,16 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
 
 - [ ] `main` is green, the latest chain-started **Sweep** run on each example
       stack passed, and no `example-sweep` issue is open.
+- [ ] A dry run of each example stack's **Release** workflow against those runs
+      reports nothing that would refuse the release but the tag and the links,
+      neither of which exists yet.
 - [ ] Bring the documentation to the release before it is tagged, since the bundle
       is built from the tag: the example stacks' `release/<version>` links in
       `README.md`, `docs/README.md`, `docs/build-integration.md` and
       `docs/hardening-path.md`, the `GIT_TAG` in `docs/build-integration.md`, and
-      the four figures under *What it costs* in `README.md`, taken from the
-      re-measured hardening path.
+      the four figures under *What it costs* in `README.md`, written by
+      `scripts/release_docs.py`, with the stages it names re-taken by hand, per
+      [Bringing the documentation to the release](#bringing-the-documentation-to-the-release).
 - [ ] The release PR's notes carry the written sections, *Before you upgrade*
       included, written after release-please's run on the last merge before the
       release.
@@ -349,13 +383,15 @@ Coordinated with the disclosure; see the runbook's *Release coordination* stage:
       draft before anything goes out.
 - [ ] Set the draft's notes explicitly with `gh release edit`, per
       [Getting the written parts into both places](#getting-the-written-parts-into-both-places).
-- [ ] Cut the example stacks' `release/<version>` branches pinned to the tag's
-      SHA, each with its evidence commit, then publish the draft.
+- [ ] Run each example stack's **Release** workflow with the tag's SHA, the
+      Sweep run the documentation's figures came from and `dry-run` cleared,
+      per [Releasing the example stacks](#releasing-the-example-stacks). Publish
+      the draft once both runs are green.
 - [ ] Confirm GitHub marks the new release as Latest:
       `gh api repos/cososo-ltd/solid-syslog/releases/latest --jq .tag_name`.
-- [ ] Finish each example stack's release: the `v<version>` tag and GitHub
-      Release with `sweep-<version>.zip` attached, and the row on its `main`
-      README, per [Releasing the example stacks](#releasing-the-example-stacks).
+- [ ] Confirm each example stack's release: the `release/<version>` branch, the
+      `v<version>` tag and GitHub Release with `sweep-<version>.zip` attached,
+      and the row on its `main` README.
 - [ ] Confirm the attachments, and verify all six assets - the SBOM, source
       hash and documentation bundle, and their three cosign signatures - per
       [`security/release-verification.md`](security/release-verification.md), not
