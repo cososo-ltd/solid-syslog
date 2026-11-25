@@ -53,6 +53,7 @@ fault-finding tips.
 | FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API), wolfSSL | `behave-cmsis-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl`, same shape |
+| CMSIS-RTOS2 (lwIP Sockets API), with its store on raw flash | `behave-cmsis-lwip-norflash` - the target built by the `cmsis-cross-lwip-norflash` preset, running the `@store` scenarios and no others | `syslog-ng-cmsis-lwip-norflash`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 | VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 | FreeRTOS (lwIP Raw API) on the NUCLEO-F767ZI | `behave` natively on the development machine, driving the board over its serial port and resetting it through its debug probe (`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1 -Target lwip`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
@@ -66,6 +67,25 @@ is visible to both syslog-ng (writer) and Behave (reader) without any network fi
 transfer. The FreeRTOS ELF is built in the cross image and run under
 `qemu-system-arm` from inside the `freertos-target` service; Behave drives it
 through the QEMU UART (`-serial stdio`).
+
+### The raw flash store under QEMU
+
+The QEMU machine has no flash. The CMSIS-RTOS2 target built with its store on
+raw flash simulates one: a Winbond W25Q128JV in software, behind the SPI bus of
+the SPI NOR flash pack, in `Bdd/Targets/Boards/Mps2An385/`. So the pack's own
+driver runs in CI, reading the part's SFDP table as it does on a board, under
+Core's flash block device and the block store.
+
+The simulated part answers the table read from a real one. A program clears
+bits and sets none, an erase sets a 4 KiB sector to ones, neither happens
+without a write enable first, and the part is busy for a time afterwards. What
+it holds is `solidsyslog-flash.img` in QEMU's working directory, which outlasts
+a restart of the target as a part's contents outlast a reset, and which Behave
+removes around each scenario.
+
+It is a model and not the part. It has the timing and the electrical
+behaviour of no real flash, and [What has been run on
+hardware](#what-has-been-run-on-hardware) is where the same image meets one.
 
 ## Key files
 

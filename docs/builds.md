@@ -247,6 +247,17 @@ cmake --preset cmsis-cross-lwip-wolfssl
 cmake --build --preset cmsis-cross-lwip-wolfssl --target SolidSyslogBddTargetCmsis
 ```
 
+`cmsis-cross-lwip-norflash` builds the same target with
+`SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP_NOR_FLASH`: its store is directly on a NOR
+flash, so `SOLIDSYSLOG_PLATFORMS` names `SpiNorFlash` and not `LittleFs`. The
+machine has no flash, and the target simulates the part. It drives the
+`bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng` CI lane.
+
+```bash
+cmake --preset cmsis-cross-lwip-norflash
+cmake --build --preset cmsis-cross-lwip-norflash --target SolidSyslogBddTargetCmsis
+```
+
 ## NUCLEO-F767ZI - `nucleo-f767zi-*`
 
 ARM cross-builds for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the

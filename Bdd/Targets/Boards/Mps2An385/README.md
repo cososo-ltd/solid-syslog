@@ -2,9 +2,9 @@
 
 The board the three cross BDD targets run on in CI: QEMU's `mps2-an385`
 machine, a Cortex-M3 with CMSDK UARTs and a LAN9118 Ethernet controller. The
-`freertos-cross`, `freertos-cross-lwip`, `cmsis-cross-lwip` and
-`cmsis-cross-lwip-wolfssl` presets select it with
-`SOLIDSYSLOG_BDD_BOARD=Mps2An385`.
+`freertos-cross`, `freertos-cross-lwip`, `cmsis-cross-lwip`,
+`cmsis-cross-lwip-wolfssl` and `cmsis-cross-lwip-norflash` presets select it
+with `SOLIDSYSLOG_BDD_BOARD=Mps2An385`.
 
 This directory is the machine's side of the board seam.
 [`../Board.cmake`](../Board.cmake) states what a board supplies to the build,
@@ -23,6 +23,7 @@ what it supplies to the code.
 | Console, exit and fault | `BddTargetBoard.c` | CMSDK UART0 through `CmsdkUart.c`, polled; exit through ARM semihosting, which a fault takes too, after a line saying what it was |
 | Clock of the time of day | `BddTargetBoardClock.c` | None: the machine is run as a product that cannot obtain the time, so `set time` is refused |
 | Disk | `BddTargetBoardDisk.c` | A flat image on the machine QEMU runs on, over semihosting |
+| NOR flash bus | `BddTargetBoardSpiNorFlashBus.c` | A W25Q128JV simulated in `SimulatedSpiNorFlash.c`, which keeps what it holds in a second image |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over the vendored Arm controller driver in `Lwip/smsc9220/` |
 | Ethernet under FreeRTOS-Plus-TCP | `PlusTcp/BddTargetBoardPlusTcp.c` | Upstream's `MPS2_AN385` network interface, with the interrupt priority it leaves unset |
 
@@ -45,6 +46,24 @@ image survives a QEMU restart, which is what the power-cycle scenarios rely on.
 
 This is glue for the BDD targets and not a reference driver: a product has
 real media under its filesystem.
+
+## Flash
+
+The machine has no flash either. The image built with its store directly on a
+NOR flash gets a simulated one: `SimulatedSpiNorFlash.c` is a Winbond W25Q128JV
+in software, behind the bus of the library's `SpiNorFlash` pack, so the pack's
+own driver runs over it as it does over the part on a board.
+`SimulatedSpiNorFlash.h` says what it models, and
+`Tests/Bdd/Targets/Boards/Mps2An385/SimulatedSpiNorFlashTest.cpp` tests it on
+the host, with the pack's driver over it.
+
+What the part holds is `solidsyslog-flash.img` in QEMU's working directory, 16
+MiB and created sparse. The file holds the complement of each byte, so a new
+image, which reads as zeros, is an erased part. Behave removes it around each
+scenario, and it survives a QEMU restart as the disk image does.
+
+The part is busy for 1 ms after a page program and 50 ms after an erase, by
+the kernel's count of milliseconds, and the bus yields while the pack waits.
 
 ## Network
 
@@ -81,8 +100,8 @@ leaves the scheduler idling, so end QEMU with `Ctrl+A` then `x`; `set shutdown
 1` tears down and ends QEMU itself, through the semihosting exit.
 
 `-serial mon:stdio` is what gives the terminal that `Ctrl+A` escape. The
-semihosting option is what the disk and the exit go through; without it the
-first use of either stops QEMU with a fault.
+semihosting option is what the disk, the flash and the exit go through;
+without it the first use of any of them stops QEMU with a fault.
 
 ## Attaching GDB
 

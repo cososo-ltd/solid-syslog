@@ -470,6 +470,7 @@ Every non-hidden configure preset `CMakePresets.json` declares.
 | `freertos-cross-lwip` | The same, over the lwIP Raw API with ChaN FatFs |
 | `cmsis-cross-lwip` | The same, over CMSIS-RTOS2, the lwIP Sockets API and LittleFS |
 | `cmsis-cross-lwip-wolfssl` | The same target over the wolfSSL pack, with wolfSSL built from source |
+| `cmsis-cross-lwip-norflash` | The same target over Mbed TLS, with its block store directly on a simulated SPI NOR flash and no filesystem |
 | `nucleo-f767zi-lwip` | ARM Cortex-M7 cross-build of the FreeRTOS + lwIP Raw BDD target for the NUCLEO-F767ZI |
 | `nucleo-f767zi-cmsis-lwip` | ARM Cortex-M7 cross-build of the CMSIS-RTOS2 + lwIP Sockets BDD target for the NUCLEO-F767ZI |
 | `nucleo-f767zi-cmsis-lwip-norflash` | The same target, with its block store directly on the board's SPI NOR flash and no filesystem |
