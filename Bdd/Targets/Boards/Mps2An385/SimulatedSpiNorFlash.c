@@ -26,15 +26,24 @@ static struct SolidSyslogSpiNorFlashBus bus = {
 
 enum
 {
+    PAGE_PROGRAM = 0x02,
     READ_DATA = 0x03,
     READ_STATUS = 0x05,
+    WRITE_ENABLE = 0x06,
+    SECTOR_ERASE = 0x20,
     READ_SFDP = 0x5A,
+
+    STATUS_BUSY = 0x01,
+    STATUS_WRITE_ENABLED = 0x02,
 
     /* What a line with nothing driving it reads as. */
     IDLE_LINE = 0xFF,
 
     /* A W25Q128JV's. */
     PART_BYTES = 16 * 1024 * 1024,
+    PAGE_BYTES = 256,
+    /* Its smallest erase, which is the one its SFDP names. */
+    SECTOR_BYTES = 4096,
 
     COMMAND_BYTES = 1,
     ADDRESS_BYTES = 3,
@@ -67,6 +76,15 @@ static struct SimulatedSpiNorFlashMedium* medium;
 static uint32_t (*milliseconds)(void);
 
 static bool selected;
+static bool writeEnabled;
+
+/* Whether a program or an erase has begun and not yet been seen to finish,
+ * with the count as it began and how long it takes. A start and a length,
+ * not the count it ends at, so that being busy holds across a wrap of the
+ * count. */
+static bool writing;
+static uint32_t writingSince;
+static uint32_t writingFor;
 
 /* The first byte sent since the part was selected, how many have been, and
  * the address the three after the command gave, which then moves on with
@@ -75,8 +93,19 @@ static uint8_t command;
 static size_t received;
 static uint32_t address;
 
-static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte);
+/* What a program command has sent to be programmed, each byte at its place
+ * in the page, and how many bytes that was. */
+static uint8_t page[PAGE_BYTES];
+static size_t dataCount;
+
+static bool SimulatedSpiNorFlash_IsBusy(void);
 static inline bool SimulatedSpiNorFlash_IsAsked(uint8_t asked, size_t requestBytes);
+static void SimulatedSpiNorFlash_ProgramThePage(void);
+static void SimulatedSpiNorFlash_ProgramInPage(uint32_t pageAddress, size_t from, size_t count);
+static inline void SimulatedSpiNorFlash_BeBusyFor(uint32_t time);
+static void SimulatedSpiNorFlash_EraseTheSector(void);
+static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte);
+static inline uint8_t SimulatedSpiNorFlash_Status(void);
 static bool SimulatedSpiNorFlash_ReadData(uint8_t* bytes, size_t count);
 static inline size_t SimulatedSpiNorFlash_BytesToEndOfPart(size_t remaining);
 static void SimulatedSpiNorFlash_ReadSfdp(uint8_t* bytes, size_t count);
@@ -87,6 +116,8 @@ struct SolidSyslogSpiNorFlashBus* SimulatedSpiNorFlash_PowerUp(const struct Simu
     medium = config->Medium;
     milliseconds = config->Milliseconds;
     selected = false;
+    writeEnabled = false;
+    writing = false;
     received = 0U;
     return &bus;
 }
@@ -101,8 +132,100 @@ static void SimulatedSpiNorFlash_Select(struct SolidSyslogSpiNorFlashBus* base)
 static void SimulatedSpiNorFlash_Deselect(struct SolidSyslogSpiNorFlashBus* base)
 {
     (void) base;
+    if (SimulatedSpiNorFlash_IsBusy())
+    {
+        /* It takes nothing until it has finished. */
+    }
+    else if (SimulatedSpiNorFlash_IsAsked(WRITE_ENABLE, COMMAND_BYTES))
+    {
+        writeEnabled = true;
+    }
+    else if (SimulatedSpiNorFlash_IsAsked(PAGE_PROGRAM, COMMAND_AND_ADDRESS_BYTES + 1U) && writeEnabled)
+    {
+        SimulatedSpiNorFlash_ProgramThePage();
+        SimulatedSpiNorFlash_BeBusyFor(SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS);
+    }
+    else if (SimulatedSpiNorFlash_IsAsked(SECTOR_ERASE, COMMAND_AND_ADDRESS_BYTES) && writeEnabled)
+    {
+        SimulatedSpiNorFlash_EraseTheSector();
+        SimulatedSpiNorFlash_BeBusyFor(SIMULATED_SPI_NOR_FLASH_ERASE_MILLISECONDS);
+    }
+    else
+    {
+        /* Nothing the part acts on as its select rises. */
+    }
     selected = false;
     received = 0U;
+}
+
+/* Writing stays enabled until what was begun has finished, and the part
+ * disables it then. Nothing happens in the part between two calls of its
+ * bus, so the finishing is seen at the first call after its time. */
+static bool SimulatedSpiNorFlash_IsBusy(void)
+{
+    if (writing && ((milliseconds() - writingSince) >= writingFor))
+    {
+        writing = false;
+        writeEnabled = false;
+    }
+    return writing;
+}
+
+/* Whether the part has been sent that command and as many bytes as it takes
+ * before it answers. */
+static inline bool SimulatedSpiNorFlash_IsAsked(uint8_t asked, size_t requestBytes)
+{
+    return selected && (command == asked) && (received >= requestBytes);
+}
+
+/* What was sent goes into the page from the address given, and round to the
+ * page's start where it ran past the end. More than a page of it has gone
+ * over itself, so the whole page is programmed with what was sent last. */
+static void SimulatedSpiNorFlash_ProgramThePage(void)
+{
+    uint32_t pageAddress = address - (address % (uint32_t) PAGE_BYTES);
+    size_t from = (size_t) (address % (uint32_t) PAGE_BYTES);
+    size_t count = (dataCount < (size_t) PAGE_BYTES) ? dataCount : (size_t) PAGE_BYTES;
+    size_t toEndOfPage = (size_t) PAGE_BYTES - from;
+    size_t first = (count < toEndOfPage) ? count : toEndOfPage;
+
+    SimulatedSpiNorFlash_ProgramInPage(pageAddress, from, first);
+    SimulatedSpiNorFlash_ProgramInPage(pageAddress, 0U, count - first);
+}
+
+/* A program clears bits and sets none. The medium holds each byte's
+ * complement, so there it sets bits and clears none. A medium that fails
+ * leaves the part as it was, and the part does not say so: what is read back
+ * shows it. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) -- where in the page, and how much of it; distinct semantics
+static void SimulatedSpiNorFlash_ProgramInPage(uint32_t pageAddress, size_t from, size_t count)
+{
+    uint8_t kept[PAGE_BYTES];
+    if ((count > 0U) && medium->Read(medium, pageAddress + (uint32_t) from, kept, count))
+    {
+        for (size_t i = 0U; i < count; i++)
+        {
+            kept[i] |= (uint8_t) ~page[from + i];
+        }
+        (void) medium->Write(medium, pageAddress + (uint32_t) from, kept, count);
+    }
+}
+
+static inline void SimulatedSpiNorFlash_BeBusyFor(uint32_t time)
+{
+    writing = true;
+    writingSince = milliseconds();
+    writingFor = time;
+}
+
+/* The sector the address is in, whole. Erased is all ones, which the medium
+ * holds as zeros. A medium that fails leaves the part as it was. */
+static void SimulatedSpiNorFlash_EraseTheSector(void)
+{
+    static const uint8_t ERASED_SECTOR[SECTOR_BYTES] = {0U};
+    uint32_t sectorAddress = address - (address % (uint32_t) SECTOR_BYTES);
+
+    (void) medium->Write(medium, sectorAddress, ERASED_SECTOR, sizeof(ERASED_SECTOR));
 }
 
 static bool SimulatedSpiNorFlash_Write(struct SolidSyslogSpiNorFlashBus* base, const void* buffer, size_t count)
@@ -122,10 +245,16 @@ static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte)
     {
         command = byte;
         address = 0U;
+        dataCount = 0U;
     }
     else if (received <= (size_t) ADDRESS_BYTES)
     {
         address = (address << 8U) | byte;
+    }
+    else if (command == (uint8_t) PAGE_PROGRAM)
+    {
+        page[(address + (uint32_t) dataCount) % (uint32_t) PAGE_BYTES] = byte;
+        dataCount++;
     }
     else
     {
@@ -139,17 +268,22 @@ static bool SimulatedSpiNorFlash_Read(struct SolidSyslogSpiNorFlashBus* base, vo
     (void) base;
     uint8_t* bytes = (uint8_t*) buffer;
     bool read = true;
-    if (SimulatedSpiNorFlash_IsAsked(READ_DATA, COMMAND_AND_ADDRESS_BYTES))
+    if (SimulatedSpiNorFlash_IsAsked(READ_STATUS, COMMAND_BYTES))
+    {
+        (void) memset(bytes, SimulatedSpiNorFlash_Status(), count);
+    }
+    else if (SimulatedSpiNorFlash_IsBusy())
+    {
+        /* It answers nothing else until it has finished. */
+        (void) memset(bytes, IDLE_LINE, count);
+    }
+    else if (SimulatedSpiNorFlash_IsAsked(READ_DATA, COMMAND_AND_ADDRESS_BYTES))
     {
         read = SimulatedSpiNorFlash_ReadData(bytes, count);
     }
     else if (SimulatedSpiNorFlash_IsAsked(READ_SFDP, SFDP_REQUEST_BYTES))
     {
         SimulatedSpiNorFlash_ReadSfdp(bytes, count);
-    }
-    else if (SimulatedSpiNorFlash_IsAsked(READ_STATUS, COMMAND_BYTES))
-    {
-        (void) memset(bytes, 0x00, count);
     }
     else
     {
@@ -158,11 +292,14 @@ static bool SimulatedSpiNorFlash_Read(struct SolidSyslogSpiNorFlashBus* base, vo
     return read;
 }
 
-/* Whether the part has been sent that command and as many bytes as it takes
- * before it answers. */
-static inline bool SimulatedSpiNorFlash_IsAsked(uint8_t asked, size_t requestBytes)
+static inline uint8_t SimulatedSpiNorFlash_Status(void)
 {
-    return selected && (command == asked) && (received >= requestBytes);
+    uint8_t status = SimulatedSpiNorFlash_IsBusy() ? (uint8_t) STATUS_BUSY : 0U;
+    if (writeEnabled)
+    {
+        status |= (uint8_t) STATUS_WRITE_ENABLED;
+    }
+    return status;
 }
 
 /* One call of the medium, or two for a read that runs past the end of the
