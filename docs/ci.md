@@ -207,6 +207,12 @@ releases, `example-sweep.yml` keeps them honest against `main`:
    here, labelled `example-sweep`, naming what failed and the commits since the
    stack's last green sweep. Each later red sweep comments on it, and the next
    green one closes it.
+6. A green sweep of `solid-syslog-example` is compared with the `evidence/` of
+   that stack's newest release branch, and the summary of the Example Sweep run
+   that received `sweep-finished` names each stage whose cost has moved since.
+   Those are the stage costs `docs/hardening-path.md` states in prose, which the
+   next release re-takes by hand. It is advisory: it opens no issue and fails
+   nothing.
 
 The fix is to the stage, on `wip/next` as the stack's README describes, or to
 the library where the change was not meant. Run the **Example Sweep** workflow

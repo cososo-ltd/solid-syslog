@@ -270,7 +270,9 @@ python3 scripts/release_docs.py <version> sweep/cmake sweep/make --previous <dir
 It does not rewrite the stage costs in `docs/hardening-path.md`, which are rounded and
 sit in prose. Given `--previous`, a directory holding `figures.csv` and `stages.csv` from
 `evidence/` on `solid-syslog-example`'s last release branch, it names each stage whose
-cost has moved since, and those are re-taken by hand.
+cost has moved since, and those are re-taken by hand. Between releases the same list
+is in the summary of each Example Sweep run that reports a green sweep of that stack;
+[ci.md](ci.md#example-stacks) describes the chain.
 
 The script refuses a sweep whose Baseline did not measure what the stack's own
 `measurements/Baseline.csv` records, because every stage's cost is counted from that
