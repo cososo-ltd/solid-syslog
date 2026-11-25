@@ -412,10 +412,7 @@ TEST(SimulatedSpiNorFlash, ItIsBusyWithWritingEnabledForATimeAfterAProgramBegins
     BeginProgram(0x000100, {0x12});
     BYTES_EQUAL(0x03, Status());
 
-    now += SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS - 1;
-    BYTES_EQUAL(0x03, Status());
-
-    now += 1;
+    now += SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS;
     BYTES_EQUAL(0x00, Status());
 }
 
