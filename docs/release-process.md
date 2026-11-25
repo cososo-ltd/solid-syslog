@@ -272,6 +272,11 @@ sit in prose. Given `--previous`, a directory holding `figures.csv` and `stages.
 `evidence/` on `solid-syslog-example`'s last release branch, it names each stage whose
 cost has moved since, and those are re-taken by hand.
 
+The script refuses a sweep whose Baseline did not measure what the stack's own
+`measurements/Baseline.csv` records, because every stage's cost is counted from that
+file. The stack's Release workflow refuses the same sweep, and the stack's README says
+when the file is captured again. Figures are taken only from runs made after that.
+
 The runs it is given are the ones the stacks' releases are later cut from, which is what
 makes the figures in the tag the figures in each release's evidence. A change that
 reaches the stacks after this branch merges starts new Sweep runs, so run the script
@@ -320,9 +325,8 @@ confirms that the branch the documentation links resolves, so a green run on
 both stacks is what allows the draft to be published.
 
 `dry-run` is on unless it is cleared, because a release branch is never deleted
-or rewritten. A dry run reports each check that would refuse the release and
-pushes nothing, so the release can be rehearsed before the tag exists. The
-run's summary lists the stage commit messages that quote a figure in
+or rewritten. A dry run pushes nothing, so the release can be rehearsed before
+the tag exists; the stack's README says what it reports. The run's summary lists the stage commit messages that quote a figure in
 their prose; those are corrected by hand on `wip/next`, and swept again, before
 the documentation is brought to the release.
 
