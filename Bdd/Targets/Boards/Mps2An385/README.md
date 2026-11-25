@@ -24,6 +24,7 @@ what it supplies to the code.
 | Clock of the time of day | `BddTargetBoardClock.c` | None: the machine is run as a product that cannot obtain the time, so `set time` is refused |
 | Disk | `BddTargetBoardDisk.c` | A flat image on the machine QEMU runs on, over semihosting |
 | NOR flash bus | `BddTargetBoardSpiNorFlashBus.c` | A W25Q128JV simulated in `SimulatedSpiNorFlash.c`, which keeps what it holds in a second image |
+| NOR flash run for a store | `BddTargetBoardNorFlashStoreRun.c` | The last 2048 of the part's blocks, counted back from however many the part reports |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over the vendored Arm controller driver in `Lwip/smsc9220/` |
 | Ethernet under FreeRTOS-Plus-TCP | `PlusTcp/BddTargetBoardPlusTcp.c` | Upstream's `MPS2_AN385` network interface, with the interrupt priority it leaves unset |
 
@@ -61,6 +62,11 @@ What the part holds is `solidsyslog-flash.img` in QEMU's working directory, 16
 MiB and created sparse. The file holds the complement of each byte, so a new
 image, which reads as zeros, is an erased part. Behave removes it around each
 scenario, and it survives a QEMU restart as the disk image does.
+
+The store has the last 2048 of the part's 4096 sectors, 2048 to 4095, so its
+run ends where the part does. `BddTargetBoardNorFlashStoreRun.c` counts the
+run back from the number of blocks the part reports, which is how a product
+gives a store the end of a part whose size it does not fix at build time.
 
 The part is busy for 1 ms after a page program and 50 ms after an erase, by
 the kernel's count of milliseconds. That count moves 10 ms at a time, so a
