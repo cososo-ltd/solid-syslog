@@ -59,6 +59,11 @@ Bdd/junit/*
 # leave the file behind; never commit it.
 solidsyslog-disk.img
 
+# What the same machine's simulated NOR flash part holds, created and removed
+# the same way, per FLASH_IMAGE_PATH in
+# Bdd/Targets/Boards/Mps2An385/BddTargetBoardSpiNorFlashBus.c.
+solidsyslog-flash.img
+
 # OTel Collector binary downloaded by Bdd/otel/Install-OtelCollector.ps1
 Bdd/otel/bin/
 

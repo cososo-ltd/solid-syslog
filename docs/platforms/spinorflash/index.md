@@ -88,6 +88,12 @@ program that runs past the end of its page wraps within it, nothing is written
 unless writing was enabled first, and a busy part answers only a request for
 its status.
 
+CI also runs the store scenarios through the pack on an emulated Cortex-M3,
+which has no flash: the test target there carries
+[its own simulation of the same part](../../bdd.md#the-raw-flash-store-under-qemu),
+behind the pack's bus. That is the pack's driver and the flash block device
+above it end to end, over a model and not a part.
+
 On hardware it has run on one part, that W25Q128JV, on SPI at 6.75 MHz. There
 it has carried the store scenarios, and 2000 messages over each of UDP and TCP,
 through a store kept directly on the part, and the same beneath a filesystem on

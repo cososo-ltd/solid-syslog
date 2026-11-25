@@ -9,7 +9,7 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
 
     /* The SPI bus the board's NOR flash is on, for a SolidSyslogSpiNorFlash.
      * Part of the board seam - see BddTargetBoard.h - and defined in the
-     * directory of a board that has a flash.
+     * directory of a board that has a flash, or simulates one.
      *
      * Makes the bus ready, with anything else on its wires kept off it, and
      * answers the table of bus functions SolidSyslogSpiNorFlashBus.h

@@ -61,6 +61,11 @@ else:
 # filesystem; disk_initialize then creates a fresh sparse image and
 # falls through to f_mkfs on the first mount.
 FREERTOS_DISK_IMAGE_PATH = "solidsyslog-disk.img"
+# What the simulated NOR flash part of the same machine holds, for the image
+# that keeps its store on the flash. It is beside the disk image and removed
+# with it, so each scenario starts with an erased part: the part reads an
+# image it had to create as all ones.
+FREERTOS_FLASH_IMAGE_PATH = "solidsyslog-flash.img"
 RECEIVED_UDP_LOG = "Bdd/output/received_udp.log"
 RECEIVED_TCP_LOG = "Bdd/output/received_tcp.log"
 RECEIVED_TLS_LOG = "Bdd/output/received_tls.log"
@@ -81,6 +86,15 @@ def clean_store_files():
             shutil.rmtree(path)
         else:
             os.remove(path)
+
+
+def remove_freertos_images():
+    """Remove what the QEMU machine's disk and its simulated flash part hold."""
+    for path in (FREERTOS_DISK_IMAGE_PATH, FREERTOS_FLASH_IMAGE_PATH):
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
 
 
 def wait_for_tcp_port_open(host="syslog-ng", port=5514, timeout=CONDITION_TIMEOUT_SECONDS):
@@ -243,10 +257,7 @@ def before_scenario(context, scenario):
     # prior session would silently carry into this scenario's f_mount.
     # after_scenario removes it on the happy path; this is the belt to
     # that brace.
-    try:
-        os.remove(FREERTOS_DISK_IMAGE_PATH)
-    except FileNotFoundError:
-        pass
+    remove_freertos_images()
     if context.target == "vxworks64" and "store" in scenario.effective_tags:
         reset_vxworks64_store()
     if context.board == NUCLEO_F767ZI and "store" in scenario.effective_tags and not scenario.should_skip:
@@ -373,7 +384,4 @@ def after_scenario(context, scenario):
     # FreeRTOS target's semihosting-backed FAT image. Removing it forces
     # the next scenario's disk_initialize to create a fresh sparse image,
     # which then triggers f_mkfs via the FR_NO_FILESYSTEM fallback.
-    try:
-        os.remove(FREERTOS_DISK_IMAGE_PATH)
-    except FileNotFoundError:
-        pass
+    remove_freertos_images()

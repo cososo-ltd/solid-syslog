@@ -44,6 +44,21 @@ What the target supplies around it:
   enforced with no RTC.
 - Credentials: the same built-in PEMs, handed to wolfSSL as buffers.
 
+## The raw flash build
+
+The `cmsis-cross-lwip-norflash` preset builds this target as
+`SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP_NOR_FLASH`, over Mbed TLS. That image keeps
+its store directly on a NOR flash, through the `SpiNorFlash` pack and Core's
+flash block device, and has no `LittleFs` in it. The two builds differ in one
+place: `CMakeLists.txt` takes `BddTargetCmsisStore_LittleFs.c` for the first
+and `BddTargetCmsisStore_NorFlash.c` for the second.
+
+The flash is the board's. The QEMU machine has none, so its board directory
+[simulates the part](../Boards/Mps2An385/README.md#flash) behind the pack's
+bus. The `bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng` lane runs the
+`@store` scenarios against this build, on the `behave-cmsis-lwip-norflash` and
+`syslog-ng-cmsis-lwip-norflash` pair.
+
 ## Where the kernel lives
 
 Everything tied to the kernel underneath is in
@@ -78,12 +93,9 @@ NUCLEO-F767ZI, over Mbed TLS. Nothing in this directory changes for it: the
 board supplies its own half of the seam, and the kernel configuration takes the
 core clock and the interrupt priority bits from the board.
 
-The `nucleo-f767zi-cmsis-lwip-norflash` preset builds it a second way for the
-same board, as `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP_NOR_FLASH`. That image keeps
-its store directly on the board's NOR flash, through the `SpiNorFlash` pack and
-Core's flash block device, and has no `LittleFs` in it. The two builds differ
-in one place: `CMakeLists.txt` takes `BddTargetCmsisStore_LittleFs.c` for the
-first and `BddTargetCmsisStore_NorFlash.c` for the second.
+The `nucleo-f767zi-cmsis-lwip-norflash` preset builds
+[the raw flash build](#the-raw-flash-build) for the same board, with its store
+directly on the board's NOR flash.
 
 CI builds both images and runs neither. The board's
 [README](../Boards/NucleoF767zi/README.md) has the build, the run and the

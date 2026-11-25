@@ -940,6 +940,7 @@ jobs:
       - bdd-freertos-lwipraw-mbedtls-fatfs-syslogng
       - bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng
       - bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng
+      - bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng
     runs-on: ubuntu-latest
     # `issues: read` and `pull-requests: read` are for the issue-link check below,
     # which reads the state of every issue a document links. The repository is
@@ -2123,6 +2124,71 @@ jobs:
           path: Bdd/features/steps/solidsyslog_tunables.py
           retention-days: 1
 
+  # The same target with its store directly on a NOR flash and no filesystem:
+  # the SPI NOR flash pack under Core's flash block device. The machine has no
+  # flash, so the target simulates the part behind the pack's bus, and the
+  # pack's own driver, SFDP and all, runs in CI as it does on a board.
+  build-cmsisrtos-lwipsocket-mbedtls-norflash:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: ghcr.io/cososo-ltd/cpputest-freertos-cross@sha256:7f8e5fdb38d606d5da93e2ae13a3bda3f6b67d949032ded97d932cde09f6bf01 # sha-1370152
+      options: --user root
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: '*'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure (ARM cross, BDD_TARGET=CMSIS_LWIP_NOR_FLASH)
+        run: cmake --preset cmsis-cross-lwip-norflash
+
+      - name: Cross-build CmsisLwip BDD target ELF with its store on the simulated NOR flash
+        run: cmake --build --preset cmsis-cross-lwip-norflash --target SolidSyslogBddTargetCmsis
+
+      - name: Assert every file the build read came from its pinned tree
+        run: python3 scripts/check_build_provenance.py --build build/cmsis-cross-lwip-norflash
+
+      # The store is the SPI NOR flash pack over the part the machine simulates,
+      # with no filesystem between. This proves both halves of that.
+      - name: Assert the store is on the simulated flash, with no LittleFS linked
+        run: |
+          elf=build/cmsis-cross-lwip-norflash/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+          arm-none-eabi-nm "$elf" > /tmp/cmsis-norflash-symbols.txt
+          if grep -E -i ' lfs_|LittleFs' /tmp/cmsis-norflash-symbols.txt; then
+            echo "::error::LittleFS symbol linked into the CmsisLwip NOR flash BDD target ELF"
+            exit 1
+          fi
+          for symbol in SolidSyslogSpiNorFlash_Create SimulatedSpiNorFlash_PowerUp; do
+            if ! grep --quiet " T $symbol\$" /tmp/cmsis-norflash-symbols.txt; then
+              echo "::error::$symbol is not linked into the CmsisLwip NOR flash BDD target ELF"
+              exit 1
+            fi
+          done
+          echo "OK: the SPI NOR flash pack and the simulated part are linked, and no LittleFS"
+
+      - name: Upload CmsisLwip NOR flash BDD target ELF
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: solid-syslog-bdd-target-cmsis-lwip-norflash
+          path: |
+            build/cmsis-cross-lwip-norflash/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+            build/cmsis-cross-lwip-norflash/solidsyslog-versions.json
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload BDD Python tunables (CmsisLwip NOR flash)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bdd-tunables-cmsis-lwip-norflash
+          path: Bdd/features/steps/solidsyslog_tunables.py
+          retention-days: 1
+
   # Firmware for the NUCLEO-F767ZI. CI builds it and never runs it. The image
   # is flashed by hand and the run recorded against the target checklist in
   # Bdd/Targets/Boards/NucleoF767zi/README.md, so the artifact is kept long
@@ -2605,6 +2671,66 @@ jobs:
         if: failure()
         run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
 
+  bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng:
+    needs: build-cmsisrtos-lwipsocket-mbedtls-norflash
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: solid-syslog-bdd-target-cmsis-lwip-norflash
+          path: build/cmsis-cross-lwip-norflash/
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bdd-tunables-cmsis-lwip-norflash
+          path: Bdd/features/steps/
+
+      - name: Make ELF readable
+        run: chmod +r build/cmsis-cross-lwip-norflash/Bdd/Targets/CmsisLwip/SolidSyslogBddTargetCmsis.elf
+
+      - name: Prepare BDD output directory
+        run: mkdir -p Bdd/junit && chmod 777 Bdd/junit
+
+      - name: Run BDD tests
+        run: >
+          docker compose -f ci/docker-compose.bdd.yml
+          up --abort-on-container-exit --exit-code-from behave-cmsis-lwip-norflash
+          behave-cmsis-lwip-norflash syslog-ng-cmsis-lwip-norflash
+
+      - name: BDD Test Report (CmsisLwip NOR flash)
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
+        if: success() || failure()
+        with:
+          name: Test Results (bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng)
+          path: Bdd/junit/TESTS-*.xml
+          reporter: java-junit
+
+      - name: Upload JUnit XML
+        if: success() || failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: junit-bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng
+          path: |
+            Bdd/junit/TESTS-*.xml
+            Bdd/junit/stack-hwm.txt
+            build/cmsis-cross-lwip-norflash/solidsyslog-versions.json
+          # A day on a pull request; a month on main, so the documentation bundle a
+          # release builds from its tag can still fetch the results of the run that
+          # tested that commit (docs-bundle.yml).
+          retention-days: ${{ github.ref == 'refs/heads/main' && 30 || 1 }}
+
+      - name: Compose logs on failure
+        if: failure()
+        run: docker compose -f ci/docker-compose.bdd.yml logs --no-color
+
   analyze-manifest:
     runs-on: ubuntu-latest
     container:
@@ -2818,7 +2944,7 @@ jobs:
 
   summary:
     if: always() && github.event_name == 'pull_request'
-    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, unit-linux-gcc-release, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, build-nucleo-cmsisrtos-lwipsocket, build-nucleo-cmsisrtos-lwipsocket-norflash, build-nucleo-freertos-plustcp, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
+    needs: [unit-linux-gcc, unit-linux-gcc-tunables, unit-linux-clang, unit-linux-gcc-release, build-c99, build-c89-headers, unit-linux-gcc-sanitize, unit-linux-clang-coverage, analyze-tidy, analyze-tidy-embedded, analyze-cppcheck, analyze-format, analyze-markdown, analyze-spdx, analyze-iwyu, tools-vxworks64-runner, tools-nucleo-f767zi-runner,bdd-linux-openssl-syslogng, bdd-linux-openssl-syslogng-passthrough, build-linux-wolfssl, bdd-linux-wolfssl-syslogng, unit-windows-msvc, bdd-windows-openssl-otel, integration-linux-openssl, integration-linux-mbedtls, integration-linux-wolfssl, integration-linux-littlefs, integration-windows-openssl, build-freertos-plustcp-mbedtls-plusfat, bdd-freertos-plustcp-mbedtls-plusfat-syslogng, build-freertos-lwipraw-mbedtls-fatfs, bdd-freertos-lwipraw-mbedtls-fatfs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-littlefs, bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng, build-cmsisrtos-lwipsocket-wolfssl-littlefs, bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng, build-cmsisrtos-lwipsocket-mbedtls-norflash, bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng, build-nucleo-bringup, build-nucleo-freertos-lwipraw, build-nucleo-cmsisrtos-lwipsocket, build-nucleo-cmsisrtos-lwipsocket-norflash, build-nucleo-freertos-plustcp, analyze-manifest, smoke-linux, smoke-freertos-lwipraw]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -2957,6 +3083,11 @@ jobs:
                     "id": "junit",
                     "name": "bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng",
                     "pattern": "**/junit-bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng/**/TESTS-*.xml"
+                  },
+                  {
+                    "id": "junit",
+                    "name": "bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng",
+                    "pattern": "**/junit-bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng/**/TESTS-*.xml"
                   },
                   {
                     "id": "junit",

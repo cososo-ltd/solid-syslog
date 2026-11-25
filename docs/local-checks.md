@@ -307,7 +307,8 @@ adjust those by hand.
   ```
 
 - `bdd-linux-openssl-syslogng`, `bdd-linux-openssl-syslogng-passthrough`, `bdd-linux-wolfssl-syslogng`, `bdd-windows-openssl-otel`, `bdd-freertos-plustcp-mbedtls-plusfat-syslogng`,
-  `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng`, `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng`, `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`:
+  `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng`, `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng`, `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng`,
+  `bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng`:
   heavy multi-container stacks
 
 If CI surfaces a finding you missed locally, fix in another commit on the

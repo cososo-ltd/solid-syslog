@@ -25,14 +25,22 @@ set(BDD_BOARD_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/CmsdkUart.c
 )
 
-# The machine's only medium is a flat image on the QEMU host. It is the
-# sector disk, and LittleFS gets a block device over those sectors.
+# The machine has no storage, so each medium is a flat image on the QEMU host.
+# One is the sector disk, and LittleFS gets a block device over those sectors.
 set(BDD_BOARD_DISK_PROJECT_SOURCES
     ${BDD_BOARD_DIR}/BddTargetBoardDisk.c
+    ${BDD_BOARD_DIR}/SemihostingFile.c
 )
 set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
     ${BDD_BOARD_DISK_PROJECT_SOURCES}
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsDisk.c
+)
+# The other is what a simulated SPI NOR flash part holds. The machine has no
+# flash either, so the part is software behind the flash's bus.
+set(BDD_BOARD_NOR_FLASH_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/BddTargetBoardSpiNorFlashBus.c
+    ${BDD_BOARD_DIR}/SimulatedSpiNorFlash.c
+    ${BDD_BOARD_DIR}/SemihostingFile.c
 )
 
 set(BDD_BOARD_INCLUDES

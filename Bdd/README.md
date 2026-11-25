@@ -133,9 +133,11 @@ is in
 | `bdd-freertos-lwipraw-mbedtls-fatfs-syslogng` | `syslog-ng-freertos-lwip` + `behave-freertos-lwip` |
 | `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` | `syslog-ng-cmsis-lwip` + `behave-cmsis-lwip` |
 | `bdd-cmsisrtos-lwipsocket-wolfssl-littlefs-syslogng` | `syslog-ng-cmsis-lwip-wolfssl` + `behave-cmsis-lwip-wolfssl` |
+| `bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng` | `syslog-ng-cmsis-lwip-norflash` + `behave-cmsis-lwip-norflash` (the `@store` scenarios only) |
 | `bdd-windows-openssl-otel` | runner-direct (no compose); spawns `otelcol-contrib.exe` directly |
 
 Each QEMU job depends on its cross-build job (`build-freertos-plustcp-mbedtls-plusfat`,
 `build-freertos-lwipraw-mbedtls-fatfs`, `build-cmsisrtos-lwipsocket-mbedtls-littlefs`,
-`build-cmsisrtos-lwipsocket-wolfssl-littlefs`) to upload the BDD target
+`build-cmsisrtos-lwipsocket-wolfssl-littlefs`,
+`build-cmsisrtos-lwipsocket-mbedtls-norflash`) to upload the BDD target
 ELF as an artifact, and downloads it before `docker compose up`.

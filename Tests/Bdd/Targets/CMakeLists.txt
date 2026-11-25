@@ -84,11 +84,19 @@ if(SOLIDSYSLOG_WINSOCK AND HAVE_WINDOWS_PLATFORM)
 endif()
 
 # The store a target keeps directly on a NOR flash runs over the SpiNorFlash
-# pack, so its tests build where that pack does.
+# pack, and the part the QEMU machine simulates sits behind that pack's bus, so
+# their tests build where the pack does.
 if(SOLIDSYSLOG_SPINORFLASH)
-    list(APPEND BDD_TARGET_TEST_SOURCES BddTargetNorFlashStoreTest.cpp)
+    list(APPEND BDD_TARGET_TEST_SOURCES
+        BddTargetNorFlashStoreTest.cpp
+        Boards/Mps2An385/SimulatedSpiNorFlashTest.cpp
+    )
     list(APPEND BDD_TARGET_PRODUCTION_SOURCES
         ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetNorFlashStore.c
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Mps2An385/SimulatedSpiNorFlash.c
+    )
+    list(APPEND BDD_TARGET_TEST_INCLUDE_DIRS
+        ${CMAKE_SOURCE_DIR}/Bdd/Targets/Boards/Mps2An385            # the QEMU machine's simulated flash part
     )
 endif()
 

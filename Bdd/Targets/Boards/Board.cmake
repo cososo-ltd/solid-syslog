@@ -50,7 +50,7 @@
 #                                         BddTargetBoardSpiNorFlashBus_Take, for
 #                                         a store kept on the flash with no
 #                                         filesystem. Empty on a board with no
-#                                         flash
+#                                         flash, real or simulated
 #
 # A target takes one of the three, so a board does not need to know which
 # targets exist.

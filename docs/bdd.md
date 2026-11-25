@@ -53,6 +53,7 @@ fault-finding tips.
 | FreeRTOS (lwIP Raw API) | `behave-freertos-lwip` | `syslog-ng-freertos-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API) | `behave-cmsis-lwip` | `syslog-ng-cmsis-lwip`, same shape |
 | CMSIS-RTOS2 (lwIP Sockets API), wolfSSL | `behave-cmsis-lwip-wolfssl` | `syslog-ng-cmsis-lwip-wolfssl`, same shape |
+| CMSIS-RTOS2 (lwIP Sockets API), with its store on raw flash | `behave-cmsis-lwip-norflash` - the target built by the `cmsis-cross-lwip-norflash` preset, running the `@store` scenarios and no others | `syslog-ng-cmsis-lwip-norflash`, same shape |
 | Windows | `behave` on the runner | `otelcol-contrib` (no compose; runner-direct) |
 | VxWorks 6.4 | `behave` natively on the development machine, driving QEMU on a build machine through the VxWorks 6.4 runner (`Bdd/Targets/VxWorks64/Run-VxWorks64Bdd.ps1`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
 | FreeRTOS (lwIP Raw API) on the NUCLEO-F767ZI | `behave` natively on the development machine, driving the board over its serial port and resetting it through its debug probe (`Bdd/Targets/Boards/NucleoF767zi/Run-NucleoF767ziBdd.ps1 -Target lwip`) | `otelcol-contrib` on the development machine, on UDP and TCP 5514 (`Bdd/otel/config.vxworks64.yaml`) |
@@ -66,6 +67,25 @@ is visible to both syslog-ng (writer) and Behave (reader) without any network fi
 transfer. The FreeRTOS ELF is built in the cross image and run under
 `qemu-system-arm` from inside the `freertos-target` service; Behave drives it
 through the QEMU UART (`-serial stdio`).
+
+### The raw flash store under QEMU
+
+The QEMU machine has no flash. The CMSIS-RTOS2 target built with its store on
+raw flash simulates one: a Winbond W25Q128JV in software, behind the SPI bus of
+the SPI NOR flash pack, in `Bdd/Targets/Boards/Mps2An385/`. So the pack's own
+driver runs in CI, reading the part's SFDP table as it does on a board, under
+Core's flash block device and the block store.
+
+The simulated part answers the table read from a real one. A program clears
+bits and sets none, an erase sets a 4 KiB sector to ones, neither happens
+without a write enable first, and the part is busy for a time afterwards. What
+it holds is `solidsyslog-flash.img` in QEMU's working directory, which outlasts
+a restart of the target as a part's contents outlast a reset, and which Behave
+removes around each scenario.
+
+It is a model and not the part. It has the timing and the electrical
+behaviour of no real flash, and [What has been run on
+hardware](#what-has-been-run-on-hardware) is where the same image meets one.
 
 ## Key files
 
@@ -145,7 +165,7 @@ etc.) without rewriting feature tags.
 | `@mtls` | Needs mutual TLS (client cert + key) |
 | `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - a file-backed block store, a switching sender, a buffer to fill, or a record Service holds through an outage. Every target binary carries a buffered wiring; the one runner that excludes it is `behave-linux-passthrough`, which runs everything else over the passthrough wiring. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
 | `@passthrough` | Asserts what only the passthrough wiring does: a record the sender could not take is lost, and the logger's report of it lands once the sender recovers. Run on `behave-linux-passthrough` alone; every other runner excludes it. |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), VxWorks 6.4 over `SolidSyslogVxWorks64File`, and the three targets on the NUCLEO-F767ZI, on media the harness wipes before each of these scenarios: FreeRTOS (lwIP Raw API) over `SolidSyslogFatFsFile` and FreeRTOS (FreeRTOS-Plus-TCP) over `SolidSyslogPlusFatFile`, both on a MicroSD card, and CMSIS-RTOS2 over `SolidSyslogLittleFsFile` on a W25Q128 flash. |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), VxWorks 6.4 over `SolidSyslogVxWorks64File`, and the three targets on the NUCLEO-F767ZI, on media the harness wipes before each of these scenarios: FreeRTOS (lwIP Raw API) over `SolidSyslogFatFsFile` and FreeRTOS (FreeRTOS-Plus-TCP) over `SolidSyslogPlusFatFile`, both on a MicroSD card, and CMSIS-RTOS2 over `SolidSyslogLittleFsFile` on a W25Q128 flash. The CMSIS-RTOS2 target is also built with its store directly on NOR flash, over `SolidSyslogNorFlashBlockDevice` and no file class: on the NUCLEO-F767ZI's W25Q128, and under QEMU on [a part the target simulates](#the-raw-flash-store-under-qemu). |
 | `@host_store` | Needs the target's store on the host's filesystem, where a step can spoil the store's path before the target starts, or corrupt a stored record between runs. Run on Linux and Windows; excluded on the QEMU targets, VxWorks 6.4 and the NUCLEO-F767ZI, whose store media the harness cannot reach. |
 | `@host_buffer` | Needs a buffer a step can fill from the prompt in one burst while the sender is down, so the discard policy on the buffer, and on the record Service holds, shows at the collector. Run on Linux (message queue, ten records) and Windows (ring); excluded on the QEMU targets, VxWorks 6.4 and the NUCLEO-F767ZI, whose buffers the harness does not fill. |
 | `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux, Windows, VxWorks 6.4 and the NUCLEO-F767ZI, the last two with their clock set by the harness; excluded on the FreeRTOS and CMSIS-RTOS2 targets under QEMU, which model a no-RTC product per RFC 5424 section 6.2.3.1. |
