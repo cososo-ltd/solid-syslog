@@ -115,7 +115,7 @@ The lane names say the platform and toolchain but not the adapter, so:
 | LittleFS | `unit-linux-gcc`, its sanitizer lane and `unit-linux-clang-coverage` against fakes; `integration-linux-littlefs` against real littlefs; store-and-forward scenarios run in `bdd-cmsisrtos-lwipsocket-mbedtls-littlefs-syslogng` |
 | SPI NOR flash | Unit tests against a simulated part in every host lane that builds `Tests/` and leaves the platform list at `Auto`; `build-nucleo-cmsisrtos-lwipsocket` cross build, where it is the flash under that image's LittleFS, and `build-nucleo-cmsisrtos-lwipsocket-norflash`, where the store is directly on it; `bdd-cmsisrtos-lwipsocket-mbedtls-norflash-syslogng` runs the store scenarios over it under QEMU, against a part the target simulates |
 | POSIX, Windows | Every Linux host lane that builds `Tests/`, `build-linux-wolfssl`, and `unit-windows-msvc`, plus the host BDD lanes |
-| C11 atomics | Probe-selected into `libSolidSyslog.a` in every Linux host lane that builds `Tests/` except `build-linux-wolfssl`, whose preset names it, as the three lwIP cross presets do. Not in `build-c99`, which has no C11 header to find |
+| C11 atomics | Probe-selected into `libSolidSyslog.a` in every Linux host lane that builds `Tests/` except `build-linux-wolfssl`, whose preset names it, as the lwIP cross presets do. Not in `build-c99`, which has no C11 header to find |
 
 <!-- /platforms -->
 

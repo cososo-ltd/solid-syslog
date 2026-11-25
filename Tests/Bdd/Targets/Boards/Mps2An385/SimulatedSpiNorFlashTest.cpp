@@ -9,6 +9,7 @@
 #include "SolidSyslogNullNorFlash.h"
 #include "SolidSyslogSpiNorFlash.h"
 #include "SolidSyslogSpiNorFlashBus.h"
+#include "SpiNorFlashPartFake.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
 
@@ -96,16 +97,14 @@ enum
     ERASED = 0xFF
 };
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage) -- macros so a failure reports the test's own line
+/* A macro, so that a failure reports the test's own line. */
 #define CHECK_BYTES(expected, actual)                                                 \
     {                                                                                 \
-        const Bytes expectedBytes = expected;                                         \
-        const Bytes actualBytes = actual;                                             \
+        const Bytes& expectedBytes = expected;                                        \
+        const Bytes& actualBytes = actual;                                            \
         LONGS_EQUAL(expectedBytes.size(), actualBytes.size());                        \
         MEMCMP_EQUAL(expectedBytes.data(), actualBytes.data(), expectedBytes.size()); \
     }
-
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 // clang-format off
 TEST_BASE(SimulatedPartTestBase)
@@ -158,7 +157,7 @@ TEST_GROUP_BASE(SimulatedSpiNorFlash, SimulatedPartTestBase)
     }
 
     /* One command and what the part answers it with, within one select. */
-    Bytes Ask(const Bytes& request, size_t answerCount) const
+    [[nodiscard]] Bytes Ask(const Bytes& request, size_t answerCount) const
     {
         Bytes answer(answerCount, 0x00);
         bus->Select(bus);
@@ -210,20 +209,20 @@ TEST_GROUP_BASE(SimulatedSpiNorFlash, SimulatedPartTestBase)
         Send(request);
     }
 
-    Bytes ReadData(uint32_t address, size_t count) const
+    [[nodiscard]] Bytes ReadData(uint32_t address, size_t count) const
     {
         return Ask(WithAddress(READ_DATA, address), count);
     }
 
     /* The part ignores the byte after the address. */
-    Bytes ReadSfdp(uint32_t address, size_t count) const
+    [[nodiscard]] Bytes ReadSfdp(uint32_t address, size_t count) const
     {
         Bytes request = WithAddress(READ_SFDP, address);
         request.push_back(0x00);
         return Ask(request, count);
     }
 
-    uint8_t Status() const
+    [[nodiscard]] uint8_t Status() const
     {
         return Ask({READ_STATUS}, 1).front();
     }
@@ -252,27 +251,13 @@ TEST(SimulatedSpiNorFlash, ItsSfdpBeginsWithTheSignature)
     CHECK_BYTES(Bytes({'S', 'F', 'D', 'P'}), ReadSfdp(0x000000, 4));
 }
 
-/* The table a W25Q128JV answers with, as it was read from one: SFDP 1.5, one
- * parameter header, and a basic table of sixteen DWORDs at 0x80. */
-TEST(SimulatedSpiNorFlash, ItsSfdpIsAW25Q128Jvs)
+/* The table a W25Q128JV answers with, as it was read from one, and the one
+ * the SpiNorFlash pack's own tests give their fake part. Every byte outside
+ * its header and its basic table reads as erased. */
+TEST(SimulatedSpiNorFlash, ItsSfdpIsTheW25Q128JvsThePacksTestsUse)
 {
-    CHECK_BYTES(
-        Bytes({0x53, 0x46, 0x44, 0x50, 0x05, 0x01, 0x00, 0xFF, 0x00, 0x05, 0x01, 0x10, 0x80, 0x00, 0x00, 0xFF}),
-        ReadSfdp(0x000000, 16)
-    );
-    CHECK_BYTES(
-        Bytes({0xE5, 0x20, 0xF9, 0xFF, 0xFF, 0xFF, 0xFF, 0x07, 0x44, 0xEB, 0x08, 0x6B, 0x08, 0x3B, 0x42, 0xBB,
-               0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x40, 0xEB, 0x0C, 0x20, 0x0F, 0x52,
-               0x10, 0xD8, 0x00, 0x00, 0x36, 0x02, 0xA6, 0x00, 0x82, 0xEA, 0x14, 0xC9, 0xE9, 0x63, 0x76, 0x33,
-               0x7A, 0x75, 0x7A, 0x75, 0xF7, 0xA2, 0xD5, 0x5C, 0x19, 0xF7, 0x4D, 0xFF, 0xE9, 0x30, 0xF8, 0x80}),
-        ReadSfdp(0x000080, 64)
-    );
-}
-
-TEST(SimulatedSpiNorFlash, ItsSfdpReadsAsErasedOutsideTheHeaderAndTheTable)
-{
-    CHECK_BYTES(Bytes(0x80 - 0x10, ERASED), ReadSfdp(0x000010, 0x80 - 0x10));
-    CHECK_BYTES(Bytes(0x100 - 0xC0, ERASED), ReadSfdp(0x0000C0, 0x100 - 0xC0));
+    const SpiNorFlashPartFake::SfdpTable table = SpiNorFlashPartFake::W25Q128JvSfdp();
+    CHECK_BYTES(Bytes(table.begin(), table.end()), ReadSfdp(0x000000, table.size()));
 }
 
 TEST(SimulatedSpiNorFlash, ItsSfdpRepeatsEvery256Bytes)
@@ -297,7 +282,7 @@ TEST(SimulatedSpiNorFlash, ItReadsTheComplementOfWhatItsMediumHolds)
 /* Each call of the medium on the QEMU machine is a trap to the host. */
 TEST(SimulatedSpiNorFlash, AReadTakesItsBytesFromTheMediumInOneCall)
 {
-    ReadData(0x000000, 300);
+    (void) ReadData(0x000000, 300);
     LONGS_EQUAL(1, mediumReads);
 }
 
@@ -358,7 +343,7 @@ TEST(SimulatedSpiNorFlash, ItAnswersNothingWhileItIsNotSelected)
 TEST(SimulatedSpiNorFlash, ItStopsAnsweringACommandWhenItIsDeselected)
 {
     uint8_t answer = 0x00;
-    Status();
+    (void) Status();
 
     bus->Read(bus, &answer, sizeof(answer));
 
@@ -368,7 +353,7 @@ TEST(SimulatedSpiNorFlash, ItStopsAnsweringACommandWhenItIsDeselected)
 TEST(SimulatedSpiNorFlash, EachSelectBeginsANewCommand)
 {
     Hold(0x000000, {0xFE});
-    Status();
+    (void) Status();
     CHECK_BYTES(Bytes({0x01}), ReadData(0x000000, 1));
 }
 
@@ -462,13 +447,14 @@ TEST(SimulatedSpiNorFlash, WhileItIsBusyItIgnoresAProgram)
     CHECK_BYTES(Bytes({ERASED}), ReadData(0x000200, 1));
 }
 
-TEST(SimulatedSpiNorFlash, WhileItIsBusyItDoesNotTakeAnEnableOfWriting)
+TEST(SimulatedSpiNorFlash, WhileItIsBusyItIgnoresAnErase)
 {
+    Hold(0x001000, {0xFE});
     BeginProgram(0x000100, {0x12});
-    Send({WRITE_ENABLE});
+    BeginErase(0x001000);
     now += SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS;
 
-    BYTES_EQUAL(0x00, Status());
+    CHECK_BYTES(Bytes({0x01}), ReadData(0x001000, 1));
 }
 
 TEST(SimulatedSpiNorFlash, AnEraseSetsTheSectorTheAddressIsInToOnes)
@@ -515,6 +501,13 @@ TEST(SimulatedSpiNorFlash, AnEraseIsOneCallOfTheMedium)
     Erase(0x001000);
     LONGS_EQUAL(1, mediumWrites);
     LONGS_EQUAL(0, mediumReads);
+}
+
+TEST(SimulatedSpiNorFlash, PoweringItUpLeavesTheBusWithNoWhileBusy)
+{
+    bus->WhileBusy = WhileBusy;
+    PowerUp();
+    CHECK_TRUE(bus->WhileBusy == nullptr);
 }
 
 TEST(SimulatedSpiNorFlash, PoweredUpAgainItHoldsWhatItHeldAndIsReadyWithWritingDisabled)

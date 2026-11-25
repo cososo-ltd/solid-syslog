@@ -117,6 +117,7 @@ struct SolidSyslogSpiNorFlashBus* SimulatedSpiNorFlash_PowerUp(const struct Simu
 {
     medium = config->Medium;
     milliseconds = config->Milliseconds;
+    bus.WhileBusy = NULL;
     selected = false;
     writeEnabled = false;
     writing = false;

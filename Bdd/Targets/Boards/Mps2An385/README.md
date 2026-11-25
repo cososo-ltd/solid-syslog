@@ -63,7 +63,9 @@ image, which reads as zeros, is an erased part. Behave removes it around each
 scenario, and it survives a QEMU restart as the disk image does.
 
 The part is busy for 1 ms after a page program and 50 ms after an erase, by
-the kernel's count of milliseconds, and the bus yields while the pack waits.
+the kernel's count of milliseconds. That count moves 10 ms at a time, so a
+page program holds the store until the next tick, which is up to 10 ms. The
+bus yields while the pack waits.
 
 ## Network
 

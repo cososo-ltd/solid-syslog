@@ -83,15 +83,17 @@ static bool FlashImage_Write(struct SimulatedSpiNorFlashMedium* base, uint32_t o
     return FlashImage_IsOpen() && (SemihostingFile_WriteAt(imageHandle, (int) offset, buffer, (int) count) == 0);
 }
 
-/* The kernel's count, which moves a tick at a time. Only differences between
- * two readings are used, so it is free to wrap. */
+/* The kernel's count, which moves a tick at a time, so the part is busy until
+ * the next tick at the least: up to 10 ms after a page program, where the
+ * part's own time is 1 ms. Only differences between two readings are used, so
+ * it is free to wrap. */
 static uint32_t FlashBus_Milliseconds(void)
 {
     return (uint32_t) BddTargetOsPrimitives_UptimeMilliseconds();
 }
 
-/* A yield and not a sleep, so that the wait costs no more than the part's
- * time and a thread of the same priority runs meanwhile. */
+/* A yield, so that a thread of the same priority runs while the part is
+ * busy. */
 static void FlashBus_WhileBusy(struct SolidSyslogSpiNorFlashBus* base)
 {
     (void) base;
