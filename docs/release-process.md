@@ -320,9 +320,9 @@ confirms that the branch the documentation links resolves, so a green run on
 both stacks is what allows the draft to be published.
 
 `dry-run` is on unless it is cleared, because a release branch is never deleted
-or rewritten. A dry run makes every check, reports each one that would refuse
-the release, and pushes nothing, so the release can be rehearsed before the tag
-exists. The run's summary lists the stage commit messages that quote a figure in
+or rewritten. A dry run reports each check that would refuse the release and
+pushes nothing, so the release can be rehearsed before the tag exists. The
+run's summary lists the stage commit messages that quote a figure in
 their prose; those are corrected by hand on `wip/next`, and swept again, before
 the documentation is brought to the release.
 
