@@ -192,6 +192,15 @@
             }
         },
         {
+            "name": "cmsis-cross-lwip-norflash",
+            "displayName": "CMSIS-RTOS2+lwIP cross BDD target with its store directly on a simulated NOR flash (ARM Cortex-M3, mps2-an385)",
+            "inherits": "cmsis-cross-lwip",
+            "cacheVariables": {
+                "SOLIDSYSLOG_BDD_TARGET": "CMSIS_LWIP_NOR_FLASH",
+                "SOLIDSYSLOG_PLATFORMS": "CmsisRtos;LwipSocket;MbedTls;SpiNorFlash;StdAtomic"
+            }
+        },
+        {
             "name": "nucleo-f767zi-lwip",
             "displayName": "FreeRTOS+lwIP cross BDD target (ARM Cortex-M7, NUCLEO-F767ZI)",
             "binaryDir": "${sourceDir}/build/${presetName}",
@@ -266,6 +275,7 @@
         { "name": "freertos-cross-lwip", "configurePreset": "freertos-cross-lwip" },
         { "name": "cmsis-cross-lwip",  "configurePreset": "cmsis-cross-lwip" },
         { "name": "cmsis-cross-lwip-wolfssl", "configurePreset": "cmsis-cross-lwip-wolfssl" },
+        { "name": "cmsis-cross-lwip-norflash", "configurePreset": "cmsis-cross-lwip-norflash" },
         { "name": "nucleo-f767zi-lwip", "configurePreset": "nucleo-f767zi-lwip" },
         { "name": "nucleo-f767zi-cmsis-lwip", "configurePreset": "nucleo-f767zi-cmsis-lwip" },
         { "name": "nucleo-f767zi-cmsis-lwip-norflash", "configurePreset": "nucleo-f767zi-cmsis-lwip-norflash" },

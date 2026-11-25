@@ -99,6 +99,7 @@ static uint8_t page[PAGE_BYTES];
 static size_t dataCount;
 
 static bool SimulatedSpiNorFlash_IsBusy(void);
+static void SimulatedSpiNorFlash_ActOnTheCommand(void);
 static inline bool SimulatedSpiNorFlash_IsAsked(uint8_t asked, size_t requestBytes);
 static void SimulatedSpiNorFlash_ProgramThePage(void);
 static void SimulatedSpiNorFlash_ProgramInPage(uint32_t pageAddress, size_t from, size_t count);
@@ -106,6 +107,7 @@ static inline void SimulatedSpiNorFlash_BeBusyFor(uint32_t time);
 static void SimulatedSpiNorFlash_EraseTheSector(void);
 static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte);
 static inline uint8_t SimulatedSpiNorFlash_Status(void);
+static inline bool SimulatedSpiNorFlash_IsAnswered(uint8_t asked, size_t requestBytes);
 static bool SimulatedSpiNorFlash_ReadData(uint8_t* bytes, size_t count);
 static inline size_t SimulatedSpiNorFlash_BytesToEndOfPart(size_t remaining);
 static void SimulatedSpiNorFlash_ReadSfdp(uint8_t* bytes, size_t count);
@@ -132,27 +134,10 @@ static void SimulatedSpiNorFlash_Select(struct SolidSyslogSpiNorFlashBus* base)
 static void SimulatedSpiNorFlash_Deselect(struct SolidSyslogSpiNorFlashBus* base)
 {
     (void) base;
-    if (SimulatedSpiNorFlash_IsBusy())
+    /* A busy part takes nothing until it has finished. */
+    if (!SimulatedSpiNorFlash_IsBusy())
     {
-        /* It takes nothing until it has finished. */
-    }
-    else if (SimulatedSpiNorFlash_IsAsked(WRITE_ENABLE, COMMAND_BYTES))
-    {
-        writeEnabled = true;
-    }
-    else if (SimulatedSpiNorFlash_IsAsked(PAGE_PROGRAM, COMMAND_AND_ADDRESS_BYTES + 1U) && writeEnabled)
-    {
-        SimulatedSpiNorFlash_ProgramThePage();
-        SimulatedSpiNorFlash_BeBusyFor(SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS);
-    }
-    else if (SimulatedSpiNorFlash_IsAsked(SECTOR_ERASE, COMMAND_AND_ADDRESS_BYTES) && writeEnabled)
-    {
-        SimulatedSpiNorFlash_EraseTheSector();
-        SimulatedSpiNorFlash_BeBusyFor(SIMULATED_SPI_NOR_FLASH_ERASE_MILLISECONDS);
-    }
-    else
-    {
-        /* Nothing the part acts on as its select rises. */
+        SimulatedSpiNorFlash_ActOnTheCommand();
     }
     selected = false;
     received = 0U;
@@ -169,6 +154,29 @@ static bool SimulatedSpiNorFlash_IsBusy(void)
         writeEnabled = false;
     }
     return writing;
+}
+
+/* What the part does as its select rises. */
+static void SimulatedSpiNorFlash_ActOnTheCommand(void)
+{
+    if (SimulatedSpiNorFlash_IsAsked(WRITE_ENABLE, COMMAND_BYTES))
+    {
+        writeEnabled = true;
+    }
+    else if (SimulatedSpiNorFlash_IsAsked(PAGE_PROGRAM, COMMAND_AND_ADDRESS_BYTES + 1U) && writeEnabled)
+    {
+        SimulatedSpiNorFlash_ProgramThePage();
+        SimulatedSpiNorFlash_BeBusyFor(SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS);
+    }
+    else if (SimulatedSpiNorFlash_IsAsked(SECTOR_ERASE, COMMAND_AND_ADDRESS_BYTES) && writeEnabled)
+    {
+        SimulatedSpiNorFlash_EraseTheSector();
+        SimulatedSpiNorFlash_BeBusyFor(SIMULATED_SPI_NOR_FLASH_ERASE_MILLISECONDS);
+    }
+    else
+    {
+        /* A command it only answers, or one it does not take. */
+    }
 }
 
 /* Whether the part has been sent that command and as many bytes as it takes
@@ -272,16 +280,11 @@ static bool SimulatedSpiNorFlash_Read(struct SolidSyslogSpiNorFlashBus* base, vo
     {
         (void) memset(bytes, SimulatedSpiNorFlash_Status(), count);
     }
-    else if (SimulatedSpiNorFlash_IsBusy())
-    {
-        /* It answers nothing else until it has finished. */
-        (void) memset(bytes, IDLE_LINE, count);
-    }
-    else if (SimulatedSpiNorFlash_IsAsked(READ_DATA, COMMAND_AND_ADDRESS_BYTES))
+    else if (SimulatedSpiNorFlash_IsAnswered(READ_DATA, COMMAND_AND_ADDRESS_BYTES))
     {
         read = SimulatedSpiNorFlash_ReadData(bytes, count);
     }
-    else if (SimulatedSpiNorFlash_IsAsked(READ_SFDP, SFDP_REQUEST_BYTES))
+    else if (SimulatedSpiNorFlash_IsAnswered(READ_SFDP, SFDP_REQUEST_BYTES))
     {
         SimulatedSpiNorFlash_ReadSfdp(bytes, count);
     }
@@ -300,6 +303,12 @@ static inline uint8_t SimulatedSpiNorFlash_Status(void)
         status |= (uint8_t) STATUS_WRITE_ENABLED;
     }
     return status;
+}
+
+/* A busy part answers nothing but a request for its status. */
+static inline bool SimulatedSpiNorFlash_IsAnswered(uint8_t asked, size_t requestBytes)
+{
+    return SimulatedSpiNorFlash_IsAsked(asked, requestBytes) && !SimulatedSpiNorFlash_IsBusy();
 }
 
 /* One call of the medium, or two for a read that runs past the end of the
