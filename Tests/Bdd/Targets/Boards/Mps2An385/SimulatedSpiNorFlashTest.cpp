@@ -156,22 +156,27 @@ TEST_GROUP_BASE(SimulatedSpiNorFlash, SimulatedPartTestBase)
         }
     }
 
-    /* One command and what the part answers it with, within one select. */
-    [[nodiscard]] Bytes Ask(const Bytes& request, size_t answerCount) const
+    /* One command and what the part answers it with, within one select. The
+     * time is what passes once the command has arrived, before the part is
+     * read. */
+    [[nodiscard]] Bytes Ask(const Bytes& request, size_t answerCount, uint32_t timeAfterItArrives = 0) const
     {
         Bytes answer(answerCount, 0x00);
         bus->Select(bus);
         bus->Write(bus, request.data(), request.size());
+        now += timeAfterItArrives;
         bus->Read(bus, answer.data(), answer.size());
         bus->Deselect(bus);
         return answer;
     }
 
-    /* One command that is not answered. */
-    void Send(const Bytes& request) const
+    /* One command that is not answered. The time is what passes once it has
+     * arrived, before the select rises. */
+    void Send(const Bytes& request, uint32_t timeAfterItArrives = 0) const
     {
         bus->Select(bus);
         bus->Write(bus, request.data(), request.size());
+        now += timeAfterItArrives;
         bus->Deselect(bus);
     }
 
@@ -452,6 +457,27 @@ TEST(SimulatedSpiNorFlash, WhileItIsBusyItIgnoresAnErase)
     now += SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS;
 
     CHECK_BYTES(Bytes({0x01}), ReadData(0x001000, 1));
+}
+
+/* The part judges a command as it arrives, so one that arrived while it was
+ * busy is ignored though it has finished by the time the select rises. */
+TEST(SimulatedSpiNorFlash, AWriteEnableThatArrivesWhileItIsBusyIsIgnoredThoughItFinishesBeforeTheSelectRises)
+{
+    BeginProgram(0x000100, {0x12});
+
+    Send({WRITE_ENABLE}, SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS);
+
+    BYTES_EQUAL(0x00, Status());
+}
+
+TEST(SimulatedSpiNorFlash, AReadThatArrivesWhileItIsBusyIsNotAnsweredThoughItFinishesBeforeItIsRead)
+{
+    Hold(0x000000, {0xFE});
+    BeginProgram(0x000100, {0x12});
+
+    const Bytes answer = Ask(WithAddress(READ_DATA, 0x000000), 1, SIMULATED_SPI_NOR_FLASH_PROGRAM_MILLISECONDS);
+
+    CHECK_BYTES(Bytes({0xFF}), answer);
 }
 
 TEST(SimulatedSpiNorFlash, AnEraseSetsTheSectorTheAddressIsInToOnes)

@@ -93,12 +93,16 @@ static uint8_t command;
 static size_t received;
 static uint32_t address;
 
+/* Whether the part was ready as the command arrived. One that arrived while
+ * it was busy is ignored, all but a request for its status, even where the
+ * part has finished before the command ends. */
+static bool taken;
+
 /* What a program command has sent to be programmed, each byte at its place
  * in the page, and how many bytes that was. */
 static uint8_t page[PAGE_BYTES];
 static size_t dataCount;
 
-static bool SimulatedSpiNorFlash_IsBusy(void);
 static void SimulatedSpiNorFlash_ActOnTheCommand(void);
 static inline bool SimulatedSpiNorFlash_IsAsked(uint8_t asked, size_t requestBytes);
 static void SimulatedSpiNorFlash_ProgramThePage(void);
@@ -106,6 +110,7 @@ static void SimulatedSpiNorFlash_ProgramInPage(uint32_t pageAddress, size_t from
 static inline void SimulatedSpiNorFlash_BeBusyFor(uint32_t time);
 static void SimulatedSpiNorFlash_EraseTheSector(void);
 static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte);
+static bool SimulatedSpiNorFlash_IsBusy(void);
 static inline uint8_t SimulatedSpiNorFlash_Status(void);
 static inline bool SimulatedSpiNorFlash_IsAnswered(uint8_t asked, size_t requestBytes);
 static bool SimulatedSpiNorFlash_ReadData(uint8_t* bytes, size_t count);
@@ -135,26 +140,12 @@ static void SimulatedSpiNorFlash_Select(struct SolidSyslogSpiNorFlashBus* base)
 static void SimulatedSpiNorFlash_Deselect(struct SolidSyslogSpiNorFlashBus* base)
 {
     (void) base;
-    /* A busy part takes nothing until it has finished. */
-    if (!SimulatedSpiNorFlash_IsBusy())
+    if (taken)
     {
         SimulatedSpiNorFlash_ActOnTheCommand();
     }
     selected = false;
     received = 0U;
-}
-
-/* Writing stays enabled until what was begun has finished, and the part
- * disables it then. Nothing happens in the part between two calls of its
- * bus, so the finishing is seen at the first call after its time. */
-static bool SimulatedSpiNorFlash_IsBusy(void)
-{
-    if (writing && ((milliseconds() - writingSince) >= writingFor))
-    {
-        writing = false;
-        writeEnabled = false;
-    }
-    return writing;
 }
 
 /* What the part does as its select rises. */
@@ -255,6 +246,7 @@ static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte)
         command = byte;
         address = 0U;
         dataCount = 0U;
+        taken = !SimulatedSpiNorFlash_IsBusy();
     }
     else if (received <= (size_t) ADDRESS_BYTES)
     {
@@ -270,6 +262,19 @@ static inline void SimulatedSpiNorFlash_TakeByte(uint8_t byte)
         /* A byte the command has no use for. */
     }
     received++;
+}
+
+/* Writing stays enabled until what was begun has finished, and the part
+ * disables it then. Nothing happens in the part between two calls of its
+ * bus, so the finishing is seen the first time it is asked after its time. */
+static bool SimulatedSpiNorFlash_IsBusy(void)
+{
+    if (writing && ((milliseconds() - writingSince) >= writingFor))
+    {
+        writing = false;
+        writeEnabled = false;
+    }
+    return writing;
 }
 
 static bool SimulatedSpiNorFlash_Read(struct SolidSyslogSpiNorFlashBus* base, void* buffer, size_t count)
@@ -306,10 +311,11 @@ static inline uint8_t SimulatedSpiNorFlash_Status(void)
     return status;
 }
 
-/* A busy part answers nothing but a request for its status. */
+/* A part that was busy as a command arrived answers nothing but a request
+ * for its status. */
 static inline bool SimulatedSpiNorFlash_IsAnswered(uint8_t asked, size_t requestBytes)
 {
-    return SimulatedSpiNorFlash_IsAsked(asked, requestBytes) && !SimulatedSpiNorFlash_IsBusy();
+    return SimulatedSpiNorFlash_IsAsked(asked, requestBytes) && taken;
 }
 
 /* One call of the medium, or two for a read that runs past the end of the

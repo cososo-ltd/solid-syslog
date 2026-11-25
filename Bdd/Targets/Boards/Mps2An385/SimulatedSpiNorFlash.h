@@ -21,8 +21,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * clears bits and sets none, and one that runs past the end of its page
      * goes round to the page's start. An erase sets a 4 KiB sector to ones.
      * Neither happens unless writing was enabled just before it. The part is
-     * then busy for a time, in which it answers nothing but a request for its
-     * status, and it disables writing as it finishes.
+     * then busy for a time, and it disables writing as it finishes. A command
+     * that arrives while it is busy is ignored, all but a request for its
+     * status, even where the part has finished before the command ends.
      *
      * It takes the six commands the pack sends: page program, read data, read
      * status, write enable, sector erase and read SFDP. Any other is not
