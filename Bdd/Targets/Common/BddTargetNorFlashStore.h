@@ -40,7 +40,8 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
      * to the next; call with no block device over the part. It starts the
      * part if need be, and disposes of each block that exists. Nothing is
      * erased, because the store erases every block as it takes it. Answers
-     * false if the part does not start or a block cannot be disposed of. */
+     * false if the part does not start, if it does not have the run the
+     * board states, or if a block cannot be disposed of. */
     bool BddTargetNorFlashStore_Wipe(void);
 
 SOLIDSYSLOG_EXTERN_C_END

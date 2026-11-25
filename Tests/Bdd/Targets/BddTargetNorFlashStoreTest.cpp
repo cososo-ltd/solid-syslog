@@ -79,6 +79,12 @@ TEST_GROUP(BddTargetNorFlashStore)
         device = BddTargetNorFlashStore_CreateBlockDevice();
     }
 
+    /* It begins one block past the last the part has. */
+    static void StateARunThePartDoesNotHave()
+    {
+        boardRun.FirstBlock = FLASH_BLOCKS;
+    }
+
     /* Leaves the part holding one block of a store, with no device over it. */
     void MountAndAcquire(size_t block)
     {
@@ -209,6 +215,22 @@ TEST(BddTargetNorFlashStore, WipeAnswersFalseForAPartThatIsNotThere)
     SpiNorFlashPartFake::settings.present = false;
 
     CHECK_FALSE(BddTargetNorFlashStore_Wipe());
+}
+
+TEST(BddTargetNorFlashStore, WipeAnswersFalseForARunThePartDoesNotHave)
+{
+    StateARunThePartDoesNotHave();
+
+    CHECK_FALSE(BddTargetNorFlashStore_Wipe());
+}
+
+TEST(BddTargetNorFlashStore, WipeOfARunThePartDoesNotHaveReportsOnlyTheRun)
+{
+    StateARunThePartDoesNotHave();
+
+    BddTargetNorFlashStore_Wipe();
+
+    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
 }
 
 TEST(BddTargetNorFlashStore, WipeLeavesTheBlockDeviceForTheStore)
