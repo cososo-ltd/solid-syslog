@@ -192,6 +192,29 @@ TEST(SolidSyslogNorFlashBlockDeviceConfig, ARunOfMoreBlocksThanTheFlashHasIsRefu
     CHECK_BAD_CONFIG_REPORTED(SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_BLOCKS_OUTSIDE_FLASH);
 }
 
+/* A run counted back from the end of a flash with fewer blocks than the run:
+ * the subtraction wraps, and the first block and the count then add up to the
+ * number of blocks the flash has. */
+TEST(SolidSyslogNorFlashBlockDeviceConfig, ARunCountedBackFromTheEndOfTooSmallAFlashIsRefused)
+{
+    size_t blockCount = FLASH_BLOCK_COUNT + 1;
+    size_t wrappedFirstBlock = (size_t) FLASH_BLOCK_COUNT - blockCount;
+
+    CreateDevice(wrappedFirstBlock, blockCount);
+
+    POINTERS_EQUAL(SolidSyslogNullBlockDevice_Get(), device);
+    CHECK_BAD_CONFIG_REPORTED(SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_BLOCKS_OUTSIDE_FLASH);
+}
+
+/* The first block and the count add up to one block, by wrapping. */
+TEST(SolidSyslogNorFlashBlockDeviceConfig, ARunFromTheLargestFirstBlockThereIsIsRefused)
+{
+    CreateDevice(SIZE_MAX, 2);
+
+    POINTERS_EQUAL(SolidSyslogNullBlockDevice_Get(), device);
+    CHECK_BAD_CONFIG_REPORTED(SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_BLOCKS_OUTSIDE_FLASH);
+}
+
 TEST(SolidSyslogNorFlashBlockDeviceConfig, ARunThatEndsWithTheFlashIsTaken)
 {
     CreateDevice(FLASH_BLOCK_COUNT - 2, 2);

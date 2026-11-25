@@ -7,10 +7,11 @@
  * the bus or the part from one in the library's flash pack or a filesystem
  * built on it.
  *
- * The board's part is 16 MiB, so its last sector is beyond the 8 MiB a
- * target's filesystem is given, and a store on the part is not disturbed. On
- * an 8 MiB part the check would write in the store. The sector is erased
- * afterwards, whatever the result. */
+ * The board's part is 16 MiB, and its last sector is outside what any target
+ * gives its store, with a filesystem or without, so a store on the part is
+ * not disturbed. On a part small enough for a store to reach its last sector,
+ * the check would write in the store. The sector is erased afterwards,
+ * whatever the result. */
 void FlashCheck_Run(void);
 
 #endif

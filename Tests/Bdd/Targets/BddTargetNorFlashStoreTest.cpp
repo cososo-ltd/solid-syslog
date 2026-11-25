@@ -5,8 +5,11 @@
 #include "BddTargetStoreSettings.h"
 #include "ErrorHandlerFake.h"
 #include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogErrorCategory.h"
 #include "SolidSyslogNorFlashBlockDevice.h"
+#include "SolidSyslogNorFlashBlockDeviceErrors.h"
 #include "SolidSyslogNullBlockDevice.h"
+#include "SolidSyslogPrival.h"
 #include "SpiNorFlashPartFake.h"
 #include "TestUtils.h"
 #include "CppUTest/TestHarness.h"
@@ -29,6 +32,10 @@ enum
     /* The store's own blocks, which it counts from the start of its run. */
     FIRST_BLOCK = 0,
     LAST_BLOCK = RUN_BLOCK_COUNT - 1,
+
+    /* More blocks than any part has, which is what the board has been told
+     * until it is asked. */
+    NOT_TOLD = 99999,
 
     COUNTS_BYTES = 80
 };
@@ -63,7 +70,7 @@ TEST_GROUP(BddTargetNorFlashStore)
         BddTargetStoreSettings_Reset();
         boardRun.FirstBlock = RUN_FIRST_BLOCK;
         boardRun.BlockCount = RUN_BLOCK_COUNT;
-        flashBlockCountTold = 0;
+        flashBlockCountTold = NOT_TOLD;
     }
 
     void teardown() override
@@ -176,6 +183,33 @@ TEST(BddTargetNorFlashStore, ABlockDeviceWithNoPartStartedIsTheNullOne)
     POINTERS_EQUAL(SolidSyslogNullBlockDevice_Get(), device);
 }
 
+TEST(BddTargetNorFlashStore, TheBoardIsToldOfNoBlocksWhenNoPartHasStarted)
+{
+    CreateDevice();
+
+    LONGS_EQUAL(0, flashBlockCountTold);
+}
+
+TEST(BddTargetNorFlashStore, ABlockDeviceOverAPartThatDidNotStartIsTheNullOne)
+{
+    SpiNorFlashPartFake::settings.present = false;
+    BddTargetNorFlashStore_Mount();
+
+    CreateDevice();
+
+    POINTERS_EQUAL(SolidSyslogNullBlockDevice_Get(), device);
+}
+
+TEST(BddTargetNorFlashStore, TheBoardIsToldOfNoBlocksWhenThePartDidNotStart)
+{
+    SpiNorFlashPartFake::settings.present = false;
+    BddTargetNorFlashStore_Mount();
+
+    CreateDevice();
+
+    LONGS_EQUAL(0, flashBlockCountTold);
+}
+
 TEST(BddTargetNorFlashStore, ABlockIsAllAFlashBlockHoldsWhenNoSizeIsSet)
 {
     BddTargetNorFlashStore_Mount();
@@ -230,7 +264,12 @@ TEST(BddTargetNorFlashStore, WipeOfARunThePartDoesNotHaveReportsOnlyTheRun)
 
     BddTargetNorFlashStore_Wipe();
 
-    CALLED_FAKE(ErrorHandlerFake_Handle, ONCE);
+    CHECK_ERROR_REPORTED_ONCE(
+        SOLIDSYSLOG_SEVERITY_CRITICAL,
+        &SolidSyslogNorFlashBlockDeviceErrorSource,
+        SOLIDSYSLOG_CAT_BAD_CONFIG,
+        SOLIDSYSLOG_NOR_FLASH_BLOCK_DEVICE_ERROR_BLOCKS_OUTSIDE_FLASH
+    );
 }
 
 TEST(BddTargetNorFlashStore, WipeLeavesTheBlockDeviceForTheStore)
