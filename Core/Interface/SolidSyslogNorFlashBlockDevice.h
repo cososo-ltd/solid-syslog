@@ -62,7 +62,9 @@ SOLIDSYSLOG_EXTERN_C_BEGIN
          *  SolidSyslogNullNorFlash_Get() asks for no device: Create then returns
          *  the shared NullBlockDevice and reports nothing. */
         struct SolidSyslogNorFlash* Flash;
-        /** The first of the flash's blocks the device may use. */
+        /** The first of the flash's blocks the device may use. However large it
+         *  is, a run that is not all within the flash is refused: FirstBlock and
+         *  BlockCount cannot wrap past that check between them. */
         size_t FirstBlock;
         /** How many of the flash's blocks the device may use, from FirstBlock. It
          *  is what SolidSyslogBlockDevice_GetBlockCount then reports. A BlockStore

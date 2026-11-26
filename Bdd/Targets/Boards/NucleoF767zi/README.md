@@ -29,7 +29,7 @@ what it supplies to the code.
 | Time of day | `BddTargetBoardClock.c`, `BoardRtc.c` | The [real-time clock](#clock), read to the microsecond once `set time` has set it |
 | Sector disk | `BddTargetBoardDisk.c`, `BddTargetBoardSdCardBus.c` | A [MicroSD card](#disk) on SPI4, under the shared card driver |
 | NOR flash bus | `BddTargetBoardSpiNorFlashBus.c`, `BoardSpi4Flash.c` | A [W25Q128 flash](#w25q128-flash) on SPI4, as the bus under the library's SPI NOR flash pack. One image puts the shared LittleFS block device over the pack, and another the store itself |
-| NOR flash run for a store | `BddTargetBoardNorFlashStoreRun.c` | Sectors 1024 to 3071 of the part, for the image that keeps its store there [with no filesystem](#with-no-filesystem) |
+| NOR flash run for a store | `BddTargetBoardNorFlashStoreRun.c` | Sectors 2048 to 3071 of the part, for the image that keeps its store there [with no filesystem](#with-no-filesystem) |
 | SPI4 | `BoardSpi4.c` | The pins, the rate and the two chip selects |
 | Ethernet, under any stack | `BoardEthernet.c`, `EthernetPhy.c` | The MAC's clock, pins and interrupt, which ST's HAL Ethernet driver asks the board for, and a restart of the PHY before the MAC is reset. The link is read from the PHY's standard registers |
 | Ethernet under lwIP | `Lwip/BddTargetBoardNetif.c` | A netif over ST's HAL Ethernet driver |
@@ -252,8 +252,9 @@ The CMSIS-RTOS2 target keeps its store on a W25Q128 flash in a breakout on
 SPI4, wired as in the [pin plan](#storage-breakouts-spi4). There are two images
 of it. One keeps the store in files [on LittleFS](#under-littlefs), and the
 other keeps it on the part directly, [with no filesystem](#with-no-filesystem).
-Each uses 8 MiB of the part's 16: LittleFS the first 8, and the store with no
-filesystem the 8 that begin 4 MiB in.
+LittleFS uses the first 8 MiB of the part's 16, and the store with no
+filesystem the 4 MiB after that, so neither image writes in the other's
+sectors.
 
 The target drives the part through the library's
 [SPI NOR flash pack](../../../../docs/platforms/spinorflash/index.md), which
@@ -327,8 +328,8 @@ target on the store it started with.
 
 `set store file` puts the target on a store whose blocks are the part's own
 4 KiB sectors, through the library's `SolidSyslogNorFlashBlockDevice`. It has
-2048 of them from sector 1024, which is sectors 1024 to 3071: a run in the
-middle of the part, with 4 MiB either side, as a product fitting a store to a
+1024 of them from sector 2048, which is sectors 2048 to 3071: a run that is
+neither the start of the part nor its end, as a product fitting a store to a
 board it already has may have to give it. `BddTargetBoardNorFlashStoreRun.c`
 states the run. A store block is all a sector holds beyond
 the four bytes that device keeps there for the block's state, unless the run
