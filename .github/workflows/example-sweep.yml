@@ -191,3 +191,50 @@ jobs:
           else
             gh issue comment "$number" --body-file /tmp/update.md
           fi
+
+  # Advisory: which stages cost something else than at the last release, so the
+  # stage costs docs/hardening-path.md states in prose are known to need
+  # re-taking before release day. The figures are solid-syslog-example's, as
+  # the documentation's are. It opens no issue and fails nothing.
+  moved:
+    if: >-
+      github.event_name == 'repository_dispatch'
+      && github.event.client_payload.verdict == 'pass'
+      && github.event.client_payload.stack == 'solid-syslog-example'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STACK: solid-syslog-example
+      SHA: ${{ github.event.client_payload.sha }}
+      RUN_URL: ${{ github.event.client_payload.run_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Fetch the sweep and the last release's evidence
+        id: fetch
+        run: |
+          run=${RUN_URL##*/}
+          [[ "$run" =~ ^[0-9]+$ ]] || { echo "'$RUN_URL' names no run" >&2; exit 1; }
+          gh run download "$run" --repo "cososo-ltd/$STACK" --name sweep --dir /tmp/sweep
+          remote="https://github.com/cososo-ltd/$STACK.git"
+          release=$(git ls-remote --heads "$remote" 'refs/heads/release/*' | sed 's|.*refs/heads/||' | sort -V | tail -1)
+          [ -n "$release" ] || { echo "$STACK has no release branch" >&2; exit 1; }
+          git clone -q --depth 1 --branch "$release" "$remote" /tmp/released
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
+      - name: Name the stages whose cost has moved
+        env:
+          RELEASE: ${{ steps.fetch.outputs.release }}
+        run: |
+          python3 scripts/release_docs.py --stages /tmp/sweep --previous /tmp/released/evidence > /tmp/moved.txt
+          cat /tmp/moved.txt
+          {
+            echo "## Stage costs since \`$RELEASE\`"
+            echo
+            echo "\`$STACK\` at solid-syslog \`${SHA:0:7}\` ([run]($RUN_URL)), each stage's own cost against the evidence of \`$RELEASE\`:"
+            echo
+            sed 's/^/- /' /tmp/moved.txt
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -202,6 +202,46 @@ class ReleaseDocsTest(unittest.TestCase):
         _, out, _ = self.run_main("--previous", self.cmake)
         self.assertNotIn("re-take", out)
 
+    def moved_since(self, sweep, previous):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            status = release_docs.main(["--stages", sweep, "--previous", previous, "--root", self.root.name])
+        return status, out.getvalue(), err.getvalue()
+
+    def test_stages_names_what_moved_and_rewrites_nothing(self):
+        previous = self.sweep("previous", (("Baseline", 0, 0), ("linked", 0, 0), ("udp", 7156, 2776), ("tcp", 7992, 2920)))
+        status, out, _ = self.moved_since(self.cmake, previous)
+        self.assertEqual(0, status)
+        self.assertIn("Stage 2 udp: flash +7,156 -> +11,164 B, RAM +2,776 -> +3,056 B", out)
+        self.assertIn("Stage 4 right-size: new, flash +16,060 B, RAM +35,156 B", out)
+        self.assertNotIn("tcp", out)
+        self.assertEqual(README, self.read("README.md"))
+
+    def test_stages_says_so_where_none_moved(self):
+        status, out, _ = self.moved_since(self.cmake, self.cmake)
+        self.assertEqual(0, status)
+        self.assertEqual("no stage's cost has moved\n", out)
+
+    def test_stages_needs_the_sweep_to_compare_with(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            status = release_docs.main(["--stages", self.cmake, "--root", self.root.name])
+        self.assertEqual(1, status)
+        self.assertIn("--stages needs --previous", err.getvalue())
+
+    def test_a_release_needs_its_version_and_both_sweeps(self):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            status = release_docs.main(["0.5.0", self.cmake, "--root", self.root.name])
+        self.assertEqual(1, status)
+        self.assertIn("a version and both stacks' sweeps are needed", err.getvalue())
+
+    def test_stages_refuses_a_sweep_that_did_not_pass(self):
+        failed = self.sweep("failed", STAGES, verdict="FAIL (exit 1)")
+        status, _, err = self.moved_since(failed, self.cmake)
+        self.assertEqual(1, status)
+        self.assertIn("did not pass", err)
+
 
 if __name__ == "__main__":
     unittest.main()

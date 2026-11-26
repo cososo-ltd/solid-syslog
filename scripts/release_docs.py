@@ -3,6 +3,7 @@
 
 Run:  python3 scripts/release_docs.py <version> <cmake-sweep> <make-sweep>
           [--previous <sweep>] [--check]
+      python3 scripts/release_docs.py --stages <sweep> --previous <sweep>
 
 Each sweep is the output of an example stack's Sweep run, as its artifact holds
 it. The cost figures in README.md and docs/hardening-path.md, the links to the
@@ -16,6 +17,9 @@ rounds to another figure that is printed and the CMake stack's is still used.
 The stage costs in docs/hardening-path.md are rounded and sit in prose, so they
 are not rewritten. With --previous, the output of the sweep the last release was
 measured by, each stage whose cost moved is printed for re-taking by hand.
+
+--stages prints those stages for one sweep and reads no documentation, which is
+how the stages to re-take are known between releases.
 """
 
 import argparse
@@ -185,16 +189,33 @@ def _read(root, relative):
         raise ReleaseDocsError(f"{relative} is missing") from None
 
 
+def _stages(args):
+    try:
+        if not args.previous:
+            raise ReleaseDocsError("--stages needs --previous")
+        lines = moved(load(args.stages), load(args.previous))
+    except ReleaseDocsError as error:
+        print(f"release_docs: {error}", file=sys.stderr)
+        return 1
+    print("\n".join(lines) if lines else "no stage's cost has moved")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("version")
-    parser.add_argument("cmake", help="the output of solid-syslog-example's Sweep run")
-    parser.add_argument("make", help="the output of solid-syslog-example-make's Sweep run")
+    parser.add_argument("version", nargs="?")
+    parser.add_argument("cmake", nargs="?", help="the output of solid-syslog-example's Sweep run")
+    parser.add_argument("make", nargs="?", help="the output of solid-syslog-example-make's Sweep run")
+    parser.add_argument("--stages", help="a sweep whose stages are compared with --previous, and nothing else done")
     parser.add_argument("--previous", help="the output of the sweep the last release was measured by")
     parser.add_argument("--check", action="store_true", help="rewrite nothing; fail where anything would change")
     parser.add_argument("--root", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
     args = parser.parse_args(argv)
+    if args.stages:
+        return _stages(args)
     try:
+        if args.make is None:
+            raise ReleaseDocsError("a version and both stacks' sweeps are needed")
         if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
             raise ReleaseDocsError(f"'{args.version}' is not a version")
         figures = headline(load(args.cmake), args.cmake)
