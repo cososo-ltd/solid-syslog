@@ -122,6 +122,8 @@ jobs:
       REBASE: ${{ github.event.client_payload.rebase.outcome }}
       CONFLICT: ${{ github.event.client_payload.rebase.conflict }}
       CONFLICT_COMMIT: ${{ github.event.client_payload.rebase.commit }}
+      CAPTURE: ${{ github.event.client_payload.rebase.capture }}
+      BASELINE: ${{ github.event.client_payload.rebase.baseline }}
       INVARIANT: ${{ github.event.client_payload.app.outcome }}
       DIFFERING: ${{ github.event.client_payload.app.differing }}
       RUN_URL: ${{ github.event.client_payload.run_url }}
@@ -136,6 +138,9 @@ jobs:
           number=$(gh issue list --label example-sweep --state open --search "\"$title\" in:title" \
                      --json number,title --jq ".[] | select(.title == \"$title\") | .number")
           short=${SHA:0:7}
+          if [ -n "$BASELINE" ]; then
+            echo "\`$STACK\` captured its Baseline again at $short: $BASELINE." >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ "$VERDICT" = pass ]; then
             if [ -n "$number" ]; then
               gh issue close "$number" --comment "Green again at $short ([run]($RUN_URL))."
@@ -158,6 +163,9 @@ jobs:
             echo
             if [ -n "$CONFLICT" ]; then
               echo "Stage \`$CONFLICT\` ([\`${CONFLICT_COMMIT:0:7}\`](https://github.com/cososo-ltd/$STACK/commit/$CONFLICT_COMMIT)) does not apply to a Baseline at this commit, so \`wip/next\` was left as it was. What was swept is that branch with the pin and the image overridden."
+              echo
+            elif [ -n "$CAPTURE" ]; then
+              echo "The Baseline did not run on the image at this commit, so its figures could not be captured again and \`wip/next\` was left as it was. What was swept is that branch with the pin and the image overridden."
               echo
             elif [ "$REBASE" = failure ]; then
               echo "\`wip/next\` could not be rebased, and nothing was swept. The run says why."
