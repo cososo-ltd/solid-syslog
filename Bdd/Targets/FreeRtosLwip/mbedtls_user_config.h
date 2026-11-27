@@ -47,14 +47,19 @@
  * mbedtls_x509_time_is_past and _is_future compile to `return 0`, BADCERT_EXPIRED
  * and BADCERT_FUTURE are never set, and an expired certificate is accepted - so
  * a target built without them cannot answer the validity half of the TLS
- * equivalence matrix at all. MBEDTLS_PLATFORM_TIME_ALT lets the target install
- * its own source (BddTargetClock, seeded at build time and advanced by the
- * scheduler's uptime) rather than reaching for a libc time() this build has no
+ * equivalence matrix at all. MBEDTLS_PLATFORM_TIME_MACRO makes mbedtls_time the
+ * target's own function (BddTargetClock, seeded at build time and advanced by
+ * the scheduler's uptime), so nothing links a libc time() this build has no
  * syscall behind. Time for certificates only: SolidSyslogConfig leaves Clock
  * NULL, so a record still carries NILVALUE. */
 #define MBEDTLS_HAVE_TIME
 #define MBEDTLS_HAVE_TIME_DATE
-#define MBEDTLS_PLATFORM_TIME_ALT
+/* Declared here because this is the one file every mbedTLS source reads. The
+ * type is time_t, which mbedtls_time_t is by default and which mbedTLS has not
+ * yet defined at this point. */
+#include <time.h>
+time_t BddTargetTlsSender_MbedTlsTime(time_t* timer);
+#define MBEDTLS_PLATFORM_TIME_MACRO BddTargetTlsSender_MbedTlsTime
 /* MBEDTLS_HAVE_TIME also obliges the build to provide mbedtls_ms_time, whose
  * upstream implementations are all POSIX or Windows (platform_util.c ends in
  * #error otherwise). The target supplies its own from the scheduler's tick. */
