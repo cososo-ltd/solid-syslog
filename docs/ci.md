@@ -195,14 +195,18 @@ releases, `example-sweep.yml` keeps them honest against `main`:
    moves them to the ones that image carries in the same commit. The stages
    are `wip/next`'s own, so a stage fixed there by hand stays fixed; the first
    run takes them from the latest `release/<version>` branch, which is never
-   touched. The rebased branch is pushed, its `app/` is compared stage by stage
-   with the other stack's, and it is swept as pushed.
-3. A stage that does not apply leaves `wip/next` as it was. What is swept
-   then is that branch with the pin and the image overridden, committing
-   nothing.
+   touched. Every stage's cost is counted from the figures the Baseline
+   records for itself, so where the image or an upstream moved, the Baseline
+   is run and those figures are captured again in the same commit. The rebased
+   branch is pushed, its `app/` is compared stage by stage with the other
+   stack's, and it is swept as pushed.
+3. A stage that does not apply, or a Baseline that does not run, leaves
+   `wip/next` as it was. What is swept then is that branch with the pin and the
+   image overridden, committing nothing.
 4. The stack answers with `sweep-finished`, naming the commit, the verdict,
-   the stages that failed, a stage that did not apply, and the stages whose
-   `app/` differs or that the comparison could not be made.
+   the stages that failed, a stage that did not apply, a Baseline that did not
+   run, each Baseline figure a capture moved, and the stages whose `app/`
+   differs or that the comparison could not be made.
 5. Anything but a clean rebase and a green sweep opens one issue per stack
    here, labelled `example-sweep`, naming what failed and the commits since the
    stack's last green sweep. Each later red sweep comments on it, and the next
