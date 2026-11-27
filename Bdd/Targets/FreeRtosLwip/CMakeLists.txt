@@ -311,11 +311,15 @@ target_compile_definitions(SolidSyslogBddTargetLwip PRIVATE
     BDD_TARGET_BUILD_EPOCH=${SOLIDSYSLOG_BDD_BUILD_EPOCH}
 )
 
+# -Werror stops at the compiler, so the linker's warnings are made fatal here.
+# The one nosys.specs raises says a libc call has reached a stub that always
+# fails, which is a fault in the image rather than something to read past.
 target_link_options(SolidSyslogBddTargetLwip PRIVATE
     ${BDD_BOARD_ARCH_FLAGS}
     -T${BDD_BOARD_LINKER_SCRIPT}
     --specs=nano.specs
     --specs=nosys.specs
+    -Wl,--fatal-warnings
     -Wl,--gc-sections
     -Wl,-Map=$<TARGET_FILE:SolidSyslogBddTargetLwip>.map
 )
