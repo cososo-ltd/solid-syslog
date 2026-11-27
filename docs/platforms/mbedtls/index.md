@@ -223,7 +223,7 @@ bare-metal target satisfies each one differently:
 
 | Contract | Supplied by | Where a bare-metal target has to step in |
 |---|---|---|
-| Wall clock, from `MBEDTLS_HAVE_TIME` | `mbedtls_time`, by default libc `time()` | `MBEDTLS_PLATFORM_TIME_MACRO`, naming a time function of your own, which the same configuration file also has to declare. **The build will not stop you.** On newlib with `nosys.specs`, `time()` links against a stub that returns -1, with no more than a linker warning that `_gettimeofday` is not implemented, and Mbed TLS then reads every certificate as outside its validity period - so a peer that is plainly current is refused as not yet valid |
+| Wall clock, from `MBEDTLS_HAVE_TIME` | `mbedtls_time`, by default libc `time()` | `MBEDTLS_PLATFORM_TIME_MACRO`, naming a time function of your own, which the same configuration file also has to declare. **The build will not stop you.** On newlib with `nosys.specs` and no `_gettimeofday` of your own, `time()` links against a stub that returns -1, with no more than a linker warning that `_gettimeofday` is not implemented, and Mbed TLS then reads every certificate as outside its validity period - so a peer that is plainly current is refused as not yet valid |
 | Calendar conversion, from `MBEDTLS_HAVE_TIME_DATE` | `mbedtls_platform_gmtime_r`, by default `gmtime_r` or `gmtime_s` | `MBEDTLS_PLATFORM_GMTIME_R_ALT`, then supply the function - a libc offering neither needs this |
 | Monotonic milliseconds, also from `MBEDTLS_HAVE_TIME` | `mbedtls_ms_time` | `MBEDTLS_PLATFORM_MS_TIME_ALT`, then supply it from a tick counter - every implementation Mbed TLS ships needs a hosted operating system underneath it, so a bare-metal build has no default to fall back on |
 

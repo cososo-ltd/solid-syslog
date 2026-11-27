@@ -294,12 +294,12 @@ with - which is why the decision is forced at build time instead.
 
 Without `NO_ASN_TIME`, wolfSSL reads the clock through `XTIME`, which is libc
 `time()` unless your build says otherwise with `USER_TIME` and a definition of
-its own. On newlib with `nosys.specs`, `time()` links against a stub that
-returns -1, with no more than a linker warning that `_gettimeofday` is not
-implemented, and wolfSSL then reads every certificate as outside its validity
-period - so a peer that is plainly current is refused as not yet valid. The
-build will not stop you; supply the clock. A coarse one is enough: X.509 asks
-only which side of a window the device is on.
+its own. On newlib with `nosys.specs` and no `_gettimeofday` of your own,
+`time()` links against a stub that returns -1, with no more than a linker
+warning that `_gettimeofday` is not implemented, and wolfSSL then reads every
+certificate as outside its validity period - so a peer that is plainly current
+is refused as not yet valid. The build will not stop you; supply the clock. A
+coarse one is enough: X.509 asks only which side of a window the device is on.
 
 `USER_TIME` is the smallest way to supply one. With it wolfSSL declares
 `time_t XTIME(time_t* timer)` and calls it, so your build defines a function of
