@@ -42,8 +42,8 @@ A new major version of an upstream is platform work, not a bump. It is taken
 up as an epic of its own, open to votes like any platform epic, and lands
 either as a raised minimum or as a second pack where the existing pack must
 keep serving the older major. Until it lands, the pack states the major it
-supports. The free tier carries no date for it; a commercial maintenance
-agreement is where dates live.
+supports. The free tier carries no date for it; dates are agreed under commercial
+maintenance.
 
 A pack is not supported past its upstream's own end of support. When an
 upstream line leaves support, the pack that tracks it is retired at the

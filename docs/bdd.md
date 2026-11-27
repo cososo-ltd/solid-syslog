@@ -165,7 +165,7 @@ etc.) without rewriting feature tags.
 | `@mtls` | Needs mutual TLS (client cert + key) |
 | `@buffered` | Needs a buffered wiring (CircularBuffer + service thread, PosixMessageQueueBuffer, etc.) beyond the single-task PassthroughBuffer path - a file-backed block store, a switching sender, a buffer to fill, or a record Service holds through an outage. Every target binary carries a buffered wiring; the one runner that excludes it is `behave-linux-passthrough`, which runs everything else over the passthrough wiring. TLS and mTLS do not carry `@buffered`, because the OTel oracle provides TLS receivers (Windows otelcol-contrib listens on 6514 / 6515 with `client_ca_file` for mTLS). |
 | `@passthrough` | Asserts what only the passthrough wiring does: a record the sender could not take is lost, and the logger's report of it lands once the sender recovers. Run on `behave-linux-passthrough` alone; every other runner excludes it. |
-| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the three QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), VxWorks 6.4 over `SolidSyslogVxWorks64File`, and the three targets on the NUCLEO-F767ZI, on media the harness wipes before each of these scenarios: FreeRTOS (lwIP Raw API) over `SolidSyslogFatFsFile` and FreeRTOS (FreeRTOS-Plus-TCP) over `SolidSyslogPlusFatFile`, both on a MicroSD card, and CMSIS-RTOS2 over `SolidSyslogLittleFsFile` on a W25Q128 flash. The CMSIS-RTOS2 target is also built with its store directly on NOR flash, over `SolidSyslogNorFlashBlockDevice` and no file class: on the NUCLEO-F767ZI's W25Q128, and under QEMU on [a part the target simulates](#the-raw-flash-store-under-qemu). |
+| `@store` | Needs file-backed `SolidSyslogBlockStore` capability in the target (write blocks to disk, replay across restart, threshold callbacks). Carried alongside `@tcp @buffered` on the store-and-forward / capacity / power-cycle / block-lifecycle features. Run on every target - Linux and Windows over `SolidSyslogPosixFile` / `SolidSyslogWindowsFile`, the QEMU targets over `SolidSyslogPlusFatFile` (FreeRTOS-Plus-TCP), `SolidSyslogFatFsFile` (lwIP Raw API) and `SolidSyslogLittleFsFile` (CMSIS-RTOS2), VxWorks 6.4 over `SolidSyslogVxWorks64File`, and the targets on the NUCLEO-F767ZI, on media the harness wipes before each of these scenarios: FreeRTOS (lwIP Raw API) over `SolidSyslogFatFsFile` and FreeRTOS (FreeRTOS-Plus-TCP) over `SolidSyslogPlusFatFile`, both on a MicroSD card, and CMSIS-RTOS2 over `SolidSyslogLittleFsFile` on a W25Q128 flash. The CMSIS-RTOS2 target is also built with its store directly on NOR flash, over `SolidSyslogNorFlashBlockDevice` and no file class: on the NUCLEO-F767ZI's W25Q128, and under QEMU on [a part the target simulates](#the-raw-flash-store-under-qemu). |
 | `@host_store` | Needs the target's store on the host's filesystem, where a step can spoil the store's path before the target starts, or corrupt a stored record between runs. Run on Linux and Windows; excluded on the QEMU targets, VxWorks 6.4 and the NUCLEO-F767ZI, whose store media the harness cannot reach. |
 | `@host_buffer` | Needs a buffer a step can fill from the prompt in one burst while the sender is down, so the discard policy on the buffer, and on the record Service holds, shows at the collector. Run on Linux (message queue, ten records) and Windows (ring); excluded on the QEMU targets, VxWorks 6.4 and the NUCLEO-F767ZI, whose buffers the harness does not fill. |
 | `@rtc` | Scenario assumes a real-time clock with synchronised wall-clock time - asserts a known absolute TIMESTAMP. Run on Linux, Windows, VxWorks 6.4 and the NUCLEO-F767ZI, the last two with their clock set by the harness; excluded on the FreeRTOS and CMSIS-RTOS2 targets under QEMU, which model a no-RTC product per RFC 5424 section 6.2.3.1. |
@@ -207,17 +207,17 @@ recorded on the pull request.
 | CMSIS-RTOS2 (lwIP Sockets API), a second image | The same | The block store directly on that flash, with no filesystem |
 | FreeRTOS (FreeRTOS-Plus-TCP) | The same, under the network interface FreeRTOS-Plus-TCP ships for the STM32 MACs | FreeRTOS-Plus-FAT on the MicroSD card |
 
-On each of the four:
+On each:
 
 - The UDP, TCP and store scenarios pass, and the `@rtc` scenarios against the
   board's real-time clock. [Feature tags](#feature-tags) lists what is excluded.
 - 10,000 messages over UDP and 10,000 over TCP arrive once each and in order,
   and 2,000 over each do so through the store.
 
-On three of them, with the network cable removed and replaced, the target
-reports the link down and up, and a message sent afterwards arrives. The second
-CMSIS-RTOS2 image has the network code of the first, and the cable was not
-pulled on it.
+On every image but the second CMSIS-RTOS2 one, with the network cable removed
+and replaced, the target reports the link down and up, and a message sent
+afterwards arrives. The second CMSIS-RTOS2 image has the network code of the
+first, and the cable was not pulled on it.
 
 Not run on the board:
 

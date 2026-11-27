@@ -207,9 +207,10 @@ listed above; the written sections are added by hand in the release pull request
    each step as pass, fail or not run, and the scenarios passed, failed and
    skipped - since release-please rewrites the pull request's body.
 4. Merging that PR creates the tag and a **draft** GitHub Release
-   (made with the release-please GitHub App's token, no personal GPG/SSH signing). The tag is created at
-   once; a draft would otherwise get its tag only on publication, and
-   release-please could not then find the previous release.
+   (made with the release-please GitHub App's token, no personal GPG/SSH
+   signing). The tag is created at once; a draft would otherwise get its tag
+   only on publication, and release-please could not then find the previous
+   release.
 5. Publishing the draft is a separate step. Nothing the release attaches exists
    until then, so publish once everything the documentation links by name is in
    place - the example stacks' `release/<version>` branches, which pin the
@@ -328,9 +329,10 @@ both stacks is what allows the draft to be published.
 
 `dry-run` is on unless it is cleared, because a release branch is never deleted
 or rewritten. A dry run pushes nothing, so the release can be rehearsed before
-the tag exists; the stack's README says what it reports. The run's summary lists the stage commit messages that quote a figure in
-their prose; those are corrected by hand on `wip/next`, and swept again, before
-the documentation is brought to the release.
+the tag exists; the stack's README says what it reports. The run's summary lists
+the stage commit messages that quote a figure in their prose; those are
+corrected by hand on `wip/next`, and swept again, before the documentation is
+brought to the release.
 
 ### Why the documentation ships as a file
 

@@ -30,9 +30,9 @@ figures are from the development of release 0.5.0.
 |---|---|---|
 | A pace the store kept up with | 1 message every 260 ms | 1 message every 20 ms |
 | A pace it did not keep up with | 1 every 120 ms | 1 every 10 ms |
-| Erases a message | 2.08 | 0.077, which is one for every 13 messages |
-| Programs a message | 11.6 | 2.2 |
-| Reads a message | 105 | 9.5 |
+| Erases per message | 2.08 | 0.077, which is one for every 13 messages |
+| Programs per message | 11.6 | 2.2 |
+| Reads per message | 105 | 9.5 |
 | Creating the store on a part that holds one | 432 ms and 731 reads | 65 ms and 2100 reads |
 | Creating the store on a blank part | 154 ms, with the filesystem's format | 120 ms, with the first block's erase |
 
@@ -50,7 +50,7 @@ somewhere between its two rows.
 **Erases.** With no filesystem a block is erased once as the store takes it,
 and holds 13 of these messages. The
 [LittleFS page](../platforms/littlefs/index.md#what-the-store-costs-the-flash-in-erases)
-says what a message costs under that filesystem, and how to turn erases a
+says what a message costs under that filesystem, and how to turn erases per
 message into the life of a part.
 
 **Creating the store.** Each time includes about 10 ms for the console command

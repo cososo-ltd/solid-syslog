@@ -6,10 +6,10 @@ two parts: Part I covers the properties of the product, Part II the manufacturer
 vulnerability-handling process. This page maps the audit-trail-relevant parts of both to
 what SolidSyslog provides and what stays yours.
 
-The Regulation applies from **11 December 2027**, with two earlier dates: Chapter IV
-(Articles 35 to 51) from 11 June 2026, and Article 14, the manufacturer's reporting
-obligations for actively exploited vulnerabilities and severe incidents, from 11
-September 2026.
+The Regulation applies in full from **11 December 2027**. Two parts already apply:
+Chapter IV (Articles 35 to 51) since 11 June 2026, and Article 14, the manufacturer's
+reporting obligations for actively exploited vulnerabilities and severe incidents,
+since 11 September 2026.
 
 > [!NOTE]
 > SolidSyslog is a library you build into a product, not a product in its own right.
@@ -69,20 +69,18 @@ made it, and then answer off, from the same task: the deactivation record and ev
 logged before it are delivered, and every Log after it is dropped unformatted, so the
 sequence numbers run on without a gap. To reactivate, answer on and then log the
 reactivation, as the first record after it; the other order drops it. Records already
-in the buffer and the store are still delivered either way, which is the shape the
-guidance describes. The field's doc comment is the home of the contract.
+in the buffer and the store are still delivered either way. The field's doc comment is
+the home of the contract.
 
 **Before the configuration is read.** A device that logs before it knows whether its
 user has opted out answers undecided. The logger holds those records in RAM, in a
 queueing buffer, and writes nothing to the store or the wire; the field's doc comment
-names the buffer that cannot hold. The first service pass that finds the answer off
-discards them, so a device whose user had opted out leaves no trace of the events it
-logged while it was finding that out, and the library writes no record of its own either
-until the device has been on; the first answer of on delivers them. A device that
-answers off and then on before a service pass has run keeps them. Records held this way
-are lost if power
-fails before the decision, so read the opt-out from local storage as early as the
-device can.
+names the buffer that cannot hold. If the first answer is on, the held records are
+delivered. If a service pass finds the answer off before the device has ever been on, it
+discards them, and the library writes no record of its own, so a device whose user had
+opted out leaves no trace of what it logged while finding that out. Records held this
+way are lost if power fails before the decision, so read the opt-out from local storage
+as early as the device can.
 
 Where the product's opt-out is to cover the library's own records too, answer it from
 `IsEventReportingOn` on the same struct; the field's doc comment states what a pass does
@@ -102,7 +100,7 @@ today.
 |---|---|---|
 | **(2)(d)** | protection from unauthorised access, and *report on possible unauthorised access* | The reporting half only, and only the carriage of it: your application detects the access and decides it is reportable, the library delivers the record. Mutual TLS authenticates the TLS peer to the receiver, which is the device itself only where it connects directly |
 | **(2)(e)** | confidentiality of stored, transmitted or otherwise processed data, including by encryption at rest or in transit | TLS in transit; authenticated encryption at rest for the spooled store. Records routinely carry data you would not publish |
-| **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed, and TLS protects them in transit. Every loss is detected: the sequence number `SolidSyslogMetaSd` carries leaves a gap at the collector for any record that does not arrive, and a stored record that fails verification is reported: to your error handler, and as a [record in the trail](self-reporting.md) naming the corruption, as [when a record is lost](error-severity.md#when-a-record-is-lost) describes |
+| **(2)(f)** | integrity of stored and transmitted data against unauthorised modification, and *report on corruptions* | A keyed at-rest policy makes stored records tamper-evident rather than merely checksummed, and TLS protects them in transit. A record that does not arrive leaves a gap in the sequence number `SolidSyslogMetaSd` carries, which the collector sees once a record with a higher sequence number from that run arrives. A stored record that fails verification is reported to your error handler and as a [record in the trail](self-reporting.md) naming the corruption, as [when a record is lost](error-severity.md#when-a-record-is-lost) describes |
 | **(2)(h)** | availability of essential and basic functions, also after an incident | Buffering keeps logging off the critical path, and store-and-forward keeps records through an outage so the trail survives the incident it recorded |
 
 ## Part II - supporting your vulnerability handling

@@ -261,15 +261,15 @@ cmake --build --preset cmsis-cross-lwip-norflash --target SolidSyslogBddTargetCm
 ## NUCLEO-F767ZI - `nucleo-f767zi-*`
 
 ARM cross-builds for the NUCLEO-F767ZI board (STM32F767ZI, Cortex-M7 with the
-hard-float ABI), under that board's toolchain file. Three are the cross BDD
-targets above built with `SOLIDSYSLOG_BDD_BOARD=NucleoF767zi`, with the same
-packs and tunables. `nucleo-f767zi-cmsis-lwip` names one pack more,
-`SpiNorFlash`, the flash under its LittleFS. A fourth,
-`nucleo-f767zi-cmsis-lwip-norflash`, is that target again with
+hard-float ABI), under that board's toolchain file. Each BDD preset is the
+cross BDD target the table names, built with
+`SOLIDSYSLOG_BDD_BOARD=NucleoF767zi` and the same tunables, and each names its
+packs outright. `nucleo-f767zi-cmsis-lwip` names one pack more than
+`cmsis-cross-lwip`, `SpiNorFlash`, the flash under its LittleFS. `nucleo-f767zi-cmsis-lwip-norflash` is that target again with
 `SOLIDSYSLOG_BDD_TARGET=CMSIS_LWIP_NOR_FLASH`: its store is directly on the
-flash, so it names `SpiNorFlash` and not `LittleFs`. The fifth is the bring-up
-firmware, which carries no SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is empty and
-the image does not link the library.
+flash, so it names `SpiNorFlash` and not `LittleFs`. `nucleo-f767zi-bringup` is
+the bring-up firmware, which carries no SolidSyslog: `SOLIDSYSLOG_PLATFORMS` is
+empty and the image does not link the library.
 
 | Preset | Builds | Build target | ELF |
 |---|---|---|---|
