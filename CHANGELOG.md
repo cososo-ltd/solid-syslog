@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.5.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.4.0...v0.5.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* S52.01 the block store takes its number of blocks from its device ([#1279](https://github.com/cososo-ltd/solid-syslog/issues/1279))
+
+### Features
+
+* S48.01 every CI run records the compiler and upstream versions each pack was tested against ([#1197](https://github.com/cososo-ltd/solid-syslog/issues/1197)) ([e80ffa0](https://github.com/cososo-ltd/solid-syslog/commit/e80ffa0044732951dfced6621130f6093f76942e))
+* S48.03 a rebuilt image reaches solid-syslog as a tested pull request without a hand-edited digest ([#1200](https://github.com/cososo-ltd/solid-syslog/issues/1200)) ([73ab01b](https://github.com/cososo-ltd/solid-syslog/commit/73ab01b6140f80382068bfcf314bb2359c0c8cee))
+* S50.01 the NUCLEO-F767ZI is brought up and CI builds its firmware ([#1223](https://github.com/cososo-ltd/solid-syslog/issues/1223)) ([9890920](https://github.com/cososo-ltd/solid-syslog/commit/98909204df14f38de2b2d7d47797b299ba306552))
+* S50.03 the lwIP Raw target sends UDP and TCP from the NUCLEO-F767ZI ([#1232](https://github.com/cososo-ltd/solid-syslog/issues/1232)) ([e7197ac](https://github.com/cososo-ltd/solid-syslog/commit/e7197acbd2c6170b5e6750cdfbe7199425a840f8))
+* S50.05 the CMSIS-RTOS2 lwIP Sockets target runs on the NUCLEO-F767ZI ([#1261](https://github.com/cososo-ltd/solid-syslog/issues/1261)) ([ba9c728](https://github.com/cososo-ltd/solid-syslog/commit/ba9c728483c77a649b63dc9913e6e32e575d9863))
+* S50.06 the FreeRTOS-Plus-TCP target runs on the NUCLEO-F767ZI ([#1263](https://github.com/cososo-ltd/solid-syslog/issues/1263)) ([9ce15ca](https://github.com/cososo-ltd/solid-syslog/commit/9ce15ca4b793c00fe68e775c02e61dd11a6fe157))
+* S50.07 the NUCLEO-F767ZI stores to a MicroSD card, and runs the [@store](https://github.com/store) scenarios ([#1258](https://github.com/cososo-ltd/solid-syslog/issues/1258)) ([c53d824](https://github.com/cososo-ltd/solid-syslog/commit/c53d824358589a6e54866fb21fe65c049e2fee3f))
+* S50.08 the FreeRTOS-Plus-TCP image on the NUCLEO-F767ZI stores to the MicroSD card, and runs the [@store](https://github.com/store) scenarios ([#1265](https://github.com/cososo-ltd/solid-syslog/issues/1265)) ([690341d](https://github.com/cososo-ltd/solid-syslog/commit/690341da6ce91f49b8a222ea71e144e7c539941e))
+* S50.09 the CMSIS-RTOS2 image on the NUCLEO-F767ZI stores to LittleFS on the W25Q128, and runs the [@store](https://github.com/store) scenarios ([#1267](https://github.com/cososo-ltd/solid-syslog/issues/1267)) ([c114327](https://github.com/cososo-ltd/solid-syslog/commit/c1143277e7fcf4ade9d388556b99ae3611eb2d2e))
+* S50.11 the NUCLEO-F767ZI runs with its caches on ([#1250](https://github.com/cososo-ltd/solid-syslog/issues/1250)) ([a56a0ae](https://github.com/cososo-ltd/solid-syslog/commit/a56a0ae05009118a1afb52eb8390b1cf1229ca00))
+* S50.12 the NUCLEO-F767ZI is given the time, and runs the [@rtc](https://github.com/rtc) scenarios ([#1253](https://github.com/cososo-ltd/solid-syslog/issues/1253)) ([e69dbc0](https://github.com/cososo-ltd/solid-syslog/commit/e69dbc090539f8150b6c63a368bf0439e51da8c1))
+* S52.01 the block store takes its number of blocks from its device ([#1279](https://github.com/cososo-ltd/solid-syslog/issues/1279)) ([6c45e4d](https://github.com/cososo-ltd/solid-syslog/commit/6c45e4dc94b0fd6f20d2982fa938f72a1725f96d))
+* S52.02 a NUCLEO image keeps its block store directly on NOR flash, measured beside LittleFS ([#1304](https://github.com/cososo-ltd/solid-syslog/issues/1304)) ([d10c329](https://github.com/cososo-ltd/solid-syslog/commit/d10c32929fcf0c52416665906bf38980bb810a00))
+* S52.02 an SPI NOR flash pack fills the flash seam from the part's SFDP table ([#1293](https://github.com/cososo-ltd/solid-syslog/issues/1293)) ([e0d67cf](https://github.com/cososo-ltd/solid-syslog/commit/e0d67cfc4c77c3794ec72a33730c042b3b268f6b))
+* S52.02 the block store's blocks can be kept directly on NOR flash ([#1287](https://github.com/cososo-ltd/solid-syslog/issues/1287)) ([e6630a0](https://github.com/cososo-ltd/solid-syslog/commit/e6630a03da96bfb0c860a76bccb503fe96198ea1))
+* S52.04 the SPI NOR flash pack calls the bus's WhileBusy while it waits for the part ([#1306](https://github.com/cososo-ltd/solid-syslog/issues/1306)) ([5700012](https://github.com/cososo-ltd/solid-syslog/commit/57000127282510a322e050a2d4847d3b3d100562))
+* S53.01 the logger asks the device whether capture is on, and holds records in RAM until it knows ([#1282](https://github.com/cososo-ltd/solid-syslog/issues/1282)) ([16ea1f2](https://github.com/cososo-ltd/solid-syslog/commit/16ea1f284d1341220bcd8c881d2ed40a2bdf300f))
+* the logger holds delivery back until the device says its destination is known ([#1235](https://github.com/cososo-ltd/solid-syslog/issues/1235)) ([beeed5a](https://github.com/cososo-ltd/solid-syslog/commit/beeed5aa78947214a3c52c44f30b215705332cff))
+
+
+### Bug Fixes
+
+* a block store over its block ceiling evicts down to it before a rotation takes a block ([#1297](https://github.com/cososo-ltd/solid-syslog/issues/1297)) ([f8a72bf](https://github.com/cososo-ltd/solid-syslog/commit/f8a72bfe3bd26582e59c19ead415c3d54f5768b4))
+* a LittleFS file is opened again after every write ([#1294](https://github.com/cososo-ltd/solid-syslog/issues/1294)) ([0c12722](https://github.com/cososo-ltd/solid-syslog/commit/0c12722670e9a5ac9c7fed3d83c07b8d0219caff))
+* the contiguity step waits for a report the store drains behind the last client record ([#1185](https://github.com/cososo-ltd/solid-syslog/issues/1185)) ([66226f9](https://github.com/cososo-ltd/solid-syslog/commit/66226f91e42521cae3feea98ea0ff3d9b585204e))
+
 ## [0.4.0](https://github.com/cososo-ltd/solid-syslog/compare/v0.3.0...v0.4.0) (2026-11-09)
 
 The 0.4.0 release adds self-reporting. The library writes a
