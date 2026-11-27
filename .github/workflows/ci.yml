@@ -404,7 +404,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:fdecd47f49c0ac93bc84c8a67456927f747e3175163e7de95c0647f1861e1f98 # sha-3eacf4a
+      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:a17842e3dfd891361587ad7b98593ca80cf347f78ef62f5a84ec1716f9a59593 # sha-f9f0c4c
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -651,7 +651,7 @@ jobs:
       contents: read
       checks: write
     container:
-      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:fdecd47f49c0ac93bc84c8a67456927f747e3175163e7de95c0647f1861e1f98 # sha-3eacf4a
+      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:a17842e3dfd891361587ad7b98593ca80cf347f78ef62f5a84ec1716f9a59593 # sha-f9f0c4c
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
@@ -716,7 +716,7 @@ jobs:
   analyze-iwyu:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:fdecd47f49c0ac93bc84c8a67456927f747e3175163e7de95c0647f1861e1f98 # sha-3eacf4a
+      image: ghcr.io/cososo-ltd/cpputest-clang@sha256:a17842e3dfd891361587ad7b98593ca80cf347f78ef62f5a84ec1716f9a59593 # sha-f9f0c4c
       options: --user root
     env:
       GIT_CONFIG_COUNT: 1
