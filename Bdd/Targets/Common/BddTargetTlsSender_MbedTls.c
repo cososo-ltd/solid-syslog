@@ -168,17 +168,6 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
     return 0;
 }
 
-/* Idempotent: safe to call from BddTargetTlsSender_Create on every invocation
- * even though the first call is the only one that does real work. mbedTLS
- * state for entropy/DRBG/cert/key lives at file scope and survives across
- * connect/disconnect cycles.
- *
- * Each major step emits a printf diagnostic and yields one tick to the
- * scheduler. Under QEMU the DRBG seed + cert/key parses can each
- * take several seconds (mbedTLS does serious crypto work - RSA key
- * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
- * would starve until init finishes, and without the diagnostic prints the
- * boot would appear to hang. */
 /* mbedTLS asks for this by name when MBEDTLS_PLATFORM_MS_TIME_ALT is set. It
    wants a monotonic millisecond counter rather than a wall clock, which is what
    the scheduler's tick already is. */
@@ -192,16 +181,31 @@ static uint32_t UptimeSeconds(void)
     return (uint32_t) (BddTargetOsPrimitives_UptimeMilliseconds() / 1000U);
 }
 
-static mbedtls_time_t MbedTlsTime(mbedtls_time_t* result)
+/* mbedTLS calls this as mbedtls_time: the target's mbedtls_user_config.h names
+   it as MBEDTLS_PLATFORM_TIME_MACRO, and declares it. The clock is seeded at
+   build time and advanced by uptime, which is enough to place the device inside
+   or outside a certificate's validity window. */
+mbedtls_time_t BddTargetTlsSender_MbedTlsTime(mbedtls_time_t* timer)
 {
     mbedtls_time_t now = (mbedtls_time_t) BddTargetClock_Now();
-    if (result != NULL)
+    if (timer != NULL)
     {
-        *result = now;
+        *timer = now;
     }
     return now;
 }
 
+/* Idempotent: safe to call from BddTargetTlsSender_Create on every invocation
+ * even though the first call is the only one that does real work. mbedTLS
+ * state for entropy/DRBG/cert/key lives at file scope and survives across
+ * connect/disconnect cycles.
+ *
+ * Each major step emits a printf diagnostic and yields one tick to the
+ * scheduler. Under QEMU the DRBG seed + cert/key parses can each
+ * take several seconds (mbedTLS does serious crypto work - RSA key
+ * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
+ * would starve until init finishes, and without the diagnostic prints the
+ * boot would appear to hang. */
 static void EnsureMbedTlsInitialised(void)
 {
     if (mbedTlsInitialised)
@@ -221,12 +225,10 @@ static void EnsureMbedTlsInitialised(void)
      * inside newlib's 4 KiB syscall heap, not a recoverable error. */
     mbedtls_platform_set_calloc_free(FreeRtosMbedTlsCalloc, FreeRtosMbedTlsFree);
 
-    /* Give mbedTLS a wall clock, so certificate validity is checked here as it
-       is on a hosted target. Process-global like the allocator pair above, and
-       installed by the target for the same reason: the library never touches
-       mbedTLS's global hooks. */
+    /* Start the wall clock mbedTLS reads through BddTargetTlsSender_MbedTlsTime,
+       so certificate validity is checked here as it is on a hosted target.
+       Until this runs the clock stands at the instant the image was built. */
     BddTargetClock_Initialise(UptimeSeconds);
-    mbedtls_platform_set_time(MbedTlsTime);
 
     mbedtls_entropy_init(&entropy);
     /* Registered as MBEDTLS_ENTROPY_SOURCE_STRONG even though the demo
