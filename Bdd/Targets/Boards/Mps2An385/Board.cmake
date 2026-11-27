@@ -36,8 +36,10 @@ set(BDD_BOARD_LITTLEFS_PROJECT_SOURCES
     ${CMAKE_SOURCE_DIR}/Bdd/Targets/Common/BddTargetLittleFsDisk.c
 )
 # The other is what a simulated SPI NOR flash part holds. The machine has no
-# flash either, so the part is software behind the flash's bus.
+# flash either, so the part is software behind the flash's bus. With it goes
+# the run of the part's blocks a store may use.
 set(BDD_BOARD_NOR_FLASH_PROJECT_SOURCES
+    ${BDD_BOARD_DIR}/BddTargetBoardNorFlashStoreRun.c
     ${BDD_BOARD_DIR}/BddTargetBoardSpiNorFlashBus.c
     ${BDD_BOARD_DIR}/SimulatedSpiNorFlash.c
     ${BDD_BOARD_DIR}/SemihostingFile.c

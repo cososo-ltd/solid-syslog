@@ -2,11 +2,14 @@
 
 #include "BddTargetNorFlashStore.h"
 
+#include "BddTargetBoardNorFlashStoreRun.h"
 #include "BddTargetBoardSpiNorFlashBus.h"
 #include "BddTargetCountingNorFlash.h"
 #include "BddTargetStoreSettings.h"
 #include "SolidSyslogBlockDevice.h"
+#include "SolidSyslogNorFlash.h"
 #include "SolidSyslogNorFlashBlockDevice.h"
+#include "SolidSyslogNullBlockDevice.h"
 #include "SolidSyslogNullNorFlash.h"
 #include "SolidSyslogSpiNorFlash.h"
 
@@ -14,7 +17,6 @@
 
 enum
 {
-    FIRST_BLOCK = 0,
     /* What SolidSyslogNorFlashBlockDeviceConfig takes as a BlockSize to mean
      * the flash block less the device's own state. */
     ALL_A_FLASH_BLOCK_HOLDS = 0
@@ -28,6 +30,8 @@ static struct SolidSyslogNorFlash* countedFlash;
 
 static inline bool NorFlashStore_IsStarted(void);
 static struct SolidSyslogBlockDevice* NorFlashStore_CreateDevice(size_t blockSize);
+static inline size_t NorFlashStore_PartBlockCount(void);
+static bool NorFlashStore_DisposeOfEveryBlock(struct SolidSyslogBlockDevice* device);
 
 bool BddTargetNorFlashStore_Mount(void)
 {
@@ -70,13 +74,22 @@ struct SolidSyslogBlockDevice* BddTargetNorFlashStore_CreateBlockDevice(void)
 
 static struct SolidSyslogBlockDevice* NorFlashStore_CreateDevice(size_t blockSize)
 {
+    const struct BddTargetBoardNorFlashStoreRun run =
+        BddTargetBoardNorFlashStoreRun_Within(NorFlashStore_PartBlockCount());
     const struct SolidSyslogNorFlashBlockDeviceConfig config = {
         .Flash = countedFlash,
-        .FirstBlock = FIRST_BLOCK,
-        .BlockCount = BDD_TARGET_NOR_FLASH_STORE_BLOCK_COUNT,
+        .FirstBlock = run.FirstBlock,
+        .BlockCount = run.BlockCount,
         .BlockSize = blockSize,
     };
     return SolidSyslogNorFlashBlockDevice_Create(&config);
+}
+
+/* A part that has not started has no blocks for the board to state a run of.
+ * The device's Create then refuses whatever run the board answers with. */
+static inline size_t NorFlashStore_PartBlockCount(void)
+{
+    return NorFlashStore_IsStarted() ? SolidSyslogNorFlash_GetBlockCount(flash) : 0U;
 }
 
 void BddTargetNorFlashStore_DestroyBlockDevice(struct SolidSyslogBlockDevice* device)
@@ -85,22 +98,33 @@ void BddTargetNorFlashStore_DestroyBlockDevice(struct SolidSyslogBlockDevice* de
 }
 
 /* Through a block device of its own, which it gives back, so the wipe knows
- * no more of how a block is kept than the store does. */
+ * no more of how a block is kept than the store does. A run the part does not
+ * have gives no device, and so nothing to wipe or to give back. */
 bool BddTargetNorFlashStore_Wipe(void)
 {
-    bool wiped = BddTargetNorFlashStore_Mount();
-    if (wiped)
+    bool wiped = false;
+    if (BddTargetNorFlashStore_Mount())
     {
         struct SolidSyslogBlockDevice* device = NorFlashStore_CreateDevice((size_t) ALL_A_FLASH_BLOCK_HOLDS);
-        size_t blockCount = SolidSyslogBlockDevice_GetBlockCount(device);
-        for (size_t block = 0U; wiped && (block < blockCount); block++)
+        if (device != SolidSyslogNullBlockDevice_Get())
         {
-            if (SolidSyslogBlockDevice_Exists(device, block))
-            {
-                wiped = SolidSyslogBlockDevice_Dispose(device, block);
-            }
+            wiped = NorFlashStore_DisposeOfEveryBlock(device);
+            SolidSyslogNorFlashBlockDevice_Destroy(device);
         }
-        SolidSyslogNorFlashBlockDevice_Destroy(device);
     }
     return wiped;
+}
+
+static bool NorFlashStore_DisposeOfEveryBlock(struct SolidSyslogBlockDevice* device)
+{
+    bool disposed = true;
+    size_t blockCount = SolidSyslogBlockDevice_GetBlockCount(device);
+    for (size_t block = 0U; disposed && (block < blockCount); block++)
+    {
+        if (SolidSyslogBlockDevice_Exists(device, block))
+        {
+            disposed = SolidSyslogBlockDevice_Dispose(device, block);
+        }
+    }
+    return disposed;
 }

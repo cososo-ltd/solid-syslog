@@ -46,8 +46,39 @@ struct SolidSyslogNorFlash* flash = SolidSyslogSpiNorFlash_Create(&flashConfig);
 
 The flash then goes to
 [`SolidSyslogNorFlashBlockDevice_Create`](../../api/SolidSyslogNorFlashBlockDevice_8h.md),
-with the run of blocks the store may use. A block is one erase of the smallest
-size the part has, commonly 4 KiB.
+with the run of blocks the store may use: its first block and how many. A
+block is one erase of the smallest size the part has, commonly 4 KiB. The rest
+of the part stays yours, so the run can be wherever your product has room: the
+start of the part, the middle, or the end.
+
+For the start or the middle, both numbers are constants. For the end, ask the
+flash how many blocks the part has and count back from that:
+
+```c
+enum
+{
+    STORE_BLOCKS = 2048
+};
+
+size_t partBlocks = SolidSyslogNorFlash_GetBlockCount(flash);
+
+struct SolidSyslogNorFlashBlockDeviceConfig deviceConfig = {
+    .Flash = flash,
+    .FirstBlock = partBlocks - STORE_BLOCKS,
+    .BlockCount = STORE_BLOCKS,
+};
+struct SolidSyslogBlockDevice* device = SolidSyslogNorFlashBlockDevice_Create(&deviceConfig);
+```
+
+The subtraction needs no guard of your own. Where the flash did not start,
+which leaves it with no blocks, or the part has fewer than the store asks for,
+the first block wraps. Create answers each with the Null block device, as its
+header says, and never uses the wrapped number. The header also says what each
+field means, `BlockSize` among them, which is left at 0 here.
+
+The device then goes to
+[`SolidSyslogBlockStore_Create`](../../api/SolidSyslogBlockStore_8h.md), as any
+block device does.
 
 ## What will catch you out
 
