@@ -15,8 +15,8 @@ resources say to stop.
 Every code snippet and every figure below comes from a worked integration, published in
 full for this release:
 
-- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.4.0) - consumed with CMake.
-- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.4.0) - the same integration, consumed with Make.
+- [solid-syslog-example](https://github.com/cososo-ltd/solid-syslog-example/tree/release/0.5.0) - consumed with CMake.
+- [solid-syslog-example-make](https://github.com/cososo-ltd/solid-syslog-example-make/tree/release/0.5.0) - the same integration, consumed with Make.
 
 The baseline is constructed to carry the third-party platform code a real-world device
 would already have - an RTOS, a network stack, and cryptography. A device that needs
@@ -43,7 +43,7 @@ repositories carry the exact figures, every stage's run report, the diff that pr
 each, and the reasoning behind it.
 
 Rounded stage by stage, the figures do not sum exactly to the cost of the whole path.
-Measured cumulatively against the same baseline, the path costs about 23.9 KB of flash and
+Measured cumulatively against the same baseline, the path costs about 24.0 KB of flash and
 38.1 KB of RAM, most of the RAM being the second TLS session stage 13 opens. Take a
 stage's figure as the cost of that step and the example's own measurements as the cost of
 the path.
