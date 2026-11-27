@@ -168,17 +168,6 @@ static int DemoEntropySource(void* data, unsigned char* output, size_t len, size
     return 0;
 }
 
-/* Idempotent: safe to call from BddTargetTlsSender_Create on every invocation
- * even though the first call is the only one that does real work. mbedTLS
- * state for entropy/DRBG/cert/key lives at file scope and survives across
- * connect/disconnect cycles.
- *
- * Each major step emits a printf diagnostic and yields one tick to the
- * scheduler. Under QEMU the DRBG seed + cert/key parses can each
- * take several seconds (mbedTLS does serious crypto work - RSA key
- * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
- * would starve until init finishes, and without the diagnostic prints the
- * boot would appear to hang. */
 /* mbedTLS asks for this by name when MBEDTLS_PLATFORM_MS_TIME_ALT is set. It
    wants a monotonic millisecond counter rather than a wall clock, which is what
    the scheduler's tick already is. */
@@ -206,6 +195,17 @@ mbedtls_time_t BddTargetTlsSender_MbedTlsTime(mbedtls_time_t* timer)
     return now;
 }
 
+/* Idempotent: safe to call from BddTargetTlsSender_Create on every invocation
+ * even though the first call is the only one that does real work. mbedTLS
+ * state for entropy/DRBG/cert/key lives at file scope and survives across
+ * connect/disconnect cycles.
+ *
+ * Each major step emits a printf diagnostic and yields one tick to the
+ * scheduler. Under QEMU the DRBG seed + cert/key parses can each
+ * take several seconds (mbedTLS does serious crypto work - RSA key
+ * parse, ECDHE primes, ASN.1 walks); without the yields, lower-priority tasks
+ * would starve until init finishes, and without the diagnostic prints the
+ * boot would appear to hang. */
 static void EnsureMbedTlsInitialised(void)
 {
     if (mbedTlsInitialised)
