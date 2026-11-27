@@ -28,11 +28,11 @@ pack of its own, open to votes as
 [#1189](https://github.com/cososo-ltd/solid-syslog/issues/1189). That contract
 covers the library's own GCM; an alternative implementation under
 `MBEDTLS_GCM_ALT` must also accept decrypting in place, or every stored record
-opens as could-not-run. The pack is tested against 3.6.7 in CI. The library refuses a
+opens as could-not-run. The pack is tested against 3.6.8 in CI. The library refuses a
 chain-verified handshake unless the client has said it is deliberately not
 naming the peer, and the stream says so, so a NULL or empty `ServerName`
 behaves as [the profile](setup.md#3-a-profile) describes.
-<!-- tested-against: 3.6.7 -->
+<!-- tested-against: 3.6.8 -->
 
 A `SolidSyslogSleepFunction` is required and has no default.
 
