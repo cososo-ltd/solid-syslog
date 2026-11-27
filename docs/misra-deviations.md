@@ -39,7 +39,7 @@ Each deviation is paired with a matching entry in `misra_suppressions.txt`
 are line-specific, so every individual site a deviation authorises appears there
 by rule, file and line, and each block back-references the deviation in this
 document that authorises it. A finding on a line not listed is not covered by
-any deviation and surfaces in CI. Two entries cover findings by what they are
+any deviation and surfaces in CI. Some entries cover findings by what they are
 rather than where, because the set is open-ended by design; each names the
 mechanism that applies it: [D.016](#d016---rule-87-the-public-api-has-external-linkage)
 and [D.017](#d017---rule-173-vendor-calls-read-as-implicit-declarations). The suppressions file was populated

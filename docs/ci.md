@@ -26,12 +26,12 @@ non-hosted OS runs under QEMU in CI, so no name says so.
 
 | Job | Preset | Notes |
 |---|---|---|
-| `unit-linux-gcc` | `debug` | All fourteen packs a Linux host can build, on `cpputest-freertos`; also builds the Linux BDD target against the default tunables (every other host build of it uses a tunables override), and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has. Test results annotated on PR |
+| `unit-linux-gcc` | `debug` | Every pack a Linux host can build, on `cpputest-freertos`; also builds the Linux BDD target against the default tunables (every other host build of it uses a tunables override), and builds the tree once more with Plus-TCP deselected, the shape an lwIP-only integrator has. Test results annotated on PR |
 | `unit-linux-clang` | `clang-debug` | Every pack `unit-linux-gcc` builds, built and tested with Clang 19 on `cpputest-clang`, which carries the upstream trees `cpputest-freertos` does at the same pins |
 | `unit-linux-gcc-release` | `release` | The one optimised build: every pack `unit-linux-gcc` builds, built whole and tested at `Release`, so the warnings that need the optimiser are met under `-Werror` and the suite runs with `NDEBUG` defined. Then runs `cmake --install` and checks that the library and every Core public header landed |
 | `unit-windows-msvc` | `msvc-debug` | MSVC build on `windows-latest`, with its dependencies from vcpkg as the [Windows build](builds.md#windows-build---msvc-debug) describes; test results annotated on PR |
-| `unit-linux-gcc-sanitize` | `sanitize` | All fourteen packs under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
-| `unit-linux-clang-coverage` | `coverage` | Every test executable registered with `junit` across all fourteen packs, built with Clang 19 on `cpputest-clang` and measured by llvm-cov: lines, branches and MC/DC, gated at 99% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the genhtml report and llvm-cov's MC/DC report with the site at [Coverage](testing/coverage.md) |
+| `unit-linux-gcc-sanitize` | `sanitize` | Every pack `unit-linux-gcc` builds, under ASan + UBSan, with UBSan halting on its first finding rather than recovering, and address-space randomisation off for the tests - test results annotated on PR |
+| `unit-linux-clang-coverage` | `coverage` | Every test executable registered with `junit` across every pack `unit-linux-gcc` builds, built with Clang 19 on `cpputest-clang` and measured by llvm-cov: lines, branches and MC/DC, gated at 99% each over all packs by `scripts/coverage_summary.py`; its per-pack table is the step summary, and `docs-build` publishes the genhtml report and llvm-cov's MC/DC report with the site at [Coverage](testing/coverage.md) |
 | `analyze-tidy` | `tidy` | clang-tidy - pass/fail with errors in job log |
 | `analyze-cppcheck` | `cppcheck` | cppcheck static analysis, and the enforcing MISRA C:2012 addon |
 | `analyze-codeql` | - | CodeQL over the library as a consumer builds it; findings in Security → Code scanning. Its own workflow (`codeql.yml`) - see *Code scanning* |
@@ -181,14 +181,14 @@ separate step, covered in the [release process](release-process.md).
 The example stacks, `solid-syslog-example` and `solid-syslog-example-make`, pin a
 library commit and are released with each library release, per the
 [release process](release-process.md#releasing-the-example-stacks). Between
-releases, `example-sweep.yml` keeps them honest against `main`:
+releases, `example-sweep.yml` sweeps them against `main`:
 
 1. A push to `main` that touches `Core/`, a pack the stacks link, `CMakeLists.txt`,
    `CMakePresets.json`, `cmake/` or `ci.yml` sends a `repository_dispatch` event,
    `library-changed`, to each stack, naming the commit and the
    `cpputest-freertos-cross` image that commit's `ci.yml` pins, by tag and
-   digest. The token
-   is minted from the release GitHub App, which is installed on the stacks.
+   digest. The token is minted from the release GitHub App, which is installed on
+   the stacks.
 2. Each stack's **Sweep** workflow rebases its `wip/next` branch: the stages
    onto a Baseline with `solid-syslog.pin` at that commit and every container
    on the cross image named. The Make stack carries its own upstreams, and

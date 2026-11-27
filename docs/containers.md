@@ -99,8 +99,8 @@ docker compose -f .devcontainer/docker-compose.yml run --rm clang \
 A bump is a pull request titled `chore: bump <image> image to sha-<short>`,
 naming both images when one commit published two, that moves every reference
 to the image onto the digest of the new tag. Every lane runs on the new image
-there, so a green run is the evidence and the maintainer merges. It is the one
-step in the chain anyone takes; the image repositories merge their own bumps.
+there, so a green run is the evidence and the maintainer merges. It is the only
+step in the chain a person takes; the image repositories merge their own bumps.
 The chain that opens it unaided:
 
 1. Renovate opens a pull request in the image repository when something its
@@ -110,9 +110,9 @@ The chain that opens it unaided:
    ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#keeping-the-pins-current),
    [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-pins-current),
    [CppUTestDockerClang](https://github.com/cososo-ltd/CppUTestDockerClang#keeping-the-pins-current)).
-2. The publishing workflow builds and smokes the image on that pull request.
-   Green, it merges itself; the README says what the smoke proves and what
-   merges
+2. The publishing workflow builds the image and runs its smoke test on that
+   pull request. When that run is green the pull request merges itself; the
+   README says what the smoke test proves and what merges
    ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#what-merges-itself),
    [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#what-merges-itself),
    [CppUTestDockerClang](https://github.com/cososo-ltd/CppUTestDockerClang#what-merges-itself)).

@@ -27,8 +27,9 @@ the pair may differ too, since its value could not have reached the outcome;
 that is the masking form of MC/DC, which llvm-cov reports and DO-178C accepts.
 Branch coverage is satisfied once each condition has gone both ways, so a
 short-circuited condition leaves a branch uncovered; MC/DC asks more, that
-each condition has been shown to matter on its own. The MC/DC report lists every decision with its conditions and the test
-vectors the run produced, and names the pair each condition lacks.
+each condition has been shown to matter on its own. The MC/DC report lists
+every decision with its conditions and the test vectors the run produced, and
+names the pair each condition lacks.
 
 The conditions that remain uncovered will not be covered on this host. The
 TCP streams of the Posix, lwIP Sockets and VxWorks 6.4 packs treat `EAGAIN`
