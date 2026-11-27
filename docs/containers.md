@@ -111,8 +111,9 @@ The chain that opens it unaided:
    [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#keeping-the-pins-current),
    [CppUTestDockerClang](https://github.com/cososo-ltd/CppUTestDockerClang#keeping-the-pins-current)).
 2. The publishing workflow builds the image and runs its smoke test on that
-   pull request. When that run is green the pull request merges itself; the
-   README says what the smoke test proves and what merges
+   pull request. When that run is green the pull request merges itself, unless
+   the update is a major; the README says what the smoke test proves and what
+   merges
    ([CppUTestFreertosDocker](https://github.com/cososo-ltd/CppUTestFreertosDocker#what-merges-itself),
    [CppUTestDocker](https://github.com/cososo-ltd/CppUTestDocker#what-merges-itself),
    [CppUTestDockerClang](https://github.com/cososo-ltd/CppUTestDockerClang#what-merges-itself)).
