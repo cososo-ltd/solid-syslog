@@ -84,7 +84,7 @@ services:
     command: sleep infinity
 
   clang:
-    image: ghcr.io/cososo-ltd/cpputest-clang@sha256:fdecd47f49c0ac93bc84c8a67456927f747e3175163e7de95c0647f1861e1f98 # sha-3eacf4a
+    image: ghcr.io/cososo-ltd/cpputest-clang@sha256:64b1c3021ae7c97a7d845eeed20c7c872882f643d9914857efd922b95e4ac31f # sha-f9c3940
     volumes:
       - ..:/workspaces/SolidSyslog:cached
       - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
